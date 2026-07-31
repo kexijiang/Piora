@@ -109,7 +109,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.2.12",
     "jiti": "^2.7.0",
     "postcss": "^8.5.25",
