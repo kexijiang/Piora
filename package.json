@@ -114,6 +114,6 @@
     "jiti": "^2.7.0",
     "postcss": "^8.5.25",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5"
+    "typescript": "^7"
   }
 }
