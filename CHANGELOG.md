@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-08-15
+
+### Changed
+
+- Polished the unified Harmony device workspace with a clearer settings switch,
+  less crowded quick controls, and reference screenshots for visual review.
+
 ## [0.2.3] - 2026-08-15
 
 ### Added
