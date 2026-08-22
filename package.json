@@ -116,7 +116,7 @@
   "devDependencies": {
     "@electron/asar": "3.4.1",
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^25",
+    "@types/node": "^26",
     "@types/proper-lockfile": "4.1.4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
