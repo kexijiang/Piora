@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `9d3662397945f27e91cee8df1ba2a325452d5478936ec453ead753e648a83068`
+Lockfile SHA-256: `5e830db08e66ef65d66d5d9d27da085ecc3d0e1821c96b1124d33b2a2eeecce3`
 
 Unique locked packages: **1083**. Runtime packages: **582**. Build/development-only packages: **501**.
 
@@ -144,15 +144,15 @@ Every locked package declares a license.
 | `@mariozechner/clipboard-win32-arm64-msvc` | `0.3.9` | MIT | Yes |
 | `@mariozechner/clipboard-win32-x64-msvc` | `0.3.9` | MIT | Yes |
 | `@mermaid-js/parser` | `1.2.0` | MIT | No |
-| `@next/env` | `16.3.1` | MIT | No |
-| `@next/swc-darwin-arm64` | `16.3.1` | MIT | Yes |
-| `@next/swc-darwin-x64` | `16.3.1` | MIT | Yes |
-| `@next/swc-linux-arm64-gnu` | `16.3.1` | MIT | Yes |
-| `@next/swc-linux-arm64-musl` | `16.3.1` | MIT | Yes |
-| `@next/swc-linux-x64-gnu` | `16.3.1` | MIT | Yes |
-| `@next/swc-linux-x64-musl` | `16.3.1` | MIT | Yes |
-| `@next/swc-win32-arm64-msvc` | `16.3.1` | MIT | Yes |
-| `@next/swc-win32-x64-msvc` | `16.3.1` | MIT | Yes |
+| `@next/env` | `16.3.3` | MIT | No |
+| `@next/swc-darwin-arm64` | `16.3.3` | MIT | Yes |
+| `@next/swc-darwin-x64` | `16.3.3` | MIT | Yes |
+| `@next/swc-linux-arm64-gnu` | `16.3.3` | MIT | Yes |
+| `@next/swc-linux-arm64-musl` | `16.3.3` | MIT | Yes |
+| `@next/swc-linux-x64-gnu` | `16.3.3` | MIT | Yes |
+| `@next/swc-linux-x64-musl` | `16.3.3` | MIT | Yes |
+| `@next/swc-win32-arm64-msvc` | `16.3.3` | MIT | Yes |
+| `@next/swc-win32-x64-msvc` | `16.3.3` | MIT | Yes |
 | `@nodable/entities` | `2.1.0` | MIT | No |
 | `@protobufjs/aspromise` | `1.1.2` | BSD-3-Clause | No |
 | `@protobufjs/base64` | `1.1.2` | BSD-3-Clause | No |
@@ -472,7 +472,7 @@ Every locked package declares a license.
 | `mlly` | `1.8.2` | MIT | No |
 | `ms` | `2.1.3` | MIT | No |
 | `nanoid` | `3.3.18` | MIT | No |
-| `next` | `16.3.1` | MIT | No |
+| `next` | `16.3.3` | MIT | No |
 | `node-domexception` | `1.0.0` | MIT | No |
 | `node-fetch` | `3.3.2` | MIT | No |
 | `openai` | `6.40.0` | Apache-2.0 | No |
@@ -640,7 +640,7 @@ Every locked package declares a license.
 | `@malept/flatpak-bundler` | `0.4.0` | MIT | No |
 | `@napi-rs/wasm-runtime` | `0.2.12` | MIT | Yes |
 | `@napi-rs/wasm-runtime` | `1.1.4` | MIT | Yes |
-| `@next/eslint-plugin-next` | `16.3.1` | MIT | No |
+| `@next/eslint-plugin-next` | `16.3.3` | MIT | No |
 | `@noble/hashes` | `1.4.0` | MIT | No |
 | `@noble/hashes` | `2.2.0` | MIT | No |
 | `@nodelib/fs.scandir` | `2.1.5` | MIT | No |
@@ -811,7 +811,7 @@ Every locked package declares a license.
 | `es6-error` | `4.1.1` | MIT | Yes |
 | `escalade` | `3.2.0` | MIT | No |
 | `eslint` | `9.39.5` | MIT | No |
-| `eslint-config-next` | `16.3.1` | MIT | No |
+| `eslint-config-next` | `16.3.3` | MIT | No |
 | `eslint-import-resolver-node` | `0.3.9` | MIT | No |
 | `eslint-import-resolver-typescript` | `3.10.1` | ISC | No |
 | `eslint-module-utils` | `2.12.1` | MIT | No |
