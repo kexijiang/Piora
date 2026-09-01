@@ -107,7 +107,7 @@
     "hypium-driver": "6.1.210",
     "json-bigint": "^1.0.0",
     "jszip": "^3.10.1",
-    "katex": "^0.16.47",
+    "katex": "^0.18.4",
     "mammoth": "^1.12.1",
     "mermaid": "^11.16.1",
     "next": "^16.3.3",
@@ -125,7 +125,7 @@
     "remark-math": "^6.0.0",
     "rrule": "^2.8.1",
     "tar": "7.5.22",
-    "undici": "8.9.0"
+    "undici": "8.10.0"
   },
   "devDependencies": {
     "@electron/asar": "3.4.1",
