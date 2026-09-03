@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const tooltip = await readFile(new URL("./AppTooltip.tsx", import.meta.url), "utf8");
+const appShell = await readFile(new URL("./AppShell.tsx", import.meta.url), "utf8");
 const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
 const styles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 
@@ -24,6 +25,12 @@ test("delegates native title hover and focus without consuming iframe names", ()
   assert.match(tooltip, /document\.addEventListener\("focusin", onFocusIn, true\)/);
   assert.match(tooltip, /element\.removeAttribute\("title"\)/);
   assert.match(tooltip, /element\.setAttribute\("title", active\.title\)/);
+});
+
+test("does not rewrite server-rendered title attributes before AppShell hydrates", () => {
+  assert.match(appShell, /data-app-hydrated=\{appHydrated \? "" : undefined\}/);
+  assert.match(tooltip, /element\.closest\("\.app-shell"\)/);
+  assert.match(tooltip, /if \(!isHydrationReady\(element\)\) return/);
 });
 
 test("positions tooltips in the viewport instead of inside clipped controls", () => {

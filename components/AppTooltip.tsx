@@ -50,6 +50,11 @@ function isInteractive(element: Element): boolean {
   return element.matches("button, a[href], input, select, textarea, [role='button'], [role='menuitem'], [tabindex]");
 }
 
+function isHydrationReady(element: Element): boolean {
+  const appShell = element.closest(".app-shell");
+  return !appShell || appShell.hasAttribute("data-app-hydrated");
+}
+
 /**
  * Replaces browser-native title bubbles with one theme-aware tooltip layer.
  * Event delegation means existing and newly rendered title attributes are
@@ -113,6 +118,11 @@ export function AppTooltip() {
     };
 
     const activate = (element: Element, reason: ActivationReason) => {
+      // AppTooltip lives outside the page Suspense boundary and may hydrate
+      // before AppShell. Do not rewrite SSR attributes while React is still
+      // matching that subtree; a stationary pointer can otherwise turn a
+      // title into aria-describedby before its button hydrates.
+      if (!isHydrationReady(element)) return;
       const current = activeRef.current;
       if (current?.element === element) {
         current[reason] = true;

@@ -161,7 +161,9 @@ test("project creation lives in the projects header without a duplicate list", (
   assert.doesNotMatch(source, /t\("sidebar\.openProject"\)/);
   assert.doesNotMatch(source, /visibleProjects\.map/);
   assert.doesNotMatch(source, /filteredSessions/);
-  assert.match(source, /className=\{styles\.sectionLabelActions\} style=\{\{ opacity: 1 \}\}/);
+  assert.match(source, /className=\{styles\.sectionLabelActions\}/);
+  assert.match(sidebarStyles, /\.projectsHeaderToggle svg\s*\{[^}]*opacity:\s*0/s);
+  assert.match(sidebarStyles, /\.projectsHeader:hover \.projectsHeaderToggle svg,[\s\S]*?\.projectsHeader:hover \.sectionLabelActions/);
 });
 
 test("toggles all visible project folders from the projects header", () => {
@@ -169,7 +171,9 @@ test("toggles all visible project folders from the projects header", () => {
   assert.match(source, /sidebar\.expandAllProjects/);
   assert.match(source, /sidebar\.collapseAllProjects/);
   assert.match(source, /const next = new Set\(previous\)[\s\S]*?next\.delete\(group\.key\)[\s\S]*?next\.add\(group\.key\)/);
-  assert.match(source, /name=\{allProjectsCollapsed \? "expand" : "collapse"\}/);
+  assert.match(source, /name="chevron-right"/);
+  assert.match(source, /className=\{allProjectsCollapsed \? undefined : styles\.projectsHeaderChevronOpen\}/);
+  assert.match(source, /aria-expanded=\{!allProjectsCollapsed\}/);
 });
 
 test("exposes the existing validated project picker to shell-level project actions", () => {

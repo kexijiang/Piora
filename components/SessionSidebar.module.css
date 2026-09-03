@@ -182,6 +182,55 @@
   flex: 0 0 auto;
 }
 
+.projectsHeaderToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.projectsHeaderToggle:focus-visible {
+  color: var(--text-muted);
+  outline: none;
+}
+
+.projectsHeaderToggle:disabled {
+  cursor: default;
+}
+
+.projectsHeaderToggle svg {
+  opacity: 0;
+  transition: opacity 100ms ease, transform 120ms ease;
+}
+
+.projectsHeaderChevronOpen {
+  transform: rotate(90deg);
+}
+
+.projectsHeader .sectionLabelActions {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 100ms ease;
+}
+
+.projectsHeader:hover .projectsHeaderToggle svg,
+.projectsHeader:has(:focus-visible) .projectsHeaderToggle svg,
+.projectsHeader:hover .sectionLabelActions,
+.projectsHeader:has(:focus-visible) .sectionLabelActions {
+  opacity: 1;
+}
+
+.projectsHeader:hover .sectionLabelActions,
+.projectsHeader:has(:focus-visible) .sectionLabelActions {
+  pointer-events: auto;
+}
+
 .projectScroll {
   min-height: 0;
   flex: 0 1 auto;

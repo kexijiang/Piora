@@ -138,6 +138,8 @@ const FirstRunOnboarding = dynamic(() => import("./FirstRunOnboarding").then((mo
 export function AppShell() {
   const searchParams = useSearchParams();
   const [initialNavigation] = useState(() => getInitialNavigation(searchParams ?? new URLSearchParams()));
+  const [appHydrated, setAppHydrated] = useState(false);
+  useEffect(() => setAppHydrated(true), []);
   const { theme, themes, setTheme } = useTheme();
   const { locale, setLocale, t: translate, supportedLocales } = useI18n();
   const { bindings: shortcutBindings } = useApplicationShortcuts();
@@ -1952,6 +1954,7 @@ export function AppShell() {
     `}</style>
     <div
       className={`app-shell${desktopChrome ? " desktop-chrome" : ""}`}
+      data-app-hydrated={appHydrated ? "" : undefined}
       data-side-panel-mode={rightPanelOverlayMode ? "overlay" : "split"}
       style={{
         "--workspace-min-width": `${WORKSPACE_MIN_WIDTH}px`,

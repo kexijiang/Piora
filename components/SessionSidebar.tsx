@@ -42,7 +42,6 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
   const primaryActionRef = useRef<HTMLButtonElement>(null);
   const [selectedCwd, setSelectedCwd] = useState<string | null>(null);
   const [homeDir, setHomeDir] = useState<string>("");
-  const [projectsHovered, setProjectsHovered] = useState(false);
   const [deletedSessionToast, setDeletedSessionToast] = useState<{ session: SessionInfo; key: number } | null>(null);
   const [archivedSessionToast, setArchivedSessionToast] = useState<SessionInfo | null>(null);
   const [conversationSearchOpen, setConversationSearchOpen] = useState(false);
@@ -488,7 +487,7 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
         />
       ) : null}
       <SidebarProjectArea
-        loading={loading} error={error} projectsHovered={projectsHovered} setProjectsHovered={setProjectsHovered}
+        loading={loading} error={error}
         handleDefaultCwd={handleDefaultCwd} handleCustomPathClick={handleCustomPathClick}
         projectGroups={projectGroups} selectedProject={selectedProject}
         collapsedProjectKeys={collapsedProjectKeys} expandedProjectSessionKeys={expandedProjectSessionKeys}

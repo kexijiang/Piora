@@ -11,8 +11,7 @@ import { ProjectSessionGroup } from "./ProjectList";
 import type { SessionMoveTarget } from "./TaskContextMenu";
 
 interface Props {
-  loading: boolean; error: string | null; projectsHovered: boolean;
-  setProjectsHovered: Dispatch<SetStateAction<boolean>>;
+  loading: boolean; error: string | null;
   handleDefaultCwd: () => Promise<void>; handleCustomPathClick: () => void;
   projectGroups: SessionProjectGroup[];
   selectedProject: string | null; collapsedProjectKeys: Set<string>; expandedProjectSessionKeys: Set<string>;
@@ -45,7 +44,7 @@ interface ProjectDragState {
 
 export function SidebarProjectArea(props: Props) {
   const { t } = useI18n();
-  const { loading, error, projectsHovered, setProjectsHovered, handleDefaultCwd, handleCustomPathClick, projectGroups, selectedProject, collapsedProjectKeys, expandedProjectSessionKeys, setCollapsedProjectKeys, setExpandedProjectSessionKeys, selectedSessionId, runningSessionIds, unreadSessionIds, attentionSessionIds, moveTargets, setSelectedCwd, homeDir, handleSelectSessionFromList, handleNewSessionInProject, loadSessions, handleSessionDeletedWithUndo, sessionFlags, patchSessionFlag, duplicateSession, markSessionUnread, moveSession, pinnedProjectRoots, projectAliases, togglePinnedProject, renameProject, removeProject, onReorderProjects, sessionOrder, onReorderSessions } = props;
+  const { loading, error, handleDefaultCwd, handleCustomPathClick, projectGroups, selectedProject, collapsedProjectKeys, expandedProjectSessionKeys, setCollapsedProjectKeys, setExpandedProjectSessionKeys, selectedSessionId, runningSessionIds, unreadSessionIds, attentionSessionIds, moveTargets, setSelectedCwd, homeDir, handleSelectSessionFromList, handleNewSessionInProject, loadSessions, handleSessionDeletedWithUndo, sessionFlags, patchSessionFlag, duplicateSession, markSessionUnread, moveSession, pinnedProjectRoots, projectAliases, togglePinnedProject, renameProject, removeProject, onReorderProjects, sessionOrder, onReorderSessions } = props;
   const allProjectsCollapsed = projectGroups.length > 0
     && projectGroups.every((group) => collapsedProjectKeys.has(group.key));
   const projectScrollRef = useRef<HTMLDivElement>(null);
@@ -161,39 +160,41 @@ export function SidebarProjectArea(props: Props) {
       {!loading && !error && (
         <div
           className={`sidebar-projects-header ${styles.sectionLabel} ${styles.projectsHeader}`}
-          onMouseEnter={() => setProjectsHovered(true)}
-          onMouseLeave={() => setProjectsHovered(false)}
         >
-          <span>{t("sidebar.projects")}</span>
-          <div className={styles.sectionLabelActions} style={{ opacity: 1 }}>
-            {projectGroups.length > 0 && (
-              <button
-                type="button"
-                className={styles.rowAction}
-                onClick={() => {
-                  setCollapsedProjectKeys((previous) => {
-                    const shouldExpandAll = projectGroups.every((group) => previous.has(group.key));
-                    const next = new Set(previous);
-                    for (const group of projectGroups) {
-                      if (shouldExpandAll) next.delete(group.key);
-                      else next.add(group.key);
-                    }
-                    return next;
-                  });
-                }}
-                title={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
-                aria-label={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
-              >
-                <AliIcon name={allProjectsCollapsed ? "expand" : "collapse"} size={12} />
-              </button>
-            )}
+          <button
+            type="button"
+            className={styles.projectsHeaderToggle}
+            onClick={() => {
+              setCollapsedProjectKeys((previous) => {
+                const shouldExpandAll = projectGroups.every((group) => previous.has(group.key));
+                const next = new Set(previous);
+                for (const group of projectGroups) {
+                  if (shouldExpandAll) next.delete(group.key);
+                  else next.add(group.key);
+                }
+                return next;
+              });
+            }}
+            disabled={projectGroups.length === 0}
+            title={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
+            aria-label={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
+            aria-expanded={!allProjectsCollapsed}
+          >
+            <span>{t("sidebar.projects")}</span>
+            <AliIcon
+              name="chevron-right"
+              size={11}
+              strokeWidth={1.8}
+              className={allProjectsCollapsed ? undefined : styles.projectsHeaderChevronOpen}
+            />
+          </button>
+          <div className={styles.sectionLabelActions}>
             <button
               type="button"
               className={styles.rowAction}
               onClick={() => void handleDefaultCwd()}
               title={t("sidebar.useDefaultDirectory")}
               aria-label={t("sidebar.useDefaultDirectory")}
-              style={{ opacity: projectsHovered ? 1 : 0, pointerEvents: projectsHovered ? "auto" : "none" }}
             >
               <AliIcon name="home" size={12} />
             </button>

@@ -12,7 +12,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, join, posix, relative, resolve, win32 } from "node:path";
 import { designToHarmonyDataRoot } from "./data-root";
 import { DesignToHarmonyError } from "./errors";
 import { analyzeHarmonyProject } from "./project-analyzer";
@@ -313,6 +313,17 @@ async function executeBuild(input: {
 
 function portable(value: string): string { return value.replace(/\\/g, "/"); }
 
+function relativeDiagnosticPath(candidate: string, shadowRoot: string): string {
+  const usesWindowsPath = /^[A-Za-z]:[\\/]/.test(candidate) || /^\\\\/.test(candidate);
+  if (usesWindowsPath) {
+    return win32.relative(win32.resolve(shadowRoot), win32.resolve(candidate));
+  }
+  if (posix.isAbsolute(candidate)) {
+    return posix.relative(posix.resolve(shadowRoot), posix.resolve(candidate));
+  }
+  return candidate;
+}
+
 export function parseHarmonyBuildDiagnostics(
   output: string,
   shadowRoot: string,
@@ -327,7 +338,7 @@ export function parseHarmonyBuildDiagnostics(
     const location = /((?:[A-Za-z]:)?[^\s:'"]+\.(?:ets|ts|json5))(?::|\()(\d+)(?::|,)(\d+)?\)?/i.exec(line);
     let relativePath: string | undefined;
     if (location) {
-      const candidate = isAbsolute(location[1]) ? relative(resolve(shadowRoot), resolve(location[1])) : location[1];
+      const candidate = relativeDiagnosticPath(location[1], shadowRoot);
       const normalized = portable(candidate).replace(/^\.\//, "");
       if (!normalized.startsWith("../") && !normalized.startsWith("/")) relativePath = normalized;
     }
