@@ -31,6 +31,22 @@ function isLoopbackHostname(hostname: string): boolean {
   return hostname === "localhost" || hostname.endsWith(".localhost");
 }
 
+function isLoopbackIp(hostname: string): boolean {
+  if (hostname === "::1" || hostname === "0:0:0:0:0:0:0:1") return true;
+  const candidate = hostname.startsWith("::ffff:") ? hostname.slice(7) : hostname;
+  const octets = candidate.split(".").map(Number);
+  return octets.length === 4
+    && octets[0] === 127
+    && octets.every((value) => Number.isInteger(value) && value >= 0 && value <= 255);
+}
+
+/** Only loopback requests may rely on the local no-password default. */
+export function isLoopbackRequestHost(request: Request): boolean {
+  const host = request.headers.get("host");
+  const hostname = host ? hostnameFromAuthority(host) : null;
+  return hostname !== null && (isLoopbackHostname(hostname) || isLoopbackIp(hostname));
+}
+
 /**
  * Configured hostnames may include a leading `*.` suffix wildcard so dev
  * tunnels whose public subdomain changes on reconnect (e.g. localtunnel) stay

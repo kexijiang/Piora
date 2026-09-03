@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   isApiRequestAllowed,
   isApiRequestHostAllowed,
+  isLoopbackRequestHost,
 } from "@/lib/request-security";
 import {
   isDesktopTokenEnabled,
@@ -31,6 +32,18 @@ export function proxy(request: NextRequest) {
   const isRemoteControlApi = request.nextUrl.pathname.startsWith("/api/remote/v1/");
 
   const desktopToken = process.env.PI_DESKTOP_TOKEN;
+  if (
+    !isRemoteControlApi
+    && !isLoopbackRequestHost(request)
+    && !isDesktopTokenEnabled(desktopToken)
+    && !isWebPasswordEnabled(process.env.PI_WEB_PASSWORD)
+  ) {
+    const message = "Remote access requires PI_WEB_PASSWORD or PI_DESKTOP_TOKEN.";
+    return isApiRequest
+      ? NextResponse.json({ error: message }, { status: 403, headers: { "Cache-Control": "no-store" } })
+      : new NextResponse(message, { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+
   if (
     !isRemoteControlApi
     &&
