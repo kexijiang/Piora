@@ -25,6 +25,17 @@ const MAX_SNAPSHOT_TEXT = 30_000;
 const MAX_SNAPSHOT_NODES = 240;
 const MAX_INPUT_TEXT = 4_000;
 const MAX_WAIT_MS = 60_000;
+const AGENT_FORBIDDEN_SCENARIO_ACTIONS = new Set<HarmonyScenarioStep["action"]>([
+  "install_app",
+  "uninstall_app",
+  "clear_app_data",
+]);
+
+function assertAgentScenarioSafety(steps: readonly HarmonyScenarioStep[]): void {
+  const forbidden = steps.find((step) => AGENT_FORBIDDEN_SCENARIO_ACTIONS.has(step.action));
+  if (!forbidden) return;
+  throw new Error(`Agent Harmony scenarios cannot execute ${forbidden.action}; use an explicit user-authorized device maintenance flow.`);
+}
 
 type AgentLeaseState = {
   leases: Map<string, string>;
@@ -1025,8 +1036,7 @@ const scenarioStepSchema = Type.Union([
   Type.Object({ ...scenarioStepId(), action: Type.Union([Type.Literal("swipe"), Type.Literal("fling")]), direction: Type.Union([Type.Literal("left"), Type.Literal("right"), Type.Literal("up"), Type.Literal("down")]), durationMs: Type.Optional(Type.Number({ minimum: 50, maximum: 10_000 })), ...scenarioWaitFor() }),
   Type.Object({ ...scenarioStepId(), action: Type.Literal("press_key"), key: Type.Union([Type.Literal("back"), Type.Literal("home"), Type.Literal("recents"), Type.Literal("enter")]), ...scenarioWaitFor() }),
   Type.Object({ ...scenarioStepId(), action: Type.Literal("launch_app"), bundleName: Type.String({ maxLength: 300 }), abilityName: Type.Optional(Type.String({ maxLength: 300 })), ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Union([Type.Literal("stop_app"), Type.Literal("clear_app_data"), Type.Literal("uninstall_app")]), bundleName: Type.String({ maxLength: 300 }) }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("install_app"), hapPath: Type.String({ maxLength: 4_096, description: "Absolute local HAP path" }), replace: Type.Optional(Type.Boolean()) }),
+  Type.Object({ ...scenarioStepId(), action: Type.Literal("stop_app"), bundleName: Type.String({ maxLength: 300 }) }),
   Type.Object({ ...scenarioStepId(), action: Type.Union([Type.Literal("wait_for"), Type.Literal("assert")]), condition: semanticWaitSchema }),
   Type.Object({ ...scenarioStepId(), action: Type.Literal("wait_idle"), idleMs: Type.Optional(Type.Number({ minimum: 50, maximum: 10_000 })), timeoutMs: Type.Optional(Type.Number({ minimum: 50, maximum: MAX_WAIT_MS })) }),
   Type.Object({ ...scenarioStepId(), action: Type.Literal("checkpoint"), name: Type.String({ minLength: 1, maxLength: 120 }) }),
@@ -1035,7 +1045,7 @@ const scenarioStepSchema = Type.Union([
 const harmonyRunScenarioTool = defineTool({
   name: "harmony_run_scenario",
   label: "Run Harmony Scenario",
-  description: "Preferred fast path for phone automation: execute a bounded sequence of semantic actions, condition-based waits, assertions, gestures, and app lifecycle operations in one device session. It acquires control automatically and returns one compact verified result.",
+  description: "Preferred fast path for phone automation: execute a bounded sequence of semantic actions, condition-based waits, assertions, gestures, and non-destructive app lifecycle operations in one device session. Installation, uninstallation, and application-data clearing require a separate user-authorized maintenance flow.",
   parameters: Type.Object({
     serial: optionalSerial(),
     steps: Type.Array(scenarioStepSchema, { minItems: 1, maxItems: 64 }),
@@ -1050,11 +1060,13 @@ const harmonyRunScenarioTool = defineTool({
     const manager = getHarmonyDeviceManager();
     try {
       const serial = await resolveSerial(params.serial, manager, signal);
+      const steps = params.steps as unknown as HarmonyScenarioStep[];
+      assertAgentScenarioSafety(steps);
       const lease = await ensureAgentLease(identity, serial, signal);
       const result = await manager.runScenario({
         serial,
         leaseToken: lease.token,
-        steps: params.steps as unknown as HarmonyScenarioStep[],
+        steps,
         policy: {
           ...(params.defaultTimeoutMs === undefined ? {} : { defaultTimeoutMs: params.defaultTimeoutMs }),
           ...(params.defaultIntervalMs === undefined ? {} : { defaultIntervalMs: params.defaultIntervalMs }),

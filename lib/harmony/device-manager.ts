@@ -889,13 +889,9 @@ export class HarmonyDeviceManager {
             strategy = "nearby_bounds";
           }
         }
-        // If UiTest returned no parseable nodes, retain a bounded fallback to
-        // the center captured moments ago. A non-empty contradictory tree is
-        // still treated as stale to avoid clicking a different control.
-        if (!match && freshNodes.length === 0) {
-          match = node;
-          strategy = "captured_bounds_fallback";
-        }
+        // An empty fresh UiTest tree is an unknown device state, not evidence
+        // that the old coordinates are still safe. Fail closed and require a
+        // new observation rather than clicking through a system or secure UI.
         if (!match?.bounds) {
           throw new HarmonyError("STALE_SNAPSHOT", "The referenced UI target changed or became ambiguous before the tap", {
             details: { exactMatchCount: exactMatches.length, parsedNodeCount: freshNodes.length },

@@ -29,6 +29,20 @@ const MAX_TABS = 20;
 const MANUAL_BROWSER_SESSION_ID = "__piora_browser_manual__";
 const MAX_SNAPSHOT_CHARS = 24_000;
 const MAX_INTERACTIVE_ELEMENTS = 160;
+const ALLOWED_EXTERNAL_PROTOCOLS = new Set(["mailto:", "tel:"]);
+
+function allowedExternalProtocolUrl(rawUrl: string): string | undefined {
+  try {
+    const url = new URL(rawUrl);
+    return ALLOWED_EXTERNAL_PROTOCOLS.has(url.protocol) ? url.href : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function browserEvaluateEnabled(): boolean {
+  return process.env.PIORA_BROWSER_ALLOW_EVALUATE === "1";
+}
 
 export interface DesktopBrowserState {
   sessionId: string;
@@ -362,8 +376,6 @@ export class DesktopBrowserManager {
 
   private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId): BrowserTab {
     if (this.tabs.length >= MAX_TABS) {
-      const existing = this.activeTab(sessionId);
-      if (existing) return existing;
       throw new Error(`The browser tab limit of ${MAX_TABS} has been reached.`);
     }
     const id = `tab-${this.nextTabId++}`;
@@ -399,19 +411,30 @@ export class DesktopBrowserManager {
     return tab;
   }
 
+  private openExternalProtocol(rawUrl: string): void {
+    const externalUrl = allowedExternalProtocolUrl(rawUrl);
+    if (!externalUrl) {
+      this.log.warn("Blocked unsupported browser protocol", { url: rawUrl.slice(0, 512) });
+      return;
+    }
+    void shell.openExternal(externalUrl).catch((error) => this.log.warn("Unable to open browser protocol", error));
+  }
+
   private installTabEvents(tab: BrowserTab): void {
     const contents = tab.view.webContents;
     contents.setWindowOpenHandler(({ url }) => {
       if (isBrowserUrl(url)) this.createTab(url, true, tab.sessionId);
-      else void shell.openExternal(url).catch((error) => this.log.warn("Unable to open browser protocol", error));
+      else this.openExternalProtocol(url);
       return { action: "deny" };
     });
-    contents.on("will-navigate", (event, url) => {
+    const handleExternalNavigation = (event: Event, url: string): void => {
       if (!isBrowserUrl(url)) {
         event.preventDefault();
-        void shell.openExternal(url).catch((error) => this.log.warn("Unable to open browser protocol", error));
+        this.openExternalProtocol(url);
       }
-    });
+    };
+    contents.on("will-navigate", handleExternalNavigation);
+    contents.on("will-redirect", handleExternalNavigation);
     contents.on("page-title-updated", (_event, title) => {
       tab.title = title;
       this.sendState();
@@ -618,8 +641,8 @@ export class DesktopBrowserManager {
     signal?.addEventListener("abort", stopOnAbort, { once: true });
     try {
       if (action === "close") {
-        this.closeTab(tab.id, sessionId);
-        return agentTextResult("Built-in browser tab closed. The dedicated profile and sign-in state were preserved.", { action });
+        this.closeSession(sessionId);
+        return agentTextResult("Built-in browser session closed. The dedicated profile and sign-in state were preserved.", { action });
       }
       if (action === "open") {
         await contents.loadURL(requireAgentUrl(params.url));
@@ -653,6 +676,7 @@ export class DesktopBrowserManager {
           details: { action, url: browserUrl(contents.getURL()), fullPage: false },
         };
       } else if (action === "evaluate") {
+        if (!browserEvaluateEnabled()) throw new Error("Browser JavaScript evaluation is disabled by the operator.");
         if (typeof params.text !== "string" || !params.text) throw new Error("evaluate requires a JavaScript expression in text");
         const value = await contents.executeJavaScriptInIsolatedWorld(999, [{ code: `(() => (0, eval)(${JSON.stringify(params.text)}))()` }]);
         return agentTextResult(JSON.stringify(value, null, 2) ?? "undefined", { action, url: browserUrl(contents.getURL()) });
@@ -729,6 +753,19 @@ export class DesktopBrowserManager {
     } else if (input.action === "close_tab" && typeof input.tabId === "string") {
       this.closeTab(input.tabId, this.displayedSessionId);
     }
+  }
+
+  private closeSession(sessionId: string): void {
+    const sessionTabs = this.tabs.filter((tab) => tab.sessionId === sessionId);
+    for (const tab of sessionTabs) {
+      const index = this.tabs.indexOf(tab);
+      if (index >= 0) this.tabs.splice(index, 1);
+      if (!this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
+      if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
+    }
+    this.activeTabIds.delete(sessionId);
+    this.updateVisibility();
+    this.sendState();
   }
 
   private closeTab(tabId: string, sessionId: string): void {
