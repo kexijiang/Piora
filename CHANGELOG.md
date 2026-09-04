@@ -4,6 +4,17 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.40-beta.13] - 2026-09-04
+
+### 优化
+
+- 完善设置页与侧栏的布局一致性，优化设置页内容占位和面板宽度控制。
+- 支持模型回复中标题、要点、重点词与普通文本的主题化配色，以提升可读性。
+
+### 升级
+
+- 应用版本由 `0.4.40-beta.12` 升级到 `0.4.40-beta.13`。
+
 ## [0.4.40] - 2026-09-04
 
 ### 新增
