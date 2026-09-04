@@ -12,6 +12,7 @@ import type {
   ImportedChromeBookmarkProfile,
 } from "@/components/sidebar/sidebar-types";
 import { useI18n } from "@/hooks/useI18n";
+import { createBrowserViewportSync } from "@/lib/browser-viewport-sync";
 import { AliIcon } from "../AliIcon";
 import styles from "./WorkspacePanel.module.css";
 
@@ -157,10 +158,20 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
   const [download, setDownload] = useState<DesktopBrowserDownload | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
-  const pendingViewportRef = useRef<{ bounds: { x: number; y: number; width: number; height: number }; visible: boolean } | null>(null);
-  const viewportSyncInFlightRef = useRef(false);
+  const viewportSyncRef = useRef<ReturnType<typeof createBrowserViewportSync> | null>(null);
   const panelActiveRef = useRef(active);
   panelActiveRef.current = active;
+
+  useLayoutEffect(() => {
+    const sync = createBrowserViewportSync((bounds, visible) => bridge.setViewport(bounds, visible));
+    viewportSyncRef.current = sync;
+    return () => {
+      // Closing the right panel unmounts us; passive cleanup may already see
+      // viewportRef.current === null. Hide without reading the removed DOM.
+      sync.dispose();
+      if (viewportSyncRef.current === sync) viewportSyncRef.current = null;
+    };
+  }, [bridge]);
 
   const applyState = useCallback((next: DesktopBrowserState | null) => {
     if (!next) return;
@@ -205,38 +216,17 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
     };
   }, [applyState, bridge, t]);
 
-  const flushViewport = useCallback(async () => {
-    if (viewportSyncInFlightRef.current) return;
-    viewportSyncInFlightRef.current = true;
-    try {
-      while (pendingViewportRef.current) {
-        const next = pendingViewportRef.current;
-        pendingViewportRef.current = null;
-        await bridge.setViewport(next.bounds, next.visible);
-      }
-    } catch {
-      // A later resize, transition end, or reconnect will retry with the newest bounds.
-    } finally {
-      viewportSyncInFlightRef.current = false;
-      if (pendingViewportRef.current) void flushViewport();
-    }
-  }, [bridge]);
-
   const syncViewport = useCallback((visible = state?.url !== "about:blank") => {
     const element = viewportRef.current;
     if (!element) return;
     const rect = element.getBoundingClientRect();
-    pendingViewportRef.current = {
-      bounds: {
-        x: Math.round(rect.left),
-        y: Math.round(rect.top),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
-      },
-      visible: panelActiveRef.current && visible && rect.width > 0 && rect.height > 0,
-    };
-    void flushViewport();
-  }, [flushViewport, state?.url]);
+    viewportSyncRef.current?.sync({
+      x: Math.round(rect.left),
+      y: Math.round(rect.top),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+    }, panelActiveRef.current && visible && rect.width > 0 && rect.height > 0);
+  }, [state?.url]);
 
   useLayoutEffect(() => {
     // WebContentsView lives above the renderer DOM and is not clipped by the

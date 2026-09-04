@@ -110,8 +110,8 @@ const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
 
 const PRESET_TOOL_NAMES: Record<Exclude<SessionCapabilityPreset, "custom">, ReadonlySet<string>> = {
   chat: new Set(),
-  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser", "piora_request_user_input"]),
-  research: new Set(["browser", "piora_request_user_input"]),
+  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser"]),
+  research: new Set(["browser"]),
   device: new Set(HARMONY_AGENT_TOOLS),
 };
 
@@ -199,8 +199,7 @@ export function readLatestSessionCapabilityPolicy(entries: readonly SessionCapab
 }
 
 export function defaultSessionCapabilityPreset(profile: AgentRuntimeProfile): SessionCapabilityPreset {
-  void profile;
-  return "custom";
+  return profile === "normal" ? "coding" : "custom";
 }
 
 function availableIds(catalog: readonly { id: string; available: boolean }[]): string[] {
@@ -235,7 +234,8 @@ export function createSessionCapabilityPolicy(
 
 export function restoreSessionCapabilityPolicy(
   entries: readonly SessionCapabilityEntryLike[],
-  catalog: readonly { id: string; available: boolean; kind: SessionCapabilityKind }[],
+  catalog: readonly { id: string; available: boolean; kind: SessionCapabilityKind; toolNames: string[] }[],
+  profile: AgentRuntimeProfile = "normal",
 ): SessionCapabilityPolicy {
   const restored = readLatestSessionCapabilityPolicy(entries);
   if (restored) {
@@ -253,15 +253,7 @@ export function restoreSessionCapabilityPolicy(
       knownCapabilityIds: uniqueStrings([...restored.knownCapabilityIds.filter((id) => catalogIds.has(id)), ...catalogIds]),
     };
   }
-  const ids = availableIds(catalog);
-  return {
-    version: SESSION_CAPABILITY_VERSION,
-    revision: 0,
-    preset: "custom",
-    enabledCapabilityIds: ids,
-    knownCapabilityIds: ids,
-    updatedAt: new Date(0).toISOString(),
-  };
+  return createSessionCapabilityPolicy(undefined, catalog, profile, -1);
 }
 
 export function copySessionCapabilityPolicy(policy: SessionCapabilityPolicy): SessionCapabilityPolicy {
@@ -344,7 +336,6 @@ export function createDefaultSessionCapabilitiesState(
         ...BUILTIN_AGENT_TOOLS,
         "browser",
         ...HARMONY_AGENT_TOOLS,
-        "piora_request_user_input",
         "piora_automation",
         "piora_room",
       ];

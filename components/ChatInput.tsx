@@ -76,8 +76,6 @@ import { ModelProviderIcon } from "./ModelProviderIcon";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import type { ExtensionStatusItem } from "@/lib/types";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
-import { SessionToolsControl } from "./SessionToolsControl";
-import { createDefaultSessionCapabilitiesState, type SessionCapabilitiesState, type SessionCapabilitySelection } from "@/lib/session-capabilities";
 import {
   buildSlashCommandRegistry,
   filterSlashCommandRegistry,
@@ -141,10 +139,6 @@ interface Props {
   contextUsage?: ContextUsage | null;
   sessionStats?: SessionStatsInfo | null;
   extensionStatuses?: ExtensionStatusItem[];
-  capabilities?: SessionCapabilitiesState;
-  capabilitiesSaving?: boolean;
-  onCapabilityChange?: (selection: SessionCapabilitySelection) => void | Promise<void>;
-  onOpenCapabilitySettings?: () => void;
   /** Reuses the production composer in a spacious new-task launch surface. */
   variant?: "conversation" | "launcher";
   placeholder?: string;
@@ -333,10 +327,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   contextUsage,
   sessionStats,
   extensionStatuses = [],
-  capabilities = createDefaultSessionCapabilitiesState(),
-  capabilitiesSaving = false,
-  onCapabilityChange = () => {},
-  onOpenCapabilitySettings,
   variant = "conversation",
   placeholder,
   contextControl,
@@ -2044,15 +2034,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               </button>
             </div>
             {contextControl}
-            {variant === "conversation" ? (
-              <SessionToolsControl
-                capabilities={capabilities}
-                busy={isStreaming}
-                saving={capabilitiesSaving}
-                onChange={onCapabilityChange}
-                onOpenGlobalSettings={onOpenCapabilitySettings}
-              />
-            ) : null}
             {voiceInputSupported && (
               <>
                 <button

@@ -1,5 +1,6 @@
 import type { AgentMessage, AssistantMessage, AssistantContentBlock, TextContent, ImageContent } from "./types";
 import type { ContextUsage, ContextUsageBreakdown } from "./pi-types";
+import { estimateToolDefinitionPromptTokens } from "./tool-definition-budget.ts";
 
 const ESTIMATED_IMAGE_CHARS = 4_800;
 const PROJECT_CONTEXT_PATTERN = /(?:\r?\n)*<project_context>[\s\S]*?<\/project_context>(?:\r?\n)*/gi;
@@ -93,16 +94,6 @@ function estimateUnknownMessageTokens(value: unknown): number {
   return Math.ceil(chars / 4);
 }
 
-function serializableToolDefinition(value: unknown): unknown {
-  if (!value || typeof value !== "object") return value;
-  const tool = value as Record<string, unknown>;
-  return {
-    name: tool.name,
-    description: tool.description,
-    parameters: tool.parameters ?? tool.inputSchema,
-  };
-}
-
 function reconcileBreakdown(raw: Omit<ContextUsageBreakdown, "otherRuntime">, totalTokens: number | null): ContextUsageBreakdown {
   const rawTotal = Object.values(raw).reduce((sum, value) => sum + value, 0);
   if (totalTokens === null || totalTokens <= 0) return { ...raw, otherRuntime: 0 };
@@ -137,12 +128,11 @@ export function estimateContextUsageBreakdown(input: {
     projectContext += match;
     return "";
   });
-  const toolPayload = input.tools.map(serializableToolDefinition);
   return reconcileBreakdown({
     conversationMessages: input.messages.reduce<number>((sum, message) => sum + estimateUnknownMessageTokens(message), 0),
     projectInstructions: estimateTextTokens(projectContext),
     systemPrompt: estimateTextTokens(baseSystemPrompt),
-    toolDefinitions: estimateTextTokens(safeStringify(toolPayload)),
+    toolDefinitions: estimateToolDefinitionPromptTokens(input.tools as Array<Record<string, unknown>>),
   }, input.totalTokens);
 }
 

@@ -10,6 +10,7 @@ const globalCss = readFileSync(new URL("../app/globals.css", import.meta.url), "
 const settingsDialog = readFileSync(new URL("./SettingsDialog.tsx", import.meta.url), "utf8");
 const settingsCss = readFileSync(new URL("./SettingsDialog.module.css", import.meta.url), "utf8");
 const archivedChats = readFileSync(new URL("./ArchivedChatsSettings.tsx", import.meta.url), "utf8");
+const projectTools = readFileSync(new URL("./ProjectToolsConfig.tsx", import.meta.url), "utf8");
 
 test("keeps conversation metadata and notifications out of the composer", () => {
   assert.doesNotMatch(chatInput, /TOOL_PRESETS|toolDropdown|soundEnabled|onAudioUnlock/);
@@ -91,10 +92,12 @@ test("keeps the conversation branch navigator out of the main top bar", () => {
   assert.doesNotMatch(appShell, /"branches"\s*\|/);
 });
 
-test("exposes per-session capabilities without permission tiers", () => {
+test("exposes project-scoped capabilities without permission tiers", () => {
   assert.match(agentSession, /handleCapabilitySelection/);
   assert.match(agentSession, /type: "set_capabilities"/);
-  assert.match(chatInput, /SessionToolsControl/);
+  assert.doesNotMatch(chatInput, /SessionToolsControl/);
+  assert.match(projectTools, /\/api\/project-tools/);
+  assert.match(settingsDialog, /key:\s*"tools"/);
   assert.doesNotMatch(agentSession, /toolPreset|permissionTier|PRESET_NONE/);
   assert.doesNotMatch(chatWindow, /onToolPresetChange|permissionPreset/);
 });

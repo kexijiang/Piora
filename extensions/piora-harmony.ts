@@ -975,62 +975,65 @@ const gesture = () => ({
   durationMs: Type.Optional(Type.Number({ minimum: 50, maximum: 10_000 })),
 });
 
-const semanticLocatorFields = () => ({
-  id: Type.Optional(Type.String({ maxLength: 500, description: "Exact resource id; usually the most stable locator" })),
-  text: Type.Optional(Type.String({ maxLength: 500, description: "Visible component text" })),
-  type: Type.Optional(Type.String({ maxLength: 300, description: "Exact component type" })),
-  hint: Type.Optional(Type.String({ maxLength: 500, description: "Input hint or placeholder" })),
-  description: Type.Optional(Type.String({ maxLength: 500, description: "Accessibility description" })),
-  inWindow: Type.Optional(Type.String({ maxLength: 500, description: "Owning application window bundle" })),
-  match: Type.Optional(Type.Union([
-    Type.Literal("exact"), Type.Literal("contains"), Type.Literal("starts_with"), Type.Literal("ends_with"),
-  ], { description: "String matching mode; defaults to exact" })),
-  clickable: Type.Optional(Type.Boolean()),
-  enabled: Type.Optional(Type.Boolean()),
-  visible: Type.Optional(Type.Boolean()),
-  focused: Type.Optional(Type.Boolean()),
-  selected: Type.Optional(Type.Boolean()),
-  checked: Type.Optional(Type.Boolean()),
-  scrollable: Type.Optional(Type.Boolean()),
-});
-const semanticAnchorSchema = Type.Object(semanticLocatorFields(), {
-  description: "One-level semantic relationship anchor",
-});
-const semanticSelectorSchema = Type.Object({
-  ...semanticLocatorFields(),
-  within: Type.Optional(semanticAnchorSchema),
-  before: Type.Optional(semanticAnchorSchema),
-  after: Type.Optional(semanticAnchorSchema),
-  index: Type.Optional(Type.Integer({ minimum: 0, maximum: 999, description: "Zero-based disambiguation index" })),
-}, { description: "Stable semantic selector. Supply at least one locator field; prefer id, then accessibility description, then text." });
-
-const semanticWaitSchema = Type.Object({
-  selector: semanticSelectorSchema,
-  exists: Type.Optional(Type.Boolean({ description: "Defaults to true; false waits for disappearance" })),
-  timeoutMs: Type.Optional(Type.Number({ minimum: 100, maximum: MAX_WAIT_MS })),
-  intervalMs: Type.Optional(Type.Number({ minimum: 100, maximum: 5_000 })),
-});
-
 const scenarioStepId = () => ({
   id: Type.Optional(Type.String({ maxLength: 120, description: "Short diagnostic step id" })),
 });
-const scenarioWaitFor = () => ({
-  waitFor: Type.Optional(semanticWaitSchema),
+const scenarioSelectorSchema = Type.Object({
+  id: Type.Optional(Type.String({ maxLength: 500 })),
+  text: Type.Optional(Type.String({ maxLength: 500 })),
+  type: Type.Optional(Type.String({ maxLength: 300 })),
+  hint: Type.Optional(Type.String({ maxLength: 500 })),
+  description: Type.Optional(Type.String({ maxLength: 500 })),
+  inWindow: Type.Optional(Type.String({ maxLength: 500 })),
+  match: Type.Optional(Type.Union([
+    Type.Literal("exact"), Type.Literal("contains"), Type.Literal("starts_with"), Type.Literal("ends_with"),
+  ])),
+  index: Type.Optional(Type.Integer({ minimum: 0, maximum: 999 })),
+}, { description: "Compact semantic selector; prefer id, description, then text" });
+const scenarioConditionSchema = Type.Object({
+  selector: scenarioSelectorSchema,
+  exists: Type.Optional(Type.Boolean()),
+  timeoutMs: Type.Optional(Type.Number({ minimum: 100, maximum: MAX_WAIT_MS })),
+  intervalMs: Type.Optional(Type.Number({ minimum: 100, maximum: 5_000 })),
 });
-const scenarioStepSchema = Type.Union([
-  Type.Object({ ...scenarioStepId(), action: Type.Union([Type.Literal("tap"), Type.Literal("double_tap"), Type.Literal("long_press")]), selector: semanticSelectorSchema, ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("input_text"), selector: semanticSelectorSchema, text: Type.String({ minLength: 1, maxLength: MAX_INPUT_TEXT, description: "Non-sensitive text only; never passwords, verification codes, or payment data" }), append: Type.Optional(Type.Boolean()), ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("clear_text"), selector: semanticSelectorSchema, ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("scroll_find"), selector: semanticSelectorSchema, container: Type.Optional(semanticSelectorSchema), direction: Type.Optional(Type.Union([Type.Literal("up"), Type.Literal("down")])), maxSwipes: Type.Optional(Type.Number({ minimum: 1, maximum: 30 })), tap: Type.Optional(Type.Boolean()), ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Union([Type.Literal("swipe"), Type.Literal("fling")]), direction: Type.Union([Type.Literal("left"), Type.Literal("right"), Type.Literal("up"), Type.Literal("down")]), durationMs: Type.Optional(Type.Number({ minimum: 50, maximum: 10_000 })), ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("press_key"), key: Type.Union([Type.Literal("back"), Type.Literal("home"), Type.Literal("recents"), Type.Literal("enter")]), ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("launch_app"), bundleName: Type.String({ maxLength: 300 }), abilityName: Type.Optional(Type.String({ maxLength: 300 })), ...scenarioWaitFor() }),
-  Type.Object({ ...scenarioStepId(), action: Type.Union([Type.Literal("stop_app"), Type.Literal("clear_app_data"), Type.Literal("uninstall_app")]), bundleName: Type.String({ maxLength: 300 }) }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("install_app"), hapPath: Type.String({ maxLength: 4_096, description: "Absolute local HAP path" }), replace: Type.Optional(Type.Boolean()) }),
-  Type.Object({ ...scenarioStepId(), action: Type.Union([Type.Literal("wait_for"), Type.Literal("assert")]), condition: semanticWaitSchema }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("wait_idle"), idleMs: Type.Optional(Type.Number({ minimum: 50, maximum: 10_000 })), timeoutMs: Type.Optional(Type.Number({ minimum: 50, maximum: MAX_WAIT_MS })) }),
-  Type.Object({ ...scenarioStepId(), action: Type.Literal("checkpoint"), name: Type.String({ minLength: 1, maxLength: 120 }) }),
-]);
+// Keep the model-facing schema flat. The previous discriminated union repeated
+// the selector and wait schemas for every action and made this one tool larger
+// than 16k estimated tokens. The scenario executor remains the authoritative
+// action-specific validator, so optional fields here do not weaken runtime
+// validation.
+const scenarioStepSchema = Type.Object({
+  ...scenarioStepId(),
+  action: Type.Union([
+    Type.Literal("tap"), Type.Literal("double_tap"), Type.Literal("long_press"),
+    Type.Literal("input_text"), Type.Literal("clear_text"), Type.Literal("scroll_find"),
+    Type.Literal("swipe"), Type.Literal("fling"), Type.Literal("press_key"),
+    Type.Literal("launch_app"), Type.Literal("stop_app"), Type.Literal("clear_app_data"),
+    Type.Literal("uninstall_app"), Type.Literal("install_app"), Type.Literal("wait_for"),
+    Type.Literal("assert"), Type.Literal("wait_idle"), Type.Literal("checkpoint"),
+  ]),
+  selector: Type.Optional(scenarioSelectorSchema),
+  container: Type.Optional(scenarioSelectorSchema),
+  direction: Type.Optional(Type.Union([
+    Type.Literal("left"), Type.Literal("right"), Type.Literal("up"), Type.Literal("down"),
+  ], { description: "Required by swipe/fling; scroll_find accepts up/down" })),
+  text: Type.Optional(Type.String({ minLength: 1, maxLength: MAX_INPUT_TEXT, description: "Required by input_text; never send secrets" })),
+  append: Type.Optional(Type.Boolean({ description: "input_text only" })),
+  maxSwipes: Type.Optional(Type.Number({ minimum: 1, maximum: 30, description: "scroll_find only" })),
+  tap: Type.Optional(Type.Boolean({ description: "Tap the match after scroll_find" })),
+  durationMs: Type.Optional(Type.Number({ minimum: 50, maximum: 10_000, description: "swipe/fling only" })),
+  key: Type.Optional(Type.Union([
+    Type.Literal("back"), Type.Literal("home"), Type.Literal("recents"), Type.Literal("enter"),
+  ], { description: "Required by press_key" })),
+  bundleName: Type.Optional(Type.String({ maxLength: 300, description: "Required by app lifecycle actions except install_app" })),
+  abilityName: Type.Optional(Type.String({ maxLength: 300, description: "launch_app only" })),
+  hapPath: Type.Optional(Type.String({ maxLength: 4_096, description: "Absolute HAP path required by install_app" })),
+  replace: Type.Optional(Type.Boolean({ description: "install_app only" })),
+  condition: Type.Optional(scenarioConditionSchema),
+  waitFor: Type.Optional(scenarioConditionSchema),
+  idleMs: Type.Optional(Type.Number({ minimum: 50, maximum: 10_000, description: "wait_idle only" })),
+  timeoutMs: Type.Optional(Type.Number({ minimum: 50, maximum: MAX_WAIT_MS, description: "wait_idle only" })),
+  name: Type.Optional(Type.String({ minLength: 1, maxLength: 120, description: "Required by checkpoint" })),
+});
 
 const harmonyRunScenarioTool = defineTool({
   name: "harmony_run_scenario",

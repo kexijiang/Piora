@@ -118,6 +118,7 @@ const SkillsConfig = dynamic(() => import("./SkillsConfig").then((module) => mod
 const PluginsConfig = dynamic(() => import("./PluginsConfig").then((module) => module.PluginsConfig), { ssr: false });
 const ExtensionsConfig = dynamic(() => import("./ExtensionsConfig").then((module) => module.ExtensionsConfig), { ssr: false });
 const CapabilityBundlesConfig = dynamic(() => import("./CapabilityBundlesConfig").then((module) => module.CapabilityBundlesConfig), { ssr: false });
+const ProjectToolsConfig = dynamic(() => import("./ProjectToolsConfig").then((module) => module.ProjectToolsConfig), { ssr: false });
 const BackgroundSettings = dynamic(() => import("./BackgroundSettings").then((module) => module.BackgroundSettings), { ssr: false });
 const AppearanceLooks = dynamic(() => import("./AppearanceLooks").then((module) => module.AppearanceLooks), { ssr: false });
 const AppearanceResetButton = dynamic(() => import("./AppearanceResetButton").then((module) => module.AppearanceResetButton), { ssr: false });
@@ -466,7 +467,6 @@ export function AppShell() {
     setSettingsKey(key);
     setSettingsDialogOpen(true);
   }, [isMobile]);
-  const openCapabilitySettings = useCallback(() => openSettings("extensions"), [openSettings]);
   const openModelsSettings = useCallback(() => openSettings("models"), [openSettings]);
 
   const openSessionStatsPanel = useCallback(() => {
@@ -1720,6 +1720,9 @@ export function AppShell() {
       }}
       modelCwd={projectCwd ?? activeCwd ?? undefined}
       sections={{
+        tools: currentProjectPath ? (
+          <ProjectToolsConfig cwd={currentProjectPath} onChanged={setSessionCapabilities} />
+        ) : undefined,
         capabilityBundles: projectCwd ? (
           <CapabilityBundlesConfig
             cwd={projectCwd}
@@ -2629,7 +2632,6 @@ export function AppShell() {
                 onSlashCommandsChange={setPiSlashCommands}
                 onOpenAutomation={openAutomation}
                 onCapabilitiesChange={setSessionCapabilities}
-                onOpenCapabilitySettings={openCapabilitySettings}
                 onOpenModels={openModelsSettings}
                 onPromptSubmitted={() => setOnboardingPromptSubmittedKey((key) => key + 1)}
               />

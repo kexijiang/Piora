@@ -9,6 +9,8 @@ import {
   FONT_PREFERENCE_STORAGE_KEY,
   isUiFontId,
   isUiFontSize,
+  isUiFontWeight,
+  normalizeFontPreference,
   parseStoredFontPreference,
   serializeFontPreference,
   type FontPreference,
@@ -90,7 +92,7 @@ const PREFERENCE_KEYS = new Set<PortableSettingKey>([
   "globalShortcut",
 ]);
 const BACKGROUND_KEYS = new Set(["schemaVersion", "source", "presetId", "overlay", "blur"]);
-const FONT_KEYS = new Set(["schemaVersion", "family", "size"]);
+const FONT_KEYS = new Set(["schemaVersion", "family", "size", "weight"]);
 const BACKGROUND_IDS = new Set(BACKGROUND_PRESETS.map((preset) => preset.id));
 const DIFF_ORDER: PortableSettingKey[] = ["theme", "background", "font", "locale", "completionNotifications", "globalShortcut"];
 
@@ -114,12 +116,13 @@ function isPortableBackground(value: unknown): value is BackgroundPreference {
   return value.source === "builtin" && typeof value.presetId === "string" && BACKGROUND_IDS.has(value.presetId);
 }
 
-function isPortableFont(value: unknown): value is FontPreference {
+function isPortableFont(value: unknown): value is Omit<FontPreference, "weight"> & Partial<Pick<FontPreference, "weight">> {
   return isRecord(value)
     && hasOnlyKeys(value, FONT_KEYS)
     && value.schemaVersion === 1
     && isUiFontId(value.family)
-    && isUiFontSize(value.size);
+    && isUiFontSize(value.size)
+    && (value.weight === undefined || isUiFontWeight(value.weight));
 }
 
 function readBoolean(storage: StorageLike, key: string): boolean {
@@ -206,7 +209,7 @@ export function parsePortableSettings(text: string): PortableSettingsBundle {
     preferences: {
       theme: preferences.theme,
       ...(preferences.background ? { background: preferences.background } : {}),
-      font: preferences.font,
+      font: normalizeFontPreference(preferences.font),
       locale: preferences.locale,
       completionNotifications: preferences.completionNotifications,
       globalShortcut: preferences.globalShortcut,

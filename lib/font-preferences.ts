@@ -8,6 +8,7 @@ export type UiFontId =
   | "consolas";
 
 export type UiFontSize = number;
+export type UiFontWeight = 400 | 500 | 700;
 
 export interface UiFontPreset {
   id: UiFontId;
@@ -21,6 +22,7 @@ export interface FontPreference {
   schemaVersion: 1;
   family: UiFontId;
   size: UiFontSize;
+  weight: UiFontWeight;
 }
 
 export const FONT_PREFERENCE_STORAGE_KEY = "pi-font-preference:v1";
@@ -80,11 +82,13 @@ export const UI_FONT_PRESETS: readonly UiFontPreset[] = [
 export const UI_FONT_SIZES: readonly UiFontSize[] = [12, 14, 16, 18, 20, 24, 28, 32] as const;
 export const UI_FONT_SIZE_MIN = 10;
 export const UI_FONT_SIZE_MAX = 48;
+export const UI_FONT_WEIGHTS: readonly UiFontWeight[] = [400, 500, 700];
 
 export const DEFAULT_FONT_PREFERENCE: Readonly<FontPreference> = Object.freeze({
   schemaVersion: 1,
   family: "inter",
   size: 14,
+  weight: 400,
 });
 
 const FONT_IDS = new Set<UiFontId>(UI_FONT_PRESETS.map(({ id }) => id));
@@ -103,12 +107,17 @@ export function isUiFontSize(value: unknown): value is UiFontSize {
     && value <= UI_FONT_SIZE_MAX;
 }
 
+export function isUiFontWeight(value: unknown): value is UiFontWeight {
+  return typeof value === "number" && UI_FONT_WEIGHTS.includes(value as UiFontWeight);
+}
+
 export function normalizeFontPreference(value: unknown): FontPreference {
   if (!isRecord(value)) return { ...DEFAULT_FONT_PREFERENCE };
   return {
     schemaVersion: 1,
     family: isUiFontId(value.family) ? value.family : DEFAULT_FONT_PREFERENCE.family,
     size: isUiFontSize(value.size) ? value.size : DEFAULT_FONT_PREFERENCE.size,
+    weight: isUiFontWeight(value.weight) ? value.weight : DEFAULT_FONT_PREFERENCE.weight,
   };
 }
 
@@ -128,4 +137,4 @@ export function serializeFontPreference(preference: FontPreference): string {
 const FONT_ID_JSON = JSON.stringify(UI_FONT_PRESETS.map(({ id }) => id));
 
 /** Applies only validated data attributes before paint; all font stacks live in static CSS. */
-export const FONT_PREFERENCE_INITIALIZATION_SCRIPT = `(function(){try{var f=${FONT_ID_JSON},n=${UI_FONT_SIZE_MIN},m=${UI_FONT_SIZE_MAX},p={family:"inter",size:14},v=localStorage.getItem("${FONT_PREFERENCE_STORAGE_KEY}");if(v){try{var x=JSON.parse(v);if(x&&f.indexOf(x.family)>-1)p.family=x.family;if(x&&Number.isInteger(x.size)&&x.size>=n&&x.size<=m)p.size=x.size}catch(_){}}var r=document.documentElement;r.setAttribute("data-ui-font",p.family);r.setAttribute("data-ui-font-size",String(p.size));r.style.setProperty("--ui-font-size",p.size+"px")}catch(_){}})();`;
+export const FONT_PREFERENCE_INITIALIZATION_SCRIPT = `(function(){try{var f=${FONT_ID_JSON},w=${JSON.stringify(UI_FONT_WEIGHTS)},n=${UI_FONT_SIZE_MIN},m=${UI_FONT_SIZE_MAX},p=${JSON.stringify(DEFAULT_FONT_PREFERENCE)},v=localStorage.getItem("${FONT_PREFERENCE_STORAGE_KEY}");if(v){try{var x=JSON.parse(v);if(x&&f.indexOf(x.family)>-1)p.family=x.family;if(x&&Number.isInteger(x.size)&&x.size>=n&&x.size<=m)p.size=x.size;if(x&&w.indexOf(x.weight)>-1)p.weight=x.weight}catch(_){}}var r=document.documentElement;r.setAttribute("data-ui-font",p.family);r.setAttribute("data-ui-font-size",String(p.size));r.setAttribute("data-ui-font-weight",String(p.weight));r.style.setProperty("--ui-font-size",p.size+"px");r.style.setProperty("--ui-font-weight",String(p.weight))}catch(_){}})();`;

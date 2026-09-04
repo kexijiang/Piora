@@ -61,7 +61,6 @@ interface Props {
   onSlashCommandsChange?: (commands: SlashCommandInfo[]) => void;
   onOpenAutomation?: (automationId: string) => void;
   onCapabilitiesChange?: (capabilities: SessionCapabilitiesState | null) => void;
-  onOpenCapabilitySettings?: () => void;
   onOpenModels?: () => void;
   onPromptSubmitted?: () => void;
 }
@@ -76,6 +75,7 @@ export interface TaskControls {
 }
 
 function phaseLabel(phase: AgentPhase, t: (key: string, params?: Record<string, string | number>) => string): string {
+  if (phase?.kind === "stopping") return t("taskHeader.stopping");
   if (phase?.kind === "running_tools") {
     const names = (Array.isArray(phase.tools) ? phase.tools : []).map((t) => (typeof t?.name === "string" ? t.name : ""));
     if (names.length === 0) return t("chat.runningTool");
@@ -267,7 +267,7 @@ function ProcessDetailsGroup({ messageCount, toolCallCount, children, t }: { mes
   );
 }
 
-export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenCapabilitySettings, onOpenModels, onPromptSubmitted }: Props) {
+export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
@@ -313,7 +313,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats,
-    slashCommands, slashCommandsLoading, queuedMessages, capabilities, capabilitiesSaving,
+    slashCommands, slashCommandsLoading, queuedMessages, capabilities,
     liveOutputFollowPaused,
     notices, extensionDialog, extensionCustomUi, extensionStatuses, extensionWidgets, respondToExtensionUi, sendExtensionCustomInput,
     isAutoModelSelection,
@@ -325,7 +325,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
-    handleThinkingLevelChange, handleCapabilitySelection, handleSystemPromptSelection, loadSlashCommands,
+    handleThinkingLevelChange, handleSystemPromptSelection, loadSlashCommands,
   } = useAgentSession({
     session, newSessionCwd, newSessionInitialModel,
     newSessionInitialSystemPromptSelection: initialPrompt?.systemPromptSelection ?? null,
@@ -747,10 +747,6 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
       contextUsage={contextUsage}
       sessionStats={sessionStats}
       extensionStatuses={visibleExtensionStatuses}
-      capabilities={capabilities}
-      capabilitiesSaving={capabilitiesSaving}
-      onCapabilityChange={handleCapabilitySelection}
-      onOpenCapabilitySettings={onOpenCapabilitySettings}
     />
   );
 
@@ -1081,8 +1077,8 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
               <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} />
             )}
 
-            {agentRunning && !streamState.streamingMessage && visionStatus?.phase !== "failed" && (
-              visionStatus ? (
+            {agentRunning && (agentPhase?.kind === "stopping" || (!streamState.streamingMessage && visionStatus?.phase !== "failed")) && (
+              visionStatus && agentPhase?.kind !== "stopping" ? (
                 <VisionAgentStatus status={visionStatus} t={t} />
               ) : (
                 <div className="py-2 text-text-muted" style={{ fontSize: "var(--text-base)" }} role="status" aria-live="polite">

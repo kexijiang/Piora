@@ -29,7 +29,7 @@ export interface CompanionActivityInput {
   hasReviewRequest?: boolean;
   isBusy?: boolean;
   isCompacting?: boolean;
-  phase?: "waiting_model" | "running_command" | "running_tools" | null;
+  phase?: "waiting_model" | "running_command" | "running_tools" | "stopping" | null;
 }
 
 const SPRITE_STATE_FALLBACKS: Record<CompanionActivityStatus, readonly string[]> = {

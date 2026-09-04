@@ -190,6 +190,12 @@ export function SettingsDialog({
       icon: <AliIcon name="export" size={16} />,
     },
     {
+      key: "tools",
+      labelKey: "projectTools.title",
+      descriptionKey: "projectTools.description",
+      icon: <AliIcon name="build" size={16} />,
+    },
+    {
       key: "extensions",
       labelKey: "settings.extensions",
       descriptionKey: "settings.manageExtensionsDescription",
@@ -235,7 +241,7 @@ export function SettingsDialog({
 
   const entryGroups = useMemo(() => [
     { labelKey: "settings.group.personal", keys: ["general", "conversation", "shortcuts", "speech", "automations", "models", "appearance", "language", "companion"] as SettingsKey[] },
-    { labelKey: "settings.group.capabilities", keys: ["capabilityBundles", "extensions", "skills", "plugins", "harmony", "remote"] as SettingsKey[] },
+    { labelKey: "settings.group.capabilities", keys: ["tools", "capabilityBundles", "extensions", "skills", "plugins", "harmony", "remote"] as SettingsKey[] },
     { labelKey: "settings.group.history", keys: ["usage", "archived"] as SettingsKey[] },
   ], []);
 

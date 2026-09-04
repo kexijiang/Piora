@@ -123,12 +123,9 @@ export function SessionToolsControl({ capabilities, busy, saving, onChange, onOp
     void onChange({ preset: "custom", enabledCapabilityIds: [...enabled] });
   };
 
-  const enableAll = () => {
+  const useCodingDefaults = () => {
     if (disabled) return;
-    void onChange({
-      preset: "custom",
-      enabledCapabilityIds: capabilities.items.filter((item) => item.available).map((item) => item.id),
-    });
+    void onChange({ preset: "coding" });
   };
 
   return <div ref={rootRef} className={styles.root}>
@@ -190,7 +187,7 @@ export function SessionToolsControl({ capabilities, busy, saving, onChange, onOp
       <div className={styles.footer}>
         <span>{saving ? t("sessionTools.saving") : busy ? t("sessionTools.busy") : t("sessionTools.defaultOn")}</span>
         <div>
-          <button type="button" disabled={disabled || capabilities.enabledCount === availableCount} onClick={enableAll}>{t("sessionTools.enableAll")}</button>
+          <button type="button" disabled={disabled || capabilities.policy.preset === "coding"} onClick={useCodingDefaults}>{t("sessionTools.useCodingDefaults")}</button>
           {onOpenGlobalSettings ? <button type="button" onClick={() => { setOpen(false); onOpenGlobalSettings(); }}>{t("sessionTools.globalSettings")}<AliIcon name="external-link" size={12} /></button> : null}
         </div>
       </div>

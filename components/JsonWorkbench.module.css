@@ -13,7 +13,7 @@
 .workbench select { font: inherit; }
 
 .workbench button,
-.workbench summary {
+.actionMenuTrigger {
   min-height: 28px;
   padding: 4px 8px;
   border: 1px solid transparent;
@@ -25,9 +25,9 @@
 }
 
 .workbench button:hover:not(:disabled),
-.workbench summary:hover { color: var(--text); background: var(--bg-hover); }
+.actionMenuTrigger:hover { color: var(--text); background: var(--bg-hover); }
 .workbench button:focus-visible,
-.workbench summary:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 30%, transparent); outline-offset: 1px; }
+.actionMenuTrigger:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 30%, transparent); outline-offset: 1px; }
 .workbench button:disabled { cursor: not-allowed; opacity: .42; }
 
 .workbench select {
@@ -116,13 +116,12 @@
 }
 
 .primary { color: var(--bg) !important; border-color: var(--text) !important; background: var(--text) !important; font-weight: 600 !important; }
-.actionBar details { position: relative; }
-.actionBar summary { display: grid; min-width: 62px; place-items: center; list-style: none; }
-.actionBar summary::-webkit-details-marker { display: none; }
+.actionMenu { position: relative; }
+.actionMenuTrigger { display: grid; min-width: 62px; place-items: center; }
 .menu {
   position: absolute;
   z-index: 30;
-  top: calc(100% + 5px);
+  top: 100%;
   left: 0;
   width: max-content;
   min-width: 150px;
@@ -207,8 +206,6 @@
 
 @container json-workbench (max-width: 430px) {
   .libraryBridge { grid-template-columns: 1fr; }
-  .actionBar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-  .actionBar::-webkit-scrollbar { display: none; }
   .actionBar > * { flex: 0 0 auto; }
   .settings button:first-of-type { margin-left: 0; }
   .footer span:nth-child(2) { display: none; }

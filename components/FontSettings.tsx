@@ -9,12 +9,14 @@ import {
   isUiFontSize,
 } from "@/lib/font-preferences";
 import { AliIcon } from "./AliIcon";
+import { LazyMarkdownBody } from "./LazyMarkdownBody";
 
 export function FontSettings() {
   const titleId = useId();
   const sizeId = useId();
+  const weightId = useId();
   const { t } = useI18n();
-  const { preference, presets, sizes, setFamily, setSize, reset } = useFontPreferences();
+  const { preference, presets, sizes, weights, setFamily, setSize, setWeight, reset } = useFontPreferences();
   const [fontAvailability, setFontAvailability] = useState<Record<string, boolean>>({ system: true });
   const [sizeDraft, setSizeDraft] = useState(String(preference.size));
 
@@ -215,6 +217,32 @@ export function FontSettings() {
         <span style={{ color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
           {t("appearance.font.sizeRange", { min: UI_FONT_SIZE_MIN, max: UI_FONT_SIZE_MAX })}
         </span>
+      </div>
+      <div className="font-weight-setting">
+        <span id={weightId}>{t("appearance.font.weight")}</span>
+        <div className="font-weight-options" role="radiogroup" aria-labelledby={weightId}>
+          {weights.map((weight) => (
+            <label key={weight} className="font-weight-option" style={{ fontWeight: weight }}>
+              <input
+                type="radio"
+                name={weightId}
+                value={weight}
+                checked={preference.weight === weight}
+                data-ui-font-weight-choice={weight}
+                onChange={() => setWeight(weight)}
+              />
+              {t(`appearance.font.weight.${weight}`)}
+            </label>
+          ))}
+        </div>
+        <span className="font-weight-hint">{t("appearance.font.weightHint")}</span>
+      </div>
+
+      <div className="font-reading-preview">
+        <p className="font-reading-preview-label">{t("appearance.font.readingPreview")}</p>
+        <LazyMarkdownBody className="markdown-assistant-message">
+          {t("appearance.font.readingSample")}
+        </LazyMarkdownBody>
       </div>
     </section>
   );

@@ -32,8 +32,21 @@ test("MermaidBlock renders preview by default", () => {
   const html = renderMermaid({ code: mermaidSrc });
 
   assert.match(html, />源代码</);
+  assert.match(html, />复制图片</);
+  assert.match(html, />导出 PNG</);
+  assert.match(html, /disabled/);
   assert.match(html, /mermaid-block-loading/);
   assert.doesNotMatch(html, /Alice/);
+});
+
+test("Mermaid preview exposes PNG export and image clipboard actions", async () => {
+  const source = await import("node:fs/promises").then(({ readFile }) => readFile(new URL("./MermaidBlock.tsx", import.meta.url), "utf8"));
+  assert.match(source, /navigator\.clipboard\.write/);
+  assert.match(source, /new ClipboardItem\(\{ "image\/png": png \}\)/);
+  assert.match(source, /link\.download = "mermaid-diagram\.png"/);
+  assert.match(source, /renderMermaidPng/);
+  assert.match(source, /htmlLabels: false/);
+  assert.match(source, /<MermaidImageActions svg=\{svg\} variant="toolbar" \/>/);
 });
 
 test("MermaidBlock can explicitly start in source view", () => {

@@ -67,6 +67,11 @@ import type { PromptMaterialReference } from "./prompt-material-format";
 import type { UserInputResult } from "./user-input";
 import { estimateContextUsageBreakdown } from "./context-usage";
 import {
+  fitToolNamesWithinDefinitionBudget,
+  estimateToolDefinitionPromptTokens,
+  TOOL_DEFINITION_PROMPT_TOKEN_LIMIT,
+} from "./tool-definition-budget";
+import {
   appendSessionCapabilityPolicy,
   buildSessionCapabilitiesState,
   buildSessionCapabilityCatalog,
@@ -79,6 +84,12 @@ import {
   type SessionCapabilityPolicy,
   type SessionCapabilitySelection,
 } from "./session-capabilities";
+import {
+  projectToolSelection,
+  readProjectToolSettings,
+  type ProjectToolSettingsRecord,
+} from "./project-tool-settings";
+import { resolveProject } from "./worktree";
 
 // ============================================================================
 // Types
@@ -157,6 +168,8 @@ export class AgentSessionWrapper {
   // set before the async SDK call so two callers cannot both observe idle.
   private promptAdmissionBusy = false;
   private stopping = false;
+  private abortGeneration = 0;
+  private promptTasks = new Set<Promise<void>>();
   private lastPromptFailed = false;
   private lastPromptErrorSummary: string | undefined;
   private runStartedAt: number | null = null;
@@ -181,6 +194,11 @@ export class AgentSessionWrapper {
   private capabilityPolicy: SessionCapabilityPolicy;
   private capabilityCatalog: ReturnType<typeof buildSessionCapabilityCatalog>;
   private toolNameCeiling: Set<string> | undefined;
+  private pendingProjectCapabilityPolicy: SessionCapabilityPolicy | null = null;
+  private pendingProjectAllowedToolNames: Set<string> | null = null;
+  private projectAllowedToolNames: Set<string> | undefined;
+  private projectManaged: boolean;
+  private readonly _projectRoot: string;
   private _alive = true;
 
   constructor(
@@ -189,15 +207,26 @@ export class AgentSessionWrapper {
     capabilityOptions: {
       policy?: SessionCapabilityPolicy;
       toolNameCeiling?: readonly string[];
+      projectRoot?: string;
+      projectManaged?: boolean;
     } = {},
   ) {
     this.cachedSessionTitle = inner.sessionManager.getSessionName()?.trim() || null;
     this.capabilityCatalog = buildSessionCapabilityCatalog(inner.getAllTools(), runtimeProfile);
     this.capabilityPolicy = capabilityOptions.policy
-      ?? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), this.capabilityCatalog);
+      ?? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), this.capabilityCatalog, runtimeProfile);
     this.toolNameCeiling = capabilityOptions.toolNameCeiling
       ? new Set(capabilityOptions.toolNameCeiling)
       : undefined;
+    this._projectRoot = capabilityOptions.projectRoot ?? inner.sessionManager.getCwd();
+    this.projectManaged = capabilityOptions.projectManaged === true;
+    if (this.projectManaged) {
+      this.projectAllowedToolNames = new Set(resolveSessionCapabilityToolNames(
+        this.capabilityCatalog,
+        this.capabilityPolicy,
+        inner.getAllTools().map((tool) => tool.name),
+      ));
+    }
   }
 
   get sessionId(): string {
@@ -212,6 +241,12 @@ export class AgentSessionWrapper {
     return this.inner.sessionManager.getCwd();
   }
 
+  get projectRoot(): string {
+    // Hot reload can retain a wrapper created before project-scoped tools were
+    // introduced. Fall back to its cwd until that wrapper naturally restarts.
+    return this._projectRoot ?? this.cwd;
+  }
+
   isAlive(): boolean {
     return this._alive;
   }
@@ -224,17 +259,53 @@ export class AgentSessionWrapper {
     this.capabilityCatalog = buildSessionCapabilityCatalog(this.inner.getAllTools(), this.runtimeProfile);
   }
 
-  private applySessionCapabilities(): void {
-    this.refreshCapabilityCatalog();
-    const allToolNames = this.inner.getAllTools().map((tool) => tool.name);
-    const activeToolNames = resolveSessionCapabilityToolNames(
+  private resolveCapabilityToolBudget(
+    policy: SessionCapabilityPolicy,
+    rejectOverBudget: boolean,
+  ): { policy: SessionCapabilityPolicy; toolNames: string[]; trimmed: boolean } {
+    const allTools = this.inner.getAllTools();
+    const requestedToolNames = resolveSessionCapabilityToolNames(
       this.capabilityCatalog,
-      this.capabilityPolicy,
-      allToolNames,
+      policy,
+      allTools.map((tool) => tool.name),
       this.toolNameCeiling,
     );
-    this.setForceEmptySystemPrompt(activeToolNames.length === 0);
-    this.inner.setActiveToolsByName(activeToolNames);
+    const budget = fitToolNamesWithinDefinitionBudget(allTools, requestedToolNames);
+    if (budget.droppedToolNames.length === 0) {
+      return { policy, toolNames: budget.toolNames, trimmed: false };
+    }
+
+    if (rejectOverBudget) {
+      const requested = new Set(requestedToolNames);
+      const requestedTokens = estimateToolDefinitionPromptTokens(allTools.filter((tool) => requested.has(tool.name)));
+      throw new Error(
+        `Tool definitions require about ${requestedTokens.toLocaleString("en-US")} tokens; the per-session limit is ${TOOL_DEFINITION_PROMPT_TOKEN_LIMIT.toLocaleString("en-US")} tokens. Disable another tool before enabling ${budget.droppedToolNames.join(", ")}.`,
+      );
+    }
+
+    const enabledCapabilityIds = selectionFromToolNames(budget.toolNames, this.capabilityCatalog).enabledCapabilityIds ?? [];
+    return {
+      policy: {
+        ...policy,
+        revision: policy.revision + 1,
+        preset: "custom",
+        enabledCapabilityIds,
+        updatedAt: new Date().toISOString(),
+      },
+      toolNames: budget.toolNames,
+      trimmed: true,
+    };
+  }
+
+  private applySessionCapabilities(options: { persistBudgetTrim?: boolean } = {}): void {
+    this.refreshCapabilityCatalog();
+    const resolved = this.resolveCapabilityToolBudget(this.capabilityPolicy, false);
+    this.capabilityPolicy = resolved.policy;
+    if (resolved.trimmed && options.persistBudgetTrim && !this.projectManaged) {
+      appendSessionCapabilityPolicy(this.inner.sessionManager, this.capabilityPolicy);
+    }
+    this.setForceEmptySystemPrompt(resolved.toolNames.length === 0);
+    this.inner.setActiveToolsByName(resolved.toolNames);
     this.applyForcedEmptySystemPrompt();
   }
 
@@ -248,10 +319,55 @@ export class AgentSessionWrapper {
   }
 
   initializeSessionCapabilities(): void {
+    this.applySessionCapabilities({ persistBudgetTrim: true });
+  }
+
+  applyProjectCapabilitySettings(record: ProjectToolSettingsRecord): "applied" | "deferred" {
+    this.refreshCapabilityCatalog();
+    const policy = createSessionCapabilityPolicy(
+      projectToolSelection(record),
+      this.capabilityCatalog,
+      this.runtimeProfile,
+      record.revision - 1,
+      this.capabilityPolicy,
+    );
+    const resolved = this.resolveCapabilityToolBudget(policy, true);
+    const projectAllowedToolNames = new Set(resolveSessionCapabilityToolNames(
+      this.capabilityCatalog,
+      resolved.policy,
+      this.inner.getAllTools().map((tool) => tool.name),
+    ));
+    this.projectManaged = true;
+    if (this.isRunning()) {
+      this.pendingProjectCapabilityPolicy = resolved.policy;
+      this.pendingProjectAllowedToolNames = projectAllowedToolNames;
+      return "deferred";
+    }
+    this.capabilityPolicy = resolved.policy;
+    this.projectAllowedToolNames = projectAllowedToolNames;
+    this.pendingProjectCapabilityPolicy = null;
+    this.pendingProjectAllowedToolNames = null;
     this.applySessionCapabilities();
+    this.emit({ type: "capabilities_changed", capabilities: this.getSessionCapabilities() });
+    invalidateSessionListCache();
+    return "applied";
+  }
+
+  private flushPendingProjectCapabilitySettings(): void {
+    if (!this.pendingProjectCapabilityPolicy || this.isRunning()) return;
+    this.capabilityPolicy = this.pendingProjectCapabilityPolicy;
+    if (this.pendingProjectAllowedToolNames) this.projectAllowedToolNames = this.pendingProjectAllowedToolNames;
+    this.pendingProjectCapabilityPolicy = null;
+    this.pendingProjectAllowedToolNames = null;
+    this.applySessionCapabilities();
+    this.emit({ type: "capabilities_changed", capabilities: this.getSessionCapabilities() });
+    invalidateSessionListCache();
   }
 
   private updateSessionCapabilities(selection: SessionCapabilitySelection): SessionCapabilitiesState {
+    if (this.projectManaged) {
+      throw new Error("Tools are managed by this project's settings.");
+    }
     this.assertSessionIdle("change session tools");
     if (
       selection.expectedRevision !== undefined
@@ -259,13 +375,16 @@ export class AgentSessionWrapper {
     ) {
       throw new Error("Session tools changed in another view. Refresh and try again.");
     }
-    this.capabilityPolicy = createSessionCapabilityPolicy(
+    const nextPolicy = createSessionCapabilityPolicy(
       selection,
       this.capabilityCatalog,
       this.runtimeProfile,
       this.capabilityPolicy.revision,
       this.capabilityPolicy,
     );
+    this.refreshCapabilityCatalog();
+    const resolved = this.resolveCapabilityToolBudget(nextPolicy, true);
+    this.capabilityPolicy = resolved.policy;
     appendSessionCapabilityPolicy(this.inner.sessionManager, this.capabilityPolicy);
     this.applySessionCapabilities();
     const capabilities = this.getSessionCapabilities();
@@ -347,7 +466,7 @@ export class AgentSessionWrapper {
     if (!this._alive) return "idle";
     if (this.stopping) return "stopping";
     if (this.inner.isCompacting) return "compacting";
-    if (this.promptRunning || this.inner.isStreaming || this.inner.isBashRunning) return "running";
+    if (this.promptAdmissionBusy || this.promptRunning || this.inner.isStreaming || this.inner.isBashRunning) return "running";
     return "idle";
   }
 
@@ -477,6 +596,7 @@ export class AgentSessionWrapper {
         this.lastPromptErrorSummary = undefined;
       }
       if (event.type === "agent_end") {
+        this.runtimeToolCalls.clear();
         invalidateSessionListCache();
       }
       this.emit(event);
@@ -677,13 +797,18 @@ export class AgentSessionWrapper {
 
   async send(command: Record<string, unknown>): Promise<unknown> {
     this.resetIdleTimer();
+    this.flushPendingProjectCapabilitySettings();
     const type = command.type as string;
+    const abortGeneration = this.abortGeneration;
     if (this.runtimeProfile === "device-control" && DEVICE_CONTROL_DENIED_RPC_COMMANDS.has(type)) {
       throw new Error(`RPC command ${type} is disabled by the device-control runtime profile.`);
     }
     if (this.shouldWaitForExtensions(type)) await this.waitForExtensionsBound();
 
     if (type === "prompt" || type === "steer" || type === "follow_up") {
+      if (this.stopping || abortGeneration !== this.abortGeneration) {
+        throw new Error("Cannot send a prompt while the session is busy stopping");
+      }
       const imageError = validateAgentImages(command.images);
       if (imageError) throw new Error(imageError);
     }
@@ -740,11 +865,22 @@ export class AgentSessionWrapper {
         }
         this.promptRunning = true;
         notifyRunningChange();
-        Promise.resolve().then(() => this.inner.prompt(runtimePromptMessage, {
-          ...(promptImages?.length ? { images: promptImages } : {}),
-          ...(streamingBehavior ? { streamingBehavior } : {}),
-          source: "rpc",
-        }))
+        const assertNotAborted = () => {
+          if (!this._alive || abortGeneration !== this.abortGeneration) {
+            throw new Error("Prompt cancelled");
+          }
+        };
+        const promptTask = Promise.resolve().then(() => {
+          assertNotAborted();
+          return this.inner.prompt(runtimePromptMessage, {
+            ...(promptImages?.length ? { images: promptImages } : {}),
+            ...(streamingBehavior ? { streamingBehavior } : {}),
+            source: "rpc",
+            // SDK abort() only sees an active model run, not asynchronous auth,
+            // input hooks or pre-prompt compaction. Fence that late model start.
+            preflightResult: (success) => { if (success) assertNotAborted(); },
+          });
+        })
           .then(async () => {
           this.promptRunning = false;
           if (ownsPromptRun) {
@@ -756,6 +892,7 @@ export class AgentSessionWrapper {
             this.promptAdmissionBusy = false;
             this.emit({ type: "prompt_done", sessionId: this.sessionId, commandId, runId: promptRun.runId, timestamp: Date.now() });
           }
+          this.flushPendingProjectCapabilitySettings();
           notifyRunningChange();
         }).catch(async (error) => {
           this.promptRunning = false;
@@ -765,10 +902,11 @@ export class AgentSessionWrapper {
             if (this.activeCommandId === commandId) this.activeCommandId = undefined;
           }
           if (!streamingBehavior) this.promptAdmissionBusy = false;
-          this.lastPromptFailed = true;
-          this.lastPromptErrorSummary = error instanceof Error ? error.message : String(error);
+          const cancelled = abortGeneration !== this.abortGeneration || !this._alive;
+          this.lastPromptFailed = !cancelled;
+          this.lastPromptErrorSummary = cancelled ? undefined : error instanceof Error ? error.message : String(error);
           invalidateSessionListCache();
-          this.emit({
+          if (!cancelled) this.emit({
             type: "prompt_error",
             sessionId: this.sessionId,
             commandId,
@@ -777,14 +915,19 @@ export class AgentSessionWrapper {
             errorMessage: error instanceof Error ? error.message : String(error),
           });
           if (!streamingBehavior) this.emit({ type: "prompt_done", sessionId: this.sessionId, commandId, runId: promptRun.runId, timestamp: Date.now() });
+          this.flushPendingProjectCapabilitySettings();
           notifyRunningChange();
+        }).finally(() => {
+          this.promptTasks.delete(promptTask);
         });
+        this.promptTasks.add(promptTask);
         return null;
       }
 
       case "abort": {
         if (this.stopping) return { accepted: true };
         const promptRun = this.activePromptRun;
+        this.abortGeneration += 1;
         this.stopping = true;
         notifyRunningChange();
 
@@ -793,11 +936,25 @@ export class AgentSessionWrapper {
         // Do not hold the stop request open for that potentially slow cleanup:
         // the UI can settle immediately while the wrapper remains `stopping`
         // until the real runtime has finished unwinding.
-        const abortTask = this.inner.abort();
+        const signal = (cancel: () => unknown) => {
+          try { return Promise.resolve(cancel()); }
+          catch (error) { return Promise.reject(error); }
+        };
+        const abortTask = signal(() => this.inner.abort());
+        const compactionTask = signal(() => this.inner.abortCompaction());
+        const bashTask = signal(() => this.inner.abortBash());
+        const queueTask = signal(() => {
+          this.inner.clearQueue();
+          this.emit({ type: "queue_update", steering: [], followUp: [] });
+        });
+        const uiTasks = [
+          ...Array.from(this.pendingUiResponses.values(), (pending) => signal(() => pending.cancel())),
+          ...Array.from(this.activeCustomUis.keys(), (id) => signal(() => this.closeCustomUi(id, undefined))),
+        ];
         const cleanupTask = finishPromptRun(promptRun, "abort");
         if (this.activePromptRun?.runId === promptRun?.runId) this.activePromptRun = undefined;
 
-        void Promise.allSettled([abortTask, cleanupTask]).then((results) => {
+        void Promise.allSettled([abortTask, compactionTask, bashTask, queueTask, cleanupTask, ...uiTasks, ...this.promptTasks]).then((results) => {
           for (const result of results) {
             if (result.status === "rejected") {
               console.error("[pi-web] active run abort cleanup failed:", result.reason instanceof Error ? result.reason.message : result.reason);
@@ -806,6 +963,8 @@ export class AgentSessionWrapper {
         }).finally(() => {
           if (!this._alive) return;
           this.stopping = false;
+          this.flushPendingProjectCapabilitySettings();
+          this.emit({ type: "session_idle", sessionId: this.sessionId });
           notifyRunningChange();
         });
         return { accepted: true };
@@ -830,6 +989,7 @@ export class AgentSessionWrapper {
           isBashRunning: this.inner.isBashRunning,
           isCompacting: this.inner.isCompacting,
           runtime: this.getRuntime(),
+          activeTools: Array.from(this.runtimeToolCalls, ([id, tool]) => ({ id, name: tool.toolName })),
           pendingApproval: this.pendingUiResponses.size > 0 || this.activeCustomUis.size > 0,
           lastPromptFailed: this.lastPromptFailed,
           lastPromptErrorSummary: this.lastPromptErrorSummary,
@@ -952,6 +1112,7 @@ export class AgentSessionWrapper {
           );
         } finally {
           invalidateSessionListCache();
+          this.flushPendingProjectCapabilitySettings();
         }
       }
 
@@ -1075,14 +1236,27 @@ export class AgentSessionWrapper {
           : [];
         const exact = [...new Set([...requested, "piora_room"])];
         if (exact.some((name) => !available.has(name))) throw new Error("Team tool allowlist contains an unavailable tool.");
+        if (this.projectAllowedToolNames && exact.some((name) => !this.projectAllowedToolNames?.has(name))) {
+          throw new Error("Team tool allowlist contains a tool disabled by project settings.");
+        }
+        const previousCeiling = this.toolNameCeiling;
         this.toolNameCeiling = new Set(exact);
-        this.capabilityPolicy = createSessionCapabilityPolicy(
+        const nextPolicy = createSessionCapabilityPolicy(
           selectionFromToolNames(exact, this.capabilityCatalog),
           this.capabilityCatalog,
           this.runtimeProfile,
           this.capabilityPolicy.revision,
           this.capabilityPolicy,
         );
+        this.refreshCapabilityCatalog();
+        let resolved: { policy: SessionCapabilityPolicy; toolNames: string[]; trimmed: boolean };
+        try {
+          resolved = this.resolveCapabilityToolBudget(nextPolicy, true);
+        } catch (error) {
+          this.toolNameCeiling = previousCeiling;
+          throw error;
+        }
+        this.capabilityPolicy = resolved.policy;
         this.applySessionCapabilities();
         return null;
       }
@@ -1096,7 +1270,7 @@ export class AgentSessionWrapper {
         if (typeof this.inner.bindExtensions !== "function") {
           this.inner.extensionRunner.setUIContext?.(this.createExtensionUiContext(), "rpc");
         }
-        this.applySessionCapabilities();
+        this.applySessionCapabilities({ persistBudgetTrim: true });
         invalidateModelsCache();
         return { success: true };
       }
@@ -1151,6 +1325,7 @@ export class AgentSessionWrapper {
           return result;
         } finally {
           invalidateSessionListCache();
+          this.flushPendingProjectCapabilitySettings();
           notifyRunningChange();
         }
       }
@@ -1301,7 +1476,8 @@ export class AgentSessionWrapper {
     factory: unknown,
     options?: unknown,
   ): Promise<T> {
-    if (typeof factory !== "function") return Promise.resolve(undefined as T);
+    if (typeof factory !== "function" || this.stopping || !this._alive) return Promise.resolve(undefined as T);
+    const abortGeneration = this.abortGeneration;
 
     const id = randomUUID();
     const width = this.getCustomUiWidth(options);
@@ -1331,6 +1507,7 @@ export class AgentSessionWrapper {
       Promise.resolve()
         .then(() => factory(tui, PLAIN_TEXT_THEME, CUSTOM_UI_KEYBINDINGS, done))
         .then((component) => {
+          if (abortGeneration !== this.abortGeneration || !this._alive) finish(undefined as T);
           if (completed) {
             try {
               (component as CustomUiComponent | undefined)?.dispose?.();
@@ -1372,7 +1549,7 @@ export class AgentSessionWrapper {
     timeout?: number,
     signal?: AbortSignal,
   ): Promise<T> {
-    if (signal?.aborted) return Promise.resolve(defaultValue);
+    if (signal?.aborted || this.stopping || !this._alive) return Promise.resolve(defaultValue);
 
     const id = randomUUID();
     const fullRequest = {
@@ -1599,6 +1776,27 @@ function getServicesCache(): Map<string, AgentSessionServices> {
 /** Drop cached per-cwd services so the next session start reloads them. */
 export function invalidateServicesCache(): void {
   getServicesCache().clear();
+}
+
+export function applyProjectToolSettingsToLiveSessions(
+  projectRoot: string,
+  record: ProjectToolSettingsRecord,
+): { appliedSessions: number; deferredSessions: number; failedSessions: number } {
+  const target = normalizeRpcCwd(projectRoot);
+  let appliedSessions = 0;
+  let deferredSessions = 0;
+  let failedSessions = 0;
+  for (const session of getRegistry().values()) {
+    if (!session.isAlive() || normalizeRpcCwd(session.projectRoot) !== target) continue;
+    try {
+      const result = session.applyProjectCapabilitySettings(record);
+      if (result === "applied") appliedSessions += 1;
+      else deferredSessions += 1;
+    } catch {
+      failedSessions += 1;
+    }
+  }
+  return { appliedSessions, deferredSessions, failedSessions };
 }
 
 export async function reloadAllNormalSessionSystemPrompts(): Promise<{
@@ -1884,6 +2082,8 @@ export async function startRpcSession(
     // Some extensions access the SDK's global theme even outside the terminal UI.
     initTheme();
     const agentDir = getAgentDir();
+    const projectRoot = (await resolveProject(cwd)).projectRoot;
+    const projectToolRecord = readProjectToolSettings(projectRoot);
 
     const sessionManager = sessionFile
       ? SessionManager.open(sessionFile, undefined)
@@ -2009,14 +2209,21 @@ export async function startRpcSession(
     }
 
     const capabilityCatalog = buildSessionCapabilityCatalog(inner.getAllTools(), runtimeProfile);
-    const restoredPolicy = sessionFile
-      ? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), capabilityCatalog)
-      : createSessionCapabilityPolicy(
+    const restoredPolicy = projectToolRecord
+      ? createSessionCapabilityPolicy(
+          projectToolSelection(projectToolRecord),
+          capabilityCatalog,
+          runtimeProfile,
+          projectToolRecord.revision - 1,
+        )
+      : sessionFile
+        ? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), capabilityCatalog, runtimeProfile)
+        : createSessionCapabilityPolicy(
           capabilitySelection ?? (toolNames !== undefined ? selectionFromToolNames(toolNames, capabilityCatalog) : undefined),
           capabilityCatalog,
           runtimeProfile,
         );
-    if (!sessionFile) appendSessionCapabilityPolicy(inner.sessionManager, restoredPolicy);
+    if (!sessionFile && !projectToolRecord) appendSessionCapabilityPolicy(inner.sessionManager, restoredPolicy);
 
     const realSessionId = inner.sessionId as string;
     const realSessionFile = inner.sessionFile as string | undefined;
@@ -2029,6 +2236,8 @@ export async function startRpcSession(
 
     const wrapper = new AgentSessionWrapper(inner, runtimeProfile, {
       policy: restoredPolicy,
+      projectRoot,
+      projectManaged: Boolean(projectToolRecord),
       ...(toolNames !== undefined ? { toolNameCeiling: toolNames } : {}),
     });
     wrapper.initializeSessionCapabilities();

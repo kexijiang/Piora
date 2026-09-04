@@ -74,20 +74,36 @@ export async function createAgentSessionRequest(
 export async function sendAgentCommand<T = unknown>(
   sessionId: string,
   command: Record<string, unknown>,
+  options: { timeoutMs?: number } = {},
 ): Promise<T> {
-  const res = await fetch(`/api/agent/${encodeURIComponent(sessionId)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(command),
-  });
-  const body = (await res.json().catch(() => ({}))) as {
-    success?: boolean;
-    data?: T;
-    error?: string;
-    code?: string;
-  };
-  if (!res.ok || body.error) {
-    throw new AgentCommandError(body.error ?? `HTTP ${res.status}`, res.status, body.code);
+  const controller = new AbortController();
+  const timeout = options.timeoutMs === undefined ? undefined : setTimeout(() => {
+    controller.abort(new AgentCommandError("Command acknowledgement timed out", 0, "COMMAND_TIMEOUT"));
+  }, options.timeoutMs);
+  try {
+    const res = await fetch(`/api/agent/${encodeURIComponent(sessionId)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(command),
+      signal: controller.signal,
+    });
+    const body = (await res.json().catch((error) => {
+      // An aborted response body is not a successful acknowledgement.
+      controller.signal.throwIfAborted();
+      if (error instanceof SyntaxError && !res.ok) return {};
+      throw error;
+    })) as {
+      success?: boolean;
+      data?: T;
+      error?: string;
+      code?: string;
+    };
+    controller.signal.throwIfAborted();
+    if (!res.ok || body.error) {
+      throw new AgentCommandError(body.error ?? `HTTP ${res.status}`, res.status, body.code);
+    }
+    return body.data as T;
+  } finally {
+    clearTimeout(timeout);
   }
-  return body.data as T;
 }

@@ -350,7 +350,7 @@ export class SessionMessageRouter {
   private watchForIdle(sessionId: string, session: AgentSessionWrapper): void {
     if (this.wakeSubscriptions.has(sessionId)) return;
     const unsubscribe = session.onEvent((event) => {
-      if (["prompt_done", "prompt_error", "agent_end"].includes(event.type)) {
+      if (["prompt_done", "prompt_error", "agent_end", "session_idle"].includes(event.type)) {
         void this.drain(sessionId);
       }
     });

@@ -29,6 +29,13 @@ export interface JsonWorkbenchResult {
   output: string;
 }
 
+export interface JsonSyntaxIssue {
+  column: number;
+  line: number;
+  offset: number;
+  reason: string;
+}
+
 const jsonBig = JSONBig({
   constructorAction: "error",
   protoAction: "error",
@@ -71,6 +78,41 @@ function tryParseJson(input: string): { parsed: boolean; value: unknown } {
     return { parsed: true, value: jsonBig.parse(input) };
   } catch {
     return { parsed: false, value: input };
+  }
+}
+
+function jsonCandidate(input: string, options: JsonWorkbenchOptions): { offset: number; text: string } {
+  const normalized = options.removeNbsp === false ? input : input.replace(/\u00a0/g, " ");
+  if (options.extractJson === false) return { offset: 0, text: normalized };
+  const match = /{[\s\S]*}|\[[\s\S]*]/.exec(normalized);
+  return match ? { offset: match.index, text: match[0] } : { offset: 0, text: normalized };
+}
+
+function lineAndColumnAt(input: string, offset: number): { column: number; line: number } {
+  const safeOffset = Math.max(0, Math.min(offset, input.length));
+  const before = input.slice(0, safeOffset);
+  const line = (before.match(/\n/g)?.length ?? 0) + 1;
+  const lastLineBreak = before.lastIndexOf("\n");
+  return { column: safeOffset - lastLineBreak, line };
+}
+
+/** Returns a source-mapped location for invalid standard JSON. */
+export function findJsonSyntaxIssue(input: string, options: JsonWorkbenchOptions = {}): JsonSyntaxIssue | null {
+  const candidate = jsonCandidate(input, options);
+  try {
+    jsonBig.parse(candidate.text);
+    return null;
+  } catch (cause) {
+    const parserOffset = typeof (cause as { at?: unknown })?.at === "number"
+      ? Math.max(0, Math.min(candidate.text.length, Math.round((cause as { at: number }).at) - 1))
+      : 0;
+    const offset = candidate.offset + parserOffset;
+    const location = lineAndColumnAt(input, offset);
+    return {
+      ...location,
+      offset,
+      reason: cause instanceof Error ? cause.message : String(cause),
+    };
   }
 }
 
@@ -264,26 +306,15 @@ function decodeEscapedValue(value: unknown, recursive: boolean, depth = 0): unkn
   return value;
 }
 
-function extractJsonText(input: string): string {
-  const singleLine = input.replace(/\r?\n/g, "");
-  return singleLine.match(/{.*}|\[.*]/)?.[0] ?? input;
-}
-
-function hasEntries(value: unknown): boolean {
-  return isStructured(value) && Object.keys(value).length > 0;
-}
-
 export function smartFormatJson(input: string, options: JsonWorkbenchOptions = {}): JsonWorkbenchResult {
   const indent = options.indent ?? 4;
-  const removeNbsp = options.removeNbsp ?? true;
-  const extractJson = options.extractJson ?? true;
   const multiEscape = options.multiEscape ?? true;
-  let candidate = removeNbsp ? input.replace(/\u00a0/g, " ") : input;
-  if (extractJson) candidate = extractJsonText(candidate);
+  const candidate = jsonCandidate(input, options).text;
 
   for (const source of [candidate, decodeUnicodeText(candidate)]) {
+    const parsed = tryParseJson(source);
     const value = decodeEscapedValue(source, multiEscape);
-    if (hasEntries(value)) {
+    if (parsed.parsed || isStructured(value)) {
       const output = stringifyJsonValue(value, indent);
       return { changed: output !== input, kind: "json", output };
     }

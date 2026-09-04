@@ -1,4 +1,4 @@
-/** Pi's built-in coding tools are always enabled; Piora exposes no permission tiers. */
+/** Common workspace tools used by the compact coding preset. */
 export const BUILTIN_AGENT_TOOLS: readonly string[] = [
   "bash",
   "read",
@@ -12,6 +12,7 @@ export const BUILTIN_AGENT_TOOLS: readonly string[] = [
 /** Explicit phone operations exposed by the Harmony extension. */
 export const HARMONY_AGENT_TOOLS: readonly string[] = [
   "harmony_list_devices",
+  "harmony_run_scenario",
   "harmony_acquire_control",
   "harmony_observe_screen",
   "harmony_tap",

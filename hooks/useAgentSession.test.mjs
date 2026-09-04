@@ -45,11 +45,58 @@ test("cancels stale session loads when switching tasks", () => {
 test("settles the local stream as soon as the server accepts an abort", () => {
   const abortSource = source.slice(
     source.indexOf("  const handleAbort = useCallback"),
-    source.indexOf("  const handleGoalPause = useCallback"),
+    source.indexOf("  const handleFork = useCallback"),
   );
 
   assert.match(abortSource, /const runId = promptRunIdRef\.current/);
-  assert.match(abortSource, /await sendAgentCommand\(sid, \{ type: "abort" \}\);[\s\S]*?await finishPromptWithoutStream\(sid, runId\)/);
+  assert.match(abortSource, /setAgentPhase\(\{ kind: "stopping" \}\)/);
+  assert.match(abortSource, /await sendAgentCommand\(sid, \{ type: "abort" \}, \{ timeoutMs: 10_000 \}\);[\s\S]*?void finishPromptWithoutStream\(sid, runId\)/);
+  assert.match(abortSource, /addNotice\(\{ type: "error", message: t\("chat.stopFailed"/);
+});
+
+test("visible termination precedes a stalled history reload and is idempotent", async () => {
+  const finishSource = source.slice(source.indexOf("const finishPromptWithoutStream"), source.indexOf("const waitForPromptSettlement"));
+  // Execute the actual hook callback with isolated refs/setters (no DOM or model).
+  const js = finishSource.replace("sid: string | null =", "sid =");
+  const calls = [];
+  let releaseHistory;
+  const history = new Promise((resolve) => { releaseHistory = resolve; });
+  const refs = {
+    sessionIdRef: { current: "session" }, promptRunIdRef: { current: 1 },
+    agentRunningRef: { current: true }, optimisticUserMessageKeyRef: { current: "user" },
+    suppressCompletionNotificationRef: { current: true }, promptSettlementByRunRef: { current: new Map() },
+  };
+  const deps = {
+    ...refs, useCallback: (callback) => callback,
+    closeEvents: () => calls.push("close"),
+    setAgentRunning: (value) => calls.push(["running", value]),
+    setAgentPhase: () => {}, setRetryInfo: () => {}, setIsCompacting: () => {},
+    setExtensionDialog: () => {}, setExtensionCustomUi: () => {},
+    dispatch: (action) => calls.push(action.type), onAgentEnd: () => calls.push("notify"),
+    loadSession: () => { calls.push("history"); return history; },
+  };
+  const finish = new Function(...Object.keys(deps), `${js}; return finishPromptWithoutStream;`)(...Object.values(deps));
+  const pending = finish("session", 1);
+  assert.equal(refs.agentRunningRef.current, false);
+  assert.ok(calls.indexOf("end") < calls.indexOf("history"));
+  assert.equal(calls.includes("notify"), false);
+  assert.equal(finish("session", 1), pending);
+  refs.promptRunIdRef.current = 2;
+  refs.agentRunningRef.current = true;
+  await finish("session", 1);
+  assert.equal(refs.agentRunningRef.current, true, "a late old settlement must not stop the next run");
+  releaseHistory();
+  await pending;
+  assert.equal(refs.agentRunningRef.current, true);
+});
+
+test("cancelled preparation and replaced SSE connections cannot restart a prompt", () => {
+  const sendSource = source.slice(source.indexOf("const handleSend"), source.indexOf("const executeBash ="));
+  assert.match(sendSource, /await uploadPromptMaterialFiles\(materialFiles\)[\s\S]*?if \(!isCurrentPrompt\(\)\) return/);
+  assert.match(sendSource, /await ensureEventsConnected\(sid\);\s*if \(!isCurrentPrompt\(\)\) return/);
+  assert.match(sendSource, /await ensureEventsConnected\(session.id\);\s*if \(!isCurrentPrompt\(\)\) return/);
+  assert.match(source, /if \(eventSourceRef.current !== es\) return/);
+  assert.match(source, /if \(cancelledPromptRunIdRef.current === promptRunIdRef.current\) return/);
 });
 
 test("keeps the first prompt as the new-session title and restores failed material drafts", () => {

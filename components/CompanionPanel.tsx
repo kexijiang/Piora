@@ -110,6 +110,8 @@ export function CompanionPanel() {
   const [question, setQuestion] = useState("");
   const [taskDraft, setTaskDraft] = useState("");
   const [memoryDraft, setMemoryDraft] = useState("");
+  const [personalityDraft, setPersonalityDraft] = useState("");
+  const [personalityDirty, setPersonalityDirty] = useState(false);
   const [libraryTitle, setLibraryTitle] = useState("");
   const [libraryContent, setLibraryContent] = useState("");
   const [libraryKind, setLibraryKind] = useState<CompanionLibraryKind>("note");
@@ -214,13 +216,19 @@ export function CompanionPanel() {
     setModelSaveStatus(saved ? "saved" : "dirty");
   }, [modelDraft, mutate]);
 
-  const updatePersonalityDraft = useCallback((personality: string) => {
-    setState((current) => {
-      const next = { ...current, settings: { ...current.settings, personality } };
-      stateRef.current = next;
-      return next;
-    });
-  }, []);
+  useEffect(() => {
+    if (!personalityDirty) setPersonalityDraft(state.settings.personality);
+  }, [personalityDirty, state.settings.personality]);
+
+  const savePersonalityDraft = useCallback(async () => {
+    if (!personalityDirty) return;
+    const personality = personalityDraft;
+    const saved = await mutate((current) => ({
+      ...current,
+      settings: { ...current.settings, personality },
+    }));
+    if (saved) setPersonalityDirty(false);
+  }, [mutate, personalityDirty, personalityDraft]);
 
   useEffect(() => {
     if (state.focusTimer.status !== "running") return;
@@ -492,7 +500,7 @@ export function CompanionPanel() {
             </small>
           </label>
           <label>自主程度<select value={state.settings.autonomyLevel} onChange={(event) => void mutate((current) => ({ ...current, settings: { ...current.settings, autonomyLevel: event.target.value as "quiet" | "balanced" | "active" } }))}><option value="quiet">安静</option><option value="balanced">平衡</option><option value="active">活跃</option></select></label>
-          <label>性格<textarea value={state.settings.personality} onChange={(event) => updatePersonalityDraft(event.target.value)} onBlur={() => void mutate((current) => current)} /></label>
+          <label>性格<textarea value={personalityDraft} onChange={(event) => { setPersonalityDraft(event.target.value); setPersonalityDirty(true); }} onBlur={() => void savePersonalityDraft()} /></label>
           <label className={styles.toggle}><input type="checkbox" checked={!state.settings.autonomyPaused} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, autonomyPaused: !current.settings.autonomyPaused } }))} />允许自主观察</label>
           <label className={styles.toggle}><input type="checkbox" checked={state.settings.shareWorkContext} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, shareWorkContext: !current.settings.shareWorkContext } }))} />向互动模型发送汇总后的工作上下文</label>
           <label className={styles.toggle}><input type="checkbox" checked={state.settings.allowProactiveSpeech} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, allowProactiveSpeech: !current.settings.allowProactiveSpeech } }))} />允许任务变化或定时观察时主动说话</label>

@@ -5,9 +5,11 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import {
+  findJsonSyntaxIssue,
   runJsonWorkbenchAction,
   smartFormatJson,
   type JsonWorkbenchAction,
@@ -56,6 +58,11 @@ interface SavedJsonResult {
   title: string;
 }
 
+interface HoverActionMenuProps {
+  children: ReactNode;
+  label: string;
+}
+
 interface Props {
   busy?: boolean;
   compact?: boolean;
@@ -64,6 +71,34 @@ interface Props {
 }
 
 const TEMP_DRAFT: JsonDraft = { content: "", favorite: true, id: TEMP_DRAFT_ID, title: "temp" };
+
+function HoverActionMenu({ children, label }: HoverActionMenuProps) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div
+      className={styles.actionMenu}
+      data-open={open ? "true" : "false"}
+      onPointerEnter={() => setOpen(true)}
+      onPointerLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+    >
+      <button
+        className={styles.actionMenuTrigger}
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        onClick={() => setOpen((current) => !current)}
+      >
+        {label}
+      </button>
+      {open ? <div className={styles.menu} role="menu" onClick={() => setOpen(false)}>{children}</div> : null}
+    </div>
+  );
+}
 
 const ACTION_LABELS: Record<Exclude<JsonWorkbenchAction, "format">, string> = {
   base64: "Base64",
@@ -165,6 +200,7 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
   const editorRef = useRef<JsonCodeEditorHandle>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const noticeTimerRef = useRef<number | null>(null);
+  const preservePasteErrorRef = useRef(false);
 
   const activeDraft = drafts.find((draft) => draft.id === activeId) ?? drafts[0];
   const reusableLibrary = useMemo(() => library.filter((item) => item.kind !== "image"), [library]);
@@ -220,6 +256,14 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
     noticeTimerRef.current = window.setTimeout(() => setNotice(""), 1_800);
   };
 
+  const syntaxErrorMessage = (input: string) => {
+    const issue = findJsonSyntaxIssue(input, options);
+    return issue ? {
+      issue,
+      message: t("companion.json.invalidAt", { column: issue.column, line: issue.line }),
+    } : null;
+  };
+
   const updateDraft = (id: string, patch: Partial<Pick<JsonDraft, "content" | "favorite" | "title">>) => {
     setDrafts((current) => current.map((draft) => draft.id === id ? { ...draft, ...patch } : draft));
   };
@@ -273,6 +317,14 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
     setError("");
     try {
       const result = runJsonWorkbenchAction(target.text, action, options);
+      if ((action === "format" || action === "multi-unescape") && result.kind !== "json") {
+        const invalid = syntaxErrorMessage(target.text);
+        if (invalid) {
+          setError(invalid.message);
+          focusRange(target.start + invalid.issue.offset);
+          return;
+        }
+      }
       if (!result.changed) {
         announce(t("companion.json.noChange"));
         return;
@@ -324,17 +376,28 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
     if (activeId === id) setActiveId(nextDrafts[Math.max(0, index - 1)]?.id ?? TEMP_DRAFT_ID);
   };
 
-  const pasteRaw = async (intoNewDraft = false) => {
+  const pasteClipboard = async (intoNewDraft = false) => {
     setError("");
     try {
       const text = await navigator.clipboard.readText();
       if (!text) return;
+      const formatted = smartFormatJson(text, options);
+      const output = formatted.kind === "json" ? formatted.output : text;
+      const invalid = formatted.kind === "json" ? null : syntaxErrorMessage(text);
       if (intoNewDraft) {
-        addDraft(undefined, text);
+        addDraft(undefined, output);
+        if (invalid) setError(invalid.message);
+        else announce(t("companion.json.autoFormatted"));
         return;
       }
       const selection = editorRef.current?.getSelection() ?? { end: 0, start: 0 };
-      replaceRange(selection, text);
+      replaceRange(selection, output);
+      if (invalid) {
+        setError(invalid.message);
+        focusRange(selection.start + invalid.issue.offset);
+      } else {
+        announce(t("companion.json.autoFormatted"));
+      }
     } catch {
       setError(t("companion.json.clipboardError"));
     }
@@ -343,10 +406,25 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
   const formatPastedText = (pasted: string): string | null => {
     try {
       const formatted = smartFormatJson(pasted, options);
-      if (!formatted.changed) return null;
+      if (formatted.kind !== "json") {
+        const invalid = syntaxErrorMessage(pasted);
+        if (invalid) {
+          preservePasteErrorRef.current = true;
+          setError(invalid.message);
+          const selection = editorRef.current?.getSelection() ?? { start: 0 };
+          window.requestAnimationFrame(() => focusRange(selection.start + invalid.issue.offset));
+        }
+        return null;
+      }
+      setError("");
       announce(t("companion.json.autoFormatted"));
       return formatted.output;
     } catch {
+      const invalid = syntaxErrorMessage(pasted);
+      if (invalid) {
+        preservePasteErrorRef.current = true;
+        setError(invalid.message);
+      }
       return null;
     }
   };
@@ -360,7 +438,7 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
   const handleEditorShortcut = (shortcut: JsonEditorShortcut) => {
     if (shortcut === "format") performAction("format");
     else if (shortcut === "new") addDraft();
-    else if (shortcut === "paste-new") void pasteRaw(true);
+    else if (shortcut === "paste-new") void pasteClipboard(true);
     else if (shortcut === "cycle-forward") cycleDraft(false);
     else if (shortcut === "cycle-backward") cycleDraft(true);
     else if (shortcut === "toggle-lock") updateDraft(activeDraft.id, { favorite: !activeDraft.favorite });
@@ -438,30 +516,21 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
 
       <div className={styles.actionBar}>
         <button className={styles.primary} type="button" onClick={() => performAction("format")}>{t("companion.json.action.format")}</button>
-        <details>
-          <summary>{t("companion.json.transformTools")}</summary>
-          <div className={styles.menu}>
+        <HoverActionMenu label={t("companion.json.transformTools")}>
             {(["get", "url", "base64", "serialize", "timestamp", "unicode", "utf8"] as const).map((action) => (
               <button key={action} type="button" onClick={() => performAction(action)}>{labelFor(action)}</button>
             ))}
-          </div>
-        </details>
-        <details>
-          <summary>{t("companion.json.action.unescape")}</summary>
-          <div className={styles.menu}>
+        </HoverActionMenu>
+        <HoverActionMenu label={t("companion.json.action.unescape")}>
             <button type="button" onClick={() => performAction("unescape")}>{labelFor("unescape")}</button>
             <button type="button" onClick={() => performAction("multi-unescape")}>{labelFor("multi-unescape")}</button>
-          </div>
-        </details>
-        <details>
-          <summary>{t("companion.json.copyTools")}</summary>
-          <div className={styles.menu}>
+        </HoverActionMenu>
+        <HoverActionMenu label={t("companion.json.copyTools")}>
             {(["minify", "form-data", "escape", "minify-escape"] as const).map((action) => (
               <button key={action} type="button" onClick={() => void copyAction(action)}>{labelFor(action)}</button>
             ))}
-          </div>
-        </details>
-        <button type="button" onClick={() => void pasteRaw()}>{t("companion.json.rawPaste")}</button>
+        </HoverActionMenu>
+        <button type="button" onClick={() => void pasteClipboard()}>{t("companion.json.rawPaste")}</button>
       </div>
 
       <JsonCodeEditor
@@ -469,7 +538,11 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
         className={styles.editorHost}
         ariaLabel={t("companion.json.editorLabel")}
         value={activeDraft.content}
-        onChange={(content) => { updateDraft(activeDraft.id, { content: content.slice(0, MAX_CONTENT_LENGTH) }); setError(""); }}
+        onChange={(content) => {
+          updateDraft(activeDraft.id, { content: content.slice(0, MAX_CONTENT_LENGTH) });
+          if (preservePasteErrorRef.current) preservePasteErrorRef.current = false;
+          else setError("");
+        }}
         onPasteText={formatPastedText}
         onShortcut={handleEditorShortcut}
         placeholder={t("companion.json.placeholder")}

@@ -1613,6 +1613,7 @@ function createCompanionPanelWindow(url: URL, log: Logger): BrowserWindow {
     height: Math.min(COMPANION_PANEL_HEIGHT, display.height - 40),
     minWidth: 390,
     minHeight: 520,
+    focusable: true,
     show: false,
     title: "Piora 随身舱",
     backgroundColor: "#f8f3ed",
@@ -1635,12 +1636,12 @@ function createCompanionPanelWindow(url: URL, log: Logger): BrowserWindow {
     if (!companionPanelKeepVisibleUntilClose && !window.isDestroyed() && window.isVisible()) window.hide();
   });
   window.on("maximize", () => { companionPanelKeepVisibleUntilClose = true; });
+  window.on("unmaximize", () => { companionPanelKeepVisibleUntilClose = false; });
   window.on("close", (event) => {
     if (quitRequested || shutdownComplete) return;
     event.preventDefault();
     companionPanelKeepVisibleUntilClose = false;
     window.hide();
-    if (window.isMaximized()) window.unmaximize();
   });
   window.on("closed", () => {
     companionPanelKeepVisibleUntilClose = false;
@@ -1657,6 +1658,7 @@ function showCompanionPanel(): boolean {
     return true;
   }
   if (companionPanelWindow.isMinimized()) companionPanelWindow.restore();
+  companionPanelKeepVisibleUntilClose = companionPanelWindow.isMaximized();
   companionPanelWindow.show();
   companionPanelWindow.focus();
   return true;
@@ -1666,14 +1668,10 @@ function toggleCompanionPanel(): boolean {
   if (
     companionPanelWindow
     && !companionPanelWindow.isDestroyed()
-    && (companionPanelWindow.isVisible() || companionPanelWindow.isMinimized() || companionPanelWindow.isMaximized())
+    && companionPanelWindow.isFocused()
   ) {
     companionPanelKeepVisibleUntilClose = false;
-    const wasMaximized = companionPanelWindow.isMaximized();
     companionPanelWindow.hide();
-    // On Windows an asynchronous unmaximize can reactivate a visible native
-    // window. Hide first, then restore its normal bounds while it is hidden.
-    if (wasMaximized) companionPanelWindow.unmaximize();
     return true;
   }
   return showCompanionPanel();

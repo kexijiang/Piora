@@ -12,6 +12,8 @@ import type {
 } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { AgentCommandError, createAgentSessionRequest, sendAgentCommand } from "@/lib/agent-client";
+import { reduceAgentPhase, type AgentPhase } from "@/lib/agent-phase";
+import { useI18n } from "@/hooks/useI18n";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import { estimateSessionContextUsage, mergeContextUsageWithEstimate } from "@/lib/context-usage";
 import { isPromptMaterialRuntimeMessage, type PromptMaterialReference } from "@/lib/prompt-material-format";
@@ -30,6 +32,8 @@ import type {
   SessionSystemPromptBinding,
   SystemPromptSelection,
 } from "@/lib/system-prompt-types";
+
+export type { AgentPhase } from "@/lib/agent-phase";
 
 export interface SessionData {
   sessionId: string;
@@ -94,6 +98,8 @@ type AgentStateResponse = {
   isPromptRunning?: boolean;
   isBashRunning?: boolean;
   isCompacting?: boolean;
+  runtime?: string;
+  activeTools?: { id: string; name: string }[];
   extensionStatuses?: ExtensionStatusItem[];
   extensionWidgets?: ExtensionWidgetItem[];
   queuedMessages?: { steering?: string[]; followUp?: string[] } | null;
@@ -142,12 +148,6 @@ type NoticeAction =
   | { type: "add"; notice: NoticeItem }
   | { type: "mark_oldest_exiting" }
   | { type: "remove"; id: string };
-
-export type AgentPhase =
-  | { kind: "waiting_model" }
-  | { kind: "running_command" }
-  | { kind: "running_tools"; tools: { id: string; name: string }[] }
-  | null;
 
 export interface CompactResultInfo {
   reason: "manual" | "threshold" | "overflow" | "auto" | string;
@@ -406,6 +406,7 @@ type SlashCommandsResponse = {
 };
 
 export function useAgentSession(opts: UseAgentSessionOptions) {
+  const { t } = useI18n();
   const {
     session, newSessionCwd, newSessionInitialModel, newSessionInitialSystemPromptSelection, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
@@ -494,6 +495,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const systemPromptSavingRef = useRef(false);
   const thinkingLevelOverrideRef = useRef<Exclude<ThinkingLevelOption, "auto"> | null>(null);
   const promptRunIdRef = useRef(0);
+  const cancelledPromptRunIdRef = useRef<number | null>(null);
+  const preparingPromptRunIdRef = useRef<number | null>(null);
+  const cancelPreparedPromptRef = useRef<(() => void) | null>(null);
+  const abortRequestRunIdRef = useRef<number | null>(null);
+  const phaseEventRevisionRef = useRef(0);
   const promptSettlementByRunRef = useRef(new Map<number, Promise<void>>());
   const promptSettlementPollByRunRef = useRef(new Map<number, Promise<void>>());
   const sessionLoadAbortRef = useRef<AbortController | null>(null);
@@ -565,6 +571,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionLoadAbortRef.current?.abort();
     const controller = new AbortController();
     sessionLoadAbortRef.current = controller;
+    const runId = promptRunIdRef.current;
     let messagesLoaded = false;
     try {
       if (showLoading) setLoading(true);
@@ -587,7 +594,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (!res.ok) throw await sessionResponseError(res);
         d = await res.json() as SessionData;
       }
-      if (sessionIdRef.current !== sid) return null;
+      if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
       setData(d);
       setActiveLeafId(d.leafId);
       setMessages(d.context.messages);
@@ -612,7 +619,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         });
         if (!stateRes.ok) throw new Error(`HTTP ${stateRes.status}`);
         const agentState = await stateRes.json() as { running: boolean; state?: AgentStateResponse };
-        if (sessionIdRef.current !== sid) return null;
+        if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
 
         const liveState = agentState.state;
         if (liveState) {
@@ -776,6 +783,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const timeout = setTimeout(() => settle("timeout"), EVENT_STREAM_CONNECT_TIMEOUT_MS);
 
       es.onmessage = (e) => {
+        if (eventSourceRef.current !== es) return;
         try {
           const event = JSON.parse(e.data) as AgentEvent;
           if (event.type === "connected") settle("connected");
@@ -793,7 +801,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           if (eventSourceRef.current === es && agentRunningRef.current) {
             eventSourceRef.current = null;
             setTimeout(() => {
-              if (agentRunningRef.current) void connectEvents(sid);
+              if (agentRunningRef.current && !eventSourceRef.current && sessionIdRef.current === sid) void connectEvents(sid);
             }, 1000);
           }
         }
@@ -981,29 +989,32 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [addNotice, opts.chatInputRef]);
 
   const finishPromptWithoutStream = useCallback((sid: string | null = sessionIdRef.current, runId = promptRunIdRef.current) => {
+    // End the visible run synchronously. History/state hydration is not part
+    // of cancellation and can stall independently of the model transport.
+    if (promptRunIdRef.current !== runId) return Promise.resolve();
+    const wasRunning = agentRunningRef.current;
+    agentRunningRef.current = false;
+    closeEvents();
+    optimisticUserMessageKeyRef.current = null;
+    if (wasRunning) {
+      setAgentRunning(false);
+      setAgentPhase(null);
+      setRetryInfo(null);
+      setIsCompacting(false);
+      setExtensionDialog(null);
+      setExtensionCustomUi(null);
+      dispatch({ type: "end" });
+      const shouldNotify = !suppressCompletionNotificationRef.current;
+      suppressCompletionNotificationRef.current = false;
+      if (shouldNotify && sid) onAgentEnd?.(sid);
+    }
     const existing = promptSettlementByRunRef.current.get(runId);
     if (existing) return existing;
     const settlement = (async () => {
       // Bail out before loadSession too: a stale finish for a previous run
       // must not overwrite the messages of the run currently streaming.
       if (promptRunIdRef.current !== runId) return;
-      try {
-        if (sid) await loadSession(sid, false, true);
-      } finally {
-        if (promptRunIdRef.current !== runId) return;
-        const wasRunning = agentRunningRef.current;
-        agentRunningRef.current = false;
-        closeEvents();
-        optimisticUserMessageKeyRef.current = null;
-        if (!wasRunning) return;
-        setAgentRunning(false);
-        setAgentPhase(null);
-        setRetryInfo(null);
-        dispatch({ type: "end" });
-        const shouldNotify = !suppressCompletionNotificationRef.current;
-        suppressCompletionNotificationRef.current = false;
-        if (shouldNotify && sid) onAgentEnd?.(sid);
-      }
+      if (sid) await loadSession(sid, false, true);
     })();
     promptSettlementByRunRef.current.set(runId, settlement);
     return settlement;
@@ -1019,11 +1030,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       while (agentRunningRef.current && Date.now() - startedAt < PROMPT_SETTLE_MAX_MS) {
         if (promptRunIdRef.current !== runId) return;
         try {
-          const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`);
+          const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`, { signal: AbortSignal.timeout(10_000) });
           if (res.ok) {
             const data = await res.json() as { running?: boolean; state?: AgentStateResponse };
+            if (promptRunIdRef.current !== runId) return;
             const state = data.state;
-            if (!data.running || !state || (!state.isStreaming && !state.isPromptRunning)) {
+            if (!data.running || !state || (!state.isStreaming && !state.isPromptRunning && !state.isCompacting && state.runtime !== "stopping")) {
               await finishPromptWithoutStream(sid, runId);
               return;
             }
@@ -1072,7 +1084,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const refreshContextUsage = useCallback(async (sid: string) => {
     try {
-      const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`);
+      const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok || sessionIdRef.current !== sid) return;
       const data = await res.json() as { state?: AgentStateResponse };
       if (sessionIdRef.current !== sid) return;
@@ -1091,24 +1103,33 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // through the same settlement path used by non-streaming prompts.
   const reconcileAgentState = useCallback(async (sid: string) => {
     if (!agentRunningRef.current) return;
+    if (preparingPromptRunIdRef.current === promptRunIdRef.current) return;
     const runId = promptRunIdRef.current;
+    const phaseRevision = phaseEventRevisionRef.current;
     try {
-      const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`);
+      const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) return;
       const data = await res.json() as { running?: boolean; state?: AgentStateResponse };
       // A slow response can straddle a run boundary (previous run finished
       // and the user already started the next one while this request was in
       // flight) — everything in it is stale, drop it.
-      if (promptRunIdRef.current !== runId) return;
+      if (promptRunIdRef.current !== runId || !agentRunningRef.current) return;
       const state = data.state;
       // Mirror compaction state unconditionally: a missed compaction_end
       // would otherwise leave the "Stop compaction" UI stuck. No state
       // (wrapper destroyed) means nothing is compacting.
-      setIsCompacting(state?.isCompacting ?? false);
+      setIsCompacting(cancelledPromptRunIdRef.current === runId ? false : state?.isCompacting ?? false);
       setQueuedMessages(normalizeQueuedMessages(state?.queuedMessages));
       if (state?.capabilities !== undefined) setCapabilities(state.capabilities);
       const busy = data.running && state
-        && (state.isStreaming || state.isPromptRunning || state.isCompacting);
+        && (state.isStreaming || state.isPromptRunning || state.isCompacting || state.runtime === "stopping");
+      if (state?.runtime === "stopping") setAgentPhase({ kind: "stopping" });
+      else if (state?.activeTools && phaseEventRevisionRef.current === phaseRevision && cancelledPromptRunIdRef.current !== runId) {
+        const tools = state.activeTools;
+        setAgentPhase((phase) => tools.length
+          ? { kind: "running_tools", tools }
+          : phase?.kind === "running_tools" || phase?.kind === "stopping" ? { kind: "waiting_model" } : phase);
+      }
       // Context usage is useful while the run is still active (especially
       // across multi-tool turns), so do not defer it until idle settlement.
       if (state?.contextUsage !== undefined) setContextUsage(state.contextUsage ?? null);
@@ -1160,13 +1181,17 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [agentRunning]);
 
   const handleAgentEvent = useCallback((event: AgentEvent) => {
+    // Stop intent wins over buffered agent_start/tool/retry events, even
+    // while the abort HTTP request or server cleanup is still pending.
+    if (cancelledPromptRunIdRef.current === promptRunIdRef.current) return;
+    phaseEventRevisionRef.current += 1;
     switch (event.type) {
       case "agent_start":
         liveOutputFollowRef.current = true;
         setLiveOutputFollowPaused(false);
         agentRunningRef.current = true;
         setAgentRunning(true);
-        setAgentPhase({ kind: "waiting_model" });
+        setAgentPhase((phase) => reduceAgentPhase(phase, event));
         dispatch({ type: "start" });
         break;
       case "agent_end":
@@ -1174,7 +1199,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // compacting, or continuing messages queued by extension handlers.
         // Keep the stream open until prompt_done and server-idle settlement.
         if (!agentRunningRef.current && !bashRunningRef.current) break;
-        setAgentPhase(null);
+        setAgentPhase((phase) => reduceAgentPhase(phase, event));
         setRetryInfo(null);
         setExtensionDialog(null);
         dispatch({ type: "end" });
@@ -1223,7 +1248,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             void refreshContextUsage(sessionIdRef.current);
           }
         }
-        setAgentPhase(null);
+        setAgentPhase((phase) => reduceAgentPhase(phase, event));
         break;
       }
       case "message_end": {
@@ -1260,30 +1285,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           setMessages((prev) => [...prev, normalizeToolCalls(completed)]);
         }
         dispatch({ type: "reset" });
-        setAgentPhase(bashRunningRef.current ? null : { kind: "waiting_model" });
+        setAgentPhase((phase) => bashRunningRef.current ? null : reduceAgentPhase(phase, event));
         if (completed?.role === "assistant" && sessionIdRef.current) {
           void refreshContextUsage(sessionIdRef.current);
         }
         break;
       }
       case "tool_execution_start": {
-        const id = event.toolCallId as string;
-        const name = event.toolName as string;
-        setAgentPhase((prev) => {
-          const tools = prev?.kind === "running_tools" ? [...prev.tools] : [];
-          if (!tools.some((t) => t.id === id)) tools.push({ id, name });
-          return { kind: "running_tools", tools };
-        });
+        if (!agentRunningRef.current) break;
+        setAgentPhase((phase) => reduceAgentPhase(phase, event));
         break;
       }
       case "tool_execution_end": {
-        const id = event.toolCallId as string;
-        setAgentPhase((prev) => {
-          if (prev?.kind !== "running_tools") return prev;
-          const tools = prev.tools.filter((t) => t.id !== id);
-          if (tools.length === 0) return { kind: "waiting_model" };
-          return { kind: "running_tools", tools };
-        });
+        if (!agentRunningRef.current) break;
+        setAgentPhase((phase) => reduceAgentPhase(phase, event));
         break;
       }
       case "queue_update":
@@ -1348,6 +1363,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
 
     const promptRunId = promptRunIdRef.current + 1;
+    sessionLoadAbortRef.current?.abort();
+    preparingPromptRunIdRef.current = promptRunId;
+    cancelledPromptRunIdRef.current = null;
+    const isCurrentPrompt = () => promptRunIdRef.current === promptRunId
+      && cancelledPromptRunIdRef.current !== promptRunId;
     promptSettlementByRunRef.current.clear();
     promptSettlementPollByRunRef.current.clear();
 
@@ -1375,6 +1395,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     };
     setMessages((prev) => [...prev, userMsg]);
     optimisticUserMessageKeyRef.current = userMessageKey(userMsg);
+    cancelPreparedPromptRef.current = () => {
+      setMessages((current) => current.map((entry) => entry === userMsg ? { ...entry, sendError: t("chat.sendCancelled") } : entry));
+      opts.chatInputRef?.current?.restoreFailedPrompt(message, files, images);
+    };
     promptRunIdRef.current = promptRunId;
     suppressCompletionNotificationRef.current = false;
     agentRunningRef.current = true;
@@ -1392,14 +1416,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
     try {
       const promptMaterials = materialFiles.length ? await uploadPromptMaterialFiles(materialFiles) : [];
+      if (!isCurrentPrompt()) return;
       if (isNew && newSessionCwd) {
         const existingSid = sessionIdRef.current ?? await ensuringNewSessionRef.current;
         const sid = existingSid ?? await ensureNewSession();
+        if (!isCurrentPrompt()) return;
 
         if (sid) {
           sentSessionId = sid;
           promoteNewSession(0, displayMessage.slice(0, 2_000));
           await ensureEventsConnected(sid);
+          if (!isCurrentPrompt()) return;
+          preparingPromptRunIdRef.current = null;
+          cancelPreparedPromptRef.current = null;
           promptRequestStarted = true;
           await sendAgentCommand(sid, {
             type: "prompt",
@@ -1411,6 +1440,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       } else if (session) {
         sentSessionId = session.id;
         await ensureEventsConnected(session.id);
+        if (!isCurrentPrompt()) return;
+        preparingPromptRunIdRef.current = null;
+        cancelPreparedPromptRef.current = null;
         promptRequestStarted = true;
         await sendAgentCommand(session.id, {
           type: "prompt",
@@ -1419,10 +1451,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           ...(piImages?.length ? { images: piImages } : {}),
         });
       }
-      if (isSlashCommandPrompt && sentSessionId) {
+      if (isCurrentPrompt() && isSlashCommandPrompt && sentSessionId) {
         void waitForPromptSettlement(sentSessionId, promptRunId);
       }
     } catch (e) {
+      if (!isCurrentPrompt()) return;
       console.error("Failed to send message:", e);
       // A failed prompt POST is ambiguous: the server may have accepted it
       // before the response connection was lost. Keep SSE alive until the
@@ -1458,8 +1491,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setAgentRunning(false);
       setAgentPhase(null);
       dispatch({ type: "end" });
+    } finally {
+      if (preparingPromptRunIdRef.current === promptRunId) {
+        preparingPromptRunIdRef.current = null;
+        cancelPreparedPromptRef.current = null;
+      }
     }
-  }, [isNew, newSessionCwd, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, closeEvents, opts.chatInputRef]);
+  }, [isNew, newSessionCwd, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, closeEvents, opts.chatInputRef, t]);
 
   const executeBash = useCallback(async (command: string, excludeFromContext: boolean) => {
     if (agentRunningRef.current || bashRunningRef.current) return;
@@ -1493,27 +1531,48 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const handleAbort = useCallback(async () => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
     const runId = promptRunIdRef.current;
+    if (abortRequestRunIdRef.current === runId) return;
     suppressCompletionNotificationRef.current = true;
     if (bashRunningRef.current) {
+      if (!sid) return;
       try {
-        await sendAgentCommand(sid, { type: "abort_bash" });
+        await sendAgentCommand(sid, { type: "abort_bash" }, { timeoutMs: 10_000 });
       } catch (e) {
-        console.error("Failed to abort bash:", e);
+        addNotice({ type: "error", message: t("chat.stopFailed", { reason: e instanceof Error ? e.message : String(e) }) });
       }
       return;
     }
+    if (!agentRunningRef.current) return;
+    cancelledPromptRunIdRef.current = runId;
+    setAgentPhase({ kind: "stopping" });
+    setRetryInfo(null);
+    setIsCompacting(false);
+    setExtensionDialog(null);
+    setExtensionCustomUi(null);
+    if (preparingPromptRunIdRef.current === runId) {
+      cancelPreparedPromptRef.current?.();
+      cancelPreparedPromptRef.current = null;
+      void finishPromptWithoutStream(null, runId);
+      return;
+    }
+    if (!sid) return;
+    abortRequestRunIdRef.current = runId;
     try {
-      await sendAgentCommand(sid, { type: "abort" });
+      await sendAgentCommand(sid, { type: "abort" }, { timeoutMs: 10_000 });
       // The server acknowledges as soon as the SDK cancellation signal has
       // been delivered. End the local stream now instead of waiting for slow
       // model-transport or extension cleanup to emit prompt_done.
-      await finishPromptWithoutStream(sid, runId);
+      if (promptRunIdRef.current !== runId) return;
+      setQueuedMessages({ steering: [], followUp: [] });
+      void finishPromptWithoutStream(sid, runId);
     } catch (e) {
-      console.error("Failed to abort:", e);
+      if (promptRunIdRef.current !== runId) return;
+      addNotice({ type: "error", message: t("chat.stopFailed", { reason: e instanceof Error ? e.message : String(e) }) });
+    } finally {
+      if (abortRequestRunIdRef.current === runId) abortRequestRunIdRef.current = null;
     }
-  }, [finishPromptWithoutStream]);
+  }, [addNotice, finishPromptWithoutStream, t]);
 
   const handleFork = useCallback(async (entryId: string) => {
     if (bashRunningRef.current) return;
@@ -1975,10 +2034,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       loadSession(session.id, initialSessionData === null, true, takePrefetchedSession(session)).then((agentState) => {
         if (agentState?.running) {
           invalidatePrefetchedSession(session.id);
-          if (agentState.state?.isStreaming || agentState.state?.isPromptRunning) {
+          if (agentState.state?.isStreaming || agentState.state?.isPromptRunning || agentState.state?.runtime === "stopping") {
             agentRunningRef.current = true;
             setAgentRunning(true);
-            setAgentPhase(agentState.state.isStreaming ? { kind: "waiting_model" } : { kind: "running_command" });
+            setAgentPhase(agentState.state.runtime === "stopping" ? { kind: "stopping" }
+              : agentState.state.activeTools?.length ? { kind: "running_tools", tools: agentState.state.activeTools }
+                : agentState.state.isStreaming ? { kind: "waiting_model" } : { kind: "running_command" });
             dispatch({ type: "start" });
             void connectEvents(session.id);
             if (!agentState.state.isStreaming && agentState.state.isPromptRunning) {

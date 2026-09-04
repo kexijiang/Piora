@@ -83,6 +83,7 @@ export interface DesktopBrowserDownload {
 }
 
 type BrowserTab = {
+  attached: boolean;
   id: string;
   loading: boolean;
   sessionId: string;
@@ -153,6 +154,7 @@ function validBounds(value: unknown, window: BrowserWindow): Rectangle | null {
   if (!value || typeof value !== "object") return null;
   const candidate = value as Partial<Rectangle>;
   if (![candidate.x, candidate.y, candidate.width, candidate.height].every(Number.isFinite)) return null;
+  if (candidate.width! <= 0 || candidate.height! <= 0) return null;
   const content = window.getContentBounds();
   const x = Math.max(0, Math.round(candidate.x!));
   const y = Math.max(0, Math.round(candidate.y!));
@@ -267,6 +269,8 @@ export class DesktopBrowserManager {
     this.registerIpc();
     this.window.on("hide", () => this.updateVisibility(false));
     this.window.on("show", () => this.updateVisibility());
+    this.window.on("minimize", () => this.updateVisibility(false));
+    this.window.on("restore", () => this.updateVisibility());
     this.window.on("closed", () => {
       void this.flushStorage().catch((error) => this.log.warn("Unable to persist browser state while closing", error));
       this.destroy();
@@ -282,7 +286,7 @@ export class DesktopBrowserManager {
     this.browserSession.off("will-download", this.handleDownload);
     this.browserSession.cookies.off("changed", this.handleCookieChanged);
     for (const tab of this.tabs.splice(0)) {
-      if (!this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
+      if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
       if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
     }
     this.removeIpc();
@@ -337,7 +341,9 @@ export class DesktopBrowserManager {
     });
     ipcMain.handle(BROWSER_VIEWPORT_CHANNEL, (event, rawBounds: unknown, visible: unknown): boolean => {
       if (!this.isTrustedSender(event)) return false;
-      this.bounds = validBounds(rawBounds, this.window);
+      // Windows reports a 0x0 content area while minimized. A late renderer
+      // resize must not erase the last usable viewport before restore.
+      if (!this.window.isMinimized()) this.bounds = validBounds(rawBounds, this.window);
       this.requestedVisible = visible === true;
       this.updateVisibility();
       return Boolean(this.bounds);
@@ -383,8 +389,7 @@ export class DesktopBrowserManager {
     });
     view.setBackgroundColor("#ffffff");
     view.setVisible(false);
-    this.window.contentView.addChildView(view);
-    const tab: BrowserTab = { id, loading: false, sessionId, title: "", view };
+    const tab: BrowserTab = { attached: false, id, loading: false, sessionId, title: "", view };
     this.tabs.push(tab);
     this.installTabEvents(tab);
     if (activate || !this.activeTabIds.has(sessionId)) this.activeTabIds.set(sessionId, id);
@@ -505,18 +510,42 @@ export class DesktopBrowserManager {
   }
 
   private updateVisibility(force?: boolean): void {
+    if (this.destroyed || this.window.isDestroyed()) return;
     const active = this.activeTab(this.displayedSessionId);
     const shouldShow = force ?? Boolean(
       this.requestedVisible
       && this.bounds
       && active
       && browserUrl(active.view.webContents.getURL()) !== "about:blank"
-      && this.window.isVisible(),
+      && this.window.isVisible()
+      && !this.window.isMinimized(),
     );
+    let attachmentChanged = false;
     for (const tab of this.tabs) {
       const visible = shouldShow && tab === active && tab.sessionId === this.displayedSessionId;
-      if (visible && this.bounds) tab.view.setBounds(this.bounds);
+      if (visible && this.bounds) {
+        tab.view.setBounds(this.bounds);
+        if (!tab.attached) {
+          this.window.contentView.addChildView(tab.view);
+          tab.attached = true;
+          attachmentChanged = true;
+        }
+      }
       tab.view.setVisible(visible);
+      if (!visible && tab.attached) {
+        // Native Chromium surfaces (including cross-origin login frames) are
+        // outside React/CSS clipping. Remove the entire view from the host,
+        // but keep its WebContents alive so sign-in and navigation survive.
+        this.window.contentView.removeChildView(tab.view);
+        tab.attached = false;
+        attachmentChanged = true;
+      }
+    }
+    if (attachmentChanged) {
+      this.log.info("Browser display attachment changed", {
+        visible: Boolean(shouldShow),
+        attachedViews: this.tabs.filter((tab) => tab.attached).length,
+      });
     }
   }
 
@@ -744,7 +773,7 @@ export class DesktopBrowserManager {
     }
     const [tab] = this.tabs.splice(index, 1);
     if (!tab) return;
-    this.window.contentView.removeChildView(tab.view);
+    if (tab.attached) this.window.contentView.removeChildView(tab.view);
     if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
     if (this.activeTabIds.get(sessionId) === tabId) {
       const remaining = this.tabs.filter((candidate) => candidate.sessionId === sessionId);

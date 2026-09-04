@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "general" | "conversation" | "shortcuts" | "speech" | "automations" | "models" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "language" | "companion" | "remote" | "usage" | "archived";
+export type SettingsKey = "general" | "conversation" | "shortcuts" | "speech" | "automations" | "models" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "language" | "companion" | "remote" | "usage" | "archived";
 
 export interface SettingsSearchItem {
   id: string;
@@ -43,6 +43,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "automations.notifications", section: "automations", labelKey: "automations.notifications", descriptionKey: "automations.description", keywords: ["notify", "failed", "通知", "失败"] },
 
   { id: "models", section: "models", labelKey: "common.models", descriptionKey: "settings.modelsDescription", keywords: ["provider", "api key", "oauth", "模型", "登录", "密钥"] },
+  { id: "tools", section: "tools", labelKey: "projectTools.title", descriptionKey: "projectTools.description", keywords: ["tools", "project", "harmony", "工具", "项目", "鸿蒙"], requiresProject: true },
   { id: "capabilityBundles", section: "capabilityBundles", labelKey: "capabilityBundles.title", descriptionKey: "capabilityBundles.description", keywords: ["tools", "profile", "能力包", "工具"], requiresProject: true },
   { id: "extensions", section: "extensions", labelKey: "settings.extensions", descriptionKey: "settings.manageExtensionsDescription", keywords: ["extension", "tools", "扩展", "工具"], requiresProject: true },
   { id: "skills", section: "skills", labelKey: "common.skills", descriptionKey: "settings.skillsDescription", keywords: ["skill", "instruction", "技能", "说明"], requiresProject: true },
@@ -51,7 +52,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "appearance", section: "appearance", labelKey: "appearance.title", descriptionKey: "appearance.description", keywords: ["ui", "style", "界面", "外观"] },
   { id: "appearance.theme", section: "appearance", labelKey: "appearance.theme", descriptionKey: "appearance.themeHint", keywords: ["light", "dark", "亮色", "深色", "主题"] },
   { id: "appearance.looks", section: "appearance", labelKey: "appearance.looks", descriptionKey: "appearance.looksHint", keywords: ["style", "preset", "风格", "配色"] },
-  { id: "appearance.font", section: "appearance", labelKey: "appearance.font.title", descriptionKey: "appearance.font.hint", keywords: ["size", "family", "字体", "字号"] },
+  { id: "appearance.font", section: "appearance", labelKey: "appearance.font.title", descriptionKey: "appearance.font.hint", keywords: ["size", "family", "weight", "bold", "字体", "字号", "粗细", "加粗"] },
   { id: "appearance.background", section: "appearance", labelKey: "background.title", descriptionKey: "settings.appearanceDescription", keywords: ["wallpaper", "image", "背景", "图片"] },
   { id: "language", section: "language", labelKey: "common.language", descriptionKey: "settings.languageDescription", keywords: ["locale", "english", "chinese", "语言", "中文", "英文"] },
 

@@ -103,6 +103,8 @@
   --motion-ease-spring: cubic-bezier(0.2, 0.82, 0.2, 1);
   --overlay-scrim: rgba(22, 20, 19, 0.3);
   --ui-font-size: 14px;
+  --ui-font-weight: 400;
+  --chat-inline-code-color: #7c3aed;
   /* Inter is the default UI face (docs/PIORA_UI_STYLE_SPEC.md §3.1), bundled
      locally in /fonts/inter. Chinese falls back to YaHei/PingFang. */
   --ui-font-family: 'Inter', 'Microsoft YaHei UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -154,6 +156,7 @@ html[data-ui-font="consolas"] {
 
 html.dark {
   color-scheme: dark;
+  --chat-inline-code-color: #c4b5fd;
   --bg: #111113;
   --bg-panel: #18181b;
   --bg-hover: #1f1f23;
@@ -637,6 +640,7 @@ html, body {
   color: var(--text);
   font-family: var(--ui-font-family);
   font-size: var(--ui-font-size);
+  font-weight: var(--ui-font-weight);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -765,6 +769,7 @@ input,
 textarea,
 select {
   font-family: inherit;
+  font-weight: inherit;
 }
 
 /* Codex-style interaction baseline: every button gets the same quiet gray
@@ -3279,6 +3284,61 @@ select:focus-visible,
   transform: translateY(0) scale(1);
 }
 
+.font-weight-setting {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.font-weight-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+}
+
+.font-weight-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.font-weight-option:has(input:checked) {
+  color: var(--text);
+  background: var(--bg-selected);
+}
+
+.font-weight-option input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.font-weight-hint { color: var(--text-dim); }
+
+.font-reading-preview {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+}
+
+.font-reading-preview-label {
+  margin: 0 0 10px;
+  color: var(--text-dim);
+  font-size: var(--text-xs);
+}
+
 .font-size-custom-field {
   display: inline-flex;
   align-items: center;
@@ -3817,6 +3877,7 @@ pre, code {
 /* react-markdown output styles */
 .markdown-body {
   font-size: var(--chat-font-size);
+  font-weight: var(--ui-font-weight);
   line-height: var(--chat-line-height);
   color: var(--text);
   word-break: break-word;
@@ -3825,7 +3886,7 @@ pre, code {
 .markdown-body p:last-child { margin-bottom: 0; }
 .markdown-body h1, .markdown-body h2, .markdown-body h3,
 .markdown-body h4, .markdown-body h5, .markdown-body h6 {
-  font-weight: 600;
+  font-weight: max(600, var(--ui-font-weight));
   margin: 10px 0 5px;
   color: var(--text);
   line-height: 1.35;
@@ -3876,6 +3937,28 @@ pre, code {
   font-size: 0.92em;
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
 }
+/* Model-authored emphasis stays distinct from prose in every appearance theme. */
+.markdown-assistant-message {
+  --chat-emphasis-color: color-mix(in srgb, var(--accent) 85%, var(--text));
+}
+.markdown-assistant-message :is(h1, h2, h3, h4, h5, h6) {
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+}
+.markdown-assistant-message :is(strong, b) {
+  color: var(--chat-emphasis-color);
+}
+.markdown-assistant-message .markdown-inline-code {
+  color: var(--chat-inline-code-color);
+  background: color-mix(in srgb, var(--chat-inline-code-color) 8%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chat-inline-code-color) 18%, transparent);
+}
+.markdown-assistant-message mark {
+  color: var(--chat-emphasis-color);
+  background: color-mix(in srgb, var(--accent) 13%, var(--bg));
+  border-radius: 3px;
+  padding: 1px 3px;
+}
+
 .markdown-body .contains-task-list {
   padding-left: 0;
   list-style: none;
@@ -4178,6 +4261,16 @@ pre, code {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+.mermaid-preview-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.mermaid-image-action[data-state="success"] {
+  color: var(--status-ready);
+}
+.mermaid-image-action[data-state="error"] {
+  color: var(--status-error);
+}
 
 .mermaid-zoom-dialog {
   width: 100vw;
@@ -4277,6 +4370,10 @@ pre, code {
 .mermaid-zoom-stepper button:disabled {
   opacity: 0.35;
   cursor: default;
+}
+.mermaid-zoom-icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
 }
 .mermaid-zoom-stepper button:focus-visible,
 .mermaid-zoom-icon-button:focus-visible {
