@@ -204,6 +204,7 @@ export async function collectRuntimeDependencyAssets(
       destination: join(destinationRoot, packageRelativePath),
       required: true,
       rejectSymlinks: true,
+      omitNodeModuleBins: true,
     });
 
     const requiredPeers = Object.fromEntries(
@@ -255,6 +256,11 @@ export async function findSymbolicLinks(root) {
     }
   }
   return links;
+}
+
+export function isNodeModulesBinPath(root, candidate) {
+  const segments = relative(root, candidate).split(/[\\/]+/);
+  return segments.some((segment, index) => segment === "node_modules" && segments[index + 1] === ".bin");
 }
 
 async function isNonEmptyDirectory(path) {
@@ -371,7 +377,9 @@ async function main() {
       throw new Error(`Expected ${asset.name} at ${asset.source}.`);
     }
     if (asset.rejectSymlinks) {
-      const symbolicLinks = await findSymbolicLinks(asset.source);
+      const symbolicLinks = (await findSymbolicLinks(asset.source)).filter((path) => (
+        !asset.omitNodeModuleBins || !isNodeModulesBinPath(asset.source, path)
+      ));
       if (symbolicLinks.length > 0) {
         throw new Error(
           `Refusing to stage ${asset.name} containing symbolic links:\n${symbolicLinks.join("\n")}`,
@@ -392,6 +400,9 @@ async function main() {
       recursive: true,
       force: true,
       dereference: true,
+      ...(asset.omitNodeModuleBins
+        ? { filter: (source) => !isNodeModulesBinPath(asset.source, source) }
+        : {}),
     });
     const destinationType = await getPathType(asset.destination);
     if ((asset.sourceType === "directory" && !await isNonEmptyDirectory(asset.destination)) || (asset.sourceType === "file" && destinationType !== "file")) {
