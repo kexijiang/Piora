@@ -36,7 +36,7 @@ function createTemporarySessionId(): string {
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
 }
 
-export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function SessionSidebar({ selectedSessionId, selectedRoomId, onSelectSession, onSelectSearchResult, onSelectRoom, onNewSession, onRequestNewSession, initialSessionId, initialRoomId, skipInitialProjectSelection, onInitialRestoreDone, onInitialRoomRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onFocusFileSearch, onOpenSettings, activeProjectRoot }, ref) {
+export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function SessionSidebar({ selectedSessionId, selectedRoomId, onSelectSession, onSelectSearchResult, onSelectRoom, onNewSession, onRequestNewSession, initialSessionId, initialRoomId, skipInitialProjectSelection, onInitialRestoreDone, onInitialRoomRestoreDone, refreshKey, onSessionDeleted, selectedCwd: selectedCwdProp, onCwdChange, onOpenSettings, activeProjectRoot }, ref) {
   const { t } = useI18n();
   const [sessionFlags, setSessionFlags] = useState<SessionFlags>({});
   const primaryActionRef = useRef<HTMLButtonElement>(null);
@@ -163,8 +163,7 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
     openProjectPicker: handleCustomPathClick,
     openConversationSearch() { setConversationSearchOpen(true); },
     focusPrimaryNavigation() { primaryActionRef.current?.focus({ preventScroll: true }); },
-    focusFileSearch() { onFocusFileSearch?.(); },
-  }), [handleCustomPathClick, onFocusFileSearch]);
+  }), [handleCustomPathClick]);
   const handleSelectSessionFromList = useCallback((s: SessionInfo) => {
     // Agent sessions are process-owned and keep running independently of the
     // visible chat. Switching is therefore safe and must remain immediate.
@@ -435,7 +434,6 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
       )}
       <SidebarNavigation
         onOpenConversationSearch={() => setConversationSearchOpen(true)}
-        onFocusFileSearch={onFocusFileSearch}
         primaryActionRef={primaryActionRef}
         onOpenSettings={onOpenSettings}
         selectedCwd={selectedCwd}

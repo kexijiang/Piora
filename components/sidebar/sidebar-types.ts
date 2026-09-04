@@ -169,7 +169,6 @@ export interface SessionSidebarProps {
   onSessionDeleted?: (session: SessionInfo) => void;
   selectedCwd?: string | null;
   onCwdChange?: (cwd: string | null, projectRoot?: string | null) => void;
-  onFocusFileSearch?: () => void;
   onOpenSettings?: (key?: SettingsKey) => void;
   activeProjectRoot?: string | null;
 }
@@ -178,7 +177,6 @@ export interface SessionSidebarHandle {
   openProjectPicker: () => void;
   openConversationSearch: () => void;
   focusPrimaryNavigation: () => void;
-  focusFileSearch: () => void;
 }
 
 export interface WorktreeEntry {

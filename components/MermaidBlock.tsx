@@ -3,7 +3,20 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import vs from "react-syntax-highlighter/dist/esm/styles/prism/vs";
 import vscDarkPlus from "react-syntax-highlighter/dist/esm/styles/prism/vsc-dark-plus";
-import { useTheme } from "@/hooks/useTheme";
+import a11yOneLight from "react-syntax-highlighter/dist/esm/styles/prism/a11y-one-light";
+import coldarkCold from "react-syntax-highlighter/dist/esm/styles/prism/coldark-cold";
+import duotoneDark from "react-syntax-highlighter/dist/esm/styles/prism/duotone-dark";
+import duotoneLight from "react-syntax-highlighter/dist/esm/styles/prism/duotone-light";
+import dracula from "react-syntax-highlighter/dist/esm/styles/prism/dracula";
+import gruvboxDark from "react-syntax-highlighter/dist/esm/styles/prism/gruvbox-dark";
+import materialDark from "react-syntax-highlighter/dist/esm/styles/prism/material-dark";
+import nightOwl from "react-syntax-highlighter/dist/esm/styles/prism/night-owl";
+import oneDark from "react-syntax-highlighter/dist/esm/styles/prism/one-dark";
+import oneLight from "react-syntax-highlighter/dist/esm/styles/prism/one-light";
+import solarizedDarkAtom from "react-syntax-highlighter/dist/esm/styles/prism/solarized-dark-atom";
+import solarizedlight from "react-syntax-highlighter/dist/esm/styles/prism/solarizedlight";
+import synthwave84 from "react-syntax-highlighter/dist/esm/styles/prism/synthwave84";
+import { useTheme, type Theme } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
 import { copyText } from "@/lib/clipboard";
 import { AliIcon } from "./AliIcon";
@@ -20,6 +33,56 @@ function codeThemeWithoutBackground(theme: Record<string, CSSProperties>): Recor
 
 const LIGHT_CODE_THEME = codeThemeWithoutBackground(vs);
 const DARK_CODE_THEME = codeThemeWithoutBackground(vscDarkPlus);
+
+const THEME_CODE_LIGHT: Record<Theme, Record<string, CSSProperties>> = {
+  light: LIGHT_CODE_THEME,
+  starlight: codeThemeWithoutBackground(oneLight),
+  ivory: codeThemeWithoutBackground(a11yOneLight),
+  doodle: codeThemeWithoutBackground(a11yOneLight),
+  fortune: codeThemeWithoutBackground(coldarkCold),
+  nordic: codeThemeWithoutBackground(oneLight),
+  sakura: codeThemeWithoutBackground(solarizedlight),
+  kitty: codeThemeWithoutBackground(duotoneLight),
+  "cloud-bear": codeThemeWithoutBackground(solarizedlight),
+  "anime-sky": codeThemeWithoutBackground(a11yOneLight),
+  "anime-sakura": codeThemeWithoutBackground(duotoneLight),
+  "anime-magic": codeThemeWithoutBackground(duotoneLight),
+  "anime-neon": codeThemeWithoutBackground(a11yOneLight),
+  "anime-star": codeThemeWithoutBackground(oneLight),
+  midnight: codeThemeWithoutBackground(oneDark),
+  forest: codeThemeWithoutBackground(dracula),
+  cyber: codeThemeWithoutBackground(solarizedlight),
+  ember: codeThemeWithoutBackground(gruvboxDark),
+  dream: codeThemeWithoutBackground(duotoneDark),
+  dark: LIGHT_CODE_THEME,
+};
+
+const THEME_CODE_DARK: Record<Theme, Record<string, CSSProperties>> = {
+  light: DARK_CODE_THEME,
+  starlight: DARK_CODE_THEME,
+  ivory: DARK_CODE_THEME,
+  doodle: DARK_CODE_THEME,
+  fortune: DARK_CODE_THEME,
+  nordic: DARK_CODE_THEME,
+  sakura: DARK_CODE_THEME,
+  kitty: DARK_CODE_THEME,
+  "cloud-bear": DARK_CODE_THEME,
+  "anime-sky": DARK_CODE_THEME,
+  "anime-sakura": DARK_CODE_THEME,
+  "anime-magic": codeThemeWithoutBackground(nightOwl),
+  "anime-neon": codeThemeWithoutBackground(synthwave84),
+  "anime-star": codeThemeWithoutBackground(solarizedDarkAtom),
+  midnight: codeThemeWithoutBackground(vscDarkPlus),
+  forest: codeThemeWithoutBackground(duotoneDark),
+  cyber: codeThemeWithoutBackground(materialDark),
+  ember: codeThemeWithoutBackground(dracula),
+  dream: codeThemeWithoutBackground(oneDark),
+  dark: DARK_CODE_THEME,
+};
+
+function codeThemeForTheme(theme: Theme, isDark: boolean): Record<string, CSSProperties> {
+  return (isDark ? THEME_CODE_DARK : THEME_CODE_LIGHT)[theme];
+}
 
 interface MermaidBlockProps {
   code: string;
@@ -403,7 +466,8 @@ interface CodeBlockProps {
  * Used as the "source" view for mermaid blocks and for all non-mermaid code fences.
  */
 export function CodeBlock({ code, lang, headerAction }: CodeBlockProps) {
-  const { isDark } = useTheme();
+  const { isDark, theme } = useTheme();
+  const codeTheme = codeThemeForTheme(theme, isDark);
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
@@ -430,7 +494,7 @@ export function CodeBlock({ code, lang, headerAction }: CodeBlockProps) {
       </div>
       <SyntaxHighlighter
         language={lang || "text"}
-        style={isDark ? DARK_CODE_THEME : LIGHT_CODE_THEME}
+        style={codeTheme}
         showLineNumbers
         lineNumberStyle={{ color: "var(--text-dim)", fontStyle: "normal" }}
         customStyle={{

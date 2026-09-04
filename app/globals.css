@@ -3940,6 +3940,7 @@ pre, code {
 /* Model-authored emphasis stays distinct from prose in every appearance theme. */
 .markdown-assistant-message {
   --chat-emphasis-color: color-mix(in srgb, var(--accent) 85%, var(--text));
+  --chat-highlight-color: color-mix(in srgb, var(--status-attention) 78%, var(--text));
 }
 .markdown-assistant-message :is(h1, h2, h3, h4, h5, h6) {
   color: color-mix(in srgb, var(--accent) 70%, var(--text));
@@ -3947,14 +3948,17 @@ pre, code {
 .markdown-assistant-message :is(strong, b) {
   color: var(--chat-emphasis-color);
 }
+.markdown-assistant-message em {
+  color: color-mix(in srgb, var(--chat-highlight-color) 72%, var(--text-muted));
+}
 .markdown-assistant-message .markdown-inline-code {
   color: var(--chat-inline-code-color);
   background: color-mix(in srgb, var(--chat-inline-code-color) 8%, var(--bg));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chat-inline-code-color) 18%, transparent);
 }
 .markdown-assistant-message mark {
-  color: var(--chat-emphasis-color);
-  background: color-mix(in srgb, var(--accent) 13%, var(--bg));
+  color: var(--chat-highlight-color);
+  background: color-mix(in srgb, var(--chat-highlight-color) 18%, var(--bg));
   border-radius: 3px;
   padding: 1px 3px;
 }

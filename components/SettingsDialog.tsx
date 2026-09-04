@@ -491,8 +491,8 @@ export function SettingsDialog({
 
           <main className={`${styles.content} settings-content`}>
             <div className={`${styles.contentToolbar} settings-content-toolbar`} aria-hidden="true" />
-            <div className={`${styles.contentBody}${sectionContent ? ` ${styles.contentBodyEmbedded}` : ""}`}>
-            <div className={sectionContent ? `${styles.embeddedSection} settings-embedded-section` : styles.contentCanvas}>
+            <div className={styles.contentBody}>
+            <div className={styles.contentCanvas}>
             {searching ? (
               <>
                 <div className={styles.contentHeading}>

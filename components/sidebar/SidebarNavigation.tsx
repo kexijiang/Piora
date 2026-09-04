@@ -8,7 +8,6 @@ import styles from "../SessionSidebar.module.css";
 
 interface Props {
   onOpenConversationSearch?: () => void;
-  onFocusFileSearch?: () => void;
   primaryActionRef: RefObject<HTMLButtonElement | null>;
   onOpenSettings?: () => void;
   selectedCwd: string | null;
@@ -26,7 +25,7 @@ interface Props {
 
 export function SidebarNavigation(props: Props) {
   const { t } = useI18n();
-  const { onOpenConversationSearch, onFocusFileSearch, primaryActionRef, onOpenSettings, selectedCwd, selectedCwdProp, projectGroups, pinnedProjectGroups, projectAliases, setSelectedCwd, setCollapsedProjectKeys, handleNewSessionInProject, onRequestNewSession, handleDefaultCwd, togglePinnedProject } = props;
+  const { onOpenConversationSearch, primaryActionRef, onOpenSettings, selectedCwd, selectedCwdProp, projectGroups, pinnedProjectGroups, projectAliases, setSelectedCwd, setCollapsedProjectKeys, handleNewSessionInProject, onRequestNewSession, handleDefaultCwd, togglePinnedProject } = props;
   return <>
       <div className={styles.brandRow}>
         <button type="button" className={styles.brandButton} aria-label={t("sidebar.appMenu")}>
@@ -67,10 +66,6 @@ export function SidebarNavigation(props: Props) {
         <button type="button" className={styles.navButton} onClick={onOpenConversationSearch}>
           <AliIcon name="search" size={15} />
           <span>{t("sidebar.searchChats")}</span>
-        </button>
-        <button type="button" className={styles.navButton} onClick={onFocusFileSearch}>
-          <AliIcon name="search" size={15} />
-          <span>{t("sidebar.searchFiles")}</span>
         </button>
       </nav>
 

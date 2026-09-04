@@ -4,7 +4,8 @@ import { lazy, Suspense, useMemo, type MouseEvent } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { resolveLocalFileHref } from "@/lib/file-links";
 import { encodeFilePathForApi } from "@/lib/file-paths";
-import { markdownRemarkPlugins, normalizeDisplayMath } from "@/lib/markdown";
+import { parseAnsiLine } from "@/lib/ansi";
+import { markdownRemarkPlugins, normalizeDisplayMath, normalizeTextHighlights } from "@/lib/markdown";
 import { useMarkdownRehypePlugins } from "@/hooks/useMarkdownRehypePlugins";
 
 export { preloadMarkdownMathRenderer, preloadMarkdownRawHtmlParser } from "@/hooks/useMarkdownRehypePlugins";
@@ -54,10 +55,24 @@ export interface MarkdownBodyProps {
 }
 
 export function MarkdownBody({ children, className, isStreaming, cwd, onOpenFile }: MarkdownBodyProps) {
-  const normalizedMarkdown = useMemo(() => normalizeDisplayMath(children), [children]);
+  const normalizedMarkdown = useMemo(() => normalizeTextHighlights(normalizeDisplayMath(children)), [children]);
   const rehypePlugins = useMarkdownRehypePlugins(normalizedMarkdown);
   // Stable renderer identities keep stateful blocks mounted across message hover updates.
   const components = useMemo<Components>(() => ({
+    text({ children }) {
+      const text = String(children);
+      if (!text.includes("\x1b")) return <>{children}</>;
+
+      return (
+        <>
+          {parseAnsiLine(text).map((segment, index) => (
+            Object.keys(segment.style).length > 0
+              ? <span key={`${text}-${index}`} style={segment.style}>{segment.text}</span>
+              : <span key={`${text}-${index}`}>{segment.text}</span>
+          ))}
+        </>
+      );
+    },
     code({ className, children, ...props }) {
       const lang = className?.replace("language-", "").toLowerCase() ?? "";
       const raw = String(children);

@@ -5,6 +5,7 @@ import remarkMath from "remark-math";
 
 const markdownSanitizeSchema = {
   ...defaultSchema,
+  tagNames: [...(defaultSchema.tagNames || []), "mark"],
   attributes: {
     ...defaultSchema.attributes,
     code: [["className", /^language-./, "math-inline", "math-display"]],
@@ -100,6 +101,119 @@ export function normalizeDisplayMath(markdown: string): string {
     }
 
     normalized.push(normalizeInlineLatexMath(line));
+  }
+
+  return normalized.join(lineBreak);
+}
+
+function normalizeHighlightedTextLine(line: string, inlineCodeMarkerSize: number, isHighlightOpen: boolean): {
+  line: string;
+  inlineCodeMarkerSize: number;
+  isHighlightOpen: boolean;
+} {
+  let output = "";
+  let cursor = 0;
+  let markerSize = inlineCodeMarkerSize;
+  let highlightOpen = isHighlightOpen;
+
+  while (cursor < line.length) {
+    if (line[cursor] === "`") {
+      let end = cursor + 1;
+      while (line[end] === "`") end++;
+      const runSize = end - cursor;
+
+      if (markerSize === 0) markerSize = runSize;
+      else if (runSize === markerSize) markerSize = 0;
+
+      output += line.slice(cursor, end);
+      cursor = end;
+      continue;
+    }
+
+    if (markerSize === 0 && line[cursor] === "=" && line[cursor + 1] === "=") {
+      output += highlightOpen ? "</mark>" : "<mark>";
+      highlightOpen = !highlightOpen;
+      cursor += 2;
+      continue;
+    }
+
+    output += line[cursor];
+    cursor++;
+  }
+
+  return {
+    line: output,
+    inlineCodeMarkerSize: markerSize,
+    isHighlightOpen: highlightOpen,
+  };
+}
+
+/**
+ * Add lightweight author-controlled inline highlight markers for model replies.
+ * `==important==` becomes `<mark>important</mark>` while skipping code areas.
+ */
+export function normalizeTextHighlights(markdown: string): string {
+  const lineBreak = markdown.includes("\r\n") ? "\r\n" : "\n";
+  const lines = markdown.split(/\r?\n/);
+  const normalized: string[] = [];
+  let fence: { marker: string; size: number } | null = null;
+  let inlineCodeMarkerSize = 0;
+  let rawCodeTag: string | null = null;
+  let isHighlightOpen = false;
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
+
+    if (rawCodeTag) {
+      normalized.push(line);
+      if (new RegExp(`</${rawCodeTag}\\s*>`, "i").test(line)) rawCodeTag = null;
+      continue;
+    }
+
+    const fenceMatch = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (fenceMatch) {
+      const marker = fenceMatch[1][0];
+      const size = fenceMatch[1].length;
+      if (!fence) fence = { marker, size };
+      else if (marker === fence.marker && size >= fence.size) fence = null;
+      normalized.push(line);
+      continue;
+    }
+
+    if (fence) {
+      normalized.push(line);
+      continue;
+    }
+
+    const rawCodeOpen = line.match(/<(code|pre|script|style)\b/i);
+    if (rawCodeOpen) {
+      const tag = rawCodeOpen[1].toLowerCase();
+      const remainder = line.slice((rawCodeOpen.index ?? 0) + rawCodeOpen[0].length);
+      if (!new RegExp(`</${tag}\\s*>`, "i").test(remainder)) rawCodeTag = tag;
+      normalized.push(line);
+      continue;
+    }
+
+    if (inlineCodeMarkerSize || line.includes("`")) {
+      const result = normalizeHighlightedTextLine(line, inlineCodeMarkerSize, isHighlightOpen);
+      inlineCodeMarkerSize = result.inlineCodeMarkerSize;
+      isHighlightOpen = result.isHighlightOpen;
+      normalized.push(result.line);
+      continue;
+    }
+
+    if (line.includes("==")) {
+      const result = normalizeHighlightedTextLine(line, 0, isHighlightOpen);
+      isHighlightOpen = result.isHighlightOpen;
+      normalized.push(result.line);
+      continue;
+    }
+
+    normalized.push(line);
+  }
+
+  if (isHighlightOpen) {
+    normalized[normalized.length - 1] = `${normalized[normalized.length - 1]}</mark>`;
   }
 
   return normalized.join(lineBreak);

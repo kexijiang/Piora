@@ -1699,11 +1699,6 @@ export function AppShell() {
       selectedCwd={isProjectlessConversation ? null : selectedRoom?.projectRoot ?? selectedSession?.cwd ?? newSessionCwd ?? null}
       activeProjectRoot={currentProjectPath}
       onCwdChange={handleCwdChange}
-      onFocusFileSearch={() => {
-        setRightPanelTab("files");
-        setRightPanelOpen(true);
-        requestAnimationFrame(() => rightPanelRef.current?.focusFileSearch());
-      }}
       onOpenSettings={(key) => openSettings(key)}
     />
   );
