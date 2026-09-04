@@ -654,6 +654,17 @@ async function postJson(origin, path, body) {
   });
 }
 
+async function patchJson(origin, path, body) {
+  return fetchJson(origin, path, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Origin: origin,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 function requireArrayEntry(items, predicate, description) {
   const match = items.find(predicate);
   if (!match) throw new Error(`Packaged Pi capability was not discovered: ${description}`);
@@ -955,15 +966,15 @@ async function main() {
       `skill command /skill:${fixtureSkillName}`,
     );
 
-    const { body: toolResult } = await postJson(origin, agentPath, { type: "get_tools" });
-    const tools = Array.isArray(toolResult.data) ? toolResult.data : [];
-    const fixtureTool = requireArrayEntry(
-      tools,
+    const { body: initialToolResult } = await postJson(origin, agentPath, { type: "get_tools" });
+    const initialTools = Array.isArray(initialToolResult.data) ? initialToolResult.data : [];
+    const initialFixtureTool = requireArrayEntry(
+      initialTools,
       (entry) => entry.name === fixtureToolName,
       `extension tool ${fixtureToolName}`,
     );
-    if (!fixtureTool.active) {
-      throw new Error(`Fixture extension tool is loaded but inactive: ${JSON.stringify(fixtureTool)}`);
+    if (initialFixtureTool.active) {
+      throw new Error(`Fixture extension tool must respect the default compact coding preset: ${JSON.stringify(initialFixtureTool)}`);
     }
 
     const harmonyTools = [
@@ -996,19 +1007,25 @@ async function main() {
       ...harmonyTools,
       "piora_room",
     ].map((name) => {
-      const tool = tools.find((entry) => entry.name === name);
+      const tool = initialTools.find((entry) => entry.name === name);
       return { name, loaded: Boolean(tool), active: tool?.active === true };
     });
-    const unavailableCoreTools = ordinaryCoreExtensionTools.filter((tool) => !tool.loaded || !tool.active);
-    if (unavailableCoreTools.length > 0) {
-      throw new Error(`Packaged first-party tools are unavailable: ${JSON.stringify(unavailableCoreTools)}`);
+    const missingCoreTools = ordinaryCoreExtensionTools.filter((tool) => !tool.loaded);
+    if (missingCoreTools.length > 0) {
+      throw new Error(`Packaged first-party tools failed to load: ${JSON.stringify(missingCoreTools)}`);
+    }
+    const unexpectedDefaultCoreTools = ordinaryCoreExtensionTools.filter((tool) => (
+      tool.active !== (tool.name === "browser")
+    ));
+    if (unexpectedDefaultCoreTools.length > 0) {
+      throw new Error(`Packaged first-party tools do not match the compact coding preset: ${JSON.stringify(unexpectedDefaultCoreTools)}`);
     }
     const optionalWorkflowTools = [
       "piora_goal",
       "piora_plan",
       "piora_plan_execution",
     ].map((name) => {
-      const tool = tools.find((entry) => entry.name === name);
+      const tool = initialTools.find((entry) => entry.name === name);
       return { name, loaded: Boolean(tool), active: tool?.active === true };
     });
     const unexpectedlyLoadedWorkflowTools = optionalWorkflowTools.filter((tool) => tool.loaded || tool.active);
@@ -1017,7 +1034,49 @@ async function main() {
     }
     const coreExtensionTools = [...ordinaryCoreExtensionTools, ...optionalWorkflowTools];
 
-    const pioraOwnedSubagentEntries = [...commands, ...tools].filter((entry) => (
+    const { body: projectTools } = await fetchJson(
+      origin,
+      `/api/project-tools?cwd=${encodeURIComponent(isolatedProjectDir)}`,
+    );
+    const capabilities = projectTools.capabilities;
+    const capabilityItems = Array.isArray(capabilities?.items) ? capabilities.items : [];
+    const fixtureCapability = requireArrayEntry(
+      capabilityItems,
+      (entry) => entry.id === `tool:${fixtureToolName}`,
+      `project tool ${fixtureToolName}`,
+    );
+    if (fixtureCapability.enabled || fixtureCapability.activeToolNames?.length > 0) {
+      throw new Error(`Fixture extension project tool must start disabled: ${JSON.stringify(fixtureCapability)}`);
+    }
+    const enabledCapabilityIds = [
+      ...new Set([
+        ...(Array.isArray(capabilities?.policy?.enabledCapabilityIds)
+          ? capabilities.policy.enabledCapabilityIds
+          : []),
+        fixtureCapability.id,
+      ]),
+    ];
+    const { body: updatedProjectTools } = await patchJson(origin, "/api/project-tools", {
+      cwd: isolatedProjectDir,
+      preset: "custom",
+      enabledCapabilityIds,
+      expectedRevision: capabilities?.policy?.revision,
+    });
+    if (updatedProjectTools.managed !== true || updatedProjectTools.appliedSessions !== 1) {
+      throw new Error(`Project tool selection was not applied to the packaged Session: ${JSON.stringify(updatedProjectTools)}`);
+    }
+    const { body: activeToolResult } = await postJson(origin, agentPath, { type: "get_tools" });
+    const activeTools = Array.isArray(activeToolResult.data) ? activeToolResult.data : [];
+    const activeFixtureTool = requireArrayEntry(
+      activeTools,
+      (entry) => entry.name === fixtureToolName,
+      `enabled extension tool ${fixtureToolName}`,
+    );
+    if (!activeFixtureTool.active) {
+      throw new Error(`Fixture extension tool did not activate through project settings: ${JSON.stringify(activeFixtureTool)}`);
+    }
+
+    const pioraOwnedSubagentEntries = [...commands, ...activeTools].filter((entry) => (
       typeof entry.name === "string" && /^(?:pi[-_]?gui)[-_]?sub[-_]?agents?$/i.test(entry.name)
     ));
     if (pioraOwnedSubagentEntries.length > 0) {
@@ -1046,6 +1105,8 @@ async function main() {
       piPackage: fixturePackageName,
       extensionCommand: fixtureCommandName,
       extensionTool: fixtureToolName,
+      extensionToolInitiallyActive: false,
+      extensionToolActivatedByProjectSettings: true,
       coreExtensionTools,
       skill: fixtureSkillName,
       pioraOwnedSubagentFeatures: 0,
