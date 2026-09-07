@@ -23,6 +23,18 @@ interface PromptRunRecord extends PromptRunIdentity {
 
 declare global {
   var __pioraPromptRuns: Map<string, PromptRunRecord> | undefined;
+  var __pioraDesktopUpdateLease: { token: string; expiresAt: number } | undefined;
+}
+
+/** Synchronous admission fence between the final idle check and desktop shutdown. */
+export function acquireDesktopUpdateLease(): string | undefined {
+  if (getRuns().size > 0 || (globalThis.__pioraDesktopUpdateLease?.expiresAt ?? 0) > Date.now()) return undefined;
+  const token = randomUUID();
+  globalThis.__pioraDesktopUpdateLease = { token, expiresAt: Date.now() + 120_000 };
+  return token;
+}
+export function releaseDesktopUpdateLease(token: string): void {
+  if (globalThis.__pioraDesktopUpdateLease?.token === token) globalThis.__pioraDesktopUpdateLease = undefined;
 }
 
 function getRuns(): Map<string, PromptRunRecord> {
@@ -33,6 +45,9 @@ export function beginPromptRun(
   sessionId: string,
   context: { source?: SessionMessageSourceKind; roomContext?: SessionRoomContext } = {},
 ): PromptRunIdentity {
+  if ((globalThis.__pioraDesktopUpdateLease?.expiresAt ?? 0) > Date.now()) {
+    throw new Error("Piora is installing an update. Retry after the application reopens.");
+  }
   if (!sessionId) throw new Error("Cannot begin a prompt run without a session id.");
   const runs = getRuns();
   if (runs.has(sessionId)) {
@@ -117,4 +132,5 @@ export async function finishPromptRun(
 
 export function resetPromptRunRegistryForTests(): void {
   getRuns().clear();
+  globalThis.__pioraDesktopUpdateLease = undefined;
 }

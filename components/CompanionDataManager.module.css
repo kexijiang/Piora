@@ -1,22 +1,22 @@
 .manager { display: grid; gap: 10px; color: var(--text); }
 .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-.metrics span { display: flex; align-items: baseline; gap: 5px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); color: var(--text-muted); font-size: var(--text-xs); }
+.metrics span { display: flex; align-items: baseline; gap: 5px; padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); color: var(--text-muted); font-size: var(--text-xs); }
 .metrics strong { color: var(--text); font-size: var(--text-base); }
-.tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: var(--bg-hover); }
-.tabs button { flex: 1; min-height: 30px; border: 0; border-radius: 7px; background: transparent; color: var(--text-muted); cursor: pointer; font: inherit; font-size: var(--text-xs); }
+.tabs { display: flex; gap: 4px; padding: 3px; border-radius: var(--radius-control); background: var(--bg-hover); }
+.tabs button { flex: 1; min-height: var(--control-height-compact); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-muted); cursor: pointer; font: inherit; font-size: var(--text-xs); }
 .tabs button[aria-selected="true"] { background: var(--bg); color: var(--text); box-shadow: 0 1px 4px color-mix(in srgb, var(--text) 10%, transparent); }
 .panel { min-height: 150px; }
 .addTaskForm, .phraseForm, .libraryToolbar, .libraryForm { display: flex; gap: 7px; }
 .addTaskForm input:first-child, .phraseForm input:nth-child(2), .libraryToolbar input, .libraryForm input:nth-child(2) { flex: 1; min-width: 0; }
 .manager input, .manager textarea, .manager select, .manager button { font: inherit; }
-.manager input:not([type="checkbox"]):not([type="range"]), .manager textarea, .manager select { min-height: 32px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font-size: var(--text-xs); outline: none; }
+.manager input:not([type="checkbox"]):not([type="range"]), .manager textarea, .manager select { min-height: 32px; padding: 6px 9px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text); font-size: var(--text-xs); outline: none; }
 .manager input:focus, .manager textarea:focus, .manager select:focus { border-color: var(--accent); }
-.manager button { min-height: 30px; padding: 5px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-muted); cursor: pointer; font-size: var(--text-xs); }
+.manager button { min-height: var(--control-height-compact); padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text-muted); cursor: pointer; font-size: var(--text-xs); }
 .manager button:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
 .manager button:disabled { cursor: not-allowed; opacity: .48; }
 .addTaskForm > button, .phraseForm > button, .libraryForm > button { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: color-mix(in srgb, var(--accent) 11%, var(--bg)); color: var(--accent); font-weight: 650; }
 .taskList, .libraryList, .phraseList { display: grid; gap: 7px; margin: 9px 0 0; padding: 0; list-style: none; }
-.taskList > li { display: grid; grid-template-columns: 18px minmax(0, 1fr) 28px; align-items: start; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); }
+.taskList > li { display: grid; grid-template-columns: 18px minmax(0, 1fr) 28px; align-items: start; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); }
 .taskList > li[data-completed="true"] { opacity: .62; }
 .taskBody { min-width: 0; display: grid; gap: 5px; }
 .taskHeading { display: flex; justify-content: space-between; gap: 10px; font-size: var(--text-xs); }
@@ -24,8 +24,8 @@
 .taskHeading strong { flex: 0 0 auto; color: var(--accent); }
 .taskBody small { color: var(--text-dim); }
 .range { width: 100%; accent-color: var(--accent); }
-.iconButton { width: 28px; min-height: 28px !important; display: grid; place-items: center; padding: 0 !important; border-color: transparent !important; background: transparent !important; }
-.libraryModes { display: flex; gap: 4px; margin-bottom: 9px; padding: 3px; border-radius: 10px; background: var(--bg-hover); }
+.iconButton { width: 28px; min-height: var(--control-height-compact) !important; display: grid; place-items: center; padding: 0 !important; border-color: transparent !important; background: transparent !important; }
+.libraryModes { display: flex; gap: 4px; margin-bottom: 9px; padding: 3px; border-radius: var(--radius-control); background: var(--bg-hover); }
 .libraryModes button { flex: 1; border: 0; background: transparent; }
 .libraryModes button[aria-selected="true"] { background: var(--bg); color: var(--text); box-shadow: 0 1px 4px color-mix(in srgb, var(--text) 10%, transparent); font-weight: 650; }
 .libraryToolbar { margin-bottom: 7px; }
@@ -33,10 +33,10 @@
 .libraryForm { display: grid; grid-template-columns: 110px minmax(0, 1fr) 110px auto; }
 .libraryForm textarea, .pendingImage, .imagePicker { grid-column: 1 / -1; min-height: 84px; }
 .libraryForm textarea { resize: vertical; font-family: var(--font-mono); }
-.pendingImage, .imagePreview { overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
+.pendingImage, .imagePreview { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); }
 .pendingImage { max-height: 160px; }
 .pendingImage img, .imagePreview img { display: block; width: 100%; max-height: 220px; object-fit: contain; }
-.libraryList > li { overflow: hidden; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); }
+.libraryList > li { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); }
 .libraryHeading { display: flex; align-items: center; gap: 6px; padding: 8px 9px; }
 .libraryHeading strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-xs); }
 .kindBadge { padding: 2px 6px; border-radius: 999px; background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--accent); font-size: calc(var(--text-xs) * .84); }

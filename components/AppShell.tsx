@@ -1697,7 +1697,7 @@ export function AppShell() {
   }, [currentProjectCwd]);
 
   const settingsProjectCwd = projectCwd ?? activeCwd;
-  const chooseSettingsProject = <div style={{ padding: 32, display: "grid", alignContent: "start", gap: 16 }}><p>{translate("settings.capabilities.noProject")}</p><button type="button" style={{ justifySelf: "start", padding: "8px 14px", borderRadius: 7, border: "1px solid var(--border)", color: "var(--text)", background: "var(--bg-panel)", cursor: "pointer" }} onClick={() => { setSettingsDialogOpen(false); handleOpenProjectPicker(); }}>{translate("projectMenu.switchProject")}</button></div>;
+  const chooseSettingsProject = <div style={{ padding: 32, display: "grid", alignContent: "start", gap: 16 }}><p>{translate("settings.capabilities.noProject")}</p><button type="button" style={{ justifySelf: "start", padding: "8px 14px", borderRadius: "var(--radius-control)", border: "1px solid var(--border)", color: "var(--text)", background: "var(--bg-panel)", cursor: "pointer" }} onClick={() => { setSettingsDialogOpen(false); handleOpenProjectPicker(); }}>{translate("projectMenu.switchProject")}</button></div>;
   const activeCwdName = activeCwd ? getFileName(activeCwd) || activeCwd : null;
   const baseWindowTitle = activeCwdName ? `${activeCwdName} - Piora` : "Piora";
   const hasPendingInput = runningTaskSnapshots.some((snapshot) => snapshot.pendingApproval);
@@ -1855,7 +1855,7 @@ export function AppShell() {
             <p style={{ margin: "7px 0 22px", color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>{translate("settings.languageDescription")}</p>
             <div role="radiogroup" aria-label={translate("common.language")} style={{ display: "grid", gap: 8, maxWidth: 520 }}>
               {supportedLocales.map((plugin) => (
-                <button key={plugin.id} type="button" role="radio" aria-checked={locale === plugin.id} onClick={() => setLocale(plugin.id as typeof locale)} style={{ minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", border: "1px solid var(--border)", borderRadius: 9, background: locale === plugin.id ? "var(--bg-selected)" : "var(--bg-panel)", color: "var(--text)", cursor: "pointer", font: "inherit" }}>
+                <button key={plugin.id} type="button" role="radio" aria-checked={locale === plugin.id} onClick={() => setLocale(plugin.id as typeof locale)} style={{ minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: locale === plugin.id ? "var(--bg-selected)" : "var(--bg-panel)", color: "var(--text)", cursor: "pointer", font: "inherit" }}>
                   <span>{plugin.label}</span>
                   {locale === plugin.id ? <AliIcon name="check" size={14} style={{ color: "var(--accent)" }} /> : null}
                 </button>
@@ -2227,7 +2227,7 @@ export function AppShell() {
                   background: rightPanelOpen ? "var(--bg-selected)" : "none",
                   border: "none",
                   borderTop: rightPanelOpen ? "2px solid var(--accent)" : "2px solid transparent",
-                  borderRadius: 7,
+                  borderRadius: "var(--radius-control)",
                   color: rightPanelOpen ? "var(--text)" : "var(--text-muted)",
                   cursor: "pointer",
                   transition: "color 0.1s, background 0.1s",

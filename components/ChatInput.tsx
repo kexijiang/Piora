@@ -293,7 +293,7 @@ function ModelNoticeBanner({ tone, title, body }: { tone: "error" | "warning"; t
         padding: "7px 10px",
         overflowY: "auto",
         border: `1px solid rgba(${color},0.3)`,
-        borderRadius: 6,
+        borderRadius: "var(--radius-control)",
         background: `rgba(${color},0.07)`,
         color: `rgb(${color})`,
         fontSize: "var(--text-xs)",
@@ -1534,7 +1534,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           <div style={{
             marginBottom: 8, padding: "5px 10px",
             background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)",
-            borderRadius: 6, fontSize: "var(--text-sm)", color: "rgba(180,130,0,0.9)",
+            borderRadius: "var(--radius-control)", fontSize: "var(--text-sm)", color: "rgba(180,130,0,0.9)",
             display: "flex", alignItems: "center", gap: 6,
           }}>
             <AliIcon name="reload" size={11} />
@@ -1545,7 +1545,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           <div style={{
             marginBottom: 8, padding: "5px 10px",
             background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.24)",
-            borderRadius: 6, fontSize: "var(--text-sm)", color: "rgba(5,150,105,0.95)",
+            borderRadius: "var(--radius-control)", fontSize: "var(--text-sm)", color: "rgba(5,150,105,0.95)",
             display: "flex", alignItems: "center", gap: 6,
           }}>
             <AliIcon name="check" size={11} />
@@ -1561,7 +1561,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               padding: "7px 10px",
               background: "rgba(239,68,68,0.07)",
               border: "1px solid rgba(239,68,68,0.3)",
-              borderRadius: 6,
+              borderRadius: "var(--radius-control)",
               color: "#ef4444",
               fontFamily: "var(--font-mono)",
               fontSize: "var(--text-sm)",
@@ -1590,7 +1590,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 <img
                   src={img.previewUrl}
                   alt=""
-                  style={{ width: 56, height: 56, objectFit: "cover", borderRadius: 6, border: "1px solid var(--border)", display: "block" }}
+                  style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-control)", border: "1px solid var(--border)", display: "block" }}
                 />
                 <button
                   onClick={() => removeImage(i)}
@@ -1620,7 +1620,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   display: "flex", alignItems: "center", gap: 6,
                   maxWidth: 260, padding: "4px 6px 4px 8px",
                   background: "var(--bg-panel)", border: "1px solid var(--border)",
-                  borderRadius: 6, fontSize: "var(--text-xs)", color: "var(--text-muted)",
+                  borderRadius: "var(--radius-control)", fontSize: "var(--text-xs)", color: "var(--text-muted)",
                 }}
               >
                 <AliIcon name="file" size={12} />
@@ -1672,7 +1672,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                 zIndex: 120,
                 background: "var(--bg)",
                 border: "1px solid var(--border)",
-                borderRadius: 8,
+                borderRadius: "var(--radius-control)",
                 boxShadow: "0 -6px 20px rgba(0,0,0,0.12)",
                 overflow: "hidden",
                 maxHeight: "min(44vh, 360px)",
@@ -1713,7 +1713,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                         gap: 8,
                         padding: "7px 8px",
                         border: "none",
-                        borderRadius: 6,
+                        borderRadius: "var(--radius-control)",
                         background: active ? "var(--bg-selected)" : "none",
                         color: "var(--text)",
                         cursor: "pointer",
@@ -1799,7 +1799,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                   zIndex: 120,
                   background: "var(--bg)",
                   border: "1px solid var(--border)",
-                  borderRadius: 8,
+                  borderRadius: "var(--radius-control)",
                   boxShadow: "0 -6px 20px rgba(0,0,0,0.12)",
                   overflow: "hidden",
                   maxHeight: "min(48vh, 400px)",
@@ -1853,7 +1853,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                             gap: 8,
                             padding: "6px 8px",
                             border: "none",
-                            borderRadius: 6,
+                            borderRadius: "var(--radius-control)",
                             background: active ? "var(--bg-selected)" : "none",
                             color: "var(--text)",
                             cursor: "pointer",

@@ -11,7 +11,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: var(--radius-panel, 14px);
+  border-radius: var(--radius-panel, var(--radius-panel));
   background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16), 0 2px 10px rgba(15, 23, 42, 0.08);
   backdrop-filter: blur(18px) saturate(1.1);
@@ -41,7 +41,7 @@
   border: 0;
   appearance: none;
   cursor: pointer;
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: transparent;
   box-shadow: none;
 }
@@ -55,7 +55,7 @@
 }
 
 .petViewport:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -167,7 +167,7 @@
   display: inline-grid;
   place-items: center;
   border: 0;
-  border-radius: var(--radius-control, 9px);
+  border-radius: var(--radius-control, var(--radius-control));
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -191,7 +191,7 @@
   min-height: 30px;
   padding: 4px 8px;
   border: 0;
-  border-radius: var(--radius-control, 9px);
+  border-radius: var(--radius-control, var(--radius-control));
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -239,7 +239,7 @@
   height: 32px;
   padding: 0 9px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-control, 9px);
+  border-radius: var(--radius-control, var(--radius-control));
   outline: none;
   background: color-mix(in srgb, var(--bg) 86%, transparent);
   color: var(--text);
@@ -255,9 +255,9 @@
 .primaryButton,
 .secondaryButton,
 .dangerButton {
-  min-height: 30px;
+  min-height: var(--control-height-compact);
   padding: 5px 9px;
-  border-radius: var(--radius-control, 9px);
+  border-radius: var(--radius-control, var(--radius-control));
   cursor: pointer;
   font-size: var(--text-xs);
   font-weight: 600;
@@ -265,8 +265,8 @@
 
 .primaryButton {
   border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent);
-  background: color-mix(in srgb, var(--accent) 12%, var(--bg));
-  color: var(--accent);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
 }
 
 .secondaryButton {
@@ -310,7 +310,7 @@
   min-width: 0;
   padding: 7px;
   border: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  border-radius: var(--radius-control, 9px);
+  border-radius: var(--radius-control, var(--radius-control));
   background: color-mix(in srgb, var(--bg) 62%, transparent);
 }
 
@@ -335,7 +335,7 @@
   padding: 5px 7px;
   overflow: hidden;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -402,7 +402,7 @@
 .diagnostic {
   margin-top: 8px;
   padding: 7px 8px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, #f59e0b 9%, transparent);
   color: color-mix(in srgb, #b45309 78%, var(--text));
   font-size: var(--text-xs);

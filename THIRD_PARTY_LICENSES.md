@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `9ed2007ce9ac80801c8d067a3b92c80d9e324f261cd7f2fc9033fa6c30160b77`
+Lockfile SHA-256: `f34dbdbd15ab776982f1b9cd7388689cc38f26a821e5331bf7d1b8c091e43f21`
 
-Unique locked packages: **1179**. Runtime packages: **725**. Build/development-only packages: **454**.
+Unique locked packages: **1234**. Runtime packages: **795**. Build/development-only packages: **439**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -107,6 +107,7 @@ Every locked package declares a license.
 | `@google/genai` | `1.52.0` | Apache-2.0 | No |
 | `@grpc/grpc-js` | `1.14.4` | Apache-2.0 | No |
 | `@grpc/proto-loader` | `0.8.1` | Apache-2.0 | No |
+| `@hono/node-server` | `2.1.1` | MIT | No |
 | `@iconify/types` | `2.0.0` | MIT | No |
 | `@iconify/utils` | `3.1.1` | MIT | No |
 | `@img/colour` | `1.1.0` | MIT | No |
@@ -161,6 +162,7 @@ Every locked package declares a license.
 | `@mariozechner/clipboard-win32-arm64-msvc` | `0.3.9` | MIT | Yes |
 | `@mariozechner/clipboard-win32-x64-msvc` | `0.3.9` | MIT | Yes |
 | `@mermaid-js/parser` | `1.2.0` | MIT | No |
+| `@modelcontextprotocol/sdk` | `1.30.0` | MIT | No |
 | `@next/env` | `16.3.3` | MIT | No |
 | `@next/swc-darwin-arm64` | `16.3.3` | MIT | Yes |
 | `@next/swc-darwin-x64` | `16.3.3` | MIT | Yes |
@@ -258,9 +260,12 @@ Every locked package declares a license.
 | `@xterm/addon-search` | `0.16.0` | MIT | No |
 | `@xterm/xterm` | `6.0.0` | MIT | No |
 | `abort-controller` | `3.0.0` | MIT | No |
+| `accepts` | `2.0.0` | MIT | No |
 | `acorn` | `8.16.0` | MIT | No |
 | `agent-base` | `6.0.2` | MIT | No |
 | `agent-base` | `7.1.4` | MIT | No |
+| `ajv` | `8.20.0` | MIT | No |
+| `ajv-formats` | `3.0.1` | MIT | No |
 | `ansi-regex` | `5.0.1` | MIT | No |
 | `ansi-regex` | `6.3.0` | MIT | No |
 | `ansi-styles` | `4.3.0` | MIT | No |
@@ -289,6 +294,7 @@ Every locked package declares a license.
 | `bignumber.js` | `9.3.1` | MIT | No |
 | `bluebird` | `3.4.7` | MIT | No |
 | `bluebird` | `3.7.2` | MIT | No |
+| `body-parser` | `2.3.0` | MIT | No |
 | `bowser` | `2.14.1` | MIT | No |
 | `brace-expansion` | `2.1.4` | MIT | No |
 | `brace-expansion` | `5.0.9` | MIT | No |
@@ -297,7 +303,9 @@ Every locked package declares a license.
 | `buffer-equal-constant-time` | `1.0.1` | BSD-3-Clause | No |
 | `buffer-from` | `1.1.2` | MIT | No |
 | `builder-util-runtime` | `9.7.0` | MIT | No |
+| `bytes` | `3.1.2` | MIT | No |
 | `call-bind-apply-helpers` | `1.0.2` | MIT | No |
+| `call-bound` | `1.0.4` | MIT | No |
 | `callsites` | `3.1.0` | MIT | No |
 | `caniuse-lite` | `1.0.30001806` | CC-BY-4.0 | No |
 | `ccount` | `2.0.1` | MIT | No |
@@ -320,8 +328,14 @@ Every locked package declares a license.
 | `compare-versions` | `6.1.1` | MIT | No |
 | `compress-commons` | `6.0.2` | MIT | No |
 | `confbox` | `0.1.8` | MIT | No |
+| `content-disposition` | `1.1.0` | MIT | No |
+| `content-type` | `1.0.5` | MIT | No |
+| `content-type` | `2.1.0` | MIT | No |
 | `convert-source-map` | `1.9.0` | MIT | No |
+| `cookie` | `0.7.2` | MIT | No |
+| `cookie-signature` | `1.2.2` | MIT | No |
 | `core-util-is` | `1.0.3` | MIT | No |
+| `cors` | `2.8.6` | MIT | No |
 | `cose-base` | `1.0.3` | MIT | No |
 | `cose-base` | `2.2.0` | MIT | No |
 | `cosmiconfig` | `7.1.0` | MIT | No |
@@ -375,6 +389,7 @@ Every locked package declares a license.
 | `decode-named-character-reference` | `1.3.0` | MIT | No |
 | `delaunator` | `5.1.0` | ISC | No |
 | `delayed-stream` | `1.0.0` | MIT | No |
+| `depd` | `2.0.0` | MIT | No |
 | `dequal` | `2.0.3` | MIT | No |
 | `detect-libc` | `2.1.2` | Apache-2.0 | No |
 | `devlop` | `1.1.0` | MIT | No |
@@ -385,9 +400,11 @@ Every locked package declares a license.
 | `dunder-proto` | `1.0.1` | MIT | No |
 | `eastasianwidth` | `0.2.0` | MIT | No |
 | `ecdsa-sig-formatter` | `1.0.11` | Apache-2.0 | No |
+| `ee-first` | `1.1.1` | MIT | No |
 | `electron-updater` | `6.8.9` | MIT | No |
 | `emoji-regex` | `8.0.0` | MIT | No |
 | `emoji-regex` | `9.2.2` | MIT | No |
+| `encodeurl` | `2.0.0` | MIT | No |
 | `entities` | `6.0.1` | BSD-2-Clause | No |
 | `error-ex` | `1.3.4` | MIT | No |
 | `es-define-property` | `1.0.1` | MIT | No |
@@ -396,24 +413,35 @@ Every locked package declares a license.
 | `es-set-tostringtag` | `2.1.0` | MIT | No |
 | `es-toolkit` | `1.50.0` | MIT | No |
 | `escalade` | `3.2.0` | MIT | No |
+| `escape-html` | `1.0.3` | MIT | No |
 | `escape-string-regexp` | `4.0.0` | MIT | No |
 | `escape-string-regexp` | `5.0.0` | MIT | No |
 | `estree-util-is-identifier-name` | `3.0.0` | MIT | No |
+| `etag` | `1.8.1` | MIT | No |
 | `event-target-shim` | `5.0.1` | MIT | No |
 | `events` | `3.3.0` | MIT | No |
 | `events-universal` | `1.0.1` | Apache-2.0 | No |
+| `eventsource` | `3.0.7` | MIT | No |
+| `eventsource-parser` | `3.1.1` | MIT | No |
+| `express` | `5.2.1` | MIT | No |
+| `express-rate-limit` | `8.7.0` | MIT | No |
 | `extend` | `3.0.2` | MIT | No |
+| `fast-deep-equal` | `3.1.3` | MIT | No |
 | `fast-fifo` | `1.3.2` | MIT | No |
+| `fast-uri` | `3.1.7` | BSD-3-Clause | No |
 | `fast-xml-builder` | `1.2.0` | MIT | No |
 | `fast-xml-parser` | `5.7.3` | MIT | No |
 | `fault` | `1.0.4` | MIT | No |
 | `fetch-blob` | `3.2.0` | MIT | No |
+| `finalhandler` | `2.1.1` | MIT | No |
 | `find-root` | `1.1.0` | MIT | No |
 | `follow-redirects` | `1.16.0` | MIT | No |
 | `foreground-child` | `3.3.1` | ISC | No |
 | `form-data` | `4.0.6` | MIT | No |
 | `format` | `0.2.2` | MIT | No |
 | `formdata-polyfill` | `4.0.10` | MIT | No |
+| `forwarded` | `0.2.0` | MIT | No |
+| `fresh` | `2.0.0` | MIT | No |
 | `fs-extra` | `10.1.0` | MIT | No |
 | `function-bind` | `1.1.2` | MIT | No |
 | `gaxios` | `7.1.4` | Apache-2.0 | No |
@@ -452,14 +480,17 @@ Every locked package declares a license.
 | `highlight.js` | `10.7.3` | BSD-3-Clause | No |
 | `highlightjs-vue` | `1.0.0` | CC0-1.0 | No |
 | `hoist-non-react-statics` | `3.3.2` | BSD-3-Clause | No |
+| `hono` | `4.13.7` | MIT | No |
 | `hosted-git-info` | `9.0.3` | ISC | No |
 | `html-url-attributes` | `3.0.1` | MIT | No |
 | `html-void-elements` | `3.0.0` | MIT | No |
+| `http-errors` | `2.0.1` | MIT | No |
 | `http-proxy-agent` | `7.0.2` | MIT | No |
 | `https-proxy-agent` | `5.0.1` | MIT | No |
 | `https-proxy-agent` | `7.0.6` | MIT | No |
 | `hypium-driver` | `6.1.210` | ISC | No |
 | `iconv-lite` | `0.6.3` | MIT | No |
+| `iconv-lite` | `0.7.3` | MIT | No |
 | `ieee754` | `1.2.1` | BSD-3-Clause | No |
 | `ignore` | `7.0.5` | MIT | No |
 | `immediate` | `3.0.6` | MIT | No |
@@ -468,6 +499,8 @@ Every locked package declares a license.
 | `inline-style-parser` | `0.2.7` | MIT | No |
 | `internmap` | `1.0.1` | ISC | No |
 | `internmap` | `2.0.3` | ISC | No |
+| `ip-address` | `10.7.0` | MIT | No |
+| `ipaddr.js` | `1.9.1` | MIT | No |
 | `is-alphabetical` | `2.0.1` | MIT | No |
 | `is-alphanumerical` | `2.0.1` | MIT | No |
 | `is-arrayish` | `0.2.1` | MIT | No |
@@ -477,17 +510,21 @@ Every locked package declares a license.
 | `is-hexadecimal` | `2.0.1` | MIT | No |
 | `is-mobile` | `5.0.0` | MIT | No |
 | `is-plain-obj` | `4.1.0` | MIT | No |
+| `is-promise` | `4.0.0` | MIT | No |
 | `is-stream` | `2.0.1` | MIT | No |
 | `isarray` | `1.0.0` | MIT | No |
 | `isexe` | `2.0.0` | ISC | No |
 | `jackspeak` | `3.4.3` | BlueOak-1.0.0 | No |
 | `jiti` | `2.7.0` | MIT | No |
+| `jose` | `6.2.12` | MIT | No |
 | `js-tokens` | `4.0.0` | MIT | No |
 | `js-yaml` | `4.3.1` | MIT | No |
 | `jsesc` | `3.1.0` | MIT | No |
 | `json-bigint` | `1.0.0` | MIT | No |
 | `json-parse-even-better-errors` | `2.3.1` | MIT | No |
 | `json-schema-to-ts` | `3.1.1` | MIT | No |
+| `json-schema-traverse` | `1.0.0` | MIT | No |
+| `json-schema-typed` | `8.0.2` | BSD-2-Clause | No |
 | `json5` | `2.2.3` | MIT | No |
 | `jsonfile` | `6.2.1` | MIT | No |
 | `jszip` | `3.10.1` | (MIT OR GPL-3.0-or-later) | No |
@@ -534,6 +571,8 @@ Every locked package declares a license.
 | `mdast-util-to-hast` | `13.2.1` | MIT | No |
 | `mdast-util-to-markdown` | `2.1.2` | MIT | No |
 | `mdast-util-to-string` | `4.0.0` | MIT | No |
+| `media-typer` | `1.1.1` | MIT | No |
+| `merge-descriptors` | `2.0.0` | MIT | No |
 | `mermaid` | `11.16.1` | MIT | No |
 | `micromark` | `4.0.2` | MIT | No |
 | `micromark-core-commonmark` | `2.0.3` | MIT | No |
@@ -565,7 +604,9 @@ Every locked package declares a license.
 | `micromark-util-symbol` | `2.0.1` | MIT | No |
 | `micromark-util-types` | `2.0.2` | MIT | No |
 | `mime-db` | `1.52.0` | MIT | No |
+| `mime-db` | `1.54.0` | MIT | No |
 | `mime-types` | `2.1.35` | MIT | No |
+| `mime-types` | `3.0.2` | MIT | No |
 | `minimatch` | `10.2.5` | BlueOak-1.0.0 | No |
 | `minimatch` | `5.1.9` | ISC | No |
 | `minimatch` | `9.0.9` | ISC | No |
@@ -575,12 +616,17 @@ Every locked package declares a license.
 | `moment` | `2.30.1` | MIT | No |
 | `ms` | `2.1.3` | MIT | No |
 | `nanoid` | `3.3.18` | MIT | No |
+| `negotiator` | `1.1.0` | MIT | No |
 | `next` | `16.3.3` | MIT | No |
 | `node-addon-api` | `7.1.1` | MIT | No |
 | `node-domexception` | `1.0.0` | MIT | No |
 | `node-fetch` | `3.3.2` | MIT | No |
 | `node-pty` | `1.1.0` | MIT | No |
 | `normalize-path` | `3.0.0` | MIT | No |
+| `object-assign` | `4.1.1` | MIT | No |
+| `object-inspect` | `1.13.4` | MIT | No |
+| `on-finished` | `2.4.1` | MIT | No |
+| `once` | `1.4.0` | ISC | No |
 | `openai` | `6.40.0` | Apache-2.0 | No |
 | `opencc-js` | `1.4.1` | MIT AND Apache-2.0 | No |
 | `option` | `0.2.4` | BSD-2-Clause | No |
@@ -592,6 +638,7 @@ Every locked package declares a license.
 | `parse-entities` | `4.0.2` | MIT | No |
 | `parse-json` | `5.2.0` | MIT | No |
 | `parse5` | `7.3.0` | MIT | No |
+| `parseurl` | `1.3.3` | MIT | No |
 | `partial-json` | `0.1.7` | MIT | No |
 | `path-data-parser` | `0.1.0` | MIT | No |
 | `path-expression-matcher` | `1.5.0` | MIT | No |
@@ -599,9 +646,11 @@ Every locked package declares a license.
 | `path-key` | `3.1.1` | MIT | No |
 | `path-parse` | `1.0.7` | MIT | No |
 | `path-scurry` | `1.11.1` | BlueOak-1.0.0 | No |
+| `path-to-regexp` | `8.4.2` | MIT | No |
 | `path-type` | `4.0.0` | MIT | No |
 | `pathe` | `2.0.3` | MIT | No |
 | `picocolors` | `1.1.1` | ISC | No |
+| `pkce-challenge` | `5.0.1` | MIT | No |
 | `pkg-types` | `1.3.1` | MIT | No |
 | `playwright-core` | `1.62.1` | Apache-2.0 | No |
 | `points-on-curve` | `0.2.0` | MIT | No |
@@ -616,7 +665,11 @@ Every locked package declares a license.
 | `property-information` | `7.1.0` | MIT | No |
 | `protobufjs` | `7.6.5` | BSD-3-Clause | No |
 | `protobufjs` | `7.6.6` | BSD-3-Clause | No |
+| `proxy-addr` | `2.0.7` | MIT | No |
 | `proxy-from-env` | `2.1.0` | MIT | No |
+| `qs` | `6.16.0` | BSD-3-Clause | No |
+| `range-parser` | `1.3.0` | MIT | No |
+| `raw-body` | `3.0.2` | MIT | No |
 | `react` | `19.2.8` | MIT | No |
 | `react-dom` | `19.2.8` | MIT | No |
 | `react-is` | `16.13.1` | MIT | No |
@@ -636,12 +689,14 @@ Every locked package declares a license.
 | `remark-rehype` | `11.1.2` | MIT | No |
 | `remark-stringify` | `11.0.0` | MIT | No |
 | `require-directory` | `2.1.1` | MIT | No |
+| `require-from-string` | `2.0.2` | MIT | No |
 | `resolve` | `1.22.11` | MIT | No |
 | `resolve-from` | `4.0.0` | MIT | No |
 | `retry` | `0.12.0` | MIT | No |
 | `retry` | `0.13.1` | MIT | No |
 | `robust-predicates` | `3.0.3` | Unlicense | No |
 | `roughjs` | `4.6.6` | MIT | No |
+| `router` | `2.2.0` | MIT | No |
 | `rrule` | `2.8.1` | BSD-3-Clause | No |
 | `rw` | `1.3.3` | BSD-3-Clause | No |
 | `safe-buffer` | `5.1.2` | MIT | No |
@@ -652,12 +707,19 @@ Every locked package declares a license.
 | `semver` | `7.7.4` | ISC | No |
 | `semver` | `7.8.0` | ISC | No |
 | `semver` | `7.8.5` | ISC | No |
+| `send` | `1.2.1` | MIT | No |
+| `serve-static` | `2.2.1` | MIT | No |
 | `setimmediate` | `1.0.5` | MIT | No |
+| `setprototypeof` | `1.2.0` | ISC | No |
 | `sharp` | `0.35.3` | Apache-2.0 | No |
 | `shebang-command` | `2.0.0` | MIT | No |
 | `shebang-regex` | `3.0.0` | MIT | No |
 | `shell-quote` | `1.10.0` | MIT | No |
 | `shlex` | `2.1.2` | MIT | No |
+| `side-channel` | `1.1.1` | MIT | No |
+| `side-channel-list` | `1.0.1` | MIT | No |
+| `side-channel-map` | `1.0.1` | MIT | No |
+| `side-channel-weakmap` | `1.0.2` | MIT | No |
 | `signal-exit` | `3.0.7` | ISC | No |
 | `signal-exit` | `4.1.0` | ISC | No |
 | `source-map` | `0.5.7` | BSD-3-Clause | No |
@@ -666,6 +728,7 @@ Every locked package declares a license.
 | `source-map-support` | `0.5.21` | MIT | No |
 | `space-separated-tokens` | `2.0.2` | MIT | No |
 | `sprintf-js` | `1.0.3` | BSD-3-Clause | No |
+| `statuses` | `2.0.2` | MIT | No |
 | `streamx` | `2.28.1` | MIT | No |
 | `string-width` | `4.2.3` | MIT | No |
 | `string-width` | `5.1.2` | MIT | No |
@@ -691,11 +754,13 @@ Every locked package declares a license.
 | `text-decoder` | `1.2.7` | Apache-2.0 | No |
 | `tiny-typed-emitter` | `2.1.0` | MIT | No |
 | `tinyexec` | `1.1.2` | MIT | No |
+| `toidentifier` | `1.0.1` | MIT | No |
 | `trim-lines` | `3.0.1` | MIT | No |
 | `trough` | `2.2.0` | MIT | No |
 | `ts-algebra` | `2.0.0` | MIT | No |
 | `ts-dedent` | `2.2.0` | MIT | No |
 | `tslib` | `2.8.1` | 0BSD | No |
+| `type-is` | `2.1.0` | MIT | No |
 | `typebox` | `1.3.7` | MIT | No |
 | `ufo` | `1.6.4` | MIT | No |
 | `underscore` | `1.13.8` | MIT | No |
@@ -711,9 +776,11 @@ Every locked package declares a license.
 | `unist-util-visit` | `5.1.0` | MIT | No |
 | `unist-util-visit-parents` | `6.0.2` | MIT | No |
 | `universalify` | `2.0.1` | MIT | No |
+| `unpipe` | `1.0.0` | MIT | No |
 | `use-merge-value` | `1.2.0` | MIT | No |
 | `util-deprecate` | `1.0.2` | MIT | No |
 | `uuid` | `11.1.1` | MIT | No |
+| `vary` | `1.1.2` | MIT | No |
 | `vfile` | `6.0.3` | MIT | No |
 | `vfile-location` | `5.0.3` | MIT | No |
 | `vfile-message` | `4.0.3` | MIT | No |
@@ -724,6 +791,7 @@ Every locked package declares a license.
 | `wrap-ansi` | `7.0.0` | MIT | No |
 | `wrap-ansi` | `8.1.0` | MIT | No |
 | `wrap-ansi-cjs` | `7.0.0` | MIT | No |
+| `wrappy` | `1.0.2` | ISC | No |
 | `ws` | `8.21.0` | MIT | No |
 | `ws` | `8.21.3` | MIT | No |
 | `xml-naming` | `0.1.0` | MIT | No |
@@ -738,6 +806,8 @@ Every locked package declares a license.
 | `yargs` | `17.7.3` | MIT | No |
 | `yargs-parser` | `21.1.1` | ISC | No |
 | `zip-stream` | `6.0.1` | MIT | No |
+| `zod` | `4.3.6` | MIT | No |
+| `zod-to-json-schema` | `3.25.2` | ISC | No |
 | `zwitch` | `2.0.4` | MIT | No |
 
 ## Build and development dependency closure
@@ -860,7 +930,6 @@ Every locked package declares a license.
 | `acorn-jsx` | `5.3.2` | MIT | No |
 | `ajv` | `6.14.0` | MIT | No |
 | `ajv` | `6.15.0` | MIT | No |
-| `ajv` | `8.20.0` | MIT | No |
 | `app-builder-lib` | `26.15.3` | MIT | No |
 | `aria-query` | `5.3.2` | Apache-2.0 | No |
 | `array-buffer-byte-length` | `1.0.2` | MIT | No |
@@ -889,7 +958,6 @@ Every locked package declares a license.
 | `cacheable-lookup` | `5.0.4` | MIT | No |
 | `cacheable-request` | `7.0.4` | MIT | No |
 | `call-bind` | `1.0.8` | MIT | No |
-| `call-bound` | `1.0.4` | MIT | No |
 | `chalk` | `4.1.2` | MIT | No |
 | `chromium-pickle-js` | `0.2.0` | MIT | No |
 | `ci-info` | `4.3.1` | MIT | No |
@@ -950,11 +1018,9 @@ Every locked package declares a license.
 | `estraverse` | `5.3.0` | BSD-2-Clause | No |
 | `esutils` | `2.0.3` | BSD-2-Clause | No |
 | `exponential-backoff` | `3.1.3` | Apache-2.0 | No |
-| `fast-deep-equal` | `3.1.3` | MIT | No |
 | `fast-glob` | `3.3.1` | MIT | No |
 | `fast-json-stable-stringify` | `2.1.0` | MIT | No |
 | `fast-levenshtein` | `2.0.6` | MIT | No |
-| `fast-uri` | `3.1.5` | BSD-3-Clause | No |
 | `fastq` | `1.20.1` | ISC | No |
 | `fdir` | `6.5.0` | MIT | No |
 | `file-entry-cache` | `8.0.0` | MIT | No |
@@ -1031,7 +1097,6 @@ Every locked package declares a license.
 | `jake` | `10.9.4` | Apache-2.0 | No |
 | `json-buffer` | `3.0.1` | MIT | No |
 | `json-schema-traverse` | `0.4.1` | MIT | No |
-| `json-schema-traverse` | `1.0.0` | MIT | No |
 | `json-stable-stringify-without-jsonify` | `1.0.1` | MIT | No |
 | `json-stringify-safe` | `5.0.1` | ISC | Yes |
 | `json5` | `1.0.2` | MIT | No |
@@ -1079,15 +1144,12 @@ Every locked package declares a license.
 | `node-releases` | `2.0.51` | MIT | No |
 | `nopt` | `9.0.0` | ISC | No |
 | `normalize-url` | `6.1.0` | MIT | No |
-| `object-assign` | `4.1.1` | MIT | No |
-| `object-inspect` | `1.13.4` | MIT | No |
 | `object-keys` | `1.1.1` | MIT | No |
 | `object.assign` | `4.1.7` | MIT | No |
 | `object.entries` | `1.1.9` | MIT | No |
 | `object.fromentries` | `2.0.8` | MIT | No |
 | `object.groupby` | `1.0.3` | MIT | No |
 | `object.values` | `1.2.1` | MIT | No |
-| `once` | `1.4.0` | ISC | No |
 | `optionator` | `0.9.4` | MIT | No |
 | `own-keys` | `1.0.1` | MIT | No |
 | `p-cancelable` | `2.1.1` | MIT | No |
@@ -1114,7 +1176,6 @@ Every locked package declares a license.
 | `read-binary-file-arch` | `1.0.6` | MIT | No |
 | `reflect.getprototypeof` | `1.0.10` | MIT | No |
 | `regexp.prototype.flags` | `1.5.4` | MIT | No |
-| `require-from-string` | `2.0.2` | MIT | No |
 | `resedit` | `1.7.2` | MIT | No |
 | `resolve` | `2.0.0-next.6` | MIT | No |
 | `resolve-alpn` | `1.2.1` | MIT | No |
@@ -1134,10 +1195,6 @@ Every locked package declares a license.
 | `set-function-length` | `1.2.2` | MIT | No |
 | `set-function-name` | `2.0.2` | MIT | No |
 | `set-proto` | `1.0.0` | MIT | No |
-| `side-channel` | `1.1.0` | MIT | No |
-| `side-channel-list` | `1.0.0` | MIT | No |
-| `side-channel-map` | `1.0.1` | MIT | No |
-| `side-channel-weakmap` | `1.0.2` | MIT | No |
 | `simple-update-notifier` | `2.0.0` | MIT | No |
 | `sprintf-js` | `1.1.3` | BSD-3-Clause | Yes |
 | `stable-hash` | `0.0.5` | MIT | No |
@@ -1191,10 +1248,8 @@ Every locked package declares a license.
 | `which-collection` | `1.0.2` | MIT | No |
 | `which-typed-array` | `1.1.20` | MIT | No |
 | `word-wrap` | `1.2.5` | MIT | No |
-| `wrappy` | `1.0.2` | ISC | No |
 | `xmlbuilder` | `15.1.1` | MIT | No |
 | `yallist` | `3.1.1` | ISC | No |
 | `yallist` | `4.0.0` | ISC | No |
 | `yocto-queue` | `0.1.0` | MIT | No |
-| `zod` | `4.3.6` | MIT | No |
 | `zod-validation-error` | `4.0.2` | MIT | No |

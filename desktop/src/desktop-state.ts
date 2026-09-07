@@ -1,12 +1,33 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Logger } from "./logger.js";
+import { parseUpdateSchedule, type UpdateSchedule } from "./update-schedule.js";
 
 interface DesktopState {
+  lastLaunchedVersion?: string;
+  updateSchedule?: UpdateSchedule;
   serverPort?: number;
   companionWindowPosition?: CompanionWindowPosition;
   mainWindowState?: MainWindowState;
   piAgentDirectory?: string | null;
+}
+
+export function readLastLaunchedVersion(directory: string, logger: Logger): string | undefined {
+  const value = readDesktopState(directory, logger).lastLaunchedVersion;
+  return typeof value === "string" ? value : undefined;
+}
+
+export function writeLastLaunchedVersion(directory: string, version: string, logger: Logger): boolean {
+  return writeDesktopState(directory, { lastLaunchedVersion: version }, logger);
+}
+
+export function readUpdateSchedule(directory: string, logger: Logger): UpdateSchedule {
+  try { return parseUpdateSchedule(readDesktopState(directory, logger).updateSchedule); }
+  catch { return { enabled: false, time: "03:00" }; }
+}
+
+export function writeUpdateSchedule(directory: string, schedule: UpdateSchedule, logger: Logger): boolean {
+  return writeDesktopState(directory, { updateSchedule: parseUpdateSchedule(schedule) }, logger);
 }
 
 export type RuntimeProfile = "normal" | "device-control";

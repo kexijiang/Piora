@@ -72,7 +72,7 @@ export function FontSettings() {
             minHeight: 28,
             padding: "4px 9px",
             border: "1px solid var(--border)",
-            borderRadius: 6,
+            borderRadius: "var(--radius-control)",
             background: "var(--bg)",
             color: "var(--text-muted)",
             cursor: "pointer",
@@ -124,7 +124,7 @@ export function FontSettings() {
                   display: "grid",
                   placeItems: "center",
                   flex: "0 0 34px",
-                  borderRadius: 7,
+                  borderRadius: "var(--radius-control)",
                   background: "var(--bg-panel)",
                   color: "var(--text)",
                   fontFamily: preset.previewFamily,
@@ -158,7 +158,7 @@ export function FontSettings() {
         <div
           role="radiogroup"
           aria-labelledby={sizeId}
-          style={{ display: "inline-flex", flexWrap: "wrap", padding: 2, border: "1px solid var(--border)", borderRadius: 7, background: "var(--bg)" }}
+          style={{ display: "inline-flex", flexWrap: "wrap", padding: 2, border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg)" }}
         >
           {sizes.map((size) => {
             const selected = preference.size === size;
@@ -175,7 +175,7 @@ export function FontSettings() {
                   height: 28,
                   padding: 0,
                   border: "none",
-                  borderRadius: 5,
+                  borderRadius: "var(--radius-control)",
                   background: selected ? "var(--bg-selected)" : "transparent",
                   color: selected ? "var(--text)" : "var(--text-muted)",
                   cursor: "pointer",

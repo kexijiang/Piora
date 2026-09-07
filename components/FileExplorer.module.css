@@ -100,9 +100,9 @@
   width: 238px;
   padding: 5px;
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg-panel) 97%, transparent);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-popover);
   color: var(--text);
   backdrop-filter: blur(18px) saturate(1.08);
 }
@@ -116,7 +116,7 @@
   gap: 10px;
   padding: 5px 9px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -144,9 +144,9 @@
   width: 222px;
   padding: 5px;
   border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg-panel) 97%, transparent);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.24), 0 2px 8px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow-popover);
 }
 
 .contextSubmenuLeft { right: calc(100% + 5px); left: auto; }

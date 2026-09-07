@@ -51,12 +51,12 @@
 }
 
 .deleteAllButton {
-  min-height: 32px;
+  min-height: var(--control-height);
   display: inline-flex;
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--status-failed) 10%, transparent);
   color: var(--status-failed);
   font-size: var(--text-xs);
@@ -92,7 +92,7 @@
   box-sizing: border-box;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg-panel) 50%, var(--bg));
   color: var(--text-dim);
 }
@@ -162,7 +162,7 @@
 .list {
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--bg-panel) 40%, transparent);
 }
 
@@ -204,7 +204,7 @@
   height: 28px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-dim);
 }
@@ -216,9 +216,9 @@
 }
 
 .unarchiveButton {
-  min-height: 30px;
+  min-height: var(--control-height-compact);
   padding: 5px 10px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--bg-hover);
   color: var(--text);
   font-size: var(--text-xs);
@@ -240,7 +240,7 @@
   gap: 9px;
   margin-top: 24px;
   border: 1px dashed var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   color: var(--text-dim);
   font-size: var(--text-sm);
   text-align: center;
@@ -253,7 +253,7 @@
   gap: 12px;
   margin-top: 14px;
   padding: 9px 11px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--status-failed) 8%, transparent);
   color: var(--status-failed);
   font-size: var(--text-xs);
@@ -261,7 +261,7 @@
 
 .error button {
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--status-failed) 11%, var(--bg));
   color: inherit;
 }

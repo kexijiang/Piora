@@ -13,6 +13,7 @@ export interface SettingsSearchItem {
 }
 
 export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
+  { id: "general.updateSchedule", section: "general", requiresDesktop: true, labelKey: "settings.updateSchedule", descriptionKey: "settings.updateScheduleDescription", keywords: ["update", "schedule", "silent", "更新", "静默", "安装", "定时"] },
   { id: "capabilities", section: "capabilities", labelKey: "settings.capabilities.title", descriptionKey: "settings.capabilities.description", keywords: ["install", "enable", "configure", "安装", "启用", "配置", "能力"] },
   { id: "general", section: "general", labelKey: "settings.general", descriptionKey: "settings.generalDescription", keywords: ["preferences", "偏好"] },
   { id: "general.portability", section: "general", labelKey: "settings.portability.title", descriptionKey: "settings.portability.description", keywords: ["import", "export", "backup", "导入", "导出", "迁移"] },

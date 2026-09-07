@@ -17,7 +17,7 @@ export function SidebarFooter({ deletedToast, archivedToast, onUndoDelete, onUnd
       </span>
       <button type="button" onClick={() => void onUndoDelete()} style={{ flexShrink: 0, padding: "4px 10px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-hover)", color: "var(--accent)", cursor: "pointer", fontSize: "var(--text-sm)", fontWeight: 600, whiteSpace: "nowrap" }}>{t("sidebar.undo")}</button>
     </div>}
-    {archivedToast && <div role="status" style={{ position: "fixed", left: 14, bottom: 14, zIndex: 10000, display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid var(--border)", borderRadius: 9, background: "var(--bg-panel)", boxShadow: "var(--shadow-popover)", color: "var(--text)", fontSize: "var(--text-sm)" }}>
+    {archivedToast && <div role="status" style={{ position: "fixed", left: 14, bottom: 14, zIndex: 10000, display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-panel)", boxShadow: "var(--shadow-popover)", color: "var(--text)", fontSize: "var(--text-sm)" }}>
       <span>{t("sidebar.taskArchived")}</span>
       <button type="button" onClick={onUndoArchive} style={{ border: 0, background: "transparent", color: "var(--accent)", cursor: "pointer", fontWeight: 600 }}>{t("sidebar.undo")}</button>
     </div>}

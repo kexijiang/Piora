@@ -47,9 +47,9 @@
   width: min(390px, calc(100vw - 30px));
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: var(--bg-panel);
-  box-shadow: 0 18px 54px rgba(15, 23, 42, .18), 0 2px 10px rgba(15, 23, 42, .08);
+  box-shadow: var(--shadow-popover);
 }
 
 .projectBackdrop {
@@ -92,7 +92,7 @@
   gap: 8px;
   padding: 7px 9px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -215,7 +215,7 @@
     width: auto;
     max-height: calc(100dvh - 20px);
     padding-top: 14px;
-    border-radius: 16px;
+    border-radius: var(--radius-panel);
   }
 
   .projectPopover::before {

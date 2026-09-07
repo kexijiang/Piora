@@ -85,6 +85,10 @@ export async function PUT(request: Request) {
       }, { status: 409 });
     }
     setExtensionEnabled(id, body.enabled);
+    if (id === "piora:computer") {
+      const { getComputerControl } = await import("@/lib/computer-control");
+      if (body.enabled) getComputerControl().resume(); else await getComputerControl().stop();
+    }
     invalidateServicesCache();
     return NextResponse.json(await readExtensions(cwd, true));
   } catch (error) {

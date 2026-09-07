@@ -75,7 +75,7 @@ export function WorktreeSection(props: Props) {
                   padding: "0 10px",
                   background: "var(--bg-hover)",
                   border: "1px solid var(--border)",
-                  borderRadius: 7,
+                  borderRadius: "var(--radius-control)",
                   cursor: "pointer",
                   fontSize: "var(--text-xs)",
                   lineHeight: 1.35,
@@ -109,7 +109,7 @@ export function WorktreeSection(props: Props) {
                   zIndex: 100,
                   background: "var(--bg)",
                   border: "1px solid var(--border)",
-                  borderRadius: 8,
+                  borderRadius: "var(--radius-control)",
                   boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
                   overflow: "hidden",
                 }}
@@ -133,7 +133,7 @@ export function WorktreeSection(props: Props) {
                           fontFamily: "var(--font-mono)",
                           padding: "5px 8px",
                           border: "1px solid var(--border)",
-                          borderRadius: 5,
+                          borderRadius: "var(--radius-control)",
                           outline: "none",
                           background: "var(--bg)",
                           color: "var(--text)",
@@ -154,13 +154,13 @@ export function WorktreeSection(props: Props) {
                             <button
                               onClick={() => void handleRemoveWorktree(wt.path, true)}
                               disabled={wtBusy}
-                              style={{ padding: "3px 9px", background: "#ef4444", border: "none", borderRadius: 5, color: "#fff", fontSize: "var(--text-xs)", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+                              style={{ padding: "3px 9px", background: "#ef4444", border: "none", borderRadius: "var(--radius-control)", color: "#fff", fontSize: "var(--text-xs)", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
                             >
                               {t("sidebar.force")}
                             </button>
                             <button
                               onClick={() => setWtConfirmRemove(null)}
-                              style={{ padding: "3px 9px", background: "var(--bg-hover)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-muted)", fontSize: "var(--text-xs)", cursor: "pointer", flexShrink: 0 }}
+                              style={{ padding: "3px 9px", background: "var(--bg-hover)", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text-muted)", fontSize: "var(--text-xs)", cursor: "pointer", flexShrink: 0 }}
                             >
                               {t("sidebar.cancel")}
                             </button>
@@ -215,7 +215,7 @@ export function WorktreeSection(props: Props) {
                                 width: 34, height: 28, padding: 0, marginRight: 4,
                                 background: "none", border: "none",
                                 color: "var(--text-dim)", cursor: "pointer",
-                                borderRadius: 5, flexShrink: 0,
+                                borderRadius: "var(--radius-control)", flexShrink: 0,
                                 transition: "color 0.12s, background 0.12s",
                               }}
                               onMouseEnter={(e) => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
@@ -285,7 +285,7 @@ export function WorktreeSection(props: Props) {
                           fontFamily: "var(--font-mono)",
                           padding: "5px 8px",
                           border: "1px solid var(--accent)",
-                          borderRadius: 5,
+                          borderRadius: "var(--radius-control)",
                           outline: "none",
                           background: "var(--bg)",
                           color: "var(--text)",
@@ -301,7 +301,7 @@ export function WorktreeSection(props: Props) {
                             padding: "4px 0",
                             background: "var(--accent)",
                             border: "none",
-                            borderRadius: 5,
+                            borderRadius: "var(--radius-control)",
                             color: "#fff",
                             fontSize: "var(--text-xs)",
                             fontWeight: 600,
@@ -318,7 +318,7 @@ export function WorktreeSection(props: Props) {
                             padding: "4px 0",
                             background: "var(--bg-hover)",
                             border: "1px solid var(--border)",
-                            borderRadius: 5,
+                            borderRadius: "var(--radius-control)",
                             color: "var(--text-muted)",
                             fontSize: "var(--text-xs)",
                             cursor: "pointer",

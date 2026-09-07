@@ -110,7 +110,7 @@ const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
 
 const PRESET_TOOL_NAMES: Record<Exclude<SessionCapabilityPreset, "custom">, ReadonlySet<string>> = {
   chat: new Set(),
-  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser"]),
+  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser", "harmony_control"]),
   research: new Set(["browser"]),
   device: new Set(HARMONY_AGENT_TOOLS),
 };
@@ -240,6 +240,10 @@ export function restoreSessionCapabilityPolicy(
   const restored = readLatestSessionCapabilityPolicy(entries);
   if (restored) {
     const enabledIds = new Set(restored.enabledCapabilityIds);
+    // Carry an existing enabled phone capability into the compact replacement.
+    if (!restored.knownCapabilityIds.includes("tool:harmony_control") && restored.enabledCapabilityIds.some((id) => id.startsWith("tool:harmony_"))) {
+      enabledIds.add("tool:harmony_control");
+    }
     const catalogIds = new Set(catalog.map((item) => item.id));
     const migratedIds = catalog
       .filter((item) => enabledIds.has(item.id) || CAPABILITY_DEFINITIONS.some((definition) => (

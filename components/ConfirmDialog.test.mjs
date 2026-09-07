@@ -16,7 +16,7 @@ test("confirmation requests use one accessible Codex-style dialog host", () => {
   assert.match(source, /aria-modal="true"/);
   assert.match(styles, /var\(--overlay-scrim\)/);
   assert.match(styles, /var\(--radius-panel\)/);
-  assert.match(styles, /var\(--shadow-popover\)/);
+  assert.match(styles, /var\(--shadow-float\)/);
 });
 
 test("application confirmations no longer use browser-native dialogs", () => {

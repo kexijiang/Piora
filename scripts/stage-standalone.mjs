@@ -46,6 +46,7 @@ const assets = [
     ["Piora browser extension", "extensions/piora-browser.ts"],
     ["Piora file-change extension", "extensions/piora-file-changes.ts"],
     ["Piora Harmony device extension", "extensions/piora-harmony.ts"],
+    ["Optional Piora computer-control extension", "extensions/piora-computer.ts"],
     ["Piora visual-agent extension", "extensions/piora-vision-agent.ts"],
     ["Piora scheduled-task extension", "extensions/piora-automations.ts"],
     ["Piora user-input extension", "extensions/piora-user-input.ts"],
@@ -358,6 +359,7 @@ async function main() {
   const dependencyAssets = await collectRuntimeDependencyAssets([
     piAiProviderRuntimeRoot,
     hypiumRuntimeRoot,
+    join(projectRoot, "node_modules", "@modelcontextprotocol", "sdk"),
   ]);
   const runtimeAssetsByDestination = new Map(
     assets.map((asset) => [resolve(asset.destination), asset]),

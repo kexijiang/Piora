@@ -35,7 +35,7 @@
 .preview {
   min-height: 62px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background-color: var(--bg);
   background-position: center;
   background-repeat: no-repeat;
@@ -131,9 +131,9 @@
 
 .button,
 .uploadButton {
-  min-height: 30px;
+  min-height: var(--control-height-compact);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--bg);
   color: var(--text);
   font: inherit;
@@ -165,7 +165,7 @@
 .uploadButton:focus-within,
 .presetButton:focus-visible,
 .range:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 

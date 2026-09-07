@@ -1,12 +1,12 @@
 .launcher { display: grid; gap: 10px; }
-.search { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-panel); color: var(--text-muted); }
+.search { display: flex; align-items: center; gap: 12px; padding: 9px 14px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--bg-panel); color: var(--text-muted); }
 .search:focus-within { border-color: var(--pocket-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pocket-accent) 8%, transparent); }
 .launcher .search input { width: 0; flex: 1; padding: 8px 0; border: 0; background: transparent; box-shadow: none !important; font-size: var(--text-base); }
 .search kbd { font-size: calc(var(--ui-font-size) * 12 / 14); opacity: .55; }
 .caption { display: flex; align-items: center; justify-content: space-between; color: var(--text-muted); font-size: calc(var(--ui-font-size) * 11 / 14); }
 .launcher .caption button { background: transparent; border: 0; font-size: calc(var(--ui-font-size) * 11 / 14); padding: 4px; }
 .results { display: grid; gap: 3px; max-height: min(420px, 52dvh); overflow: auto; scrollbar-gutter: stable; }
-.launcher .result { display: flex; align-items: center; width: 100%; text-align: left; gap: 12px; padding: 10px 12px; border: 0; background: transparent; border-radius: 9px; min-height: 62px; }
+.launcher .result { display: flex; align-items: center; width: 100%; text-align: left; gap: 12px; padding: 10px 12px; border: 0; background: transparent; border-radius: var(--radius-control); min-height: 62px; }
 .launcher [aria-selected="true"] > .result { background: var(--bg-hover); }
 .icon { width: 30px; flex: 0 0 30px; display: grid; place-items: center; color: var(--pocket-accent); }
 .label { display: grid; flex: 1; min-width: 0; gap: 3px; }

@@ -284,7 +284,7 @@ export const TaskRow = memo(function TaskRow({
         cursor: deleting || renaming ? "default" : "pointer",
         background: rowBackground,
         border: "1px solid transparent",
-        borderRadius: 7,
+        borderRadius: "var(--radius-control)",
         transition: "background 0.1s, border-color 0.1s",
         opacity: deleting ? 0.5 : 1,
         gap: 6,
@@ -454,7 +454,7 @@ function RowActionButton({
       style={{
         display: "flex", alignItems: "center", justifyContent: "center",
         width: 23, height: 23, padding: 0, background: "var(--bg-hover)",
-        border: "none", borderRadius: 6, color: normalColor, cursor: "pointer",
+        border: "none", borderRadius: "var(--radius-control)", color: normalColor, cursor: "pointer",
         flexShrink: 0, transition: "background 0.12s, color 0.12s",
       }}
       onMouseEnter={(event) => {

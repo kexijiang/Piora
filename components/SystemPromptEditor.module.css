@@ -11,7 +11,7 @@
   gap: 18px;
   padding: 13px 14px;
   border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--bg) 70%, transparent);
   cursor: pointer;
 }
@@ -103,7 +103,7 @@
   min-width: 0;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--bg) 70%, transparent);
 }
 
@@ -126,10 +126,10 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 28px;
+  min-height: var(--control-height-compact);
   padding: 4px 8px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -174,7 +174,7 @@
   gap: 8px;
   padding: 7px 9px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -265,12 +265,12 @@
   align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 28px;
+  min-height: var(--control-height-compact);
   padding: 4px 8px;
   border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
-  border-radius: 7px;
-  background: var(--bg);
-  color: var(--text-muted);
+  border-radius: var(--radius-control);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
   cursor: pointer;
   font: inherit;
   font-size: var(--text-xs);
@@ -281,8 +281,8 @@
 .piDefaultPreviewHeader button:hover:not(:disabled),
 .optimizationActions > button:not(.primaryButton):hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
-  background: var(--bg-hover);
-  color: var(--text);
+  background: var(--btn-primary-bg-hover);
+  color: var(--btn-primary-fg);
 }
 
 .aiFieldHeading > button:disabled,
@@ -296,7 +296,7 @@
   width: 100%;
   box-sizing: border-box;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   outline: 0;
   background: var(--bg);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 78%, transparent);
@@ -344,7 +344,7 @@
   margin: 12px;
   padding: 13px;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
-  border-radius: 11px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--accent) 4%, var(--bg));
 }
 
@@ -378,7 +378,7 @@
   margin: 0;
   overflow: auto;
   padding: 11px 12px;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: var(--bg);
   color: var(--text-muted);
   font: 400 var(--text-xs)/1.6 var(--font-mono);
@@ -398,7 +398,7 @@
   gap: 10px;
   padding: 11px;
   border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border));
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--accent) 5%, var(--bg));
 }
 
@@ -470,12 +470,12 @@
 }
 
 .primaryButton {
-  min-height: 34px;
+  min-height: var(--control-height);
   padding: 6px 11px;
   border: 1px solid var(--text);
   border-radius: var(--radius-control);
-  background: var(--text);
-  color: var(--bg);
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
   cursor: pointer;
   font: inherit;
   font-size: var(--text-xs);
@@ -485,7 +485,7 @@
 
 .primaryButton:hover:not(:disabled),
 .primaryButton:focus-visible {
-  background: color-mix(in srgb, var(--text) 88%, var(--bg));
+  background: var(--btn-primary-bg-hover);
 }
 
 .primaryButton:disabled {
@@ -547,7 +547,7 @@
   margin: 10px 0 0;
   overflow: auto;
   padding: 12px 13px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg);
   color: var(--text-muted);
   font: 400 var(--text-xs)/1.55 var(--font-mono);

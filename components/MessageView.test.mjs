@@ -163,7 +163,7 @@ test("renders thinking as a rounded disclosure whose content uses Markdown", () 
   assert.match(html, /aria-expanded="false"/);
   assert.match(thinkingBlockSource, /<MarkdownBody className="markdown-thinking"[^>]*>\{display\.content\}<\/MarkdownBody>/);
   assert.doesNotMatch(thinkingBlockSource, /whiteSpace:\s*"pre-wrap"/);
-  assert.match(globalStyles, /\.thinking-block\s*\{[^}]*border-radius:\s*12px/s);
+  assert.match(globalStyles, /\.thinking-block\s*\{[^}]*border-radius:\s*var\(--radius-surface\)/s);
 });
 
 test("renders file edits as a collapsed change card with line stats", () => {

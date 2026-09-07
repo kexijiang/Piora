@@ -349,7 +349,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
             minWidth: 0,
             background: "var(--user-bg)",
             border: "1px solid var(--border)",
-            borderRadius: 12,
+            borderRadius: "var(--radius-surface)",
             padding: "8px 12px",
             fontSize: "var(--text-base)",
             lineHeight: 1.6,
@@ -435,7 +435,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
                 display: "flex", alignItems: "center", gap: 4,
                 padding: "3px 8px", height: 22,
                 background: "none", border: "none",
-                borderRadius: 5,
+                borderRadius: "var(--radius-control)",
                 color: copied ? "var(--accent)" : "var(--text-dim)",
                 cursor: "pointer",
                 fontSize: "var(--text-xs)", fontWeight: 400,
@@ -473,7 +473,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
                     display: "flex", alignItems: "center", gap: 4,
                     padding: "3px 8px", height: 22,
                     background: "none", border: "none",
-                    borderRadius: 5,
+                    borderRadius: "var(--radius-control)",
                     color: "var(--text-dim)",
                     cursor: "pointer",
                     fontSize: "var(--text-xs)", fontWeight: 400,
@@ -496,7 +496,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
                     display: "flex", alignItems: "center", gap: 4,
                     padding: "3px 8px", height: 22,
                     background: "none", border: "none",
-                    borderRadius: 5,
+                    borderRadius: "var(--radius-control)",
                     color: forking ? "var(--accent)" : "var(--text-dim)",
                     cursor: forking ? "not-allowed" : "pointer",
                     fontSize: "var(--text-xs)", fontWeight: 400,
@@ -727,7 +727,7 @@ function AssistantMessageView({
             marginTop: blocks.length > 0 ? 8 : 0,
             padding: "7px 10px",
             border: "1px solid rgba(239,68,68,0.3)",
-            borderRadius: 6,
+            borderRadius: "var(--radius-control)",
             background: "rgba(239,68,68,0.07)",
             color: "#ef4444",
             fontFamily: "var(--font-mono)",
@@ -762,7 +762,7 @@ function AssistantMessageView({
               display: "flex", alignItems: "center", gap: 4,
               padding: "3px 8px", height: 22,
               background: "none", border: "none",
-              borderRadius: 5,
+              borderRadius: "var(--radius-control)",
               color: copied ? "var(--accent)" : "var(--text-dim)",
               cursor: "pointer",
               fontSize: "var(--text-xs)", fontWeight: 400,
@@ -929,7 +929,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile, onOpenAutomation }
   return (
     <div
       style={{
-        borderRadius: 7,
+        borderRadius: "var(--radius-control)",
         overflow: "hidden",
         fontSize: "var(--text-sm)",
         border: isError ? "1px solid rgba(248,113,113,0.45)" : "1px solid rgba(34,197,94,0.25)",
@@ -1187,7 +1187,7 @@ function CompactionMessageView({ message }: { message: CustomMessage }) {
       <div
         style={{
           border: "1px solid var(--border)",
-          borderRadius: 8,
+          borderRadius: "var(--radius-control)",
           overflow: "hidden",
           background: "var(--bg)",
         }}
@@ -1285,7 +1285,7 @@ function CustomMessageView({ message, cwd, onOpenFile }: { message: CustomMessag
       <div
         style={{
           border: "1px solid var(--border)",
-          borderRadius: 8,
+          borderRadius: "var(--radius-control)",
           overflow: "hidden",
           background: isHiddenDisplay ? "var(--bg-subtle)" : "var(--bg)",
           opacity: isHiddenDisplay && !contentExpanded ? 0.82 : 1,

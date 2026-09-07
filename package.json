@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.4.41-beta.3",
+  "version": "0.4.41-beta.4",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -109,6 +109,7 @@
     "@earendil-works/pi-tui": "0.84.3",
     "@lezer/highlight": "^1.2.3",
     "@lobehub/icons": "^5.16.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/xterm": "^6.0.0",

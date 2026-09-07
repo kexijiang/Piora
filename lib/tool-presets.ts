@@ -11,6 +11,7 @@ export const BUILTIN_AGENT_TOOLS: readonly string[] = [
 
 /** Explicit phone operations exposed by the Harmony extension. */
 export const HARMONY_AGENT_TOOLS: readonly string[] = [
+  "harmony_control",
   "harmony_list_devices",
   "harmony_run_scenario",
   "harmony_acquire_control",
@@ -37,7 +38,7 @@ export const HARMONY_AGENT_TOOLS: readonly string[] = [
 ];
 
 /** The only Agent tools admitted by the cold-start device-control profile. */
-export const DEVICE_CONTROL_AGENT_TOOLS: readonly string[] = [...HARMONY_AGENT_TOOLS, "piora_goal"];
+export const DEVICE_CONTROL_AGENT_TOOLS: readonly string[] = ["harmony_control", "piora_goal"];
 
 /**
  * Clamp a client-requested tool set to the process profile. Device-control

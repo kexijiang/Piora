@@ -7,6 +7,8 @@ import { sendAgentCommand } from "@/lib/agent-client";
 import type { ExtensionInventoryItem, ExtensionsResponse } from "@/lib/api-types";
 import { AliIcon } from "./AliIcon";
 import { CapabilityPrimer } from "./CapabilityPrimer";
+import { ComputerControlSettings } from "./ComputerControlSettings";
+import settingsStyles from "./SettingsDialog.module.css";
 
 interface Props {
   cwd: string;
@@ -86,16 +88,17 @@ export function ExtensionsConfig({ cwd, sessionId, onReloaded }: Props) {
   return (
     <div className="settings-embedded-surface" style={{ height: "100%", overflowY: "auto", padding: "26px 30px 34px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 22 }}>
-        <div>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <h2 style={{ margin: 0, color: "var(--text)", fontSize: "calc(var(--text-lg) * 1.22)", fontWeight: 680 }}>{t("extensions.title")}</h2>
           <p style={{ margin: "7px 0 0", color: "var(--text-muted)", fontSize: "var(--text-sm)", maxWidth: 720 }}>{t("extensions.description")}</p>
         </div>
-        <button type="button" onClick={() => void load()} disabled={loading || busyId !== null} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid var(--border)", borderRadius: 7, background: "var(--bg)", color: "var(--text-muted)", cursor: loading || busyId !== null ? "default" : "pointer", fontSize: "var(--text-xs)" }}>
+        <button className="ui-button" type="button" onClick={() => void load()} disabled={loading || busyId !== null}>
           <AliIcon name="reload" size={14} /> {t("i18n.refresh")}
         </button>
       </div>
 
       <CapabilityPrimer current="extension" />
+      <ComputerControlSettings />
 
       {error && <div role="alert" style={{ marginBottom: 12, color: "#dc2626", fontSize: "var(--text-sm)" }}>{error}</div>}
       {message && <div role="status" style={{ marginBottom: 12, color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>{message}</div>}
@@ -111,7 +114,7 @@ export function ExtensionsConfig({ cwd, sessionId, onReloaded }: Props) {
             {group.items.map((extension) => {
               const busy = busyId === extension.id;
               return (
-                <div key={extension.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 14px", border: "1px solid var(--border)", borderRadius: 8, background: "var(--bg-panel)" }}>
+                <div key={extension.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-panel)" }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       <strong style={{ fontSize: "var(--text-sm)", color: "var(--text)" }}>{extension.name}</strong>
@@ -122,9 +125,10 @@ export function ExtensionsConfig({ cwd, sessionId, onReloaded }: Props) {
                       {[extension.tools.length ? `${extension.tools.length} ${t("extensions.tools")}` : "", extension.commands.length ? `${extension.commands.length} ${t("extensions.commands")}` : "", extension.path].filter(Boolean).join(" · ")}
                     </div>
                   </div>
-                  <button type="button" role="switch" aria-checked={extension.enabled} aria-label={`${extension.name}: ${extension.enabled ? t("extensions.enabled") : t("extensions.disabled")}`} disabled={busyId !== null || !extension.configurable} onClick={() => void toggle(extension)} style={{ minWidth: 76, padding: "7px 10px", border: `1px solid ${extension.enabled ? "var(--accent)" : "var(--border)"}`, borderRadius: 999, background: extension.enabled ? "var(--bg-selected)" : "transparent", color: extension.enabled ? "var(--accent)" : "var(--text-muted)", cursor: busyId === null && extension.configurable ? "pointer" : "default", fontSize: "var(--text-xs)" }}>
-                    {busy ? t("extensions.saving") : extension.required ? t("extensions.required") : !extension.configurable ? t("extensions.managedByPlugin") : extension.enabled ? t("extensions.enabled") : t("extensions.disabled")}
-                  </button>
+                  <div className="ui-inline-actions">
+                    <span className="ui-status-badge">{busy ? t("extensions.saving") : extension.required ? t("extensions.required") : !extension.configurable ? t("extensions.managedByPlugin") : extension.enabled ? t("extensions.enabled") : t("extensions.disabled")}</span>
+                    <button className={settingsStyles.switch} type="button" role="switch" aria-checked={extension.enabled} aria-label={`${extension.name}: ${extension.enabled ? t("extensions.enabled") : t("extensions.disabled")}`} disabled={busyId !== null || !extension.configurable} onClick={() => void toggle(extension)}><span /></button>
+                  </div>
                 </div>
               );
             })}

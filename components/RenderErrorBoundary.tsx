@@ -64,7 +64,7 @@ export class RenderErrorBoundary extends Component<RenderErrorBoundaryProps, Ren
           margin: "8px 0",
           padding: "8px 10px",
           border: "1px solid var(--border)",
-          borderRadius: 8,
+          borderRadius: "var(--radius-control)",
           background: "var(--bg-panel)",
           color: "var(--text-muted)",
           fontSize: "var(--text-sm)",

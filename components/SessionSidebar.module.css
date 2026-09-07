@@ -21,7 +21,7 @@
   min-width: 0;
   padding: 4px 3px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
   font-size: var(--text-base);
@@ -36,7 +36,7 @@
   width: 20px;
   height: 20px;
   margin-right: 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: linear-gradient(145deg, #fff3dc 8%, #cfadff 58%, #68e4ff 100%);
   color: #10142a;
   font-family: Georgia, "Times New Roman", serif;
@@ -127,7 +127,7 @@
   align-items: center;
   width: 100%;
   height: 30px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
   font-size: var(--text-sm);
@@ -280,7 +280,7 @@
   height: 31px;
   padding: 0 4px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   transition: background 100ms ease;
   touch-action: pan-y;
@@ -376,7 +376,7 @@
   height: 23px;
   padding: 0;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
@@ -434,9 +434,9 @@
   overflow-y: auto;
   padding: 6px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--bg-panel) 95%, transparent);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--shadow-popover);
   backdrop-filter: blur(18px);
 }
 
@@ -459,7 +459,7 @@
   min-height: 32px;
   padding: 6px 7px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
   font-size: var(--text-sm);
@@ -496,7 +496,7 @@ button.menuItem:disabled {
   height: 30px;
   padding: 0 8px;
   border: 1px solid var(--accent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   outline: none;
   background: var(--bg);
   color: var(--text);

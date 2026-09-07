@@ -59,6 +59,6 @@ test("workspace actions share compact subtle button styling", () => {
   assert.match(workspaceCss, /\.iconAction \{[^}]*width: 28px;/);
   assert.match(workspaceCss, /\.iconAction:focus-visible \{[^}]*outline: 0/);
   assert.match(workspaceCss, /\.primaryAction \{/);
-  assert.match(workspaceCss, /\.reviewToolbar button[^}]*min-height: 28px;/);
+  assert.match(workspaceCss, /\.reviewToolbar button[^}]*min-height: var\(--control-height-compact\);/);
   assert.match(workspaceCss, /color-mix\(in srgb, var\(--accent\) 36%/);
 });

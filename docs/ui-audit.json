@@ -1,0 +1,1319 @@
+{
+  "files": 51,
+  "components": 112,
+  "totals": {
+    "radius": 0,
+    "fixedFont": 0,
+    "shadow": 144,
+    "scrollbar": 80,
+    "migratedRadii": 0
+  },
+  "details": [
+    {
+      "file": "app/globals.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 21,
+      "scrollbar": 20,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/ArchivedChatsSettings.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/AutomationPanel.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/BackgroundSettings.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CapabilityBundlesConfig.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CapabilityPrimer.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/ChatMinimap.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 3,
+      "scrollbar": 2,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CommandPalette.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionBubbleWindow.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionDataManager.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionPanel.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 4,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionPet.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 3,
+      "scrollbar": 2,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionSettingsDialog.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 5,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionStorageSettings.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionTodoList.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionToolLauncher.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/CompanionTransferStation.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/ConfirmDialog.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/ConversationSearchDialog.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/DesktopCompanionWindow.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 3,
+      "scrollbar": 2,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/DesktopUpdateDialog.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/DiffView.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 11,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/FileEditor.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/FileExplorer.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/FirstRunOnboarding.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 4,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/JsonWorkbench.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 2,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/NetworkProxySettings.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/NewSessionLauncher.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/NewSessionProjectPicker.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/PluginsConfig.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/ProjectToolsConfig.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/RoomSettingsDialog.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 4,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/RoomSidebarSection.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/RoomWorkspace.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 8,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/SessionSidebar.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/SettingsDialog.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 8,
+      "scrollbar": 2,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/SettingsPortabilityCard.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/ShortcutSettings.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 5,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/sidebar/TaskRow.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/SpeechSettings.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/StarterCards.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/SystemPromptEditor.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 6,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/SystemPromptSelector.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/TabBar.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/TaskHeader.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 0,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/UsageStatsPanel.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 2,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/UserInputCard.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 4,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/workspace/design-to-harmony/DesignToHarmonyPanel.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 13,
+      "scrollbar": 3,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/workspace/HarmonyPanel.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 5,
+      "scrollbar": 1,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/workspace/TerminalPanel.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 1,
+      "scrollbar": 0,
+      "migratedRadii": 0
+    },
+    {
+      "file": "components/workspace/WorkspacePanel.module.css",
+      "radius": 0,
+      "fixedFont": 0,
+      "shadow": 21,
+      "scrollbar": 28,
+      "migratedRadii": 0
+    }
+  ],
+  "componentInventory": [
+    {
+      "file": "components/AITextAreaField.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/AliIcon.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/AppearanceLooks.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 3,
+      "dialogs": 0,
+      "inlineStyles": 34
+    },
+    {
+      "file": "components/AppearanceResetButton.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 3
+    },
+    {
+      "file": "components/AppShell.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 19,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 79
+    },
+    {
+      "file": "components/AppTooltip.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/ArchivedChatsSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 4,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/AutomationPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 11,
+      "inputs": 8,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/BackgroundBootstrap.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/BackgroundSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 4,
+      "inputs": 5,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/BranchNavigator.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 21
+    },
+    {
+      "file": "components/CapabilityBundlesConfig.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 6,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CapabilityPrimer.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/ChatHistory.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/ChatInput.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 28,
+      "inputs": 4,
+      "dialogs": 0,
+      "inlineStyles": 49
+    },
+    {
+      "file": "components/ChatMinimap.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/ChatScrollRail.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/ChatWindow.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 6,
+      "inputs": 3,
+      "dialogs": 2,
+      "inlineStyles": 37
+    },
+    {
+      "file": "components/CollapsibleUserContent.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CommandPalette.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 1,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CompanionBubbleWindow.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CompanionDataManager.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 15,
+      "inputs": 12,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CompanionPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 17,
+      "inputs": 18,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CompanionPet.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/CompanionSettingsDialog.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 12,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/CompanionStorageSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 4,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CompanionTodoList.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 10,
+      "inputs": 3,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CompanionToolLauncher.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/CompanionTransferStation.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 12,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/ComputerControlSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/ConfirmDialog.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/ConversationSearchDialog.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 3,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/DesktopAutoLaunchSetting.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/DesktopCompanionWindow.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/DesktopUpdateDialog.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 0,
+      "dialogs": 1,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/DesktopUpdateScheduleSetting.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/DiffView.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/DirectoryPicker.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 6,
+      "inputs": 1,
+      "dialogs": 1,
+      "inlineStyles": 20
+    },
+    {
+      "file": "components/ExtensionsConfig.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 21
+    },
+    {
+      "file": "components/ExtensionStatusBar.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/FileExplorer.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 14,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 58
+    },
+    {
+      "file": "components/FileIcons.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 3
+    },
+    {
+      "file": "components/FileViewer.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 11,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 43
+    },
+    {
+      "file": "components/FirstRunOnboarding.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 6,
+      "inputs": 0,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/FontSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 19
+    },
+    {
+      "file": "components/HarmonyStorageSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 4,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 23
+    },
+    {
+      "file": "components/JsonCodeEditor.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/JsonWorkbench.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 16,
+      "inputs": 4,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/LazyMarkdownBody.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/LazySyntaxHighlighter.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/MarkdownBody.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/MermaidBlock.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 9,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/MessageImage.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/MessageView.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 15,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 71
+    },
+    {
+      "file": "components/ModelProviderIcon.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/ModelsConfig.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 36,
+      "inputs": 14,
+      "dialogs": 0,
+      "inlineStyles": 244
+    },
+    {
+      "file": "components/NetworkProxySettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/NewSessionLauncher.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/NewSessionProjectPicker.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 7,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/PluginsConfig.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 11,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 73
+    },
+    {
+      "file": "components/ProjectToolsConfig.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 4,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/PwaRegistration.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/RemoteControlSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 19
+    },
+    {
+      "file": "components/RenderErrorBoundary.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/RoomActivityDeck.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/RoomActivityMessage.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/RoomMessageNavigator.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/RoomSettingsDialog.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 15,
+      "inputs": 23,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/RoomSidebarSection.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 3,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/RoomWorkspace.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 21,
+      "inputs": 4,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/RuntimeErrorScreen.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 9
+    },
+    {
+      "file": "components/SessionHistoryDialog.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/SessionSidebar.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/SessionToolsControl.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 4,
+      "inputs": 1,
+      "dialogs": 1,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/SettingsDialog.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 21,
+      "inputs": 6,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/SettingsPortabilityCard.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/ShortcutSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/sidebar/ProjectList.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 10,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 7
+    },
+    {
+      "file": "components/sidebar/SidebarChatArea.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/sidebar/SidebarFileArea.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 6
+    },
+    {
+      "file": "components/sidebar/SidebarFooter.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 5
+    },
+    {
+      "file": "components/sidebar/SidebarNavigation.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 6,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/sidebar/SidebarPrimitives.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/sidebar/SidebarProjectArea.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 3
+    },
+    {
+      "file": "components/sidebar/SidebarShell.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/sidebar/TaskContextMenu.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 6
+    },
+    {
+      "file": "components/sidebar/TaskList.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/sidebar/TaskRow.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 12
+    },
+    {
+      "file": "components/sidebar/WorktreeSection.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 8,
+      "inputs": 2,
+      "dialogs": 0,
+      "inlineStyles": 30
+    },
+    {
+      "file": "components/SkillsConfig.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 9,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 77
+    },
+    {
+      "file": "components/SpeechSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/StarterCards.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 1,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/SystemPromptEditor.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 10,
+      "inputs": 3,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/SystemPromptSelector.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 5,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/TabBar.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 8,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/TaskHeader.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 9,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/TrashSettings.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/UsageStatsPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 3,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 5
+    },
+    {
+      "file": "components/UserInputCard.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 4,
+      "inputs": 3,
+      "dialogs": 1,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/VirtualList.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/VirtualRowState.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/VisionAgentStatus.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/workspace/BrowserPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 19,
+      "inputs": 3,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/workspace/ChangeList.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/workspace/CommandPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 9,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/workspace/design-to-harmony/DesignToHarmonyPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 28,
+      "inputs": 12,
+      "dialogs": 0,
+      "inlineStyles": 4
+    },
+    {
+      "file": "components/workspace/HarmonyLogViewer.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 3,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/workspace/HarmonyPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 25,
+      "inputs": 9,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/workspace/ReviewPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 22,
+      "inputs": 4,
+      "dialogs": 1,
+      "inlineStyles": 1
+    },
+    {
+      "file": "components/workspace/RightPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 7,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 2
+    },
+    {
+      "file": "components/workspace/SearchPanel.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 2,
+      "inputs": 1,
+      "dialogs": 0,
+      "inlineStyles": 0
+    },
+    {
+      "file": "components/workspace/TerminalSurface.tsx",
+      "fixedInlineRadii": 0,
+      "buttons": 0,
+      "inputs": 0,
+      "dialogs": 0,
+      "inlineStyles": 0
+    }
+  ]
+}

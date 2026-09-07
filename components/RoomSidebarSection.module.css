@@ -25,7 +25,7 @@
   margin-left: auto;
   padding: 0;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -59,7 +59,7 @@
   min-height: 38px;
   padding: 4px 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
   text-align: left;
@@ -85,7 +85,7 @@
   width: 26px;
   height: 26px;
   border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--accent) 10%, var(--bg));
   color: var(--text-muted);
 }
@@ -125,8 +125,8 @@
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: rgb(0 0 0 / 34%);
-  backdrop-filter: blur(3px);
+  background: var(--overlay-scrim);
+  backdrop-filter: blur(var(--overlay-blur));
 }
 
 .dialog {
@@ -135,10 +135,10 @@
   max-height: min(680px, calc(100vh - 40px));
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 13px;
-  background: var(--bg);
-  box-shadow: 0 22px 70px rgb(0 0 0 / 24%);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-panel);
+  background: var(--dialog-background);
+  box-shadow: var(--shadow-float);
 }
 
 .dialogHeader {
@@ -183,7 +183,7 @@
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   outline: none;
   background: var(--bg-panel);
   color: var(--text);
@@ -210,7 +210,7 @@
   margin-top: 13px;
   padding: 10px 11px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg-panel) 72%, transparent);
 }
 
@@ -237,7 +237,7 @@
 .members {
   padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: var(--bg-panel);
 }
 
@@ -269,7 +269,7 @@
   gap: 9px;
   min-height: 44px;
   padding: 5px 7px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   cursor: pointer;
 }
 
@@ -315,7 +315,7 @@
   height: 34px;
   padding: 0 13px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--bg-panel);
   color: var(--text);
   cursor: pointer;
@@ -328,8 +328,8 @@
 
 .dialogActions .primary {
   border-color: var(--accent);
-  background: var(--accent);
-  color: white;
+  background: var(--btn-primary-bg);
+  color: var(--btn-primary-fg);
 }
 
 .section,
@@ -340,7 +340,7 @@
 .memberRow,
 .dialogActions { border: 0; }
 
-.dialog { box-shadow: var(--shadow-popover); }
+.dialog { box-shadow: var(--shadow-float); }
 
 .field textarea,
 .advancedCreate,

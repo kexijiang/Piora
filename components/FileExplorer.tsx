@@ -744,7 +744,7 @@ function TreeNode({
               alignItems: "center",
               gap: 1,
               padding: 1,
-              borderRadius: 5,
+              borderRadius: "var(--radius-control)",
               background: "var(--bg-hover)",
               boxShadow: "-8px 0 8px var(--bg-hover)",
             }}

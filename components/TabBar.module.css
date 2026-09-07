@@ -40,7 +40,7 @@
 
 .tab[aria-selected="true"] { color: var(--text); }
 .tab[data-dragging="true"] { opacity: 0.45; }
-.tab:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 44%, transparent); outline-offset: -2px; }
+.tab:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 
 .icon { display: flex; flex: 0 0 auto; align-items: center; opacity: 0.7; }
 .icon[data-active="true"] { opacity: 1; }
@@ -85,7 +85,7 @@
 .closeButton:hover,
 .moreButton:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
 .closeButton:focus-visible,
-.moreButton:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 44%, transparent); outline-offset: -2px; }
+.moreButton:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 
 .moreButton {
   width: 32px;
@@ -111,7 +111,7 @@
 }
 
 .menu button {
-  min-height: 30px;
+  min-height: var(--control-height-compact);
   border: 0;
   border-radius: var(--radius-small);
   background: transparent;

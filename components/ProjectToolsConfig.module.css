@@ -33,7 +33,7 @@
   align-items: center;
   gap: 6px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--bg);
   color: var(--text-muted);
   cursor: pointer;
@@ -55,7 +55,7 @@
 .group,
 .footer {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-panel);
 }
 
@@ -147,16 +147,16 @@
   gap: 3px;
   padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: var(--bg);
 }
 
 .sectionHeader button {
   justify-content: center;
-  min-height: 30px;
+  min-height: var(--control-height-compact);
   padding: 5px 10px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   white-space: nowrap;
 }
 
@@ -175,7 +175,7 @@
 .header button:focus-visible,
 .sectionHeader button:focus-visible,
 .footer button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -221,7 +221,7 @@
   height: 28px;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--bg-hover);
   color: var(--text-muted);
 }
@@ -312,7 +312,7 @@
 }
 
 .switch:checked + .track::after { transform: translateX(18px); }
-.switch:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 3px; }
+.switch:focus-visible + .track { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 .switch:disabled + .track { opacity: 0.5; }
 
 @media (prefers-reduced-motion: reduce) {

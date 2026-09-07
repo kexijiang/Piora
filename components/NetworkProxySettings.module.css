@@ -3,7 +3,7 @@
   gap: 16px;
   padding: 18px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
 }
 .heading {
@@ -38,7 +38,7 @@
   flex: 0 0 34px;
   display: grid;
   place-items: center;
-  border-radius: 11px;
+  border-radius: var(--radius-surface);
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
@@ -56,7 +56,7 @@
   padding: 11px 12px;
   text-align: left;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   color: var(--text);
   background: var(--bg);
 }
@@ -88,14 +88,14 @@
   width: 100%;
   padding: 9px 11px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   color: var(--text);
   background: var(--bg);
   font: 500 var(--text-sm)/1.4 var(--font-mono);
 }
 
 .fields input:focus {
-  outline: 2px solid color-mix(in srgb, var(--accent) 42%, transparent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 1px;
 }
 
@@ -120,15 +120,15 @@
 .primary,
 .secondary {
   padding: 8px 13px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   font-size: var(--text-sm);
   font-weight: 650;
 }
 
 .primary {
-  border: 1px solid var(--accent);
-  color: white;
-  background: var(--accent);
+  border: 1px solid transparent;
+  color: var(--btn-primary-fg);
+  background: var(--btn-primary-bg);
 }
 
 .secondary {
@@ -140,7 +140,7 @@
 .error,
 .success {
   padding: 9px 11px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   font-size: var(--text-xs);
 }
 

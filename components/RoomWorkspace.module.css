@@ -10,7 +10,7 @@
 
 .teamStage { flex: 0 1 auto; min-height: 0; max-height: 42%; overflow: auto; padding: 10px 18px; border-bottom: 1px solid var(--border); }
 .teamMembers { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; }
-.teamMember { display: grid; grid-template-columns: 8px minmax(60px, 150px); align-items: center; gap: 4px 8px; flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); color: var(--text); text-align: left; cursor: pointer; }
+.teamMember { display: grid; grid-template-columns: 8px minmax(60px, 150px); align-items: center; gap: 4px 8px; flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); color: var(--text); text-align: left; cursor: pointer; }
 .teamMember[aria-pressed="true"] { background: var(--bg-selected); border-color: var(--accent); }
 .teamMember small { grid-column: 2; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .teamMember strong { font-size: var(--text-sm); }
@@ -21,13 +21,13 @@
 .liveActivity > summary span { color: var(--text-muted); }
 .liveActivity > summary small { margin-left: auto; color: var(--text-dim); white-space: nowrap; }
 .liveActions { display: flex; gap: 8px; margin: 6px 0; }
-.liveActions button, .teamProgress button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text); cursor: pointer; white-space: nowrap; }
-.liveActions button:focus-visible, .teamMember:focus-visible, .teamProgress button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.liveActions button, .teamProgress button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); color: var(--text); cursor: pointer; white-space: nowrap; }
+.liveActions button:focus-visible, .teamMember:focus-visible, .teamProgress button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .liveOutput { max-height: 200px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .liveOutput pre { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.65; }
 .liveThinking { color: var(--text-muted); border-left: 2px solid var(--border); padding-left: 10px; }
 .liveThinking summary, .liveTool summary { cursor: pointer; }
-.liveTool { margin: 6px 0; background: var(--tool-bg); padding: 6px 10px; border-radius: 6px; }
+.liveTool { margin: 6px 0; background: var(--tool-bg); padding: 6px 10px; border-radius: var(--radius-control); }
 .liveTool summary span { color: var(--text-muted); margin-right: 8px; }
 .liveTool summary [data-state="error"] { color: var(--status-error, #dc2626); }
 .liveTool pre { font-family: var(--font-mono); font-size: var(--text-xs); }
@@ -68,7 +68,7 @@
 .groupAvatar {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: var(--radius-control);
 }
 
 .header h1 {
@@ -115,7 +115,7 @@
   margin-left: 10px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -284,7 +284,7 @@
 .avatar {
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   color: var(--text);
   font-size: var(--text-xs);
   font-weight: 660;
@@ -323,7 +323,7 @@
 .bubble {
   padding: 10px 13px;
   border: 1px solid var(--border);
-  border-radius: 5px 13px 13px 13px;
+  border-radius: 5px var(--radius-panel) var(--radius-panel) var(--radius-panel);
   background: var(--bg-panel);
   color: var(--text);
   font-size: var(--text-sm);
@@ -343,7 +343,7 @@
 
 .userMessage .bubble {
   border-color: color-mix(in srgb, var(--accent) 18%, var(--border));
-  border-radius: 13px 5px 13px 13px;
+  border-radius: var(--radius-panel) 5px var(--radius-panel) var(--radius-panel);
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-panel));
 }
 
@@ -367,7 +367,7 @@
   margin: 0 3px 7px;
   padding: 3px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: var(--bg-panel);
 }
 
@@ -375,7 +375,7 @@
 .contentActions button {
   padding: 4px 9px;
   border: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-size: var(--text-xs);
@@ -439,7 +439,7 @@
   gap: 8px;
   padding: 10px 10px 9px 13px;
   border: 1px solid color-mix(in srgb, var(--border) 92%, transparent);
-  border-radius: 13px;
+  border-radius: var(--radius-panel);
   background: var(--bg-panel);
   box-shadow: 0 6px 24px rgb(0 0 0 / 5%);
 }
@@ -455,9 +455,9 @@
   padding: 5px;
   overflow-y: auto;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-panel);
-  box-shadow: 0 14px 38px rgb(0 0 0 / 16%);
+  box-shadow: var(--shadow-popover);
 }
 
 .mentionMenu button {
@@ -465,10 +465,10 @@
   grid-template-columns: 28px minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  min-height: 38px;
+  min-height: var(--control-height-large);
   padding: 4px 7px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text);
   text-align: left;
@@ -485,7 +485,7 @@
   width: 28px;
   height: 28px;
   place-items: center;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--bg-selected);
   font-size: var(--text-xs);
   font-weight: 650;
@@ -524,7 +524,7 @@
   gap: 6px;
   padding: 5px 8px;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
   box-shadow: 0 10px 32px rgb(0 0 0 / 10%);
   backdrop-filter: blur(14px);
@@ -534,7 +534,7 @@
   min-width: min(360px, calc(100vw - 48px));
   padding: 0;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 14px;
+  border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--bg-panel) 94%, transparent);
   box-shadow: 0 12px 36px rgb(0 0 0 / 12%);
   backdrop-filter: blur(16px);
@@ -592,7 +592,7 @@
   height: 31px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--accent);
   color: white;
   cursor: pointer;
@@ -626,7 +626,7 @@
   padding: 14px;
   overflow-y: auto;
   border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--bg-panel) 95%, transparent);
   box-shadow: 0 14px 42px rgb(0 0 0 / 13%);
   backdrop-filter: blur(18px);
@@ -727,7 +727,7 @@
   width: 100%;
   padding: 7px 8px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--bg);
   color: var(--text-muted);
   cursor: pointer;
@@ -762,7 +762,7 @@
   height: 28px;
   padding: 0 9px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--bg);
   color: var(--text);
   font-size: var(--text-xs);
@@ -777,7 +777,7 @@
   padding: 7px 8px;
   resize: vertical;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   outline: none;
   background: var(--bg);
   color: var(--text);
@@ -818,7 +818,7 @@
   gap: 2px 7px;
   padding: 7px 8px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: var(--bg);
 }
 
@@ -864,7 +864,7 @@
 .teamRunCard {
   padding: 8px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--bg);
 }
 
@@ -923,7 +923,7 @@
   margin: 8px 0;
   padding: 8px;
   border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--accent) 7%, var(--bg));
   color: var(--text-muted);
   font-size: calc(var(--text-xs) * 0.8);
@@ -951,7 +951,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 2px 6px;
   padding: 5px 6px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--bg-panel);
 }
 
@@ -981,7 +981,7 @@
 .runActions button {
   padding: 4px 7px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   font-size: calc(var(--text-xs) * 0.82);

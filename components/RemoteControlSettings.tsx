@@ -110,7 +110,7 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
         </div>
         <button type="button" disabled={(!sessionId && !scopes.includes("session.create")) || scopes.length === 0} onClick={() => void create()}>{t("remote.create")}</button>
         {!sessionId ? <p>{t("remote.noSession")}</p> : null}
-        {newToken ? <div style={{ marginTop: 14, padding: 12, border: "1px solid var(--accent)", borderRadius: 8 }}><strong>{t("remote.tokenOnce")}</strong><code style={{ display: "block", margin: "8px 0", overflowWrap: "anywhere" }}>{newToken}</code><button type="button" onClick={() => void copyToken()}>{t("remote.copy")}</button><button type="button" onClick={() => setNewToken(null)} style={{ marginLeft: 8 }}>{t("remote.dismiss")}</button></div> : null}
+        {newToken ? <div style={{ marginTop: 14, padding: 12, border: "1px solid var(--accent)", borderRadius: "var(--radius-control)" }}><strong>{t("remote.tokenOnce")}</strong><code style={{ display: "block", margin: "8px 0", overflowWrap: "anywhere" }}>{newToken}</code><button type="button" onClick={() => void copyToken()}>{t("remote.copy")}</button><button type="button" onClick={() => setNewToken(null)} style={{ marginLeft: 8 }}>{t("remote.dismiss")}</button></div> : null}
         {error ? <p role="alert" style={{ color: "var(--status-failed)" }}>{error}</p> : null}
       </section>
       <section className="settings-conversation-section" style={{ marginTop: 18 }}>

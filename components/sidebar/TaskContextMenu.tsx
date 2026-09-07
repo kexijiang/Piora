@@ -79,7 +79,7 @@ export function TaskContextMenu(props: Props) {
       style={{
         position: "fixed", left: Math.max(8, left), top: Math.max(8, top), zIndex: 10000,
         width: menuWidth, padding: 5, border: "1px solid var(--border)",
-        borderRadius: 9, background: "var(--bg-panel)", boxShadow: "var(--shadow-popover)",
+        borderRadius: "var(--radius-control)", background: "var(--bg-panel)", boxShadow: "var(--shadow-popover)",
       }}
     >
       <MenuItem icon="pushpin" label={props.pinned ? t("sidebar.unpinTask") : t("sidebar.pinTask")} onClick={() => run(props.onPin)} />
@@ -91,7 +91,7 @@ export function TaskContextMenu(props: Props) {
         onClick={() => { setMoveOpen((open) => !open); setMoveError(null); }}
       />
       {moveOpen ? (
-        <div style={{ margin: "2px 3px 5px", padding: 4, borderRadius: 7, background: "var(--bg-hover)" }}>
+        <div style={{ margin: "2px 3px 5px", padding: 4, borderRadius: "var(--radius-control)", background: "var(--bg-hover)" }}>
           <div style={{ padding: "3px 6px 5px", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
             {t("sidebar.moveTaskTo")}
           </div>
@@ -139,7 +139,7 @@ function MenuItem({ icon, label, onClick, danger, disabled }: {
       onClick={onClick}
       style={{
         width: "100%", display: "flex", alignItems: "center", gap: 9,
-        minHeight: 31, padding: "5px 8px", border: 0, borderRadius: 6,
+        minHeight: 31, padding: "5px 8px", border: 0, borderRadius: "var(--radius-control)",
         background: "transparent", color: danger ? "var(--status-failed)" : "var(--text)",
         cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.45 : 1,
         fontSize: "var(--text-sm)", textAlign: "left",

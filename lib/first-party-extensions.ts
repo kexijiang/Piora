@@ -15,6 +15,11 @@ export interface FirstPartyExtensionDescriptor {
 
 export const FIRST_PARTY_EXTENSIONS: readonly FirstPartyExtensionDescriptor[] = [
   {
+    id: "piora:computer", fileName: "piora-computer.ts", name: "Piora Computer Control",
+    description: "Optional Windows desktop control through Windows-MCP, with one compact tool and on-demand schemas. Requires uv; the pinned backend downloads on first connection.",
+    profiles: ["normal"], defaultEnabled: false,
+  },
+  {
     id: "piora:file-changes",
     fileName: "piora-file-changes.ts",
     name: "Piora File Changes",

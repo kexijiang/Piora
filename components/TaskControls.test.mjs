@@ -58,7 +58,7 @@ test("settings exposes a Codex-style back button on the left", () => {
   assert.match(settingsDialog, /className=\{styles\.backLabel\}>\{t\("settings\.back"\)\}/);
   assert.match(settingsDialog, /styles\.desktopBackdrop/);
   assert.match(settingsCss, /\.desktopBackdrop\s*\{[^}]*top:\s*36px/);
-  assert.match(settingsCss, /\.backButton\s*\{[^}]*min-height:\s*36px/);
+  assert.match(settingsCss, /\.backButton\s*\{[^}]*min-height:\s*var\(--control-height\)/);
 });
 
 test("settings owns archived chats instead of rendering them in project lists", () => {

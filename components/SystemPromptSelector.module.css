@@ -54,7 +54,7 @@
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: 13px;
+  border-radius: var(--radius-panel);
   background: var(--bg-panel);
   box-shadow: var(--shadow-popover, 0 14px 40px rgb(0 0 0 / 24%));
   color: var(--text);
@@ -96,7 +96,7 @@
   justify-content: center;
   flex: 0 0 auto;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-dim);
   cursor: pointer;
@@ -124,7 +124,7 @@
   gap: 8px;
   padding: 8px 9px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
@@ -149,7 +149,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, currentColor 7%, var(--bg));
 }
 

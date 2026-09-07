@@ -190,9 +190,9 @@ export class DesktopUpdateController {
     return this.downloadPromise;
   }
 
-  quitAndInstall(): boolean {
+  quitAndInstall(silent = false): boolean {
     if (!this.updater || this.state.status !== "downloaded") return false;
-    this.updater.quitAndInstall(false, true);
+    this.updater.quitAndInstall(silent, true);
     return true;
   }
 

@@ -13,6 +13,7 @@ import {
   nativeImage,
   net,
   Notification,
+  powerMonitor,
   screen,
   session as electronSession,
   shell,
@@ -24,6 +25,10 @@ import {
   type Session,
 } from "electron";
 import { autoUpdater } from "electron-updater";
+import { ScheduledDesktopUpdater, parseUpdateSchedule, type UpdateSchedule } from "./update-schedule.js";
+import { readUpdateSchedule, writeUpdateSchedule } from "./desktop-state.js";
+import { readLastLaunchedVersion, writeLastLaunchedVersion } from "./desktop-state.js";
+import { createStartupDocument, loadStartupMedia, STARTUP_CINEMATIC_MS, STARTUP_CONTINUE_URL } from "./startup-scene.js";
 import {
   companionFacingDirection,
   companionMotionPoint,
@@ -184,6 +189,9 @@ let piAgentDirectoryPath: string | undefined;
 let desktopBrowserManager: DesktopBrowserManager | undefined;
 const desktopBrowserRequestControllers = new Map<string, AbortController>();
 let desktopUpdateController: DesktopUpdateController | undefined;
+let updateSchedule: UpdateSchedule = { enabled: false, time: "03:00" };
+let scheduledUpdateTimer: NodeJS.Timeout | undefined;
+const updateBlockers = new Set<string>();
 let desktopUpdateState: DesktopUpdateState = {
   status: "unsupported",
   currentVersion: app.getVersion(),
@@ -541,12 +549,34 @@ function publishDesktopUpdateState(state: Readonly<DesktopUpdateState>): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send(DESKTOP_UPDATE_STATE_CHANNEL, desktopUpdateState);
   }
-  if (state.status === "available" && previousStatus !== "available") {
+  if (state.status === "available" && previousStatus !== "available" && !updateSchedule.enabled) {
     notifyUpdateAvailable(desktopUpdateState);
   }
 }
 
 function registerDesktopUpdateStateHandler(): void {
+  ipcMain.removeHandler("pi:update-schedule-get");
+  ipcMain.handle("pi:update-schedule-get", (event) => {
+    if (!isTrustedMainWindowSender(event)) return null;
+    return { ...updateSchedule, supported: desktopUpdateState.status !== "unsupported" };
+  });
+  ipcMain.removeHandler("pi:update-schedule-set");
+  ipcMain.handle("pi:update-schedule-set", (event, input: unknown) => {
+    if (!isTrustedMainWindowSender(event) || !logger) return null;
+    const next = parseUpdateSchedule(input);
+    if (next.enabled && desktopUpdateState.status === "unsupported") throw new Error("Scheduled updates require the Windows installer edition");
+    // A renderer cannot forge the scheduler's completion marker.
+    const saved: UpdateSchedule = { enabled: next.enabled, time: next.time,
+      ...(updateSchedule.lastCompletedDay ? { lastCompletedDay: updateSchedule.lastCompletedDay } : {}) };
+    if (!writeUpdateSchedule(app.getPath("userData"), saved, logger)) throw new Error("Unable to save update schedule");
+    updateSchedule = saved;
+    return { ...saved, supported: desktopUpdateState.status !== "unsupported" };
+  });
+  ipcMain.removeHandler("pi:update-blocker");
+  ipcMain.handle("pi:update-blocker", (event, key: unknown, blocked: unknown) => {
+    if (!isTrustedMainWindowSender(event) || typeof key !== "string" || key.length > 2048 || typeof blocked !== "boolean") return;
+    if (blocked) updateBlockers.add(key); else updateBlockers.delete(key);
+  });
   ipcMain.removeHandler(DESKTOP_UPDATE_STATE_GET_CHANNEL);
   ipcMain.handle(DESKTOP_UPDATE_STATE_GET_CHANNEL, (event): DesktopUpdateState | null => {
     if (!isTrustedMainWindowSender(event)) return null;
@@ -574,10 +604,12 @@ function registerDesktopUpdateStateHandler(): void {
   });
 }
 
-async function installDownloadedDesktopUpdate(confirmInstallation = true): Promise<boolean> {
+async function installDownloadedDesktopUpdate(confirmInstallation = true, silent = false): Promise<boolean> {
   if (!desktopUpdateController || desktopUpdateState.status !== "downloaded") return false;
+  if (silent && (quitRequested || updateBlockers.size > 0 || powerMonitor.getSystemIdleTime() < 60)) return false;
   const chinese = app.getLocale().toLowerCase().startsWith("zh");
   if (runningTaskCount > 0) {
+    if (silent) return false;
     await showDesktopMessage({
       type: "warning",
       title: chinese ? "暂时不能安装更新" : "Update cannot be installed yet",
@@ -613,14 +645,14 @@ async function installDownloadedDesktopUpdate(confirmInstallation = true): Promi
     shutdownPromise ??= stopApplication();
     await shutdownPromise;
     shutdownComplete = true;
-    if (!desktopUpdateController.quitAndInstall()) {
+    if (!desktopUpdateController.quitAndInstall(silent)) {
       throw new Error("The downloaded desktop update is no longer available.");
     }
     return true;
   } catch (error) {
     logger?.error("Unable to launch the downloaded desktop update", error);
     shutdownComplete = true;
-    dialog.showErrorBox(
+    if (!silent) dialog.showErrorBox(
       chinese ? "无法安装 Piora 更新" : "Unable to install Piora update",
       error instanceof Error ? error.message : String(error),
     );
@@ -662,6 +694,7 @@ async function handleDesktopUpdateMenuAction(): Promise<void> {
 }
 
 function initializeDesktopUpdater(log: Logger): void {
+  updateSchedule = readUpdateSchedule(app.getPath("userData"), log);
   const supported = app.isPackaged
     && process.platform === "win32"
     && !PORTABLE_SMOKE_TEST
@@ -691,6 +724,43 @@ function initializeDesktopUpdater(log: Logger): void {
   desktopUpdateController.subscribe(publishDesktopUpdateState);
   registerDesktopUpdateStateHandler();
   if (!supported) return;
+
+  const scheduler = new ScheduledDesktopUpdater({
+    controller: desktopUpdateController,
+    read: () => updateSchedule,
+    complete: (day) => {
+      updateSchedule = { ...updateSchedule, lastCompletedDay: day };
+      writeUpdateSchedule(app.getPath("userData"), updateSchedule, log);
+    },
+    canInstall: async () => {
+      if (quitRequested || updateBlockers.size > 0 || powerMonitor.getSystemIdleTime() < 60 || !serverUrl || !applicationToken) return false;
+      // Fail closed on unknown server state; a stale tray count must never stop a run.
+      try {
+        const response = await fetch(new URL("/api/agent/running", serverUrl), {
+          headers: { [DESKTOP_TOKEN_HEADER]: applicationToken }, signal: AbortSignal.timeout(5_000),
+        });
+        if (!response.ok) return false;
+        const state = await response.json() as { runningSessionIds?: unknown };
+        return Array.isArray(state.runningSessionIds) && state.runningSessionIds.length === 0;
+      } catch { return false; }
+    },
+    install: async () => {
+      if (!serverUrl || !applicationToken) return false;
+      const url = new URL("/api/desktop/update-lease", serverUrl);
+      const headers = { [DESKTOP_TOKEN_HEADER]: applicationToken, "Content-Type": "application/json" };
+      const response = await fetch(url, { method: "POST", headers, body: JSON.stringify({ action: "acquire" }), signal: AbortSignal.timeout(5_000) });
+      if (!response.ok) return false;
+      const lease = await response.json() as { token?: unknown };
+      if (typeof lease.token !== "string") return false;
+      try { return await installDownloadedDesktopUpdate(false, true); }
+      finally {
+        if (serverUrl) await fetch(url, { method: "POST", headers, body: JSON.stringify({ action: "release", token: lease.token }), signal: AbortSignal.timeout(5_000) }).catch(() => {});
+      }
+    },
+    onError: (error) => log.warn("Scheduled update deferred; retrying in 15 minutes", error),
+  });
+  scheduledUpdateTimer = setInterval(() => { void scheduler.tick(); }, 30_000);
+  scheduledUpdateTimer.unref();
 
   automaticUpdateCheckTimer = setTimeout(() => {
     automaticUpdateCheckTimer = undefined;
@@ -2280,8 +2350,26 @@ function createMainWindow(
   return window;
 }
 
-function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promise<number> } {
+function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promise<number>; finished: Promise<void> } {
   const { window, initialState } = createMainWindowShell(log);
+  const previousVersion = readLastLaunchedVersion(app.getPath("userData"), log);
+  const firstLaunchOfVersion = previousVersion !== app.getVersion();
+  const updated = Boolean(previousVersion) && firstLaunchOfVersion;
+  const mediaDirectory = app.isPackaged ? join(process.resourcesPath, "startup") : resolve(__dirname, "../build/startup");
+  const media = loadStartupMedia(mediaDirectory);
+  let finishIntro!: () => void;
+  const finished = new Promise<void>((resolveIntro) => { finishIntro = resolveIntro; });
+  const continueIntro = (event: Electron.Event, target: string) => {
+    // The pre-service data document has no trusted IPC bridge. Only this exact
+    // application-owned navigation can dismiss its animation.
+    event.preventDefault();
+    if (target === STARTUP_CONTINUE_URL) finishIntro();
+  };
+  window.webContents.on("will-navigate", continueIntro);
+  window.webContents.once("did-navigate", (_event, target) => {
+    if (!target.startsWith("data:")) finishIntro();
+  });
+  window.once("closed", finishIntro);
   const ready = new Promise<number>((resolveReady) => {
     window.once("ready-to-show", () => {
       const readyAt = Date.now();
@@ -2294,62 +2382,18 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
         writeFileSync(resolve(startupMarker), `${JSON.stringify({ schema: "piora-startup-v1", ready: true, surface: "electron-shell" })}\n`, { encoding: "utf8", flag: "wx" });
       }
       resolveReady(readyAt);
+      if (!firstLaunchOfVersion || !media.video || PORTABLE_SMOKE_TEST) finishIntro();
+      else {
+        const introTimer = setTimeout(finishIntro, STARTUP_CINEMATIC_MS);
+        introTimer.unref();
+        void finished.then(() => clearTimeout(introTimer));
+      }
     });
   });
-  const startupChinese = app.getLocale().toLocaleLowerCase().startsWith("zh");
-  const startupDocument = `<!doctype html>
-<html lang="${startupChinese ? "zh-CN" : "en"}">
-<head>
-  <meta charset="utf-8">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#080a0f">
-  <style>
-    :root{color-scheme:dark;--ink:#080a0f;--panel:#111621;--line:rgba(169,184,224,.17);--text:#f4f6fb;--muted:#99a2b7;--dim:#69738a;--violet:#806bff;--blue:#4f86ff;--cyan:#55d3f2}
-    *{box-sizing:border-box}
-    html,body{width:100%;height:100%;margin:0}
-    body{position:relative;display:grid;place-items:center;overflow:hidden;background-color:var(--ink);background-image:radial-gradient(ellipse 58% 48% at 12% 4%,rgba(116,79,240,.24),transparent 68%),radial-gradient(ellipse 48% 45% at 94% 94%,rgba(38,157,221,.17),transparent 68%),linear-gradient(145deg,#080a0f 0%,#0d111a 47%,#101522 100%);color:var(--text);font-family:Inter,"Segoe UI","Microsoft YaHei UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-    body:before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(154,177,228,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(154,177,228,.035) 1px,transparent 1px);background-size:34px 34px;mask-image:linear-gradient(to bottom,rgba(0,0,0,.82),transparent 88%)}
-    body:after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 140px rgba(0,0,0,.62);pointer-events:none}
-    .aurora{position:absolute;border-radius:50%;filter:blur(56px);opacity:.34;will-change:transform}
-    .aurora.one{width:34vw;height:28vw;min-width:360px;min-height:300px;left:-6%;top:-15%;background:rgba(118,80,255,.42);animation:drift-one 4s ease-in-out 2 alternate both}
-    .aurora.two{width:32vw;height:26vw;min-width:330px;min-height:270px;right:-5%;bottom:-16%;background:rgba(49,188,234,.3);animation:drift-two 4.5s ease-in-out 2 alternate both}
-    .frame{position:relative;z-index:1;width:min(430px,calc(100vw - 52px));padding:38px 42px 30px;overflow:hidden;border:1px solid var(--line);border-radius:28px;background:linear-gradient(145deg,rgba(25,31,46,.91),rgba(11,15,24,.86));box-shadow:0 38px 100px rgba(0,0,0,.5),0 10px 30px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.055);backdrop-filter:blur(28px);text-align:center}
-    .frame:before{content:"";position:absolute;left:12%;right:12%;top:-1px;height:1px;background:linear-gradient(90deg,transparent,rgba(181,193,255,.68),transparent)}
-    .frame:after{content:"";position:absolute;width:190px;height:120px;left:50%;top:-82px;transform:translateX(-50%);border-radius:50%;background:rgba(120,91,255,.16);filter:blur(28px);pointer-events:none}
-    .mark-wrap{position:relative;width:86px;height:86px;margin:0 auto 23px}
-    .mark-orbit{position:absolute;inset:-9px;border:1px solid rgba(134,150,218,.15);border-radius:30px;transform:rotate(12deg)}
-    .mark{position:relative;width:86px;height:86px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.18);border-radius:26px;background:linear-gradient(145deg,var(--violet),#456ce2 62%,#2c61ce);box-shadow:0 18px 50px rgba(64,47,163,.38),inset 0 1px rgba(255,255,255,.29);color:#fff;font:56px/1 Georgia,serif;text-shadow:0 2px 10px rgba(30,18,86,.28)}
-    .kicker{color:#859cff;font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
-    .title{margin-top:9px;font-size:22px;font-weight:650;letter-spacing:-.025em}
-    .copy{max-width:320px;margin:8px auto 0;color:var(--muted);font-size:12px;line-height:1.65}
-    .progress{position:relative;width:238px;height:4px;margin:24px auto 0;overflow:hidden;border-radius:999px;background:#262c3b;box-shadow:inset 0 1px 2px rgba(0,0,0,.42)}
-    .progress:after{content:"";position:absolute;inset:0 auto 0 -52%;width:52%;border-radius:inherit;background:linear-gradient(90deg,var(--violet),var(--blue) 56%,var(--cyan));box-shadow:0 0 16px rgba(80,153,255,.48);animation:sweep 1.2s cubic-bezier(.45,0,.25,1) 3 both}
-    .meta{display:flex;align-items:center;justify-content:space-between;margin-top:15px;color:var(--dim);font-size:10px;letter-spacing:.06em}
-    .status{display:flex;align-items:center;gap:8px;color:#aab2c4;letter-spacing:0}
-    .status:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 4px rgba(85,211,242,.1),0 0 13px rgba(85,211,242,.48);animation:status-pulse 1.5s ease-in-out 3 both}
-    .version{font-variant-numeric:tabular-nums}
-    @keyframes sweep{0%{transform:translateX(0)}100%{transform:translateX(295%)}}
-    @keyframes status-pulse{50%{opacity:.52;transform:scale(.82)}}
-    @keyframes drift-one{to{transform:translate(4vw,3vh) scale(1.08)}}
-    @keyframes drift-two{to{transform:translate(-3vw,-2vh) scale(1.1)}}
-    @media(max-width:520px){.frame{padding:32px 28px 27px}.copy{max-width:280px}}
-    @media(prefers-reduced-motion:reduce){.aurora,.status:before{animation:none}.progress:after{animation:none;left:24%;width:52%}}
-  </style>
-</head>
-<body>
-  <span class="aurora one"></span><span class="aurora two"></span>
-  <main class="frame">
-    <div class="mark-wrap"><span class="mark-orbit"></span><div class="mark">π</div></div>
-    <div class="kicker">Piora · Local AI Workspace</div>
-    <div class="title">${startupChinese ? "正在启动 Piora" : "Starting Piora"}</div>
-    <div class="copy">${startupChinese ? "正在准备本地模型、会话与项目工作区" : "Preparing local models, sessions, and project workspaces"}</div>
-    <div class="progress" role="progressbar" aria-label="${startupChinese ? "正在启动" : "Starting"}"></div>
-    <div class="meta"><span class="status">${startupChinese ? "正在安全连接本地服务" : "Connecting local services securely"}</span><span class="version">v${app.getVersion()}</span></div>
-  </main>
-</body>
-</html>`;
+  const startupDocument = createStartupDocument({ chinese: app.getLocale().toLocaleLowerCase().startsWith("zh"), version: app.getVersion(), updated, ...media });
   void window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(startupDocument)}`);
-  return { window, ready };
+  void finished.then(() => { if (!window.isDestroyed()) window.webContents.removeListener("will-navigate", continueIntro); });
+  return { window, ready, finished };
 }
 
 type SmokeRendererState = {
@@ -2512,11 +2556,15 @@ async function startApplication(): Promise<void> {
   registerFileShellHandlers();
   installDisplayReconciliation();
 
+  await startup.finished;
   await loadApplicationWindow(mainWindow, serverUrl, logger);
+  writeLastLaunchedVersion(app.getPath("userData"), app.getVersion(), logger);
   logger.info("Application window is ready", { elapsedMs: Date.now() - startupStartedAt });
 }
 
 async function stopApplication(): Promise<void> {
+  if (scheduledUpdateTimer) clearInterval(scheduledUpdateTimer);
+  scheduledUpdateTimer = undefined;
   logger?.info("Stopping Piora");
   if (automaticUpdateCheckTimer) clearTimeout(automaticUpdateCheckTimer);
   automaticUpdateCheckTimer = undefined;
@@ -2524,6 +2572,12 @@ async function stopApplication(): Promise<void> {
   desktopBrowserManager?.destroy();
   desktopBrowserManager = undefined;
   await requestHarmonyEmergencyStop("desktop_shutdown");
+  if (serverUrl && applicationToken) {
+    await fetch(new URL("/api/computer", serverUrl), {
+      method: "POST", headers: { [DESKTOP_TOKEN_HEADER]: applicationToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "stop" }), signal: AbortSignal.timeout(8_000),
+    }).catch((error) => logger?.warn("Unable to stop computer control during shutdown", error));
+  }
   await server?.stop();
   server = undefined;
   serverUrl = undefined;

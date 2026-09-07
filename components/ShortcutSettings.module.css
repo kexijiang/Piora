@@ -33,7 +33,7 @@
 .headingIcon {
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
 }
 
 .heading h2 {
@@ -126,7 +126,7 @@
 .groupIcon {
   width: 30px;
   height: 30px;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
 }
 
 .groupHeading h3 {
@@ -258,7 +258,7 @@
   place-items: center;
   border: 1px solid color-mix(in srgb, var(--border) 88%, var(--text-dim));
   border-bottom-width: 2px;
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg) 86%, var(--bg-panel));
   color: var(--text);
   font: 650 var(--text-xs) var(--font-mono);
@@ -301,7 +301,7 @@
 .resetAll:focus-visible,
 .resetOne:focus-visible,
 .recorder:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 

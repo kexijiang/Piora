@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: [
+    "@modelcontextprotocol/sdk",
     "node-pty",
     "undici",
     "@earendil-works/pi-coding-agent",

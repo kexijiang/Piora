@@ -177,7 +177,7 @@ const inputStyle = {
   padding: "6px 9px",
   background: "var(--bg-panel)",
   border: "1px solid var(--border)",
-  borderRadius: 5,
+  borderRadius: "var(--radius-control)",
   color: "var(--text)",
   fontSize: "var(--text-sm)",
   outline: "none",
@@ -374,7 +374,7 @@ function VisionAgentDetail({ cwd }: { cwd?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, maxWidth: 680 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ width: 34, height: 34, borderRadius: 9, display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--bg-selected)", color: "var(--accent)" }}>
+        <span style={{ width: 34, height: 34, borderRadius: "var(--radius-control)", display: "inline-flex", alignItems: "center", justifyContent: "center", background: "var(--bg-selected)", color: "var(--accent)" }}>
           <AliIcon name="eye" size={18} />
         </span>
         <div>
@@ -383,7 +383,7 @@ function VisionAgentDetail({ cwd }: { cwd?: string }) {
         </div>
       </div>
 
-      <div style={{ padding: 14, border: "1px solid var(--border)", borderRadius: 9, background: "var(--bg-panel)", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ padding: 14, border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-panel)", display: "flex", flexDirection: "column", gap: 14 }}>
         <label style={{ display: "flex", alignItems: "flex-start", gap: 9, cursor: "pointer" }}>
           <input
             type="checkbox"
@@ -425,7 +425,7 @@ function VisionAgentDetail({ cwd }: { cwd?: string }) {
         {models.length === 0 && (
           <div role="note" style={{ color: "#b45309", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>{t("models.visualModelEmpty")}</div>
         )}
-        <div role="note" style={{ padding: "9px 10px", borderRadius: 7, background: "var(--bg)", color: "var(--text-muted)", fontSize: "var(--text-xs)", lineHeight: 1.55 }}>
+        <div role="note" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "var(--bg)", color: "var(--text-muted)", fontSize: "var(--text-xs)", lineHeight: 1.55 }}>
           {t("models.visualAgentRoutingHint")}
         </div>
         <div role="note" style={{ color: "var(--text-dim)", fontSize: "var(--text-xs)", lineHeight: 1.55 }}>
@@ -441,7 +441,7 @@ function VisionAgentDetail({ cwd }: { cwd?: string }) {
           type="button"
           onClick={() => void save()}
           disabled={saving || saved || (config.enabled && (!selectedValue || !selectedIsAvailable))}
-          style={{ minWidth: 112, padding: "7px 14px", border: "none", borderRadius: 7, background: saved ? "#16a34a" : "var(--accent)", color: "#fff", fontSize: "var(--text-sm)", fontWeight: 600, cursor: saving || saved || (config.enabled && (!selectedValue || !selectedIsAvailable)) ? "not-allowed" : "pointer", opacity: saving || (config.enabled && (!selectedValue || !selectedIsAvailable)) ? 0.55 : 1 }}
+          style={{ minWidth: 112, padding: "7px 14px", border: "none", borderRadius: "var(--radius-control)", background: saved ? "#16a34a" : "var(--accent)", color: "#fff", fontSize: "var(--text-sm)", fontWeight: 600, cursor: saving || saved || (config.enabled && (!selectedValue || !selectedIsAvailable)) ? "not-allowed" : "pointer", opacity: saving || (config.enabled && (!selectedValue || !selectedIsAvailable)) ? 0.55 : 1 }}
         >
           {saved ? t("i18n.saved") : saving ? t("i18n.saving") : t("models.visualAgentSave")}
         </button>
@@ -449,7 +449,7 @@ function VisionAgentDetail({ cwd }: { cwd?: string }) {
           type="button"
           onClick={() => void test()}
           disabled={!selectedValue || !selectedIsAvailable || testState.phase === "testing"}
-          style={{ padding: "7px 14px", border: "1px solid var(--border)", borderRadius: 7, background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--text-sm)", cursor: !selectedValue || !selectedIsAvailable || testState.phase === "testing" ? "not-allowed" : "pointer", opacity: !selectedValue || !selectedIsAvailable ? 0.55 : 1 }}
+          style={{ padding: "7px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--text-sm)", cursor: !selectedValue || !selectedIsAvailable || testState.phase === "testing" ? "not-allowed" : "pointer", opacity: !selectedValue || !selectedIsAvailable ? 0.55 : 1 }}
         >
           {testState.phase === "testing" ? t("models.visualAgentTesting") : t("models.visualAgentTest")}
         </button>
@@ -605,7 +605,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
             onClick={handleDiscoverModels}
             disabled={!provider.baseUrl?.trim() || discoveryState.phase === "loading"}
             style={{
-              alignSelf: "flex-start", height: 30, padding: "0 12px", border: "1px solid var(--border)", borderRadius: 5,
+              alignSelf: "flex-start", height: 30, padding: "0 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)",
               background: "var(--bg-panel)", color: !provider.baseUrl?.trim() || discoveryState.phase === "loading" ? "var(--text-dim)" : "var(--text-muted)",
               cursor: !provider.baseUrl?.trim() || discoveryState.phase === "loading" ? "not-allowed" : "pointer", fontSize: "var(--text-xs)",
             }}
@@ -615,7 +615,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
         )}
 
         {discoveryState.phase === "error" && (
-          <div style={{ padding: "7px 9px", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 5, color: "#ef4444", fontSize: "var(--text-xs)", lineHeight: 1.4 }}>
+          <div style={{ padding: "7px 9px", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "var(--radius-control)", color: "#ef4444", fontSize: "var(--text-xs)", lineHeight: 1.4 }}>
             {discoveryState.message}
           </div>
         )}
@@ -630,7 +630,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
               style={{ ...inputStyle, width: "100%", minWidth: 0 }}
             />
 
-            <div style={{ maxHeight: 220, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6, background: "var(--bg-panel)" }}>
+            <div style={{ maxHeight: 220, overflowY: "auto", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-panel)" }}>
               <label
                 style={{
                   minHeight: 32, padding: "5px 9px", display: "flex", alignItems: "center", gap: 8,
@@ -689,7 +689,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
               <button
                 onClick={addSelectedModels}
                 disabled={selectedCount === 0}
-                style={{ height: 28, padding: "0 11px", border: "none", borderRadius: 5, background: selectedCount ? "var(--accent)" : "var(--bg-panel)", color: selectedCount ? "#fff" : "var(--text-dim)", cursor: selectedCount ? "pointer" : "not-allowed", fontSize: "var(--text-xs)", fontWeight: 600, whiteSpace: "nowrap" }}
+                style={{ height: 28, padding: "0 11px", border: "none", borderRadius: "var(--radius-control)", background: selectedCount ? "var(--accent)" : "var(--bg-panel)", color: selectedCount ? "#fff" : "var(--text-dim)", cursor: selectedCount ? "pointer" : "not-allowed", fontSize: "var(--text-xs)", fontWeight: 600, whiteSpace: "nowrap" }}
               >
                 {selectedCount
                   ? t("models.discoveryAddSelectedCount", { count: selectedCount })
@@ -776,7 +776,7 @@ function ThinkingLevelMapEditor({
               alignItems: "center",
               gap: 8,
               padding: "5px 4px",
-              borderRadius: 6,
+              borderRadius: "var(--radius-control)",
               background: "transparent",
               border: "1px solid transparent",
             }}
@@ -795,7 +795,7 @@ function ThinkingLevelMapEditor({
             </div>
 
             {/* Default + Disabled buttons */}
-            <div style={{ display: "flex", borderRadius: 5, border: "1px solid var(--border)", overflow: "hidden", flexShrink: 0 }}>
+            <div style={{ display: "flex", borderRadius: "var(--radius-control)", border: "1px solid var(--border)", overflow: "hidden", flexShrink: 0 }}>
               <button
                 onClick={() => setLevel(level, "omit")}
                 style={{ ...btnBase, ...(state === "omit" ? btnActive : {}) }}
@@ -811,7 +811,7 @@ function ThinkingLevelMapEditor({
             </div>
 
             {/* Custom button + input fused */}
-            <div style={{ display: "flex", borderRadius: 5, border: `1px solid ${state === "string" ? "var(--accent)" : "var(--border)"}`, overflow: "hidden", transition: "border-color 0.1s" }}>
+            <div style={{ display: "flex", borderRadius: "var(--radius-control)", border: `1px solid ${state === "string" ? "var(--accent)" : "var(--border)"}`, overflow: "hidden", transition: "border-color 0.1s" }}>
               <button
                 onClick={() => setLevel(level, strVal || level)}
                 style={{ ...btnBase, ...(state === "string" ? btnActive : {}), borderRight: "1px solid var(--border)", flexShrink: 0 }}
@@ -1144,7 +1144,7 @@ function ModelDetail({
             padding: "0 11px",
             background: testState.phase === "success" ? "#16a34a" : "var(--bg-panel)",
             border: `1px solid ${testState.phase === "success" ? "#16a34a" : "var(--border)"}`,
-            borderRadius: 5,
+            borderRadius: "var(--radius-control)",
             color: testState.phase === "success" ? "#fff" : (!model.id.trim() || testState.phase === "testing") ? "var(--text-dim)" : "var(--text-muted)",
             cursor: (!model.id.trim() || testState.phase === "testing") ? "not-allowed" : "pointer",
             fontSize: "var(--text-xs)",
@@ -1173,7 +1173,7 @@ function ModelDetail({
               height: 30,
               padding: "0 9px",
               border: `1px solid ${testState.phase === "error" ? "#fecaca" : testState.phase === "success" ? "#bbf7d0" : "var(--border)"}`,
-              borderRadius: 5,
+              borderRadius: "var(--radius-control)",
               background: testState.phase === "error" ? "#fee2e2" : testState.phase === "success" ? "#dcfce7" : "#e5e7eb",
               color: "#111827",
               fontSize: "var(--text-xs)",
@@ -1196,7 +1196,7 @@ function ModelDetail({
             onClick={() => void handleCatalogFill()}
             disabled={!model.id.trim() || catalogState.phase === "loading"}
             style={{
-              height: 28, padding: "0 10px", border: "1px solid var(--border)", borderRadius: 5,
+              height: 28, padding: "0 10px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)",
               background: "var(--bg-panel)",
               color: !model.id.trim() || catalogState.phase === "loading" ? "var(--text-dim)" : "var(--text-muted)",
               cursor: !model.id.trim() || catalogState.phase === "loading" ? "not-allowed" : "pointer",
@@ -1484,7 +1484,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
                 <button
                   key={option.id}
                   onClick={() => submitSelection(loginState.token, option.id)}
-                  style={{ padding: "6px 9px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text)", cursor: "pointer", fontSize: "var(--text-sm)", textAlign: "left" }}
+                  style={{ padding: "6px 9px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text)", cursor: "pointer", fontSize: "var(--text-sm)", textAlign: "left" }}
                 >
                   {option.label}
                 </button>
@@ -1515,12 +1515,12 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") submitCode(loginState.token, inputValue); }}
                 placeholder={loginState.phase === "auth" ? "http://localhost:1455/auth/callback?code=…" : (loginState.placeholder ?? "Enter value…")}
-                style={{ flex: 1, padding: "6px 9px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text)", fontSize: "var(--text-sm)", outline: "none", fontFamily: "var(--font-mono)", boxSizing: "border-box" }}
+                style={{ flex: 1, padding: "6px 9px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text)", fontSize: "var(--text-sm)", outline: "none", fontFamily: "var(--font-mono)", boxSizing: "border-box" }}
               />
               <button
                 onClick={() => submitCode(loginState.token, inputValue)}
                 disabled={!inputValue.trim()}
-                style={{ padding: "6px 12px", background: inputValue.trim() ? "var(--accent)" : "var(--bg-panel)", border: "none", borderRadius: 5, color: inputValue.trim() ? "#fff" : "var(--text-dim)", cursor: inputValue.trim() ? "pointer" : "not-allowed", fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0 }}
+                style={{ padding: "6px 12px", background: inputValue.trim() ? "var(--accent)" : "var(--bg-panel)", border: "none", borderRadius: "var(--radius-control)", color: inputValue.trim() ? "#fff" : "var(--text-dim)", cursor: inputValue.trim() ? "pointer" : "not-allowed", fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0 }}
               >
                  {t("i18n.submit")}
               </button>
@@ -1532,7 +1532,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
             <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--text-muted)", lineHeight: 1.5 }}>
               Open the verification page and enter this code:
             </p>
-            <div style={{ padding: "8px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text)", fontSize: "var(--text-md)", fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: 0 }}>
+            <div style={{ padding: "8px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text)", fontSize: "var(--text-md)", fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: 0 }}>
               {loginState.userCode}
             </div>
             <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.5 }}>
@@ -1559,7 +1559,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
         {isWorking ? (
           <button
             onClick={() => { eventSourceRef.current?.close(); setLoginState({ phase: "idle" }); }}
-            style={{ padding: "5px 12px", background: "none", border: "1px solid var(--border)", borderRadius: 5, color: "var(--text-muted)", cursor: "pointer", fontSize: "var(--text-sm)" }}
+            style={{ padding: "5px 12px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: "pointer", fontSize: "var(--text-sm)" }}
           >
              {t("i18n.cancel")}
           </button>
@@ -1567,7 +1567,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
           <>
             <button
               onClick={handleLogin}
-              style={{ padding: "5px 14px", background: "var(--accent)", border: "none", borderRadius: 5, color: "#fff", cursor: "pointer", fontSize: "var(--text-sm)", fontWeight: 600 }}
+              style={{ padding: "5px 14px", background: "var(--accent)", border: "none", borderRadius: "var(--radius-control)", color: "#fff", cursor: "pointer", fontSize: "var(--text-sm)", fontWeight: 600 }}
             >
                {provider.loggedIn ? t("i18n.relogin") : t("i18n.login")}
             </button>
@@ -1577,7 +1577,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
                   if (!await requestConfirmation({ title: t("models.removeConfiguration"), message: t("models.removeCredentialConfirm", { name: provider.name }), confirmLabel: t("models.removeConfiguration"), tone: "danger" })) return;
                   void handleLogout();
                 }}
-                style={{ padding: "5px 12px", background: "none", border: "1px solid rgba(239,68,68,0.3)", borderRadius: 5, color: "#ef4444", cursor: "pointer", fontSize: "var(--text-sm)" }}
+                style={{ padding: "5px 12px", background: "none", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "var(--radius-control)", color: "#ef4444", cursor: "pointer", fontSize: "var(--text-sm)" }}
               >
                  {t("models.removeConfiguration")}
               </button>
@@ -1686,7 +1686,7 @@ function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRef
             style={{
               padding: "6px 12px",
               background: savedOk ? "#16a34a" : apiKey.trim() ? "var(--accent)" : "var(--bg-panel)",
-              border: "none", borderRadius: 5,
+              border: "none", borderRadius: "var(--radius-control)",
               color: (apiKey.trim() || savedOk) ? "#fff" : "var(--text-dim)",
               cursor: (saving || !apiKey.trim() || savedOk) ? "not-allowed" : "pointer",
               fontSize: "var(--text-sm)", fontWeight: 600, flexShrink: 0,
@@ -1713,7 +1713,7 @@ function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRef
           style={{
             alignSelf: "flex-start", padding: "5px 12px",
             background: "none", border: "1px solid rgba(239,68,68,0.3)",
-            borderRadius: 5, color: "#ef4444",
+            borderRadius: "var(--radius-control)", color: "#ef4444",
             cursor: removing ? "not-allowed" : "pointer", fontSize: "var(--text-sm)",
           }}
         >
@@ -1777,7 +1777,7 @@ function AddProviderPicker({
     padding: "10px 12px",
     background: "var(--bg-panel)",
     border: "1px solid var(--border)",
-    borderRadius: 7,
+    borderRadius: "var(--radius-control)",
     boxSizing: "border-box",
     cursor: "pointer",
     minWidth: 0,
@@ -1794,7 +1794,7 @@ function AddProviderPicker({
       style={{ position: "fixed", inset: 0, zIndex: 1100, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="app-shell-dialog" style={{ width: 820, maxWidth: "calc(100vw - 32px)", maxHeight: "min(72vh, calc(100vh - 32px))", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.22)", overflow: "hidden" }}>
+      <div className="app-shell-dialog" style={{ width: 820, maxWidth: "calc(100vw - 32px)", maxHeight: "min(72vh, calc(100vh - 32px))", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", display: "flex", flexDirection: "column", boxShadow: "0 8px 32px rgba(0,0,0,0.22)", overflow: "hidden" }}>
         {/* Search */}
         <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", gap: 8 }}>
           <AliIcon name="search" size={13} style={{ color: "var(--text-dim)" }} />
@@ -1846,7 +1846,7 @@ function AddProviderPicker({
                 </button>
               ))}
               {restoreError && (
-                <div role="alert" style={{ gridColumn: "1 / -1", padding: "8px 10px", borderRadius: 6, background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-xs)" }}>
+                <div role="alert" style={{ gridColumn: "1 / -1", padding: "8px 10px", borderRadius: "var(--radius-control)", background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-xs)" }}>
                   {t("models.restoreProviderFailed")}
                 </div>
               )}
@@ -1899,7 +1899,7 @@ function AddProviderPicker({
                     <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>OpenAI / Anthropic compatible</div>
                      <div style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>{t("i18n.customEndpoint")}</div>
                   </div>
-                  <span style={{ width: 26, height: 26, borderRadius: 5, background: "var(--bg-hover)", border: "1px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: "var(--radius-control)", background: "var(--bg-hover)", border: "1px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <AliIcon name="plus" size={13} style={{ color: "var(--text-dim)" }} />
                   </span>
                 </button>
@@ -2358,7 +2358,7 @@ export function ModelsConfig({
               style={{
                 padding: "4px 8px",
                 border: "1px solid var(--border)",
-                borderRadius: 5,
+                borderRadius: "var(--radius-control)",
                 background: "transparent",
                 color: "var(--text-muted)",
                 cursor: scopeMutationBusy || modelScope?.projectOverride ? "not-allowed" : "pointer",
@@ -2380,7 +2380,7 @@ export function ModelsConfig({
               style={{
                 padding: "4px 8px",
                 border: "1px solid var(--border)",
-                borderRadius: 5,
+                borderRadius: "var(--radius-control)",
                 background: "transparent",
                 color: "var(--text-muted)",
                 cursor: scopeMutationBusy || modelScope?.projectOverride ? "not-allowed" : "pointer",
@@ -2393,18 +2393,18 @@ export function ModelsConfig({
           )}
         </div>
 
-        <div role="note" style={{ padding: "9px 10px", borderRadius: 6, background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
+        <div role="note" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
           配置顺序：先确认渠道可用，再在模型行勾选“支持图片输入”（仅在渠道实际支持时勾选），最后可用“测试”验证文本连接。勾选后，聊天会直接发送图片；未勾选的模型则交由你在“视觉代理”中选择的图片模型处理。
         </div>
 
         {modelScopeError && modelScope && (
-          <div role="alert" style={{ padding: "9px 10px", borderRadius: 6, background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-sm)" }}>
+          <div role="alert" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-sm)" }}>
             {modelScopeError}
           </div>
         )}
 
         {modelScope && modelScope.warnings.length > 0 && (
-          <div role="note" style={{ padding: "9px 10px", borderRadius: 6, background: "rgba(245,158,11,0.09)", color: "#b45309", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
+          <div role="note" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "rgba(245,158,11,0.09)", color: "#b45309", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
             {modelScope.warnings.map((warning) => <div key={warning}>{warning}</div>)}
           </div>
         )}
@@ -2412,13 +2412,13 @@ export function ModelsConfig({
         {modelScopeLoading ? (
           <div style={{ padding: "12px 0", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>{t("i18n.loading")}</div>
         ) : modelScopeError && !modelScope ? (
-          <div role="alert" style={{ padding: "9px 10px", borderRadius: 6, background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-sm)" }}>
+          <div role="alert" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-sm)" }}>
             {modelScopeError}
           </div>
         ) : providerModels.length === 0 ? (
           <div style={{ padding: "12px 0", fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>{t("models.noProviderModels")}</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--border)", borderRadius: 7, overflow: "hidden" }}>
+          <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", overflow: "hidden" }}>
             {providerModels.map((model, index) => {
               const isDefault = modelScope?.effectiveDefault?.provider === model.provider
                 && modelScope.effectiveDefault.modelId === model.id;
@@ -2518,7 +2518,7 @@ export function ModelsConfig({
                         : testState.phase === "success"
                           ? "rgba(21,128,61,0.3)"
                           : "var(--border)"}`,
-                      borderRadius: 7,
+                      borderRadius: "var(--radius-control)",
                       background: testState.phase === "error"
                         ? "rgba(220,38,38,0.07)"
                         : testState.phase === "success"
@@ -2566,7 +2566,7 @@ export function ModelsConfig({
                       height: 28,
                       padding: 0,
                       border: "none",
-                      borderRadius: 5,
+                      borderRadius: "var(--radius-control)",
                       background: "transparent",
                       color: model.enabled ? "#ef4444" : "var(--accent)",
                       cursor: scopeMutationBusy || modelScope?.projectOverride ? "not-allowed" : "pointer",
@@ -2670,7 +2670,7 @@ export function ModelsConfig({
              <span style={{ fontSize: "var(--text-md)", fontWeight: 700, color: "var(--text)" }}>{t("common.models")}</span>
             <code style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>Pi registry · ~/.pi/agent/models.json</code>
           </div>
-          {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} title={t("i18n.close")} aria-label={t("i18n.close")} style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: 7, color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, padding: 0 }}><AliIcon name="close" size={16} /></button>}
+          {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} title={t("i18n.close")} aria-label={t("i18n.close")} style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, padding: 0 }}><AliIcon name="close" size={16} /></button>}
         </div>
 
         {/* Body */}
@@ -2687,7 +2687,7 @@ export function ModelsConfig({
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
               <div
                 onClick={() => setSelection({ type: "vision-agent" })}
-                style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 8px", marginBottom: 6, borderRadius: 5, cursor: "pointer", background: selection?.type === "vision-agent" ? "var(--bg-selected)" : "none" }}
+                style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 8px", marginBottom: 6, borderRadius: "var(--radius-control)", cursor: "pointer", background: selection?.type === "vision-agent" ? "var(--bg-selected)" : "none" }}
                 onMouseEnter={(event) => { if (selection?.type !== "vision-agent") event.currentTarget.style.background = "var(--bg-hover)"; }}
                 onMouseLeave={(event) => { if (selection?.type !== "vision-agent") event.currentTarget.style.background = "none"; }}
               >
@@ -2704,7 +2704,7 @@ export function ModelsConfig({
                   <div
                     key={p.id}
                     onClick={() => setSelection({ type: "apikey", providerId: p.id })}
-                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", borderRadius: 5, cursor: "pointer", background: isSelected ? "var(--bg-selected)" : "none" }}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", borderRadius: "var(--radius-control)", cursor: "pointer", background: isSelected ? "var(--bg-selected)" : "none" }}
                     onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "var(--bg-hover)"; }}
                     onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "none"; }}
                     >
@@ -2724,7 +2724,7 @@ export function ModelsConfig({
                   <div
                     key={p.id}
                     onClick={() => setSelection({ type: "oauth", providerId: p.id })}
-                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", borderRadius: 5, cursor: "pointer", background: isSelected ? "var(--bg-selected)" : "none" }}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", borderRadius: "var(--radius-control)", cursor: "pointer", background: isSelected ? "var(--bg-selected)" : "none" }}
                     onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = "var(--bg-hover)"; }}
                     onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.background = "none"; }}
                     >
@@ -2744,7 +2744,7 @@ export function ModelsConfig({
                   <div
                     key={providerId}
                     onClick={() => setSelection({ type: "managed", providerId })}
-                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", borderRadius: 5, cursor: "pointer", background: isSelected ? "var(--bg-selected)" : "none" }}
+                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 8px", borderRadius: "var(--radius-control)", cursor: "pointer", background: isSelected ? "var(--bg-selected)" : "none" }}
                     onMouseEnter={(event) => { if (!isSelected) event.currentTarget.style.background = "var(--bg-hover)"; }}
                     onMouseLeave={(event) => { if (!isSelected) event.currentTarget.style.background = "none"; }}
                   >
@@ -2771,7 +2771,7 @@ export function ModelsConfig({
                     {/* Provider row */}
                     <div
                       onClick={() => setSelection({ type: "provider", name: pName })}
-                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 8px", borderRadius: 5, cursor: "pointer", background: isProviderSelected ? "var(--bg-selected)" : "none" }}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 8px", borderRadius: "var(--radius-control)", cursor: "pointer", background: isProviderSelected ? "var(--bg-selected)" : "none" }}
                       onMouseEnter={(e) => { if (!isProviderSelected) e.currentTarget.style.background = "var(--bg-hover)"; }}
                       onMouseLeave={(e) => { if (!isProviderSelected) e.currentTarget.style.background = "none"; }}
                     >
@@ -2815,7 +2815,7 @@ export function ModelsConfig({
                         <div
                           key={i}
                           onClick={() => setSelection({ type: "model", providerName: pName, index: i })}
-                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px 5px 26px", borderRadius: 5, cursor: "pointer", background: isModelSelected ? "var(--bg-selected)" : "none" }}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px 5px 26px", borderRadius: "var(--radius-control)", cursor: "pointer", background: isModelSelected ? "var(--bg-selected)" : "none" }}
                           onMouseEnter={(e) => { if (!isModelSelected) e.currentTarget.style.background = "var(--bg-hover)"; }}
                           onMouseLeave={(e) => { if (!isModelSelected) e.currentTarget.style.background = "none"; }}
                         >
@@ -2860,7 +2860,7 @@ export function ModelsConfig({
                     {/* Add model button */}
                     <div
                       onClick={(e) => { e.stopPropagation(); addModel(pName); }}
-                      style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px 4px 26px", borderRadius: 5, cursor: "pointer", color: "var(--text-dim)" }}
+                      style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px 4px 26px", borderRadius: "var(--radius-control)", cursor: "pointer", color: "var(--text-dim)" }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
                     >
@@ -2875,7 +2875,7 @@ export function ModelsConfig({
             <div style={{ borderTop: "1px solid var(--border)", padding: "8px 6px" }}>
               <button onClick={() => setPickerOpen(true)} style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                width: "100%", padding: "6px 0", background: "none", border: "1px dashed var(--border)", borderRadius: 5,
+                width: "100%", padding: "6px 0", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius-control)",
                 color: "var(--text-muted)", cursor: "pointer", fontSize: "var(--text-sm)",
               }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
@@ -2899,7 +2899,7 @@ export function ModelsConfig({
         {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "10px 18px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
           {saveError && <span style={{ fontSize: "var(--text-sm)", color: "#f87171", flex: 1 }}>{saveError}</span>}
-          {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, fontSize: "var(--text-base)" }}>
+          {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, fontSize: "var(--text-base)" }}>
              {t("i18n.close")}
           </button>}
           <button onClick={handleSave} disabled={saving || savedOk} style={{
@@ -2907,7 +2907,7 @@ export function ModelsConfig({
             padding: "6px 16px",
             minWidth: 92,
             background: savedOk ? "#16a34a" : saving ? "var(--bg-panel)" : "var(--accent)",
-            border: "none", borderRadius: 6,
+            border: "none", borderRadius: "var(--radius-control)",
             color: savedOk ? "#fff" : saving ? "var(--text-muted)" : "#fff",
             cursor: (saving || savedOk) ? "default" : "pointer", fontSize: "var(--text-base)", fontWeight: 600,
             display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6,

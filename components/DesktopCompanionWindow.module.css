@@ -49,7 +49,7 @@
   padding: 8px 11px 9px 13px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  border-radius: 18px;
+  border-radius: var(--radius-panel);
   background: color-mix(in srgb, var(--bg-panel) 91%, transparent);
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.13);
   backdrop-filter: blur(12px) saturate(1.08);
@@ -174,9 +174,9 @@
 }
 
 .pet:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 4px;
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
 }
 
 .pet:hover,

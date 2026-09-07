@@ -9,6 +9,7 @@ import { useStreamingSendPreference } from "@/hooks/useStreamingSendPreference";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
 import { AliIcon } from "./AliIcon";
 import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
+import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
 import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
 import { SystemPromptEditor } from "./SystemPromptEditor";
@@ -660,6 +661,7 @@ export function SettingsDialog({
                 </section> : null}
                 {desktop.available ? <section className={styles.conversationSection}>
                   <div data-settings-id="general.autoLaunch"><DesktopAutoLaunchSetting /></div>
+                  <DesktopUpdateScheduleSetting />
                   <div className={styles.conversationRow}>
                     <div className={styles.conversationCopy}>
                       <div data-settings-id="general.globalShortcut" className={styles.rowTitle}>{t("settings.globalShortcut")}</div>

@@ -1,5 +1,5 @@
-import { Type } from "@earendil-works/pi-ai";
-import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { Type, validateToolArguments } from "@earendil-works/pi-ai";
+import { defineTool, type ExtensionAPI, type ToolDefinition } from "@earendil-works/pi-coding-agent";
 import {
   getHarmonyDeviceManager,
   analyzeHarmonyScreenshot,
@@ -21,8 +21,8 @@ import {
 } from "../lib/prompt-run-registry.ts";
 
 const AGENT_LEASE_TTL_MS = 5 * 60 * 1000;
-const MAX_SNAPSHOT_TEXT = 30_000;
-const MAX_SNAPSHOT_NODES = 240;
+const MAX_SNAPSHOT_TEXT = 12_000;
+const MAX_SNAPSHOT_NODES = 100;
 const MAX_INPUT_TEXT = 4_000;
 const MAX_WAIT_MS = 60_000;
 
@@ -1394,12 +1394,40 @@ const harmonyAgentTools = [
   harmonyReleaseControlTool,
 ];
 
+const operationTools = new Map<string, ToolDefinition>(harmonyAgentTools.map((tool) => [tool.name.slice("harmony_".length), tool as ToolDefinition]));
+
+const harmonyControlTool = defineTool({
+  name: "harmony_control",
+  label: "Harmony Phone",
+  description: "Control HarmonyOS/OpenHarmony phones. Start with list_devices. help lists operations; help + topic returns that operation's input schema. Prefer run_scenario for batches and observe_screen for exploration. Inputs use the schema returned by help. Screenshots are opt-in.",
+  executionMode: "sequential",
+  parameters: Type.Object({
+    operation: Type.String({ description: "list_devices, help, run_scenario, observe_screen, tap, swipe, input_text, back, home, release_control, or another operation listed by help" }),
+    topic: Type.Optional(Type.String({ description: "Operation to describe when operation=help" })),
+    input: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+  }),
+  async execute(toolCallId, params, signal, onUpdate, ctx) {
+    if (signal?.aborted) throw new Error("Harmony operation aborted");
+    if (params.operation === "help") {
+      const target = params.topic ? operationTools.get(params.topic) : undefined;
+      if (params.topic && !target) throw new Error(`Unknown Harmony operation: ${params.topic}`);
+      const help = target ? { operation: params.topic, description: target.description, inputSchema: target.parameters }
+        : { operations: [...operationTools].map(([operation, tool]) => ({ operation, description: tool.description })) };
+      return { content: [{ type: "text", text: JSON.stringify(help) }], details: {} };
+    }
+    const target = operationTools.get(params.operation);
+    if (!target) throw new Error(`Unknown Harmony operation: ${params.operation}. Call help.`);
+    const input = validateToolArguments(target, { type: "toolCall", id: toolCallId, name: target.name, arguments: params.input ?? {} });
+    return target.execute(toolCallId, input, signal, onUpdate, ctx);
+  },
+});
+
 export default function pioraHarmony(api: ExtensionAPI) {
-  for (const tool of harmonyAgentTools) api.registerTool(tool);
+  api.registerTool(harmonyControlTool);
   api.on?.("before_agent_start", (event) => {
     if (!event.systemPromptOptions.selectedTools?.some((name) => name.startsWith("harmony_"))) return;
     const capability = `<piora_runtime_capability name="harmony_phone_operator" availability="active">
- Dedicated Harmony phone tools are available in this session. For any HarmonyOS/OpenHarmony/phone task, call \`harmony_list_devices\` first. Prefer \`harmony_run_scenario\` for multi-step work: use stable semantic selectors, condition-based waits, assertions, and one compact final observation. It acquires the prompt-scoped device lease automatically and keeps one persistent UiTest session for speed. Use the individual observe/tap/swipe/input/key tools for exploration or recovery when the next target is not yet knowable. Available actions also include application launch/install/stop/clear/uninstall inside an explicit scenario. Use screenshots and recordings only when visual evidence is useful; the semantic tree is the faster default. For crashes, freezes, startup errors, or performance problems use \`harmony_list_processes\` and \`harmony_read_logs\`. Release control when done. Never claim device access or logs are unavailable before checking these tools.
+ Harmony phone control is available through \`harmony_control\`. Start with operation=list_devices. Use operation=help with topic=run_scenario for multi-step semantic actions, waits and assertions; it acquires control automatically. Read operation-specific help before calling unfamiliar operations. Prefer the UI tree; request screenshots only when needed. Release control when done. Never claim device access is unavailable before checking this tool.
 </piora_runtime_capability>`;
     if (event.systemPrompt.includes('<piora_runtime_capability name="harmony_phone_operator"')) return;
     return {

@@ -1,11 +1,11 @@
-.backdrop { position: fixed; inset: 0; z-index: 1700; display: flex; justify-content: center; align-items: flex-start; padding-top: min(16vh, 140px); background: rgba(0,0,0,.28); }
-.dialog { width: min(640px, calc(100vw - 28px)); max-height: min(68vh, 620px); display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); box-shadow: 0 24px 70px rgba(0,0,0,.24); overflow: hidden; }
+.backdrop { position: fixed; inset: 0; z-index: 1700; display: flex; justify-content: center; align-items: flex-start; padding-top: min(16vh, 140px); background: var(--overlay-scrim); }
+.dialog { width: min(640px, calc(100vw - 28px)); max-height: min(68vh, 620px); display: flex; flex-direction: column; border: 1px solid var(--border-soft); border-radius: var(--radius-panel); background: var(--dialog-background); box-shadow: var(--shadow-float); overflow: hidden; }
 .input { min-height: 48px; border: 0; border-bottom: 1px solid var(--border); outline: none; background: transparent; color: var(--text); padding: 0 16px; font-size: var(--text-md); }
 .argumentHint { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; padding: 5px 16px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--bg-panel) 70%, var(--bg)); color: var(--text-dim); font-size: var(--text-xs); }
 .argumentHint code { overflow: hidden; color: var(--text-muted); font-family: var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
 .list { overflow: auto; padding: 8px; }
 .group { padding: 6px 8px 4px; color: var(--text-dim); font-size: var(--text-xs); text-transform: uppercase; }
-.item { width: 100%; min-height: 42px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 7px 9px; border: 0; border-radius: 7px; background: transparent; color: var(--text); text-align: left; cursor: pointer; }
+.item { width: 100%; min-height: 42px; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 7px 9px; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .item:hover,.item[data-active="true"] { background: var(--bg-selected); }
 .item:disabled { cursor: default; opacity: .55; }
 .meta { display: flex; flex-direction: column; min-width: 0; }

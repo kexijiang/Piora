@@ -48,7 +48,7 @@
 .result,
 .securityNote {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--bg-panel);
 }
 
@@ -62,7 +62,7 @@
   height: 34px;
   margin-bottom: 13px;
   place-items: center;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   color: var(--accent);
   background: var(--bg-selected);
 }
@@ -85,21 +85,21 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   font-size: var(--text-xs);
   cursor: pointer;
 }
 
 .primaryButton,
 .secondaryButton {
-  min-height: 34px;
+  min-height: var(--control-height);
   padding: 7px 12px;
 }
 
 .primaryButton {
   border: 1px solid var(--accent);
-  color: white;
-  background: var(--accent);
+  color: var(--btn-primary-fg);
+  background: var(--btn-primary-bg);
 }
 
 .secondaryButton {
@@ -142,7 +142,7 @@
 .executionWarning {
   margin-top: 12px;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   font-size: var(--text-xs);
 }
 
@@ -187,7 +187,7 @@
 
 .stats div {
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--bg);
 }
 

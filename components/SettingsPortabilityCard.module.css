@@ -4,7 +4,7 @@
   margin-top: 16px;
   padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-surface);
   background: color-mix(in srgb, var(--bg-panel) 92%, transparent);
 }
 
@@ -46,9 +46,9 @@
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 32px;
+  min-height: var(--control-height);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   padding: 0 12px;
   font: inherit;
   font-size: var(--text-xs);
@@ -62,9 +62,9 @@
 }
 
 .primaryButton {
-  color: #fff;
+  color: var(--btn-primary-fg);
   border-color: var(--accent);
-  background: var(--accent);
+  background: var(--btn-primary-bg);
 }
 
 .primaryButton:disabled {
@@ -80,13 +80,13 @@
 .secondaryButton:focus-visible,
 .primaryButton:focus-visible,
 .iconButton:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
 .iconButton {
   width: 30px;
-  min-height: 30px;
+  min-height: var(--control-height-compact);
   padding: 0;
 }
 
@@ -130,7 +130,7 @@
   max-width: 100%;
   overflow-x: auto;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-control);
 }
 
 .tableWrap table {

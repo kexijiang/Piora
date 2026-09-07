@@ -22,7 +22,7 @@
   text-wrap: balance;
   background: rgba(255, 252, 246, .96);
   border: 1px solid rgba(91, 75, 58, .16);
-  border-radius: 16px;
+  border-radius: var(--radius-panel);
   box-shadow: 0 10px 30px rgba(45, 38, 30, .18);
 }
 

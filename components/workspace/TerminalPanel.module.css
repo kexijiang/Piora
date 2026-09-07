@@ -4,7 +4,7 @@
 .root button:disabled { opacity: .35; cursor: default; }
 .root button:focus-visible, .root input:focus-visible { outline: 2px solid #80d4c4; outline-offset: -2px; }
 .header { display: flex; align-items: center; gap: 10px; padding: 15px 16px; border-bottom: 1px solid #ffffff09; flex-shrink: 0; }
-.brand { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 9px; background: #80d4c40c; border: 1px solid #80d4c425; color: #80d4c4; }
+.brand { display: grid; place-items: center; width: 33px; height: 33px; border-radius: var(--radius-control); background: #80d4c40c; border: 1px solid #80d4c425; color: #80d4c4; }
 .identity { display: flex; flex-direction: column; min-width: 0; gap: 3px; flex: 1; }
 .identity strong { font-weight: 600; letter-spacing: .02em; font-size: calc(var(--ui-font-size) * 13 / 14); }
 .identity > span { color: var(--terminal-muted); font-size: calc(var(--ui-font-size) * 10 / 14); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -21,12 +21,12 @@
 .body { flex: 1; min-height: 0; display: flex; }
 .surface { padding: 13px 8px 8px 16px; min-width: 0; min-height: 0; width: 100%; height: 100%; overflow: hidden; }
 .surface :global(.xterm) { height: 100%; }
-.find { display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 3px 8px; border: 1px solid #ffffff18; background: #171d25; border-radius: 6px; }
+.find { display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 3px 8px; border: 1px solid #ffffff18; background: #171d25; border-radius: var(--radius-control); }
 .find input { min-width: 0; flex: 1; background: none; border: 0; color: inherit; outline: none; font: inherit; }
 .feed { flex: 1; min-width: 0; overflow: auto; padding: 16px 12px; }
 .feedHeading { display: flex; justify-content: space-between; color: var(--terminal-muted); font-size: calc(var(--ui-font-size) * 10 / 14); margin: 0 3px 14px; }
 .feedHeading span:last-child { color: #698e86; }
-.command { border: 1px solid #ffffff0b; border-radius: 8px; margin-bottom: 8px; overflow: hidden; background: #151a21; }
+.command { border: 1px solid #ffffff0b; border-radius: var(--radius-control); margin-bottom: 8px; overflow: hidden; background: #151a21; }
 .command[data-status="running"] { border-color: #80d4c42e; }
 .root .commandTrigger { display: flex; width: 100%; text-align: left; padding: 12px 10px; gap: 9px; }
 .ordinal { font: 10px var(--font-mono); color: #536171; }
@@ -41,8 +41,8 @@
 .empty { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 15px; padding: 48px 26px; margin: auto; text-align: center; color: var(--terminal-muted); }
 .empty strong { font-size: var(--text-base); font-weight: 500; color: #ced8e4; }
 .empty p { font-size: calc(var(--ui-font-size) * 12 / 14); max-width: 270px; line-height: 1.8; margin: 0; }
-.emptyMark { display: grid; place-items: center; width: 62px; height: 62px; border-radius: 16px; border: 1px solid #80d4c41a; background: radial-gradient(circle at 50% 0, #80d4c413, transparent); color: #80d4c4; margin-bottom: 5px; }
-.hint { margin-top: 9px; border: 1px solid #ffffff0b; padding: 8px 12px; border-radius: 7px; font: 11px var(--font-mono); color: #536171; }.hint span { color: #9ab9c1; }
+.emptyMark { display: grid; place-items: center; width: 62px; height: 62px; border-radius: var(--radius-panel); border: 1px solid #80d4c41a; background: radial-gradient(circle at 50% 0, #80d4c413, transparent); color: #80d4c4; margin-bottom: 5px; }
+.hint { margin-top: 9px; border: 1px solid #ffffff0b; padding: 8px 12px; border-radius: var(--radius-control); font: 11px var(--font-mono); color: #536171; }.hint span { color: #9ab9c1; }
 .footer { display: flex; align-items: center; gap: 10px; justify-content: space-between; padding: 8px 14px; border-top: 1px solid #ffffff09; font: 10px var(--font-mono); color: #758292; flex-shrink: 0; }
 .footer span:first-child { display: flex; align-items: center; gap: 6px; }.footer span:nth-child(2) { text-align: center; flex: 1; }
 .error { color: #f08c96; background: #f08c960a; padding: 8px 14px; overflow-wrap: anywhere; }

@@ -29,6 +29,9 @@ const runtime = Object.freeze({
   getUpdateState() {
     return ipcRenderer.invoke("pi:update-state-get");
   },
+  getUpdateSchedule() { return ipcRenderer.invoke("pi:update-schedule-get"); },
+  setUpdateSchedule(input: { enabled: boolean; time: string }) { return ipcRenderer.invoke("pi:update-schedule-set", input); },
+  setUpdateBlocker(key: string, blocked: boolean) { return ipcRenderer.invoke("pi:update-blocker", key, blocked); },
   checkForUpdates() {
     return ipcRenderer.invoke("pi:update-check");
   },

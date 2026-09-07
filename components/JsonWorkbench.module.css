@@ -17,10 +17,10 @@
 
 .workbench button,
 .actionMenuTrigger {
-  min-height: 28px;
+  min-height: var(--control-height-compact);
   padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   color: var(--text-muted);
   background: transparent;
   cursor: pointer;
@@ -30,7 +30,7 @@
 .workbench button:hover:not(:disabled),
 .actionMenuTrigger:hover { color: var(--text); background: var(--bg-hover); }
 .workbench button:focus-visible,
-.actionMenuTrigger:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 30%, transparent); outline-offset: 1px; }
+.actionMenuTrigger:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 .workbench button:disabled { cursor: not-allowed; opacity: .42; }
 
 .workbench select {
@@ -38,7 +38,7 @@
   min-height: 29px;
   padding: 4px 8px;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   color: var(--text);
   background: var(--bg);
   outline: none;
@@ -78,14 +78,14 @@
   flex: 1 1 108px;
   align-items: center;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: transparent;
 }
 
 .tab:hover { background: var(--bg-hover); }
 .tab[data-active="true"] { background: color-mix(in srgb, var(--bg-selected) 72%, var(--bg)); }
 .tab[data-locked="true"]::before { width: 5px; height: 5px; flex: 0 0 5px; margin-left: 7px; content: ""; border-radius: 50%; background: var(--text-dim); }
-.tab > button { min-height: 28px; padding: 0 7px; border: 0; border-radius: 0; background: transparent !important; }
+.tab > button { min-height: var(--control-height-compact); padding: 0 7px; border: 0; border-radius: 0; background: transparent !important; }
 .tab > button:first-child { min-width: 0; flex: 1; overflow: hidden; color: var(--text-muted); text-overflow: ellipsis; white-space: nowrap; text-align: left; cursor: default; }
 .tab[data-active="true"] > button:first-child { color: var(--text); font-weight: 600; }
 .tab[data-locked="true"] > button:first-child { padding-left: 4px; }
@@ -114,11 +114,11 @@
   gap: 2px;
   flex-wrap: wrap;
   padding: 3px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--surface-muted) 62%, var(--bg));
 }
 
-.primary { color: var(--bg) !important; border-color: var(--text) !important; background: var(--text) !important; font-weight: 600 !important; }
+.primary { color: var(--btn-primary-fg) !important; border-color: var(--text) !important; background: var(--btn-primary-bg) !important; font-weight: 600 !important; }
 .actionMenu { position: relative; }
 .actionMenuTrigger { display: grid; min-width: 62px; place-items: center; }
 .menu {
@@ -133,7 +133,7 @@
   gap: 2px;
   padding: 5px;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-control);
   background: var(--surface-raised);
   box-shadow: var(--shadow-popover);
 }
@@ -198,7 +198,7 @@
 .settings button { min-height: 27px; padding: 3px 7px; }
 .settings button:first-of-type { margin-left: auto; }
 
-.error { padding: 7px 8px; border: 1px solid color-mix(in srgb, #b33e3e 22%, var(--border)); border-radius: 7px; color: #b33e3e; background: color-mix(in srgb, #b33e3e 8%, var(--bg-panel)); overflow-wrap: anywhere; font-size: var(--text-xs); }
+.error { padding: 7px 8px; border: 1px solid color-mix(in srgb, #b33e3e 22%, var(--border)); border-radius: var(--radius-control); color: #b33e3e; background: color-mix(in srgb, #b33e3e 8%, var(--bg-panel)); overflow-wrap: anywhere; font-size: var(--text-xs); }
 .footer { min-width: 0; min-height: 20px; display: flex; align-items: center; gap: 10px; color: var(--text-dim); font-size: calc(var(--text-xs) * .9); }
 .footer span:nth-child(2) { min-width: 0; margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .footer strong { min-width: 52px; color: var(--status-ready); text-align: right; }
@@ -226,19 +226,19 @@
 .workbenchHeading > div { display: flex; align-items: center; gap: 10px; }
 .workbenchHeading h1 { display: flex; align-items: baseline; gap: 10px; font-size: calc(var(--ui-font-size) * 17 / 14); font-weight: 600; margin: 0; }
 .workbenchHeading h1 span { font-size: calc(var(--ui-font-size) * 11 / 14); font-weight: 400; color: var(--text-dim); }
-.fileBadge { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 10px; color: #7d896c; background: color-mix(in srgb, #7d896c 12%, var(--bg)); }
-.preferences { padding: 12px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); max-height: 32vh; overflow: auto; flex-shrink: 0; }
+.fileBadge { display: grid; place-items: center; width: 33px; height: 33px; border-radius: var(--radius-control); color: #7d896c; background: color-mix(in srgb, #7d896c 12%, var(--bg)); }
+.preferences { padding: 12px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); max-height: 32vh; overflow: auto; flex-shrink: 0; }
 .preferences .settings { margin-top: 12px; padding-top: 12px; }
-.tabs { flex-shrink: 0; min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-bottom: 0; border-radius: 11px 11px 0 0; background: var(--bg-panel); }
+.tabs { flex-shrink: 0; min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-bottom: 0; border-radius: var(--radius-surface) var(--radius-surface) 0 0; background: var(--bg-panel); }
 .tab { flex: 0 0 auto; min-width: 64px; max-width: 160px; border-radius: 0; height: 31px; border-bottom: 2px solid transparent; }
 .tab[data-active="true"] { background: var(--bg); border-bottom-color: #7d896c; }
 .actionBar { border: 1px solid var(--border); border-bottom: 0; border-radius: 0; padding: 8px; background: var(--bg); gap: 3px; flex-shrink: 0; }
-.workbench .actionBar button { padding: 5px 9px; font-size: calc(var(--ui-font-size) * 11 / 14); min-height: 29px; }
+.workbench .actionBar button { padding: 5px 9px; font-size: calc(var(--ui-font-size) * 11 / 14); min-height: var(--control-height-compact); }
 .actionMenuTrigger { display: flex; gap: 8px; min-width: 0; }
 .actionMenuTrigger span { color: var(--text-dim); }
 .actionBar > .actionMenu:last-child { margin-left: auto; }
 .actionBar > .actionMenu:last-child .menu { right: 0; left: auto; }
-.menu { max-height: 48vh; overflow-y: auto; background: var(--bg-panel); box-shadow: 0 8px 28px #00000018; border-radius: 10px; }
+.menu { max-height: 48vh; overflow-y: auto; background: var(--bg-panel); box-shadow: var(--shadow-popover); border-radius: var(--radius-control); }
 .menuDivider { height: 1px; margin: 4px; background: var(--border); }
 .editorArea { position: relative; flex: 1; min-height: 150px; border: 1px solid var(--border); border-bottom: 0; overflow: hidden; }
 .editorHost:focus-within { box-shadow: none; }
@@ -253,7 +253,7 @@
 .editorEmpty p { font-size: calc(var(--ui-font-size) * 11 / 14); max-width: 290px; margin: 0 0 8px; line-height: 1.8; }
 .editorEmpty button { pointer-events: auto; }
 .editorEmpty > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
-.footer { flex-shrink: 0; flex-wrap: nowrap; height: 34px; min-height: 34px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 0 0 11px 11px; font-size: calc(var(--ui-font-size) * 10 / 14); gap: 10px; background: var(--bg-panel); }
+.footer { flex-shrink: 0; flex-wrap: nowrap; height: 34px; min-height: 34px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 0 0 var(--radius-surface) var(--radius-surface); font-size: calc(var(--ui-font-size) * 10 / 14); gap: 10px; background: var(--bg-panel); }
 .footer span:nth-child(2) { margin-left: 0; }
 .validation { display: flex; align-items: center; gap: 5px; }
 .validation::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--text-dim); }
@@ -265,7 +265,7 @@
 .toolbarHint { margin-left: auto; padding-right: 5px; color: var(--text-dim); font-size: calc(var(--ui-font-size) * 10 / 14); }
 .quickTools { flex-shrink: 0; padding: 10px 12px 5px; border: 1px solid var(--border); border-bottom: 0; background: var(--bg); }
 .transformRow { display: flex; flex-wrap: wrap; gap: 6px; }
-.workbench .transformRow button { min-height: 28px; padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: calc(var(--ui-font-size) * 11 / 14); background: var(--bg-panel); color: var(--text-muted); }
+.workbench .transformRow button { min-height: var(--control-height-compact); padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); font-size: calc(var(--ui-font-size) * 11 / 14); background: var(--bg-panel); color: var(--text-muted); }
 .workbench .transformRow button:hover:not(:disabled) { border-color: #7d896c; color: var(--text); background: color-mix(in srgb, #7d896c 8%, var(--bg)); }
 .fileActions { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; margin-top: 9px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--border) 65%, transparent); }
 .workbench .fileActions button { display: flex; align-items: center; gap: 5px; font-size: calc(var(--ui-font-size) * 10 / 14); padding: 4px 6px; }

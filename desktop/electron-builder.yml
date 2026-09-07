@@ -19,6 +19,11 @@ files:
 
 # `npm run build:web` stages public/ and .next/static/ into this tree.
 extraResources:
+  - from: build/startup
+    to: startup
+    filter:
+      - "*.mp4"
+      - "*.jpg"
   # Keep a real ICO beside the packaged app. Reading an icon back from the
   # portable wrapper executable is not reliable across Windows versions.
   - from: build/icon.ico

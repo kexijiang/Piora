@@ -2,7 +2,7 @@
 .heading h3 { margin: 0; color: var(--text); font-size: var(--text-md); }
 .heading p { margin: 4px 0 0; color: var(--text-muted); font-size: var(--text-xs); line-height: 1.55; }
 .editRow { min-height: 58px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 11px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 15%, var(--border)); border-radius: var(--radius-control); background: color-mix(in srgb, var(--accent) 5%, var(--bg)); }
-.editIcon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 9px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.editIcon { width: 31px; height: 31px; display: grid; place-items: center; border-radius: var(--radius-control); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .editRow > span:nth-child(2) { min-width: 0; display: grid; gap: 2px; }
 .editRow b { color: var(--text); font-size: var(--text-sm); }
 .editRow small { color: var(--text-dim); font-size: var(--text-xs); line-height: 1.4; }
@@ -15,11 +15,11 @@
 .inputRow { display: flex; gap: 7px; }
 .inputRow input { min-width: 0; min-height: 35px; flex: 1; padding: 6px 9px; border: 1px solid var(--border); border-radius: var(--radius-control); outline: none; background: var(--bg); color: var(--text); font: inherit; }
 .inputRow input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 13%, transparent); }
-.inputRow button,.actions button { min-height: 34px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text-muted); cursor: pointer; font: inherit; }
+.inputRow button,.actions button { min-height: var(--control-height); padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text-muted); cursor: pointer; font: inherit; }
 .inputRow button { width: 36px; display: grid; place-items: center; padding: 0; }
 .editor > p { margin: 0; color: var(--text-dim); font-size: var(--text-xs); line-height: 1.5; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.actions .primary { border-color: transparent; background: var(--accent); color: #fff; }
+.actions .primary { border-color: transparent; background: var(--btn-primary-bg); color: var(--btn-primary-fg); }
 .actions button:disabled { cursor: not-allowed; opacity: .5; }
 .paths { display: grid; gap: 8px; margin: 0; }
 .paths > div { min-width: 0; display: grid; gap: 3px; padding: 9px 11px; border-radius: var(--radius-control); background: color-mix(in srgb, var(--bg) 78%, transparent); }
@@ -35,8 +35,8 @@
 .location { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--text-dim); }
 .location code { flex: 1; min-width: 0; overflow-wrap: anywhere; font: 11px/1.6 var(--font-mono); }
 .location > svg { flex-shrink: 0; }
-.location button { flex-shrink: 0; border: 0; padding: 5px 8px; background: var(--bg-hover); color: var(--text-muted); border-radius: 6px; cursor: pointer; font-size: calc(var(--ui-font-size) * 11 / 14); }
+.location button { flex-shrink: 0; border: 0; padding: 5px 8px; background: var(--bg-hover); color: var(--text-muted); border-radius: var(--radius-control); cursor: pointer; font-size: calc(var(--ui-font-size) * 11 / 14); }
 .editor { font-size: calc(var(--ui-font-size) * 11 / 14); }
-.actions .primary { color: var(--bg); background: var(--text); }
+.actions .primary { color: var(--btn-primary-fg); background: var(--btn-primary-bg); }
 
 @media (max-width: 520px) { .inputRow { align-items: stretch; } .paths dd { font-size: calc(var(--text-xs) * .86); } }

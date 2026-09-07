@@ -5,8 +5,8 @@
   display: grid;
   place-items: start center;
   padding: min(17vh, 150px) 18px 24px;
-  background: color-mix(in srgb, var(--bg) 64%, transparent);
-  backdrop-filter: blur(5px) saturate(.9);
+  background: var(--overlay-scrim);
+  backdrop-filter: blur(var(--overlay-blur));
 }
 
 .dialog {
@@ -15,10 +15,10 @@
   max-height: min(650px, 72vh);
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg));
-  box-shadow: 0 26px 80px rgb(0 0 0 / 22%), 0 2px 10px rgb(0 0 0 / 8%);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-panel);
+  background: var(--dialog-background);
+  box-shadow: var(--shadow-float);
   color: var(--text);
 }
 
@@ -53,7 +53,7 @@
   min-width: 30px;
   padding: 2px 6px;
   border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
-  border-radius: 6px;
+  border-radius: var(--radius-control);
   background: var(--bg);
   color: var(--text-dim);
   font: inherit;
@@ -74,7 +74,7 @@
   height: 27px;
   padding: 0 25px 0 8px;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   outline: 0;
   background: var(--bg);
   color: var(--text-muted);
@@ -113,7 +113,7 @@
   gap: 8px;
   padding: 6px 9px;
   border: 0;
-  border-radius: 9px;
+  border-radius: var(--radius-control);
   outline: none;
   background: transparent;
   color: var(--text);
@@ -132,7 +132,7 @@
   width: 24px;
   height: 24px;
   place-items: center;
-  border-radius: 7px;
+  border-radius: var(--radius-control);
   background: color-mix(in srgb, var(--bg-hover) 74%, transparent);
   color: var(--text-muted);
 }
@@ -196,7 +196,7 @@
 
 @media (max-width: 720px) {
   .backdrop { padding: 10px; }
-  .dialog { max-height: calc(100vh - 20px); border-radius: 13px; }
+  .dialog { max-height: calc(100vh - 20px); border-radius: var(--radius-panel); }
   .rowMeta { display: none; }
   .row { grid-template-columns: 24px minmax(0, 1fr); }
   .filters select { max-width: none; flex: 1; }

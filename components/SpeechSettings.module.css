@@ -15,30 +15,30 @@
 .ready { color: #16824b; background: color-mix(in srgb, #22a85f 12%, transparent); }
 .notInstalled { color: var(--text-dim); background: var(--bg-hover); }
 .factGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 15px; }
-.factGrid > div { min-width: 0; padding: 10px 11px; border-radius: 9px; background: var(--bg); }
+.factGrid > div { min-width: 0; padding: 10px 11px; border-radius: var(--radius-control); background: var(--bg); }
 .factGrid span { display: block; margin-bottom: 4px; color: var(--text-dim); font-size: var(--text-xs); }
 .factGrid strong { display: block; overflow-wrap: anywhere; font-size: var(--text-sm); font-weight: 580; }
 .actions { display: flex; gap: 8px; margin-top: 15px; }
-.actions button, .pathRow button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; padding: 7px 11px; border-radius: var(--radius-control); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.actions button, .pathRow button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: var(--control-height); padding: 7px 11px; border-radius: var(--radius-control); font: inherit; font-size: var(--text-sm); cursor: pointer; }
 .actions button:disabled, .pathRow button:disabled { opacity: .55; cursor: not-allowed; }
-.primary { border: 1px solid var(--accent); color: white; background: var(--accent); }
+.primary { border: 1px solid var(--accent); color: var(--btn-primary-fg); background: var(--btn-primary-bg); }
 .secondary { border: 1px solid var(--border); color: var(--text); background: var(--bg); }
 .danger { border: 1px solid color-mix(in srgb, #dc3545 45%, var(--border)); color: #dc3545; background: transparent; }
 .networkNote, .hint { font-size: var(--text-xs) !important; color: var(--text-dim) !important; }
 .manualBadge { padding: 4px 8px; border-radius: 999px; color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); font-size: var(--text-xs); white-space: nowrap; }
 .downloadList { display: grid; gap: 7px; margin-top: 15px; }
-.downloadList a { min-width: 0; display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--bg); text-decoration: none; }
+.downloadList a { min-width: 0; display: grid; grid-template-columns: 120px minmax(0, 1fr) auto; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); background: var(--bg); text-decoration: none; }
 .downloadList a:hover { border-color: color-mix(in srgb, var(--accent) 50%, var(--border)); background: var(--bg-hover); }
 .downloadList span, .downloadList strong { display: inline-flex; align-items: center; gap: 5px; font-size: var(--text-xs); }
 .downloadList code { min-width: 0; overflow: hidden; color: var(--text-muted); font-family: var(--font-mono); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
 .downloadList strong { color: #16824b; font-weight: 650; }
-.dropZone { min-height: 150px; margin-top: 14px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 7px; padding: 20px; border: 1.5px dashed color-mix(in srgb, var(--accent) 38%, var(--border)); border-radius: 13px; color: var(--text-muted); background: color-mix(in srgb, var(--accent) 4%, var(--bg)); text-align: center; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
+.dropZone { min-height: 150px; margin-top: 14px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 7px; padding: 20px; border: 1.5px dashed color-mix(in srgb, var(--accent) 38%, var(--border)); border-radius: var(--radius-panel); color: var(--text-muted); background: color-mix(in srgb, var(--accent) 4%, var(--bg)); text-align: center; transition: border-color .15s ease, background .15s ease, transform .15s ease; }
 .dropZone[data-active] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--bg)); transform: scale(.995); }
 .dropZone[data-disabled] { border-style: solid; }
 .dropZone strong { color: var(--text); font-size: var(--text-sm); }
 .dropZone span { font-size: var(--text-xs); }
 .dropZone button { margin-top: 5px; padding: 7px 11px; border-radius: var(--radius-control); cursor: pointer; }
-.manualFeedback { margin-top: 10px; padding: 9px 11px; border: 1px solid var(--border); border-radius: 9px; color: var(--text-muted); background: var(--bg); font-size: var(--text-xs); line-height: 1.5; overflow-wrap: anywhere; }
+.manualFeedback { margin-top: 10px; padding: 9px 11px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text-muted); background: var(--bg); font-size: var(--text-xs); line-height: 1.5; overflow-wrap: anywhere; }
 .manualFeedback[data-kind="info"] { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); color: var(--accent); background: color-mix(in srgb, var(--accent) 7%, var(--bg)); }
 .manualFeedback[data-kind="success"] { border-color: color-mix(in srgb, #22a85f 42%, var(--border)); color: #16824b; background: color-mix(in srgb, #22a85f 8%, var(--bg)); }
 .manualFeedback[data-kind="error"] { border-color: color-mix(in srgb, #dc3545 45%, var(--border)); color: #c93442; background: color-mix(in srgb, #dc3545 8%, var(--bg)); }
@@ -47,7 +47,7 @@
 .progressBlock progress { display: block; width: 100%; height: 7px; accent-color: var(--accent); }
 .progressBlock small { display: block; margin-top: 5px; color: var(--text-dim); }
 .pathRow { display: flex; gap: 9px; align-items: center; margin-top: 14px; }
-.pathRow code { flex: 1; min-width: 0; padding: 9px 10px; overflow-wrap: anywhere; border-radius: 8px; color: var(--text-muted); background: var(--bg); font-family: var(--font-mono); font-size: var(--text-xs); }
-.error, .unsupported { margin: 10px 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, #dc3545 45%, var(--border)); border-radius: 9px; color: #c93442; background: color-mix(in srgb, #dc3545 8%, var(--bg-panel)); font-size: var(--text-sm); }
+.pathRow code { flex: 1; min-width: 0; padding: 9px 10px; overflow-wrap: anywhere; border-radius: var(--radius-control); color: var(--text-muted); background: var(--bg); font-family: var(--font-mono); font-size: var(--text-xs); }
+.error, .unsupported { margin: 10px 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, #dc3545 45%, var(--border)); border-radius: var(--radius-control); color: #c93442; background: color-mix(in srgb, #dc3545 8%, var(--bg-panel)); font-size: var(--text-sm); }
 .loading { padding: 30px; color: var(--text-muted); }
 @media (max-width: 720px) { .page { padding: 20px 18px 30px; } .header, .cardHeader, .toggleRow { align-items: flex-start; } .factGrid { grid-template-columns: 1fr; } .pathRow { align-items: stretch; flex-direction: column; } }

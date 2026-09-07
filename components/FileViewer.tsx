@@ -6,6 +6,7 @@ import {
   useRef,
   useCallback,
   useMemo,
+  useId,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
@@ -717,6 +718,7 @@ function TextFileViewer({
   onDirtyChange,
   onSaved,
 }: Props) {
+  const updateBlockerId = useId();
   const { isDark } = useTheme();
   const { t } = useI18n();
   const [data, setData] = useState<FileData | null>(null);
@@ -947,6 +949,12 @@ function TextFileViewer({
   useEffect(() => {
     onDirtyChange?.(dirty);
   }, [dirty, onDirtyChange]);
+
+  useEffect(() => {
+    const key = `file:${updateBlockerId}`;
+    void window.piDesktop?.setUpdateBlocker?.(key, dirty || saving);
+    return () => { void window.piDesktop?.setUpdateBlocker?.(key, false); };
+  }, [updateBlockerId, dirty, saving]);
 
   const hasGitDiff = gitDiff?.supported === true && typeof gitDiff.patch === "string";
   const isDeletedDiff = hasGitDiff && gitDiff.status === "deleted";
