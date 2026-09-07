@@ -4,7 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
-## [0.4.41-beta.4] - 2026-09-07
+## [0.4.41-beta.5] - 2026-09-08
 
 ### 新增
 
@@ -22,6 +22,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 - 电脑控制后端已经过真实 MCP 连接与操作目录校验；鸿蒙实机操作仍需连接已授权设备验收。
 - 静默覆盖更新仅适用于支持更新的安装版；首次使用电脑控制需安装 uv，运行环境按需下载。启动动画运行时无需 Blender。
+
+## [0.4.41-beta.4] - 2026-09-07
+
+- 此候选版本未发布安装包：打包验收仍检查旧鸿蒙工具名称。已在 beta.5 修正验收契约并补充回归测试，功能说明见 beta.5。
 
 ## [0.4.41-beta.3] - 2026-09-07
 

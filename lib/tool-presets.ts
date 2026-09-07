@@ -9,7 +9,7 @@ export const BUILTIN_AGENT_TOOLS: readonly string[] = [
   "ls",
 ];
 
-/** Explicit phone operations exposed by the Harmony extension. */
+/** Gateway plus legacy names retained only for policy classification/migration. */
 export const HARMONY_AGENT_TOOLS: readonly string[] = [
   "harmony_control",
   "harmony_list_devices",

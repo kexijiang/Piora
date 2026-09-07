@@ -48,6 +48,28 @@ const expectedBundledPetIds = Object.freeze([
 const packagedRuntimeArchive = join(packagedWebRoot, "runtime.asar");
 let activeServerStderr = "";
 
+export function verifyPackagedCoreTools(tools) {
+  const required = ["browser", "harmony_control", "piora_room"];
+  const optional = ["piora_goal", "piora_plan", "piora_plan_execution", "computer_control"];
+  const inspect = (name) => {
+    const tool = tools.find((entry) => entry.name === name);
+    return { name, loaded: Boolean(tool), active: tool?.active === true };
+  };
+  const core = required.map(inspect);
+  if (core.some((tool) => !tool.loaded)) throw new Error(`Packaged first-party tools failed to load: ${JSON.stringify(core)}`);
+  if (core.some((tool) => tool.active !== (tool.name === "browser" || tool.name === "harmony_control"))) {
+    throw new Error(`Packaged first-party tools do not match the compact coding preset: ${JSON.stringify(core)}`);
+  }
+  if (tools.some((tool) => tool.name.startsWith("harmony_") && tool.name !== "harmony_control")) {
+    throw new Error("Packaged Harmony must register one gateway instead of legacy operation tools");
+  }
+  const disabled = optional.map(inspect);
+  if (disabled.some((tool) => tool.loaded || tool.active)) {
+    throw new Error(`Optional extensions should be disabled by default: ${JSON.stringify(disabled)}`);
+  }
+  return [...core, ...disabled];
+}
+
 export const forbiddenPackagedDependencies = Object.freeze([
   "@giscus/react",
   "@lobehub/ui",
@@ -78,6 +100,8 @@ const requiredPaths = [
   "extensions/piora-browser.ts",
   "extensions/piora-file-changes.ts",
   "extensions/piora-harmony.ts",
+  "extensions/piora-computer.ts",
+  "lib/computer-control.ts",
   "extensions/piora-vision-agent.ts",
   "extensions/piora-automations.ts",
   "extensions/piora-user-input.ts",
@@ -91,6 +115,7 @@ const requiredPaths = [
   "lib/team-tool-service.ts",
   ".next/server/app/desktop-pet/page_client-reference-manifest.js",
   "node_modules/next/package.json",
+  "node_modules/@modelcontextprotocol/sdk/package.json",
   "node_modules/@earendil-works/pi-agent-core/package.json",
   "node_modules/@earendil-works/pi-ai/package.json",
   "node_modules/@earendil-works/pi-coding-agent/package.json",
@@ -544,6 +569,11 @@ async function inspectElectronShell(webRoot, required) {
     throw new Error(`Electron app.asar is missing beside the packaged web tree: ${appAsarPath}`);
   }
   await assertFile(trayIconPath);
+  for (const name of ["polaris-rover.mp4", "polaris-rover.jpg"]) {
+    const source = await readFile(join(projectRoot, "desktop", "build", "startup", name));
+    const packaged = await readFile(join(resourcesRoot, "startup", name));
+    if (!source.equals(packaged)) throw new Error(`Packaged startup media is missing or differs from source: ${name}`);
+  }
 
   await generateLicenseInventory({ projectRoot, check: true });
   for (const fileName of ["LICENSE", "NOTICE", "THIRD_PARTY_LICENSES.md"]) {
@@ -977,62 +1007,7 @@ async function main() {
       throw new Error(`Fixture extension tool must respect the default compact coding preset: ${JSON.stringify(initialFixtureTool)}`);
     }
 
-    const harmonyTools = [
-      "harmony_list_devices",
-      "harmony_run_scenario",
-      "harmony_acquire_control",
-      "harmony_observe_screen",
-      "harmony_tap",
-      "harmony_double_tap",
-      "harmony_long_press",
-      "harmony_swipe",
-      "harmony_fling",
-      "harmony_drag",
-      "harmony_input_text",
-      "harmony_back",
-      "harmony_home",
-      "harmony_recent_apps",
-      "harmony_enter",
-      "harmony_launch_app",
-      "harmony_wait_for",
-      "harmony_wait_until_stable",
-      "harmony_wait",
-      "harmony_list_processes",
-      "harmony_get_raw_logs",
-      "harmony_read_logs",
-      "harmony_release_control",
-    ];
-    const ordinaryCoreExtensionTools = [
-      "browser",
-      ...harmonyTools,
-      "piora_room",
-    ].map((name) => {
-      const tool = initialTools.find((entry) => entry.name === name);
-      return { name, loaded: Boolean(tool), active: tool?.active === true };
-    });
-    const missingCoreTools = ordinaryCoreExtensionTools.filter((tool) => !tool.loaded);
-    if (missingCoreTools.length > 0) {
-      throw new Error(`Packaged first-party tools failed to load: ${JSON.stringify(missingCoreTools)}`);
-    }
-    const unexpectedDefaultCoreTools = ordinaryCoreExtensionTools.filter((tool) => (
-      tool.active !== (tool.name === "browser")
-    ));
-    if (unexpectedDefaultCoreTools.length > 0) {
-      throw new Error(`Packaged first-party tools do not match the compact coding preset: ${JSON.stringify(unexpectedDefaultCoreTools)}`);
-    }
-    const optionalWorkflowTools = [
-      "piora_goal",
-      "piora_plan",
-      "piora_plan_execution",
-    ].map((name) => {
-      const tool = initialTools.find((entry) => entry.name === name);
-      return { name, loaded: Boolean(tool), active: tool?.active === true };
-    });
-    const unexpectedlyLoadedWorkflowTools = optionalWorkflowTools.filter((tool) => tool.loaded || tool.active);
-    if (unexpectedlyLoadedWorkflowTools.length > 0) {
-      throw new Error(`Optional workflow extensions should be disabled by default: ${JSON.stringify(unexpectedlyLoadedWorkflowTools)}`);
-    }
-    const coreExtensionTools = [...ordinaryCoreExtensionTools, ...optionalWorkflowTools];
+    const coreExtensionTools = verifyPackagedCoreTools(initialTools);
 
     const { body: projectTools } = await fetchJson(
       origin,
