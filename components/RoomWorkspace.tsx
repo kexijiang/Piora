@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref, type RefObject } from "react";
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref, type RefObject, type ReactNode } from "react";
 import {
   getRoomMemberName,
   getRoomMemberRole,
@@ -24,7 +24,9 @@ import { MarkdownBody } from "./MarkdownBody";
 import { CollapsibleUserContent } from "./CollapsibleUserContent";
 import { RoomSettingsDialog } from "./RoomSettingsDialog";
 import { RoomMessageNavigator } from "./RoomMessageNavigator";
-import { RoomActivityDeck } from "./RoomActivityDeck";
+import { RoomActivityMessage } from "./RoomActivityMessage";
+import { mergeRoomActivities, roomConversationEntries } from "@/lib/room-conversation";
+import { useResizablePanel } from "@/hooks/useResizablePanel";
 import type { RoomActivity } from "@/lib/room-activity";
 import styles from "./RoomWorkspace.module.css";
 
@@ -162,6 +164,10 @@ const RoomMessageList = memo(function RoomMessageList({
   messageRefs,
   teamActivity,
   activeTeamRun,
+  activities,
+  onBrowser,
+  onMention,
+  runControls,
 }: {
   messages: RoomMessage[];
   members: Map<string, RoomMember>;
@@ -172,14 +178,22 @@ const RoomMessageList = memo(function RoomMessageList({
   messageRefs: RefObject<Map<string, HTMLElement>>;
   teamActivity: string | null;
   activeTeamRun?: TeamRunState;
+  activities: RoomActivity[];
+  onBrowser: (sessionId: string) => void;
+  onMention: (name: string) => void;
+  runControls: ReactNode;
 }) {
+  const entries = useMemo(() => roomConversationEntries(messages, activities), [messages, activities]);
   return (
-    <div ref={messagesRef} className={styles.messages} aria-live="polite">
-      {messages.length === 0 ? <div className={styles.emptyState}>
+    <div ref={messagesRef} className={styles.messages} aria-live="polite" data-room-message-list="">
+      <div>
+      {entries.length === 0 ? <div className={styles.emptyState}>
         <span className={styles.groupAvatar}><AliIcon name="messages" size={19} /></span>
         <h2>开始群聊</h2>
         <p>直接发送消息会交给协调者；单独 @成员可直接沟通，同时提及多名成员时由协调者按依赖顺序调度。</p>
-      </div> : messages.map((message) => {
+      </div> : entries.map((entry) => {
+        if (entry.kind === "activity") return <RoomActivityMessage key={entry.key} activity={entry.activity} member={members.get(entry.activity.sessionId)} cwd={room.projectRoot} hasFinalReply={entry.hasFinalReply} onBrowser={onBrowser} onMention={onMention} />;
+        const message = entry.message;
         const isPioraQuestion = message.author.kind === "system" && message.author.id === "piora" && message.content.startsWith("需要你的回答");
         const registerMessage = (element: HTMLElement | null) => {
           if (element) messageRefs.current.set(message.id, element);
@@ -211,6 +225,7 @@ const RoomMessageList = memo(function RoomMessageList({
           </div>
         </article>;
       })}
+      {runControls}
       {presenceBySession.size > 0 || teamActivity ? <div className={styles.processingList} role="status" aria-live="polite">
         {teamActivity && activeTeamRun ? <details className={styles.activityCard}>
           <summary><i aria-hidden="true" /><strong>{teamActivity}</strong><AliIcon name="chevron-right" size={13} /></summary>
@@ -218,6 +233,7 @@ const RoomMessageList = memo(function RoomMessageList({
         </details> : teamActivity ? <span><i aria-hidden="true" />Piora：{teamActivity}</span> : null}
         {[...presenceBySession.keys()].map((sessionId) => <span key={sessionId}><i aria-hidden="true" />{memberName(room, sessionId)} 正在处理…</span>)}
       </div> : null}
+      </div>
     </div>
   );
 });
@@ -440,12 +456,14 @@ function useRoomScrollNavigation({
   presenceCount,
   submittingGoal,
   teamRuns,
+  activities,
 }: {
   roomId: string;
   messageCount: number;
   presenceCount: number;
   submittingGoal: boolean;
   teamRuns: TeamRunState[];
+  activities: RoomActivity[];
 }) {
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   const messagesRef = useRef<HTMLDivElement>(null);
@@ -499,7 +517,7 @@ function useRoomScrollNavigation({
       else syncScrollNavigation();
     });
     return () => window.cancelAnimationFrame(frame);
-  }, [messageCount, presenceCount, scrollToLatest, submittingGoal, syncScrollNavigation, teamRuns]);
+  }, [messageCount, presenceCount, scrollToLatest, submittingGoal, syncScrollNavigation, teamRuns, activities]);
 
   return { messagesRef, requestScrollToLatest, scrollToLatest, showScrollToBottom };
 }
@@ -544,6 +562,21 @@ export function RoomWorkspace({
   const [error, setError] = useState<string | null>(null);
   const [activities, setActivities] = useState<RoomActivity[]>([]);
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const conversationRef = useRef<HTMLDivElement>(null);
+  const columnWidthRef = useRef(840);
+  const getColumnMaxWidth = useCallback(() => Math.max(320, (conversationRef.current?.clientWidth ?? 880) - 40), []);
+  const getDefaultColumnWidth = useCallback(() => Math.min(840, getColumnMaxWidth()), [getColumnMaxWidth]);
+  const columnResizer = useResizablePanel({
+    ariaLabel: "调整群聊正文宽度", cssVariable: "--room-column-width", defaultWidth: 840,
+    getDefaultWidth: getDefaultColumnWidth, getMaxWidth: getColumnMaxWidth,
+    growthDirection: "left", dragScale: 2, followDefaultWidth: true,
+    maxWidth: 3200, minWidth: 320, panelRef: conversationRef,
+    storageKey: "pi-room-column-width", widthRef: columnWidthRef,
+  });
+  const openMemberBrowser = useCallback((sessionId: string) => {
+    setSelectedActivityId(sessionId);
+    onOpenBrowser(sessionId);
+  }, [onOpenBrowser]);
   const openedBrowserRuns = useRef(new Set<string>());
   const messageRefs = useRef(new Map<string, HTMLElement>());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -554,6 +587,7 @@ export function RoomWorkspace({
     presenceCount: presenceBySession.size,
     submittingGoal,
     teamRuns,
+    activities,
   });
   const actorSessionId = preferredRoomSessionId(room);
   const initialRoomId = initialRoom.id;
@@ -618,7 +652,7 @@ export function RoomWorkspace({
           setTaskRuns(new Map((data.taskRuns ?? []).map((taskRun) => [taskRun.taskId, taskRun])));
           setArtifacts(data.artifacts ?? []);
         } else if (data.type === "activity") {
-          setActivities(data.activities ?? []);
+          setActivities((current) => mergeRoomActivities(current, data.activities ?? []));
           setRunningIds(new Set((data.activities ?? []).filter((item) => item.status === "working").map((item) => item.sessionId)));
           setPresenceBySession((current) => {
             const next = new Map([...current].filter(([id, value]) =>
@@ -963,6 +997,15 @@ export function RoomWorkspace({
 
   const memberMap = useMemo(() => new Map(room.members.map((member) => [getRoomMemberSessionId(member), member])), [room.members]);
 
+  const runControls = displayedTeamRun ? <div className={styles.teamProgress} role="status">
+        <div><strong>{teamRunDisplayPhaseLabel(displayedTeamRun)}</strong><span>{displayedTeamRun.objective}</span></div>
+        <progress max={Math.max(1, Object.keys(displayedTeamRun.tasks).length)} value={Object.values(displayedTeamRun.tasks).filter((task) => task.status === "completed").length} aria-label="团队任务进度" />
+        <button type="button" onClick={() => setDetailsOpen(true)}>任务与产物</button>
+        {displayedTeamRun.phase === "waiting_user" ? <button type="button" onClick={() => answerTeamRun(displayedTeamRun)}>回答问题</button> : null}
+        {displayedTeamRun.phase === "interrupted" ? <button type="button" disabled={busy} onClick={() => { void mutateTeamRun(displayedTeamRun, "resume"); }}>恢复</button> : null}
+        {!TERMINAL_RUN_PHASES.has(displayedTeamRun.phase) ? <button type="button" disabled={busy} onClick={() => { void mutateTeamRun(displayedTeamRun, "cancel"); }}>停止团队</button> : null}
+      </div> : null;
+
   return (
     <section className={`${styles.workspace} room-workspace`} aria-label={`群聊：${room.name}`}>
       <header className={`${styles.header} room-workspace-header`}>
@@ -997,19 +1040,11 @@ export function RoomWorkspace({
         </button>
       </header>
 
-      <RoomActivityDeck room={room} activities={activities} selectedSessionId={selectedActivityId}
-        onSelect={setSelectedActivityId} onBrowser={onOpenBrowser} onMention={mention} />
-      {displayedTeamRun ? <div className={styles.teamProgress} role="status">
-        <div><strong>{teamRunDisplayPhaseLabel(displayedTeamRun)}</strong><span>{displayedTeamRun.objective}</span></div>
-        <progress max={Math.max(1, Object.keys(displayedTeamRun.tasks).length)} value={Object.values(displayedTeamRun.tasks).filter((task) => task.status === "completed").length} aria-label="团队任务进度" />
-        <button type="button" onClick={() => setDetailsOpen(true)}>任务与产物</button>
-        {displayedTeamRun.phase === "waiting_user" ? <button type="button" onClick={() => answerTeamRun(displayedTeamRun)}>回答问题</button> : null}
-        {displayedTeamRun.phase === "interrupted" ? <button type="button" disabled={busy} onClick={() => { void mutateTeamRun(displayedTeamRun, "resume"); }}>恢复</button> : null}
-        {!TERMINAL_RUN_PHASES.has(displayedTeamRun.phase) ? <button type="button" disabled={busy} onClick={() => { void mutateTeamRun(displayedTeamRun, "cancel"); }}>停止团队</button> : null}
-      </div> : null}
+
 
       <div className={styles.content}>
-        <div className={styles.conversation}>
+        <div ref={conversationRef} className={styles.conversation}>
+          {!detailsOverlay ? <div {...columnResizer.separatorProps} className={styles.columnResizeHandle} data-resize-handle="room-column" data-resize-growth-direction="left" title="拖动调整群聊宽度，双击恢复默认" /> : null}
           <div className={styles.messageViewport}>
             <RoomMessageList
               messages={messages}
@@ -1021,6 +1056,10 @@ export function RoomWorkspace({
               messageRefs={messageRefs}
               teamActivity={teamActivity}
               activeTeamRun={displayedTeamRun}
+              activities={activities}
+              onBrowser={openMemberBrowser}
+              onMention={mention}
+              runControls={runControls}
             />
             {showScrollToBottom ? <div className={styles.scrollToBottomLayer}>
               <button type="button" className={styles.scrollToBottom} onClick={() => scrollToLatest()} aria-label="滚动到最新消息" title="滚动到最新消息">

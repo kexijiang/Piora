@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `d697b94554fac164ffa42cc752903d3780aa952a350e8174dbfa792c8ee4a1c4`
+Lockfile SHA-256: `9ed2007ce9ac80801c8d067a3b92c80d9e324f261cd7f2fc9033fa6c30160b77`
 
-Unique locked packages: **1174**. Runtime packages: **720**. Build/development-only packages: **454**.
+Unique locked packages: **1179**. Runtime packages: **725**. Build/development-only packages: **454**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -254,6 +254,9 @@ Every locked package declares a license.
 | `@ungap/structured-clone` | `1.3.0` | ISC | No |
 | `@upsetjs/venn.js` | `2.0.0` | MIT | No |
 | `@xmldom/xmldom` | `0.8.13` | MIT | No |
+| `@xterm/addon-fit` | `0.11.0` | MIT | No |
+| `@xterm/addon-search` | `0.16.0` | MIT | No |
+| `@xterm/xterm` | `6.0.0` | MIT | No |
 | `abort-controller` | `3.0.0` | MIT | No |
 | `acorn` | `8.16.0` | MIT | No |
 | `agent-base` | `6.0.2` | MIT | No |
@@ -573,8 +576,10 @@ Every locked package declares a license.
 | `ms` | `2.1.3` | MIT | No |
 | `nanoid` | `3.3.18` | MIT | No |
 | `next` | `16.3.3` | MIT | No |
+| `node-addon-api` | `7.1.1` | MIT | No |
 | `node-domexception` | `1.0.0` | MIT | No |
 | `node-fetch` | `3.3.2` | MIT | No |
+| `node-pty` | `1.1.0` | MIT | No |
 | `normalize-path` | `3.0.0` | MIT | No |
 | `openai` | `6.40.0` | Apache-2.0 | No |
 | `opencc-js` | `1.4.1` | MIT AND Apache-2.0 | No |

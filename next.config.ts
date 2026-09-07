@@ -40,6 +40,7 @@ const nextConfig: NextConfig = {
     ],
   },
   serverExternalPackages: [
+    "node-pty",
     "undici",
     "@earendil-works/pi-coding-agent",
     "@earendil-works/pi-agent-core",
@@ -60,6 +61,7 @@ const nextConfig: NextConfig = {
     // from its mock tooling and breaks the dev compiler.
     if (isServer && Array.isArray(config.externals)) {
       config.externals.push(
+        "node-pty",
         /^node:/,
         "undici",
         "proper-lockfile",

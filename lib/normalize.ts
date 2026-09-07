@@ -133,7 +133,10 @@ function normalizeAssistantContent(message: Record<string, unknown>): AssistantC
       normalized.push(thinking);
       continue;
     }
-    if (isObject(block) && block.type === "text" && typeof block.text === "string") {
+    if (isObject(block) && block.type === "text") {
+      // Incomplete/provider-shaped text can be an object or null. Never pass
+      // it to React as a child while switching from vision to the main model.
+      if (typeof block.text !== "string") continue;
       const tagged = splitTaggedThinking(block.text);
       if (tagged) normalized.push(...tagged);
       else normalized.push(block as unknown as AssistantContentBlock);

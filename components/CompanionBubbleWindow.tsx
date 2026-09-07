@@ -61,7 +61,7 @@ export function CompanionBubbleWindow() {
 
   return (
     <main className={`${styles.surface}${visible ? ` ${styles.visible}` : ""}`}>
-      {focus ? (
+      {focus && !(decisionVisible && decision?.event === "todo.reminder") ? (
         <div
           className={`${styles.bubble} ${styles.timerBubble}`}
           data-testid="companion-focus-timer-bubble"

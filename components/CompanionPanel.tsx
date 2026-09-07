@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import { useCompletionNotification } from "@/hooks/useCompletionNotification";
 import { useRunningTaskSnapshots } from "@/hooks/useTaskStatus";
 import {
@@ -22,9 +23,10 @@ import {
 import type { ModelsData } from "@/lib/models-cache";
 import type { CompanionFocusTimerPhase, CompanionRuntimeState } from "@/lib/companion-runtime";
 import {
-  createCompanionId,
   type CompanionInteractionModel,
 } from "@/lib/companion-store";
+import { CompanionToolLauncher } from "./CompanionToolLauncher";
+import { CompanionTodoList } from "./CompanionTodoList";
 import { CompanionStorageSettings } from "./CompanionStorageSettings";
 import { AliIcon, type AliIconName } from "./AliIcon";
 import styles from "./CompanionPanel.module.css";
@@ -108,8 +110,6 @@ function parseModelValue(value: string): CompanionInteractionModel | null {
 export function CompanionPanel() {
   const [tab, setTab] = useState<Tab>("home");
   const [jsonOpened, setJsonOpened] = useState(false);
-  const [search, setSearch] = useState("");
-  const [showCompleted, setShowCompleted] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const navigate = useCallback((next: Tab) => { setTab(next); if (next === "json") setJsonOpened(true); }, []);
   const [state, setState] = useState<CompanionRuntimeState>(emptyRuntimeState);
@@ -123,7 +123,6 @@ export function CompanionPanel() {
   const [modelDraft, setModelDraft] = useState("");
   const [modelSaveStatus, setModelSaveStatus] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
   const [question, setQuestion] = useState("");
-  const [taskDraft, setTaskDraft] = useState("");
   const [memoryDraft, setMemoryDraft] = useState("");
   const [personalityDraft, setPersonalityDraft] = useState("");
   const [personalityDirty, setPersonalityDirty] = useState(false);
@@ -321,18 +320,7 @@ export function CompanionPanel() {
     finally { setBusy(false); }
   };
 
-  const addTask = async () => {
-    const text = taskDraft.trim();
-    if (busy || !text) return;
-    const now = Date.now();
-    const saved = await mutate((current) => ({
-      ...current,
-      todos: [{ id: createCompanionId("todo"), text, completed: false, progress: 0, createdAt: now, updatedAt: now }, ...current.todos],
-    }));
-    if (saved) setTaskDraft("");
-  };
-
-  const saveJsonResult = (result: { content: string; language: string; title: string }) => transfer.mutate("POST", { ...result, kind: "code" });
+  const saveJsonResult = (result: { content: string; language: string; title: string }) => transfer.mutate("POST", { ...result, kind: "code" }, true);
 
   const addMemory = async () => {
     const text = memoryDraft.trim();
@@ -360,12 +348,11 @@ export function CompanionPanel() {
     { id: "mind", icon: "setting", label: "设置" },
   ];
   const activeTabLabel = tabs.find((item) => item.id === tab)?.label;
-  const filteredTools = TOOLS.filter((tool) => `${tool.label} ${tool.keywords}`.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
     <main className={`${styles.panel} companion-panel-root`} aria-busy={busy}>
       <aside className={styles.sidebar}>
-        <div className={styles.brand}><span className={styles.brandMark}>p.</span><span>随身舱<small>PIORA POCKET</small></span></div>
+        <div className={styles.brand}><Image className={styles.brandMark} src="/icons/icon-192.png" width={34} height={34} alt="Piora" unoptimized /><span>随身舱<small>PIORA POCKET</small></span></div>
         <nav className={styles.tabs} role="tablist" aria-orientation="vertical" aria-label="随身舱功能" onKeyDown={(event) => {
           if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
           event.preventDefault();
@@ -379,15 +366,11 @@ export function CompanionPanel() {
       </aside>
       <div className={styles.workspace}>
       <header className={styles.topbar}><span>{activeTabLabel}</span><button type="button" onClick={() => { navigate("home"); requestAnimationFrame(() => searchRef.current?.focus()); }} aria-label="搜索工具 Ctrl+K"><AliIcon name="search" size={15} /><kbd>Ctrl K</kbd></button></header>
-      {error ? <div className={styles.error} role="alert">{error}<button type="button" onClick={() => setError("")} aria-label="关闭错误提示">×</button></div> : null}
-      {runtimeError && tab !== "json" ? <div className={styles.error} role="status">{runtimeError}<button type="button" onClick={() => void refresh().catch((cause: unknown) => setRuntimeError(cause instanceof Error ? cause.message : String(cause)))}>重试</button></div> : null}
+      {error || (runtimeError && tab !== "json") ? <div className={styles.error} role="alert"><span>{error || runtimeError}</span>{error ? <button type="button" onClick={() => setError("")} aria-label="关闭错误提示">×</button> : <button type="button" onClick={() => void refresh().catch((cause: unknown) => setRuntimeError(cause instanceof Error ? cause.message : String(cause)))}>重试</button>}</div> : null}
       <section id="cabin-content" className={styles.content} data-tool={tab} role="tabpanel" aria-labelledby={`cabin-tab-${tab}`}>
         {tab === "home" ? <div className={styles.home}>
           <div className={styles.welcome}><h1>随身工具，顺手就好。</h1><p>找到工具，开始手边的小事。</p></div>
-          <div className={styles.searchBox}><AliIcon name="search" size={19} /><input ref={searchRef} aria-label="搜索工具" placeholder="搜索工具，如 JSON、待办、番茄钟…" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && filteredTools[0]) navigate(filteredTools[0].id); }} /><kbd>↵</kbd></div>
-          <div className={styles.sectionLabel}><span>{search ? "搜索结果" : "常用工具"}</span><small>{filteredTools.length.toString().padStart(2, "0")}</small></div>
-          <div className={styles.toolGrid}>{filteredTools.map((tool, index) => <button type="button" className={styles.toolCard} key={tool.id} onClick={() => navigate(tool.id)}><span className={styles.toolIcon} data-tone={tool.id}><AliIcon name={tool.icon} size={24} /></span><span><b>{tool.label}</b><small>{tool.description}</small></span><span className={styles.toolNumber}>0{index + 1}</span><AliIcon name="arrowright" size={16} /></button>)}</div>
-          {!filteredTools.length ? <div className={styles.empty}>没有找到工具，试试“JSON”或“专注”。</div> : null}
+          <CompanionToolLauncher tools={TOOLS} searchRef={searchRef} onOpen={(id) => navigate(id as Tab)} />
           <button type="button" className={styles.todayStrip} onClick={() => navigate(state.focusTimer.status === "running" ? "focus" : "tasks")}><span className={styles.statusDot} /><span>{state.focusTimer.status === "running" ? `正在专注 · ${formatCountdown(focusRemainingSeconds)}` : activeTasks.length ? `今天还有 ${activeTasks.length} 件小事，慢慢来。` : "清单很轻，随时开始新的一件事。"}</span><AliIcon name="chevron-right" size={16} /></button>
         </div> : null}
         {jsonOpened ? <div className={styles.jsonPane} hidden={tab !== "json"}><JsonWorkbench busy={transfer.pending} library={transfer.items} onSaveResult={saveJsonResult} /></div> : null}
@@ -410,8 +393,8 @@ export function CompanionPanel() {
           <div className={styles.composer}><input value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void ask(); }} placeholder="问问你的桌宠……" /><button type="button" disabled={busy || !question.trim()} onClick={() => void ask()}>发送</button></div>
         </> : null}
 
-        {tab === "tasks" ? <>
-          <div className={styles.pageHeading}><div><h1>待办</h1><p>{activeTasks.length} 项待办 · {state.todos.length - activeTasks.length} 项已完成</p></div><button type="button" onClick={() => setShowCompleted(!showCompleted)}>{showCompleted ? "隐藏已完成" : "查看已完成"}</button></div>
+        <div hidden={tab !== "tasks"}>
+          <CompanionTodoList todos={state.todos} busy={busy} onChange={(update) => mutate((current) => ({ ...current, todos: update(current.todos) }))} />
           {runningTasks.length ? <article className={styles.card}><b>正在运行的 Piora 任务</b><div className={styles.agentTasks}>{runningTasks.map((task) => <div key={task.id}><strong>{task.title || task.taskRun?.objective || task.id.slice(0, 8)}</strong><span>{task.activity?.message || task.taskRun?.progress || task.runtime}</span></div>)}</div></article> : null}
           <details className={styles.disclosure}><summary>自动记录设置</summary>
             <label className={styles.toggle}>
@@ -433,13 +416,6 @@ export function CompanionPanel() {
               </div>
             </article>)}</div>
           </section> : null}
-          <div className={styles.composer}><input value={taskDraft} onChange={(event) => setTaskDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void addTask(); }} placeholder="添加一个待办任务" /><button type="button" disabled={busy || !taskDraft.trim()} onClick={() => void addTask()}>添加</button></div>
-          <div className={styles.list}>{state.todos.filter((item) => showCompleted || !item.completed).map((item) => <article className={styles.row} data-done={item.completed} key={item.id}>
-            <button className={styles.check} aria-label={`${item.completed ? "标为未完成" : "完成"}：${item.text}`} aria-pressed={item.completed} data-done={item.completed} disabled={busy} onClick={() => void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, completed: !todo.completed, progress: !todo.completed ? 100 : 0, updatedAt: Date.now() } : todo) }))}>{item.completed ? "✓" : ""}</button>
-            <div><b>{item.text}</b><details className={styles.taskProgress}><summary>进度 {item.progress}%</summary><input aria-label={`${item.text}的进度`} type="range" min="0" max="100" defaultValue={item.progress} key={item.progress} onPointerUp={(event) => { const progress = Number(event.currentTarget.value); void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, progress, completed: progress === 100, updatedAt: Date.now() } : todo) })); }} onKeyUp={(event) => { if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return; const progress = Number(event.currentTarget.value); void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, progress, completed: progress === 100, updatedAt: Date.now() } : todo) })); }} /></details></div>
-            <button className={styles.danger} onClick={() => void mutate((current) => ({ ...current, todos: current.todos.filter((todo) => todo.id !== item.id) }))}>删除</button>
-          </article>)}</div>
-          {!state.todos.some((item) => showCompleted || !item.completed) ? <div className={styles.empty}><AliIcon name="check-circle" size={32} /><b>给下一件事留个位置</b><p>在上方记下来，然后安心去做。</p></div> : null}
           {confirmedRecords.length ? <section className={styles.recordSection}>
             <h2>已记录 <span>{confirmedRecords.length}</span></h2>
             <div className={styles.list}>{confirmedRecords.map((record) => <article className={styles.record} key={record.id}>
@@ -448,7 +424,7 @@ export function CompanionPanel() {
               <div className={styles.itemActions}><button className={styles.danger} onClick={() => void mutate((current) => ({ ...current, taskRecords: current.taskRecords.filter((item) => item.id !== record.id) }))}>删除记录</button></div>
             </article>)}</div>
           </section> : null}
-        </> : null}
+        </div>
 
         {tab === "focus" ? <>
           <div className={styles.pageHeading}><div><h1>专注</h1><p>专注一会儿，也记得好好休息。</p></div></div>
@@ -529,8 +505,8 @@ export function CompanionPanel() {
               {modelSaveStatus === "saved" ? "模型已保存。" : modelSaveStatus === "dirty" ? "选择已更改，点击保存后生效。" : "选择不同的模型后，保存按钮会自动启用。"}
             </small>
           </label>
-          <label>自主程度<select value={state.settings.autonomyLevel} onChange={(event) => void mutate((current) => ({ ...current, settings: { ...current.settings, autonomyLevel: event.target.value as "quiet" | "balanced" | "active" } }))}><option value="quiet">安静</option><option value="balanced">平衡</option><option value="active">活跃</option></select></label>
-          <label>性格<textarea value={personalityDraft} onChange={(event) => { setPersonalityDraft(event.target.value); setPersonalityDirty(true); }} onBlur={() => void savePersonalityDraft()} /></label>
+          <label>自主程度<select aria-label="自主程度" value={state.settings.autonomyLevel} onChange={(event) => void mutate((current) => ({ ...current, settings: { ...current.settings, autonomyLevel: event.target.value as "quiet" | "balanced" | "active" } }))}><option value="quiet">安静</option><option value="balanced">平衡</option><option value="active">活跃</option></select></label>
+          <label>性格<textarea aria-label="性格" value={personalityDraft} onChange={(event) => { setPersonalityDraft(event.target.value); setPersonalityDirty(true); }} onBlur={() => void savePersonalityDraft()} /></label>
           <label className={styles.toggle}><input type="checkbox" checked={!state.settings.autonomyPaused} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, autonomyPaused: !current.settings.autonomyPaused } }))} />允许自主观察</label>
           <label className={styles.toggle}><input type="checkbox" checked={state.settings.shareWorkContext} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, shareWorkContext: !current.settings.shareWorkContext } }))} />向互动模型发送汇总后的工作上下文</label>
           <label className={styles.toggle}><input type="checkbox" checked={state.settings.allowProactiveSpeech} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, allowProactiveSpeech: !current.settings.allowProactiveSpeech } }))} />允许任务变化或定时观察时主动说话</label>

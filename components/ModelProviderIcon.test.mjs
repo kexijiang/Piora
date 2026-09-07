@@ -10,6 +10,13 @@ const jiti = createJiti(import.meta.url, {
 });
 const { ModelProviderIcon, resolveModelBrand } = await jiti.import("./ModelProviderIcon.tsx");
 
+test("a cold provider glyph cannot suspend the surrounding application", () => {
+  const html = renderToStaticMarkup(React.createElement(React.Suspense, { fallback: "WHOLE_APP_BLANK" },
+    React.createElement("main", null, "APP_CONTENT", React.createElement(ModelProviderIcon, { provider: "qwen", modelId: "qwen3" }))));
+  assert.match(html, /APP_CONTENT/);
+  assert.doesNotMatch(html, /WHOLE_APP_BLANK/);
+});
+
 test("resolves the actual model family before a custom gateway provider", () => {
   assert.equal(resolveModelBrand("custom-gateway", "deepseek-v4-flash"), "deepseek");
   assert.equal(resolveModelBrand("openrouter", "anthropic/claude-sonnet-4.6"), "anthropic");

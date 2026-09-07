@@ -1,3 +1,4 @@
+import { recordAgentTerminalEvent } from "./agent-terminal-registry";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SessionManager, SettingsManager, type AgentSessionServices } from "@earendil-works/pi-coding-agent";
 import { randomUUID } from "node:crypto";
@@ -752,6 +753,7 @@ export class AgentSessionWrapper {
   }
 
   private emit(event: AgentEvent): void {
+    recordAgentTerminalEvent(this.sessionId, event);
     for (const l of this.listeners) l(event);
   }
 

@@ -8,6 +8,7 @@ export interface RoomActivity {
   thinking: string;
   tools: Array<{ id: string; name: string; status: "running" | "completed" | "error"; input: string; output: string }>;
   browser: boolean;
+  startedAt?: number;
   updatedAt: number;
 }
 
@@ -49,5 +50,6 @@ export function projectRoomActivity(input: {
   const active = tools.filter((tool) => input.pendingToolCalls.has(tool.id));
   return { sessionId: input.sessionId, runId: input.runId, status: "working",
     phase: input.compacting ? "正在整理上下文" : active.length ? `正在使用 ${active.map((tool) => tool.name).join("、")}` : input.streamingMessage ? blocks(runtimeMessage(input.streamingMessage)).at(-1)?.type === "thinking" ? "正在思考" : "正在回复" : "正在处理",
-    text, thinking, tools: tools.slice(-12), browser: tools.some((tool) => /browser/i.test(tool.name)), updatedAt: Date.now() };
+    text, thinking, tools: tools.slice(-12), browser: tools.some((tool) => /browser/i.test(tool.name)),
+    startedAt: input.startedAt ?? runtimeMessage(input.messages[start - 1]).timestamp, updatedAt: Date.now() };
 }

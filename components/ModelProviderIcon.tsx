@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ComponentType, CSSProperties } from "react";
+import { Suspense, type ComponentType, type CSSProperties } from "react";
 
 type IconProps = { size?: number | string; style?: CSSProperties };
 type IconComponent = ComponentType<IconProps>;
@@ -241,10 +241,14 @@ export function ModelProviderIcon({
         ...style,
       }}
     >
-      <iconDefinition.Icon
-        size={iconSize}
-        style={iconDefinition.hasColor ? undefined : { color: "currentColor" }}
-      />
+      {/* A first-use provider chunk must suspend only this fixed-size glyph,
+          never Home's Suspense boundary (which would hide the entire app). */}
+      <Suspense fallback={<ModelScopeIcon size={iconSize} />}>
+        <iconDefinition.Icon
+          size={iconSize}
+          style={iconDefinition.hasColor ? undefined : { color: "currentColor" }}
+        />
+      </Suspense>
     </span>
   );
 }

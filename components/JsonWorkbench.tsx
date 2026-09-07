@@ -20,7 +20,7 @@ import type { CompanionLibraryItem } from "@/lib/companion-store";
 import { JsonCodeEditor, type JsonCodeEditorHandle, type JsonEditorShortcut } from "./JsonCodeEditor";
 import styles from "./JsonWorkbench.module.css";
 import { AliIcon } from "./AliIcon";
-import { CompanionStorageSettings } from "./CompanionStorageSettings";
+import { copyText, readClipboardText } from "@/lib/clipboard";
 
 const STORAGE_KEY = "piora-json-workbench-v1";
 const TEMP_DRAFT_ID = "temp";
@@ -178,7 +178,6 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [restored, setRestored] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [storageError, setStorageError] = useState(false);
   const [storageMessage, setStorageMessage] = useState("");
   const [saving, setSaving] = useState(false);
@@ -409,7 +408,7 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
   const pasteClipboard = async (intoNewDraft = false) => {
     setError("");
     try {
-      const text = await navigator.clipboard.readText();
+      const text = await readClipboardText();
       if (!text) return;
       const formatted = smartFormatJson(text, options);
       const output = formatted.kind === "json" ? formatted.output : text;
@@ -497,7 +496,8 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
     return label.startsWith("companion.") ? t(label) : label;
   };
   const copyCurrent = async () => {
-    try { await navigator.clipboard.writeText(activeDraft.content); announce(t("companion.json.copied")); }
+    setError("");
+    try { await copyText(activeDraft.content); announce(t("companion.json.copied")); }
     catch { setError(t("companion.json.clipboardError")); }
   };
   const exportCurrent = () => {
@@ -510,7 +510,7 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
   if (!restored) return <div role="status">正在读取 JSON 草稿…</div>;
   return (
     <section className={styles.workbench} data-compact={compact ? "true" : "false"} aria-label={t("companion.json.title")}>
-      <div className={styles.workbenchHeading}><div><span className={styles.fileBadge}><AliIcon name="code" size={19} /></span><h1>JSON<span>{t("companion.json.workspaceSubtitle")}</span></h1></div><button type="button" aria-label={t("companion.json.options")} aria-expanded={settingsOpen} onClick={() => setSettingsOpen(!settingsOpen)}><AliIcon name="setting" size={17} /></button></div>
+      <div className={styles.workbenchHeading}><div><span className={styles.fileBadge}><AliIcon name="code" size={19} /></span><h1>JSON<span>{t("companion.json.workspaceSubtitle")}</span></h1></div></div>
       <input ref={importRef} type="file" hidden accept=".json,.txt,.jsonl,application/json,text/plain" onChange={async (event) => {
         const file = event.target.files?.[0]; event.target.value = "";
         if (!file) return;
@@ -518,26 +518,6 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
         try { addDraft(file.name.replace(/\.json$/i, ""), await file.text()); }
         catch { setError(t("companion.json.importFailed")); }
       }} />
-      {settingsOpen ? <div className={styles.preferences}>
-      <div className={styles.libraryBridge}>
-        <select aria-label={t("companion.json.loadLibrary")} defaultValue="" onChange={(event) => {
-          const item = reusableLibrary.find((entry) => entry.id === event.target.value);
-          event.target.value = "";
-          if (item) addDraft(item.title, item.content);
-        }}>
-          <option value="">{t("companion.json.loadLibrary")}</option>
-          {reusableLibrary.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-        </select>
-        <button type="button" disabled={busy || !onSaveResult || !activeDraft.content.trim()} onClick={() => void saveResult()}>{t("companion.json.saveLibrary")}</button>
-      </div>
-      <div className={styles.settings}>
-        <label>{t("companion.json.indent")}<select value={indent} onChange={(event) => setIndent(event.target.value === "2" ? 2 : 4)}><option value="2">2</option><option value="4">4</option></select></label>
-        <label><input type="checkbox" checked={autoExtract} onChange={(event) => setAutoExtract(event.target.checked)} />{t("companion.json.autoExtract")}</label>
-        <label><input type="checkbox" checked={multiEscape} onChange={(event) => setMultiEscape(event.target.checked)} />{t("companion.json.autoMultiEscape")}</label>
-        <label><input type="checkbox" checked={wrap} onChange={(event) => setWrap(event.target.checked)} />{t("companion.json.wrap")}</label>
-        <button type="button" onClick={() => updateDraft(activeDraft.id, { favorite: !activeDraft.favorite })}>{activeDraft.favorite ? t("companion.json.unlockTab") : t("companion.json.lockTab")}</button>
-      </div><CompanionStorageSettings scope="json" compact /></div> : null}
-
       <div className={styles.tabs} role="tablist" aria-label={t("companion.json.tabs")}>
         {drafts.map((draft) => (
           <div
@@ -606,19 +586,20 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
           ))}
         </div>
         <div className={styles.fileActions}>
+          {reusableLibrary.length > 0 && <select aria-label={t("companion.json.loadLibrary")} value="" onChange={(event) => { const item = reusableLibrary.find((entry) => entry.id === event.target.value); if (item) addDraft(item.title, item.content); }}><option value="">{t("companion.json.loadLibrary")}</option>{reusableLibrary.map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select>}
           <button type="button" onClick={() => importRef.current?.click()}><AliIcon name="upload" size={13} />{t("companion.json.import")}</button>
           <button type="button" disabled={!activeDraft.content} onClick={exportCurrent}><AliIcon name="download" size={13} />{t("companion.json.export")}</button>
           <button type="button" disabled={busy || !onSaveResult || !activeDraft.content.trim()} onClick={() => void saveResult()}><AliIcon name="bookmark" size={13} />{t("companion.json.saveLibrary")}</button>
           <button type="button" disabled={!activeDraft.content} onClick={() => updateDraft(activeDraft.id, { content: "" })}><AliIcon name="delete" size={13} />{t("companion.json.clear")}</button>
         </div>
       </div>
-      {error ? <div className={styles.error} role="alert">{error}</div> : null}
-      {storageError ? <div className={styles.error} role="alert">{storageMessage || t("companion.json.storageError")}</div> : null}
       <footer className={styles.footer}>
+        <label className={styles.indentControl}>{t("companion.json.indent")}<select aria-label={t("companion.json.indent")} value={indent} onChange={(event) => setIndent(event.target.value === "2" ? 2 : 4)}><option value="2">2</option><option value="4">4</option></select></label>
+        <button type="button" aria-pressed={wrap} onClick={() => setWrap(!wrap)}>{t("companion.json.wrap")}</button>
         <span className={styles.validation} data-state={validation}>{t(`companion.json.state.${validation}`)}</span>
         <span>{t("companion.json.characters", { count: activeDraft.content.length })}</span>
         <span className={styles.autosave}>{saving ? "保存中…" : storageError ? "未同步到文件" : "已保存本地"}</span>
-        <strong aria-live="polite">{notice}</strong>
+        <span className={styles.feedback} data-error={Boolean(error || storageError)} role={error || storageError ? "alert" : "status"} title={error || storageMessage || notice}><span>{error || (storageError ? storageMessage || t("companion.json.storageError") : notice)}</span>{error && <button type="button" onClick={() => setError("")} aria-label={t("i18n.close")}><AliIcon name="close" size={11} /></button>}</span>
       </footer>
     </section>
   );

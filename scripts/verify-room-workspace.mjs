@@ -52,7 +52,7 @@ function App(){const {shortcut,setShortcut}=useSendShortcut();const list=useRef(
 writeFileSync(path.join(output, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=function(source){return ts.transpileModule(source,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText}`);
 writeFileSync(path.join(output, "css-loader.cjs"), `module.exports=function(source){const names=[...source.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>m[1]);return 'const css='+JSON.stringify(source)+';const s=document.createElement("style");s.textContent=css;document.head.append(s);export default '+JSON.stringify(Object.fromEntries(names.map(n=>[n,n])))}`);
 const aliases = {};
-for(const name of ["@/hooks/useI18n", "./AliIcon", "./MarkdownBody", "./CollapsibleUserContent", "./RoomSettingsDialog"]) aliases[name+'$']=path.join(output,"stubs.tsx");
+for(const name of ["@/hooks/useI18n", "./MarkdownBody", "./CollapsibleUserContent", "./RoomSettingsDialog"]) aliases[name+'$']=path.join(output,"stubs.tsx");
 aliases["@"] = process.cwd();
 await new Promise((resolve,reject)=>{
 const compiler=webpack({mode:'production',target:'web',entry:path.join(output,'fixture.tsx'),output:{path:output,filename:'fixture.js'},optimization:{minimize:false},
@@ -81,8 +81,38 @@ try {
  await page.evaluate(activity=>window.roomEvents.onmessage({data:JSON.stringify({type:'activity',activities:[activity]})}),activity);
  await wait('document.body.textContent.includes("先检查来源")');
  check('live thinking and browser activity render inside the room',await evaluate('document.body.textContent.includes("piora_browser") && window.browserMember==="s1"'));
+ check('execution steps render in the conversation scroll area, with no top execution deck',await page.evaluate(()=>Boolean(document.querySelector('[data-room-message-list] [data-room-activity]')) && !document.querySelector('[aria-label="团队执行现场"]')));
+ check('tool output is collapsed by default',await page.locator('[data-room-activity] details.liveTool').evaluate(element=>!element.open));
+ await page.locator('[data-room-activity] details.liveTool > summary').click();
+ check('tool output expands in place',await page.locator('[data-room-activity] details.liveTool').evaluate(element=>element.open));
+ await page.screenshot({path:path.join(output,'inline-steps.png')});
+ await page.locator('[data-room-activity] details.liveTool > summary').click();
  await page.getByRole('button',{name:'补充指令',exact:true}).click();
  check('follow-up addresses the selected member in the room',await evaluate('document.querySelector("textarea").value.includes("@研究员")'));
+ const widthBefore = await page.locator('.composerWrap').evaluate(element=>element.getBoundingClientRect().width);
+ const handle = page.locator('[data-resize-handle="room-column"]');
+ const handleBox = await handle.boundingBox();
+ await page.mouse.move(handleBox.x + 5, handleBox.y + 80); await page.mouse.down();
+ await page.mouse.move(handleBox.x - 95, handleBox.y + 80, { steps: 10 }); await page.mouse.up();
+ check('dragging the group column widens both composer and conversation',await page.locator('.composerWrap').evaluate((element,before)=>element.getBoundingClientRect().width > before + 150,widthBefore));
+ check('room width persists',Number(await page.evaluate(()=>localStorage.getItem('pi-room-column-width'))) > widthBefore);
+ await handle.press('Enter');
+ check('Enter restores the default room width',Math.abs(await page.locator('.composerWrap').evaluate(element=>element.getBoundingClientRect().width)-840)<2);
+ const stamp=Date.now();
+ const roomMessages=[{id:'u1',roomId:'room',seq:1,author:{id:'user',kind:'user',name:'我'},content:'定位第一条群聊消息',createdAt:stamp-5000,payload:{}},{id:'a1',roomId:'room',seq:2,author:{id:'s0',kind:'agent',name:'协调者'},content:('长正文\n').repeat(1500),createdAt:stamp-4000,payload:{}}];
+ await page.evaluate(messages=>window.roomEvents.onmessage({data:JSON.stringify({type:'snapshot',messages})}),roomMessages);
+ await page.locator('[data-testid="room-message-timeline"]').waitFor();
+ const rail=await page.locator('[data-testid="room-message-timeline"]').boundingBox();
+ await page.mouse.move(rail.x+18,rail.y+rail.height*.65);
+ const preview=page.locator('[data-testid="room-message-timeline"] [data-minimap-preview-box]'); await preview.waitFor();
+ const previewBox=await preview.boundingBox();
+ check('sparse room history opens beside the pointer',Math.abs(previewBox.y-(rail.y+rail.height*.65))<40);
+ await page.mouse.move(previewBox.x+previewBox.width-6,rail.y+rail.height*.65,{steps:8});
+ await preview.locator('button.previewItem').click();
+ check('the pointer can cross into the history preview and jump',await page.locator('[data-room-message-list]').evaluate(element=>element.scrollTop<100));
+ await page.evaluate(activity=>window.roomEvents.onmessage({data:JSON.stringify({type:'activity',activities:[{...activity,status:'ended',tools:[{...activity.tools[0],status:'completed'}]}]})}),activity);
+ await page.evaluate(activity=>window.roomEvents.onmessage({data:JSON.stringify({type:'activity',activities:[{...activity,runId:'r2',startedAt:Date.now(),thinking:'下一轮执行'}]})}),activity);
+ check('a new run preserves the previous run steps in the conversation',await page.locator('[data-room-message-list] [data-room-activity]').count()===2);
  await page.screenshot({path:path.join(output,'desktop.png')});
  await page.setViewportSize({width:390,height:844});
  check('room supports a narrow viewport',await evaluate('document.documentElement.scrollWidth<=innerWidth'));

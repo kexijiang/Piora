@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,6 +13,7 @@ import {
 import type { RoomMessage } from "@/lib/room-types";
 import { useI18n } from "@/hooks/useI18n";
 import { getRoomMessagePreview } from "@/lib/room-message-navigation";
+import { minimapPreviewTop } from "@/lib/minimap-position";
 import { AliIcon } from "./AliIcon";
 import styles from "./ChatMinimap.module.css";
 
@@ -61,6 +63,9 @@ export function RoomMessageNavigator({ messages, scrollContainer, messageRefs }:
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPinned, setPreviewPinned] = useState(false);
+  const [previewAnchor, setPreviewAnchor] = useState(24);
+  const [previewHeight, setPreviewHeight] = useState(100);
+  const previewBoxRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const previewListRef = useRef<HTMLDivElement>(null);
   const previewItemRefs = useRef(new Map<number, HTMLButtonElement>());
@@ -116,7 +121,7 @@ export function RoomMessageNavigator({ messages, scrollContainer, messageRefs }:
     });
     setHeight(minimapEl?.clientHeight || scrollEl.clientHeight);
     setNodes(nextNodes);
-    setVisible(nextNodes.length > 1 && scrollEl.scrollHeight - scrollEl.clientHeight > 20);
+    setVisible(nextNodes.length > 0 && scrollEl.scrollHeight - scrollEl.clientHeight > 20);
     syncActive(scrollEl, nextNodes);
   }, [messageRefs, scrollContainer, syncActive, userMessages]);
 
@@ -190,6 +195,15 @@ export function RoomMessageNavigator({ messages, scrollContainer, messageRefs }:
   }, [scheduleHide]);
 
   useEffect(() => () => cancelHide(), [cancelHide]);
+  useLayoutEffect(() => {
+    const box = previewBoxRef.current;
+    if (!box) return;
+    const measure = () => setPreviewHeight(box.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [previewOpen, previewPinned, nodes.length]);
   useEffect(() => {
     if (!previewOpen || activeIndex === null) return;
     const list = previewListRef.current;
@@ -205,9 +219,19 @@ export function RoomMessageNavigator({ messages, scrollContainer, messageRefs }:
     ref={containerRef}
     className={styles.root}
     data-testid="room-message-timeline"
-    onMouseEnter={showPreview}
+    onMouseEnter={(event) => {
+      const box = containerRef.current?.getBoundingClientRect();
+      if (!previewPinned && box && event.clientX >= box.left) setPreviewAnchor(event.clientY - box.top);
+      showPreview();
+    }}
+    onMouseMove={(event) => {
+      if (!previewPinned && event.target instanceof Element && !event.target.closest("[data-minimap-preview-box], [data-minimap-preview-bridge]") && containerRef.current) setPreviewAnchor(event.clientY - containerRef.current.getBoundingClientRect().top);
+    }}
     onMouseLeave={scheduleHide}
-    onFocusCapture={showPreview}
+    onFocusCapture={(event) => {
+      if (!previewPinned && containerRef.current && !previewBoxRef.current?.contains(event.target)) setPreviewAnchor(event.target.getBoundingClientRect().top - containerRef.current.getBoundingClientRect().top + 7);
+      showPreview();
+    }}
     onBlurCapture={handleBlur}
   >
     <div className={styles.track} style={{ top: MINIMAP_PADDING, height: Math.max(1, lastTop - MINIMAP_PADDING) }} aria-hidden="true" />
@@ -222,7 +246,7 @@ export function RoomMessageNavigator({ messages, scrollContainer, messageRefs }:
       onClick={() => scrollToNode(node)}
       style={{ top: `${node.topRatio * 100}%`, height: Math.max(14, positioned.gap) }}
     ><span className={styles.dot} aria-hidden="true" /></button>)}
-    {previewOpen || previewPinned ? <div className={styles.preview} data-minimap-preview-box="" data-pinned={previewPinned ? "true" : undefined}>
+    {previewOpen || previewPinned ? <><div data-minimap-preview-bridge="" className={styles.previewBridge} style={{ top: minimapPreviewTop(previewAnchor, previewHeight, height), height: previewHeight }} onMouseEnter={showPreview} /><div ref={previewBoxRef} className={styles.preview} style={{ top: minimapPreviewTop(previewAnchor, previewHeight, height) }} onMouseEnter={showPreview} onMouseLeave={scheduleHide} data-minimap-preview-box="" data-pinned={previewPinned ? "true" : undefined}>
       <div className={styles.previewHeader}>
         <div className={styles.previewHeading}>
           <span className={styles.previewTitle}>群聊记录</span>
@@ -258,6 +282,6 @@ export function RoomMessageNavigator({ messages, scrollContainer, messageRefs }:
           <span className={styles.previewText}>{node.preview}</span>
         </button>)}
       </div>
-    </div> : null}
+    </div></> : null}
   </div>;
 }

@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   session,
+  safeStorage,
   shell,
   WebContentsView,
   type IpcMainInvokeEvent,
@@ -14,7 +15,9 @@ import {
   type Rectangle,
   type Session,
   type WebContents,
+  type BrowserWindowConstructorOptions,
 } from "electron";
+import { BrowserCookieStore } from "./browser-cookie-store.js";
 import type { Logger } from "./logger.js";
 
 export const BROWSER_STATE_CHANNEL = "pi:browser-state";
@@ -237,6 +240,8 @@ export class DesktopBrowserManager {
   private requestedVisible = false;
   private nextTabId = 1;
   private readonly browserSession: Session;
+  private readonly cookieStore: BrowserCookieStore;
+  private readonly storageReady: Promise<void>;
   private destroyed = false;
   private storageFlushTimer: NodeJS.Timeout | undefined;
   private storageFlushChain: Promise<void> = Promise.resolve();
@@ -264,6 +269,8 @@ export class DesktopBrowserManager {
     private readonly isTrustedSender: (event: IpcMainInvokeEvent) => boolean,
   ) {
     this.browserSession = session.fromPartition(BROWSER_PARTITION, { cache: true });
+    this.cookieStore = new BrowserCookieStore(join(app.getPath("userData"), "browser-session-cookies.enc"), this.browserSession.cookies, safeStorage);
+    this.storageReady = this.cookieStore.restore().catch(() => this.log.warn("Unable to restore browser session cookies"));
     this.configureSession();
     this.createTab("about:blank", false, MANUAL_BROWSER_SESSION_ID);
     this.registerIpc();
@@ -296,13 +303,17 @@ export class DesktopBrowserManager {
     this.browserSession.flushStorageData();
     this.storageFlushChain = this.storageFlushChain
       .catch(() => undefined)
-      .then(() => this.browserSession.cookies.flushStore());
+      .then(async () => {
+        await this.storageReady;
+        await this.browserSession.cookies.flushStore();
+        await this.cookieStore.save();
+      });
     return this.storageFlushChain;
   }
 
   private scheduleStorageFlush(): void {
     if (this.destroyed) return;
-    if (this.storageFlushTimer) clearTimeout(this.storageFlushTimer);
+    if (this.storageFlushTimer) return;
     this.storageFlushTimer = setTimeout(() => {
       this.storageFlushTimer = undefined;
       void this.flushStorage().catch((error) => this.log.warn("Unable to persist browser state", error));
@@ -366,7 +377,7 @@ export class DesktopBrowserManager {
     ipcMain.removeHandler(BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL);
   }
 
-  private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId): BrowserTab {
+  private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }): BrowserTab {
     if (this.tabs.length >= MAX_TABS) {
       const existing = this.activeTab(sessionId);
       if (existing) return existing;
@@ -374,7 +385,9 @@ export class DesktopBrowserManager {
     }
     const id = `tab-${this.nextTabId++}`;
     const view = new WebContentsView({
+      ...(popupOptions?.webContents ? { webContents: popupOptions.webContents } : {}),
       webPreferences: {
+        ...popupOptions?.webPreferences,
         partition: BROWSER_PARTITION,
         sandbox: true,
         contextIsolation: true,
@@ -395,7 +408,7 @@ export class DesktopBrowserManager {
     if (activate || !this.activeTabIds.has(sessionId)) this.activeTabIds.set(sessionId, id);
     const targetUrl = normalizeAddress(rawUrl);
     if (targetUrl !== "about:blank") {
-      void view.webContents.loadURL(targetUrl).catch((error) => {
+      void this.storageReady.then(() => view.webContents.isDestroyed() ? undefined : view.webContents.loadURL(targetUrl)).catch((error) => {
         this.log.warn("Browser tab failed to load", error);
       });
     }
@@ -407,9 +420,21 @@ export class DesktopBrowserManager {
   private installTabEvents(tab: BrowserTab): void {
     const contents = tab.view.webContents;
     contents.setWindowOpenHandler(({ url }) => {
-      if (isBrowserUrl(url)) this.createTab(url, true, tab.sessionId);
-      else void shell.openExternal(url).catch((error) => this.log.warn("Unable to open browser protocol", error));
+      if (isBrowserUrl(url) && this.tabs.length < MAX_TABS) {
+        return {
+          action: "allow",
+          createWindow: (options) => this.createTab((options as { webContents?: WebContents }).webContents ? "about:blank" : url, true, tab.sessionId, options).view.webContents,
+        };
+      }
+      if (!isBrowserUrl(url)) void shell.openExternal(url).catch((error) => this.log.warn("Unable to open browser protocol", error));
       return { action: "deny" };
+    });
+    contents.on("destroyed", () => {
+      if (this.destroyed || !this.tabs.includes(tab)) return;
+      if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
+      this.tabs.splice(this.tabs.indexOf(tab), 1);
+      this.updateVisibility();
+      this.sendState();
     });
     contents.on("will-navigate", (event, url) => {
       if (!isBrowserUrl(url)) {
@@ -641,6 +666,7 @@ export class DesktopBrowserManager {
     const action = typeof params.action === "string" ? params.action : "";
     if (!action) throw new Error("A browser action is required.");
 
+    await this.storageReady;
     let tab = this.ensureSession(sessionId);
     let contents = tab.view.webContents;
     const stopOnAbort = () => contents.stop();
@@ -742,6 +768,7 @@ export class DesktopBrowserManager {
     const active = this.activeTab(this.displayedSessionId);
     if (!active) return;
     if (input.action === "navigate" && typeof input.url === "string") {
+      await this.storageReady;
       await active.view.webContents.loadURL(normalizeAddress(input.url));
     } else if (input.action === "back" && active.view.webContents.navigationHistory.canGoBack()) {
       active.view.webContents.navigationHistory.goBack();

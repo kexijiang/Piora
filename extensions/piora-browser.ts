@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { readFile, rename } from "node:fs/promises";
 import { join } from "node:path";
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -127,19 +128,31 @@ async function launchPersistentBrowser(): Promise<BrowserContext> {
 }
 
 async function persistBrowserState(context: BrowserContext): Promise<void> {
-  await context.storageState({ path: browserStorageStatePath(), indexedDB: true });
+  const file = browserStorageStatePath();
+  await context.storageState({ path: `${file}.tmp`, indexedDB: true });
+  await rename(`${file}.tmp`, file);
 }
 
 async function restoreBrowserState(context: BrowserContext): Promise<void> {
   try {
-    await context.setStorageState(browserStorageStatePath());
+    // The persistent profile already restores localStorage, IndexedDB and
+    // dated cookies. Replacing all storage with an older snapshot rolls back
+    // refreshed tokens. Recover only missing session cookies.
+    const saved = JSON.parse(await readFile(browserStorageStatePath(), "utf8"));
+    const current = await context.cookies();
+    const key = (cookie: { domain: string; path: string; name: string }) => JSON.stringify([cookie.domain, cookie.path, cookie.name]);
+    const existing = new Set(current.map(key));
+    if (Array.isArray(saved.cookies)) {
+      const missing = saved.cookies.filter((cookie: import("playwright-core").Cookie) => cookie && cookie.expires === -1 && !existing.has(key(cookie)));
+      await context.addCookies(missing);
+    }
   } catch {
     // A missing or damaged state snapshot must not prevent the browser from starting.
   }
 }
 
 function scheduleBrowserStatePersistence(context: BrowserContext, delayMs = 600): void {
-  if (runtime.persistTimer) clearTimeout(runtime.persistTimer);
+  if (runtime.persistTimer) return;
   runtime.persistTimer = setTimeout(() => {
     runtime.persistTimer = null;
     runtime.persistChain = runtime.persistChain
@@ -154,6 +167,9 @@ function watchPagePersistence(context: BrowserContext, page: Page): void {
   if (runtime.watchedPages.has(page)) return;
   runtime.watchedPages.add(page);
   page.on("domcontentloaded", () => scheduleBrowserStatePersistence(context));
+  page.on("response", (response) => {
+    if (["xhr", "fetch", "document"].includes(response.request().resourceType())) scheduleBrowserStatePersistence(context, 1500);
+  });
 }
 
 async function getBrowserContext(): Promise<BrowserContext> {
@@ -171,7 +187,7 @@ async function getSession(sessionId: string): Promise<BrowserSession> {
     return existing;
   }
   if (existing) {
-    await existing.context.close().catch(() => undefined);
+    // Sessions share this context; replacing a closed page must not close it.
     runtime.sessions.delete(sessionId);
   }
 

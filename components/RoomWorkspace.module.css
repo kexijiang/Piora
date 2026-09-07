@@ -161,6 +161,16 @@
   flex-direction: column;
 }
 
+.columnResizeHandle { position: absolute; z-index: 22; top: 12px; bottom: 16px; left: max(3px, calc((100% - var(--room-column-width, 840px)) / 2 - 12px)); width: 10px; cursor: col-resize; touch-action: none; outline: none; }
+.columnResizeHandle::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; background: transparent; border-radius: 2px; }
+.columnResizeHandle:hover::after, .columnResizeHandle:focus-visible::after { background: var(--accent); }
+.activityMessage .messageColumn { flex: 1; }
+.activityBody { padding: 8px 0; min-width: 0; }
+.activityBody pre { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--text-xs)/1.7 var(--font-mono); }
+.activityMessage .liveTool { background: transparent; padding: 7px 0; border-bottom: 1px solid var(--border); border-radius: 0; }
+.activityMessage .liveThinking { margin-bottom: 10px; }
+.activityMessage .messageMeta { flex-wrap: wrap; }
+
 .messageViewport {
   display: flex;
   position: relative;
@@ -171,7 +181,7 @@
 .messages {
   min-width: 0;
   flex: 1;
-  padding: 22px max(20px, calc((100% - 840px) / 2)) 28px;
+  padding: 22px max(20px, calc((100% - var(--room-column-width, 840px)) / 2)) 28px;
   overflow-y: auto;
   scroll-behavior: smooth;
 }
@@ -282,7 +292,7 @@
 
 .messageColumn {
   min-width: 0;
-  max-width: min(720px, 82%);
+  max-width: calc(100% - 42px);
 }
 
 .pioraQuestion .bubble {
@@ -338,7 +348,7 @@
 }
 
 .composerWrap {
-  width: min(880px, calc(100% - 32px));
+  width: min(var(--room-column-width, 840px), calc(100% - 40px));
   margin: 0 auto;
   padding: 8px 0 15px;
 }
@@ -1008,6 +1018,7 @@
 }
 
 @media (max-width: 820px) {
+  .columnResizeHandle { display: none; }
   .headerMembers {
     display: none;
   }

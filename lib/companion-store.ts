@@ -33,6 +33,8 @@ export interface CompanionTodo {
   notes?: string;
   project?: string;
   dueAt?: number;
+  reminderEnabled?: boolean;
+  nextReminderAt?: number;
   createdAt: number;
   updatedAt: number;
 }
@@ -161,6 +163,8 @@ export function normalizeCompanionPreferences(
       ...(notes ? { notes } : {}),
       ...(project ? { project } : {}),
       ...(dueAt >= 0 ? { dueAt } : {}),
+      ...(typeof todo.reminderEnabled === "boolean" ? { reminderEnabled: todo.reminderEnabled } : {}),
+      ...(safeTimestamp(todo.nextReminderAt, -1) >= 0 ? { nextReminderAt: safeTimestamp(todo.nextReminderAt) } : {}),
       createdAt,
       updatedAt: safeTimestamp(todo.updatedAt, createdAt),
     }];

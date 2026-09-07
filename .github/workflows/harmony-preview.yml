@@ -125,6 +125,10 @@ jobs:
           }
           Set-Content -LiteralPath desktop/release/SHA256SUMS.txt -Value $lines -Encoding ascii
 
+      - name: Generate release notes
+        shell: pwsh
+        run: node scripts/create-release-notes.mjs $env:GITHUB_REF_NAME desktop/release/release-notes.md
+
       - name: Upload verified preview payload
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -135,6 +139,7 @@ jobs:
             desktop/release/*-setup.exe.blockmap
             desktop/release/beta.yml
             desktop/release/SHA256SUMS.txt
+            desktop/release/release-notes.md
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
@@ -153,17 +158,11 @@ jobs:
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "beta.yml")).Path,
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "SHA256SUMS.txt")).Path
           )
-          $notes = @"
-          Piora $env:GITHUB_REF_NAME 内测版。
-
-          包含可选择安装目录的 Windows 安装版、便携版和 beta 自动更新元数据。首次运行本内测版的设备会在本地保留内测身份，后续可同时接收正式版与内测版；已有正式用户不会被自动切换到内测通道。
-
-          此构建尚未进行正式发布，Windows 文件未做 Authenticode 签名，请使用 SHA256SUMS.txt 校验下载文件。
-          "@
+          $releaseNotesPath = (Resolve-Path -LiteralPath (Join-Path $releaseRoot "release-notes.md")).Path
           gh release create $env:GITHUB_REF_NAME @assets `
             --repo $env:GITHUB_REPOSITORY `
             --title "Piora $env:GITHUB_REF_NAME Preview" `
-            --notes $notes `
+            --notes-file $releaseNotesPath `
             --verify-tag `
             --prerelease
           if ($LASTEXITCODE -ne 0) {

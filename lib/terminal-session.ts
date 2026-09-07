@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { spawn, type IPty } from "node-pty";
 import { statSync } from "node:fs";
 import path from "node:path";
 import {
@@ -77,7 +77,10 @@ export async function validateTerminalCwd(value: unknown): Promise<string> {
 }
 
 export class TerminalSession {
-  private child: ChildProcess | null = null;
+  private child: IPty | null = null;
+  private cols = 100;
+  private rows = 30;
+  private closed: Promise<void> = Promise.resolve();
   private connected = false;
   private generation = 0;
   private listeners = new Set<TerminalListener>();
@@ -107,39 +110,26 @@ export class TerminalSession {
     this.shell = definition.label;
     const child = spawn(definition.executable, definition.args, {
       cwd: this.cwd,
-      env: { ...process.env, FORCE_COLOR: process.env.FORCE_COLOR || "1", TERM: process.env.TERM || "xterm-256color" },
-      shell: false,
-      stdio: ["pipe", "pipe", "pipe"],
-      windowsHide: true,
+      env: Object.fromEntries(Object.entries({ ...process.env, TERM: "xterm-256color", TERM_PROGRAM: "Piora" }).filter((entry): entry is [string, string] => typeof entry[1] === "string")),
+      name: "xterm-256color",
+      cols: this.cols,
+      rows: this.rows,
+      useConptyDll: process.platform === "win32",
     });
     this.child = child;
     this.connected = true;
-    this.append(`\u001b[2mPiora terminal · ${definition.label} · ${this.cwd}\u001b[0m\r\n`);
     this.emitStatus();
-
-    child.stdout?.setEncoding("utf8");
-    child.stderr?.setEncoding("utf8");
-    child.stdout?.on("data", (chunk: string | Buffer) => {
-      if (generation === this.generation) this.append(String(chunk));
+    child.onData((chunk) => {
+      if (generation === this.generation) this.append(chunk);
     });
-    child.stderr?.on("data", (chunk: string | Buffer) => {
-      if (generation === this.generation) this.append(String(chunk));
-    });
-    child.once("error", (error) => {
-      if (generation !== this.generation) return;
-      this.append(`\r\n\u001b[31m${error.message}\u001b[0m\r\n`);
-      this.connected = false;
-      this.child = null;
-      this.emitStatus();
-    });
-    child.once("close", (code, signal) => {
+    this.closed = new Promise<void>((resolve) => child.onExit(({ exitCode, signal }) => {
+      resolve();
       if (generation !== this.generation) return;
       this.connected = false;
       this.child = null;
-      const detail = signal ? `signal ${signal}` : `code ${String(code ?? 0)}`;
-      this.append(`\r\n\u001b[2m[terminal exited: ${detail}]\u001b[0m\r\n`);
+      this.append(`\r\n\u001b[2m[terminal exited: ${signal ? `signal ${signal}` : `code ${exitCode}`}]\u001b[0m\r\n`);
       this.emitStatus();
-    });
+    }));
     return this.snapshot();
   }
 
@@ -149,11 +139,28 @@ export class TerminalSession {
     if (command.length > MAX_COMMAND_CHARS) throw new TerminalSessionError("command is too large", 413, "command_too_large");
     if (command.includes("\0")) throw new TerminalSessionError("command contains an invalid null byte");
     this.start();
-    if (!this.child?.stdin?.writable) throw new TerminalSessionError("Shell is not available", 409, "shell_unavailable");
-    this.append(`\r\n\u001b[36m❯\u001b[0m ${command}\r\n`);
-    this.child.stdin.write(`${command}${process.platform === "win32" ? "\r\n" : "\n"}`);
+    if (!this.child) throw new TerminalSessionError("Shell is not available", 409, "shell_unavailable");
+    this.child.write(`${command}\r`);
     this.touch();
     return this.snapshot();
+  }
+
+  input(data: unknown): void {
+    if (typeof data !== "string" || data.length > MAX_COMMAND_CHARS || data.includes("\0")) {
+      throw new TerminalSessionError("Invalid terminal input");
+    }
+    if (!this.child || !this.connected) throw new TerminalSessionError("Shell is not available", 409, "shell_unavailable");
+    this.child.write(data);
+    this.touch();
+  }
+
+  resize(cols: unknown, rows: unknown): void {
+    if (!Number.isInteger(cols) || !Number.isInteger(rows) || (cols as number) < 2 || (cols as number) > 500 || (rows as number) < 1 || (rows as number) > 300) {
+      throw new TerminalSessionError("Invalid terminal dimensions");
+    }
+    this.cols = cols as number;
+    this.rows = rows as number;
+    this.child?.resize(this.cols, this.rows);
   }
 
   clear(): TerminalSnapshot {
@@ -175,7 +182,7 @@ export class TerminalSession {
     this.generation += 1;
     this.child = null;
     this.connected = false;
-    if (child && !child.killed) child.kill();
+    if (child) { try { child.kill(); } catch { /* Already exited. */ } }
     if (announce) this.append("\r\n\u001b[2m[terminal stopped]\u001b[0m\r\n");
     this.emitStatus();
     return this.snapshot();
@@ -191,25 +198,15 @@ export class TerminalSession {
   }
 
   async dispose(): Promise<void> {
-    const child = this.child;
-    const closed = child ? new Promise<void>((resolve) => {
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        child.removeListener("close", finish);
-        resolve();
-      };
-      const timer = setTimeout(finish, 5_000);
-      timer.unref?.();
-      child.once("close", finish);
-    }) : Promise.resolve();
+    const closed = this.closed;
     this.stop(false);
     if (this.idleTimer) clearTimeout(this.idleTimer);
     this.idleTimer = null;
     this.listeners.clear();
-    await closed;
+    await new Promise<void>((resolve) => {
+      const timeout = setTimeout(resolve, 5_000);
+      void closed.then(() => { clearTimeout(timeout); resolve(); });
+    });
   }
 
   private append(chunk: string): void {

@@ -209,7 +209,7 @@ export function DesktopCompanionWindow() {
       const decision = runtime?.mind?.lastDecision;
       if (!decision || decision.id === lastDecisionIdRef.current) return;
       lastDecisionIdRef.current = decision.id;
-      if (!decision.event.startsWith("timer.") || Date.now() - decision.createdAt > 30_000) return;
+      if ((!decision.event.startsWith("timer.") && decision.event !== "todo.reminder") || Date.now() - decision.createdAt > 30_000) return;
       overlaySequenceRef.current += 1;
       setOverlayEvent({ kind: "poke", key: `timer:${overlaySequenceRef.current}`, occurredAt: decision.createdAt });
     };
@@ -229,6 +229,22 @@ export function DesktopCompanionWindow() {
       document.removeEventListener("visibilitychange", refreshIfVisible);
       channel?.close();
     };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    let pending = false;
+    const tick = async () => {
+      if (pending) return;
+      pending = true;
+      try {
+        await fetch("/api/companion/todos/remind", { method: "POST", signal: AbortSignal.any([controller.signal, AbortSignal.timeout(10_000)]) });
+      } catch { /* Retry on the next tick; reminders do not require an interaction model. */ }
+      finally { pending = false; }
+    };
+    void tick();
+    const timer = window.setInterval(() => void tick(), 30_000);
+    return () => { controller.abort(); window.clearInterval(timer); };
   }, []);
 
   useEffect(() => {

@@ -229,8 +229,8 @@
 .fileBadge { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 10px; color: #7d896c; background: color-mix(in srgb, #7d896c 12%, var(--bg)); }
 .preferences { padding: 12px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); max-height: 32vh; overflow: auto; flex-shrink: 0; }
 .preferences .settings { margin-top: 12px; padding-top: 12px; }
-.tabs { flex-shrink: 0; min-height: 40px; padding: 0 8px; border: 1px solid var(--border); border-bottom: 0; border-radius: 11px 11px 0 0; background: var(--bg-panel); }
-.tab { flex: 0 1 145px; border-radius: 0; height: 40px; border-bottom: 2px solid transparent; }
+.tabs { flex-shrink: 0; min-height: 32px; padding: 0 8px; border: 1px solid var(--border); border-bottom: 0; border-radius: 11px 11px 0 0; background: var(--bg-panel); }
+.tab { flex: 0 0 auto; min-width: 64px; max-width: 160px; border-radius: 0; height: 31px; border-bottom: 2px solid transparent; }
 .tab[data-active="true"] { background: var(--bg); border-bottom-color: #7d896c; }
 .actionBar { border: 1px solid var(--border); border-bottom: 0; border-radius: 0; padding: 8px; background: var(--bg); gap: 3px; flex-shrink: 0; }
 .workbench .actionBar button { padding: 5px 9px; font-size: calc(var(--ui-font-size) * 11 / 14); min-height: 29px; }
@@ -253,7 +253,7 @@
 .editorEmpty p { font-size: calc(var(--ui-font-size) * 11 / 14); max-width: 290px; margin: 0 0 8px; line-height: 1.8; }
 .editorEmpty button { pointer-events: auto; }
 .editorEmpty > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; }
-.footer { flex-shrink: 0; flex-wrap: wrap; min-height: 34px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 0 0 11px 11px; font-size: calc(var(--ui-font-size) * 10 / 14); gap: 10px; background: var(--bg-panel); }
+.footer { flex-shrink: 0; flex-wrap: nowrap; height: 34px; min-height: 34px; padding: 3px 10px; border: 1px solid var(--border); border-radius: 0 0 11px 11px; font-size: calc(var(--ui-font-size) * 10 / 14); gap: 10px; background: var(--bg-panel); }
 .footer span:nth-child(2) { margin-left: 0; }
 .validation { display: flex; align-items: center; gap: 5px; }
 .validation::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--text-dim); }
@@ -287,3 +287,15 @@
   .footer span:nth-child(2) { display: inline; }
   .footer { padding-inline: 8px; gap: 8px; }
 }
+
+.feedback { display: flex; align-items: center; gap: 4px; margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+.feedback[data-error="true"] { color: var(--status-failed, #b77761); }
+.feedback button { flex-shrink: 0; min-height: 20px; padding: 2px; }
+.indentControl { display: inline-flex; align-items: center; gap: 3px; flex-shrink: 0; }
+.indentControl select { min-height: 23px; height: 23px; padding: 0 2px; border-color: transparent; background: transparent; }
+.footer > button { min-height: 23px; height: 23px; padding: 2px 4px; white-space: nowrap; }
+.footer > span { white-space: nowrap; }
+.footer .autosave { margin-left: 0; }
+@container json-workbench (max-width: 560px) { .footer .autosave, .footer > span:nth-of-type(2) { display: none; } }
+
+.feedback > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

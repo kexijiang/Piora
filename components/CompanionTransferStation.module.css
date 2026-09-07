@@ -44,3 +44,9 @@
 .largeImage { height: 55vh; margin: 16px 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .dialog a { color: var(--text-muted); font-size: calc(var(--ui-font-size) * 12 / 14); }
 @media (max-width: 480px) { .toolbar { gap: 4px; } .search input { width: 60px; } .capture kbd { display: none; } .station { gap: 16px; } }
+
+.status { min-height: 32px; height: 32px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+.status[data-error="true"] { color: var(--status-failed, #b77761); }
+.status button { margin-left: auto; flex-shrink: 0; }
+
+.status > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }

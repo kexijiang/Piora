@@ -89,7 +89,6 @@ const CAPABILITY_TASKS: Array<{ id: "install" | "configure" | "connect"; keys: S
   { id: "configure", keys: ["extensions", "tools", "capabilityBundles"] },
   { id: "connect", keys: ["harmony", "remote"] },
 ];
-const CAPABILITY_SECTIONS = new Set(CAPABILITY_TASKS.flatMap((task) => task.keys));
 
 export function SettingsDialog({
   open,
@@ -467,10 +466,10 @@ export function SettingsDialog({
     .filter((item) => availableEntries.some((entry) => entry.key === item.section)),
   [availableEntries, desktop.available, modelCwd, normalizedSearch, t]);
   const filteredEntries = useMemo(() => {
-    if (!normalizedSearch) return availableEntries.filter((entry) => !CAPABILITY_SECTIONS.has(entry.key) || activeKey === entry.key);
+    if (!normalizedSearch) return availableEntries;
     const matches = new Set(searchItems.map((item) => item.section));
     return availableEntries.filter((entry) => matches.has(entry.key));
-  }, [availableEntries, normalizedSearch, searchItems, activeKey]);
+  }, [availableEntries, normalizedSearch, searchItems]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -531,8 +530,8 @@ export function SettingsDialog({
 
           <main className={`${styles.content} settings-content`}>
             <div className={`${styles.contentToolbar} settings-content-toolbar`} aria-hidden="true" />
-            <div className={styles.contentBody}>
-            <div className={`${styles.contentCanvas} settings-embedded-section`}>
+            <div className={`${styles.contentBody}${sectionContent ? ` ${styles.contentBodyEmbedded}` : ""}`}>
+            <div className={`${styles.contentCanvas} settings-embedded-section`} data-embedded={Boolean(sectionContent)}>
             {searching ? (
               <>
                 <div className={styles.contentHeading}>
@@ -553,11 +552,10 @@ export function SettingsDialog({
                 </section> : <div className={styles.searchEmpty} role="status">{t("settings.searchEmpty")}</div>}
               </>
             ) : <>
-              {CAPABILITY_SECTIONS.has(activeEntry.key) ? <button className={styles.backButton} type="button" onClick={() => selectEntry(detailEntries.find((entry) => entry.key === "capabilities")!)}><AliIcon name="arrowleft" size={14} />{t("settings.capabilities.back")}</button> : null}
               {activeEntry.key === "capabilities" ? (
                 <>
                   <div className={styles.contentHeading}><h2>{t("settings.capabilities.title")}</h2><p>{t("settings.capabilities.description")}</p></div>
-                  <p className={styles.localNote}>{sections.tools ? t("settings.capabilities.project", { cwd: modelCwd ?? "" }) : t("settings.capabilities.noProject")}</p>
+                  <p className={styles.localNote}>{modelCwd ? t("settings.capabilities.project", { cwd: modelCwd ?? "" }) : t("settings.capabilities.noProject")}</p>
                   {CAPABILITY_TASKS.map((task) => <section className={styles.capabilityTask} key={task.id}>
                     <h3>{t(`settings.capabilities.${task.id}`)}</h3>
                     <p>{t(`settings.capabilities.${task.id}Description`)}</p>

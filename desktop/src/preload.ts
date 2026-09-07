@@ -49,6 +49,16 @@ const runtime = Object.freeze({
   openPath(filePath: string): Promise<boolean> {
     return ipcRenderer.invoke("pi:open-path", filePath) as Promise<boolean>;
   },
+  clipboard: Object.freeze({
+    readText: (): Promise<string> => ipcRenderer.invoke("pi:clipboard-read", false),
+    writeText: (text: string): Promise<void> => ipcRenderer.invoke("pi:clipboard-write", text, false),
+    readImage: (): Promise<string | null> => ipcRenderer.invoke("pi:clipboard-read", true),
+    writeImage: (data: string): Promise<void> => ipcRenderer.invoke("pi:clipboard-write", data, true),
+  }),
+  launcher: Object.freeze({
+    list: (refresh = false) => ipcRenderer.invoke("pi:launcher-list", refresh),
+    open: (id: string): Promise<void> => ipcRenderer.invoke("pi:launcher-open", id),
+  }),
   selectDirectory(): Promise<string | null> {
     return ipcRenderer.invoke("pi:directory-picker") as Promise<string | null>;
   },

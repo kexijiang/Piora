@@ -1,42 +1,52 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CompanionLibraryItem } from "@/lib/companion-store";
+import { requestTransferItems } from "@/lib/transfer-station-client";
 export function useTransferStation(enabled: boolean) {
   const [items, setItems] = useState<CompanionLibraryItem[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const queue = useRef(Promise.resolve());
+  const refreshInFlight = useRef<Promise<void> | null>(null);
   const refresh = useCallback(() => {
+    if (refreshInFlight.current) return refreshInFlight.current;
+    setLoading(true);
+    setError("");
     const operation = queue.current.then(async () => {
-      const response = await fetch("/api/companion/library", { cache: "no-store", signal: AbortSignal.timeout(12_000) });
-      const payload = await response.json();
-      if (!response.ok || !Array.isArray(payload.items)) throw new Error(payload.error || "中转站加载失败。");
-      setItems(payload.items); setLoaded(true); setError("");
+      const items = await requestTransferItems();
+      setItems(items); setLoaded(true); setError("");
+    }).catch((cause: unknown) => {
+      setError(cause instanceof Error ? cause.message : String(cause));
+      throw cause;
+    }).finally(() => {
+      setLoading(false);
+      refreshInFlight.current = null;
     });
+    refreshInFlight.current = operation;
     queue.current = operation.catch(() => {});
     return operation;
   }, []);
   useEffect(() => {
     if (!enabled) return;
-    void refresh().catch((cause: unknown) => setError(String(cause)));
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh().catch((cause: unknown) => setError(String(cause))); };
+    const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : String(cause));
+    void refresh().catch(report);
+    const onVisible = () => { if (document.visibilityState === "visible") void refresh().catch(report); };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [enabled, refresh]);
-  const mutate = useCallback((method: "POST" | "PATCH", input: unknown): Promise<boolean> => {
+  const mutate = useCallback((method: "POST" | "PATCH", input: unknown, throwOnError = false): Promise<boolean> => {
     const operation = queue.current.then(async () => {
       setPending(true); setError("");
       try {
-        const response = await fetch("/api/companion/library", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(input), signal: AbortSignal.timeout(20_000) });
-        const payload = await response.json();
-        if (!response.ok || !Array.isArray(payload.items)) throw new Error(payload.error || "暂存失败，请重试。");
-        setItems(payload.items); setLoaded(true); return true;
-      } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); return false; }
+        const items = await requestTransferItems(method, input);
+        setItems(items); setLoaded(true); return true;
+      } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); if (throwOnError) throw cause; return false; }
       finally { setPending(false); }
     });
-    queue.current = operation.then(() => {});
+    queue.current = operation.then(() => {}, () => {});
     return operation;
   }, []);
-  return { items, loaded, pending, error, refresh, mutate };
+  return { items, loaded, loading, pending, error, refresh, mutate };
 }

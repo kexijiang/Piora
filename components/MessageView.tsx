@@ -161,7 +161,7 @@ function haveSameRelevantToolResults(
 ): boolean {
   if (previous === next || message.role !== "assistant") return true;
   for (const block of (message as AssistantMessage).content ?? []) {
-    if (block.type === "toolCall" && previous?.get(block.toolCallId) !== next?.get(block.toolCallId)) {
+    if (block?.type === "toolCall" && previous?.get(block.toolCallId) !== next?.get(block.toolCallId)) {
       return false;
     }
   }
@@ -881,7 +881,7 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 
 function ToolCallBlock({ block, result, duration, onOpenFile, onOpenAutomation }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`, /^bash(?:\s|$)/.test(block.toolName));
+  const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`);
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`diagnostics:${block.toolCallId}`);
   const diagnostics = safeJson({ input: block.input, result: result ?? null });
   const fileChange = getFileChangeInfo(block, result);

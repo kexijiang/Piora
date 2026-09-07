@@ -680,7 +680,9 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
               sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation}
             />
             {streamState.isStreaming && streamState.streamingMessage && (
-              <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} />
+              <RenderErrorBoundary resetKey={messageFingerprint(streamState.streamingMessage as AgentMessage)} fallbackLabel={t("chat.messageRenderFailed")}>
+                <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} />
+              </RenderErrorBoundary>
             )}
 
             {agentRunning && (agentPhase?.kind === "stopping" || (!streamState.streamingMessage && visionStatus?.phase !== "failed")) && (

@@ -7,6 +7,7 @@ import {
   writeCompanionRuntimeState,
 } from "@/lib/companion-runtime";
 import { normalizeCompanionPreferences } from "@/lib/companion-store";
+import { scheduleTodoReminders } from "@/lib/companion-todo-reminder";
 import { hasJsonContentType, isApiRequestAllowed } from "@/lib/request-security";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,7 @@ export async function PUT(request: Request) {
     const requested = normalizeCompanionRuntimeState(body.state);
     return NextResponse.json(writeCompanionRuntimeState({
       ...requested,
+      todos: scheduleTodoReminders(requested.todos, current.todos),
       migratedFromLocalStorage: current.migratedFromLocalStorage,
       mind: current.mind,
     }));

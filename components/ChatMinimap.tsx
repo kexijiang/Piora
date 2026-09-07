@@ -1,5 +1,6 @@
 "use client";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { minimapPreviewTop } from "@/lib/minimap-position";
 import { useI18n } from "@/hooks/useI18n";
 import type { AgentMessage, TextContent, UserMessage } from "@/lib/types";
 import { AliIcon } from "./AliIcon";
@@ -35,6 +36,9 @@ export const ChatMinimap = memo(function ChatMinimap({ messages, scrollContainer
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPinned, setPreviewPinned] = useState(false);
+  const [previewAnchor, setPreviewAnchor] = useState(16);
+  const [previewHeight, setPreviewHeight] = useState(0);
+  const previewBox = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const previewList = useRef<HTMLDivElement>(null);
   const previewHandle = useRef<VirtualListHandle>(null);
@@ -91,6 +95,15 @@ export const ChatMinimap = memo(function ChatMinimap({ messages, scrollContainer
   }, [scrollContainer, users.length, visible]);
   useEffect(() => { if ((previewOpen || previewPinned) && users.length) previewHandle.current?.scrollToKey(String(activeIndex)); }, [activeIndex, previewOpen, previewPinned, users.length]);
   useEffect(() => () => { clearTimeout(hideTimer.current); }, []);
+  useLayoutEffect(() => {
+    const box = previewBox.current;
+    if (!box) return;
+    const measure = () => setPreviewHeight(box.offsetHeight);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(box);
+    return () => observer.disconnect();
+  }, [previewOpen, previewPinned, users.length]);
   const scrollToNode = useCallback((index: number) => {
     const target = Math.max(0, Math.min(users.length - 1, index));
     activeLock.current = Date.now() + 1_000;
@@ -103,15 +116,15 @@ export const ChatMinimap = memo(function ChatMinimap({ messages, scrollContainer
   const showPreview = () => { clearTimeout(hideTimer.current); setPreviewOpen(true); };
   const hidePreview = () => { clearTimeout(hideTimer.current); hideTimer.current = setTimeout(() => setPreviewOpen(false), 180); };
   if (!visible) return null;
-  return <div ref={root} className={styles.root} data-testid="chat-timeline" onMouseEnter={showPreview} onMouseLeave={hidePreview} onFocusCapture={showPreview}
-    onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) hidePreview(); }}>
+  return <div ref={root} className={styles.root} data-testid="chat-timeline" onMouseEnter={(event) => { if (!previewPinned && root.current && event.clientX >= root.current.getBoundingClientRect().left) setPreviewAnchor(event.clientY - root.current.getBoundingClientRect().top); showPreview(); }} onMouseMove={(event) => { if (!previewPinned && event.target instanceof Element && !event.target.closest("[data-minimap-preview-box], [data-minimap-preview-bridge]") && root.current) setPreviewAnchor(event.clientY - root.current.getBoundingClientRect().top); }} onMouseLeave={hidePreview} onFocusCapture={(event) => { if (!previewPinned && root.current && !previewBox.current?.contains(event.target)) setPreviewAnchor(event.target.getBoundingClientRect().top - root.current.getBoundingClientRect().top + 7); showPreview(); }}
+      onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) hidePreview(); }}>
     <div className={styles.track} style={{ top: 16, height: Math.max(1, Math.min(height - 32, (users.length - 1) * 44)) }} aria-hidden="true" />
     {sampledIndices.map((index) => <button key={index} type="button" className={styles.node} data-minimap-node-index={index} data-minimap-node-active={activeIndex === index ? "true" : undefined}
       aria-current={activeIndex === index ? "true" : undefined} aria-label={t("chat.timelineJump", { index: index + 1, text: users[index] || t("chat.timelineAttachmentOnly") })}
       title={users[index] || t("chat.timelineAttachmentOnly")} onClick={() => scrollToNode(index)}
       onKeyDown={(event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); scrollToNode(activeIndex + (event.key === "ArrowDown" ? 1 : -1)); } }}
       style={{ top: 16 + index * Math.min(44, (height - 32) / Math.max(1, users.length - 1)), height: 14 }}><span className={styles.dot} aria-hidden="true" /></button>)}
-    {previewOpen || previewPinned ? <div className={styles.preview} data-minimap-preview-box="" data-pinned={previewPinned ? "true" : undefined}>
+    {previewOpen || previewPinned ? <><div data-minimap-preview-bridge="" className={styles.previewBridge} style={{ top: minimapPreviewTop(previewAnchor, previewHeight, height), height: previewHeight }} onMouseEnter={showPreview} /><div ref={previewBox} onMouseEnter={showPreview} onMouseLeave={hidePreview} className={styles.preview} style={{ top: minimapPreviewTop(previewAnchor, previewHeight, height) }} data-minimap-preview-box="" data-pinned={previewPinned ? "true" : undefined}>
       <div className={styles.previewHeader}><div className={styles.previewHeading}><span className={styles.previewTitle}>{t("chat.timeline")}</span><span className={styles.previewCount}>{t("chat.timelineCount", { count: users.length })}</span></div>
         <button type="button" className={styles.pinButton} data-active={previewPinned ? "true" : undefined} aria-pressed={previewPinned} aria-label={t(previewPinned ? "chat.timelineUnpin" : "chat.timelinePin")}
           onClick={() => { const next = !previewPinned; setPreviewPinned(next); try { localStorage.setItem(TIMELINE_PINNED_STORAGE_KEY, String(next)); } catch { /* Optional preference. */ } }}><AliIcon name="pushpin" size={14} /></button>
@@ -121,6 +134,6 @@ export const ChatMinimap = memo(function ChatMinimap({ messages, scrollContainer
           <button type="button" className={styles.previewItem} data-minimap-preview-user={index} data-active={activeIndex === index ? "true" : undefined} aria-current={activeIndex === index ? "true" : undefined}
             title={users[index]} onClick={() => scrollToNode(index)}><span className={styles.previewNumber} aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><span className={styles.previewText}>{users[index] || t("chat.timelineAttachmentOnly")}</span></button>} />
       </div>
-    </div> : null}
+    </div></> : null}
   </div>;
 });

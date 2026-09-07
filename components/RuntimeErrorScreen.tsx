@@ -51,6 +51,8 @@ export function RuntimeErrorScreen({ error, reset }: RuntimeErrorScreenProps) {
 
 const styles: Record<string, React.CSSProperties> = {
   page: {
+    position: "relative",
+    zIndex: 1,
     minHeight: "100dvh",
     display: "grid",
     placeItems: "center",

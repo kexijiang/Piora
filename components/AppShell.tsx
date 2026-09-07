@@ -110,17 +110,22 @@ const SYSTEM_PROMPT_MENU_WIDTH = 480;
 // Settings and secondary dialogs are not part of the first usable frame.
 // Keeping them out of the startup chunk avoids parsing their large management
 // surfaces while the desktop splash is still visible.
-const SettingsDialog = dynamic(() => import("./SettingsDialog").then((module) => module.SettingsDialog), { ssr: false });
+function SettingsSectionLoading() {
+  const { t } = useI18n();
+  return <div role="status" style={{ padding: 32, color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>{t("i18n.loading")}</div>;
+}
+
+const SettingsDialog = dynamic(() => import("./SettingsDialog").then((module) => module.SettingsDialog), { ssr: false, loading: SettingsSectionLoading });
 const RoomWorkspace = dynamic(() => import("./RoomWorkspace").then((module) => module.RoomWorkspace), { ssr: false });
 const RightPanel = dynamic(() => import("./workspace/RightPanel").then((module) => module.RightPanel), { ssr: false });
 const SystemPromptEditor = dynamic(() => import("./SystemPromptEditor").then((module) => module.SystemPromptEditor), { ssr: false });
 const CompanionPet = dynamic(() => import("./CompanionPet").then((module) => module.CompanionPet), { ssr: false });
 const ModelsConfig = dynamic(() => import("./ModelsConfig").then((module) => module.ModelsConfig), { ssr: false });
-const SkillsConfig = dynamic(() => import("./SkillsConfig").then((module) => module.SkillsConfig), { ssr: false });
-const PluginsConfig = dynamic(() => import("./PluginsConfig").then((module) => module.PluginsConfig), { ssr: false });
-const ExtensionsConfig = dynamic(() => import("./ExtensionsConfig").then((module) => module.ExtensionsConfig), { ssr: false });
-const CapabilityBundlesConfig = dynamic(() => import("./CapabilityBundlesConfig").then((module) => module.CapabilityBundlesConfig), { ssr: false });
-const ProjectToolsConfig = dynamic(() => import("./ProjectToolsConfig").then((module) => module.ProjectToolsConfig), { ssr: false });
+const SkillsConfig = dynamic(() => import("./SkillsConfig").then((module) => module.SkillsConfig), { ssr: false, loading: SettingsSectionLoading });
+const PluginsConfig = dynamic(() => import("./PluginsConfig").then((module) => module.PluginsConfig), { ssr: false, loading: SettingsSectionLoading });
+const ExtensionsConfig = dynamic(() => import("./ExtensionsConfig").then((module) => module.ExtensionsConfig), { ssr: false, loading: SettingsSectionLoading });
+const CapabilityBundlesConfig = dynamic(() => import("./CapabilityBundlesConfig").then((module) => module.CapabilityBundlesConfig), { ssr: false, loading: SettingsSectionLoading });
+const ProjectToolsConfig = dynamic(() => import("./ProjectToolsConfig").then((module) => module.ProjectToolsConfig), { ssr: false, loading: SettingsSectionLoading });
 const BackgroundSettings = dynamic(() => import("./BackgroundSettings").then((module) => module.BackgroundSettings), { ssr: false });
 const AppearanceLooks = dynamic(() => import("./AppearanceLooks").then((module) => module.AppearanceLooks), { ssr: false });
 const AppearanceResetButton = dynamic(() => import("./AppearanceResetButton").then((module) => module.AppearanceResetButton), { ssr: false });
@@ -1691,6 +1696,8 @@ export function AppShell() {
     }).catch(() => {});
   }, [currentProjectCwd]);
 
+  const settingsProjectCwd = projectCwd ?? activeCwd;
+  const chooseSettingsProject = <div style={{ padding: 32, display: "grid", alignContent: "start", gap: 16 }}><p>{translate("settings.capabilities.noProject")}</p><button type="button" style={{ justifySelf: "start", padding: "8px 14px", borderRadius: 7, border: "1px solid var(--border)", color: "var(--text)", background: "var(--bg-panel)", cursor: "pointer" }} onClick={() => { setSettingsDialogOpen(false); handleOpenProjectPicker(); }}>{translate("projectMenu.switchProject")}</button></div>;
   const activeCwdName = activeCwd ? getFileName(activeCwd) || activeCwd : null;
   const baseWindowTitle = activeCwdName ? `${activeCwdName} - Piora` : "Piora";
   const hasPendingInput = runningTaskSnapshots.some((snapshot) => snapshot.pendingApproval);
@@ -1762,16 +1769,16 @@ export function AppShell() {
       }}
       modelCwd={projectCwd ?? activeCwd ?? undefined}
       sections={{
-        tools: currentProjectPath ? (
-          <ProjectToolsConfig cwd={currentProjectPath} onChanged={setSessionCapabilities} />
-        ) : undefined,
-        capabilityBundles: projectCwd ? (
+        tools: (currentProjectPath ?? settingsProjectCwd) ? (
+          <ProjectToolsConfig cwd={(currentProjectPath ?? settingsProjectCwd)!} onChanged={setSessionCapabilities} />
+        ) : chooseSettingsProject,
+        capabilityBundles: settingsProjectCwd ? (
           <CapabilityBundlesConfig
-            cwd={projectCwd}
+            cwd={settingsProjectCwd!}
             sessionId={selectedSession?.id ?? null}
             onReloaded={() => setSessionKey((key) => key + 1)}
           />
-        ) : undefined,
+        ) : chooseSettingsProject,
         automations: (
           <AutomationPanel
             embedded
@@ -1782,13 +1789,13 @@ export function AppShell() {
           />
         ),
         shortcuts: <ShortcutSettings />,
-        extensions: projectCwd ? (
+        extensions: settingsProjectCwd ? (
           <ExtensionsConfig
-            cwd={projectCwd}
+            cwd={settingsProjectCwd!}
             sessionId={selectedSession?.id ?? null}
             onReloaded={() => setSessionKey((key) => key + 1)}
           />
-        ) : undefined,
+        ) : chooseSettingsProject,
         models: (
           <ModelsConfig
             embedded
@@ -1797,18 +1804,18 @@ export function AppShell() {
             onClose={() => setSettingsKey("general")}
           />
         ),
-        skills: projectCwd ? (
-          <SkillsConfig embedded cwd={projectCwd} onClose={() => setSettingsKey("general")} />
-        ) : undefined,
-        plugins: projectCwd ? (
+        skills: settingsProjectCwd ? (
+          <SkillsConfig embedded cwd={settingsProjectCwd!} onClose={() => setSettingsKey("general")} />
+        ) : chooseSettingsProject,
+        plugins: settingsProjectCwd ? (
           <PluginsConfig
             embedded
-            cwd={projectCwd}
+            cwd={settingsProjectCwd!}
             sessionId={selectedSession?.id ?? null}
             onClose={() => setSettingsKey("general")}
             onReloaded={() => setSessionKey((key) => key + 1)}
           />
-        ) : undefined,
+        ) : chooseSettingsProject,
         appearance: (
           <div className="settings-embedded-surface" style={{ height: "100%", overflowY: "auto", padding: "26px 30px 34px" }}>
             <div style={{ marginBottom: 22 }}>

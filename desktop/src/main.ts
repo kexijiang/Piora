@@ -1,10 +1,12 @@
 import { randomBytes } from "node:crypto";
+import { SystemLauncher } from "./system-launcher";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { createConnection } from "node:net";
 import {
   app,
   BrowserWindow,
+  clipboard,
   dialog,
   ipcMain,
   Menu,
@@ -901,6 +903,36 @@ function resolveExistingRendererPath(value: unknown): string | null {
 }
 
 function registerFileShellHandlers(): void {
+  const launcher = new SystemLauncher();
+  for (const channel of ["pi:launcher-list", "pi:launcher-open"]) ipcMain.removeHandler(channel);
+  ipcMain.handle("pi:launcher-list", (event, refresh: unknown) => {
+    if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted launcher request");
+    return launcher.list(refresh === true);
+  });
+  ipcMain.handle("pi:launcher-open", (event, id: unknown) => {
+    if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted launcher request");
+    return launcher.open(id);
+  });
+  // App-owned main frames only; third-party browser tabs never receive this bridge.
+  for (const channel of ["pi:clipboard-read", "pi:clipboard-write"]) ipcMain.removeHandler(channel);
+  ipcMain.handle("pi:clipboard-read", (event, image: unknown) => {
+    if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted clipboard request");
+    if (image === true) {
+      const value = clipboard.readImage();
+      return value.isEmpty() ? null : value.toDataURL();
+    }
+    return clipboard.readText();
+  });
+  ipcMain.handle("pi:clipboard-write", (event, value: unknown, image: unknown) => {
+    if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted clipboard request");
+    if (typeof value !== "string" || value.length > 12 * 1024 * 1024) throw new Error("Invalid clipboard content");
+    if (image === true) {
+      if (!/^data:image\/(png|jpeg|webp|gif);base64,/.test(value)) throw new Error("Invalid clipboard image");
+      const picture = nativeImage.createFromDataURL(value);
+      if (picture.isEmpty()) throw new Error("Invalid clipboard image");
+      clipboard.writeImage(picture);
+    } else clipboard.writeText(value);
+  });
   ipcMain.removeHandler(REVEAL_PATH_CHANNEL);
   ipcMain.removeHandler(OPEN_PATH_CHANNEL);
 

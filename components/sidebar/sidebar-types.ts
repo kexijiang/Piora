@@ -5,6 +5,16 @@ import type { SettingsKey } from "@/lib/settings-search";
 declare global {
   interface Window {
     piDesktop?: {
+      launcher?: {
+        list: (refresh?: boolean) => Promise<{ supported: boolean; warning: string; items: Array<{ id: string; name: string; kind: "app" | "setting"; keywords: string; description: string }> }>;
+        open: (id: string) => Promise<void>;
+      };
+      clipboard?: {
+        readText: () => Promise<string>;
+        writeText: (text: string) => Promise<void>;
+        readImage: () => Promise<string | null>;
+        writeImage: (data: string) => Promise<void>;
+      };
       selectDirectory: () => Promise<string | null>;
       selectSpeechPackDirectory?: (defaultPath?: string) => Promise<string | null>;
       getAgentDataDirectory?: () => Promise<{

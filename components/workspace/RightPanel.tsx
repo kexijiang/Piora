@@ -301,7 +301,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
       </RenderErrorBoundary> : null}
     </section>
     <section id="workspace-commands" role="tabpanel" aria-labelledby="workspace-commands-tab" hidden={activeTab !== "commands"} className={styles.panel}>
-      {activeTab === "commands" ? <RenderErrorBoundary resetKey={`commands:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><CommandPanel cwd={cwd} onClose={() => closeTool("commands")} /></RenderErrorBoundary> : null}
+      {activeTab === "commands" ? <RenderErrorBoundary resetKey={`commands:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><CommandPanel cwd={cwd} sessionId={props.sessionId} onClose={() => closeTool("commands")} /></RenderErrorBoundary> : null}
     </section>
     <section id="workspace-browser" role="tabpanel" aria-labelledby="workspace-browser-tab" hidden={activeTab !== "browser"} className={styles.panel}>
       {activeTab === "browser" ? <div className={styles.capabilityPanel}>{capabilityAccess("browser")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`browser:${props.sessionId ?? "manual"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><BrowserPanel active={active && activeTab === "browser"} maximized={props.maximized} sessionId={props.sessionId} /></RenderErrorBoundary></div></div> : null}

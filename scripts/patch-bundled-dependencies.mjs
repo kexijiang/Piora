@@ -167,11 +167,27 @@ export async function patchElectronBuilderWorkspaceCollector(root = projectRoot)
   return { patched: true, version: packageManifest.version };
 }
 
+export async function patchNodePtyShutdown(root = projectRoot) {
+  const packageRoot = join(root, "node_modules", "node-pty");
+  const manifest = await readPackage(packageRoot);
+  if (manifest.version !== "1.1.0") throw new Error("Review node-pty shutdown patch when upgrading from 1.1.0");
+  const file = join(packageRoot, "lib", "windowsPtyAgent.js");
+  const source = await readFile(file, "utf8");
+  const marker = "// Piora: drain even when a quiet ConPTY emits no final data (node-pty#887).";
+  if (source.includes(marker)) return { patched: false, reason: "already-patched" };
+  const before = "this._inSocket.destroy();\n                this._ptyNative.kill(this._pty, this._useConptyDll);";
+  const normalized = source.replaceAll("\r\n", "\n");
+  if (normalized.split(before).length !== 2) throw new Error("Unexpected node-pty shutdown implementation");
+  await writeFile(file, normalized.replace(before, `${before}\n                ${marker}\n                this._conoutSocketWorker.dispose();`));
+  return { patched: true, version: manifest.version };
+}
+
 async function main() {
   const patches = await Promise.all([
     patchBundledBraceExpansion().then((result) => ({ package: "brace-expansion", ...result })),
     patchBundledUndici().then((result) => ({ package: "undici", ...result })),
     patchElectronBuilderWorkspaceCollector().then((result) => ({ package: "app-builder-lib", ...result })),
+    patchNodePtyShutdown().then((result) => ({ package: "node-pty", ...result })),
   ]);
   console.log(JSON.stringify({ bundledDependencyPatches: patches }));
 }
