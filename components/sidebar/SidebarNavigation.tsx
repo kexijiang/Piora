@@ -36,7 +36,7 @@ export function SidebarNavigation(props: Props) {
           <button
             type="button"
             className={styles.iconButton}
-            onClick={onOpenSettings}
+            onClick={() => onOpenSettings?.()}
             title={t("sidebar.settings")}
             aria-label={t("sidebar.settings")}
           >

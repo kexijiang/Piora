@@ -1,3 +1,14 @@
+.mutationError {
+  flex: 0 0 100%;
+  order: 2;
+  min-width: 0;
+  padding-bottom: 4px;
+  color: var(--status-failed);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
 .renameEditor {
   flex: 1;
   min-width: 0;

@@ -111,7 +111,7 @@ export function ShortcutSettings() {
                   const formatted = formatShortcutBinding(bindings[item.id], mac);
                   const keys = formatted ? formatted.split("+") : [];
                   return (
-                    <div className={styles.row} data-modified={isChanged || undefined} key={item.id}>
+                    <div data-settings-id={item.titleKey === "shortcuts.commandPalette" ? "shortcuts.palette" : item.titleKey === "commands.searchChats" ? "shortcuts.search" : undefined} className={styles.row} data-modified={isChanged || undefined} key={item.id}>
                       <div className={styles.copy}>
                         <strong>{t(item.titleKey)}{isChanged ? <span className={styles.modifiedDot} aria-label={t("shortcuts.modified")} /> : null}</strong>
                         <span>{t(item.descriptionKey)}</span>

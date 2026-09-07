@@ -965,6 +965,18 @@
 
 .dialog { box-shadow: var(--shadow-popover); }
 
+.capabilityTask { margin-top: 28px; }
+.capabilityTask h3 { font-size: var(--text-base); margin: 0 0 6px; }
+.capabilityTask > p { color: var(--text-muted); font-size: var(--text-sm); margin: 0 0 12px; }
+.capabilityTask button:disabled { opacity: 0.55; cursor: default; }
+
+.contentCanvas [data-settings-highlighted="true"] {
+  border-radius: var(--radius-control);
+  outline: 2px solid var(--accent);
+  outline-offset: 5px;
+  scroll-margin-block: 24px;
+}
+
 .embeddedSection,
 .featureCard,
 .searchResults,

@@ -158,6 +158,9 @@ export interface AgentSessionLike {
   readonly agent: {
     state?: {
       messages?: unknown[];
+      streamingMessage?: unknown;
+      pendingToolCalls?: ReadonlySet<string>;
+      errorMessage?: string;
       systemPrompt?: string;
       thinkingLevel?: string;
       tools?: unknown[];

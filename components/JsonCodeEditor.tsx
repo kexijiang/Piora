@@ -1,12 +1,21 @@
 "use client";
 
 import { json } from "@codemirror/lang-json";
+import { isolateHistory } from "@codemirror/commands";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap, placeholder as codeMirrorPlaceholder } from "@codemirror/view";
 import { basicSetup } from "codemirror";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 export type JsonEditorShortcut = "close" | "cycle-backward" | "cycle-forward" | "format" | "new" | "paste-new" | "toggle-lock";
+const pocketHighlighting = HighlightStyle.define([
+  { tag: tags.propertyName, color: "color-mix(in srgb, #719fc2 75%, var(--text))" },
+  { tag: tags.string, color: "color-mix(in srgb, #899b70 75%, var(--text))" },
+  { tag: [tags.number, tags.bool, tags.null], color: "color-mix(in srgb, #b696cb 75%, var(--text))" },
+  { tag: tags.punctuation, color: "var(--text-muted)" },
+]);
 
 export interface JsonCodeEditorHandle {
   focusRange: (start: number, end?: number) => void;
@@ -14,6 +23,9 @@ export interface JsonCodeEditorHandle {
 }
 
 interface Props {
+  documentId: string;
+  maxLength: number;
+  onLimitExceeded: () => void;
   ariaLabel: string;
   className?: string;
   onChange: (value: string) => void;
@@ -25,6 +37,9 @@ interface Props {
 }
 
 export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function JsonCodeEditor({
+  documentId,
+  maxLength,
+  onLimitExceeded,
   ariaLabel,
   className,
   onChange,
@@ -37,12 +52,17 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const syncingRef = useRef(false);
-  const callbacksRef = useRef({ onChange, onPasteText, onShortcut });
+  const callbacksRef = useRef({ onChange, onPasteText, onShortcut, onLimitExceeded });
+  const documentIdRef = useRef(documentId);
+  const documentsRef = useRef(new Map<string, EditorState>());
+  const createStateRef = useRef<((doc: string) => EditorState) | null>(null);
+  const maxLengthRef = useRef(maxLength);
   const initialValueRef = useRef(value);
   const initialOptionsRef = useRef({ ariaLabel, placeholder, wrap });
   const [optionsCompartment] = useState(() => new Compartment());
 
-  callbacksRef.current = { onChange, onPasteText, onShortcut };
+  callbacksRef.current = { onChange, onPasteText, onShortcut, onLimitExceeded };
+  maxLengthRef.current = maxLength;
 
   const editorOptions = (next: { ariaLabel: string; placeholder: string; wrap: boolean }) => [
     next.wrap ? EditorView.lineWrapping : [],
@@ -74,11 +94,16 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
       callbacksRef.current.onShortcut(shortcut);
       return true;
     };
-    const view = new EditorView({
-      parent,
-      state: EditorState.create({
-        doc: initialValueRef.current,
+    const createState = (doc: string) => EditorState.create({
+        doc,
         extensions: [
+          EditorState.transactionFilter.of((transaction) => {
+            if (transaction.docChanged && transaction.newDoc.length > maxLengthRef.current) {
+              queueMicrotask(() => callbacksRef.current.onLimitExceeded());
+              return [];
+            }
+            return transaction;
+          }),
           keymap.of([
             { key: "Mod-Enter", run: runShortcut("format") },
             { key: "Mod-t", run: runShortcut("new") },
@@ -90,6 +115,7 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
           ]),
           basicSetup,
           json(),
+          syntaxHighlighting(pocketHighlighting),
           optionsCompartment.of(editorOptions(initialOptionsRef.current)),
           EditorView.updateListener.of((update) => {
             if (update.docChanged && !syncingRef.current) callbacksRef.current.onChange(update.state.doc.toString());
@@ -111,8 +137,9 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
             },
           }),
         ],
-      }),
-    });
+      });
+    createStateRef.current = createState;
+    const view = new EditorView({ parent, state: createState(initialValueRef.current) });
     viewRef.current = view;
     return () => {
       viewRef.current = null;
@@ -123,20 +150,22 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    if (documentIdRef.current !== documentId && createStateRef.current) {
+      documentsRef.current.set(documentIdRef.current, view.state);
+      // Keep undo/selection isolated per document, with a bounded cache for closed tabs.
+      if (documentsRef.current.size > 12) documentsRef.current.delete(documentsRef.current.keys().next().value!);
+      view.setState(documentsRef.current.get(documentId) ?? createStateRef.current(value));
+      documentIdRef.current = documentId;
+    }
     view.dispatch({ effects: optionsCompartment.reconfigure(editorOptions({ ariaLabel, placeholder, wrap })) });
-  }, [ariaLabel, optionsCompartment, placeholder, wrap]);
-
-  useEffect(() => {
-    const view = viewRef.current;
-    if (!view) return;
     const current = view.state.doc.toString();
     if (current === value) return;
     const selection = view.state.selection.main;
     const anchor = Math.min(selection.head, value.length);
     syncingRef.current = true;
-    view.dispatch({ changes: { from: 0, to: current.length, insert: value }, selection: { anchor } });
+    view.dispatch({ changes: { from: 0, to: current.length, insert: value }, selection: { anchor }, annotations: isolateHistory.of("full") });
     syncingRef.current = false;
-  }, [value]);
+  }, [documentId, value, ariaLabel, placeholder, wrap, optionsCompartment]);
 
   return <div ref={containerRef} className={className} data-wrap={wrap ? "true" : "false"} />;
 });

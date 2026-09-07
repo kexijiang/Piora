@@ -1,4 +1,5 @@
 "use client";
+import { requestGitStatus } from "@/lib/git-status-client";
 
 import { forwardRef, startTransition, useState, useCallback, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
@@ -11,7 +12,7 @@ import {
   joinFilePath,
   normalizeFilePathSlashes,
 } from "@/lib/file-paths";
-import type { GitFileStatus, GitFileStatusKind, GitStatusResponse } from "@/lib/git-types";
+import type { GitFileStatus, GitFileStatusKind } from "@/lib/git-types";
 import type { FileIndexEntry } from "@/lib/file-fuzzy";
 import { getFileViewerKind } from "@/lib/file-types";
 import { getNextTreeRenderCount, getTreeRenderWindow, TREE_INITIAL_RENDER_COUNT } from "@/lib/tree-progressive";
@@ -124,12 +125,7 @@ async function fetchEntries(dirPath: string): Promise<FileNode[]> {
   }));
 }
 
-async function fetchGitStatus(cwd: string): Promise<GitStatusResponse> {
-  const params = new URLSearchParams({ cwd });
-  const res = await fetch(`/api/git/status?${params.toString()}`);
-  if (!res.ok) throw new Error(`Failed to load Git status (HTTP ${res.status})`);
-  return res.json() as Promise<GitStatusResponse>;
-}
+const fetchGitStatus = requestGitStatus;
 
 const GIT_STATUS_KEYS: Record<GitFileStatusKind, string> = {
   modified: "files.modified",

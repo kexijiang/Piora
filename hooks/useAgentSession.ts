@@ -1,5 +1,7 @@
 "use client";
 
+import { createAgentEventDecoder } from "@/lib/agent-event-transport";
+
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, useReducer } from "react";
 import { invalidatePrefetchedSession, peekPrefetchedSession, takePrefetchedSession } from "@/lib/session-prefetch";
 import type {
@@ -28,6 +30,7 @@ import {
 import { runModelChange } from "@/lib/model-change-coordinator";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
 import { getContentScrollMetrics, getLiveTailScrollLimit } from "@/lib/chat-scroll";
+import { followChatBottom } from "@/lib/chat-bottom-follow";
 import type {
   SessionSystemPromptBinding,
   SystemPromptSelection,
@@ -769,8 +772,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sid: string,
   ): Promise<EventStreamConnectionResult> {
     closeEvents();
-    const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events`);
+    const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events?transport=delta`);
     eventSourceRef.current = es;
+    const decodeEvent = createAgentEventDecoder();
 
     return new Promise((resolve) => {
       let settled = false;
@@ -785,7 +789,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       es.onmessage = (e) => {
         if (eventSourceRef.current !== es) return;
         try {
-          const event = JSON.parse(e.data) as AgentEvent;
+          const event = decodeEvent(JSON.parse(e.data) as AgentEvent);
+          if (!event) return;
           if (event.type === "connected") settle("connected");
           handleAgentEventRef.current?.(event);
         } catch {
@@ -1944,44 +1949,28 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     initialBottomPinCleanupRef.current?.();
   }, []);
 
+  const pauseHistoryFollow = useCallback(() => {
+    stopInitialBottomPin();
+    completionScrollAllowedRef.current = false;
+    liveOutputFollowRef.current = false;
+    liveTailPinnedScrollTopRef.current = null;
+    setLiveOutputFollowPaused(true);
+  }, [stopInitialBottomPin]);
+
   const startInitialBottomPin = useCallback(() => {
     stopInitialBottomPin();
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    let frame = 0;
-    let stopped = false;
-    const pinToBottom = () => {
-      frame = 0;
-      if (!stopped) scrollToBottom("instant");
-    };
-    const schedulePin = () => {
-      if (stopped || frame !== 0) return;
-      frame = requestAnimationFrame(pinToBottom);
-    };
-    const resizeObserver = new ResizeObserver(schedulePin);
-    resizeObserver.observe(container);
-    const content = container.firstElementChild;
-    if (content) resizeObserver.observe(content);
-    // Lazy markdown images can finish after the first layout/resize pass.
-    container.addEventListener("load", schedulePin, true);
-
+    const stopFollowing = followChatBottom(container, () => scrollToBottom("instant"));
     const cleanup = () => {
-      if (stopped) return;
-      stopped = true;
-      resizeObserver.disconnect();
-      container.removeEventListener("load", schedulePin, true);
-      if (frame !== 0) cancelAnimationFrame(frame);
+      stopFollowing();
       if (initialBottomPinCleanupRef.current === cleanup) {
         initialBottomPinCleanupRef.current = null;
       }
     };
     initialBottomPinCleanupRef.current = cleanup;
 
-    // Set the position synchronously, then verify it after layout. The observer
-    // keeps it correct while markdown, Mermaid, fonts, or lazy media settle.
-    pinToBottom();
-    schedulePin();
   }, [scrollToBottom, stopInitialBottomPin]);
 
   const handleScrollToBottom = useCallback(() => {
@@ -1989,19 +1978,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     completionScrollAllowedRef.current = true;
     liveOutputFollowRef.current = true;
     setLiveOutputFollowPaused(false);
-    scrollToBottom("smooth");
-  }, [scrollToBottom, stopInitialBottomPin]);
+    startInitialBottomPin();
+  }, [startInitialBottomPin, stopInitialBottomPin]);
 
   const scrollUserMsgToTop = useCallback(() => {
     stopInitialBottomPin();
     const container = scrollContainerRef.current;
     const el = lastUserMsgRef.current;
-    if (!container || !el) return;
+    if (!container || !el) return false;
     const elAbsTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
     const targetScrollTop = Math.max(0, elAbsTop - 16);
     liveTailPinnedScrollTopRef.current = targetScrollTop;
     ignoreProgrammaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS;
     container.scrollTo({ top: targetScrollTop, behavior: "smooth" });
+    return true;
   }, [stopInitialBottomPin]);
 
   const clampLiveTailScroll = useCallback((): boolean => {
@@ -2193,9 +2183,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (loading || messages.length === 0) return;
 
     if (pendingScrollToUserRef.current) {
-      pendingScrollToUserRef.current = false;
-      initialScrollDoneRef.current = true;
-      scrollUserMsgToTop();
+      if (scrollUserMsgToTop()) {
+        pendingScrollToUserRef.current = false;
+        initialScrollDoneRef.current = true;
+      }
     } else if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
       startInitialBottomPin();
@@ -2257,7 +2248,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
-    handleScrollToBottom,
+    handleScrollToBottom, pauseHistoryFollow,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,

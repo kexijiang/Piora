@@ -1,4 +1,5 @@
 "use client";
+import { requestGitStatus } from "@/lib/git-status-client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useI18n } from "@/hooks/useI18n";
@@ -38,7 +39,12 @@ function createItems(status: GitStatusResponse): ChangeListItem[] {
   return [...staged, ...unstaged, ...untracked];
 }
 
-export function ReviewPanel({ cwd, refreshKey, onRefresh, onOpenFile }: Props) {
+export function ReviewPanel(props: Props) {
+  // Project changes discard selection, request subscriptions, and drafts together.
+  return <ProjectReviewPanel key={props.cwd ?? "empty"} {...props} />;
+}
+
+function ProjectReviewPanel({ cwd, refreshKey, onRefresh, onOpenFile }: Props) {
   const { t } = useI18n();
   const [status, setStatus] = useState<GitStatusResponse>(EMPTY_STATUS);
   const [diffs, setDiffs] = useState<Record<string, GitFileDiffResponse>>({});
@@ -64,6 +70,13 @@ export function ReviewPanel({ cwd, refreshKey, onRefresh, onOpenFile }: Props) {
   const diffsRef = useRef(diffs);
   const loadingDiffsRef = useRef(loadingDiffs);
   const diffGenerationRef = useRef(0);
+  const statusRequestRef = useRef<AbortController | null>(null);
+  const branchesRequestRef = useRef<AbortController | null>(null);
+  useEffect(() => () => {
+    statusRequestRef.current?.abort();
+    branchesRequestRef.current?.abort();
+    diffGenerationRef.current += 1;
+  }, []);
   diffsRef.current = diffs;
   loadingDiffsRef.current = loadingDiffs;
 
@@ -106,31 +119,37 @@ export function ReviewPanel({ cwd, refreshKey, onRefresh, onOpenFile }: Props) {
   }, [cwd]);
 
   const loadStatus = useCallback(async () => {
+    statusRequestRef.current?.abort();
+    const controller = new AbortController();
+    statusRequestRef.current = controller;
     if (!cwd) { setStatus(EMPTY_STATUS); return; }
     setLoading(true); setError(null);
     try {
-      const response = await fetch(`/api/git/status?cwd=${encodeURIComponent(cwd)}`, { cache: "no-store" });
-      const data = await response.json() as GitStatusResponse & { error?: string };
-      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      const data = await requestGitStatus(cwd, { signal: controller.signal });
       diffGenerationRef.current += 1;
       setStatus(data);
       setDiffs({});
       setLoadingDiffs(new Set());
       setLoadingContextKeys(new Set());
-    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-    finally { setLoading(false); }
+    } catch (cause) { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); }
+    finally { if (!controller.signal.aborted) setLoading(false); }
   }, [cwd]);
 
   useEffect(() => { void loadStatus(); }, [loadStatus, refreshKey]);
 
   const loadBranches = useCallback(async () => {
+    branchesRequestRef.current?.abort();
+    const controller = new AbortController();
+    branchesRequestRef.current = controller;
     if (!cwd) { setBranchState({ currentBranch: null, branches: [] }); return; }
     try {
-      const response = await fetch(`/api/git/branches?cwd=${encodeURIComponent(cwd)}`, { cache: "no-store" });
+      const response = await fetch(`/api/git/branches?cwd=${encodeURIComponent(cwd)}`, { cache: "no-store", signal: controller.signal });
       const data = await response.json() as GitBranchesState & { error?: string };
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      if (controller.signal.aborted) return;
       setBranchState(data);
     } catch (cause) {
+      if (controller.signal.aborted) return;
       setError(cause instanceof Error ? cause.message : String(cause));
     }
   }, [cwd]);
@@ -299,6 +318,7 @@ export function ReviewPanel({ cwd, refreshKey, onRefresh, onOpenFile }: Props) {
       });
       const data = await response.json() as GitBranchesState & { error?: string };
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      branchesRequestRef.current?.abort();
       setBranchState(data);
       setToast(t("review.branchSwitched", { branch }));
       onRefresh();

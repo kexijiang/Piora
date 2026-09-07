@@ -20,7 +20,7 @@ interface Props {
   onNewChat: () => void;
   onSelectSession: (session: SessionInfo) => void;
   onRenamed: () => void;
-  onSessionDeleted: (session: SessionInfo) => void;
+  onSessionDeleted: (session: SessionInfo, sessionIds?: string[]) => void;
   onFlagChange: (session: SessionInfo, patch: { pinned?: boolean; archived?: boolean }) => void;
   onDuplicate: (session: SessionInfo) => void;
   onMarkUnread: (session: SessionInfo) => void;

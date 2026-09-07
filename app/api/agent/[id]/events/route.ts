@@ -1,3 +1,4 @@
+import { createAgentEventTransport } from "@/lib/agent-event-transport";
 import { getAgentRuntimeProfile } from "@/lib/agent-runtime-profile";
 import { resolveOrStartRpcSession } from "@/lib/session-runtime-resolver";
 
@@ -18,48 +19,46 @@ export async function GET(
         return null;
       });
 
+  let cleanup = () => {};
   const stream = new ReadableStream({
     async start(controller) {
-      const encode = (data: unknown) => {
-        const text = `data: ${JSON.stringify(data)}\n\n`;
-        controller.enqueue(new TextEncoder().encode(text));
+      let closed = false;
+      let unsubscribe = () => {};
+      const timers: { heartbeat?: ReturnType<typeof setInterval> } = {};
+      const encoder = new TextEncoder();
+      const transport = createAgentEventTransport((data) => {
+        if (closed) return;
+        try { controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`)); }
+        catch { cleanup(); }
+      }, { incremental: new URL(req.url).searchParams.get("transport") === "delta" });
+      cleanup = () => {
+        if (closed) return;
+        closed = true;
+        transport.close();
+        if (timers.heartbeat) clearInterval(timers.heartbeat);
+        unsubscribe();
+        req.signal.removeEventListener("abort", cleanup);
+        try { controller.close(); } catch { /* Already cancelled. */ }
       };
-
+      // Bind cancellation before awaiting startup, including already-aborted requests.
+      req.signal.addEventListener("abort", cleanup, { once: true });
+      if (req.signal.aborted) { cleanup(); return; }
       const resolved = await sessionReady;
+      if (closed) return;
       if (!resolved) {
-        try {
-          encode({ type: "error", message: "Failed to start agent session" });
-        } catch { /* controller already closed */ }
-        controller.close();
+        transport.push({ type: "error", message: "Failed to start agent session" });
+        cleanup();
         return;
       }
-
-      // Send initial connected event once the session is actually ready
-      encode({ type: "connected", sessionId: id, runtimeProfile });
-
-      const unsubscribe = resolved.onEvent((event) => {
-        encode(event);
-      });
-
-      // Heartbeat every 30s to prevent server/proxy timeout (Next.js default ~120-150s)
-      const heartbeat = setInterval(() => {
-        try {
-          controller.enqueue(new TextEncoder().encode(":\n\n"));
-        } catch {
-          // controller already closed
+      transport.push({ type: "connected", sessionId: id, runtimeProfile });
+      unsubscribe = resolved.onEvent((event) => transport.push(event));
+      timers.heartbeat = setInterval(() => {
+        if (!closed) {
+          try { controller.enqueue(encoder.encode(":\n\n")); } catch { cleanup(); }
         }
       }, 30_000);
-
-      // Cleanup when client disconnects
-      const cleanup = () => {
-        clearInterval(heartbeat);
-        unsubscribe();
-        try { controller.close(); } catch { /* already closed */ }
-      };
-
-      // Detect client disconnect via abort signal
-      req.signal?.addEventListener("abort", cleanup);
     },
+    cancel() { cleanup(); },
   });
 
   return new Response(stream, {

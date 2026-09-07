@@ -62,7 +62,7 @@ test("keeps a short left press as ordinary session selection", () => {
 });
 
 test("keeps branch and project ownership intact by accepting drops only among siblings", () => {
-  assert.match(list, /scope=\{`\$\{scope\}:children:\$\{node\.session\.id\}:/);
+  assert.match(list, /scope=\{scope \+ ":" \+ \(row\.parentId \?\? "root"\)/);
   assert.match(list, /pinned \? "pinned" : "regular"/);
   assert.match(list, /targetScope !== activeDrag\.sourceScope/);
   assert.doesNotMatch(list, /parentSessionId\s*=/);

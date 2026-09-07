@@ -68,7 +68,7 @@ export function ProjectSessionGroup({
   onSelectSession: (session: SessionInfo) => void;
   onNewSession?: (cwd: string) => void;
   onRenamed: () => void;
-  onSessionDeleted: (session: SessionInfo) => void;
+  onSessionDeleted: (session: SessionInfo, sessionIds?: string[]) => void;
   sessionFlags: SessionFlags;
   onFlagChange: (session: SessionInfo, patch: { pinned?: boolean; archived?: boolean }) => void;
   onDuplicateSession: (session: SessionInfo) => void;

@@ -6,6 +6,7 @@ import {
   resolveSessionPath,
 } from "@/lib/session-reader";
 import { getAgentRuntimeProfile } from "@/lib/agent-runtime-profile";
+import { runSessionFileOperation } from "@/lib/session-mutation";
 import {
   bindSessionAgentRuntimeProfile,
   quarantineUnboundSessionFile,
@@ -33,6 +34,7 @@ export async function POST(
     const filePath = await resolveSessionPath(id);
     if (!filePath) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     await resolveSessionAgentRuntimeProfile(id, runtimeProfile);
+    return await runSessionFileOperation(id, async () => {
     const source = SessionManager.open(filePath);
     const leafId = source.getLeafId();
     if (!leafId) return NextResponse.json({ error: "Session is empty" }, { status: 409 });
@@ -50,10 +52,12 @@ export async function POST(
       duplicate,
       copySessionSystemPromptBinding(sourceSystemPromptBinding),
     );
+    invalidateSessionListCache();
     try {
       await bindSessionAgentRuntimeProfile(newSessionId, runtimeProfile);
     } catch (profileError) {
       quarantineUnboundSessionFile(duplicatedPath);
+      invalidateSessionListCache();
       throw profileError;
     }
     const originalName = source.getSessionName();
@@ -61,6 +65,7 @@ export async function POST(
     cacheSessionPath(newSessionId, duplicatedPath);
     invalidateSessionListCache();
     return NextResponse.json({ sessionId: newSessionId, runtimeProfile });
+    });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

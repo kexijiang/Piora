@@ -1,3 +1,4 @@
+import { invalidateGitStatusCache } from "@/lib/git-status-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllowedFileRoots } from "@/lib/file-access";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
@@ -14,5 +15,5 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const result = gitErrorResponse(error);
     return NextResponse.json(result, { status: result.status });
-  }
+  } finally { invalidateGitStatusCache(); }
 }

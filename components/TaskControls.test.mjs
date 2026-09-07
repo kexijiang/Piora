@@ -69,14 +69,15 @@ test("settings owns archived chats instead of rendering them in project lists", 
   assert.match(archivedChats, /Promise\.all\(\[/);
   assert.match(archivedChats, /flags\[session\.id\]\?\.archived/);
   assert.match(archivedChats, /archived: false/);
-  assert.match(archivedChats, /method: "DELETE"/);
+  assert.match(archivedChats, /await requestSessionDeletion\(/);
 });
 
 test("settings search stays inside the settings page and navigates to matching sections", () => {
   assert.match(settingsDialog, /useDeferredValue\(searchQuery\)/);
   assert.match(settingsDialog, /settings\.searchPlaceholder/);
-  assert.match(settingsDialog, /filteredEntries\.map/);
-  assert.match(settingsDialog, /setSearchQuery\(""\);\s*onActiveKeyChange\(entry\.key\)/);
+  assert.match(settingsDialog, /searchItems\.map/);
+  assert.match(settingsDialog, /onActiveKeyChange\(entry\.section\)/);
+  assert.match(settingsDialog, /setTargetItem\(\{ id: entry\.id \}\)/);
   assert.match(settingsCss, /\.searchResults/);
 });
 

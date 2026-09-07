@@ -1,4 +1,5 @@
 "use client";
+import { requestGitStatus } from "@/lib/git-status-client";
 
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
@@ -11,6 +12,7 @@ import { NewSessionProjectPicker } from "./NewSessionProjectPicker";
 import type { NewSessionInitialPrompt, NewSessionLaunch } from "./new-session-types";
 import type { Tab } from "./TabBar";
 import type { RightPanelHandle, RightPanelTab } from "./workspace/RightPanel";
+import type { RoomWorkspaceHandle } from "./RoomWorkspace";
 import type { SettingsKey } from "@/lib/settings-search";
 import { isDarkTheme, useTheme, type Theme, type ThemePreset } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
@@ -128,6 +130,7 @@ const RemoteControlSettings = dynamic(() => import("./RemoteControlSettings").th
 const HarmonyStorageSettings = dynamic(() => import("./HarmonyStorageSettings").then((module) => module.HarmonyStorageSettings), { ssr: false });
 const SpeechSettings = dynamic(() => import("./SpeechSettings").then((module) => module.SpeechSettings), { ssr: false });
 const UsageStatsPanel = dynamic(() => import("./UsageStatsPanel").then((module) => module.UsageStatsPanel), { ssr: false });
+const TrashSettings = dynamic(() => import("./TrashSettings").then((module) => module.TrashSettings), { ssr: false });
 const ArchivedChatsSettings = dynamic(() => import("./ArchivedChatsSettings").then((module) => module.ArchivedChatsSettings), { ssr: false });
 const AutomationPanel = dynamic(() => import("./AutomationPanel").then((module) => module.AutomationPanel), { ssr: false });
 const SessionHistoryDialog = dynamic(() => import("./SessionHistoryDialog").then((module) => module.SessionHistoryDialog), { ssr: false });
@@ -206,6 +209,11 @@ export function AppShell() {
   const automaticTitleRequestsRef = useRef<Set<string>>(new Set());
   const titleRunningSessionsRef = useRef<Set<string>>(new Set());
   const [selectedRoom, setSelectedRoom] = useState<CollaborationRoom | null>(null);
+  const roomWorkspaceRef = useRef<RoomWorkspaceHandle>(null);
+  const [roomBrowser, setRoomBrowser] = useState<{ roomId: string; sessionId: string; manual: boolean } | null>(null);
+  const roomPanelMember = selectedRoom?.members.find((member) => roomBrowser?.roomId === selectedRoom.id && member.binding.sessionId === roomBrowser.sessionId)
+    ?? selectedRoom?.members.find((member) => member.memberId === selectedRoom.coordination.coordinatorMemberId)
+    ?? selectedRoom?.members[0];
   // When user clicks +, we only store the cwd — no fake session id
   const [newSessionCwd, setNewSessionCwd] = useState<string | null>(null);
   const [newSessionInitialModel, setNewSessionInitialModel] = useState<{ provider: string; modelId: string } | null>(null);
@@ -224,6 +232,7 @@ export function AppShell() {
   const [onboardingPromptSubmittedKey, setOnboardingPromptSubmittedKey] = useState(0);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState<SettingsKey>("general");
+  const [settingsItemId, setSettingsItemId] = useState<string>();
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
@@ -462,7 +471,8 @@ export function AppShell() {
 
   useEffect(() => () => cancelProjectHoverClose(), [cancelProjectHoverClose]);
 
-  const openSettings = useCallback((key: SettingsKey = "general") => {
+  const openSettings = useCallback((key: SettingsKey = "general", itemId?: string) => {
+    setSettingsItemId(itemId);
     setActiveTopPanel(null);
     if (isMobile) setSidebarOpen(false);
     setSettingsKey(key);
@@ -988,6 +998,14 @@ export function AppShell() {
     replaceUrlWithoutNextNavigation("/");
   }, []);
 
+  const handleRoomBrowser = useCallback((sessionId: string, options?: { automatic?: boolean }) => {
+    if (!selectedRoom?.members.some((member) => member.binding.sessionId === sessionId)) return;
+    if (options?.automatic && roomBrowser?.roomId === selectedRoom.id && roomBrowser.manual) return;
+    setRoomBrowser({ roomId: selectedRoom.id, sessionId, manual: !options?.automatic });
+    setRightPanelTab("browser");
+    setRightPanelOpen(true);
+  }, [roomBrowser, selectedRoom]);
+
   const handleOpenDesktopUpdate = useCallback(() => {
     setDesktopUpdateDialogOpen(true);
     if (desktopUpdateState?.status !== "available") return;
@@ -1278,9 +1296,9 @@ export function AppShell() {
     setInitialSessionRestored(true);
   }, []);
 
-  const handleSessionDeleted = useCallback((deleted: SessionInfo) => {
+  const handleSessionDeleted = useCallback((deleted: SessionInfo, sessionIds: string[] = [deleted.id]) => {
     setRefreshKey((k) => k + 1);
-    if (selectedSession?.id === deleted.id) {
+    if (selectedSession && sessionIds.includes(selectedSession.id)) {
       const cwd = selectedSession.cwd;
       setSelectedSession(null);
       setNewSessionCwd(cwd ?? null);
@@ -1487,34 +1505,50 @@ export function AppShell() {
   }, [activeCwd, companionActivity.status, companionPreferences.interactionModel, companionPreferences.shareWorkContext, companionPreferences.todos, companionWorkRhythm, contextUsage, locale, projectCwd, runningTaskSnapshots, selectedSession, sessionStats]);
   const [topbarGitStatus, setTopbarGitStatus] = useState<GitStatusResponse | null>(null);
   useEffect(() => {
+    setTopbarGitStatus(null);
+    setCurrentIsGitRepository(false);
+  }, [currentProjectCwd, selectedRoom]);
+  useEffect(() => {
     if (!currentProjectCwd || selectedRoom) {
       setTopbarGitStatus(null);
+      setCurrentIsGitRepository(false);
       return;
     }
     let disposed = false;
     let timer: number | undefined;
     let controller: AbortController | undefined;
     const load = async () => {
+      if (timer !== undefined) window.clearTimeout(timer);
       controller?.abort();
-      controller = new AbortController();
+      const requestController = new AbortController();
+      controller = requestController;
       try {
-        const response = await fetch(`/api/git/status?cwd=${encodeURIComponent(currentProjectCwd)}`, { cache: "no-store", signal: controller.signal });
-        if (response.ok && !disposed) setTopbarGitStatus(await response.json() as GitStatusResponse);
+        const status = await requestGitStatus(currentProjectCwd, { signal: requestController.signal, summary: true });
+        if (!disposed) {
+          setTopbarGitStatus((previous) => previous && previous.branch === status.branch && previous.repositoryRoot === status.repositoryRoot && previous.additions === status.additions && previous.deletions === status.deletions && previous.isGitRepository === status.isGitRepository ? previous : status);
+          setCurrentIsGitRepository(status.isGitRepository);
+        }
       } catch { /* The button remains available without counts. */ }
-      if (!disposed && taskControls?.disabled && document.visibilityState === "visible") {
+      if (!disposed && !requestController.signal.aborted && taskControls?.disabled && document.visibilityState === "visible") {
         timer = window.setTimeout(() => { void load(); }, 2_500);
       }
     };
     const refresh = () => { if (!disposed) void load(); };
     void load();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+      else { controller?.abort(); if (timer !== undefined) window.clearTimeout(timer); }
+    };
     window.addEventListener("piora:git-status-changed", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       disposed = true;
       controller?.abort();
       if (timer !== undefined) window.clearTimeout(timer);
       window.removeEventListener("piora:git-status-changed", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [currentProjectCwd, selectedRoom, taskControls?.disabled]);
+  }, [currentProjectCwd, selectedRoom, taskControls?.disabled, explorerRefreshKey]);
   const topbarLineStats = useMemo(() => topbarGitStatus ? getTrackedGitLineStats(topbarGitStatus) : { additions: 0, deletions: 0 }, [topbarGitStatus]);
   // While restoring initial session from URL, don't show the placeholder
   const showPlaceholder = initialSessionRestored && !showConversation;
@@ -1538,15 +1572,6 @@ export function AppShell() {
     handleNewSession(`project-menu-${Date.now()}`, currentProjectCwd);
   }, [currentProjectCwd, handleNewSession]);
 
-  useEffect(() => {
-    if (!currentProjectCwd) { setCurrentIsGitRepository(false); return; }
-    const controller = new AbortController();
-    fetch(`/api/git/status?cwd=${encodeURIComponent(currentProjectCwd)}`, { signal: controller.signal, cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data: { isGitRepository?: boolean } | null) => setCurrentIsGitRepository(Boolean(data?.isGitRepository)))
-      .catch(() => {});
-    return () => controller.abort();
-  }, [currentProjectCwd, explorerRefreshKey]);
 
   useEffect(() => {
     const cycleWorkspaceFocus = (event: KeyboardEvent) => {
@@ -1720,7 +1745,7 @@ export function AppShell() {
       selectedCwd={isProjectlessConversation ? null : selectedRoom?.projectRoot ?? selectedSession?.cwd ?? newSessionCwd ?? null}
       activeProjectRoot={currentProjectPath}
       onCwdChange={handleCwdChange}
-      onOpenSettings={(key) => openSettings(key)}
+      onOpenSettings={openSettings}
     />
   );
 
@@ -1729,6 +1754,7 @@ export function AppShell() {
       open={settingsDialogOpen}
       onClose={() => setSettingsDialogOpen(false)}
       activeKey={settingsKey}
+      focusedItemId={settingsItemId}
       onActiveKeyChange={setSettingsKey}
       onOpenOnboarding={() => {
         setSettingsDialogOpen(false);
@@ -1790,8 +1816,8 @@ export function AppShell() {
               <p style={{ margin: "7px 0 0", color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>{translate("appearance.description")}</p>
               <AppearanceResetButton />
             </div>
-            <AppearanceLooks />
-            <section aria-labelledby="settings-appearance-theme" style={{ paddingBottom: 16 }}>
+            <div data-settings-id="appearance.looks"><AppearanceLooks /></div>
+            <section data-settings-id="appearance.theme" aria-labelledby="settings-appearance-theme" style={{ paddingBottom: 16 }}>
               <h3 id="settings-appearance-theme" style={{ margin: "0 0 3px", fontSize: "var(--text-sm)" }}>{translate("appearance.theme")}</h3>
               <p style={{ margin: "0 0 10px", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>{translate("appearance.themeHint")}</p>
               <div role="radiogroup" aria-label={translate("appearance.theme")} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(108px, 1fr))", gap: 8 }}>
@@ -1812,8 +1838,8 @@ export function AppShell() {
                 </div>
               )}
             </section>
-            <FontSettings />
-            <BackgroundSettings />
+            <div data-settings-id="appearance.font"><FontSettings /></div>
+            <div data-settings-id="appearance.background"><BackgroundSettings /></div>
           </div>
         ),
         language: (
@@ -1842,6 +1868,7 @@ export function AppShell() {
         usage: (
           <UsageStatsPanel />
         ),
+        trash: <TrashSettings onChanged={() => setRefreshKey((key) => key + 1)} />,
         archived: (
           <ArchivedChatsSettings
             onChanged={() => setRefreshKey((key) => key + 1)}
@@ -2045,6 +2072,7 @@ export function AppShell() {
       <div
         ref={sidebarResizer.panelRef}
         id="session-sidebar"
+        inert={!sidebarOpen || rightPanelMaximized}
         className={`sidebar-container${sidebarOpen ? " sidebar-open" : " sidebar-closed"}${mobileSidebarReady ? "" : " sidebar-mobile-pending"}${sidebarResizer.isResizing ? " sidebar-resizing" : ""}`}
         style={{
           "--sidebar-width": `${sidebarResizer.width}px`,
@@ -2620,6 +2648,8 @@ export function AppShell() {
                 initialRoom={selectedRoom}
                 onRoomChange={setSelectedRoom}
                 onRoomDeleted={handleRoomDeleted}
+                onOpenBrowser={handleRoomBrowser}
+                handleRef={roomWorkspaceRef}
               />
             ) : showChat ? (
               <ChatWindow
@@ -2737,7 +2767,7 @@ export function AppShell() {
           maximized={rightPanelMaximized}
           onMaximizedChange={setRightPanelMaximized}
           onClosePanel={() => setRightPanelOpen(false)}
-          cwd={activeCwd}
+          cwd={selectedRoom?.workspace.path ?? activeCwd}
           refreshKey={explorerRefreshKey}
           active={effectiveRightPanelOpen}
           fileTabs={fileTabs}
@@ -2756,17 +2786,25 @@ export function AppShell() {
           onMentions={handleAtMentions}
           onMentionLines={handleFileLineMention}
           selectedAutomationId={selectedAutomationId}
-          sessionId={selectedSession?.id ?? null}
-          sessionName={selectedSession?.name}
+          contextHeader={selectedRoom ? <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderBottom: "1px solid var(--border)", fontSize: "var(--text-sm)" }}>
+            <span>团队工作区</span><select aria-label="查看成员的工作区" value={roomPanelMember?.binding.sessionId ?? ""}
+              onChange={(event) => setRoomBrowser({ roomId: selectedRoom.id, sessionId: event.target.value, manual: true })}
+              style={{ minWidth: 0, flex: 1, color: "var(--text)", background: "var(--bg-panel)", padding: 4 }}>
+              {selectedRoom.members.map((member) => <option key={member.memberId} value={member.binding.sessionId}>{member.profile.name}</option>)}
+            </select>
+          </div> : undefined}
+          sessionId={selectedRoom ? roomPanelMember?.binding.sessionId ?? null : selectedSession?.id ?? null}
+          sessionName={selectedRoom ? roomPanelMember?.profile.name : selectedSession?.name}
           sessionRunning={Boolean(taskControls?.disabled)}
           onGuideAgent={(prompt) => {
             setRightPanelMaximized(false);
+            if (selectedRoom) { roomWorkspaceRef.current?.guideMember(roomPanelMember?.binding.sessionId ?? null, prompt); return; }
             if (prompt?.trim()) chatInputRef.current?.prependText(prompt);
             window.requestAnimationFrame(() => chatInputRef.current?.focus());
           }}
           onSelectAutomation={openAutomation}
           onAutomationChanged={() => setSessionKey((key) => key + 1)}
-          capabilities={sessionCapabilities}
+          capabilities={selectedRoom ? null : sessionCapabilities}
         /> : null}
       </div>
     {/* File panel toggle — always visible at top-right */}

@@ -11,7 +11,7 @@ test("unified search combines recent chats, message matches, and settings in a c
   assert.match(source, /conversationSearch\.groupRecent/);
   assert.match(source, /conversationSearch\.groupMessages/);
   assert.match(source, /conversationSearch\.groupSettings/);
-  assert.match(source, /onOpenSettings\(item\.section\)/);
+  assert.match(source, /onOpenSettings\(item\.section, item\.id\)/);
   assert.match(source, /event\.key === "ArrowDown"/);
   assert.match(source, /event\.key === "Enter"/);
   assert.match(styles, /width: min\(590px, 100%\)/);

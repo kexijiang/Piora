@@ -9,16 +9,19 @@ import { filterFileEntries } from "@/lib/file-fuzzy";
 import { getProjectLabel } from "@/lib/session-project-groups";
 import { filterSettingsSearchItems, SETTINGS_SEARCH_ITEMS, type SettingsKey, type SettingsSearchItem } from "@/lib/settings-search";
 import type { SessionInfo } from "@/lib/types";
+import type { SessionFlags } from "@/lib/session-flags";
+import { matchesConversationFilter } from "@/lib/conversation-search-filter";
 import { AliIcon } from "./AliIcon";
 import styles from "./ConversationSearchDialog.module.css";
 
 interface Props {
   sessions: SessionInfo[];
+  flags: SessionFlags;
   hasProject: boolean;
   onClose: () => void;
   onSelect: (session: SessionInfo, entryId: string) => void;
   onSelectSession: (session: SessionInfo) => void;
-  onOpenSettings: (key: SettingsKey) => void;
+  onOpenSettings: (key: SettingsKey, itemId?: string) => void;
 }
 
 interface ChatResultRow {
@@ -44,7 +47,7 @@ function sessionProjectKey(session: SessionInfo): string {
   return session.projectless ? "__projectless__" : session.projectRoot ?? session.cwd;
 }
 
-export function ConversationSearchDialog({ sessions, hasProject, onClose, onSelect, onSelectSession, onOpenSettings }: Props) {
+export function ConversationSearchDialog({ sessions, flags, hasProject, onClose, onSelect, onSelectSession, onOpenSettings }: Props) {
   const { locale, t } = useI18n();
   const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -56,6 +59,7 @@ export function ConversationSearchDialog({ sessions, hasProject, onClose, onSele
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const trimmedQuery = query.trim();
+  const hasDesktop = typeof window !== "undefined" && Boolean(window.piDesktop);
   useFocusTrap(dialogRef, true, { initialFocus: inputRef, onEscape: onClose });
 
   const projects = useMemo(() => {
@@ -67,27 +71,28 @@ export function ConversationSearchDialog({ sessions, hasProject, onClose, onSele
     return [...entries].sort((left, right) => left[1].localeCompare(right[1], locale));
   }, [locale, sessions, t]);
 
-  const recentSessions = useMemo(() => [...sessions]
+  const recentSessions = useMemo(() => sessions.filter((session) => matchesConversationFilter(session, flags, archive, project))
     .sort((left, right) => Date.parse(right.modified) - Date.parse(left.modified))
-    .slice(0, 9), [sessions]);
+    .slice(0, 9), [sessions, flags, archive, project]);
 
   const titleMatches = useMemo(() => {
-    if (!trimmedQuery || archive === "archived") return [];
-    const candidates = sessions.filter((session) => !project || sessionProjectKey(session) === project);
+    if (!trimmedQuery) return [];
+    const candidates = sessions.filter((session) => matchesConversationFilter(session, flags, archive, project));
     const indexed = candidates.map((session, index) => ({
       path: `${sessionTitle(session, t("conversationSearch.untitled"))} ${session.firstMessage}`,
       isDir: false,
       index,
     }));
     return filterFileEntries(indexed, trimmedQuery, 8).map((match) => candidates[(match as typeof indexed[number]).index]);
-  }, [archive, project, sessions, t, trimmedQuery]);
+  }, [archive, project, sessions, flags, t, trimmedQuery]);
 
   const settingsResults = useMemo(() => filterSettingsSearchItems(trimmedQuery, t, {
     hasProject,
+    hasDesktop,
     limit: trimmedQuery ? 12 : 6,
-  }), [hasProject, t, trimmedQuery]);
+  }), [hasProject, hasDesktop, t, trimmedQuery]);
 
-  const chatResultRows = useMemo<ChatResultRow[]>(() => response.results.slice(0, 24).map((result, index) => ({
+  const chatResultRows = useMemo<ChatResultRow[]>(() => response.results.map((result, index) => ({
     id: `message:${result.sessionId}:${result.entryId}:${index}`,
     result,
   })), [response.results]);
@@ -121,6 +126,7 @@ export function ConversationSearchDialog({ sessions, hasProject, onClose, onSele
         });
         const payload = await searchResponse.json().catch(() => ({})) as ConversationSearchResponse & { error?: string };
         if (!searchResponse.ok) throw new Error(payload.error || `HTTP ${searchResponse.status}`);
+        if (controller.signal.aborted) return;
         setResponse(payload);
       } catch (searchError) {
         if (controller.signal.aborted) return;
@@ -165,7 +171,7 @@ export function ConversationSearchDialog({ sessions, hasProject, onClose, onSele
   };
 
   const openSetting = (item: SettingsSearchItem) => {
-    onOpenSettings(item.section);
+    onOpenSettings(item.section, item.id);
     onClose();
   };
 
@@ -202,6 +208,7 @@ export function ConversationSearchDialog({ sessions, hasProject, onClose, onSele
         aria-modal="true"
         aria-label={t("conversationSearch.title")}
         onKeyDown={(event) => {
+          if ((event.target as HTMLElement).tagName === "SELECT" || event.nativeEvent.isComposing) return;
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
             setActiveIndex((current) => event.key === "ArrowDown"
@@ -331,7 +338,7 @@ export function ConversationSearchDialog({ sessions, hasProject, onClose, onSele
                 ? t("conversationSearch.searching")
                 : t("conversationSearch.unifiedResultCount", { count: totalMatches })
               : t("conversationSearch.keyboardHint")}</span>
-          {response.truncated ? <span>{t("conversationSearch.truncated")}</span> : null}
+          <span>{t(response.truncated ? "conversationSearch.truncated" : "conversationSearch.order")}</span>
         </footer>
       </div>
     </div>,

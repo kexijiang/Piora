@@ -1,3 +1,4 @@
+import { invalidateGitStatusCache } from "@/lib/git-status-cache";
 import { NextRequest, NextResponse } from "next/server";
 import { getAllowedFileRoots } from "@/lib/file-access";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
@@ -14,5 +15,5 @@ export async function POST(request: NextRequest) {
     if (body.includeUnstaged !== undefined && typeof body.includeUnstaged !== "boolean") throw new GitWriteError("includeUnstaged must be boolean");
     const sha = await commitGit(cwd, body.message, body.amend === true, body.includeUnstaged === true);
     return NextResponse.json({ ok: true, sha });
-  } catch (error) { const result = gitErrorResponse(error); return NextResponse.json(result, { status: result.status }); }
+  } catch (error) { const result = gitErrorResponse(error); return NextResponse.json(result, { status: result.status }); } finally { invalidateGitStatusCache(); }
 }

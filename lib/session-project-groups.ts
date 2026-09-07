@@ -38,45 +38,47 @@ export function buildSessionTree(sessions: SessionInfo[]): SessionTreeNode[] {
     if (session.parentSessionId) parentOf.set(session.id, session.parentSessionId);
   }
 
-  const resolveAncestor = (id: string): string | null => {
-    let current = parentOf.get(id);
-    const visited = new Set<string>([id]);
-    let nearestExistingAncestor: string | null = null;
-    while (current) {
-      if (visited.has(current)) return null;
-      visited.add(current);
-      if (nearestExistingAncestor === null && byId.has(current)) {
-        nearestExistingAncestor = current;
-      }
+  // Memoize each parent chain once, including chains leading into malformed cycles.
+  const cyclic = new Map<string, boolean>();
+  for (const id of byId.keys()) {
+    if (cyclic.has(id)) continue;
+    let current: string | undefined = id;
+    const path = new Set<string>();
+    while (current && byId.has(current) && !cyclic.has(current) && !path.has(current)) {
+      path.add(current);
       current = parentOf.get(current);
     }
-    return nearestExistingAncestor;
-  };
+    const invalid = Boolean(current && (path.has(current) || cyclic.get(current)));
+    for (const member of path) cyclic.set(member, invalid);
+  }
 
   const roots: SessionTreeNode[] = [];
   for (const node of byId.values()) {
-    const ancestor = resolveAncestor(node.session.id);
-    if (ancestor) byId.get(ancestor)!.children.push(node);
+    const ancestor = parentOf.get(node.session.id);
+    if (ancestor && byId.has(ancestor) && !cyclic.get(node.session.id)) byId.get(ancestor)!.children.push(node);
     else roots.push(node);
   }
 
-  const latestByNode = new WeakMap<SessionTreeNode, string>();
-  const latestActivity = (node: SessionTreeNode): string => {
-    const cached = latestByNode.get(node);
-    if (cached) return cached;
+  const latestByNode = new Map<SessionTreeNode, string>();
+  const order: SessionTreeNode[] = [];
+  const stack = [...roots];
+  while (stack.length) {
+    const node = stack.pop()!;
+    order.push(node);
+    for (const child of node.children) stack.push(child);
+  }
+  for (let index = order.length - 1; index >= 0; index--) {
+    const node = order[index];
     let latest = node.session.modified;
     for (const child of node.children) {
-      const childLatest = latestActivity(child);
+      const childLatest = latestByNode.get(child)!;
       if (childLatest > latest) latest = childLatest;
     }
     latestByNode.set(node, latest);
-    return latest;
-  };
-  const sortNewestFirst = (nodes: SessionTreeNode[]) => {
-    nodes.sort((a, b) => latestActivity(b).localeCompare(latestActivity(a)));
-    nodes.forEach((node) => sortNewestFirst(node.children));
-  };
-  sortNewestFirst(roots);
+  }
+  const newestFirst = (a: SessionTreeNode, b: SessionTreeNode) => latestByNode.get(b)!.localeCompare(latestByNode.get(a)!);
+  roots.sort(newestFirst);
+  for (const node of order) node.children.sort(newestFirst);
   return roots;
 }
 
@@ -139,8 +141,16 @@ export function buildSessionProjectGroups(
 }
 
 export function sessionTreeContainsAnyId(node: SessionTreeNode, ids: ReadonlySet<string>): boolean {
-  if (ids.has(node.session.id)) return true;
-  return node.children.some((child) => sessionTreeContainsAnyId(child, ids));
+  const stack = [node];
+  const seen = new Set<SessionTreeNode>();
+  while (stack.length) {
+    const current = stack.pop()!;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    if (ids.has(current.session.id)) return true;
+    for (const child of current.children) stack.push(child);
+  }
+  return false;
 }
 
 /**

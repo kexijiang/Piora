@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type KeyboardEvent, type Ref, type RefObject } from "react";
 import {
   getRoomMemberName,
   getRoomMemberRole,
@@ -17,11 +17,15 @@ import type { TeamRunState, TeamTaskStatus } from "@/lib/team-types";
 import { TEAM_DEFAULTS } from "@/lib/team-types";
 import { resolveRoomChatTargets } from "@/lib/room-chat-routing";
 import { shouldShowScrollToBottom } from "@/lib/chat-scroll";
+import { useSendShortcut } from "@/hooks/useSendShortcut";
+import { isPlainEnter, matchesSendShortcut } from "@/lib/send-shortcut";
 import { AliIcon } from "./AliIcon";
 import { MarkdownBody } from "./MarkdownBody";
 import { CollapsibleUserContent } from "./CollapsibleUserContent";
 import { RoomSettingsDialog } from "./RoomSettingsDialog";
 import { RoomMessageNavigator } from "./RoomMessageNavigator";
+import { RoomActivityDeck } from "./RoomActivityDeck";
+import type { RoomActivity } from "@/lib/room-activity";
 import styles from "./RoomWorkspace.module.css";
 
 type RoomResponse = {
@@ -148,7 +152,7 @@ function roleLabel(role: CollaborationRoom["members"][number]["role"]): string {
   return ({ coordinator: "协调者", planner: "规划者", worker: "执行者", reviewer: "审查者", participant: "参与者" })[role];
 }
 
-function RoomMessageList({
+const RoomMessageList = memo(function RoomMessageList({
   messages,
   members,
   presenceBySession,
@@ -216,7 +220,7 @@ function RoomMessageList({
       </div> : null}
     </div>
   );
-}
+});
 
 function RoomComposer({
   room,
@@ -253,14 +257,18 @@ function RoomComposer({
   onSyncMentionQuery: (value: string, caret: number) => void;
   onSubmit: () => void;
 }) {
+  const { shortcut } = useSendShortcut();
+  const composingRef = useRef(false);
+  const compositionEndedRef = useRef(0);
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.nativeEvent.isComposing || composingRef.current || event.keyCode === 229 || Date.now() - compositionEndedRef.current < 80) return;
     if (mode === "message" && mentionQuery && mentionCandidates.length > 0) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         onMentionIndexChange((current) => (current + (event.key === "ArrowDown" ? 1 : -1) + mentionCandidates.length) % mentionCandidates.length);
         return;
       }
-      if (event.key === "Tab" || (event.key === "Enter" && !event.shiftKey)) {
+      if (event.key === "Tab" || isPlainEnter(event)) {
         event.preventDefault();
         onMention(mentionCandidates[mentionIndex]?.name ?? mentionCandidates[0].name);
         return;
@@ -271,9 +279,9 @@ function RoomComposer({
         return;
       }
     }
-    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+    if (matchesSendShortcut(event, shortcut)) {
       event.preventDefault();
-      onSubmit();
+      if (!busy && !event.repeat) onSubmit();
     }
   };
   return (
@@ -305,6 +313,8 @@ function RoomComposer({
           onChange={(event) => { onDraftChange(event.target.value); onSyncMentionQuery(event.target.value, event.target.selectionStart); }}
           onClick={(event) => onSyncMentionQuery(event.currentTarget.value, event.currentTarget.selectionStart)}
           onKeyDown={handleKeyDown}
+          onCompositionStart={() => { composingRef.current = true; }}
+          onCompositionEnd={() => { composingRef.current = false; compositionEndedRef.current = Date.now(); }}
           placeholder={mode === "goal" ? "直接描述要完成的事情，系统会自动规划和执行" : "发消息，输入 @ 提及群成员"}
           aria-label={mode === "goal" ? "智能体团队运行目标" : "群聊消息"}
           rows={2}
@@ -313,7 +323,7 @@ function RoomComposer({
           <AliIcon name="send" size={16} />
         </button>
       </div>
-      <div className={styles.composerHint}>{mode === "goal" ? "Enter 启动 · Shift+Enter 换行 · 协调者将按依赖自动分派、等待完成、审查并汇总" : "Enter 发送 · 单独 @ 可直接沟通 · 多成员任务由协调者按顺序调度"}</div>
+      <div className={styles.composerHint}>{shortcut === "ctrl-enter" ? "Ctrl+Enter 发送 · Enter 换行" : "Enter 发送 · Shift+Enter 换行"} · {mode === "goal" ? "协调者自动规划、分派、审查并汇总" : "单独 @ 直接沟通 · 多成员任务由协调者调度"}</div>
     </div>
   );
 }
@@ -494,14 +504,20 @@ function useRoomScrollNavigation({
   return { messagesRef, requestScrollToLatest, scrollToLatest, showScrollToBottom };
 }
 
+export interface RoomWorkspaceHandle { guideMember(sessionId: string | null, prompt?: string): void }
+
 export function RoomWorkspace({
   initialRoom,
   onRoomChange,
   onRoomDeleted,
+  onOpenBrowser,
+  handleRef,
 }: {
   initialRoom: CollaborationRoom;
   onRoomChange?: (room: CollaborationRoom) => void;
   onRoomDeleted: (roomId: string) => void;
+  onOpenBrowser: (sessionId: string, options?: { automatic?: boolean }) => void;
+  handleRef?: Ref<RoomWorkspaceHandle>;
 }) {
   const [room, setRoom] = useState(initialRoom);
   const [messages, setMessages] = useState<RoomMessage[]>([]);
@@ -526,6 +542,9 @@ export function RoomWorkspace({
   const [mentionQuery, setMentionQuery] = useState<MentionQuery | null>(null);
   const [mentionIndex, setMentionIndex] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [activities, setActivities] = useState<RoomActivity[]>([]);
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const openedBrowserRuns = useRef(new Set<string>());
   const messageRefs = useRef(new Map<string, HTMLElement>());
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const autoResumeAttemptsRef = useRef(new Set<string>());
@@ -541,6 +560,24 @@ export function RoomWorkspace({
   const initialRoomMode = initialRoom.coordination.mode;
   const initialActorSessionId = preferredRoomSessionId(initialRoom);
 
+  useImperativeHandle(handleRef, () => ({
+    guideMember(sessionId, prompt) {
+      const member = room.members.find((item) => item.binding.sessionId === sessionId);
+      setComposerMode("message");
+      setDraft((current) => `${member ? `@${getRoomMemberName(member)} ` : ""}${prompt?.trim() || current}`);
+      window.requestAnimationFrame(() => textareaRef.current?.focus());
+    },
+  }), [room.members]);
+
+  useEffect(() => {
+    const browserActivity = activities.find((item) => item.status === "working" && item.browser && !openedBrowserRuns.current.has(item.runId));
+    if (!browserActivity) return;
+    openedBrowserRuns.current.add(browserActivity.runId);
+    // A manually selected member keeps focus when several agents browse at once.
+    if (selectedActivityId && selectedActivityId !== browserActivity.sessionId) return;
+    onOpenBrowser(browserActivity.sessionId, { automatic: true });
+  }, [activities, onOpenBrowser, selectedActivityId]);
+
   const updateRoom = useCallback((nextRoom: CollaborationRoom) => {
     setRoom(nextRoom);
     onRoomChange?.(nextRoom);
@@ -552,6 +589,9 @@ export function RoomWorkspace({
 
   useEffect(() => {
     setMessages([]);
+    setActivities([]);
+    setSelectedActivityId(null);
+    openedBrowserRuns.current.clear();
     setTasks([]);
     setTaskRuns(new Map());
     setTeamRuns([]);
@@ -570,13 +610,21 @@ export function RoomWorkspace({
     };
     events.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as RoomResponse & { type?: string; presence?: RoomPresence; task?: RoomTask; taskRun?: TaskRunState; artifact?: RoomArtifact };
+        const data = JSON.parse(event.data) as RoomResponse & { type?: string; activities?: RoomActivity[]; presence?: RoomPresence; task?: RoomTask; taskRun?: TaskRunState; artifact?: RoomArtifact };
         if (data.type === "snapshot") {
           if (data.room) updateRoom(data.room);
           setMessages(data.messages ?? []);
           setTasks(data.tasks ?? []);
           setTaskRuns(new Map((data.taskRuns ?? []).map((taskRun) => [taskRun.taskId, taskRun])));
           setArtifacts(data.artifacts ?? []);
+        } else if (data.type === "activity") {
+          setActivities(data.activities ?? []);
+          setRunningIds(new Set((data.activities ?? []).filter((item) => item.status === "working").map((item) => item.sessionId)));
+          setPresenceBySession((current) => {
+            const next = new Map([...current].filter(([id, value]) =>
+              (data.activities ?? []).some((item) => item.sessionId === id && item.status === "working") || Date.now() - value.updatedAt < 15_000));
+            return next.size === current.size ? current : next;
+          });
         } else if (data.type === "room" && data.room) {
           updateRoom(data.room);
         } else if (data.type === "message" && data.message) {
@@ -654,22 +702,6 @@ export function RoomWorkspace({
     syncLayout();
     media.addEventListener("change", syncLayout);
     return () => media.removeEventListener("change", syncLayout);
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const loadRunning = () => void fetch("/api/agent/running", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data: { runningSessionIds?: string[] } | null) => {
-        if (!cancelled) setRunningIds(new Set(data?.runningSessionIds ?? []));
-      })
-      .catch(() => {});
-    loadRunning();
-    const timer = window.setInterval(loadRunning, 2_500);
-    return () => {
-      cancelled = true;
-      window.clearInterval(timer);
-    };
   }, []);
 
   const postAction = useCallback(async (body: Record<string, unknown>): Promise<RoomResponse> => {
@@ -848,6 +880,7 @@ export function RoomWorkspace({
   }, [mentionQuery?.query, room.members]);
 
   const mention = (name: string) => {
+    setComposerMode("message");
     const textarea = textareaRef.current;
     const caret = textarea?.selectionStart ?? draft.length;
     const range = mentionQuery ?? { start: caret, end: caret, query: "" };
@@ -963,6 +996,17 @@ export function RoomWorkspace({
           /> : null}
         </button>
       </header>
+
+      <RoomActivityDeck room={room} activities={activities} selectedSessionId={selectedActivityId}
+        onSelect={setSelectedActivityId} onBrowser={onOpenBrowser} onMention={mention} />
+      {displayedTeamRun ? <div className={styles.teamProgress} role="status">
+        <div><strong>{teamRunDisplayPhaseLabel(displayedTeamRun)}</strong><span>{displayedTeamRun.objective}</span></div>
+        <progress max={Math.max(1, Object.keys(displayedTeamRun.tasks).length)} value={Object.values(displayedTeamRun.tasks).filter((task) => task.status === "completed").length} aria-label="团队任务进度" />
+        <button type="button" onClick={() => setDetailsOpen(true)}>任务与产物</button>
+        {displayedTeamRun.phase === "waiting_user" ? <button type="button" onClick={() => answerTeamRun(displayedTeamRun)}>回答问题</button> : null}
+        {displayedTeamRun.phase === "interrupted" ? <button type="button" disabled={busy} onClick={() => { void mutateTeamRun(displayedTeamRun, "resume"); }}>恢复</button> : null}
+        {!TERMINAL_RUN_PHASES.has(displayedTeamRun.phase) ? <button type="button" disabled={busy} onClick={() => { void mutateTeamRun(displayedTeamRun, "cancel"); }}>停止团队</button> : null}
+      </div> : null}
 
       <div className={styles.content}>
         <div className={styles.conversation}>

@@ -25,8 +25,9 @@ test("always confirms session deletion and offers undo (no Shift+click bypass)",
   // Task T-01: Shift+click no longer skips the confirmation — every delete
   // goes through the confirm state first, and deletion stays reversible.
   assert.doesNotMatch(sidebarSource, /e\.shiftKey/);
-  assert.match(taskRowSource, /const handleDeleteClick[\s\S]*?setConfirmDelete\(true\);/);
-  assert.match(taskRowSource, /const handleDeleteConfirm[\s\S]*?void performDelete\(\);/);
+  assert.match(taskRowSource, /await confirmSessionDeletion\(session\.id, title, t\)/);
+  assert.match(taskRowSource, /if \(!expectedIds\) return/);
+  assert.match(taskRowSource, /await requestSessionDeletion\(session\.id, expectedIds\)/);
   assert.match(source, /const handleUndoDelete[\s\S]*?\/restore/);
 });
 
@@ -225,8 +226,8 @@ test("lets the chat section follow project content instead of pinning it to the 
 
 test("uses a settings gear instead of the notification bell", () => {
   const settingsButton = source.slice(
-    source.indexOf("onClick={onOpenSettings}"),
-    source.indexOf("</button>", source.indexOf("onClick={onOpenSettings}")),
+    source.indexOf("onClick={() => onOpenSettings?.()}"),
+    source.indexOf("</button>", source.indexOf("onClick={() => onOpenSettings?.()}")),
   );
   assert.match(settingsButton, /AliIcon name="setting"/);
   assert.doesNotMatch(settingsButton, /AliIcon name="notification"/);

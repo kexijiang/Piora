@@ -4,6 +4,7 @@ import { getAllowedFileRoots, isExistingFilePathAllowed, isFilePathAllowed, isWi
 import { InvalidJsonBodyError, JsonBodyTooLargeError, parseJsonWithinLimit } from "@/lib/bounded-json";
 import { getGitBranches, switchGitBranch } from "@/lib/git-branches";
 import { GitWriteError } from "@/lib/git-write";
+import { invalidateGitStatusCache } from "@/lib/git-status-cache";
 
 const MAX_BODY_BYTES = 16 * 1024;
 
@@ -42,4 +43,5 @@ export async function POST(request: NextRequest) {
     if (typeof record.branch !== "string") throw new GitWriteError("branch must be a string");
     return NextResponse.json(await switchGitBranch(cwd, record.branch));
   } catch (error) { return errorResponse(error); }
+  finally { invalidateGitStatusCache(); }
 }

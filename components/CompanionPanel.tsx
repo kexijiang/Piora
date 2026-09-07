@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useCompletionNotification } from "@/hooks/useCompletionNotification";
 import { useRunningTaskSnapshots } from "@/hooks/useTaskStatus";
 import {
@@ -21,17 +22,23 @@ import {
 import type { ModelsData } from "@/lib/models-cache";
 import type { CompanionFocusTimerPhase, CompanionRuntimeState } from "@/lib/companion-runtime";
 import {
-  MAX_COMPANION_LIBRARY_ITEMS,
   createCompanionId,
   type CompanionInteractionModel,
-  type CompanionLibraryKind,
 } from "@/lib/companion-store";
-import { JsonWorkbench } from "./JsonWorkbench";
 import { CompanionStorageSettings } from "./CompanionStorageSettings";
 import { AliIcon, type AliIconName } from "./AliIcon";
 import styles from "./CompanionPanel.module.css";
+import { CompanionTransferStation } from "./CompanionTransferStation";
+import { useTransferStation } from "@/hooks/useTransferStation";
 
-type Tab = "now" | "tasks" | "focus" | "library" | "memory" | "mind";
+const JsonWorkbench = dynamic(() => import("./JsonWorkbench").then((module) => module.JsonWorkbench), { loading: () => <p role="status">正在打开 JSON 工具…</p> });
+type Tab = "home" | "json" | "now" | "tasks" | "focus" | "library" | "memory" | "mind";
+const TOOLS: Array<{ id: Tab; icon: AliIconName; label: string; description: string; keywords: string }> = [
+  { id: "json", icon: "code", label: "JSON 工具", description: "格式化、校验与文本转换", keywords: "json 格式化 转换 base64 url unicode" },
+  { id: "tasks", icon: "check-circle", label: "待办清单", description: "记下要做的，一件件完成", keywords: "任务 待办 todo" },
+  { id: "focus", icon: "timer", label: "专注时钟", description: "留一段时间，只做一件事", keywords: "番茄钟 专注 focus timer" },
+  { id: "library", icon: "archive", label: "中转站", description: "粘贴、拖入，随手暂存", keywords: "中转 暂存 收藏 资料 笔记 代码 命令 图片" },
+];
 
 function emptyRuntimeState(): CompanionRuntimeState {
   return {
@@ -99,12 +106,20 @@ function parseModelValue(value: string): CompanionInteractionModel | null {
 }
 
 export function CompanionPanel() {
-  const [tab, setTab] = useState<Tab>("now");
+  const [tab, setTab] = useState<Tab>("home");
+  const [jsonOpened, setJsonOpened] = useState(false);
+  const [search, setSearch] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const navigate = useCallback((next: Tab) => { setTab(next); if (next === "json") setJsonOpened(true); }, []);
   const [state, setState] = useState<CompanionRuntimeState>(emptyRuntimeState);
   const [models, setModels] = useState<ModelsData | null>(null);
   const [modelsError, setModelsError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [runtimeError, setRuntimeError] = useState("");
+  const runtimeLoadedRef = useRef(false);
+  const mutationPendingRef = useRef(false);
   const [modelDraft, setModelDraft] = useState("");
   const [modelSaveStatus, setModelSaveStatus] = useState<"idle" | "dirty" | "saving" | "saved">("idle");
   const [question, setQuestion] = useState("");
@@ -112,10 +127,6 @@ export function CompanionPanel() {
   const [memoryDraft, setMemoryDraft] = useState("");
   const [personalityDraft, setPersonalityDraft] = useState("");
   const [personalityDirty, setPersonalityDirty] = useState(false);
-  const [libraryTitle, setLibraryTitle] = useState("");
-  const [libraryContent, setLibraryContent] = useState("");
-  const [libraryKind, setLibraryKind] = useState<CompanionLibraryKind>("note");
-  const [libraryView, setLibraryView] = useState<"library" | "json">("library");
   const [clock, setClock] = useState(() => Date.now());
   const completedTimerEndRef = useRef<number | null>(null);
   const runtimeChannelRef = useRef<BroadcastChannel | null>(null);
@@ -123,8 +134,22 @@ export function CompanionPanel() {
   const runningTasks = useRunningTaskSnapshots();
   const { notifyCompletion } = useCompletionNotification();
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault(); navigate("home");
+        requestAnimationFrame(() => searchRef.current?.focus());
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate]);
+  const transfer = useTransferStation(jsonOpened || tab === "library");
+
   const applyState = useCallback((next: CompanionRuntimeState) => {
     if (next.updatedAt < stateRef.current.updatedAt) return false;
+    runtimeLoadedRef.current = true;
+    setRuntimeError("");
     stateRef.current = next;
     setState(next);
     return true;
@@ -148,7 +173,7 @@ export function CompanionPanel() {
       try {
         await refresh(controller.signal);
       } catch (cause) {
-        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause));
+        if (!controller.signal.aborted) setRuntimeError(cause instanceof Error ? cause.message : String(cause));
       } finally {
         refreshPending = false;
       }
@@ -156,6 +181,20 @@ export function CompanionPanel() {
     const channel = createCompanionRuntimeChannel(applyState);
     runtimeChannelRef.current = channel;
     void refreshIfVisible();
+    const pollTimer = window.setInterval(() => void refreshIfVisible(), COMPANION_RUNTIME_POLL_INTERVAL_MS);
+    document.addEventListener("visibilitychange", refreshIfVisible);
+    return () => {
+      controller.abort();
+      window.clearInterval(pollTimer);
+      document.removeEventListener("visibilitychange", refreshIfVisible);
+      if (runtimeChannelRef.current === channel) runtimeChannelRef.current = null;
+      channel?.close();
+    };
+  }, [applyState, refresh]);
+
+  useEffect(() => {
+    if (tab !== "mind" || models) return;
+    const controller = new AbortController();
     void fetch("/api/models", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -168,18 +207,13 @@ export function CompanionPanel() {
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) setModelsError(cause instanceof Error ? cause.message : String(cause));
       });
-    const pollTimer = window.setInterval(() => void refreshIfVisible(), COMPANION_RUNTIME_POLL_INTERVAL_MS);
-    document.addEventListener("visibilitychange", refreshIfVisible);
-    return () => {
-      controller.abort();
-      window.clearInterval(pollTimer);
-      document.removeEventListener("visibilitychange", refreshIfVisible);
-      if (runtimeChannelRef.current === channel) runtimeChannelRef.current = null;
-      channel?.close();
-    };
-  }, [applyState, refresh]);
+    return () => controller.abort();
+  }, [models, tab]);
 
   const mutate = useCallback(async (update: (current: CompanionRuntimeState) => CompanionRuntimeState) => {
+    if (mutationPendingRef.current) return false;
+    if (!runtimeLoadedRef.current) { setError("本地数据尚未加载，请稍后重试。"); return false; }
+    mutationPendingRef.current = true;
     setBusy(true);
     setError("");
     try {
@@ -190,6 +224,7 @@ export function CompanionPanel() {
       setError(cause instanceof Error ? cause.message : String(cause));
       return false;
     } finally {
+      mutationPendingRef.current = false;
       setBusy(false);
     }
   }, [applyState]);
@@ -297,32 +332,7 @@ export function CompanionPanel() {
     if (saved) setTaskDraft("");
   };
 
-  const addLibraryItem = async () => {
-    const title = libraryTitle.trim();
-    const content = libraryContent.trim();
-    if (busy || !title || !content) return;
-    const now = Date.now();
-    const saved = await mutate((current) => ({
-      ...current,
-      library: [{ id: createCompanionId("library"), kind: libraryKind, title, content, pinned: false, createdAt: now, updatedAt: now }, ...current.library],
-    }));
-    if (saved) {
-      setLibraryTitle("");
-      setLibraryContent("");
-    }
-  };
-
-  const saveJsonResult = async (result: { content: string; language: string; title: string }) => {
-    if (busy || stateRef.current.library.length >= MAX_COMPANION_LIBRARY_ITEMS) return false;
-    const now = Date.now();
-    return mutate((current) => ({
-      ...current,
-      library: [{
-        id: createCompanionId("library"), kind: "code", title: result.title,
-        content: result.content, language: result.language, pinned: false, createdAt: now, updatedAt: now,
-      }, ...current.library],
-    }));
-  };
+  const saveJsonResult = (result: { content: string; language: string; title: string }) => transfer.mutate("POST", { ...result, kind: "code" });
 
   const addMemory = async () => {
     const text = memoryDraft.trim();
@@ -340,24 +350,49 @@ export function CompanionPanel() {
   const confirmedRecords = useMemo(() => state.taskRecords.filter((item) => item.reviewStatus === "confirmed"), [state.taskRecords]);
   const focusRemainingSeconds = getCompanionFocusRemainingSeconds(state.focusTimer, clock);
   const tabs: Array<{ id: Tab; icon: AliIconName; label: string }> = [
-    { id: "now", icon: "home", label: "现在" },
-    { id: "tasks", icon: "check", label: "任务" },
-    { id: "focus", icon: "calendar", label: "番茄钟" },
-    { id: "library", icon: "database", label: "资料" },
-    { id: "memory", icon: "message", label: "记忆" },
-    { id: "mind", icon: "robot", label: "心智" },
+    { id: "home", icon: "home", label: "工具台" },
+    { id: "json", icon: "code", label: "JSON" },
+    { id: "tasks", icon: "check-circle", label: "待办" },
+    { id: "focus", icon: "timer", label: "专注" },
+    { id: "library", icon: "archive", label: "中转站" },
+    { id: "now", icon: "heart", label: "陪伴" },
+    { id: "memory", icon: "brain", label: "记忆" },
+    { id: "mind", icon: "setting", label: "设置" },
   ];
   const activeTabLabel = tabs.find((item) => item.id === tab)?.label;
+  const filteredTools = TOOLS.filter((tool) => `${tool.label} ${tool.keywords}`.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
     <main className={`${styles.panel} companion-panel-root`} aria-busy={busy}>
-      <nav className={styles.tabs} role="tablist" aria-label="随身舱功能">
-        {tabs.map(({ id, icon, label }) => <button type="button" role="tab" key={id} aria-selected={tab === id} data-active={tab === id} onClick={() => setTab(id)}><AliIcon name={icon} size={14} /><span>{label}</span></button>)}
-      </nav>
-      {error ? <div className={styles.error}>{error}</div> : null}
-
-      <section className={styles.content} role="tabpanel" aria-label={activeTabLabel}>
+      <aside className={styles.sidebar}>
+        <div className={styles.brand}><span className={styles.brandMark}>p.</span><span>随身舱<small>PIORA POCKET</small></span></div>
+        <nav className={styles.tabs} role="tablist" aria-orientation="vertical" aria-label="随身舱功能" onKeyDown={(event) => {
+          if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const index = tabs.findIndex((item) => item.id === tab);
+          const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + tabs.length) % tabs.length;
+          navigate(tabs[next].id); document.getElementById(`cabin-tab-${tabs[next].id}`)?.focus();
+        }}>
+          {tabs.map(({ id, icon, label }, index) => <button type="button" role="tab" id={`cabin-tab-${id}`} aria-controls="cabin-content" tabIndex={tab === id ? 0 : -1} key={id} aria-selected={tab === id} data-active={tab === id} data-secondary={index === 5} onClick={() => navigate(id)}><AliIcon name={icon} size={18} /><span>{label}</span>{id === "tasks" && activeTasks.length > 0 ? <small>{activeTasks.length}</small> : null}</button>)}
+        </nav>
+        <span className={styles.sidebarFoot}>随开 · 随用</span>
+      </aside>
+      <div className={styles.workspace}>
+      <header className={styles.topbar}><span>{activeTabLabel}</span><button type="button" onClick={() => { navigate("home"); requestAnimationFrame(() => searchRef.current?.focus()); }} aria-label="搜索工具 Ctrl+K"><AliIcon name="search" size={15} /><kbd>Ctrl K</kbd></button></header>
+      {error ? <div className={styles.error} role="alert">{error}<button type="button" onClick={() => setError("")} aria-label="关闭错误提示">×</button></div> : null}
+      {runtimeError && tab !== "json" ? <div className={styles.error} role="status">{runtimeError}<button type="button" onClick={() => void refresh().catch((cause: unknown) => setRuntimeError(cause instanceof Error ? cause.message : String(cause)))}>重试</button></div> : null}
+      <section id="cabin-content" className={styles.content} data-tool={tab} role="tabpanel" aria-labelledby={`cabin-tab-${tab}`}>
+        {tab === "home" ? <div className={styles.home}>
+          <div className={styles.welcome}><h1>随身工具，顺手就好。</h1><p>找到工具，开始手边的小事。</p></div>
+          <div className={styles.searchBox}><AliIcon name="search" size={19} /><input ref={searchRef} aria-label="搜索工具" placeholder="搜索工具，如 JSON、待办、番茄钟…" value={search} onChange={(event) => setSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing && filteredTools[0]) navigate(filteredTools[0].id); }} /><kbd>↵</kbd></div>
+          <div className={styles.sectionLabel}><span>{search ? "搜索结果" : "常用工具"}</span><small>{filteredTools.length.toString().padStart(2, "0")}</small></div>
+          <div className={styles.toolGrid}>{filteredTools.map((tool, index) => <button type="button" className={styles.toolCard} key={tool.id} onClick={() => navigate(tool.id)}><span className={styles.toolIcon} data-tone={tool.id}><AliIcon name={tool.icon} size={24} /></span><span><b>{tool.label}</b><small>{tool.description}</small></span><span className={styles.toolNumber}>0{index + 1}</span><AliIcon name="arrowright" size={16} /></button>)}</div>
+          {!filteredTools.length ? <div className={styles.empty}>没有找到工具，试试“JSON”或“专注”。</div> : null}
+          <button type="button" className={styles.todayStrip} onClick={() => navigate(state.focusTimer.status === "running" ? "focus" : "tasks")}><span className={styles.statusDot} /><span>{state.focusTimer.status === "running" ? `正在专注 · ${formatCountdown(focusRemainingSeconds)}` : activeTasks.length ? `今天还有 ${activeTasks.length} 件小事，慢慢来。` : "清单很轻，随时开始新的一件事。"}</span><AliIcon name="chevron-right" size={16} /></button>
+        </div> : null}
+        {jsonOpened ? <div className={styles.jsonPane} hidden={tab !== "json"}><JsonWorkbench busy={transfer.pending} library={transfer.items} onSaveResult={saveJsonResult} /></div> : null}
         {tab === "now" ? <>
+          <div className={styles.pageHeading}><div><h1>陪伴</h1><p>听听你的想法，也记得留一点时间给自己。</p></div></div>
           <article className={styles.hero}>
             <span>刚才的想法</span>
             <h2>{state.mind.lastDecision?.thoughtSummary || "我正在安静陪伴，等待新的工作信号。"}</h2>
@@ -367,23 +402,24 @@ export function CompanionPanel() {
             <article className={styles.card}><b>待办</b><strong>{activeTasks.length}</strong><small>项未完成</small></article>
             <article className={styles.card}><b>番茄钟</b><strong>{formatCountdown(focusRemainingSeconds)}</strong><small>{FOCUS_PHASE_LABELS[state.focusTimer.phase]} · {state.focusTimer.status === "running" ? "进行中" : state.focusTimer.status === "paused" ? "已暂停" : "待开始"}</small></article>
           </div>
-          {pendingRecords.length ? <article className={styles.card}><b>有 {pendingRecords.length} 条会话任务待确认</b><p>去“任务”页检查宠物自动提取的记录。</p></article> : null}
-          <article className={styles.card}>
-            <b>我看见的事实</b>
+          {pendingRecords.length ? <article className={styles.card}><b>有 {pendingRecords.length} 条会话任务待确认</b><button type="button" onClick={() => navigate("tasks")}>去待办查看</button></article> : null}
+          <details className={styles.disclosure}>
+            <summary>查看陪伴上下文</summary>
             <ul>{state.mind.lastDecision?.observedFacts.length ? state.mind.lastDecision.observedFacts.map((fact) => <li key={fact}>{fact}</li>) : <li>尚无可用的工作上下文</li>}</ul>
-          </article>
-          <div className={styles.composer}><input value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void ask(); }} placeholder="问问你的桌宠……" /><button type="button" disabled={busy || !question.trim()} onClick={() => void ask()}>{question.trim() ? "发送" : "请输入问题"}</button></div>
+          </details>
+          <div className={styles.composer}><input value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void ask(); }} placeholder="问问你的桌宠……" /><button type="button" disabled={busy || !question.trim()} onClick={() => void ask()}>发送</button></div>
         </> : null}
 
         {tab === "tasks" ? <>
+          <div className={styles.pageHeading}><div><h1>待办</h1><p>{activeTasks.length} 项待办 · {state.todos.length - activeTasks.length} 项已完成</p></div><button type="button" onClick={() => setShowCompleted(!showCompleted)}>{showCompleted ? "隐藏已完成" : "查看已完成"}</button></div>
           {runningTasks.length ? <article className={styles.card}><b>正在运行的 Piora 任务</b><div className={styles.agentTasks}>{runningTasks.map((task) => <div key={task.id}><strong>{task.title || task.taskRun?.objective || task.id.slice(0, 8)}</strong><span>{task.activity?.message || task.taskRun?.progress || task.runtime}</span></div>)}</div></article> : null}
-          <article className={styles.card}>
+          <details className={styles.disclosure}><summary>自动记录设置</summary>
             <label className={styles.toggle}>
               <input type="checkbox" checked={state.settings.autoCaptureSessions} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, autoCaptureSessions: !current.settings.autoCaptureSessions } }))} />
               自动记录已完成的会话任务
             </label>
             <p className={styles.hint}>只在本地读取最近一轮问题和最终答复；结果先进入待确认，不读取思维过程、工具输出或完整历史。</p>
-          </article>
+          </details>
           {pendingRecords.length ? <section className={styles.recordSection}>
             <h2>待确认 <span>{pendingRecords.length}</span></h2>
             <div className={styles.list}>{pendingRecords.map((record) => <article className={styles.record} key={record.id}>
@@ -397,12 +433,13 @@ export function CompanionPanel() {
               </div>
             </article>)}</div>
           </section> : null}
-          <div className={styles.composer}><input value={taskDraft} onChange={(event) => setTaskDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void addTask(); }} placeholder="添加一个待办任务" /><button type="button" disabled={busy || !taskDraft.trim()} onClick={() => void addTask()}>{taskDraft.trim() ? "添加" : "请输入任务"}</button></div>
-          <div className={styles.list}>{state.todos.map((item) => <article className={styles.row} key={item.id}>
-            <button className={styles.check} data-done={item.completed} onClick={() => void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, completed: !todo.completed, progress: !todo.completed ? 100 : 0, updatedAt: Date.now() } : todo) }))}>{item.completed ? "✓" : ""}</button>
-            <div><b>{item.text}</b><label>进度 {item.progress}%<input type="range" min="0" max="100" value={item.progress} onChange={(event) => { const progress = Number(event.target.value); void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, progress, completed: progress === 100, updatedAt: Date.now() } : todo) })); }} /></label></div>
+          <div className={styles.composer}><input value={taskDraft} onChange={(event) => setTaskDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void addTask(); }} placeholder="添加一个待办任务" /><button type="button" disabled={busy || !taskDraft.trim()} onClick={() => void addTask()}>添加</button></div>
+          <div className={styles.list}>{state.todos.filter((item) => showCompleted || !item.completed).map((item) => <article className={styles.row} data-done={item.completed} key={item.id}>
+            <button className={styles.check} aria-label={`${item.completed ? "标为未完成" : "完成"}：${item.text}`} aria-pressed={item.completed} data-done={item.completed} disabled={busy} onClick={() => void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, completed: !todo.completed, progress: !todo.completed ? 100 : 0, updatedAt: Date.now() } : todo) }))}>{item.completed ? "✓" : ""}</button>
+            <div><b>{item.text}</b><details className={styles.taskProgress}><summary>进度 {item.progress}%</summary><input aria-label={`${item.text}的进度`} type="range" min="0" max="100" defaultValue={item.progress} key={item.progress} onPointerUp={(event) => { const progress = Number(event.currentTarget.value); void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, progress, completed: progress === 100, updatedAt: Date.now() } : todo) })); }} onKeyUp={(event) => { if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) return; const progress = Number(event.currentTarget.value); void mutate((current) => ({ ...current, todos: current.todos.map((todo) => todo.id === item.id ? { ...todo, progress, completed: progress === 100, updatedAt: Date.now() } : todo) })); }} /></details></div>
             <button className={styles.danger} onClick={() => void mutate((current) => ({ ...current, todos: current.todos.filter((todo) => todo.id !== item.id) }))}>删除</button>
           </article>)}</div>
+          {!state.todos.some((item) => showCompleted || !item.completed) ? <div className={styles.empty}><AliIcon name="check-circle" size={32} /><b>给下一件事留个位置</b><p>在上方记下来，然后安心去做。</p></div> : null}
           {confirmedRecords.length ? <section className={styles.recordSection}>
             <h2>已记录 <span>{confirmedRecords.length}</span></h2>
             <div className={styles.list}>{confirmedRecords.map((record) => <article className={styles.record} key={record.id}>
@@ -414,6 +451,7 @@ export function CompanionPanel() {
         </> : null}
 
         {tab === "focus" ? <>
+          <div className={styles.pageHeading}><div><h1>专注</h1><p>专注一会儿，也记得好好休息。</p></div></div>
           <article className={styles.timerCard}>
             <div className={styles.phaseTabs}>{(["focus", "short-break", "long-break"] as const).map((phase) => <button key={phase} data-active={state.focusTimer.phase === phase} disabled={state.focusTimer.status === "running"} onClick={() => void mutate((current) => ({ ...current, focusTimer: selectCompanionFocusPhase(current.focusTimer, phase) }))}>{FOCUS_PHASE_LABELS[phase]}</button>)}</div>
             <span className={styles.timerLabel}>{FOCUS_PHASE_LABELS[state.focusTimer.phase]}</span>
@@ -426,8 +464,8 @@ export function CompanionPanel() {
                 : <button className={styles.primary} onClick={() => void mutate((current) => ({ ...current, focusTimer: startCompanionFocusTimer(current.focusTimer) }))}>{state.focusTimer.status === "paused" ? "继续" : "开始"}</button>}
               <button onClick={() => void mutate((current) => ({ ...current, focusTimer: resetCompanionFocusTimer(current.focusTimer) }))}>重置</button>
             </div>
-            <section className={styles.timerSettings} aria-label="番茄钟设置">
-              <b>时间设置</b>
+            <details className={styles.timerSettings} aria-label="番茄钟设置">
+              <summary>时间与提醒设置</summary>
               <div className={styles.timerSettingsGrid}>
                 {(["focus", "short-break", "long-break"] as const).map((phase) => <label key={phase}>
                   <span>{FOCUS_PHASE_LABELS[phase]}</span>
@@ -440,30 +478,22 @@ export function CompanionPanel() {
               </div>
               <label className={styles.toggle}><input type="checkbox" checked={state.focusTimer.autoStartNextPhase} onChange={() => void mutate((current) => ({ ...current, focusTimer: { ...current.focusTimer, autoStartNextPhase: !current.focusTimer.autoStartNextPhase } }))} />到点后自动开始下一阶段</label>
               <label className={styles.toggle}><input type="checkbox" checked={state.focusTimer.petReminderEnabled} onChange={() => void mutate((current) => ({ ...current, focusTimer: { ...current.focusTimer, petReminderEnabled: !current.focusTimer.petReminderEnabled } }))} />到点时让宠物提醒</label>
-            </section>
+            </details>
           </article>
-          <article className={styles.card}><b>专注建议</b><p>专注阶段只做绑定任务；倒计时结束后会切换阶段{state.focusTimer.petReminderEnabled ? "，宠物也会来提醒你" : ""}。</p></article>
         </> : null}
 
-        {tab === "library" ? <>
-          <div className={styles.libraryModes} role="tablist" aria-label="资料功能">
-            <button type="button" role="tab" aria-selected={libraryView === "library"} onClick={() => setLibraryView("library")}>资料架</button>
-            <button type="button" role="tab" aria-selected={libraryView === "json"} onClick={() => setLibraryView("json")}>JSON 转</button>
-          </div>
-          {libraryView === "json" ? <JsonWorkbench busy={busy} library={state.library} onSaveResult={saveJsonResult} /> : <>
-            <div className={styles.stack}><div className={styles.inline}><select value={libraryKind} onChange={(event) => setLibraryKind(event.target.value as CompanionLibraryKind)}><option value="note">笔记</option><option value="code">代码</option><option value="command">命令</option></select><input value={libraryTitle} onChange={(event) => setLibraryTitle(event.target.value)} placeholder="标题" /></div><textarea value={libraryContent} onChange={(event) => setLibraryContent(event.target.value)} placeholder="保存一段文字、代码或命令" /><button type="button" disabled={busy || !libraryTitle.trim() || !libraryContent.trim()} onClick={() => void addLibraryItem()}>{!libraryTitle.trim() ? "请填写标题" : !libraryContent.trim() ? "请填写内容" : "保存到资料架"}</button></div>
-            <label className={styles.imageUpload}>保存一张图片<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; if (!file) return; if (file.size > 1_250_000) { setError("图片不能超过 1.25 MB"); return; } const reader = new FileReader(); reader.onload = () => { if (typeof reader.result !== "string") return; const now = Date.now(); void mutate((current) => ({ ...current, library: [{ id: createCompanionId("library"), kind: "image", title: file.name.slice(0, 120), content: reader.result as string, pinned: false, createdAt: now, updatedAt: now }, ...current.library] })); }; reader.readAsDataURL(file); }} /></label>
-            <div className={styles.list}>{state.library.map((item) => <article className={styles.libraryItem} key={item.id}><div><span>{item.kind}</span><b>{item.title}</b></div>{item.kind === "image" ? <span className={styles.libraryImage} role="img" aria-label={item.title} style={{ backgroundImage: `url(${JSON.stringify(item.content)})` }} /> : <pre>{item.content}</pre>}<div className={styles.itemActions}>{item.kind !== "image" ? <button onClick={() => void navigator.clipboard.writeText(item.content)}>复制</button> : null}<button className={styles.danger} onClick={() => void mutate((current) => ({ ...current, library: current.library.filter((entry) => entry.id !== item.id) }))}>删除</button></div></article>)}</div>
-          </>}
-        </> : null}
+        {tab === "library" ? <CompanionTransferStation {...transfer} /> : null}
 
         {tab === "memory" ? <>
+          <div className={styles.pageHeading}><div><h1>记忆</h1><p>让陪伴更懂你一点。</p></div></div>
           <p className={styles.hint}>记忆只保存你明确留下的偏好或事实，可随时删除。</p>
-          <div className={styles.composer}><input value={memoryDraft} onChange={(event) => setMemoryDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void addMemory(); }} placeholder="例如：提醒我每 90 分钟休息" /><button type="button" disabled={busy || !memoryDraft.trim()} onClick={() => void addMemory()}>{memoryDraft.trim() ? "记住" : "请输入内容"}</button></div>
+          <div className={styles.composer}><input value={memoryDraft} onChange={(event) => setMemoryDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.nativeEvent.isComposing) void addMemory(); }} placeholder="例如：提醒我每 90 分钟休息" /><button type="button" disabled={busy || !memoryDraft.trim()} onClick={() => void addMemory()}>记住</button></div>
           <div className={styles.list}>{state.memories.map((item) => <article className={styles.row} key={item.id}><div><b>{item.text}</b><small>{formatTime(item.updatedAt)}</small></div><button className={styles.danger} onClick={() => void mutate((current) => ({ ...current, memories: current.memories.filter((memory) => memory.id !== item.id) }))}>忘记</button></article>)}</div>
+          {!state.memories.length ? <div className={styles.empty}><AliIcon name="brain" size={32} /><b>从记住一件小事开始</b><p>你的习惯、偏好，都可以留在这里。</p></div> : null}
         </> : null}
 
         {tab === "mind" ? <div className={styles.settings}>
+          <div className={styles.pageHeading}><div><h1>设置</h1><p>陪伴方式、互动模型与本地存储。</p></div></div>
           <label>
             互动模型
             <div className={styles.modelSaveRow}>
@@ -509,9 +539,12 @@ export function CompanionPanel() {
           <label className={styles.toggle}><input type="checkbox" checked={state.settings.quietHours.enabled} onChange={() => void mutate((current) => ({ ...current, settings: { ...current.settings, quietHours: { ...current.settings.quietHours, enabled: !current.settings.quietHours.enabled } } }))} />启用安静时段</label>
           {state.settings.quietHours.enabled ? <div className={styles.quietHours}><label>开始<input type="time" value={state.settings.quietHours.start} onChange={(event) => void mutate((current) => ({ ...current, settings: { ...current.settings, quietHours: { ...current.settings.quietHours, start: event.target.value } } }))} /></label><span>至</span><label>结束<input type="time" value={state.settings.quietHours.end} onChange={(event) => void mutate((current) => ({ ...current, settings: { ...current.settings, quietHours: { ...current.settings.quietHours, end: event.target.value } } }))} /></label></div> : null}
           <article className={styles.card}><b>隐私说明</b><p>只发送任务标题、进度、工作时长和 Token 等汇总字段；不会把代码正文、文件内容或密钥自动发给互动模型。</p></article>
-          <CompanionStorageSettings compact />
+          <CompanionStorageSettings scope="library" compact />
+          <CompanionStorageSettings scope="json" compact />
+          <details className={styles.disclosure}><summary>其他数据位置</summary><CompanionStorageSettings compact /></details>
         </div> : null}
       </section>
+      </div>
     </main>
   );
 }

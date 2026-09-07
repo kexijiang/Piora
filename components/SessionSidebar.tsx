@@ -173,8 +173,8 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
 
   // Undo window after a session delete: the server keeps the file in trash for
   // 5s; this toast offers restore within the same window (task T-01).
-  const handleSessionDeletedWithUndo = useCallback((session: SessionInfo) => {
-    onSessionDeleted?.(session);
+  const handleSessionDeletedWithUndo = useCallback((session: SessionInfo, sessionIds?: string[]) => {
+    onSessionDeleted?.(session, sessionIds);
     setDeletedSessionToast((current) => ({ session, key: (current?.key ?? 0) + 1 }));
     loadSessions();
     if (deletedSessionTimerRef.current) clearTimeout(deletedSessionTimerRef.current);
@@ -528,6 +528,7 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
     {conversationSearchOpen ? (
       <ConversationSearchDialog
         sessions={allSessions}
+        flags={sessionFlags}
         hasProject={Boolean(activeProjectRoot)}
         onClose={() => setConversationSearchOpen(false)}
         onSelect={(session, entryId) => {
@@ -535,7 +536,7 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
           else onSelectSession(session);
         }}
         onSelectSession={onSelectSession}
-        onOpenSettings={(key) => onOpenSettings?.(key)}
+        onOpenSettings={(key, itemId) => onOpenSettings?.(key, itemId)}
       />
     ) : null}
     </>

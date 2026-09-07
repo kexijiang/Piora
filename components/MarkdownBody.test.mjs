@@ -27,6 +27,33 @@ function renderMarkdown(markdown) {
   );
 }
 
+function renderAssistant(markdown) {
+  return renderToStaticMarkup(React.createElement(MarkdownBody, {
+    className: "markdown-assistant-message",
+  }, markdown));
+}
+
+test("distinguishes emphasis across paragraphs and reuses repeated labels", () => {
+  const html = renderAssistant("**第一项**\n\n- **第二项**\n- **第三项**\n- **第一项**\n- **第四项**");
+  assert.deepEqual([...html.matchAll(/data-emphasis-color="(\d)"/g)].map((match) => match[1]), ["0", "1", "2", "0", "0"]);
+  assert.doesNotMatch(renderMarkdown("**第一项** **第二项**"), /data-emphasis-color/);
+});
+
+test("keeps completed emphasis colors stable while the response streams", () => {
+  const prefix = "**第一项** 和 **第二项**";
+  const colors = (html) => [...html.matchAll(/data-emphasis-color="(\d)"/g)].map((match) => match[1]);
+  assert.deepEqual(colors(renderAssistant(prefix + "\n\n**第三项** 后续正文")).slice(0, 2), colors(renderAssistant(prefix)));
+  assert.match(renderAssistant("**新回复**"), /data-emphasis-color="0"/);
+});
+
+test("handles sanitized HTML bold without recoloring headings, highlights or code", async () => {
+  await preloadMarkdownRawHtmlParser();
+  const html = renderAssistant("# **标题**\n\n`**代码**`\n\n<mark><strong>提示</strong></mark>\n\n<b>第一项</b> **第二项** **第三项** <strong>第一项</strong>");
+  assert.deepEqual([...html.matchAll(/data-emphasis-color="(\d)"/g)].map((match) => match[1]), ["0", "1", "2", "0"]);
+  assert.match(html, /<h1><strong>标题<\/strong><\/h1>/);
+  assert.match(html, /<mark><strong>提示<\/strong><\/mark>/);
+});
+
 test("opens non-file markdown links in a safe new tab", () => {
   const html = renderMarkdown("[docs](https://example.com/docs)");
 

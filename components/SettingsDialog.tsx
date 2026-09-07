@@ -21,7 +21,7 @@ import {
   writePromptOptimizerSystemPrompt,
 } from "@/lib/prompt-optimizer-settings";
 import { SESSION_TITLE_PROMPT_MAX_LENGTH } from "@/lib/session-title-prompt";
-import type { SettingsKey } from "@/lib/settings-search";
+import { filterSettingsSearchItems, type SettingsKey } from "@/lib/settings-search";
 import {
   SESSION_TITLE_PROMPT,
   readSessionTitleModel,
@@ -38,6 +38,7 @@ interface Props {
   open: boolean;
   onClose: () => void;
   activeKey: SettingsKey;
+  focusedItemId?: string;
   onActiveKeyChange: (key: SettingsKey) => void;
   onOpenOnboarding?: () => void;
   modelCwd?: string;
@@ -83,10 +84,18 @@ interface SettingsEntry {
   icon: ReactNode;
 }
 
+const CAPABILITY_TASKS: Array<{ id: "install" | "configure" | "connect"; keys: SettingsKey[] }> = [
+  { id: "install", keys: ["plugins", "skills"] },
+  { id: "configure", keys: ["extensions", "tools", "capabilityBundles"] },
+  { id: "connect", keys: ["harmony", "remote"] },
+];
+const CAPABILITY_SECTIONS = new Set(CAPABILITY_TASKS.flatMap((task) => task.keys));
+
 export function SettingsDialog({
   open,
   onClose,
   activeKey,
+  focusedItemId,
   onActiveKeyChange,
   onOpenOnboarding,
   modelCwd,
@@ -107,6 +116,34 @@ export function SettingsDialog({
   } = useLiveOutputAutoScrollPreference();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [targetItem, setTargetItem] = useState<{ id: string } | null>(null);
+  useEffect(() => { setTargetItem(focusedItemId ? { id: focusedItemId } : null); }, [focusedItemId, open]);
+  useEffect(() => {
+    if (!open || searchQuery || !targetItem || targetItem.id === activeKey) return;
+    const root = dialogRef.current;
+    if (!root) return;
+    let cleanupHighlight: (() => void) | undefined;
+    const locate = () => {
+      const target = [...root.querySelectorAll<HTMLElement>("[data-settings-id]")]
+        .find((element) => element.dataset.settingsId === targetItem.id);
+      if (!target) return false;
+      target.scrollIntoView({ block: "center", behavior: "instant" });
+      const oldTabIndex = target.getAttribute("tabindex");
+      target.tabIndex = -1;
+      target.focus({ preventScroll: true });
+      target.dataset.settingsHighlighted = "true";
+      cleanupHighlight = () => {
+        delete target.dataset.settingsHighlighted;
+        if (oldTabIndex === null) target.removeAttribute("tabindex");
+        else target.setAttribute("tabindex", oldTabIndex);
+      };
+      return true;
+    };
+    const observer = new MutationObserver(() => { if (locate()) observer.disconnect(); });
+    if (!locate()) observer.observe(root, { childList: true, subtree: true });
+    const timeout = window.setTimeout(() => { observer.disconnect(); cleanupHighlight?.(); }, 8_000);
+    return () => { observer.disconnect(); window.clearTimeout(timeout); cleanupHighlight?.(); };
+  }, [activeKey, open, searchQuery, targetItem]);
   const [optimizerPromptDraft, setOptimizerPromptDraft] = useState(PROMPT_OPTIMIZER_SYSTEM_PROMPT);
   const [optimizerPromptSaved, setOptimizerPromptSaved] = useState(PROMPT_OPTIMIZER_SYSTEM_PROMPT);
   const [optimizerPromptStatus, setOptimizerPromptStatus] = useState<"idle" | "saved" | "error">("idle");
@@ -129,6 +166,7 @@ export function SettingsDialog({
   useFocusTrap(dialogRef, open, { onEscape: onClose });
 
   const detailEntries = useMemo<SettingsEntry[]>(() => [
+    { key: "capabilities", labelKey: "settings.capabilities.title", descriptionKey: "settings.capabilities.description", icon: <AliIcon name="build" size={16} /> },
     {
       key: "general",
       labelKey: "settings.general",
@@ -231,6 +269,7 @@ export function SettingsDialog({
       descriptionKey: "usage.description",
       icon: <AliIcon name="chart-no-axes-column" size={16} />,
     },
+    { key: "trash", labelKey: "trash.title", descriptionKey: "trash.description", icon: <AliIcon name="delete" size={16} /> },
     {
       key: "archived",
       labelKey: "archive.title",
@@ -241,12 +280,12 @@ export function SettingsDialog({
 
   const entryGroups = useMemo(() => [
     { labelKey: "settings.group.personal", keys: ["general", "conversation", "shortcuts", "speech", "automations", "models", "appearance", "language", "companion"] as SettingsKey[] },
-    { labelKey: "settings.group.capabilities", keys: ["tools", "capabilityBundles", "extensions", "skills", "plugins", "harmony", "remote"] as SettingsKey[] },
-    { labelKey: "settings.group.history", keys: ["usage", "archived"] as SettingsKey[] },
+    { labelKey: "settings.group.capabilities", keys: ["capabilities", "tools", "capabilityBundles", "extensions", "skills", "plugins", "harmony", "remote"] as SettingsKey[] },
+    { labelKey: "settings.group.history", keys: ["usage", "archived", "trash"] as SettingsKey[] },
   ], []);
 
   const availableEntries = useMemo(() => detailEntries.filter((entry) => (
-    entry.key === "general" || entry.key === "conversation" || sections[entry.key] !== undefined
+    entry.key === "general" || entry.key === "conversation" || entry.key === "capabilities" || sections[entry.key] !== undefined
   )), [detailEntries, sections]);
 
   useEffect(() => {
@@ -424,14 +463,14 @@ export function SettingsDialog({
   };
 
   const normalizedSearch = deferredSearchQuery.trim().toLocaleLowerCase();
+  const searchItems = useMemo(() => filterSettingsSearchItems(normalizedSearch, t, { hasProject: Boolean(modelCwd), hasDesktop: desktop.available, limit: 100 })
+    .filter((item) => availableEntries.some((entry) => entry.key === item.section)),
+  [availableEntries, desktop.available, modelCwd, normalizedSearch, t]);
   const filteredEntries = useMemo(() => {
-    if (!normalizedSearch) return availableEntries;
-    return availableEntries.filter((entry) => [
-      t(entry.labelKey),
-      t(entry.descriptionKey),
-      ...entryGroups.filter((group) => group.keys.includes(entry.key)).map((group) => t(group.labelKey)),
-    ].join(" ").toLocaleLowerCase().includes(normalizedSearch));
-  }, [availableEntries, entryGroups, normalizedSearch, t]);
+    if (!normalizedSearch) return availableEntries.filter((entry) => !CAPABILITY_SECTIONS.has(entry.key) || activeKey === entry.key);
+    const matches = new Set(searchItems.map((item) => item.section));
+    return availableEntries.filter((entry) => matches.has(entry.key));
+  }, [availableEntries, normalizedSearch, searchItems, activeKey]);
 
   if (!open || typeof document === "undefined") return null;
 
@@ -439,6 +478,7 @@ export function SettingsDialog({
   const searching = searchQuery.trim().length > 0;
   const sectionContent = searching ? undefined : sections[activeEntry.key];
   const selectEntry = (entry: SettingsEntry) => {
+    setTargetItem(null);
     setSearchQuery("");
     onActiveKeyChange(entry.key);
   };
@@ -499,13 +539,13 @@ export function SettingsDialog({
                   <h2>{t("settings.searchTitle")}</h2>
                   <p>{t("settings.searchDescription", { query: searchQuery.trim() })}</p>
                 </div>
-                {filteredEntries.length > 0 ? <section className={styles.searchResults} aria-label={t("settings.searchResults")}>
-                  {filteredEntries.map((entry) => (
-                    <button className={styles.settingRow} type="button" key={entry.key} onClick={() => selectEntry(entry)}>
-                      <span className={styles.rowIcon}>{entry.icon}</span>
+                {searchItems.length > 0 ? <section className={styles.searchResults} aria-label={t("settings.searchResults")}>
+                  {searchItems.map((entry) => (
+                    <button className={styles.settingRow} type="button" key={entry.id} onClick={() => { setSearchQuery(""); setTargetItem({ id: entry.id }); onActiveKeyChange(entry.section); }}>
+                      <span className={styles.rowIcon}>{availableEntries.find((section) => section.key === entry.section)?.icon}</span>
                       <span className={styles.rowCopy}>
                         <span className={styles.rowTitle}>{t(entry.labelKey)}</span>
-                        <span className={styles.rowDescription}>{t(entry.descriptionKey)}</span>
+                        <span className={styles.rowDescription}>{entry.descriptionKey ? t(entry.descriptionKey) : ""}</span>
                       </span>
                       <AliIcon name="chevron-right" size={15} />
                     </button>
@@ -513,19 +553,40 @@ export function SettingsDialog({
                 </section> : <div className={styles.searchEmpty} role="status">{t("settings.searchEmpty")}</div>}
               </>
             ) : <>
-              {activeEntry.key === "general" ? (
+              {CAPABILITY_SECTIONS.has(activeEntry.key) ? <button className={styles.backButton} type="button" onClick={() => selectEntry(detailEntries.find((entry) => entry.key === "capabilities")!)}><AliIcon name="arrowleft" size={14} />{t("settings.capabilities.back")}</button> : null}
+              {activeEntry.key === "capabilities" ? (
+                <>
+                  <div className={styles.contentHeading}><h2>{t("settings.capabilities.title")}</h2><p>{t("settings.capabilities.description")}</p></div>
+                  <p className={styles.localNote}>{sections.tools ? t("settings.capabilities.project", { cwd: modelCwd ?? "" }) : t("settings.capabilities.noProject")}</p>
+                  {CAPABILITY_TASKS.map((task) => <section className={styles.capabilityTask} key={task.id}>
+                    <h3>{t(`settings.capabilities.${task.id}`)}</h3>
+                    <p>{t(`settings.capabilities.${task.id}Description`)}</p>
+                    <div className={styles.searchResults}>
+                      {task.keys.map((key) => {
+                        const entry = detailEntries.find((candidate) => candidate.key === key)!;
+                        const available = availableEntries.some((candidate) => candidate.key === key);
+                        return <button className={styles.settingRow} type="button" key={key} disabled={!available} onClick={() => selectEntry(entry)}>
+                          <span className={styles.rowIcon}>{entry.icon}</span>
+                          <span className={styles.rowCopy}><span className={styles.rowTitle}>{t(entry.labelKey)}</span><span className={styles.rowDescription}>{t(`settings.capabilities.${key}Hint`)}</span></span>
+                          <AliIcon name="chevron-right" size={15} />
+                        </button>;
+                      })}
+                    </div>
+                  </section>)}
+                </>
+              ) : activeEntry.key === "general" ? (
               <>
                 <div className={styles.contentHeading}>
                   <h2>{t("settings.general")}</h2>
                   <p>{t("settings.generalDescription")}</p>
                 </div>
-                <SettingsPortabilityCard />
-                <NetworkProxySettings />
+                <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>
+                <div data-settings-id="general.proxy"><NetworkProxySettings /></div>
                 {onOpenOnboarding ? <section className={styles.conversationSection}>
                   <div className={styles.conversationRow}>
                     <span className={styles.featureIcon}><AliIcon name="rocket" size={19} /></span>
                     <div className={styles.conversationCopy}>
-                      <div className={styles.rowTitle}>{t("settings.firstRunGuideTitle")}</div>
+                      <div data-settings-id="general.onboarding" className={styles.rowTitle}>{t("settings.firstRunGuideTitle")}</div>
                       <div className={styles.rowDescription}>{t("settings.firstRunGuideDescription")}</div>
                     </div>
                     <button className={styles.primaryButton} type="button" onClick={onOpenOnboarding}>
@@ -600,13 +661,13 @@ export function SettingsDialog({
                   </div>
                 </section> : null}
                 {desktop.available ? <section className={styles.conversationSection}>
-                  <DesktopAutoLaunchSetting />
+                  <div data-settings-id="general.autoLaunch"><DesktopAutoLaunchSetting /></div>
                   <div className={styles.conversationRow}>
                     <div className={styles.conversationCopy}>
-                      <div className={styles.rowTitle}>{t("settings.globalShortcut")}</div>
+                      <div data-settings-id="general.globalShortcut" className={styles.rowTitle}>{t("settings.globalShortcut")}</div>
                       <div className={styles.rowDescription}>{t("settings.globalShortcutDescription")}</div>
                     </div>
-                    <button className={styles.switch} type="button" role="switch" aria-checked={desktop.globalShortcutEnabled} onClick={() => void desktop.onGlobalShortcutToggle()}><span /></button>
+                    <button className={styles.switch} type="button" role="switch" aria-label={t("settings.globalShortcut")} aria-checked={desktop.globalShortcutEnabled} onClick={() => void desktop.onGlobalShortcutToggle()}><span /></button>
                   </div>
                 </section> : null}
                 <div className={styles.localNote}>
@@ -624,7 +685,7 @@ export function SettingsDialog({
                 <section className={styles.conversationSection}>
                   <div className={styles.conversationRow}>
                     <div className={styles.conversationCopy}>
-                      <div className={styles.rowTitle}>{t("settings.liveOutputAutoScroll")}</div>
+                      <div data-settings-id="conversation.autoScroll" className={styles.rowTitle}>{t("settings.liveOutputAutoScroll")}</div>
                       <div className={styles.rowDescription}>{t("settings.liveOutputAutoScrollDescription")}</div>
                     </div>
                     <button
@@ -641,7 +702,7 @@ export function SettingsDialog({
 
                   <div className={`${styles.conversationRow} ${styles.sendShortcutRow}`}>
                     <div className={styles.conversationCopy}>
-                      <div className={styles.rowTitle}>{t("settings.sendShortcut")}</div>
+                      <div data-settings-id="conversation.sendShortcut" className={styles.rowTitle}>{t("settings.sendShortcut")}</div>
                       <div className={styles.rowDescription}>{t("settings.sendShortcutDescription")}</div>
                     </div>
                     <div className={styles.shortcutOptionGroup} role="radiogroup" aria-label={t("settings.sendShortcut")}>
@@ -669,7 +730,7 @@ export function SettingsDialog({
                   <div className={styles.conversationRowStacked}>
                     <div className={styles.preferenceHeader}>
                       <div className={styles.conversationCopy}>
-                        <div className={styles.rowTitle}>{t("settings.streamingSendDefault")}</div>
+                        <div data-settings-id="conversation.streamingSend" className={styles.rowTitle}>{t("settings.streamingSendDefault")}</div>
                         <div className={styles.rowDescription}>{t("settings.streamingSendDefaultDescription")}</div>
                       </div>
                       <button
@@ -709,7 +770,7 @@ export function SettingsDialog({
 
                   <div className={styles.conversationRow}>
                     <div className={styles.conversationCopy}>
-                      <div className={styles.rowTitle}>{t("taskControls.notifications")}</div>
+                      <div data-settings-id="conversation.notifications" className={styles.rowTitle}>{t("taskControls.notifications")}</div>
                       <div className={styles.rowDescription}>
                         {conversation.notificationCapability === "unsupported"
                           ? t("taskControls.notificationsUnsupported")
@@ -721,6 +782,7 @@ export function SettingsDialog({
                       type="button"
                       role="switch"
                       aria-checked={conversation.notificationEnabled}
+                      aria-label={t("taskControls.notifications")}
                       disabled={conversation.notificationCapability === "unsupported"}
                       onClick={() => void conversation.onNotificationToggle()}
                     >
@@ -736,7 +798,7 @@ export function SettingsDialog({
                     <p>{t("settings.sessionTitlePromptDescription")}</p>
                   </header>
                   <div className={styles.promptCardBody}>
-                    <label className={styles.modelSelectField}>
+                    <label data-settings-id="conversation.titleModel" className={styles.modelSelectField}>
                       <span>{t("settings.sessionTitleModelTitle")}</span>
                       <select
                         value={titleModel ? titleModelValue(titleModel) : ""}
@@ -802,7 +864,7 @@ export function SettingsDialog({
 
                 <section className={styles.promptCard} aria-labelledby="prompt-optimizer-heading">
                   <header className={styles.promptCardHeader}>
-                    <h3 id="prompt-optimizer-heading">{t("settings.promptOptimizerTitle")}</h3>
+                    <h3 data-settings-id="conversation.promptOptimizer" id="prompt-optimizer-heading">{t("settings.promptOptimizerTitle")}</h3>
                     <p>{t("settings.promptOptimizerDescription")}</p>
                   </header>
                   <div className={styles.promptCardBody}>
@@ -856,7 +918,7 @@ export function SettingsDialog({
 
                 <section className={styles.promptCard} aria-labelledby="system-prompt-heading">
                   <header className={styles.promptCardHeader}>
-                    <h3 id="system-prompt-heading">{t("system.prompt")}</h3>
+                    <h3 data-settings-id="conversation.systemPrompt" id="system-prompt-heading">{t("system.prompt")}</h3>
                     <p>{t("system.description")}</p>
                   </header>
                   <div className={styles.promptCardBody}>

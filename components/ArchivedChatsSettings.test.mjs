@@ -18,6 +18,6 @@ test("archived chat management follows the Codex settings pattern", () => {
 });
 
 test("archived sessions are absent from the project task tree", () => {
-  assert.match(sidebar, /withoutArchivedNodes/);
+  assert.match(sidebar, /indexTaskTree/);
   assert.doesNotMatch(sidebar, /sidebar\.archivedTasks/);
 });

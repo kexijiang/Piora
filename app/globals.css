@@ -656,12 +656,23 @@ body {
 }
 
 html.desktop-pet-document,
+html.desktop-pet-document body,
 body.desktop-pet-document {
   width: 100%;
   height: 100%;
   overflow: hidden;
   background: transparent !important;
+  /* Chromium's dark canvas can composite as an opaque black native surface.
+     Keep the transparent canvas light; theme tokens still color the pet UI. */
+  color-scheme: light !important;
+  background-image: none !important;
+  isolation: auto !important;
 }
+
+html.desktop-pet-document::before,
+html.desktop-pet-document::after,
+html.desktop-pet-document body::before,
+html.desktop-pet-document body::after { content: none !important; display: none !important; }
 
 /* The companion renderer shares appearance storage with the main window.
    Never let a saved app wallpaper paint body pseudo-elements behind the pet. */
@@ -3940,13 +3951,25 @@ pre, code {
 /* Model-authored emphasis stays distinct from prose in every appearance theme. */
 .markdown-assistant-message {
   --chat-emphasis-color: color-mix(in srgb, var(--text) 80%, var(--accent));
+  --chat-emphasis-primary: color-mix(in srgb, var(--text) 45%, var(--accent));
+  --chat-emphasis-secondary: color-mix(in srgb, var(--text) 45%, color-mix(in srgb, #8b5cf6 85%, var(--accent)));
+  --chat-emphasis-tertiary: color-mix(in srgb, var(--text) 45%, color-mix(in srgb, #0891b2 85%, var(--accent)));
   --chat-highlight-color: color-mix(in srgb, var(--text) 80%, var(--status-attention));
 }
 .markdown-assistant-message :is(h1, h2, h3, h4, h5, h6) {
   color: var(--chat-emphasis-color);
 }
 .markdown-assistant-message :is(strong, b) {
-  color: var(--chat-emphasis-color);
+  color: var(--chat-current-emphasis, var(--chat-emphasis-color));
+}
+.markdown-assistant-message [data-emphasis-color="0"] {
+  --chat-current-emphasis: var(--chat-emphasis-primary);
+}
+.markdown-assistant-message [data-emphasis-color="1"] {
+  --chat-current-emphasis: var(--chat-emphasis-secondary);
+}
+.markdown-assistant-message [data-emphasis-color="2"] {
+  --chat-current-emphasis: var(--chat-emphasis-tertiary);
 }
 .markdown-assistant-message em {
   color: var(--chat-highlight-color);
@@ -5100,6 +5123,27 @@ span.linenumber {
   border-radius: 10px;
   transition: background-color 180ms ease, box-shadow 180ms ease;
 }
+
+[data-virtual-list] .chat-message-shell {
+  content-visibility: visible;
+  contain-intrinsic-block-size: none;
+}
+
+.chat-process-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 2px 0;
+  margin-bottom: 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.chat-process-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 .message-row {
   position: relative;

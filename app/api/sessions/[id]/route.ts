@@ -11,7 +11,9 @@ import {
   buildSessionContext,
   listAllSessions,
 } from "@/lib/session-reader";
-import { getRpcSession } from "@/lib/rpc-manager";
+import { getRpcSession, stopRpcSessionsForFileMutation } from "@/lib/rpc-manager";
+import { acquireSessionMutation, assertSessionNotMutating, collectSessionSubtree } from "@/lib/session-mutation";
+import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { isMissingSessionFileError, resolveSessionDetailSource } from "@/lib/session-detail-source";
 import { purgeExpiredTrash, trashSession } from "@/lib/session-trash";
 
@@ -370,6 +372,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
     const trimmedName = name.trim();
+    assertSessionNotMutating(id);
     const liveSession = getRpcSession(id);
     if (liveSession?.isAlive()) liveSession.setSessionName(trimmedName);
     else SessionManager.open(filePath).appendSessionInfo(trimmedName);
@@ -381,17 +384,21 @@ export async function PATCH(
 }
 
 // DELETE /api/sessions/[id]
-// Reversible delete (task T-01): the session's whole subtree is moved to the
-// trash instead of being unlinked, so the 5s Undo window can move it back
-// exactly (children keep their parentSession links — no cascade re-parenting
-// needs to be reversed). Stale trash older than the undo window is purged on
-// the next delete.
+// Preserve the whole subtree for exact recovery, including after the undo toast.
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
+    let expectedIds: Set<string> | undefined;
+    if (req.body) {
+      const body = await parseJsonWithinLimit(req, 512 * 1024) as { expectedSessionIds?: unknown };
+      if (!Array.isArray(body?.expectedSessionIds) || !body.expectedSessionIds.every((value) => typeof value === "string")) {
+        return NextResponse.json({ error: "Expected conversation scope" }, { status: 400 });
+      }
+      expectedIds = new Set(body.expectedSessionIds);
+    }
     const filePath = await resolveSessionPath(id);
     if (!filePath) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
@@ -400,30 +407,39 @@ export async function DELETE(
     // Collect the whole subtree (this session + every descendant that points
     // at a member via parentSessionId) so restore is an exact move-back.
     const all = await listAllSessions();
-    const byId = new Map(all.map((s) => [s.id, s]));
-    const subtreePaths: string[] = [];
-    const seen = new Set<string>();
-    const queue = [id];
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      if (seen.has(current)) continue;
-      seen.add(current);
-      const session = byId.get(current);
-      if (session?.path) subtreePaths.push(session.path);
-      for (const s of all) {
-        if (s.parentSessionId === current) queue.push(s.id);
+    let subtree = collectSessionSubtree(all, id);
+    const ids = subtree.length ? subtree.map((session) => session.id) : [id];
+    if (expectedIds && ids.some((sessionId) => !expectedIds.has(sessionId))) {
+      return NextResponse.json({ error: "Conversation branches changed. Review the affected conversations and try again." }, { status: 409 });
+    }
+    const releases = [acquireSessionMutation(ids)];
+    try {
+      let pendingIds = [...ids];
+      while (pendingIds.length) {
+        await stopRpcSessionsForFileMutation(pendingIds);
+        // A fork admitted before our locks may have finished during the drain.
+        // Include its descendants before moving anything, and lock each new writer.
+        subtree = collectSessionSubtree(await listAllSessions(), id);
+        const locked = new Set(ids);
+        pendingIds = subtree.map((session) => session.id).filter((sessionId) => !locked.has(sessionId));
+        if (expectedIds && pendingIds.some((sessionId) => !expectedIds.has(sessionId))) {
+          return NextResponse.json({ error: "Conversation branches changed. Review the affected conversations and try again." }, { status: 409 });
+        }
+        if (pendingIds.length) {
+          releases.push(acquireSessionMutation(pendingIds));
+          ids.push(...pendingIds);
+        }
       }
+      const subtreePaths = subtree.length ? subtree.map((session) => session.path) : [filePath];
+      purgeExpiredTrash();
+      const root = subtree.find((session) => session.id === id);
+      trashSession(id, subtreePaths, { title: root?.name || root?.firstMessage?.slice(0, 120), cwd: root?.cwd });
+      for (const sessionId of ids) invalidateSessionPathCache(sessionId);
+      invalidateSessionListCache();
+      return NextResponse.json({ ok: true, trashedCount: subtreePaths.length, sessionIds: ids });
+    } finally {
+      for (const release of releases.reverse()) release();
     }
-
-    getRpcSession(id)?.destroy();
-    purgeExpiredTrash();
-    trashSession(id, subtreePaths);
-    // Invalidate path caches for every session in the subtree.
-    for (const sessionId of seen) {
-      invalidateSessionPathCache(sessionId);
-    }
-    invalidateSessionListCache();
-    return NextResponse.json({ ok: true, trashedCount: subtreePaths.length });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }

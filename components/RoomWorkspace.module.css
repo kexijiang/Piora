@@ -8,6 +8,35 @@
   color: var(--text);
 }
 
+.teamStage { flex: 0 1 auto; min-height: 0; max-height: 42%; overflow: auto; padding: 10px 18px; border-bottom: 1px solid var(--border); }
+.teamMembers { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 6px; }
+.teamMember { display: grid; grid-template-columns: 8px minmax(60px, 150px); align-items: center; gap: 4px 8px; flex: 0 0 auto; padding: 8px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); color: var(--text); text-align: left; cursor: pointer; }
+.teamMember[aria-pressed="true"] { background: var(--bg-selected); border-color: var(--accent); }
+.teamMember small { grid-column: 2; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.teamMember strong { font-size: var(--text-sm); }
+.teamMember [data-working="true"] { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 15%, transparent); }
+.stageHint { margin: 4px 0; color: var(--text-muted); font-size: var(--text-xs); }
+.liveActivity { margin-top: 6px; font-size: var(--text-sm); }
+.liveActivity > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 0; }
+.liveActivity > summary span { color: var(--text-muted); }
+.liveActivity > summary small { margin-left: auto; color: var(--text-dim); white-space: nowrap; }
+.liveActions { display: flex; gap: 8px; margin: 6px 0; }
+.liveActions button, .teamProgress button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text); cursor: pointer; white-space: nowrap; }
+.liveActions button:focus-visible, .teamMember:focus-visible, .teamProgress button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.liveOutput { max-height: 200px; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.liveOutput pre { margin: 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.65; }
+.liveThinking { color: var(--text-muted); border-left: 2px solid var(--border); padding-left: 10px; }
+.liveThinking summary, .liveTool summary { cursor: pointer; }
+.liveTool { margin: 6px 0; background: var(--tool-bg); padding: 6px 10px; border-radius: 6px; }
+.liveTool summary span { color: var(--text-muted); margin-right: 8px; }
+.liveTool summary [data-state="error"] { color: var(--status-error, #dc2626); }
+.liveTool pre { font-family: var(--font-mono); font-size: var(--text-xs); }
+.teamProgress { display: flex; flex-wrap: wrap; flex: 0 0 auto; align-items: center; gap: 8px; padding: 8px 18px; border-bottom: 1px solid var(--border); font-size: var(--text-xs); }
+.teamProgress > div { display: flex; flex: 1; min-width: 100px; gap: 8px; }
+.teamProgress > div span { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
+.teamProgress progress { width: 64px; height: 5px; accent-color: var(--accent); }
+@media (max-width: 600px) { .teamStage { padding: 8px 10px; max-height: 34%; } .liveOutput { max-height: 130px; } .teamProgress { padding: 6px 10px; } }
+
 .header {
   display: flex;
   align-items: center;

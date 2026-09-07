@@ -207,7 +207,7 @@ export function AutomationPanel({ automationId, sessionId, sessionName, cwd, emb
     <header className={styles.header}>
       <div>
         <h2>{showingEditor ? (creating ? t("automations.new") : detail?.automation.name) : t("automations.title")}</h2>
-        {!showingEditor ? <p>{t("automations.description")}</p> : null}
+        {!showingEditor ? <><p>{t("automations.description")}</p><p data-settings-id="automations.notifications">{t("automations.notificationsHint")}</p></> : null}
       </div>
       <div className={styles.headerActions}>
         {showingEditor && embedded ? <button type="button" onClick={() => { setCreating(false); setSelectedId(null); setDetail(null); }}><AliIcon name="arrowleft" size={14} />{t("automations.all")}</button> : null}
@@ -216,6 +216,7 @@ export function AutomationPanel({ automationId, sessionId, sessionName, cwd, emb
             type="button"
             className={`${styles.primary} ${styles.createButton}`}
             onClick={startCreate}
+            data-settings-id="automations.new"
             aria-label={t("automations.new")}
             title={t("automations.new")}
           >
@@ -267,7 +268,7 @@ export function AutomationPanel({ automationId, sessionId, sessionName, cwd, emb
         </select></label>
         {draft.scheduleId === "custom" ? <label className={styles.ruleField}><span>RRULE</span><textarea value={draft.rrule} onChange={(event) => setDraft((current) => ({ ...current, rrule: event.target.value }))} /></label> : null}
         <label className={styles.row}><span>{t("automations.timezone")}</span><input value={draft.timezone} onChange={(event) => setDraft((current) => ({ ...current, timezone: event.target.value }))} /></label>
-        <label className={styles.row}><span>{t("automations.notifications")}</span><select value={draft.notificationPolicy} onChange={(event) => setDraft((current) => ({ ...current, notificationPolicy: event.target.value as AutomationNotificationPolicy }))}>
+        <label data-settings-id="automations.notifications" className={styles.row}><span>{t("automations.notifications")}</span><select value={draft.notificationPolicy} onChange={(event) => setDraft((current) => ({ ...current, notificationPolicy: event.target.value as AutomationNotificationPolicy }))}>
           <option value="important_updates">{t("automations.notifyImportant")}</option><option value="always">{t("automations.notifyAlways")}</option><option value="failed_runs_only">{t("automations.notifyFailed")}</option><option value="never">{t("automations.notifyNever")}</option>
         </select></label>
         <label className={styles.row}><span>{t("automations.status")}</span><select value={draft.status} onChange={(event) => setDraft((current) => ({ ...current, status: event.target.value as Draft["status"] }))}><option value="ACTIVE">{t("automations.active")}</option><option value="PAUSED">{t("automations.paused")}</option></select></label>

@@ -53,6 +53,7 @@ import { FileLogger, type Logger } from "./logger.js";
 import { ensurePortableDesktopShortcut, type PortableShortcutResult } from "./portable-shortcut.js";
 import { StandaloneServer, type ServerExit } from "./server-supervisor.js";
 import { fitBoundsToVisibleDisplays } from "./window-bounds.js";
+import { protectTransparentCompanion } from "./transparent-companion.js";
 import {
   DesktopUpdateController,
   type DesktopUpdateState,
@@ -1478,6 +1479,7 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
     show: false,
     frame: false,
     transparent: true,
+    backgroundMaterial: "none",
     resizable: false,
     maximizable: false,
     minimizable: false,
@@ -1487,6 +1489,7 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
     alwaysOnTop: companionAlwaysOnTop,
     backgroundColor: "#00000000",
     webPreferences: {
+      backgroundThrottling: false,
       preload: join(__dirname, "preload.js"),
       partition: DESKTOP_PARTITION,
       sandbox: true,
@@ -1503,6 +1506,7 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
   });
 
   installRendererDiagnostics(window, "Companion", log);
+  protectTransparentCompanion(window);
 
   applyCompanionWindowAlwaysOnTop(window, companionAlwaysOnTop);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -1582,6 +1586,7 @@ function createCompanionBubbleWindow(url: URL, log: Logger): BrowserWindow {
     show: false,
     frame: false,
     transparent: true,
+    backgroundMaterial: "none",
     resizable: false,
     skipTaskbar: true,
     hasShadow: false,
@@ -1589,6 +1594,7 @@ function createCompanionBubbleWindow(url: URL, log: Logger): BrowserWindow {
     alwaysOnTop: companionAlwaysOnTop,
     backgroundColor: "#00000000",
     webPreferences: {
+      backgroundThrottling: false,
       preload: join(__dirname, "preload.js"), partition: DESKTOP_PARTITION, sandbox: true,
       contextIsolation: true, nodeIntegration: false, nodeIntegrationInWorker: false, webviewTag: false,
       webSecurity: true, allowRunningInsecureContent: false, navigateOnDragDrop: false, safeDialogs: true,
@@ -1596,6 +1602,7 @@ function createCompanionBubbleWindow(url: URL, log: Logger): BrowserWindow {
     },
   });
   installRendererDiagnostics(window, "Companion", log);
+  protectTransparentCompanion(window);
   applyCompanionWindowAlwaysOnTop(window, companionAlwaysOnTop);
   window.setIgnoreMouseEvents(true, { forward: true });
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));

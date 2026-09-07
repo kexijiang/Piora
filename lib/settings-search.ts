@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "general" | "conversation" | "shortcuts" | "speech" | "automations" | "models" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "language" | "companion" | "remote" | "usage" | "archived";
+export type SettingsKey = "general" | "conversation" | "shortcuts" | "speech" | "automations" | "models" | "capabilities" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "language" | "companion" | "remote" | "usage" | "archived" | "trash";
 
 export interface SettingsSearchItem {
   id: string;
@@ -9,15 +9,17 @@ export interface SettingsSearchItem {
   descriptionKey?: string;
   keywords?: string[];
   requiresProject?: boolean;
+  requiresDesktop?: boolean;
 }
 
 export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
+  { id: "capabilities", section: "capabilities", labelKey: "settings.capabilities.title", descriptionKey: "settings.capabilities.description", keywords: ["install", "enable", "configure", "安装", "启用", "配置", "能力"] },
   { id: "general", section: "general", labelKey: "settings.general", descriptionKey: "settings.generalDescription", keywords: ["preferences", "偏好"] },
   { id: "general.portability", section: "general", labelKey: "settings.portability.title", descriptionKey: "settings.portability.description", keywords: ["import", "export", "backup", "导入", "导出", "迁移"] },
   { id: "general.onboarding", section: "general", labelKey: "settings.firstRunGuideTitle", descriptionKey: "settings.firstRunGuideDescription", keywords: ["welcome", "guide", "新手", "引导"] },
   { id: "general.proxy", section: "general", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", keywords: ["http", "https", "network", "代理", "网络"] },
-  { id: "general.autoLaunch", section: "general", labelKey: "settings.autoLaunch", descriptionKey: "settings.autoLaunchDescription", keywords: ["startup", "boot", "login", "开机", "启动"] },
-  { id: "general.globalShortcut", section: "general", labelKey: "settings.globalShortcut", descriptionKey: "settings.globalShortcutDescription", keywords: ["hotkey", "keyboard", "快捷键"] },
+  { id: "general.autoLaunch", section: "general", requiresDesktop: true, labelKey: "settings.autoLaunch", descriptionKey: "settings.autoLaunchDescription", keywords: ["startup", "boot", "login", "开机", "启动"] },
+  { id: "general.globalShortcut", section: "general", requiresDesktop: true, labelKey: "settings.globalShortcut", descriptionKey: "settings.globalShortcutDescription", keywords: ["hotkey", "keyboard", "快捷键"] },
 
   { id: "conversation", section: "conversation", labelKey: "settings.conversation", descriptionKey: "settings.conversationDescription", keywords: ["chat", "session", "聊天", "会话"] },
   { id: "conversation.sendShortcut", section: "conversation", labelKey: "settings.sendShortcut", descriptionKey: "settings.sendShortcutDescription", keywords: ["enter", "ctrl enter", "发送", "换行"] },
@@ -66,18 +68,20 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
 
   { id: "remote", section: "remote", labelKey: "remote.title", descriptionKey: "remote.description", keywords: ["http", "sse", "token", "远程", "令牌"] },
   { id: "harmony", section: "harmony", labelKey: "harmonyStorage.title", descriptionKey: "harmonyStorage.description", keywords: ["openharmony", "screenshot", "recording", "鸿蒙", "截图", "录屏"] },
-  { id: "harmony.screenshots", section: "harmony", labelKey: "harmonyStorage.screenshotDirectory", descriptionKey: "harmonyStorage.screenshotDescription", keywords: ["png", "folder", "截图", "文件夹"] },
-  { id: "harmony.recordings", section: "harmony", labelKey: "harmonyStorage.recordingDirectory", descriptionKey: "harmonyStorage.recordingDescription", keywords: ["mp4", "folder", "录屏", "文件夹"] },
+  { id: "harmony.screenshots", section: "harmony", requiresDesktop: true, labelKey: "harmonyStorage.screenshotDirectory", descriptionKey: "harmonyStorage.screenshotDescription", keywords: ["png", "folder", "截图", "文件夹"] },
+  { id: "harmony.recordings", section: "harmony", requiresDesktop: true, labelKey: "harmonyStorage.recordingDirectory", descriptionKey: "harmonyStorage.recordingDescription", keywords: ["mp4", "folder", "录屏", "文件夹"] },
   { id: "usage", section: "usage", labelKey: "usage.title", descriptionKey: "usage.description", keywords: ["token", "statistics", "usage", "用量", "统计"] },
+  { id: "trash", section: "trash", labelKey: "trash.title", descriptionKey: "trash.description", keywords: ["deleted", "restore", "回收站", "删除", "恢复"] },
   { id: "archived", section: "archived", labelKey: "archive.title", descriptionKey: "archive.description", keywords: ["history", "restore", "archive", "归档", "恢复"] },
 ];
 
 export function filterSettingsSearchItems(
   query: string,
   translate: (key: string) => string,
-  options: { hasProject?: boolean; limit?: number } = {},
+  options: { hasProject?: boolean; hasDesktop?: boolean; limit?: number } = {},
 ): SettingsSearchItem[] {
-  const available = SETTINGS_SEARCH_ITEMS.filter((item) => !item.requiresProject || options.hasProject);
+  const available = SETTINGS_SEARCH_ITEMS.filter((item) => (!item.requiresProject || options.hasProject)
+    && (!item.requiresDesktop || options.hasDesktop));
   const normalized = query.trim();
   if (!normalized) return available.filter((item) => item.id === item.section).slice(0, options.limit ?? 6);
   const indexed = available.map((item, index) => ({

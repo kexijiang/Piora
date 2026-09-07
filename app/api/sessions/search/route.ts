@@ -20,9 +20,10 @@ export async function GET(request: Request) {
       project: params.get("project"),
       archive: params.get("archive") as "active" | "archived" | "all" | null ?? undefined,
       limit: Number(params.get("limit") ?? 50),
-    });
+    }, request.signal);
     return NextResponse.json(response, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (request.signal.aborted) return new Response(null, { status: 499 });
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 500 });
   }
 }

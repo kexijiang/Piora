@@ -138,11 +138,15 @@ export function ProjectToolsConfig({ cwd, onChanged }: Props) {
     void save({ preset: "custom", enabledCapabilityIds: [...enabled] });
   };
 
-  const disableHarmonyTools = () => {
-    if (!data || saving) return;
-    const deviceIds = new Set(data.capabilities.items.filter((item) => item.kind === "device").map((item) => item.id));
-    const enabledCapabilityIds = data.capabilities.policy.enabledCapabilityIds.filter((id) => !deviceIds.has(id));
-    void save({ preset: "custom", enabledCapabilityIds });
+  const setHarmonyToolsEnabled = (enabled: boolean) => {
+    if (!data || loading || saving) return;
+    const selected = new Set(data.capabilities.policy.enabledCapabilityIds);
+    for (const item of data.capabilities.items) {
+      if (item.kind !== "device") continue;
+      if (enabled && item.available) selected.add(item.id);
+      else if (!enabled) selected.delete(item.id);
+    }
+    void save({ preset: "custom", enabledCapabilityIds: [...selected] });
   };
 
   return <div className={styles.surface}>
@@ -170,38 +174,46 @@ export function ProjectToolsConfig({ cwd, onChanged }: Props) {
     ) : <div className={styles.groups}>
       {groups.map(({ kind, items }) => {
         const enabledCount = items.filter((item) => item.available && item.enabled).length;
+        const availableCount = items.filter((item) => item.available).length;
         return <section className={styles.group} key={kind} aria-labelledby={`project-tools-${kind}`}>
           <div className={styles.sectionHeader}>
-            <div>
+            <div className={styles.sectionIdentity}>
               <strong id={`project-tools-${kind}`}>{t(`sessionTools.group.${kind}`)}</strong>
-              <span>{enabledCount} / {items.filter((item) => item.available).length}</span>
+              <span className={styles.count} data-active={enabledCount > 0 || undefined}>{t("projectTools.enabledCount", { count: enabledCount, total: availableCount })}</span>
             </div>
-            {kind === "device" ? <button
-              type="button"
-              disabled={saving || enabledCount === 0}
-              onClick={disableHarmonyTools}
-            >{t("projectTools.disableHarmony")}</button> : null}
+            {kind === "device" ? <div className={styles.bulkActions} role="group" aria-label={t("sessionTools.group.device")}>
+              <button type="button" disabled={loading || saving || enabledCount === availableCount}
+                aria-label={t("projectTools.enableHarmony")} title={t("projectTools.enableHarmony")}
+                onClick={() => setHarmonyToolsEnabled(true)}>{t("projectTools.enableAll")}</button>
+              <button type="button" disabled={loading || saving || enabledCount === 0}
+                aria-label={t("projectTools.disableHarmony")} title={t("projectTools.disableHarmony")}
+                onClick={() => setHarmonyToolsEnabled(false)}>{t("projectTools.disableAll")}</button>
+            </div> : null}
           </div>
           <div className={styles.list}>
             {items.map((item) => {
               const toolName = item.toolNames[0];
               const labelKey = TOOL_LABEL_KEYS[toolName];
               const label = labelKey ? t(labelKey) : item.label;
-              return <label className={styles.row} key={item.id} data-unavailable={!item.available ? "true" : undefined}>
+              return <label className={styles.row} key={item.id} data-enabled={item.available && item.enabled || undefined} data-unavailable={!item.available ? "true" : undefined} data-saving={saving || loading || undefined}>
                 <span className={styles.icon}><AliIcon name={iconFor(item)} size={14} /></span>
                 <span className={styles.copy}>
                   <strong>{label}</strong>
-                  <small>{item.available ? toolName : t("sessionTools.profileRestricted")}</small>
+                  <small>{item.available ? toolName : t(item.unavailableReason === "profile_restricted" ? "sessionTools.profileRestricted" : "sessionTools.notAvailable")}</small>
                 </span>
+                {item.available ? <span className={styles.stateLabel}>{t(item.enabled ? "projectTools.on" : "projectTools.off")}</span> : null}
+                <span className={styles.toggle}>
                 <input
                   className={styles.switch}
                   type="checkbox"
                   role="switch"
                   checked={item.available && item.enabled}
-                  disabled={saving || !item.available}
+                  disabled={loading || saving || !item.available}
                   aria-label={label}
                   onChange={() => toggle(item)}
                 />
+                  <span className={styles.track} aria-hidden="true" />
+                </span>
               </label>;
             })}
           </div>
@@ -210,7 +222,7 @@ export function ProjectToolsConfig({ cwd, onChanged }: Props) {
     </div>}
 
     {data ? <div className={styles.footer}>
-      <span>{t("projectTools.budget", { used: data.definitionTokens, limit: data.definitionTokenLimit })}</span>
+      <span role="status">{saving ? t("sessionTools.saving") : t("projectTools.budget", { used: data.definitionTokens })}</span>
       <button
         type="button"
         disabled={saving || data.capabilities.policy.preset === "coding"}

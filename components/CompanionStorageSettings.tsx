@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { AliIcon } from "./AliIcon";
 import styles from "./CompanionStorageSettings.module.css";
@@ -18,8 +18,10 @@ interface StoragePayload {
   error?: string;
 }
 
-export function CompanionStorageSettings({ compact = false }: { compact?: boolean }) {
+export function CompanionStorageSettings({ compact = false, scope }: { compact?: boolean; scope?: "library" | "json" }) {
   const { t } = useI18n();
+  const headingId = useId();
+  const endpoint = `/api/companion/storage${scope ? `?scope=${scope}` : ""}`;
   const [storage, setStorage] = useState<StorageInfo | null>(null);
   const [directory, setDirectory] = useState("");
   const [editing, setEditing] = useState(false);
@@ -29,7 +31,7 @@ export function CompanionStorageSettings({ compact = false }: { compact?: boolea
   const load = useCallback(async () => {
     setStatus("loading");
     try {
-      const response = await fetch("/api/companion/storage", { cache: "no-store" });
+      const response = await fetch(endpoint, { cache: "no-store" });
       const payload = await response.json() as StoragePayload;
       if (!response.ok || !payload.storage) throw new Error(payload.error || `HTTP ${response.status}`);
       setStorage(payload.storage);
@@ -40,23 +42,15 @@ export function CompanionStorageSettings({ compact = false }: { compact?: boolea
       setError(cause instanceof Error ? cause.message : String(cause));
       setStatus("error");
     }
-  }, []);
+  }, [endpoint]);
 
   useEffect(() => { void load(); }, [load]);
-
-  const chooseDirectory = async () => {
-    const selected = await window.piDesktop?.selectDirectory?.();
-    if (selected) {
-      setDirectory(selected);
-      setStatus("idle");
-    }
-  };
 
   const save = async (nextDirectory: string) => {
     setStatus("saving");
     setError("");
     try {
-      const response = await fetch("/api/companion/storage", {
+      const response = await fetch(endpoint, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ directory: nextDirectory.trim() }),
@@ -74,23 +68,23 @@ export function CompanionStorageSettings({ compact = false }: { compact?: boolea
   };
 
   return (
-    <section className={`${styles.section}${compact ? ` ${styles.compact}` : ""}`} aria-labelledby="companion-storage-title">
+    <section className={`${styles.section}${compact ? ` ${styles.compact}` : ""}`} aria-labelledby={headingId}>
       <div className={styles.heading}>
         <div>
-          <h3 id="companion-storage-title">{t("companion.storage.title")}</h3>
-          <p>{t("companion.storage.description")}</p>
+          <h3 id={headingId}>{scope === "library" ? "中转站存储位置" : scope === "json" ? "JSON 草稿存储位置" : "随身舱其他数据"}</h3>
+          <p>{scope === "library" ? "图片单独存为文件，文字保存在 transfer.json。" : scope === "json" ? "所有标签和临时草稿自动保存到本地文件。" : "待办、专注、记忆与陪伴设置。"}</p>
         </div>
       </div>
 
-      <div className={styles.editRow}>
-        <span className={styles.editIcon} aria-hidden="true"><AliIcon name="folder-open" size={15} /></span>
-        <span><b>{t("companion.storage.edit")}</b><small>{t("companion.storage.editDescription")}</small></span>
-        <button type="button" role="switch" aria-checked={editing} aria-label={t("companion.storage.edit")} onClick={() => {
+      <div className={styles.location}>
+        <AliIcon name="folder-open" size={15} />
+        <code title={storage?.directory}>{storage?.directory || (status === "error" ? "位置读取失败" : "正在读取…")}</code>
+        <button type="button" aria-expanded={editing} disabled={status === "saving" || !storage} onClick={() => {
           setEditing((current) => !current);
           setDirectory(storage?.directory ?? "");
           setError("");
           setStatus("idle");
-        }}><span /></button>
+        }}>{editing ? "取消" : "更改"}</button>
       </div>
 
       {editing ? <div className={styles.editor}>
@@ -98,22 +92,17 @@ export function CompanionStorageSettings({ compact = false }: { compact?: boolea
           <span>{t("companion.storage.directory")}</span>
           <span className={styles.inputRow}>
             <input value={directory} onChange={(event) => { setDirectory(event.currentTarget.value); setStatus("idle"); }} />
-            {typeof window !== "undefined" && window.piDesktop?.selectDirectory ? <button type="button" onClick={() => void chooseDirectory()} title={t("companion.storage.choose")} aria-label={t("companion.storage.choose")}><AliIcon name="folder-open" size={14} /></button> : null}
           </span>
         </label>
-        <p>{t("companion.storage.migrationHint")}</p>
+        <p>{scope ? "输入完整路径。已有内容会复制并校验，原目录保留备份。" : t("companion.storage.migrationHint")}</p>
         <div className={styles.actions}>
           <button className={styles.primary} type="button" disabled={status === "saving" || !directory.trim() || directory.trim() === storage?.directory} onClick={() => void save(directory)}>{status === "saving" ? t("companion.storage.saving") : t("companion.storage.apply")}</button>
-          {storage?.customized ? <button type="button" disabled={status === "saving"} onClick={() => void save(storage.defaultDirectory)}>{t("companion.storage.restoreDefault")}</button> : null}
+          {!scope && storage?.customized ? <button type="button" disabled={status === "saving"} onClick={() => void save(storage.defaultDirectory)}>{t("companion.storage.restoreDefault")}</button> : null}
         </div>
       </div> : null}
 
-      <dl className={styles.paths} aria-live="polite">
-        <div><dt>{t("companion.storage.dataFile")}</dt><dd>{storage?.dataFile || t("companion.storage.loading")}</dd></div>
-        <div><dt>{t("companion.storage.configFile")}</dt><dd>{storage?.configFile || t("companion.storage.loading")}</dd></div>
-      </dl>
       {status === "saved" ? <p className={styles.success} role="status">{t("companion.storage.saved")}</p> : null}
-      {error ? <p className={styles.error} role="alert">{error}</p> : null}
+      {error ? <p className={styles.error} role="alert">{error}<button type="button" onClick={() => void load()}>重试</button></p> : null}
     </section>
   );
 }

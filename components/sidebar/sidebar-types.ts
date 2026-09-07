@@ -166,10 +166,10 @@ export interface SessionSidebarProps {
   skipInitialProjectSelection?: boolean;
   onInitialRestoreDone?: () => void;
   refreshKey?: number;
-  onSessionDeleted?: (session: SessionInfo) => void;
+  onSessionDeleted?: (session: SessionInfo, sessionIds?: string[]) => void;
   selectedCwd?: string | null;
   onCwdChange?: (cwd: string | null, projectRoot?: string | null) => void;
-  onOpenSettings?: (key?: SettingsKey) => void;
+  onOpenSettings?: (key?: SettingsKey, itemId?: string) => void;
   activeProjectRoot?: string | null;
 }
 

@@ -9,7 +9,7 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 import "./theme-backgrounds.css";
 
-const surfaceInitializationScript = `(function(){try{if(location.pathname==="/desktop-pet"||location.pathname==="/desktop-companion-bubble")document.documentElement.classList.add("desktop-pet-document")}catch(_){}})();`;
+const surfaceInitializationScript = `(function(){try{if(location.pathname==="/desktop-pet"||location.pathname==="/desktop-companion-bubble"){var r=document.documentElement;r.classList.add("desktop-pet-document");r.style.setProperty("color-scheme","light","important");r.style.setProperty("background","transparent","important")}}catch(_){}})();`;
 
 export const metadata: Metadata = {
   title: "Piora",

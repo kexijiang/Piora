@@ -1,6 +1,9 @@
 import { performance } from "node:perf_hooks";
 import { readFileSync } from "node:fs";
-import { getVisibleRenderWindow } from "../lib/chat-lazy-load.ts";
+import { createJiti } from "jiti";
+import { buildVirtualOffsets, virtualRange } from "../lib/virtual-window.ts";
+import { indexTaskTree, flattenTaskWindow } from "../lib/sidebar-tree-window.ts";
+const { buildChatHistoryRows } = await createJiti(import.meta.url).import("../lib/chat-history.ts");
 import { getDiffRenderWindow, DIFF_RENDER_BATCH } from "../lib/diff-progressive.ts";
 import { buildEntriesFromFiles, filterFileEntries } from "../lib/file-fuzzy.ts";
 import { filterSessions } from "../lib/session-search.ts";
@@ -43,6 +46,13 @@ const sessions = Array.from({ length: 500 }, (_, index) => ({
 }));
 const files = Array.from({ length: 5_000 }, (_, index) => `src/feature-${index % 100}/file-${index}.ts`);
 const fileEntries = buildEntriesFromFiles(files);
+const history = Array.from({ length: 10_000 }, (_, index) => index % 2 === 0
+  ? { role: "user", content: `Request ${index}` }
+  : { role: "assistant", content: [{ type: "text", text: `Answer ${index}` }] });
+const historyIds = history.map((_, index) => `entry-${index}`);
+const historyRows = buildChatHistoryRows(history, historyIds, false, new Set()).rows;
+const historyOffsets = buildVirtualOffsets(historyRows.map((row) => row.key), new Map(), 160);
+const taskTree = sessions.map((session) => ({ session, children: [] }));
 
 const syntaxSources = ["components/DiffView.tsx", "components/FileViewer.tsx", "components/MermaidBlock.tsx", "components/LazySyntaxHighlighter.tsx"]
   .map((path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8"))
@@ -60,7 +70,10 @@ const rootMarkdownConsumerSource = ["components/MessageView.tsx", "components/Co
 const checks = [
   measure("filter 500 tasks", 50, () => filterSessions(sessions, "", "task 49")),
   measure("search a 5,000-file index", 800, () => filterFileEntries(fileEntries, "file-4999", 1_000)),
-  measure("select a 2,000-item chat window", 50, () => getVisibleRenderWindow(2_000, 50)),
+  measure("plan 10,000 actual chat rows", 100, () => buildChatHistoryRows(history, historyIds, false, new Set())),
+  measure("window old, middle and recent chat positions", 10, () => [0, 800_000, 1_590_000].map((top) => virtualRange(historyOffsets, top, 900))),
+  verify("chat windows stay bounded when navigating both directions", [0, 800_000, 1_590_000, 800_000, 0].every((top) => { const range = virtualRange(historyOffsets, top, 900); return range.end - range.start <= 20; })),
+  measure("index and flatten 500 sidebar tasks", 50, () => flattenTaskWindow(indexTaskTree(taskTree, {}, []), new Set())),
   measure("bound the first 5,000-file tree render", 50, () => getTreeRenderWindow(5_000, TREE_INITIAL_RENDER_COUNT)),
   measure("bound the first 12,000-line diff render", 50, () => getDiffRenderWindow(12_000, DIFF_RENDER_BATCH)),
   measure("window a 10,000-change Review list", 50, () => getReviewListWindow(10_000, 9_999)),

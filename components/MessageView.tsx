@@ -1,6 +1,7 @@
 "use client";
 
-import { memo, useState, useRef, useEffect, useMemo } from "react";
+import { memo, useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useVirtualRowToggle } from "./VirtualRowState";
 import dynamic from "next/dynamic";
 import { LazyMarkdownBody as MarkdownBody } from "./LazyMarkdownBody";
 import { copyText } from "@/lib/clipboard";
@@ -250,7 +251,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
   const { t, locale } = useI18n();
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [contentExpanded, setContentExpanded] = useState(false);
+  const [contentExpanded, setContentExpanded] = useVirtualRowToggle("user-content");
   const [loadedContent, setLoadedContent] = useState<string | null>(null);
   const [contentLoading, setContentLoading] = useState(false);
   const [contentLoadError, setContentLoadError] = useState<string | null>(null);
@@ -288,7 +289,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
     : content;
   const contentLineCount = contentPreview.lineCount.toLocaleString(locale);
 
-  const loadFullContent = async (): Promise<string> => {
+  const loadFullContent = useCallback(async (): Promise<string> => {
     if (!hasDeferredContent) return content;
     if (!sessionId || !entryId) throw new Error(t("chat.longMessageUnavailable"));
     setContentLoading(true);
@@ -308,7 +309,11 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
     } finally {
       setContentLoading(false);
     }
-  };
+  }, [hasDeferredContent, content, sessionId, entryId, t]);
+
+  useEffect(() => {
+    if (contentExpanded && hasDeferredContent) void loadFullContent().catch(() => {});
+  }, [contentExpanded, hasDeferredContent, loadFullContent]);
 
   const copyContent = () => {
     Promise.resolve(loadFullContent()).then((fullContent) => copyText(fullContent)).then(() => {
@@ -817,7 +822,7 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
   blockIndex: number;
 }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useVirtualRowToggle(`thinking:${blockIndex}`);
   const [loadState, setLoadState] = useState<ThinkingLoadState | null>(null);
   const sourceKey = sessionId && entryId ? `${sessionId}:${entryId}:${blockIndex}` : null;
   const loadStateRef = useRef(loadState);
@@ -876,8 +881,8 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 
 function ToolCallBlock({ block, result, duration, onOpenFile, onOpenAutomation }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useState(() => /^bash(?:\s|$)/.test(block.toolName));
-  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
+  const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`, /^bash(?:\s|$)/.test(block.toolName));
+  const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`diagnostics:${block.toolCallId}`);
   const diagnostics = safeJson({ input: block.input, result: result ?? null });
   const fileChange = getFileChangeInfo(block, result);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;

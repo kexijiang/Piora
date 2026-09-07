@@ -13,6 +13,8 @@ const { MessageView, getAutomationToolCardDetails, getUserMessagePreview } = awa
 // Import through the same tsconfig alias used by the component so Jiti reuses
 // the exact context module instead of creating a second provider instance.
 const { I18nProvider } = await jiti.import("@/hooks/useI18n");
+const { VirtualRowStateContext } = await jiti.import("./VirtualRowState");
+const { createVirtualRowState } = await jiti.import("@/lib/virtual-row-state");
 const messageImageSource = readFileSync(new URL("./MessageImage.tsx", import.meta.url), "utf8");
 const messageViewSource = readFileSync(new URL("./MessageView.tsx", import.meta.url), "utf8");
 const globalStyles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
@@ -54,6 +56,18 @@ test("collapses long user queries to an eight-line preview", () => {
   assert.match(html, /aria-expanded="false"/);
   assert.match(html, /展开完整消息 · 20 行/);
   assert.doesNotMatch(html, /log line 9/);
+});
+
+test("fresh message mounts restore the virtual row's expanded and collapsed choices", () => {
+  const rowState = createVirtualRowState();
+  const message = { role: "user", content: Array.from({ length: 20 }, (_, index) => `saved line ${index + 1}`).join("\n") };
+  const mount = () => renderToStaticMarkup(React.createElement(I18nProvider, null,
+    React.createElement(VirtualRowStateContext.Provider, { value: rowState }, React.createElement(MessageView, { message }))));
+  assert.match(mount(), /aria-expanded="false"/);
+  rowState.set("user-content", true);
+  assert.match(mount(), /aria-expanded="true"/);
+  rowState.set("user-content", false);
+  assert.match(mount(), /aria-expanded="false"/);
 });
 
 test("renders short user queries without an expand control", () => {

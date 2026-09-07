@@ -1,17 +1,18 @@
 "use client";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { AgentMessage, AssistantContentBlock, AssistantMessage, BashExecutionMessage, CustomMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
+import type { AgentMessage, BashExecutionMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode } from "@/lib/types";
 import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
-import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, hasVisibleToolOutput, splitFinalAssistantBlocks } from "@/lib/message-display";
+import { messageFingerprint } from "@/lib/chat-history";
+import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
 import { NewSessionContextChip, NewSessionLauncher } from "./NewSessionLauncher";
 import { SystemPromptSelector } from "./SystemPromptSelector";
 import type { NewSessionInitialPrompt } from "./new-session-types";
-import { ChatMinimap, useMessageRefs } from "./ChatMinimap";
+import { ChatMinimap } from "./ChatMinimap";
 import { ChatScrollRail } from "./ChatScrollRail";
 import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type AttachedImage, type BuiltinSlashCommandResult, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
@@ -21,13 +22,6 @@ import { useResizablePanel } from "@/hooks/useResizablePanel";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import { deriveCompanionActivityStatus, type CompanionActivity } from "@/lib/companion";
 import { AliIcon } from "./AliIcon";
-import {
-  captureScrollDistance,
-  getNextVisibleCount,
-  getVisibleRenderWindow,
-  restoreScrollTop,
-  VISIBLE_PAGE_SIZE,
-} from "@/lib/chat-lazy-load";
 import { shouldShowScrollToBottom } from "@/lib/chat-scroll";
 import { getProjectLabel } from "@/lib/session-project-groups";
 import { isProjectlessChatCwd } from "@/lib/projectless-chat-path";
@@ -100,55 +94,6 @@ const CHAT_COLUMN_MIN_WIDTH = 560;
 const CHAT_COLUMN_MAX_WIDTH = 1400;
 const SCROLL_TO_BOTTOM_THRESHOLD = 96;
 
-/**
- * Cheap, collision-tolerant fingerprint of a message's renderable payload.
- * Changes whenever streaming appends another fragment, so the per-message
- * error boundary can retry as soon as new data arrives instead of staying
- * stuck on the fallback row.
- */
-function messageFingerprint(message: AgentMessage, entryId: string | undefined): string {
-  const content = (message as { content?: unknown }).content;
-  let size = 0;
-  if (typeof content === "string") {
-    size = content.length;
-  } else if (Array.isArray(content)) {
-    size = content.length;
-    for (const block of content as Array<Record<string, unknown>>) {
-      if (!block || typeof block !== "object") continue;
-      for (const key of ["text", "thinking"]) {
-        const value = block[key];
-        if (typeof value === "string") size += value.length;
-      }
-      const input = block.input;
-      if (input !== undefined && input !== null) {
-        try {
-          size += JSON.stringify(input).length;
-        } catch {
-          size += 8;
-        }
-      }
-    }
-  }
-  return `${entryId ?? "stream"}:${size}`;
-}
-
-function hasFinalAssistantAnswer(message: AgentMessage): boolean {
-  if (message.role !== "assistant") return false;
-  return splitFinalAssistantBlocks(message as AssistantMessage).answerBlocks.some((block) => (
-    block.type === "image" || (block.type === "text" && typeof block.text === "string" && block.text.trim().length > 0)
-  ));
-}
-
-function findFinalAssistantIndex(messages: AgentMessage[], userIdx: number, endIdx: number): number {
-  for (let candidateIdx = endIdx - 1; candidateIdx > userIdx; candidateIdx--) {
-    if (hasFinalAssistantAnswer(messages[candidateIdx])) return candidateIdx;
-  }
-  for (let candidateIdx = endIdx - 1; candidateIdx > userIdx; candidateIdx--) {
-    if (messages[candidateIdx]?.role === "assistant") return candidateIdx;
-  }
-  return -1;
-}
-
 function getUserInputText(message: AgentMessage): string | null {
   if (message.role !== "user") return null;
   if (typeof message.content === "string") {
@@ -184,87 +129,6 @@ function getVisionRetryPayload(messages: readonly AgentMessage[]): { message: st
     if (text || images.length > 0) return { message: text, ...(images.length > 0 ? { images } : {}) };
   }
   return null;
-}
-
-function countToolCalls(messages: AgentMessage[], indices: number[]): number {
-  let count = 0;
-  for (const idx of indices) {
-    const msg = messages[idx];
-    if (msg?.role !== "assistant") continue;
-    count += countToolCallBlocks(getDisplayableAssistantBlocks(msg as AssistantMessage));
-  }
-  return count;
-}
-
-function hasDisplayableProcessMessage(message: AgentMessage): boolean {
-  if (message.role === "assistant") {
-    return getDisplayableAssistantBlocks(message as AssistantMessage).length > 0;
-  }
-  return message.role === "custom";
-}
-
-// A user message normally anchors a turn (user prompt → process → final
-// answer), and the process messages in between get folded into a collapsed
-// ProcessDetailsGroup. When compaction fires mid-turn, pi drops the original
-// user prompt and inserts a compaction summary (role "custom", customType
-// "compaction") in its place; the agent then keeps producing tool calls and a
-// final answer with no user message left to anchor them. Treat a compaction
-// summary as an anchor too, otherwise every post-compaction message renders
-// standalone and never collapses.
-function isGroupAnchor(message: AgentMessage): boolean {
-  if (message.role === "user") return true;
-  return message.role === "custom" && (message as CustomMessage).customType === "compaction";
-}
-
-function withAssistantBlocks(
-  message: AssistantMessage,
-  content: AssistantContentBlock[],
-  options: { omitUsage?: boolean } = {},
-): AssistantMessage {
-  const next = { ...message, content };
-  if (options.omitUsage) next.usage = undefined;
-  return next;
-}
-
-function ProcessDetailsGroup({ messageCount, toolCallCount, children, t }: { messageCount: number; toolCallCount: number; children: ReactNode; t: (key: string, params?: Record<string, string | number>) => string }) {
-  const [expanded, setExpanded] = useState(false);
-  const parts = [t("chat.processDetails"), `${messageCount} ${t(messageCount === 1 ? "chat.message" : "chat.messages")}`];
-  if (toolCallCount > 0) parts.push(`${toolCallCount} ${t(toolCallCount === 1 ? "chat.toolCall" : "chat.toolCalls")}`);
-
-  return (
-    <div style={{ marginBottom: 14 }}>
-      <button
-        type="button"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((v) => !v)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          width: "auto",
-          minHeight: 24,
-          padding: "2px 0",
-          border: "none",
-          background: "transparent",
-          color: "var(--text-muted)",
-          cursor: "pointer",
-          fontSize: "var(--text-sm)",
-          textAlign: "left",
-        }}
-        title={expanded ? t("chat.collapseProcess") : t("chat.expandProcess")}
-      >
-        <AliIcon name="arrowright" size={12} style={{ transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
-        <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {parts.join(" · ")}
-        </span>
-      </button>
-      {expanded && (
-        <div style={{ marginTop: 8 }}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
@@ -321,7 +185,8 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     isNew,
     sessionIdRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
-    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleScrollToBottom,
+    pendingScrollToUserRef,
+    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleScrollToBottom, pauseHistoryFollow,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
@@ -479,74 +344,25 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     registerAbortHandler(sessionBusy ? handleAbort : null);
   }, [sessionBusy, handleAbort]);
 
-  // --- Lazy-load historical messages ---
-  // Only render the last N messages initially. When the user scrolls to the
-  // top, load another page while keeping the scroll position stable.
-  const [visibleCount, setVisibleCount] = useState(VISIBLE_PAGE_SIZE);
+  const historyRef = useRef<ChatHistoryHandle>(null);
   const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
   const handledFocusEntryRef = useRef<string | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const prevScrollDistanceRef = useRef<number | null>(null);
-
-  // IntersectionObserver on the sentinel div at the top of the message list.
-  // When it becomes visible, load the next page of older messages.
-  useEffect(() => {
-    const sentinel = sentinelRef.current;
-    const container = scrollContainerRef.current;
-    if (!sentinel || !container) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          // Save distance from top before prepending to restore scroll later
-          prevScrollDistanceRef.current = captureScrollDistance(container.scrollHeight, container.scrollTop);
-          setVisibleCount((prev) => getNextVisibleCount(prev));
-        }
-      },
-      { root: container, threshold: 0 }
-    );
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [visibleCount, messages.length, scrollContainerRef]);
-
-  // After visibleCount increases (more messages prepended), restore the
-  // scroll position so the viewport doesn't jump.
-  useEffect(() => {
-    if (prevScrollDistanceRef.current == null) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    container.scrollTop = restoreScrollTop(container.scrollHeight, prevScrollDistanceRef.current);
-    prevScrollDistanceRef.current = null;
-  }, [visibleCount, scrollContainerRef]);
-
   useEffect(() => {
     if (!focusEntryId || loading || !entryIds.includes(focusEntryId)) return;
-    const focusKey = `${session?.id ?? "new"}:${focusEntryId}`;
+    const focusKey = (session?.id ?? "new") + ":" + focusEntryId;
     if (handledFocusEntryRef.current === focusKey) return;
     handledFocusEntryRef.current = focusKey;
-    setVisibleCount((current) => Math.max(current, messages.length * 2));
+    pauseHistoryFollow();
+    historyRef.current?.revealEntry(focusEntryId);
     setHighlightedEntryId(focusEntryId);
-  }, [entryIds, focusEntryId, loading, messages.length, session?.id]);
-
+  }, [entryIds, focusEntryId, loading, pauseHistoryFollow, session?.id]);
   useEffect(() => {
     if (!highlightedEntryId) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    let secondFrame = 0;
-    const firstFrame = window.requestAnimationFrame(() => {
-      secondFrame = window.requestAnimationFrame(() => {
-        const target = [...container.querySelectorAll<HTMLElement>("[data-chat-entry-id]")]
-          .find((element) => element.dataset.chatEntryId === highlightedEntryId);
-        target?.scrollIntoView({ block: "center", behavior: "smooth" });
-      });
-    });
-    const timer = window.setTimeout(() => setHighlightedEntryId((current) => current === highlightedEntryId ? null : current), 4_000);
-    return () => {
-      window.cancelAnimationFrame(firstFrame);
-      if (secondFrame) window.cancelAnimationFrame(secondFrame);
-      window.clearTimeout(timer);
-    };
-  }, [highlightedEntryId, scrollContainerRef, visibleCount]);
+    const timer = window.setTimeout(() => setHighlightedEntryId(null), 4_000);
+    return () => window.clearTimeout(timer);
+  }, [highlightedEntryId]);
+
   // Push session stats up to AppShell for the top bar.
   // Compare scalar fields to avoid loops from new object identity each render.
   const statsKey = sessionStats
@@ -592,28 +408,6 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
 
   const { isDragOver, handleDragEnter, handleDragOver, handleDragLeave, handleDrop } = useDragDrop(onDrop);
 
-  const visibleMessages = useMemo(
-    () => messages.filter((message) => message.role === "user" || message.role === "assistant"),
-    [messages],
-  );
-  const chatRenderMetadata = useMemo(() => {
-    const toolResultsMap = new Map<string, ToolResultMessage>();
-    const visibleRefIndexByMessage = new Map<number, number>();
-    let lastUserIdx = -1;
-    let lastAnchorIdx = -1;
-    let refIdx = 0;
-    for (let index = 0; index < messages.length; index += 1) {
-      const message = messages[index];
-      if (message.role === "toolResult") toolResultsMap.set(message.toolCallId, message);
-      if (message.role === "user" || message.role === "assistant") {
-        visibleRefIndexByMessage.set(index, refIdx);
-        refIdx += 1;
-      }
-      if (message.role === "user") lastUserIdx = index;
-      if (isGroupAnchor(message)) lastAnchorIdx = index;
-    }
-    return { toolResultsMap, visibleRefIndexByMessage, lastUserIdx, lastAnchorIdx };
-  }, [messages]);
   const inputHistory = useMemo(() => {
     const seen = new Set<string>();
     const history: string[] = [];
@@ -626,10 +420,16 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     }
     return history.reverse();
   }, [messages]);
-  const messageRefs = useMessageRefs(visibleMessages.length);
-  const revealHistoryForMinimap = useCallback(() => {
-    setVisibleCount((current) => Math.max(current, messages.length * 2));
-  }, [messages.length]);
+  const userEntryIds = useMemo(() => messages.flatMap((message, index) => message.role === "user" ? [entryIds[index]] : []), [messages, entryIds]);
+  const revealHistoryForMinimap = useCallback((userIndex: number) => {
+    pauseHistoryFollow();
+    const id = userEntryIds[userIndex];
+    if (id) historyRef.current?.revealEntry(id);
+  }, [pauseHistoryFollow, userEntryIds]);
+  const jumpToBottom = useCallback(() => {
+    historyRef.current?.cancelNavigation();
+    handleScrollToBottom();
+  }, [handleScrollToBottom]);
 
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !sessionBusy;
 
@@ -871,208 +671,14 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
             <div className="chat-column">
               <ExtensionWidgets widgets={aboveEditorWidgets} />
 
-            {(() => {
-              const { toolResultsMap, visibleRefIndexByMessage, lastUserIdx, lastAnchorIdx } = chatRenderMetadata;
-
-              const attachVisibleRef = (idx: number, refIndex: number) => (el: HTMLDivElement | null) => {
-                messageRefs.current[refIndex] = el;
-                if (idx === lastUserIdx) { (lastUserMsgRef as { current: HTMLDivElement | null }).current = el; }
-              };
-
-              const renderMessage = (idx: number, options: { attachRef?: boolean; keyPrefix?: string; messageOverride?: AgentMessage; showTimestamp?: boolean } = {}): ReactNode => {
-                const msg = options.messageOverride ?? messages[idx];
-                const prevAssistantEntryId =
-                  msg.role === "user" && idx > 0 && messages[idx - 1].role === "assistant"
-                    ? entryIds[idx - 1]
-                    : undefined;
-                const isVisible = msg.role === "user" || msg.role === "assistant";
-                const currentRefIdx = visibleRefIndexByMessage.get(idx);
-                const keyPrefix = options.keyPrefix ?? "message";
-                let showTimestamp = false;
-                if (msg.role === "assistant") {
-                  showTimestamp = true;
-                  for (let j = idx + 1; j < messages.length; j++) {
-                    const r = messages[j].role;
-                    if (r === "user") break;
-                    if (r === "assistant") { showTimestamp = false; break; }
-                  }
-                  // Hide on the currently-streaming tail (the streaming bubble owns the live timestamp)
-                  if (showTimestamp && streamState.isStreaming && idx === messages.length - 1) {
-                    showTimestamp = false;
-                  }
-                }
-                if (options.showTimestamp !== undefined) showTimestamp = options.showTimestamp;
-                let responseStartedAt: number | undefined;
-                if (msg.role === "assistant" && showTimestamp) {
-                  const belongsToActiveTail = sessionBusy && !messages.slice(idx + 1).some((message) => message.role === "user");
-                  if (!belongsToActiveTail) {
-                    for (let userIdx = idx - 1; userIdx >= 0; userIdx -= 1) {
-                      const candidate = messages[userIdx];
-                      if (candidate.role !== "user") continue;
-                      responseStartedAt = candidate.timestamp;
-                      break;
-                    }
-                  }
-                }
-                const view = (
-                  <MessageView
-                    key={`${keyPrefix}-view-${idx}`}
-                    message={msg}
-                    toolResults={toolResultsMap}
-                    modelNames={modelNames}
-                    cwd={messageCwd}
-                    onOpenFile={onOpenFile}
-                    entryId={entryIds[idx]}
-                    onFork={sessionBusy || isNew || (idx === 0 && msg.role === "user") ? undefined : handleFork}
-                    forking={forkingEntryId === entryIds[idx]}
-                    onNavigate={sessionBusy ? undefined : handleNavigate}
-                    prevAssistantEntryId={sessionBusy ? undefined : prevAssistantEntryId}
-                    onEditContent={handleEditContent}
-                    showTimestamp={showTimestamp}
-                    prevTimestamp={idx > 0 ? (messages[idx - 1] as AgentMessage & { timestamp?: number }).timestamp : undefined}
-                    responseStartedAt={responseStartedAt}
-                    sessionId={session?.id ?? sessionIdRef.current ?? undefined}
-                    onOpenAutomation={onOpenAutomation}
-                  />
-                );
-                const boundedView = (
-                  <RenderErrorBoundary
-                    key={`${keyPrefix}-boundary-${idx}`}
-                    resetKey={messageFingerprint(msg, entryIds[idx])}
-                    fallbackLabel={t("chat.messageRenderFailed")}
-                    errorTitle={t("chat.messageRenderError")}
-                  >
-                    {view}
-                  </RenderErrorBoundary>
-                );
-                if (!isVisible || options.attachRef === false || currentRefIdx === undefined) return boundedView;
-                return (
-                  <div
-                    key={`${keyPrefix}-${idx}`}
-                    ref={attachVisibleRef(idx, currentRefIdx)}
-                    className={`chat-message-shell${highlightedEntryId === entryIds[idx] ? " is-search-target" : ""}`}
-                    data-chat-entry-id={entryIds[idx]}
-                  >
-                    {boundedView}
-                  </div>
-                );
-              };
-
-              // Build cheap factories for the full history, then materialize
-              // React elements only for the visible tail. The previous code
-              // created every MessageView before slicing to the last page,
-              // which made switching to a long session scale with its entire
-              // history despite the lazy-history UI.
-              const rendered: Array<() => ReactNode> = [];
-              for (let idx = 0; idx < messages.length;) {
-                const msg = messages[idx];
-                if (!isGroupAnchor(msg)) {
-                  const messageIndex = idx;
-                  rendered.push(() => renderMessage(messageIndex));
-                  idx += 1;
-                  continue;
-                }
-
-                const userIdx = idx;
-                let endIdx = userIdx + 1;
-                while (endIdx < messages.length && !isGroupAnchor(messages[endIdx])) endIdx += 1;
-
-                const finalAssistantIdx = findFinalAssistantIndex(messages, userIdx, endIdx);
-
-                if (finalAssistantIdx === -1) {
-                  for (let renderIdx = userIdx; renderIdx < endIdx; renderIdx++) {
-                    rendered.push(() => renderMessage(renderIdx));
-                  }
-                  idx = endIdx;
-                  continue;
-                }
-
-                const isLiveTail = (sessionBusy || streamState.isStreaming) && endIdx === messages.length && userIdx === lastAnchorIdx;
-                if (isLiveTail) {
-                  for (let renderIdx = userIdx; renderIdx < endIdx; renderIdx++) {
-                    rendered.push(() => renderMessage(renderIdx));
-                  }
-                  idx = endIdx;
-                  continue;
-                }
-
-                rendered.push(() => renderMessage(userIdx));
-
-                const processIndices: number[] = [];
-                for (let processIdx = userIdx + 1; processIdx < finalAssistantIdx; processIdx++) {
-                  processIndices.push(processIdx);
-                }
-                const visibleProcessIndices = processIndices.filter((processIdx) => hasDisplayableProcessMessage(messages[processIdx]));
-                const finalAssistant = messages[finalAssistantIdx] as AssistantMessage;
-                const finalSplit = splitFinalAssistantBlocks(finalAssistant);
-                const finalProcessMessage = finalSplit.processBlocks.length > 0
-                  ? withAssistantBlocks(finalAssistant, finalSplit.processBlocks, { omitUsage: true })
-                  : null;
-                const finalAnswerMessage = finalSplit.answerBlocks.length > 0 || getAssistantErrorMessage(finalAssistant)
-                  ? withAssistantBlocks(finalAssistant, finalSplit.answerBlocks)
-                  : null;
-
-                const processCount = visibleProcessIndices.length + (finalProcessMessage ? 1 : 0);
-                if (processCount > 0) {
-                  const hasFileChanges = visibleProcessIndices.some((processIdx) => {
-                    const processMessage = messages[processIdx];
-                    return processMessage.role === "assistant"
-                      && hasVisibleToolOutput(getDisplayableAssistantBlocks(processMessage as AssistantMessage));
-                  }) || hasVisibleToolOutput(finalSplit.processBlocks);
-
-                  if (hasFileChanges) {
-                    for (const processIdx of visibleProcessIndices) {
-                      rendered.push(() => renderMessage(processIdx, { keyPrefix: "change-process" }));
-                    }
-                    if (finalProcessMessage) {
-                      rendered.push(() => renderMessage(finalAssistantIdx, { attachRef: false, keyPrefix: "change-process-final", messageOverride: finalProcessMessage, showTimestamp: false }));
-                    }
-                  } else {
-                    const processRefIdx = visibleProcessIndices
-                      .map((processIdx) => visibleRefIndexByMessage.get(processIdx))
-                      .find((value): value is number => typeof value === "number")
-                      ?? (finalAnswerMessage ? undefined : visibleRefIndexByMessage.get(finalAssistantIdx));
-                    rendered.push(
-                      () => (
-                        <div
-                          key={`process-group-${userIdx}-${finalAssistantIdx}`}
-                          ref={processRefIdx === undefined ? undefined : (el) => { messageRefs.current[processRefIdx] = el; }}
-                          className="chat-message-shell"
-                        >
-                          <ProcessDetailsGroup
-                            messageCount={processCount}
-                            t={t}
-                            toolCallCount={countToolCalls(messages, visibleProcessIndices) + countToolCallBlocks(finalSplit.processBlocks)}
-                          >
-                            {visibleProcessIndices.map((processIdx) => renderMessage(processIdx, { attachRef: false, keyPrefix: "process" }))}
-                            {finalProcessMessage && renderMessage(finalAssistantIdx, { attachRef: false, keyPrefix: "process-final", messageOverride: finalProcessMessage, showTimestamp: false })}
-                          </ProcessDetailsGroup>
-                        </div>
-                      ),
-                    );
-                  }
-                }
-
-                if (finalAnswerMessage) {
-                  rendered.push(() => renderMessage(finalAssistantIdx, { messageOverride: finalAnswerMessage }));
-                }
-                for (let renderIdx = finalAssistantIdx + 1; renderIdx < endIdx; renderIdx++) {
-                  rendered.push(() => renderMessage(renderIdx));
-                }
-                idx = endIdx;
-              }
-              const { startIndex, hasMore } = getVisibleRenderWindow(rendered.length, visibleCount);
-              return (
-                <>
-                  {hasMore && (
-                     <div ref={sentinelRef} className="py-3 text-center text-xs text-text-muted">
-                       {t("chat.loadEarlier", { count: startIndex })}
-                    </div>
-                  )}
-                  {rendered.slice(startIndex).map((render) => render())}
-                </>
-              );
-            })()}
+            <ChatHistory
+              messages={messages} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
+              isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
+              lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
+              modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}
+              onFork={handleFork} onNavigate={handleNavigate} onEditContent={handleEditContent}
+              sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation}
+            />
             {streamState.isStreaming && streamState.streamingMessage && (
               <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} />
             )}
@@ -1160,7 +766,6 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
             <ChatMinimap
               messages={messages}
               scrollContainer={scrollContainerRef}
-              messageRefs={messageRefs}
               onRevealHistory={revealHistoryForMinimap}
             />
           </RenderErrorBoundary>
@@ -1173,7 +778,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
             <button
               type="button"
               className="chat-scroll-to-bottom"
-              onClick={handleScrollToBottom}
+              onClick={jumpToBottom}
               aria-label={t(liveOutputFollowPaused ? "chat.resumeAutoScroll" : "chat.scrollToBottom")}
               title={t(liveOutputFollowPaused ? "chat.resumeAutoScroll" : "chat.scrollToBottom")}
             >

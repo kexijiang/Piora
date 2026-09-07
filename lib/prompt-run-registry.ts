@@ -65,6 +65,10 @@ export function getActivePromptRun(sessionId: string): PromptRunIdentity | undef
   } : undefined;
 }
 
+export function getActivePromptRunStartedAt(sessionId: string): number | undefined {
+  return getRuns().get(sessionId)?.startedAt;
+}
+
 export function requirePromptToolIdentity(sessionId: string, toolCallId: string): PromptToolIdentity {
   if (!toolCallId) throw new Error("Harmony tool execution is missing its tool-call identity.");
   const run = getRuns().get(sessionId);

@@ -195,7 +195,7 @@ export function CompanionSettingsDialog({
               <AliIcon name="robot" size={18} />
             </span>
             <div className={styles.copy}>
-              <div className={styles.label}>{t("companion.showCompanion")}</div>
+              <div data-settings-id="companion.show" className={styles.label}>{t("companion.showCompanion")}</div>
               <div className={styles.description}>{t("companion.showCompanionDescription")}</div>
             </div>
             <button
@@ -215,7 +215,7 @@ export function CompanionSettingsDialog({
               <AliIcon name="pushpin" size={18} />
             </span>
             <div className={styles.copy}>
-              <div className={styles.label}>{t("companion.alwaysOnTop")}</div>
+              <div data-settings-id="companion.alwaysOnTop" className={styles.label}>{t("companion.alwaysOnTop")}</div>
               <div className={styles.description}>{t("companion.alwaysOnTopDescription")}</div>
             </div>
             <button
@@ -236,7 +236,7 @@ export function CompanionSettingsDialog({
               <AliIcon name="activity" size={18} />
             </span>
             <div className={styles.copy}>
-              <div className={styles.label}>{t("companion.idleTricks")}</div>
+              <div data-settings-id="companion.idle" className={styles.label}>{t("companion.idleTricks")}</div>
               <div className={styles.description}>{t("companion.idleTricksDescription")}</div>
             </div>
             <button
@@ -254,7 +254,7 @@ export function CompanionSettingsDialog({
           <div className={styles.modeCard} data-available={desktopMode ? "true" : "false"}>
             <span className={styles.modeIcon} aria-hidden="true"><AliIcon name="layout" size={16} /></span>
             <div className={styles.copy}>
-              <div className={styles.label}>{t("companion.desktopMode")}</div>
+              <div data-settings-id="companion.desktop" className={styles.label}>{t("companion.desktopMode")}</div>
               <div className={styles.description}>{t("companion.desktopModeDescription")}</div>
             </div>
             <span className={styles.modeBadge}>
@@ -266,7 +266,7 @@ export function CompanionSettingsDialog({
           <section className={styles.section} aria-labelledby="companion-model-title">
             <div className={styles.sectionHeader}>
               <div>
-                <div className={styles.sectionTitle} id="companion-model-title">{t("companion.model.title")}</div>
+                <div className={styles.sectionTitle} id="companion-model-title" data-settings-id="companion.model">{t("companion.model.title")}</div>
                 <div className={styles.sectionDescription}>{t("companion.model.description")}</div>
               </div>
             </div>
@@ -349,7 +349,7 @@ export function CompanionSettingsDialog({
           <section className={`${styles.section} ${styles.petStudio}`} aria-labelledby="companion-installed-pets-title">
             <div className={styles.sectionHeader}>
               <div>
-                <div className={styles.sectionTitle} id="companion-installed-pets-title">{t("companion.petAppearance")}</div>
+                <div className={styles.sectionTitle} id="companion-installed-pets-title" data-settings-id="companion.appearance">{t("companion.petAppearance")}</div>
                 <div className={styles.sectionDescription}>{t("companion.petAppearanceDescription")}</div>
               </div>
               <span className={styles.bundledCount}>{t("companion.bundledCount", { count: bundledPets.length + 1 })}</span>

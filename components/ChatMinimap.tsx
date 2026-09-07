@@ -1,48 +1,17 @@
 "use client";
-
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type FocusEvent,
-  type RefObject,
-} from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { AgentMessage, TextContent, UserMessage } from "@/lib/types";
 import { AliIcon } from "./AliIcon";
+import { VirtualList, type VirtualListHandle } from "./VirtualList";
 import styles from "./ChatMinimap.module.css";
 
 interface Props {
   messages: AgentMessage[];
   scrollContainer: RefObject<HTMLDivElement | null>;
-  messageRefs: RefObject<(HTMLDivElement | null)[]>;
-  onRevealHistory: () => void;
+  onRevealHistory: (userIndex: number) => void;
 }
-
-const MAX_NODE_GAP = 44;
-const MINIMAP_PADDING = 16;
-const PREVIEW_HIDE_DELAY = 180;
-const NAVIGATION_ACTIVE_LOCK_MS = 1400;
 const TIMELINE_PINNED_STORAGE_KEY = "piora:chat-timeline-pinned:v1";
-
-interface TurnInfo {
-  preview: string;
-  scrollTop: number | null;
-}
-
-interface NodeInfo {
-  topRatio: number;
-  targetTurn: TurnInfo;
-  index: number;
-}
-
-interface NodeLayout {
-  nodes: NodeInfo[];
-  gap: number;
-}
-
 function getUserPreview(message: UserMessage): string {
   // Content blocks restored from older session files can be missing or hold
   // non-string text; flatten defensively so the minimap can never crash the
@@ -58,370 +27,100 @@ function getUserPreview(message: UserMessage): string {
   return content.replace(/\s+/g, " ").trim();
 }
 
-function createTurnNodes(turns: TurnInfo[]): NodeInfo[] {
-  return turns.map((turn, index) => ({
-    topRatio: 0,
-    targetTurn: turn,
-    index,
-  }));
-}
 
-function layoutNodes(allNodes: NodeInfo[], minimapHeight: number): NodeLayout {
-  if (allNodes.length === 0) return { nodes: [], gap: MAX_NODE_GAP };
-
-  const height = Math.max(1, minimapHeight);
-  const usableHeight = Math.max(0, height - MINIMAP_PADDING * 2);
-  if (allNodes.length === 1) {
-    return {
-      nodes: [{ ...allNodes[0], topRatio: MINIMAP_PADDING / height }],
-      gap: MAX_NODE_GAP,
-    };
-  }
-
-  const gap = Math.min(MAX_NODE_GAP, usableHeight / (allNodes.length - 1));
-  return {
-    nodes: allNodes.map((node, index) => ({
-      ...node,
-      topRatio: (MINIMAP_PADDING + index * gap) / height,
-    })),
-    gap,
-  };
-}
-
-export function ChatMinimap({
-  messages,
-  scrollContainer,
-  messageRefs,
-  onRevealHistory,
-}: Props) {
+export const ChatMinimap = memo(function ChatMinimap({ messages, scrollContainer, onRevealHistory }: Props) {
   const { t } = useI18n();
   const [visible, setVisible] = useState(false);
-  const [allNodes, setAllNodes] = useState<NodeInfo[]>([]);
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const [minimapHeight, setMinimapHeight] = useState(600);
+  const [height, setHeight] = useState(600);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewPinned, setPreviewPinned] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const previewListRef = useRef<HTMLDivElement>(null);
-  const previewItemRefs = useRef(new Map<number, HTMLButtonElement>());
-  const allNodesRef = useRef<NodeInfo[]>([]);
-  const messagesRef = useRef(messages);
-  const previewHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const measureThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const activeNodeLockRef = useRef<{ index: number; until: number } | null>(null);
-  const pendingNavigationRef = useRef<number | null>(null);
-
-  messagesRef.current = messages;
-
-  useEffect(() => {
-    try {
-      setPreviewPinned(localStorage.getItem(TIMELINE_PINNED_STORAGE_KEY) === "true");
-    } catch {
-      // Storage can be unavailable in hardened browser contexts.
+  const root = useRef<HTMLDivElement>(null);
+  const previewList = useRef<HTMLDivElement>(null);
+  const previewHandle = useRef<VirtualListHandle>(null);
+  const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const activeLock = useRef(0);
+  const users = useMemo(() => {
+    const result: string[] = [];
+    for (const message of messages) {
+      if (message.role !== "user") continue;
+      result.push(getUserPreview(message));
     }
+    return result;
+  }, [messages]);
+  const keys = useMemo(() => users.map((_, index) => String(index)), [users]);
+  const sampledIndices = useMemo(() => {
+    const capacity = Math.max(2, Math.floor((height - 32) / 18));
+    const count = Math.min(users.length, capacity);
+    const samples = new Set<number>();
+    for (let i = 0; i < count; i++) samples.add(count === 1 ? 0 : Math.round(i * (users.length - 1) / (count - 1)));
+    if (users.length) samples.add(Math.min(activeIndex, users.length - 1));
+    return [...samples].sort((a, b) => a - b);
+  }, [activeIndex, height, users.length]);
+  useEffect(() => {
+    try { setPreviewPinned(localStorage.getItem(TIMELINE_PINNED_STORAGE_KEY) === "true"); } catch { /* Optional preference. */ }
   }, []);
-
-  const nodeLayout = useMemo(
-    () => layoutNodes(allNodes, minimapHeight),
-    [allNodes, minimapHeight],
-  );
-  const { nodes: positionedNodes, gap: nodeGap } = nodeLayout;
-
-  const lockActiveNode = useCallback((index: number) => {
-    activeNodeLockRef.current = {
-      index,
-      until: Date.now() + NAVIGATION_ACTIVE_LOCK_MS,
+  useEffect(() => {
+    const scrollEl = scrollContainer.current;
+    if (!scrollEl) return;
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      setVisible(users.length > 0 && scrollEl.scrollHeight > scrollEl.clientHeight + 20);
+      if (root.current) setHeight(root.current.clientHeight);
+      if (Date.now() < activeLock.current) return;
+      const focus = scrollEl.getBoundingClientRect().top + scrollEl.clientHeight * 0.3;
+      let closest: number | undefined;
+      let distance = Infinity;
+      // Only mounted user rows are measured. No full-history scan on scroll.
+      for (const element of scrollEl.querySelectorAll<HTMLElement>("[data-chat-user-index]")) {
+        const nextDistance = Math.abs(element.getBoundingClientRect().top - focus);
+        if (nextDistance < distance) { distance = nextDistance; closest = Number(element.dataset.chatUserIndex); }
+      }
+      if (closest !== undefined) setActiveIndex(closest);
     };
-    setActiveIndex(index);
-  }, []);
-
-  const syncActiveNode = useCallback((scrollEl: HTMLDivElement, nextNodes: NodeInfo[]) => {
-    const activeLock = activeNodeLockRef.current;
-    if (activeLock && Date.now() < activeLock.until) {
-      setActiveIndex(activeLock.index);
-      return;
-    }
-    activeNodeLockRef.current = null;
-
-    const measuredNodes = nextNodes.filter((node) => node.targetTurn.scrollTop !== null);
-    if (measuredNodes.length === 0) {
-      setActiveIndex(null);
-      return;
-    }
-
-    const focusTop = scrollEl.scrollTop + scrollEl.clientHeight * 0.3;
-    const nextActiveNode = measuredNodes.reduce((bestNode, node) => (
-      Math.abs((node.targetTurn.scrollTop ?? 0) - focusTop)
-        < Math.abs((bestNode.targetTurn.scrollTop ?? 0) - focusTop)
-        ? node
-        : bestNode
-    ), measuredNodes[0]);
-    setActiveIndex(nextActiveNode.index);
-  }, []);
-
-  const updateScroll = useCallback(() => {
-    const scrollEl = scrollContainer.current;
-    if (!scrollEl) return;
-    const currentNodes = allNodesRef.current;
-    const hasUserMessages = messagesRef.current.some((message) => message.role === "user");
-    setVisible(hasUserMessages && scrollEl.scrollHeight - scrollEl.clientHeight > 20);
-    syncActiveNode(scrollEl, currentNodes);
-  }, [scrollContainer, syncActiveNode]);
-
-  const measureNodes = useCallback(() => {
-    if (measureThrottleRef.current) return;
-    measureThrottleRef.current = setTimeout(() => {
-      measureThrottleRef.current = null;
-      const scrollEl = scrollContainer.current;
-      const minimapEl = containerRef.current;
-      if (!scrollEl || !minimapEl) return;
-
-      const refs = messageRefs.current;
-      const containerRect = scrollEl.getBoundingClientRect();
-      const turns: TurnInfo[] = [];
-      let refIndex = 0;
-
-      for (const message of messagesRef.current) {
-        if (message.role !== "user" && message.role !== "assistant") continue;
-        const element = refs?.[refIndex] ?? null;
-        refIndex += 1;
-        if (message.role !== "user") continue;
-
-        const elementRect = element?.getBoundingClientRect();
-        turns.push({
-          preview: getUserPreview(message as UserMessage),
-          scrollTop: elementRect
-            ? elementRect.top - containerRect.top + scrollEl.scrollTop
-            : null,
-        });
-      }
-
-      const nextNodes = createTurnNodes(turns);
-      setMinimapHeight(minimapEl.clientHeight);
-      allNodesRef.current = nextNodes;
-      setAllNodes(nextNodes);
-      setVisible(nextNodes.length > 0 && scrollEl.scrollHeight - scrollEl.clientHeight > 20);
-      syncActiveNode(scrollEl, nextNodes);
-
-      const pendingIndex = pendingNavigationRef.current;
-      const pendingNode = pendingIndex === null ? null : nextNodes[pendingIndex];
-      if (pendingNode?.targetTurn.scrollTop !== null && pendingNode?.targetTurn.scrollTop !== undefined) {
-        pendingNavigationRef.current = null;
-        lockActiveNode(pendingNode.index);
-        scrollEl.scrollTo({
-          top: Math.max(0, pendingNode.targetTurn.scrollTop - scrollEl.clientHeight * 0.3),
-          behavior: "smooth",
-        });
-      }
-    }, 120);
-  }, [lockActiveNode, messageRefs, scrollContainer, syncActiveNode]);
-
-  useEffect(() => {
-    const scrollEl = scrollContainer.current;
-    if (!scrollEl) return;
-    scrollEl.addEventListener("scroll", updateScroll, { passive: true });
-    return () => scrollEl.removeEventListener("scroll", updateScroll);
-  }, [scrollContainer, updateScroll]);
-
-  useEffect(() => {
-    const scrollEl = scrollContainer.current;
-    if (!scrollEl) return;
-    const syncLayout = () => {
-      measureNodes();
-      updateScroll();
-    };
-    const resizeObserver = new ResizeObserver(syncLayout);
-    resizeObserver.observe(scrollEl);
-    if (scrollEl.firstElementChild) resizeObserver.observe(scrollEl.firstElementChild);
-    syncLayout();
-    return () => {
-      resizeObserver.disconnect();
-      if (measureThrottleRef.current) {
-        clearTimeout(measureThrottleRef.current);
-        measureThrottleRef.current = null;
-      }
-    };
-  }, [measureNodes, scrollContainer, updateScroll]);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      measureNodes();
-      updateScroll();
-    }, 50);
-    return () => clearTimeout(timeout);
-  }, [messages.length, measureNodes, updateScroll]);
-
-  const scrollToNode = useCallback((node: NodeInfo, behavior: ScrollBehavior = "smooth") => {
-    const scrollEl = scrollContainer.current;
-    if (!scrollEl) return;
-    lockActiveNode(node.index);
-    if (node.targetTurn.scrollTop === null) {
-      pendingNavigationRef.current = node.index;
-      onRevealHistory();
-      return;
-    }
-    scrollEl.scrollTo({
-      top: Math.max(0, node.targetTurn.scrollTop - scrollEl.clientHeight * 0.3),
-      behavior,
-    });
-  }, [lockActiveNode, onRevealHistory, scrollContainer]);
-
-  const cancelPreviewHide = useCallback(() => {
-    if (!previewHideTimerRef.current) return;
-    clearTimeout(previewHideTimerRef.current);
-    previewHideTimerRef.current = null;
-  }, []);
-
-  const showPreview = useCallback(() => {
-    cancelPreviewHide();
-    setPreviewOpen(true);
-  }, [cancelPreviewHide]);
-
-  const schedulePreviewHide = useCallback(() => {
-    if (previewPinned) return;
-    cancelPreviewHide();
-    previewHideTimerRef.current = setTimeout(() => {
-      previewHideTimerRef.current = null;
-      setPreviewOpen(false);
-    }, PREVIEW_HIDE_DELAY);
-  }, [cancelPreviewHide, previewPinned]);
-
-  const togglePreviewPinned = useCallback(() => {
-    setPreviewPinned((current) => {
-      const next = !current;
-      try {
-        localStorage.setItem(TIMELINE_PINNED_STORAGE_KEY, String(next));
-      } catch {
-        // Keep the in-memory preference when storage is unavailable.
-      }
-      if (next) {
-        cancelPreviewHide();
-        setPreviewOpen(true);
-      }
-      return next;
-    });
-  }, [cancelPreviewHide]);
-
-  const handleBlurCapture = useCallback((event: FocusEvent<HTMLDivElement>) => {
-    if (event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget)) return;
-    schedulePreviewHide();
-  }, [schedulePreviewHide]);
-
-  useEffect(() => () => cancelPreviewHide(), [cancelPreviewHide]);
-
-  useEffect(() => {
-    if (!previewOpen || activeIndex === null) return;
-    const previewList = previewListRef.current;
-    const activeItem = previewItemRefs.current.get(activeIndex);
-    if (!previewList || !activeItem) return;
-    const targetTop = activeItem.offsetTop - (previewList.clientHeight - activeItem.offsetHeight) / 2;
-    previewList.scrollTop = Math.max(0, targetTop);
-  }, [activeIndex, previewOpen]);
-
+    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    scrollEl.addEventListener("scroll", schedule, { passive: true });
+    const observer = new ResizeObserver(schedule);
+    observer.observe(scrollEl);
+    if (scrollEl.firstElementChild) observer.observe(scrollEl.firstElementChild);
+    const mutation = new MutationObserver(schedule);
+    mutation.observe(scrollEl, { childList: true, subtree: true });
+    update();
+    return () => { observer.disconnect(); mutation.disconnect(); scrollEl.removeEventListener("scroll", schedule); if (frame) cancelAnimationFrame(frame); };
+  }, [scrollContainer, users.length, visible]);
+  useEffect(() => { if ((previewOpen || previewPinned) && users.length) previewHandle.current?.scrollToKey(String(activeIndex)); }, [activeIndex, previewOpen, previewPinned, users.length]);
+  useEffect(() => () => { clearTimeout(hideTimer.current); }, []);
+  const scrollToNode = useCallback((index: number) => {
+    const target = Math.max(0, Math.min(users.length - 1, index));
+    activeLock.current = Date.now() + 1_000;
+    setActiveIndex(target);
+    onRevealHistory(target);
+    // A completed jump should expose the message's controls. A pinned preview
+    // remains visible through previewPinned, while transient hover UI closes.
+    setPreviewOpen(false);
+  }, [onRevealHistory, users.length]);
+  const showPreview = () => { clearTimeout(hideTimer.current); setPreviewOpen(true); };
+  const hidePreview = () => { clearTimeout(hideTimer.current); hideTimer.current = setTimeout(() => setPreviewOpen(false), 180); };
   if (!visible) return null;
-
-  const lastNodeTop = positionedNodes.length > 0
-    ? positionedNodes[positionedNodes.length - 1].topRatio * minimapHeight
-    : MINIMAP_PADDING;
-  const railHeight = Math.max(1, lastNodeTop - MINIMAP_PADDING);
-
-  return (
-    <div
-      ref={containerRef}
-      className={styles.root}
-      data-testid="chat-timeline"
-      onMouseEnter={showPreview}
-      onMouseLeave={schedulePreviewHide}
-      onFocusCapture={showPreview}
-      onBlurCapture={handleBlurCapture}
-    >
-      <div
-        className={styles.track}
-        style={{ top: MINIMAP_PADDING, height: railHeight }}
-        aria-hidden="true"
-      />
-
-      {positionedNodes.map((node) => {
-        const isActive = activeIndex === node.index;
-        const previewText = node.targetTurn.preview || t("chat.timelineAttachmentOnly");
-        return (
-          <button
-            key={node.index}
-            type="button"
-            className={styles.node}
-            data-minimap-node-index={node.index}
-            data-minimap-node-active={isActive ? "true" : undefined}
-            aria-current={isActive ? "true" : undefined}
-            aria-label={t("chat.timelineJump", {
-              index: node.index + 1,
-              text: previewText,
-            })}
-            title={previewText}
-            onClick={() => scrollToNode(node)}
-            style={{
-              top: `${node.topRatio * 100}%`,
-              height: Math.max(14, nodeGap),
-            }}
-          >
-            <span className={styles.dot} aria-hidden="true" />
-          </button>
-        );
-      })}
-
-      {previewOpen || previewPinned ? (
-        <div className={styles.preview} data-minimap-preview-box="" data-pinned={previewPinned ? "true" : undefined}>
-          <div className={styles.previewHeader}>
-            <div className={styles.previewHeading}>
-              <span className={styles.previewTitle}>{t("chat.timeline")}</span>
-              <span className={styles.previewCount}>{t("chat.timelineCount", { count: allNodes.length })}</span>
-            </div>
-            <button
-              type="button"
-              className={styles.pinButton}
-              data-active={previewPinned ? "true" : undefined}
-              aria-pressed={previewPinned}
-              aria-label={t(previewPinned ? "chat.timelineUnpin" : "chat.timelinePin")}
-              title={t(previewPinned ? "chat.timelineUnpin" : "chat.timelinePin")}
-              onClick={togglePreviewPinned}
-            >
-              <AliIcon name="pushpin" size={14} />
-            </button>
-          </div>
-          <div ref={previewListRef} className={styles.previewList}>
-            {allNodes.map((node) => {
-              const isActive = activeIndex === node.index;
-              const previewText = node.targetTurn.preview || t("chat.timelineAttachmentOnly");
-              return (
-                <button
-                  key={node.index}
-                  ref={(element) => {
-                    if (element) previewItemRefs.current.set(node.index, element);
-                    else previewItemRefs.current.delete(node.index);
-                  }}
-                  type="button"
-                  className={styles.previewItem}
-                  data-minimap-preview-user={node.index}
-                  data-active={isActive ? "true" : undefined}
-                  aria-current={isActive ? "true" : undefined}
-                  title={previewText}
-                  onClick={() => scrollToNode(node)}
-                >
-                  <span className={styles.previewNumber} aria-hidden="true">
-                    {String(node.index + 1).padStart(2, "0")}
-                  </span>
-                  <span className={styles.previewText}>{previewText}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-export function useMessageRefs(count: number): RefObject<(HTMLDivElement | null)[]> {
-  const refs = useRef<(HTMLDivElement | null)[]>([]);
-  refs.current = Array(count).fill(null).map((_, index) => refs.current[index] ?? null);
-  return refs;
-}
+  return <div ref={root} className={styles.root} data-testid="chat-timeline" onMouseEnter={showPreview} onMouseLeave={hidePreview} onFocusCapture={showPreview}
+    onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) hidePreview(); }}>
+    <div className={styles.track} style={{ top: 16, height: Math.max(1, Math.min(height - 32, (users.length - 1) * 44)) }} aria-hidden="true" />
+    {sampledIndices.map((index) => <button key={index} type="button" className={styles.node} data-minimap-node-index={index} data-minimap-node-active={activeIndex === index ? "true" : undefined}
+      aria-current={activeIndex === index ? "true" : undefined} aria-label={t("chat.timelineJump", { index: index + 1, text: users[index] || t("chat.timelineAttachmentOnly") })}
+      title={users[index] || t("chat.timelineAttachmentOnly")} onClick={() => scrollToNode(index)}
+      onKeyDown={(event) => { if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); scrollToNode(activeIndex + (event.key === "ArrowDown" ? 1 : -1)); } }}
+      style={{ top: 16 + index * Math.min(44, (height - 32) / Math.max(1, users.length - 1)), height: 14 }}><span className={styles.dot} aria-hidden="true" /></button>)}
+    {previewOpen || previewPinned ? <div className={styles.preview} data-minimap-preview-box="" data-pinned={previewPinned ? "true" : undefined}>
+      <div className={styles.previewHeader}><div className={styles.previewHeading}><span className={styles.previewTitle}>{t("chat.timeline")}</span><span className={styles.previewCount}>{t("chat.timelineCount", { count: users.length })}</span></div>
+        <button type="button" className={styles.pinButton} data-active={previewPinned ? "true" : undefined} aria-pressed={previewPinned} aria-label={t(previewPinned ? "chat.timelineUnpin" : "chat.timelinePin")}
+          onClick={() => { const next = !previewPinned; setPreviewPinned(next); try { localStorage.setItem(TIMELINE_PINNED_STORAGE_KEY, String(next)); } catch { /* Optional preference. */ } }}><AliIcon name="pushpin" size={14} /></button>
+      </div>
+      <div ref={previewList} className={styles.previewList}>
+        <VirtualList keys={keys} estimate={38} scrollContainer={previewList} handleRef={previewHandle} renderItem={(_key, index) =>
+          <button type="button" className={styles.previewItem} data-minimap-preview-user={index} data-active={activeIndex === index ? "true" : undefined} aria-current={activeIndex === index ? "true" : undefined}
+            title={users[index]} onClick={() => scrollToNode(index)}><span className={styles.previewNumber} aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><span className={styles.previewText}>{users[index] || t("chat.timelineAttachmentOnly")}</span></button>} />
+      </div>
+    </div> : null}
+  </div>;
+});

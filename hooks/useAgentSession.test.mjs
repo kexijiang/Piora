@@ -184,9 +184,9 @@ test("pins a newly selected session to the bottom while async content settles", 
     source.indexOf("const handleScrollPositionChange"),
   );
 
-  assert.match(pinSource, /new ResizeObserver\(schedulePin\)/);
-  assert.match(pinSource, /container\.addEventListener\("load", schedulePin, true\)/);
-  assert.match(pinSource, /pinToBottom\(\)[\s\S]*schedulePin\(\)/);
+  assert.match(pinSource, /followChatBottom\(container, \(\) => scrollToBottom\("instant"\)\)/);
+  const jumpSource = source.slice(source.indexOf("const handleScrollToBottom"), source.indexOf("const scrollUserMsgToTop"));
+  assert.match(jumpSource, /startInitialBottomPin\(\)/);
   assert.match(userIntentSource, /stopInitialBottomPin\(\)/);
 });
 

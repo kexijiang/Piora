@@ -5,6 +5,7 @@ import reactHooks from "eslint-plugin-react-hooks";
 const eslintConfig = [
   {
     ignores: [
+      ".verification/**",
       "desktop/dist/**",
       "desktop/release/**",
       "Piora-*-win-x64/**",

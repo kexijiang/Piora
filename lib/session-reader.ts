@@ -30,7 +30,6 @@ async function loadAllSessions(): Promise<SessionInfo[]> {
   }));
 
   return piSessions.map((s) => {
-    cacheSessionPath(s.id, s.path);
     const projectless = isProjectlessChatCwd(s.cwd);
     const cwd = projectless ? getProjectlessChatWorkspace() : s.cwd;
     const project = !projectless && s.cwd ? projectByCwd.get(s.cwd) : undefined;
@@ -69,9 +68,9 @@ export async function listAllSessions(): Promise<SessionInfo[]> {
   const loadPromise = loadAllSessions().then((data) => {
     // An invalidation may happen while the scan is in flight. Do not let that
     // older result repopulate the cache after a session mutation.
-    if ((globalThis.__piSessionListGeneration ?? 0) === generation) {
-      globalThis.__piSessionListCache = { data, ts: Date.now() };
-    }
+    if ((globalThis.__piSessionListGeneration ?? 0) !== generation) return listAllSessions();
+    for (const session of data) cacheSessionPath(session.id, session.path);
+    globalThis.__piSessionListCache = { data, ts: Date.now() };
     return data;
   });
   const trackedPromise = loadPromise.finally(() => {

@@ -1,6 +1,8 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { confirmSessionDeletion } from "../confirm-session-deletion";
+import { requestSessionDeletion } from "@/lib/session-delete-client";
 import { useI18n } from "@/hooks/useI18n";
 import { useTaskStatus } from "@/hooks/useTaskStatus";
 import {
@@ -87,7 +89,7 @@ export const TaskRow = memo(function TaskRow({
   isUnread?: boolean;
   onClick: () => void;
   onRenamed?: () => void;
-  onDeleted?: (session: SessionInfo) => void;
+  onDeleted?: (session: SessionInfo, sessionIds?: string[]) => void;
   depth?: number;
   hasChildren?: boolean;
   collapsed?: boolean;
@@ -105,9 +107,11 @@ export const TaskRow = memo(function TaskRow({
   const [hovered, setHovered] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const renamePending = useRef(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
   const [optimizingTitle, setOptimizingTitle] = useState(false);
   const [titleOptimizationError, setTitleOptimizationError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -131,25 +135,35 @@ export const TaskRow = memo(function TaskRow({
   const startRename = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     setRenameValue(title);
+    setRenameError(null);
     setTitleOptimizationError(null);
     setRenaming(true);
     setTimeout(() => inputRef.current?.select(), 0);
   }, [title]);
 
   const commitRename = useCallback(async () => {
-    if (optimizingTitle) return;
+    if (optimizingTitle || renamePending.current) return;
     const name = renameValue.trim();
-    setRenaming(false);
-    if (name === title) return;
+    if (name === title) { setRenaming(false); return; }
+    renamePending.current = true;
+    setRenameError(null);
     try {
-      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, {
+      const response = await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
       });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${response.status}`);
+      }
+      setRenaming(false);
       onRenamed?.();
-    } catch {
-      // Preserve the current row and let the next refresh retry.
+    } catch (error) {
+      setRenameError(error instanceof Error ? error.message : String(error));
+      setRenaming(true);
+    } finally {
+      renamePending.current = false;
     }
   }, [onRenamed, optimizingTitle, renameValue, session.id, title]);
 
@@ -198,40 +212,34 @@ export const TaskRow = memo(function TaskRow({
   }, []);
 
   const performDelete = useCallback(async () => {
-    setConfirmDelete(false);
+    if (deleting) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
-      await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
-      onDeleted?.(session);
-    } catch {
+      const expectedIds = await confirmSessionDeletion(session.id, title, t);
+      if (!expectedIds) return;
+      const result = await requestSessionDeletion(session.id, expectedIds);
+      onDeleted?.(session, result.sessionIds);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : String(error));
+    } finally {
       setDeleting(false);
     }
-  }, [onDeleted, session]);
+  }, [deleting, onDeleted, session, t, title]);
 
   const handleDeleteClick = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation();
-    setConfirmDelete(true);
-  }, []);
-
-  const handleDeleteConfirm = useCallback((event: React.MouseEvent) => {
     event.stopPropagation();
     void performDelete();
   }, [performDelete]);
 
-  const handleDeleteCancel = useCallback((event: React.MouseEvent) => {
-    event.stopPropagation();
-    setConfirmDelete(false);
-  }, []);
-
   const itemHeight = "max(31px, calc(var(--text-sm) + 16px))";
-  const rowBackground = confirmDelete
-    ? "color-mix(in srgb, var(--status-failed) 6%, transparent)"
-    : isSelected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent";
+  const mutationError = renameError || deleteError;
+  const rowBackground = isSelected ? "var(--bg-selected)" : hovered ? "var(--bg-hover)" : "transparent";
 
   return (
     <div
       className={`sidebar-session-row${isSelected ? " is-selected" : ""}`}
-      onClick={confirmDelete || renaming ? undefined : onClick}
+      onClick={deleting || renaming ? undefined : onClick}
       onMouseEnter={() => {
         setHovered(true);
         if (!isSelected && !isRunning) {
@@ -263,7 +271,9 @@ export const TaskRow = memo(function TaskRow({
       }}
       style={{
         position: "relative",
-        height: itemHeight,
+        height: mutationError ? "auto" : itemHeight,
+        minHeight: itemHeight,
+        flexWrap: mutationError ? "wrap" : "nowrap",
         width: "calc(100% - 12px)",
         margin: "2px 6px",
         boxSizing: "border-box",
@@ -271,7 +281,7 @@ export const TaskRow = memo(function TaskRow({
         alignItems: "center",
         paddingLeft: depth > 0 ? depth * 12 + 8 : 8,
         paddingRight: 5,
-        cursor: confirmDelete || renaming ? "default" : "pointer",
+        cursor: deleting || renaming ? "default" : "pointer",
         background: rowBackground,
         border: "1px solid transparent",
         borderRadius: 7,
@@ -281,40 +291,8 @@ export const TaskRow = memo(function TaskRow({
         overflow: "hidden",
       }}
     >
-      {confirmDelete ? (
-        <>
-          <div style={{ flex: 1, minWidth: 0, fontSize: "var(--text-sm)", color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {t("sidebar.deleteSession", { title: title.slice(0, 22) + (title.length > 22 ? "…" : "") })}
-          </div>
-          <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-            <button
-              onClick={handleDeleteConfirm}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 4,
-                minHeight: "max(26px, calc(var(--text-sm) + 14px))", padding: "0 8px",
-                background: "var(--status-failed)", border: "none",
-                borderRadius: 6, color: "var(--bg)", cursor: "pointer",
-                fontSize: "var(--text-sm)", fontWeight: 600, whiteSpace: "nowrap",
-              }}
-            >
-              <AliIcon name="delete" size={12} />
-              {t("sidebar.delete")}
-            </button>
-            <button
-              onClick={handleDeleteCancel}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                minHeight: "max(26px, calc(var(--text-sm) + 14px))", padding: "0 8px",
-                background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6,
-                color: "var(--text-muted)", cursor: "pointer", fontSize: "var(--text-sm)",
-                fontWeight: 500, whiteSpace: "nowrap",
-              }}
-            >
-              {t("sidebar.cancel")}
-            </button>
-          </div>
-        </>
-      ) : renaming ? (
+      {mutationError && <span role="alert" className={styles.mutationError}>{renameError || t("trash.failed", { error: deleteError! })}</span>}
+      {renaming ? (
         <div
           className={`${styles.renameEditor}${titleOptimizationError ? ` ${styles.renameEditorError}` : ""}`}
           onBlur={(event) => {
@@ -327,17 +305,19 @@ export const TaskRow = memo(function TaskRow({
             value={renameValue}
             onChange={(event) => {
               setRenameValue(event.target.value);
+              setRenameError(null);
               setTitleOptimizationError(null);
             }}
             onKeyDown={(event) => {
               if (event.key === "Enter") void commitRename();
               if (event.key === "Escape") {
                 cancelTitleOptimization();
+                setRenameError(null);
                 setRenaming(false);
               }
             }}
             autoFocus
-            aria-invalid={Boolean(titleOptimizationError)}
+            aria-invalid={Boolean(titleOptimizationError || renameError)}
           />
           <button
             className={`${styles.renameAiButton}${optimizingTitle ? ` ${styles.renameAiButtonLoading}` : ""}${titleOptimizationError ? ` ${styles.renameAiButtonError}` : ""}`}
@@ -403,7 +383,7 @@ export const TaskRow = memo(function TaskRow({
           <div
             aria-hidden={!hovered}
             style={{
-              position: "absolute", right: 4, top: 0, bottom: 0, zIndex: 2,
+              position: "absolute", right: 4, top: 0, height: itemHeight, zIndex: 2,
               display: "flex", alignItems: "center", gap: 4, paddingLeft: 14,
               opacity: hovered ? 1 : 0, visibility: hovered ? "visible" : "hidden",
               pointerEvents: hovered ? "auto" : "none",
@@ -440,7 +420,7 @@ export const TaskRow = memo(function TaskRow({
           }}
           onArchive={() => onToggleArchived?.()}
           onDuplicate={() => onDuplicate?.()}
-          onDelete={() => setConfirmDelete(true)}
+          onDelete={() => void performDelete()}
           onClose={() => setMenuAnchor(null)}
         />
       )}

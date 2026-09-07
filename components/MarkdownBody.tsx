@@ -7,6 +7,7 @@ import { encodeFilePathForApi } from "@/lib/file-paths";
 import { parseAnsiLine } from "@/lib/ansi";
 import { markdownRemarkPlugins, normalizeDisplayMath, normalizeTextHighlights } from "@/lib/markdown";
 import { useMarkdownRehypePlugins } from "@/hooks/useMarkdownRehypePlugins";
+import { rehypeAssistantEmphasis } from "@/lib/markdown-emphasis";
 
 export { preloadMarkdownMathRenderer, preloadMarkdownRawHtmlParser } from "@/hooks/useMarkdownRehypePlugins";
 
@@ -56,7 +57,11 @@ export interface MarkdownBodyProps {
 
 export function MarkdownBody({ children, className, isStreaming, cwd, onOpenFile }: MarkdownBodyProps) {
   const normalizedMarkdown = useMemo(() => normalizeTextHighlights(normalizeDisplayMath(children)), [children]);
-  const rehypePlugins = useMarkdownRehypePlugins(normalizedMarkdown);
+  const baseRehypePlugins = useMarkdownRehypePlugins(normalizedMarkdown);
+  const isAssistantMessage = className?.split(/\s+/).includes("markdown-assistant-message") ?? false;
+  const rehypePlugins = useMemo(() => isAssistantMessage
+    ? [...(baseRehypePlugins ?? []), rehypeAssistantEmphasis]
+    : baseRehypePlugins, [baseRehypePlugins, isAssistantMessage]);
   // Stable renderer identities keep stateful blocks mounted across message hover updates.
   const components = useMemo<Components>(() => ({
     text({ children }) {

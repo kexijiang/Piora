@@ -82,7 +82,7 @@ export function HarmonyStorageSettings() {
   };
 
   const field = (key: keyof StoragePaths, label: string, description: string) => (
-    <label style={{ display: "grid", gap: 7 }}>
+    <label data-settings-id={key === "screenshotDirectory" ? "harmony.screenshots" : "harmony.recordings"} style={{ display: "grid", gap: 7 }}>
       <span style={{ display: "grid", gap: 2 }}>
         <strong style={{ color: "var(--text)", fontSize: "var(--text-sm)" }}>{label}</strong>
         <small style={{ color: "var(--text-dim)", lineHeight: 1.45 }}>{description}</small>

@@ -1,7 +1,8 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SessionManager, SettingsManager, type AgentSessionServices } from "@earendil-works/pi-coding-agent";
 import { randomUUID } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
+import { assertSessionNotMutating, drainSessionFileOperations, runSessionFileOperation, trackSessionFileOperation } from "./session-mutation";
 import { resolve } from "node:path";
 import { validateAgentImages } from "./image-attachments";
 import { invalidateModelsCache } from "./models-cache";
@@ -168,6 +169,8 @@ export class AgentSessionWrapper {
   // set before the async SDK call so two callers cannot both observe idle.
   private promptAdmissionBusy = false;
   private stopping = false;
+  private abortCleanupTask: Promise<void> = Promise.resolve();
+  private shutdownTask: Promise<void> = Promise.resolve();
   private abortGeneration = 0;
   private promptTasks = new Set<Promise<void>>();
   private lastPromptFailed = false;
@@ -796,6 +799,7 @@ export class AgentSessionWrapper {
   }
 
   async send(command: Record<string, unknown>): Promise<unknown> {
+    if (command.type !== "abort" && command.type !== "get_state") assertSessionNotMutating(this.sessionId);
     this.resetIdleTimer();
     this.flushPendingProjectCapabilitySettings();
     const type = command.type as string;
@@ -804,6 +808,10 @@ export class AgentSessionWrapper {
       throw new Error(`RPC command ${type} is disabled by the device-control runtime profile.`);
     }
     if (this.shouldWaitForExtensions(type)) await this.waitForExtensionsBound();
+    if (type !== "abort" && type !== "get_state") {
+      assertSessionNotMutating(this.sessionId);
+      if (!this._alive) throw new Error("Session has been closed");
+    }
 
     if (type === "prompt" || type === "steer" || type === "follow_up") {
       if (this.stopping || abortGeneration !== this.abortGeneration) {
@@ -954,7 +962,7 @@ export class AgentSessionWrapper {
         const cleanupTask = finishPromptRun(promptRun, "abort");
         if (this.activePromptRun?.runId === promptRun?.runId) this.activePromptRun = undefined;
 
-        void Promise.allSettled([abortTask, compactionTask, bashTask, queueTask, cleanupTask, ...uiTasks, ...this.promptTasks]).then((results) => {
+        this.abortCleanupTask = Promise.allSettled([abortTask, compactionTask, bashTask, queueTask, cleanupTask, ...uiTasks, ...this.promptTasks]).then((results) => {
           for (const result of results) {
             if (result.status === "rejected") {
               console.error("[pi-web] active run abort cleanup failed:", result.reason instanceof Error ? result.reason.message : result.reason);
@@ -1034,6 +1042,7 @@ export class AgentSessionWrapper {
       }
 
       case "fork": {
+        return runSessionFileOperation(this.sessionId, async () => {
         this.assertSessionIdle("fork");
         const entryId = command.entryId as string;
         const sessionManager = this.inner.sessionManager;
@@ -1070,10 +1079,12 @@ export class AgentSessionWrapper {
           forkedManager,
           copySessionSystemPromptBinding(sourceSystemPromptBinding),
         );
+        invalidateSessionListCache();
         try {
           await bindSessionAgentRuntimeProfile(newSessionId, this.runtimeProfile);
         } catch (profileError) {
           quarantineUnboundSessionFile(newSessionFile);
+          invalidateSessionListCache();
           throw profileError;
         }
         cacheSessionPath(newSessionId, newSessionFile);
@@ -1082,6 +1093,7 @@ export class AgentSessionWrapper {
         this.activePromptRun = undefined;
         this.destroy();
         return { cancelled: false, newSessionId, runtimeProfile: this.runtimeProfile };
+        });
       }
 
       case "navigate_tree": {
@@ -1347,20 +1359,32 @@ export class AgentSessionWrapper {
     }
   }
 
+  /** File mutations must wait for writers and extension shutdown to finish. */
+  async shutdownForFileMutation(): Promise<void> {
+    if (this._alive) {
+      await this.extensionBindingPromise?.catch(() => undefined);
+      await this.send({ type: "abort" });
+      await this.abortCleanupTask;
+      this.destroy();
+    }
+    await this.shutdownTask;
+  }
+
   destroy(): void {
     if (!this._alive) return;
     this._alive = false;
+    const writers: Promise<unknown>[] = [this.abortCleanupTask, ...this.promptTasks];
     if (this.promptRunning || this.inner.isStreaming) {
-      void this.inner.abort().catch(() => undefined);
+      writers.push(this.inner.abort());
     }
     if (this.idleTimer) clearTimeout(this.idleTimer);
     if (this.systemPromptReloadTimer) clearTimeout(this.systemPromptReloadTimer);
-    if (this.inner.isBashRunning) this.inner.abortBash();
+    if (this.inner.isBashRunning) writers.push(Promise.resolve(this.inner.abortBash()));
     const promptRun = this.activePromptRun;
     this.activePromptRun = undefined;
     this.activeCommandId = undefined;
     this.promptAdmissionBusy = false;
-    void finishPromptRun(promptRun, "destroy");
+    writers.push(finishPromptRun(promptRun, "destroy"));
     this.unsubscribe?.();
     for (const pending of this.pendingUiResponses.values()) pending.cancel();
     for (const id of Array.from(this.activeCustomUis.keys())) this.closeCustomUi(id, undefined);
@@ -1376,7 +1400,8 @@ export class AgentSessionWrapper {
     // AgentSession.dispose() is synchronous in the SDK, but extension
     // session_shutdown handlers are async. Run the lifecycle in order so a
     // session's handlers finish before its runner is invalidated and disposed.
-    void (async () => {
+    this.shutdownTask = trackSessionFileOperation(this.sessionId, (async () => {
+      await Promise.allSettled(writers);
       try {
         await this.inner.extensionRunner.emit?.({ type: "session_shutdown", reason: "shutdown" });
       } catch (error) {
@@ -1386,7 +1411,7 @@ export class AgentSessionWrapper {
           console.error("[pi-web] AgentSession dispose failed:", error instanceof Error ? error.message : error);
         }
       }
-    })();
+    })());
     notifyRunningChange();
   }
 
@@ -2044,12 +2069,21 @@ export function notifyRunningChange(): void {
  * thinking pin, and SDK scopedModels share one settings snapshot.
  * Pass options.toolNames to pre-configure active tools (empty = all disabled).
  */
+export async function stopRpcSessionsForFileMutation(ids: readonly string[]): Promise<void> {
+  const selected = new Set(ids);
+  // Starts admitted before the mutation lock may still be constructing a wrapper.
+  await Promise.allSettled([...getLocks()].filter(([key]) => ids.some((id) => key.endsWith(`:${id}`))).map(([, promise]) => promise));
+  await drainSessionFileOperations(ids);
+  await Promise.all([...getRegistry()].filter(([id]) => selected.has(id)).map(([, session]) => session.shutdownForFileMutation()));
+}
+
 export async function startRpcSession(
   sessionId: string,
   sessionFile: string,
   cwd: string,
   options: RpcSessionStartOptions = {},
 ): Promise<{ session: AgentSessionWrapper; realSessionId: string }> {
+  assertSessionNotMutating(sessionId);
   const { initialModel, thinkingLevel, capabilitySelection, systemPromptSelection } = options;
   const processRuntimeProfile = getAgentRuntimeProfile();
   const runtimeProfile = options.runtimeProfile ?? processRuntimeProfile;
@@ -2062,6 +2096,7 @@ export async function startRpcSession(
     readAgentProfileStore();
   }
   const toolNames = resolveAgentToolsForRuntimeProfile(runtimeProfile, options.toolNames);
+  assertSessionNotMutating(sessionId);
   const registry = getRegistry();
   const locks = getLocks();
 
@@ -2083,6 +2118,8 @@ export async function startRpcSession(
     initTheme();
     const agentDir = getAgentDir();
     const projectRoot = (await resolveProject(cwd)).projectRoot;
+    assertSessionNotMutating(sessionId);
+    if (sessionFile && !existsSync(sessionFile)) throw new Error("Session file no longer exists");
     const projectToolRecord = readProjectToolSettings(projectRoot);
 
     const sessionManager = sessionFile

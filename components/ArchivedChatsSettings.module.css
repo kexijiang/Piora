@@ -1,3 +1,15 @@
+.restoredNotice {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.restoredNotice a {
+  color: var(--accent);
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
 .page {
   height: 100%;
   overflow-y: auto;

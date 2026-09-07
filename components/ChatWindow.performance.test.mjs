@@ -3,27 +3,32 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const source = await readFile(new URL("./ChatWindow.tsx", import.meta.url), "utf8");
+const historySource = await readFile(new URL("./ChatHistory.tsx", import.meta.url), "utf8");
+const virtualSource = await readFile(new URL("./VirtualList.tsx", import.meta.url), "utf8");
 const inputSource = await readFile(new URL("./ChatInput.tsx", import.meta.url), "utf8");
 const scrollRailSource = await readFile(new URL("./ChatScrollRail.tsx", import.meta.url), "utf8");
 const globalCss = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
 const resizerSource = await readFile(new URL("../hooks/useResizablePanel.ts", import.meta.url), "utf8");
 
 test("memoizes historical chat metadata away from streaming token renders", () => {
-  assert.match(source, /const chatRenderMetadata = useMemo/);
-  assert.match(source, /\}, \[messages\]\);/);
-  assert.match(source, /const \{ toolResultsMap, visibleRefIndexByMessage, lastUserIdx, lastAnchorIdx \} = chatRenderMetadata/);
+  assert.match(historySource, /ChatHistory = memo/);
+  assert.match(historySource, /const metadata = useMemo/);
+  assert.match(historySource, /\}, \[messages\]\);/);
+  assert.match(source, /<ChatHistory/);
+  assert.doesNotMatch(historySource, /streamState|streamingMessage/);
 });
 
 test("long chat rows use browser rendering containment", () => {
-  assert.match(source, /className="chat-message-shell"/);
-  assert.match(source, /const rendered: Array<\(\) => ReactNode> = \[\]/);
-  assert.match(source, /rendered\.slice\(startIndex\)\.map\(\(render\) => render\(\)\)/);
-  assert.doesNotMatch(source, /const rendered: ReactNode\[\]/);
+  assert.match(historySource, /chat-message-shell/);
+  assert.match(historySource, /<VirtualList/);
+  assert.match(virtualSource, /ResizeObserver/);
+  assert.match(virtualSource, /indices\.map/);
 });
 
-test("materializes only the visible history tail", () => {
-  assert.match(source, /rendered\.push\(\(\) => renderMessage\(messageIndex\)\)/);
-  assert.match(source, /Build cheap factories for the full history/);
+test("search and timeline reveal bounded history windows", () => {
+  assert.match(source, /historyRef\.current\?\.revealEntry/);
+  assert.doesNotMatch(source, /setVisibleCount|messages\.length \* 2/);
+  assert.match(historySource, /list\.current\?\.scrollToKey/);
 });
 
 test("uses a responsive conversation column with resize and scroll rails", () => {
@@ -71,5 +76,6 @@ test("replaces the native conversation scrollbar with the draggable scroll rail"
 test("manual scrolling keeps the jump-to-latest control visible and resumes live follow", () => {
   assert.match(source, /const shouldShow = liveOutputFollowPaused \|\| shouldShowScrollToBottom/);
   assert.match(source, /t\(liveOutputFollowPaused \? "chat\.resumeAutoScroll" : "chat\.scrollToBottom"\)/);
-  assert.match(source, /onClick=\{handleScrollToBottom\}/);
+  assert.match(source, /onClick=\{jumpToBottom\}/);
+  assert.match(source, /historyRef\.current\?\.cancelNavigation\(\)/);
 });

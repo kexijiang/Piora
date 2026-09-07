@@ -144,14 +144,16 @@ export function RoomMessageNavigator({ messages, scrollContainer, messageRefs }:
 
   const scrollToNode = useCallback((node: NavigatorNode) => {
     const scrollEl = scrollContainer.current;
-    if (!scrollEl || node.scrollTop === null) return;
+    const target = messageRefs.current.get(node.id);
+    if (!scrollEl || !target) return;
     navigationLockRef.current = { index: node.index, until: Date.now() + 1_400 };
     setActiveIndex(node.index);
     scrollEl.scrollTo({
-      top: Math.max(0, node.scrollTop - scrollEl.clientHeight * 0.3),
-      behavior: "smooth",
+      top: Math.max(0, target.getBoundingClientRect().top - scrollEl.getBoundingClientRect().top + scrollEl.scrollTop - scrollEl.clientTop - scrollEl.clientHeight * 0.3),
+      behavior: "instant",
     });
-  }, [scrollContainer]);
+    setPreviewOpen(false);
+  }, [messageRefs, scrollContainer]);
 
   const cancelHide = useCallback(() => {
     if (!hideTimerRef.current) return;

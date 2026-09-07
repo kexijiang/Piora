@@ -227,7 +227,7 @@ export function SpeechSettings() {
       <section className={styles.card}>
         <div className={styles.toggleRow}>
           <div>
-            <h3>{t("speech.toggle")}</h3>
+            <h3 data-settings-id="speech.toggle">{t("speech.toggle")}</h3>
             <p>{t("speech.toggleDescription")}</p>
           </div>
           <button
@@ -248,7 +248,7 @@ export function SpeechSettings() {
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <div>
-            <h3>{t("speech.packTitle")}</h3>
+            <h3 data-settings-id="speech.pack">{t("speech.packTitle")}</h3>
             <p>{t("speech.packDescription")}</p>
           </div>
           <span className={status?.installed ? styles.ready : styles.notInstalled}>
@@ -288,7 +288,7 @@ export function SpeechSettings() {
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <div>
-            <h3>{t("speech.manualTitle")}</h3>
+            <h3 data-settings-id="speech.manual">{t("speech.manualTitle")}</h3>
             <p>{t("speech.manualDescription")}</p>
           </div>
           <span className={styles.manualBadge}>{t("speech.manualAlwaysAvailable")}</span>
@@ -363,7 +363,7 @@ export function SpeechSettings() {
       <section className={styles.card}>
         <div className={styles.cardHeader}>
           <div>
-            <h3>{t("speech.locationTitle")}</h3>
+            <h3 data-settings-id="speech.location">{t("speech.locationTitle")}</h3>
             <p>{t("speech.locationDescription")}</p>
           </div>
         </div>

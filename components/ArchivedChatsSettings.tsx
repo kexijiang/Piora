@@ -5,13 +5,15 @@ import { useI18n } from "@/hooks/useI18n";
 import type { SessionFlags } from "@/lib/session-flags";
 import { getProjectLabel } from "@/lib/session-project-groups";
 import type { SessionInfo } from "@/lib/types";
+import { requestSessionDeletion } from "@/lib/session-delete-client";
+import { confirmSessionDeletion } from "./confirm-session-deletion";
 import { requestConfirmation } from "./ConfirmDialog";
 import { AliIcon } from "./AliIcon";
 import styles from "./ArchivedChatsSettings.module.css";
 
 interface Props {
   onChanged?: () => void;
-  onSessionDeleted?: (session: SessionInfo) => void;
+  onSessionDeleted?: (session: SessionInfo, sessionIds?: string[]) => void;
 }
 
 interface ArchivedGroup {
@@ -45,24 +47,6 @@ function archivedGroups(sessions: SessionInfo[]): ArchivedGroup[] {
       const modified = (right.sessions[0]?.modified ?? "").localeCompare(left.sessions[0]?.modified ?? "");
       return modified || left.label.localeCompare(right.label);
     });
-}
-
-function deleteOrder(sessions: SessionInfo[]): SessionInfo[] {
-  const byId = new Map(sessions.map((session) => [session.id, session]));
-  const depth = (session: SessionInfo) => {
-    let current = session;
-    let value = 0;
-    const seen = new Set<string>();
-    while (current.parentSessionId && !seen.has(current.parentSessionId)) {
-      seen.add(current.parentSessionId);
-      const parent = byId.get(current.parentSessionId);
-      if (!parent) break;
-      value += 1;
-      current = parent;
-    }
-    return value;
-  };
-  return sessions.toSorted((left, right) => depth(right) - depth(left));
 }
 
 export function ArchivedChatsSettings({ onChanged, onSessionDeleted }: Props) {
@@ -153,18 +137,14 @@ export function ArchivedChatsSettings({ onChanged, onSessionDeleted }: Props) {
   }, [onChanged, setSessionBusy]);
 
   const deleteSession = useCallback(async (session: SessionInfo) => {
-    const confirmed = await requestConfirmation({
-      title: t("archive.deleteTitle"),
-      message: t("archive.deleteConfirm", { title: sessionTitle(session) }),
-      confirmLabel: t("archive.delete"),
-      tone: "danger",
-    });
-    if (!confirmed) return;
+    let expectedIds: string[] | null;
+    try { expectedIds = await confirmSessionDeletion(session.id, sessionTitle(session), t); }
+    catch (reason) { setError(String(reason)); return; }
+    if (!expectedIds) return;
     setSessionBusy(session.id, true);
     try {
-      const response = await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
-      if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
-      onSessionDeleted?.(session);
+      const result = await requestSessionDeletion(session.id, expectedIds);
+      onSessionDeleted?.(session, result.sessionIds);
       await loadArchivedChats();
       onChanged?.();
     } catch (reason) {
@@ -176,25 +156,34 @@ export function ArchivedChatsSettings({ onChanged, onSessionDeleted }: Props) {
 
   const deleteAll = useCallback(async () => {
     if (sessions.length === 0 || deletingAll) return;
-    const confirmed = await requestConfirmation({
-      title: t("archive.deleteAllTitle"),
-      message: t("archive.deleteAllConfirm", { count: sessions.length }),
-      confirmLabel: t("archive.deleteAll"),
-      tone: "danger",
-    });
-    if (!confirmed) return;
     setDeletingAll(true);
+    let changed = false;
+    let failure: string | null = null;
     try {
-      for (const session of deleteOrder(sessions)) {
-        const response = await fetch(`/api/sessions/${encodeURIComponent(session.id)}`, { method: "DELETE" });
-        if (!response.ok && response.status !== 404) throw new Error(`HTTP ${response.status}`);
-        onSessionDeleted?.(session);
+      const response = await fetch("/api/sessions/deletion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: sessions.map((session) => session.id) }) });
+      const preview = await response.json();
+      if (!response.ok) throw new Error(preview.error || `HTTP ${response.status}`);
+      const confirmed = await requestConfirmation({
+        title: t("archive.deleteAllTitle"),
+        message: t("trash.confirmAll", { count: preview.count, running: preview.running, unarchived: preview.unarchived }),
+        confirmLabel: t("archive.deleteAll"), tone: "danger",
+      });
+      if (!confirmed) return;
+      const deleted = new Set<string>();
+      const byId = new Map(sessions.map((session) => [session.id, session]));
+      for (const id of preview.rootIds as string[]) {
+        const session = byId.get(id);
+        if (!session || deleted.has(session.id)) continue;
+        const result = await requestSessionDeletion(session.id, preview.sessionIds);
+        result.sessionIds.forEach((id) => deleted.add(id));
+        changed = true;
+        onSessionDeleted?.(session, result.sessionIds);
       }
-      await loadArchivedChats();
-      onChanged?.();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      failure = reason instanceof Error ? reason.message : String(reason);
     } finally {
+      if (changed) { await loadArchivedChats(); onChanged?.(); }
+      if (failure) setError(failure);
       setDeletingAll(false);
     }
   }, [deletingAll, loadArchivedChats, onChanged, onSessionDeleted, sessions, t]);
@@ -228,7 +217,7 @@ export function ArchivedChatsSettings({ onChanged, onSessionDeleted }: Props) {
 
       {error ? (
         <div className={styles.error} role="alert">
-          <span>{t("archive.loadFailed", { error })}</span>
+          <span>{t("trash.failed", { error })}</span>
           <button type="button" onClick={() => void loadArchivedChats()}>{t("archive.retry")}</button>
         </div>
       ) : null}

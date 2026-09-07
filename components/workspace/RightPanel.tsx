@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { useI18n } from "@/hooks/useI18n";
@@ -21,6 +21,7 @@ export type RightPanelTab = "home" | "automation" | "review" | "files" | "comman
 export interface RightPanelHandle { focusActiveTab: () => void; focusFileSearch: () => void; }
 
 interface Props {
+  contextHeader?: ReactNode;
   activeTab: RightPanelTab;
   onActiveTabChange: (tab: RightPanelTab) => void;
   cwd: string | null;
@@ -208,6 +209,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
   };
 
   return <div className={`${styles.root} right-panel-surface`}>
+    {props.contextHeader}
     <div className={`${styles.panelChrome} right-panel-chrome`}>
       <div className={styles.toolTabs} role="tablist" aria-label={t("workspace.panelTabs")}>
         {openTools.map((toolId) => {
