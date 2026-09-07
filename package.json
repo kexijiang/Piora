@@ -112,7 +112,7 @@
     "json-bigint": "^1.0.0",
     "json5": "^2.2.3",
     "jszip": "^3.10.1",
-    "katex": "^0.16.47",
+    "katex": "^0.18.5",
     "mammoth": "^1.12.1",
     "mermaid": "^11.16.1",
     "next": "^16.3.3",
@@ -131,7 +131,7 @@
     "rrule": "^2.8.1",
     "sharp": "^0.35.3",
     "tar": "7.5.22",
-    "undici": "8.9.0"
+    "undici": "8.10.1"
   },
   "devDependencies": {
     "@electron/asar": "3.4.1",
@@ -142,7 +142,7 @@
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
     "eslint": "^9",
-    "eslint-config-next": "16.3.3",
+    "eslint-config-next": "16.3.4",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jiti": "^2.7.0",
     "postcss": "^8.5.25",
