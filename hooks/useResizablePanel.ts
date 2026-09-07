@@ -99,6 +99,7 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
   const panelRef = providedPanelRef ?? internalPanelRef;
   const dragRef = useRef<DragState | null>(null);
   const restoredRef = useRef(false);
+  const preferredWidthRef = useRef<number | null>(null);
   const [width, setWidth] = useState(defaultWidth);
   const [isResizing, setIsResizing] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
@@ -130,6 +131,7 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     const { forcePersist = false, persist = true } = commitOptions;
     const nextWidth = clampWidth(candidate);
     const changed = nextWidth !== widthRef.current;
+    if (persist) preferredWidthRef.current = nextWidth;
     applyLiveWidth(nextWidth);
     setWidth(nextWidth);
     if (persist && (changed || forcePersist)) writeStoredWidth(storageKey, nextWidth);
@@ -218,6 +220,7 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     const nextDefault = getDefaultWidth?.() ?? defaultWidth;
     if (followDefaultWidth) {
       clearStoredWidth(storageKey);
+      preferredWidthRef.current = null;
       applyResponsiveDefault();
       return;
     }
@@ -225,13 +228,18 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
   }, [applyResponsiveDefault, commitWidth, defaultWidth, followDefaultWidth, getDefaultWidth, storageKey]);
 
   const reclampWidth = useCallback(() => {
-    const hasManualWidth = dragRef.current !== null || readStoredWidth(storageKey) !== null;
+    // Settings hides the chat with display:none. Its zero-sized observation
+    // is not a user resize and must never replace the saved preference.
+    const panel = panelRef.current;
+    if (panel && (panel.getClientRects().length === 0 || panel.clientWidth === 0)) return;
+    const preferredWidth = preferredWidthRef.current ?? readStoredWidth(storageKey);
+    const hasManualWidth = dragRef.current !== null || preferredWidth !== null;
     if (followDefaultWidth && !hasManualWidth) {
       applyResponsiveDefault();
       return;
     }
-    commitWidth(widthRef.current, { persist: true });
-  }, [applyResponsiveDefault, commitWidth, followDefaultWidth, storageKey, widthRef]);
+    commitWidth(dragRef.current ? widthRef.current : preferredWidth ?? widthRef.current, { persist: false });
+  }, [applyResponsiveDefault, commitWidth, followDefaultWidth, panelRef, storageKey, widthRef]);
 
   const onKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? 32 : 12;
@@ -267,15 +275,13 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     restoredRef.current = true;
 
     const storedWidth = readStoredWidth(storageKey);
+    preferredWidthRef.current = storedWidth;
     if (storedWidth === null && followDefaultWidth) {
       applyResponsiveDefault();
       return;
     }
     const candidate = storedWidth ?? getDefaultWidth?.() ?? defaultWidth;
-    const restoredWidth = commitWidth(candidate, { persist: false });
-    if (storedWidth !== null && storedWidth !== restoredWidth) {
-      writeStoredWidth(storageKey, restoredWidth);
-    }
+    commitWidth(candidate, { persist: false });
   }, [applyResponsiveDefault, commitWidth, defaultWidth, followDefaultWidth, getDefaultWidth, storageKey]);
 
   useEffect(() => {

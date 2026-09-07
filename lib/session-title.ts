@@ -61,7 +61,7 @@ export function buildSessionTitleAgentOptions(
       // Title generation is intentionally a lightweight utility request. A
       // separately selected model should not inherit the conversation's deep
       // reasoning level and turn a short rename into a long-running task.
-      thinkingLevel: options.model ? "off" : state.thinkingLevel,
+      thinkingLevel: "off",
       tools: createShadowTools(state.tools),
       messages: state.messages,
     },

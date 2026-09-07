@@ -27,7 +27,9 @@ test("automatically optimizes an unnamed session title after a completed turn", 
   assert.match(appShell, /onlyIfUnnamed: true/);
   assert.match(appShell, /readSessionTitlePrompt\(window\.localStorage\)/);
   assert.match(appShell, /automaticTitleRequestsRef/);
-  assert.match(appShell, /if \(selectedSession\?\.id === sessionId && !selectedSession\.name\?\.trim\(\)\)/);
+  assert.match(appShell, /void optimizeUnnamedSessionTitle\(sessionId\)/);
+  assert.match(appShell, /titleRunningSessionsRef/);
+  assert.match(appShell, /window\.setInterval\(retry, 60_000\)/);
   assert.match(agentSession, /onAgentEnd\?\.\(sid\)/);
 });
 

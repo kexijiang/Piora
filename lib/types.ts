@@ -88,6 +88,8 @@ export interface AssistantMessage {
 
 export interface ToolResultMessage {
   role: "toolResult";
+  /** Transient output snapshot; never persisted to session history. */
+  isStreaming?: boolean;
   toolCallId: string;
   toolName?: string;
   content: (TextContent | ImageContent)[];

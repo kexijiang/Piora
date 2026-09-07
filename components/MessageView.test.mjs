@@ -27,6 +27,20 @@ function renderMessage(message, props = {}) {
   );
 }
 
+test("shell output is visible without expanding diagnostics, including live chunks", () => {
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "shell", toolName: "bash", input: { command: "echo hello" } }] };
+  for (const isStreaming of [true, false]) {
+    const html = renderMessage(message, { toolResults: new Map([["shell", {
+      role: "toolResult", toolCallId: "shell", isStreaming,
+      content: [{ type: "text", text: "hello from shell" }],
+    }]]) });
+    assert.match(html, /hello from shell/);
+    assert.match(html, /aria-expanded="true"/);
+  }
+  const local = renderMessage({ role: "bashExecution", command: "echo hello", output: "local live output", excludeFromContext: true });
+  assert.match(local, /local live output/);
+});
+
 test("collapses long user queries to an eight-line preview", () => {
   const content = Array.from({ length: 20 }, (_, index) => `log line ${index + 1}`).join("\n");
   const preview = getUserMessagePreview(content);

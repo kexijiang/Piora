@@ -204,6 +204,7 @@ export function AppShell() {
 
   const lastClaimedInitialPromptRef = useRef<string | null>(null);
   const automaticTitleRequestsRef = useRef<Set<string>>(new Set());
+  const titleRunningSessionsRef = useRef<Set<string>>(new Set());
   const [selectedRoom, setSelectedRoom] = useState<CollaborationRoom | null>(null);
   // When user clicks +, we only store the cwd — no fake session id
   const [newSessionCwd, setNewSessionCwd] = useState<string | null>(null);
@@ -1212,6 +1213,26 @@ export function AppShell() {
     }
   }, []);
 
+  useEffect(() => {
+    const running = new Set(runningTaskSnapshots.filter((snapshot) => snapshot.runtime !== "idle").map((snapshot) => snapshot.id));
+    for (const id of titleRunningSessionsRef.current) {
+      if (!running.has(id)) void optimizeUnnamedSessionTitle(id);
+    }
+    titleRunningSessionsRef.current = running;
+  }, [runningTaskSnapshots, optimizeUnnamedSessionTitle]);
+
+  // Recover missed completions after a reload and retry transient naming errors.
+  useEffect(() => {
+    if (!selectedSession || selectedSession.name?.trim() || selectedSession.messageCount < 2) return;
+    const id = selectedSession.id;
+    const retry = () => {
+      if (!titleRunningSessionsRef.current.has(id)) void optimizeUnnamedSessionTitle(id);
+    };
+    const initial = window.setTimeout(retry, 1_000);
+    const interval = window.setInterval(retry, 60_000);
+    return () => { window.clearTimeout(initial); window.clearInterval(interval); };
+  }, [selectedSession, optimizeUnnamedSessionTitle]);
+
   const handleAgentEnd = useCallback((sessionId: string) => {
     setExplorerRefreshKey((k) => k + 1);
     void fetch("/api/companion/task-records/capture", {
@@ -1223,13 +1244,13 @@ export function AppShell() {
     }).catch((error) => {
       console.warn("Companion task capture failed:", error);
     });
-    if (selectedSession?.id === sessionId && !selectedSession.name?.trim()) {
-      void optimizeUnnamedSessionTitle(sessionId);
-    }
+    // The completed run may belong to a background or newly promoted session.
+    // The endpoint checks the persisted name and protects manual renames.
+    void optimizeUnnamedSessionTitle(sessionId);
     const taskTitle = selectedSession?.name
       || (activeCwd ? getFileName(activeCwd) || activeCwd : undefined);
     void notifyCompletion(taskTitle, sessionId);
-  }, [activeCwd, notifyCompletion, optimizeUnnamedSessionTitle, selectedSession?.id, selectedSession?.name]);
+  }, [activeCwd, notifyCompletion, optimizeUnnamedSessionTitle, selectedSession?.name]);
 
   const handleTaskControlsChange = useCallback((controls: TaskControls | null) => {
     setTaskControls(controls);

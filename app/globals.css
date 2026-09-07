@@ -3939,17 +3939,17 @@ pre, code {
 }
 /* Model-authored emphasis stays distinct from prose in every appearance theme. */
 .markdown-assistant-message {
-  --chat-emphasis-color: color-mix(in srgb, var(--accent) 85%, var(--text));
-  --chat-highlight-color: color-mix(in srgb, var(--status-attention) 78%, var(--text));
+  --chat-emphasis-color: color-mix(in srgb, var(--text) 80%, var(--accent));
+  --chat-highlight-color: color-mix(in srgb, var(--text) 80%, var(--status-attention));
 }
 .markdown-assistant-message :is(h1, h2, h3, h4, h5, h6) {
-  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  color: var(--chat-emphasis-color);
 }
 .markdown-assistant-message :is(strong, b) {
   color: var(--chat-emphasis-color);
 }
 .markdown-assistant-message em {
-  color: color-mix(in srgb, var(--chat-highlight-color) 72%, var(--text-muted));
+  color: var(--chat-highlight-color);
 }
 .markdown-assistant-message .markdown-inline-code {
   color: var(--chat-inline-code-color);

@@ -432,7 +432,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [agentRunning, setAgentRunning] = useState(false);
   const [liveOutputFollowPaused, setLiveOutputFollowPaused] = useState(false);
   const [bashRunning, setBashRunning] = useState(false);
-  const [pendingBash, setPendingBash] = useState<{ command: string; excludeFromContext: boolean } | null>(null);
+  const [pendingBash, setPendingBash] = useState<{ command: string; excludeFromContext: boolean; output?: string } | null>(null);
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelEntry[]>([]);
   const [modelError, setModelError] = useState<string | null>(null);
@@ -1282,13 +1282,42 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             return [...prev, delivered];
           });
         } else if (completed) {
-          setMessages((prev) => [...prev, normalizeToolCalls(completed)]);
+          setMessages((prev) => {
+            const normalized = normalizeToolCalls(completed);
+            if (normalized.role === "toolResult") {
+              const index = prev.findIndex((message) => message.role === "toolResult" && message.toolCallId === normalized.toolCallId);
+              if (index >= 0) return prev.map((message, i) => i === index ? normalized : message);
+            }
+            return [...prev, normalized];
+          });
         }
         dispatch({ type: "reset" });
         setAgentPhase((phase) => bashRunningRef.current ? null : reduceAgentPhase(phase, event));
         if (completed?.role === "assistant" && sessionIdRef.current) {
           void refreshContextUsage(sessionIdRef.current);
         }
+        break;
+      }
+      case "bash_output": {
+        if (!bashRunningRef.current || typeof event.output !== "string") break;
+        const chunk = event.output;
+        setPendingBash((current) => current ? { ...current, output: `${current.output ?? ""}${chunk}`.slice(-100_000) } : current);
+        break;
+      }
+      case "tool_execution_update": {
+        if (!agentRunningRef.current) break;
+        const partial = event.partialResult as { content?: unknown } | undefined;
+        if (typeof event.toolCallId !== "string" || !Array.isArray(partial?.content)) break;
+        const update: AgentMessage = {
+          role: "toolResult", toolCallId: event.toolCallId,
+          isStreaming: true,
+          toolName: typeof event.toolName === "string" ? event.toolName : undefined,
+          content: partial.content,
+        };
+        setMessages((current) => {
+          const index = current.findIndex((message) => message.role === "toolResult" && message.toolCallId === update.toolCallId);
+          return index < 0 ? [...current, update] : current.map((message, i) => i === index ? update : message);
+        });
         break;
       }
       case "tool_execution_start": {

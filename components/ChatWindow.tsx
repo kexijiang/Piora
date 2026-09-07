@@ -4,7 +4,7 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type React
 import type { AgentMessage, AssistantContentBlock, AssistantMessage, BashExecutionMessage, CustomMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, ToolResultMessage } from "@/lib/types";
 import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
-import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, hasFileMutationBlocks, splitFinalAssistantBlocks } from "@/lib/message-display";
+import { countToolCallBlocks, getAssistantErrorMessage, getDisplayableAssistantBlocks, hasVisibleToolOutput, splitFinalAssistantBlocks } from "@/lib/message-display";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
@@ -1017,8 +1017,8 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
                   const hasFileChanges = visibleProcessIndices.some((processIdx) => {
                     const processMessage = messages[processIdx];
                     return processMessage.role === "assistant"
-                      && hasFileMutationBlocks(getDisplayableAssistantBlocks(processMessage as AssistantMessage));
-                  }) || hasFileMutationBlocks(finalSplit.processBlocks);
+                      && hasVisibleToolOutput(getDisplayableAssistantBlocks(processMessage as AssistantMessage));
+                  }) || hasVisibleToolOutput(finalSplit.processBlocks);
 
                   if (hasFileChanges) {
                     for (const processIdx of visibleProcessIndices) {
@@ -1108,7 +1108,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
                 message={{
                   role: "bashExecution",
                   command: pendingBash.command,
-                  output: "",
+                  output: pendingBash.output ?? "",
                   excludeFromContext: pendingBash.excludeFromContext,
                 } as BashExecutionMessage}
                 sessionId={session?.id ?? sessionIdRef.current ?? undefined}

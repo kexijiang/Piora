@@ -17,7 +17,7 @@ type TerminalMessage =
   | { type: "clear" }
   | { type: "status"; connected: boolean; shell: string };
 
-export function CommandPanel({ cwd }: { cwd?: string | null }) {
+export function CommandPanel({ cwd, onClose }: { cwd?: string | null; onClose?: () => void }) {
   const { t } = useI18n();
   const [command, setCommand] = useState("");
   const [history, setHistory] = useState<string[]>([]);
@@ -142,6 +142,7 @@ export function CommandPanel({ cwd }: { cwd?: string | null }) {
         <span><b>{t("commandPanel.title")}</b><small>{status}</small></span>
       </div>
       <div className={styles.terminalHeaderActions}>
+        {onClose ? <button type="button" onClick={onClose} title={t("workspace.closeTool")} aria-label={t("workspace.closeTool")}><AliIcon name="close" size={13} /></button> : null}
         {cwd ? <span className={styles.terminalCwd} title={cwd}><AliIcon name="folder" size={12} />{compactCwd(cwd)}</span> : null}
         <button type="button" aria-pressed={wrapOutput} onClick={() => setWrapOutput((value) => !value)} title={wrapOutput ? t("commandPanel.unwrap") : t("commandPanel.wrap")} aria-label={wrapOutput ? t("commandPanel.unwrap") : t("commandPanel.wrap")}><AliIcon name="code" size={13} /></button>
         <button type="button" aria-pressed={followOutput} onClick={() => setFollowOutput((value) => !value)} title={followOutput ? t("commandPanel.pauseFollow") : t("commandPanel.follow")} aria-label={followOutput ? t("commandPanel.pauseFollow") : t("commandPanel.follow")}><AliIcon name="arrowdown" size={13} /></button>

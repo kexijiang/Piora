@@ -1315,7 +1315,7 @@ export class AgentSessionWrapper {
         this.beginRun("command", command.command);
         const execution = this.inner.executeBash(
           command.command as string,
-          undefined,
+          (chunk: string) => this.emit({ type: "bash_output", output: chunk }),
           { excludeFromContext: command.excludeFromContext as boolean | undefined },
         );
         notifyRunningChange();

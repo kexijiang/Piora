@@ -876,12 +876,12 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 
 function ToolCallBlock({ block, result, duration, onOpenFile, onOpenAutomation }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(() => /^bash(?:\s|$)/.test(block.toolName));
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const diagnostics = safeJson({ input: block.input, result: result ?? null });
   const fileChange = getFileChangeInfo(block, result);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
-  const summary = summarizeToolCall(block.toolName, block.input, result, t);
+  const summary = summarizeToolCall(block.toolName, block.input, result?.isStreaming ? undefined : result, t);
   const automationDetails = getAutomationToolCardDetails(block, result);
 
   if (automationDetails) {
@@ -934,6 +934,7 @@ function ToolCallBlock({ block, result, duration, onOpenFile, onOpenAutomation }
       {/* ── Tool call header ── */}
       <button
         className="tool-call-toggle"
+        aria-expanded={expanded}
         onClick={(event) => togglePreservingScroll(event.currentTarget, () => setExpanded((value) => !value))}
         style={{
           display: "flex",
@@ -1522,6 +1523,7 @@ function BashExecutionView({ message, sessionId }: { message: BashExecutionMessa
     ? undefined
     : {
         role: "toolResult",
+        isStreaming: message.exitCode === undefined && !message.cancelled,
         toolCallId: block.toolCallId,
         toolName,
         content: displayOutput ? [{ type: "text", text: displayOutput }] : [],

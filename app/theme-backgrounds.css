@@ -68,6 +68,15 @@ html[data-app-background-active="true"] .workspace-main {
   background: transparent !important;
 }
 
+/* Give emphasis a stable local surface even over bright/dark artwork details. */
+html[data-app-background-active="true"] .markdown-assistant-message :is(strong, b, em) {
+  background: var(--bg);
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding-inline: 2px;
+}
+
 html[data-app-background-active="true"] .app-topbar {
   background: transparent !important;
   backdrop-filter: none;
