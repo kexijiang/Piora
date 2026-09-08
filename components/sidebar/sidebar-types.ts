@@ -67,7 +67,7 @@ declare global {
         moving: boolean;
         direction: "left" | "right" | null;
       }) => void) => () => void;
-      setCompanionHitTest?: (interactive: boolean) => Promise<boolean>;
+      setCompanionHitTest?: (region: { x: number; y: number; width: number; height: number } | null) => Promise<boolean>;
       companionAction?: (action: "focus-main" | "open-settings" | "open-panel" | "hide") => Promise<boolean>;
       getAutoLaunchState?: () => Promise<{
         supported: boolean;

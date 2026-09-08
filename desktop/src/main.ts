@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { SystemLauncher } from "./system-launcher";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { createConnection } from "node:net";
 import {
   app,
@@ -61,6 +62,7 @@ import { ensurePortableDesktopShortcut, type PortableShortcutResult } from "./po
 import { StandaloneServer, type ServerExit } from "./server-supervisor.js";
 import { fitBoundsToVisibleDisplays } from "./window-bounds.js";
 import { protectTransparentCompanion } from "./transparent-companion.js";
+import { guardCompanionWindow } from "./companion-window-guard.js";
 import {
   DesktopUpdateController,
   type DesktopUpdateState,
@@ -170,6 +172,7 @@ let companionPanelKeepVisibleUntilClose = false;
 let companionMoveTimer: NodeJS.Timeout | undefined;
 let companionMotionTimer: NodeJS.Timeout | undefined;
 let companionMotionRevision = 0;
+let companionWindowGuard: ReturnType<typeof guardCompanionWindow> | undefined;
 let companionLastAutonomousMotionAt = 0;
 let companionDragState: {
   pointerStart: { x: number; y: number };
@@ -1481,17 +1484,17 @@ function startCompanionWindowMotion(input: {
     }
     const elapsed = Date.now() - startedAt;
     const point = companionMotionPoint(plan, elapsed);
-    companionWindow.setPosition(point.x, point.y, false);
+    const placed = companionWindowGuard?.place(point);
     const nextFacingDirection = companionFacingDirection(plan, elapsed, facingDirection);
     if (nextFacingDirection !== facingDirection) {
       facingDirection = nextFacingDirection;
       emitCompanionMotionState(facingDirection);
     }
-    positionCompanionBubble({ ...bounds, x: point.x, y: point.y });
+    positionCompanionBubble(placed ?? { ...bounds, x: point.x, y: point.y });
     if (elapsed < plan.durationMs) return;
     const finalPoint = companionMotionPoint(plan, plan.durationMs);
-    companionWindow.setPosition(finalPoint.x, finalPoint.y, false);
-    positionCompanionBubble({ ...bounds, x: finalPoint.x, y: finalPoint.y });
+    const finalBounds = companionWindowGuard?.place(finalPoint);
+    positionCompanionBubble(finalBounds ?? { ...bounds, x: finalPoint.x, y: finalPoint.y });
     stopCompanionWindowMotion();
   }, 16);
   companionMotionTimer.unref?.();
@@ -1501,6 +1504,7 @@ function startCompanionWindowMotion(input: {
 function startCompanionWindowDrag(): boolean {
   if (!companionWindow || companionWindow.isDestroyed()) return false;
   stopCompanionWindowMotion();
+  companionWindowGuard?.setDragging(true);
   companionDragState = {
     pointerStart: screen.getCursorScreenPoint(),
     startingBounds: companionWindow.getBounds(),
@@ -1518,14 +1522,15 @@ function updateCompanionWindowDrag(): boolean {
     pointer,
     display.workArea,
   );
-  companionWindow.setPosition(target.x, target.y, false);
-  positionCompanionBubble(target);
+  companionWindowGuard?.setDragging(true);
+  positionCompanionBubble(companionWindowGuard?.place(target) ?? target);
   return true;
 }
 
 function finishCompanionWindowDrag(): boolean {
   const hadDrag = Boolean(companionDragState);
   companionDragState = undefined;
+  companionWindowGuard?.setDragging(false);
   return hadDrag;
 }
 
@@ -1609,6 +1614,9 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
 
   installRendererDiagnostics(window, "Companion", log);
   protectTransparentCompanion(window);
+  companionWindowGuard = guardCompanionWindow(window, screen, { width: COMPANION_COMPACT_WIDTH, height: COMPANION_COMPACT_HEIGHT });
+  window.webContents.setZoomFactor(1);
+  void window.webContents.setVisualZoomLevelLimits(1, 1);
 
   applyCompanionWindowAlwaysOnTop(window, companionAlwaysOnTop);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
@@ -1649,7 +1657,7 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
   });
   window.once("ready-to-show", () => {
     if (companionWindow === window && companionShouldBeVisible) {
-      window.setIgnoreMouseEvents(true, { forward: true });
+      companionWindowGuard?.sync();
       window.showInactive();
     }
   });
@@ -1672,6 +1680,7 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
     if (companionMoveTimer) clearTimeout(companionMoveTimer);
     companionMoveTimer = undefined;
     if (companionWindow === window) {
+      companionWindowGuard = undefined;
       stopCompanionWindowMotion();
       companionDragState = undefined;
       companionWindow = null;
@@ -1706,7 +1715,7 @@ function createCompanionBubbleWindow(url: URL, log: Logger): BrowserWindow {
   installRendererDiagnostics(window, "Companion", log);
   protectTransparentCompanion(window);
   applyCompanionWindowAlwaysOnTop(window, companionAlwaysOnTop);
-  window.setIgnoreMouseEvents(true, { forward: true });
+  window.setIgnoreMouseEvents(true);
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, requestedUrl) => { if (!isAllowedAppUrl(requestedUrl, url.origin)) event.preventDefault(); });
   window.on("closed", () => { if (companionBubbleWindow === window) companionBubbleWindow = null; });
@@ -1886,8 +1895,11 @@ function reconcileWindowToDisplays(window: BrowserWindow, minimumSize: { width: 
 function handleDisplayConfigurationChanged(): void {
   if (mainWindow) reconcileWindowToDisplays(mainWindow, { width: 640, height: 480 });
   if (companionWindow && !companionWindow.isDestroyed()) {
-    const bounds = companionWindow.getBounds();
-    reconcileWindowToDisplays(companionWindow, { width: bounds.width, height: bounds.height });
+    stopCompanionWindowMotion();
+    finishCompanionWindowDrag();
+    companionWindowGuard?.reset();
+    companionWindowGuard?.sync();
+    positionCompanionBubble();
   }
 }
 
@@ -2160,10 +2172,9 @@ function registerCompanionWindowHandlers(): void {
     });
   });
 
-  ipcMain.handle(COMPANION_HIT_TEST_CHANNEL, (event, interactive: unknown): boolean => {
-    if (!isTrustedCompanionWindowSender(event) || typeof interactive !== "boolean" || !companionWindow || companionWindow.isDestroyed()) return false;
-    companionWindow.setIgnoreMouseEvents(!interactive, { forward: true });
-    return true;
+  ipcMain.handle(COMPANION_HIT_TEST_CHANNEL, (event, region: unknown): boolean => {
+    if (!isTrustedCompanionWindowSender(event) || !companionWindow || companionWindow.isDestroyed()) return false;
+    return companionWindowGuard?.updateHitRegion(region) ?? false;
   });
 
   ipcMain.removeHandler(COMPANION_ACTION_CHANNEL);
@@ -2357,17 +2368,24 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
   const updated = Boolean(previousVersion) && firstLaunchOfVersion;
   const mediaDirectory = app.isPackaged ? join(process.resourcesPath, "startup") : resolve(__dirname, "../build/startup");
   const media = loadStartupMedia(mediaDirectory);
+  const startupPath = join(app.getPath("userData"), "startup.html");
+  const startupUrl = pathToFileURL(startupPath).href;
   let finishIntro!: () => void;
   const finished = new Promise<void>((resolveIntro) => { finishIntro = resolveIntro; });
+  // Start the watchdog before loading: a failed navigation never emits
+  // ready-to-show, so it must not be responsible for releasing startup.
+  const introTimer = setTimeout(finishIntro, STARTUP_MEDIA_TIMEOUT_MS);
+  introTimer.unref();
+  void finished.then(() => clearTimeout(introTimer));
   const continueIntro = (event: Electron.Event, target: string) => {
-    // The pre-service data document has no trusted IPC bridge. Only this exact
+    // The pre-service local document has no trusted IPC bridge. Only this exact
     // application-owned navigation can dismiss its animation.
     event.preventDefault();
     if (target === STARTUP_CONTINUE_URL) finishIntro();
   };
   window.webContents.on("will-navigate", continueIntro);
   window.webContents.once("did-navigate", (_event, target) => {
-    if (!target.startsWith("data:")) finishIntro();
+    if (target !== startupUrl) finishIntro();
   });
   window.once("closed", finishIntro);
   const ready = new Promise<number>((resolveReady) => {
@@ -2383,15 +2401,21 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
       }
       resolveReady(readyAt);
       if (!firstLaunchOfVersion || !media.video || PORTABLE_SMOKE_TEST) finishIntro();
-      else {
-        const introTimer = setTimeout(finishIntro, STARTUP_MEDIA_TIMEOUT_MS);
-        introTimer.unref();
-        void finished.then(() => clearTimeout(introTimer));
-      }
     });
   });
   const startupDocument = createStartupDocument({ chinese: app.getLocale().toLocaleLowerCase().startsWith("zh"), version: app.getVersion(), updated, ...media });
-  void window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(startupDocument)}`);
+  try {
+    // The embedded film exceeds Chromium's navigation URL limit. Loading the
+    // same local HTML from a file keeps media offline without a huge data URL.
+    writeFileSync(startupPath, startupDocument, { encoding: "utf8", mode: 0o600 });
+    void window.loadFile(startupPath).catch((error) => {
+      log.warn("Unable to load startup animation; continuing to the application", error);
+      finishIntro();
+    });
+  } catch (error) {
+    log.warn("Unable to prepare startup animation; continuing to the application", error);
+    finishIntro();
+  }
   void finished.then(() => { if (!window.isDestroyed()) window.webContents.removeListener("will-navigate", continueIntro); });
   return { window, ready, finished };
 }

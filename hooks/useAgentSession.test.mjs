@@ -200,7 +200,7 @@ test("keeps live session output pinned to the newest content", () => {
     source.indexOf("// Loading may publish the message array"),
   );
 
-  assert.match(livePinSource, /if \(!liveOutputAutoScrollEnabled \|\| !agentRunning \|\| loading\) return/);
+  assert.match(livePinSource, /if \(!liveOutputAutoScrollEnabled \|\| \(!agentRunning && !bashRunning\) \|\| loading\) return/);
   assert.match(livePinSource, /scrollToBottom\("instant"\)/);
   assert.match(livePinSource, /if \(!liveOutputFollowRef\.current\) return/);
   assert.match(livePinSource, /new ResizeObserver\(schedulePin\)/);

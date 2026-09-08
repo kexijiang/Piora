@@ -36,17 +36,21 @@ export function useTransferStation(enabled: boolean) {
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [enabled, refresh]);
-  const mutate = useCallback((method: "POST" | "PATCH", input: unknown, throwOnError = false): Promise<boolean> => {
+  const write = useCallback((method: "POST" | "PATCH", input: unknown): Promise<CompanionLibraryItem[]> => {
     const operation = queue.current.then(async () => {
       setPending(true); setError("");
       try {
         const items = await requestTransferItems(method, input);
-        setItems(items); setLoaded(true); return true;
-      } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); if (throwOnError) throw cause; return false; }
+        setItems(items); setLoaded(true); return items;
+      } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); throw cause; }
       finally { setPending(false); }
     });
     queue.current = operation.then(() => {}, () => {});
     return operation;
   }, []);
-  return { items, loaded, loading, pending, error, refresh, mutate };
+  const mutate = useCallback(async (method: "POST" | "PATCH", input: unknown, throwOnError = false): Promise<boolean> => {
+    try { await write(method, input); return true; }
+    catch (cause) { if (throwOnError) throw cause; return false; }
+  }, [write]);
+  return { items, loaded, loading, pending, error, refresh, mutate, write };
 }

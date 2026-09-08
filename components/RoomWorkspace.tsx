@@ -168,6 +168,8 @@ const RoomMessageList = memo(function RoomMessageList({
   onBrowser,
   onMention,
   runControls,
+  onRetry,
+  retryDisabled,
 }: {
   messages: RoomMessage[];
   members: Map<string, RoomMember>;
@@ -182,6 +184,8 @@ const RoomMessageList = memo(function RoomMessageList({
   onBrowser: (sessionId: string) => void;
   onMention: (name: string) => void;
   runControls: ReactNode;
+  onRetry: (content: string) => Promise<void>;
+  retryDisabled: boolean;
 }) {
   const entries = useMemo(() => roomConversationEntries(messages, activities), [messages, activities]);
   return (
@@ -219,7 +223,7 @@ const RoomMessageList = memo(function RoomMessageList({
             </div>
             <div className={styles.bubble}>
               {isUser
-                ? <CollapsibleUserContent message={message} cwd={room.projectRoot} sessionId={actorSessionId} />
+                ? <CollapsibleUserContent message={message} cwd={room.projectRoot} sessionId={actorSessionId} onRetry={onRetry} retryDisabled={retryDisabled} />
                 : <MarkdownBody cwd={room.projectRoot}>{message.content}</MarkdownBody>}
             </div>
           </div>
@@ -483,7 +487,7 @@ function useRoomScrollNavigation({
     setShowScrollToBottom(shouldShow);
   }, []);
 
-  const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = "instant") => {
     const element = messagesRef.current;
     if (!element) return;
     pinnedToBottomRef.current = true;
@@ -505,9 +509,17 @@ function useRoomScrollNavigation({
     const element = messagesRef.current;
     if (!element) return;
     element.addEventListener("scroll", syncScrollNavigation, { passive: true });
+    // Markdown, images and expandable tool results change height without adding
+    // a message. Keep an explicit jump attached to the real content bottom.
+    const resize = new ResizeObserver(() => {
+      if (pinnedToBottomRef.current) scrollToLatest("instant");
+      else syncScrollNavigation();
+    });
+    resize.observe(element);
+    if (element.firstElementChild) resize.observe(element.firstElementChild);
     syncScrollNavigation();
-    return () => element.removeEventListener("scroll", syncScrollNavigation);
-  }, [syncScrollNavigation]);
+    return () => { element.removeEventListener("scroll", syncScrollNavigation); resize.disconnect(); };
+  }, [scrollToLatest, syncScrollNavigation]);
 
   useEffect(() => {
     const force = forceScrollToBottomRef.current;
@@ -750,19 +762,20 @@ export function RoomWorkspace({
     return data;
   }, [room.id, updateRoom]);
 
-  const sendMessage = async () => {
-    const content = draft.trim();
+  const sendingMessage = useRef(false);
+  const sendMessage = useCallback(async (retryContent?: string) => {
+    const content = (retryContent ?? draft).trim();
     const sender = room.members.find((member) => member.memberId === room.coordination.coordinatorMemberId) ?? room.members[0];
-    if (!content || !sender || busy) return;
+    if (!content || !sender || busy || sendingMessage.current) return;
     requestScrollToLatest();
     if (new TextEncoder().encode(content).byteLength > TEAM_DEFAULTS.maxInputBytes) {
       setError("内容超过 256 KiB，请缩短后重试。");
       return;
     }
+    sendingMessage.current = true;
     setBusy(true);
     setError(null);
-    setDraft("");
-    setMentionQuery(null);
+    if (retryContent === undefined) { setDraft(""); setMentionQuery(null); }
     const targetSessionIds = resolveRoomChatTargets(room, content);
     setPresenceBySession((current) => {
       const next = new Map(current);
@@ -799,7 +812,7 @@ export function RoomWorkspace({
         });
       }
     } catch (reason) {
-      setDraft(content);
+      if (retryContent === undefined) setDraft(content);
       setPresenceBySession((current) => {
         const next = new Map(current);
         for (const sessionId of targetSessionIds) next.delete(sessionId);
@@ -807,10 +820,11 @@ export function RoomWorkspace({
       });
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
+      sendingMessage.current = false;
       setBusy(false);
       window.requestAnimationFrame(() => textareaRef.current?.focus());
     }
-  };
+  }, [draft, room, busy, requestScrollToLatest, postAction]);
 
   const createTeamRun = async () => {
     const objective = draft.trim();
@@ -1060,6 +1074,8 @@ export function RoomWorkspace({
               onBrowser={openMemberBrowser}
               onMention={mention}
               runControls={runControls}
+              onRetry={sendMessage}
+              retryDisabled={busy}
             />
             {showScrollToBottom ? <div className={styles.scrollToBottomLayer}>
               <button type="button" className={styles.scrollToBottom} onClick={() => scrollToLatest()} aria-label="滚动到最新消息" title="滚动到最新消息">

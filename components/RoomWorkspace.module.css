@@ -183,7 +183,7 @@
   flex: 1;
   padding: 22px max(20px, calc((100% - var(--room-column-width, 840px)) / 2)) 28px;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .scrollToBottomLayer {

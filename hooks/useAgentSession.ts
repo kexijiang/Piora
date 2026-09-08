@@ -29,7 +29,7 @@ import {
 } from "@/lib/session-capabilities";
 import { runModelChange } from "@/lib/model-change-coordinator";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
-import { getContentScrollMetrics, getLiveTailScrollLimit } from "@/lib/chat-scroll";
+import { getContentScrollMetrics, getLiveTailScrollLimit, scrollLiveTailWheel } from "@/lib/chat-scroll";
 import { followChatBottom } from "@/lib/chat-bottom-follow";
 import type {
   SessionSystemPromptBinding,
@@ -2028,7 +2028,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       || (event instanceof WheelEvent && isConversationViewport)
       || (event instanceof TouchEvent && isConversationViewport)
       || (event instanceof PointerEvent && Boolean(target?.closest(".chat-column-scroll-rail")));
-    if (liveOutputAutoScrollEnabled && agentRunningRef.current && isDirectScrollIntent) {
+    if ((agentRunningRef.current || bashRunningRef.current) && isDirectScrollIntent) completionScrollAllowedRef.current = false;
+    if (liveOutputAutoScrollEnabled && (agentRunningRef.current || bashRunningRef.current) && isDirectScrollIntent) {
       liveOutputFollowRef.current = false;
       setLiveOutputFollowPaused(true);
     }
@@ -2036,7 +2037,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const handleScrollPositionChange = useCallback(() => {
     if (clampLiveTailScroll()) return;
-    if (!agentRunningRef.current) return;
+    if (!agentRunningRef.current && !bashRunningRef.current) return;
     if (Date.now() < ignoreProgrammaticScrollUntilRef.current) return;
     if (Date.now() > userScrollIntentUntilRef.current) return;
     completionScrollAllowedRef.current = false;
@@ -2131,11 +2132,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    container.addEventListener("wheel", markUserScrollIntent, { passive: true });
+    const onWheel = (event: WheelEvent) => {
+      markUserScrollIntent(event);
+      scrollLiveTailWheel(container, event, liveTailPinnedScrollTopRef.current);
+    };
+    container.addEventListener("wheel", onWheel, { passive: false });
     container.addEventListener("touchstart", markUserScrollIntent, { passive: true });
     container.addEventListener("scroll", handleScrollPositionChange, { passive: true });
     return () => {
-      container.removeEventListener("wheel", markUserScrollIntent);
+      container.removeEventListener("wheel", onWheel);
       container.removeEventListener("touchstart", markUserScrollIntent);
       container.removeEventListener("scroll", handleScrollPositionChange);
     };
@@ -2144,7 +2149,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => stopInitialBottomPin, [stopInitialBottomPin]);
 
   useLayoutEffect(() => {
-    if (!liveOutputAutoScrollEnabled || !agentRunning || loading) return;
+    if (!liveOutputAutoScrollEnabled || (!agentRunning && !bashRunning) || loading) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -2173,7 +2178,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       container.removeEventListener("load", schedulePin, true);
       if (frame !== 0) cancelAnimationFrame(frame);
     };
-  }, [agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
+  }, [agentRunning, bashRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
 
   useLayoutEffect(() => {
     // Loading may publish the message array before the loading shell is
@@ -2190,7 +2195,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } else if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
       startInitialBottomPin();
-    } else if (!agentRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
+    } else if (!agentRunningRef.current && !bashRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
       scrollToBottom("smooth");
     }
   }, [messages.length, agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom, scrollUserMsgToTop, startInitialBottomPin]);

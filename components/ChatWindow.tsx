@@ -1,7 +1,8 @@
 "use client";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { AgentMessage, BashExecutionMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode } from "@/lib/types";
+import type { AgentMessage, BashExecutionMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, UserMessage } from "@/lib/types";
+import { prepareMessageRetry } from "@/lib/message-retry";
 import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { messageFingerprint } from "@/lib/chat-history";
@@ -183,6 +184,30 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     await handleSend(...args);
     onPromptSubmitted?.();
   }, [handleSend, onPromptSubmitted]);
+  const retryInFlight = useRef(false);
+  const [preparingRetry, setPreparingRetry] = useState(false);
+  const retrySession = useRef(session?.id);
+  retrySession.current = session?.id;
+  useEffect(() => {
+    retrySession.current = session?.id;
+    return () => { retrySession.current = undefined; };
+  }, [session?.id]);
+  const handleRetryMessage = useCallback(async (message: UserMessage, entryId?: string) => {
+    if (sessionBusy || retryInFlight.current) return;
+    const id = session?.id;
+    retryInFlight.current = true; setPreparingRetry(true);
+    try {
+      const payload = await prepareMessageRetry(message, async () => {
+        if (!id || !entryId) throw new Error(t("chat.longMessageUnavailable"));
+        const response = await fetch(`/api/sessions/${encodeURIComponent(id)}/entries/${encodeURIComponent(entryId)}/prompt-material`);
+        const data = await response.json();
+        if (!response.ok || typeof data.content !== "string") throw new Error(data.error ?? `HTTP ${response.status}`);
+        return data.content;
+      });
+      if (retrySession.current !== id) return;
+      await handleComposerSend(payload.message, payload.images);
+    } finally { retryInFlight.current = false; setPreparingRetry(false); }
+  }, [sessionBusy, session?.id, handleComposerSend, t]);
 
   useEffect(() => {
     if (!isNew || !initialPrompt || sessionBusy || isAutoModelSelection) return;
@@ -658,6 +683,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}
               onFork={handleFork} onNavigate={handleNavigate} onEditContent={handleEditContent}
+              onRetry={handleRetryMessage} retryDisabled={sessionBusy || preparingRetry}
               sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation}
             />
             {streamState.isStreaming && streamState.streamingMessage && (

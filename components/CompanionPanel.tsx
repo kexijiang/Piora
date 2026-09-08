@@ -39,7 +39,7 @@ const TOOLS: Array<{ id: Tab; icon: AliIconName; label: string; description: str
   { id: "json", icon: "code", label: "JSON 工具", description: "格式化、校验与文本转换", keywords: "json 格式化 转换 base64 url unicode" },
   { id: "tasks", icon: "check-circle", label: "待办清单", description: "记下要做的，一件件完成", keywords: "任务 待办 todo" },
   { id: "focus", icon: "timer", label: "专注时钟", description: "留一段时间，只做一件事", keywords: "番茄钟 专注 focus timer" },
-  { id: "library", icon: "archive", label: "中转站", description: "粘贴、拖入，随手暂存", keywords: "中转 暂存 收藏 资料 笔记 代码 命令 图片" },
+  { id: "library", icon: "archive", label: "中转站", description: "轻量 Markdown 编辑与自动保存", keywords: "中转 markdown 编辑 写作 文档 暂存 收藏 资料 笔记 代码 图片" },
 ];
 
 function emptyRuntimeState(): CompanionRuntimeState {

@@ -9,6 +9,9 @@ import type { RuntimeHomeEnvironment } from "./runtime-home";
 interface StoredItem extends CompanionLibraryItem { fileName?: string }
 export const MAX_TRANSFER_ITEMS = 200;
 export const MAX_TRANSFER_IMAGE_BYTES = 8 * 1024 * 1024;
+export class TransferDocumentConflict extends Error {
+  constructor() { super("这篇文档已在其他窗口修改。当前草稿已保留，请另存为新文档后再刷新。"); }
+}
 export function readTransferItems(environment: RuntimeHomeEnvironment = process.env): StoredItem[] {
   const { dataFile } = getPocketStorageInfo("library", environment);
   if (!existsSync(dataFile)) return [];
@@ -42,16 +45,18 @@ export function addTransferItem(input: { content: string; title?: string; kind?:
     item.title = input.title?.trim().slice(0, 120) || "暂存图片";
     imagePath = join(storage.directory, item.fileName);
     writeFileSync(imagePath, bytes, { flag: "wx", mode: 0o600 });
-  } else if (!input.content.trim() || input.content.length > 200_000) throw new Error("文字不能为空，且不能超过 200,000 字符。");
+  } else if ((!input.content.trim() && input.language !== "markdown") || input.content.length > 200_000) throw new Error("文字不能为空，且不能超过 200,000 字符。");
   try { writeItems([item, ...items], environment); }
   catch (error) { if (imagePath) unlinkSync(imagePath); throw error; }
   return item;
 }
-export function updateTransferItem(id: string, patch: { pinned?: boolean; title?: string; remove?: boolean }, environment: RuntimeHomeEnvironment = process.env) {
+export function updateTransferItem(id: string, patch: { pinned?: boolean; title?: string; remove?: boolean; content?: string; expectedUpdatedAt?: number }, environment: RuntimeHomeEnvironment = process.env) {
   const items = readTransferItems(environment);
   const item = items.find((entry) => entry.id === id);
   if (!item) throw new Error("内容已不存在，请刷新后重试。");
-  const next = patch.remove ? items.filter((entry) => entry.id !== id) : items.map((entry) => entry.id === id ? { ...entry, ...(typeof patch.pinned === "boolean" ? { pinned: patch.pinned } : {}), ...(patch.title?.trim() ? { title: patch.title.trim().slice(0, 120) } : {}), updatedAt: Date.now() } : entry);
+  if (patch.expectedUpdatedAt !== undefined && patch.expectedUpdatedAt !== item.updatedAt) throw new TransferDocumentConflict();
+  if (patch.content !== undefined && (item.kind === "image" || typeof patch.content !== "string" || patch.content.length > 200_000)) throw new Error("文档内容无效，最多支持 200,000 字符。");
+  const next = patch.remove ? items.filter((entry) => entry.id !== id) : items.map((entry) => entry.id === id ? { ...entry, ...(typeof patch.pinned === "boolean" ? { pinned: patch.pinned } : {}), ...(patch.title?.trim() ? { title: patch.title.trim().slice(0, 120) } : {}), ...(patch.content !== undefined ? { content: patch.content, language: "markdown" } : {}), updatedAt: Math.max(Date.now(), item.updatedAt + 1) } : entry);
   writeItems(next, environment);
   if (patch.remove && item.fileName && /^item-[a-f0-9-]+\.(png|jpeg|webp|gif)$/.test(item.fileName)) {
     try { unlinkSync(join(getPocketStorageInfo("library", environment).directory, item.fileName)); } catch { /* An orphan is safer than losing the manifest update. */ }

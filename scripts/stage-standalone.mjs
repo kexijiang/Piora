@@ -359,6 +359,9 @@ async function main() {
   const dependencyAssets = await collectRuntimeDependencyAssets([
     piAiProviderRuntimeRoot,
     hypiumRuntimeRoot,
+    // sharp resolves its versioned native bindings and optional platform
+    // packages dynamically; the static trace can omit those binaries.
+    join(projectRoot, "node_modules", "sharp"),
     join(projectRoot, "node_modules", "@modelcontextprotocol", "sdk"),
   ]);
   const runtimeAssetsByDestination = new Map(

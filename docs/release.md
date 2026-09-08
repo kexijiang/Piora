@@ -41,8 +41,8 @@ npm run verify:backgrounds
 For a beta candidate, validate metadata and generate reviewable notes before tagging:
 
 ```powershell
-node scripts/verify-release-metadata.mjs v0.4.41-beta.7 --prerelease
-node scripts/create-release-notes.mjs v0.4.41-beta.7 .verification/release-notes.md
+node scripts/verify-release-metadata.mjs v0.4.41-beta.8 --prerelease
+node scripts/create-release-notes.mjs v0.4.41-beta.8 .verification/release-notes.md
 ```
 
 Replace the example version with the actual candidate. Generated notes come from the matching CHANGELOG section; do not claim unperformed device or installation checks passed.
@@ -58,8 +58,8 @@ npm run dist:win:preview  # beta
 # npm run dist:linux     # stable Linux, on a Linux build machine
 npm run verify:package
 npm run licenses:package:check
-node scripts/verify-windows-update-artifacts.mjs desktop/release v0.4.41-beta.7
-node scripts/smoke-test-portable.mjs desktop/release/win-unpacked/Piora.exe --expected-version v0.4.41-beta.7 --packaged-runtime
+node scripts/verify-windows-update-artifacts.mjs desktop/release v0.4.41-beta.8
+node scripts/smoke-test-portable.mjs desktop/release/win-unpacked/Piora.exe --expected-version v0.4.41-beta.8 --packaged-runtime
 ```
 
 The staging script validates standalone output and matching static assets. Packaging archives the web runtime into `resources/web/runtime.asar`; native dependencies needing real paths, including the complete node-pty module and ConPTY helpers, live in the adjacent unpacked tree. Do not manually rearrange native binaries or reuse stale `.next` output.
@@ -74,9 +74,9 @@ After the source gates pass, commit the complete release input and push `main`. 
 
 ```powershell
 git push origin main
-git tag -a v0.4.41-beta.7 -m "Piora v0.4.41-beta.7"
-node scripts/verify-release-metadata.mjs v0.4.41-beta.7 --prerelease --require-origin-main
-git push origin v0.4.41-beta.7
+git tag -a v0.4.41-beta.8 -m "Piora v0.4.41-beta.8"
+node scripts/verify-release-metadata.mjs v0.4.41-beta.8 --prerelease --require-origin-main
+git push origin v0.4.41-beta.8
 gh run list --repo kexijiang/Piora --workflow harmony-preview.yml --limit 5
 ```
 

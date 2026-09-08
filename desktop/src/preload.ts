@@ -115,8 +115,8 @@ const runtime = Object.freeze({
     ipcRenderer.on("pi:companion-motion-state", handler);
     return () => ipcRenderer.removeListener("pi:companion-motion-state", handler);
   },
-  setCompanionHitTest(interactive: boolean): Promise<boolean> {
-    return ipcRenderer.invoke("pi:companion-hit-test", interactive) as Promise<boolean>;
+  setCompanionHitTest(region: { x: number; y: number; width: number; height: number } | null): Promise<boolean> {
+    return ipcRenderer.invoke("pi:companion-hit-test", region) as Promise<boolean>;
   },
   companionAction(action: "focus-main" | "open-settings" | "open-panel" | "hide"): Promise<boolean> {
     return ipcRenderer.invoke("pi:companion-window-action", action) as Promise<boolean>;

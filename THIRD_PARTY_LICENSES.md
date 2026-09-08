@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `24e558c61caabd62c1bfa44ba6837c970f157f9e7792f20fe99d39e61d892204`
+Lockfile SHA-256: `f488053d822b5e7dc21acf128993b9ae973052862ac50417c3ab38c03402804b`
 
-Unique locked packages: **1234**. Runtime packages: **795**. Build/development-only packages: **439**.
+Unique locked packages: **1242**. Runtime packages: **803**. Build/development-only packages: **439**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -76,7 +76,11 @@ Every locked package declares a license.
 | `@chevrotain/types` | `11.1.2` | Apache-2.0 | No |
 | `@codemirror/autocomplete` | `6.20.3` | MIT | No |
 | `@codemirror/commands` | `6.11.0` | MIT | No |
+| `@codemirror/lang-css` | `6.3.1` | MIT | No |
+| `@codemirror/lang-html` | `6.4.12` | MIT | No |
+| `@codemirror/lang-javascript` | `6.2.5` | MIT | No |
 | `@codemirror/lang-json` | `6.0.2` | MIT | No |
+| `@codemirror/lang-markdown` | `6.5.2` | MIT | No |
 | `@codemirror/language` | `6.12.4` | MIT | No |
 | `@codemirror/lint` | `6.9.7` | MIT | No |
 | `@codemirror/search` | `6.7.2` | MIT | No |
@@ -145,9 +149,13 @@ Every locked package declares a license.
 | `@jridgewell/trace-mapping` | `0.3.31` | MIT | No |
 | `@js-sdsl/ordered-map` | `4.4.2` | MIT | No |
 | `@lezer/common` | `1.5.2` | MIT | No |
+| `@lezer/css` | `1.3.6` | MIT | No |
 | `@lezer/highlight` | `1.2.3` | MIT | No |
+| `@lezer/html` | `1.3.13` | MIT | No |
+| `@lezer/javascript` | `1.5.4` | MIT | No |
 | `@lezer/json` | `1.0.3` | MIT | No |
 | `@lezer/lr` | `1.4.10` | MIT | No |
+| `@lezer/markdown` | `1.7.2` | MIT | No |
 | `@lobehub/icons` | `5.16.0` | MIT | No |
 | `@marijn/find-cluster-break` | `1.0.4` | MIT | No |
 | `@mariozechner/clipboard` | `0.3.9` | MIT | Yes |
