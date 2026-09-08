@@ -28,7 +28,7 @@ import { autoUpdater } from "electron-updater";
 import { ScheduledDesktopUpdater, parseUpdateSchedule, type UpdateSchedule } from "./update-schedule.js";
 import { readUpdateSchedule, writeUpdateSchedule } from "./desktop-state.js";
 import { readLastLaunchedVersion, writeLastLaunchedVersion } from "./desktop-state.js";
-import { createStartupDocument, loadStartupMedia, STARTUP_CINEMATIC_MS, STARTUP_CONTINUE_URL } from "./startup-scene.js";
+import { createStartupDocument, loadStartupMedia, STARTUP_MEDIA_TIMEOUT_MS, STARTUP_CONTINUE_URL } from "./startup-scene.js";
 import {
   companionFacingDirection,
   companionMotionPoint,
@@ -2384,7 +2384,7 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
       resolveReady(readyAt);
       if (!firstLaunchOfVersion || !media.video || PORTABLE_SMOKE_TEST) finishIntro();
       else {
-        const introTimer = setTimeout(finishIntro, STARTUP_CINEMATIC_MS);
+        const introTimer = setTimeout(finishIntro, STARTUP_MEDIA_TIMEOUT_MS);
         introTimer.unref();
         void finished.then(() => clearTimeout(introTimer));
       }

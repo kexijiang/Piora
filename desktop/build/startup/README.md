@@ -1,27 +1,24 @@
-# Polaris Expedition
+# Polaris Expedition / PX-06 / 2076
 
-Original Piora artwork, licensed under the repository MIT license. The rover,
-terrain, sky, camera movement, materials and lights were authored procedurally in
-Blender; no downloaded models or textures are used. This is a stylized fictional
-polar world inspired by the user's “rover on Polaris” concept.
+The active film uses the scene script supplied by the project owner and adapted
+for Blender 5.2.1 LTS. It depicts a fictional ice-rock world in the direction of
+Polaris. The rover, terrain, lettering, materials and effects are procedural;
+no downloaded models, textures or fonts are used.
 
-- `polaris-rover.mp4`: 1280×720, 24 fps, 8 seconds, H.264/yuv420p, no audio.
-- `polaris-rover.jpg`: first-frame poster and reduced-motion fallback.
-- `polaris-rover.blend`: editable Blender scene. Kept in Git but excluded from the installer.
-- `manifest.json`: asset sizes and SHA-256 hashes, checked by source tests.
+- `polaris-rover.mp4`: 1920×1080, 30 fps, 240 frames / 8 seconds, H.264/yuv420p,
+  fast-start, no audio.
+- `polaris-rover.jpg`: side-logo shot, used as the static fallback (the film opens
+  from black, so the first frame is unsuitable as a poster).
+- `polaris-rover.blend`: editable, compressed scene with the supplied script
+  embedded and all movement baked. Kept in Git, excluded from the installer.
+- `manifest.json`: dimensions, timing, poster frame, sizes and SHA-256 hashes.
 
-Rebuild using Blender 5.2.1 LTS and FFmpeg 7.1 (or compatible releases):
+See `scripts/blender/README.md` for reproducible rendering, encoding and checks.
+The source is `scripts/blender/piora_intro.py`. The installer ships only MP4/JPG;
+neither Blender nor Python is needed to play the startup film.
 
-```powershell
-blender -b -t 6 --python scripts/blender/polaris-rover.py -- --output .verification/polaris
-node scripts/encode-startup-video.mjs <path-to-ffmpeg> .verification/polaris
-```
-
-Use `--preview` after the Blender script arguments for a single composition
-preview. `--start N --end N` can rerender a frame range. Source scene rendering
-requires Blender; playback in Piora does not. The installer ships only MP4/JPG.
-
-The desktop startup screen has no network dependencies, offers Skip intro,
-pauses video for reduced-motion preferences and has an eight-second bounded
-intro on the first launch of a version. Later launches enter the workspace as
-soon as it is ready. A missing/unplayable video falls back to the poster/gradient.
+The desktop shows the complete frame without cropping or large overlaid titles,
+offers Skip intro, honors reduced-motion preferences, and continues after the
+film ends. A ten-second outer timeout prevents media initialization failures from
+blocking startup. Later launches of the same version enter the workspace as soon
+as it is ready.
