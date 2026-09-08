@@ -23,7 +23,7 @@ export function persistLazySessionManager(manager: LazySessionManager): string |
   const content = [header, ...manager.getEntries()]
     .map((entry) => JSON.stringify(entry))
     .join("\n") + "\n";
-  writeFileSync(sessionFile, content, { encoding: "utf8", flag: "wx" });
+  writeFileSync(sessionFile, content, { encoding: "utf8", flag: "wx", flush: true, mode: 0o600 });
 
   // SessionManager.flushed is private in the SDK type but remains runtime
   // state. Marking it prevents the next assistant message from trying to

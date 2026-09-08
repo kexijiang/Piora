@@ -6,6 +6,7 @@ const eslintConfig = [
   {
     ignores: [
       ".verification/**",
+      ".tmp-pty-probe-*/**",
       "desktop/dist/**",
       "desktop/release/**",
       "Piora-*-win-x64/**",

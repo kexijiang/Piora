@@ -12,6 +12,7 @@ import {
   listAllSessions,
 } from "@/lib/session-reader";
 import { getRpcSession, stopRpcSessionsForFileMutation } from "@/lib/rpc-manager";
+import { readPendingSessionModel } from "@/lib/session-model-selection";
 import { acquireSessionMutation, assertSessionNotMutating, collectSessionSubtree } from "@/lib/session-mutation";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { isMissingSessionFileError, resolveSessionDetailSource } from "@/lib/session-detail-source";
@@ -132,6 +133,8 @@ async function buildSessionResponse(
   const leafId = sm.getLeafId();
   const tree = includeTree ? projectTreeForResponse(sm.getTree()) : [];
   const context = buildSessionContext(entries, leafId, { deferThinking, deferToolResultImages });
+  const selectedModel = readPendingSessionModel(id);
+  if (selectedModel && !getRpcSession(id)?.isRunning()) context.model = { provider: selectedModel.provider, modelId: selectedModel.modelId };
   const header = sm.getHeader();
   const parentSessionId = header?.parentSession
     ? await resolveSessionIdByPath(header.parentSession)
@@ -156,6 +159,12 @@ async function buildSessionResponse(
 
   return {
     sessionId: id,
+    // A live manager can contain buffered messages before its first disk flush.
+    // Only a manager opened from the file supplies durable delivery receipts.
+    persistedPromptIds: manager ? [] : sm.getEntries().flatMap((entry) => {
+      const message = entry.type === "message" ? entry.message as { role: string; clientPromptId?: string } : null;
+      return message?.role === "user" && message.clientPromptId ? [message.clientPromptId] : [];
+    }),
     filePath,
     info,
     leafId,
@@ -232,7 +241,7 @@ async function loadCachedSessionResponse(
   ifNoneMatch: string | null,
 ): Promise<SerializedSessionResponse | { body: null; etag: string }> {
   const fileState = statSync(filePath);
-  const signature = `${fileState.size}:${fileState.mtimeMs}`;
+  const signature = `${fileState.size}:${fileState.mtimeMs}:${readPendingSessionModel(id)?.revision ?? ""}:${getRpcSession(id)?.isRunning() ?? false}`;
   const projection = `${deferThinking ? "thinking-deferred" : "thinking-full"}\0${deferToolResultImages ? "media-deferred" : "media-full"}\0${includeTree ? "tree" : "no-tree"}`;
   const etag = sessionResponseEtag(id, signature, projection);
   if (matchesEtag(ifNoneMatch, etag)) return { body: null, etag };

@@ -431,7 +431,7 @@ test("new conversations wait only until a default or explicit model resolves", (
 });
 
 test("a context gate can reject submission without clearing the real composer", () => {
-  assert.match(chatInputSource, /const accepted = onSend\(/);
+  assert.match(chatInputSource, /const accepted = await onSend\(/);
   assert.match(chatInputSource, /if \(accepted === false\) return;[\s\S]*?clearInput\(\)/);
   assert.match(chatInputSource, /submit\(\) \{[\s\S]*?submitRef\.current\(\)/);
 });

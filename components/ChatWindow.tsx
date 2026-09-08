@@ -10,6 +10,7 @@ import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { PromptSubmissionArchive } from "./PromptSubmissionArchive";
 import { NewSessionContextChip, NewSessionLauncher } from "./NewSessionLauncher";
 import { SystemPromptSelector } from "./SystemPromptSelector";
 import type { NewSessionInitialPrompt } from "./new-session-types";
@@ -114,6 +115,7 @@ function getUserInputText(message: AgentMessage): string | null {
 
 export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
   const { t } = useI18n();
+  const recoveryInputRef = useRef<ChatInputHandle | null>(null);
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
   const chatColumnWidthRef = useRef(CHAT_COLUMN_DEFAULT_WIDTH);
@@ -181,8 +183,9 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
   const sessionBusy = agentRunning || bashRunning;
   const locallyClaimedInitialPromptRef = useRef<string | null>(null);
   const handleComposerSend = useCallback(async (...args: Parameters<typeof handleSend>) => {
-    await handleSend(...args);
-    onPromptSubmitted?.();
+    const accepted = await handleSend(...args);
+    if (accepted !== false) onPromptSubmitted?.();
+    return accepted;
   }, [handleSend, onPromptSubmitted]);
   const retryInFlight = useRef(false);
   const [preparingRetry, setPreparingRetry] = useState(false);
@@ -205,7 +208,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
         return data.content;
       });
       if (retrySession.current !== id) return;
-      await handleComposerSend(payload.message, payload.images);
+      await handleComposerSend(payload.message, payload.images, payload.files);
     } finally { retryInFlight.current = false; setPreparingRetry(false); }
   }, [sessionBusy, session?.id, handleComposerSend, t]);
 
@@ -500,7 +503,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
 
   const chatInputElement = (
     <ChatInput
-      ref={chatInputRef}
+      ref={chatInputRef ?? recoveryInputRef}
       variant={isEmptyNew ? "launcher" : "conversation"}
       placeholder={isEmptyNew ? t("newSession.placeholder") : undefined}
       contextControl={(
@@ -517,6 +520,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
             disabled={sessionBusy || systemPromptSaving}
             onChange={handleSystemPromptSelection}
           />
+          {(session?.id ?? sessionIdRef.current) && <PromptSubmissionArchive key={session?.id ?? sessionIdRef.current} sessionId={(session?.id ?? sessionIdRef.current)!} onRestore={(draft) => (chatInputRef ?? recoveryInputRef).current?.restoreFailedPrompt(draft.value, draft.files, draft.images.map((image) => ({ ...image, previewUrl: `data:${image.mimeType};base64,${image.data}` })))} />}
         </>
       )}
       onSend={handleComposerSend}

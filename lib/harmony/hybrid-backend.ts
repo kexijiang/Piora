@@ -68,6 +68,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.listProcesses(serial, signal);
   }
 
+  async streamLogs(serial: string, onEntries: (entries: HarmonyLogEntry[]) => void, signal?: AbortSignal): Promise<void> {
+    await this.hdc.streamLogs(serial, onEntries, signal);
+  }
+
   async readLogs(serial: string, options: { pid?: number; level?: Exclude<HarmonyLogLevel, "unknown">; query?: string; limit?: number; signal?: AbortSignal }): Promise<HarmonyLogEntry[]> {
     return await this.hdc.readLogs(serial, options);
   }

@@ -5,6 +5,7 @@ import type { SettingsKey } from "@/lib/settings-search";
 declare global {
   interface Window {
     piDesktop?: {
+      restartForDataImport?: () => Promise<boolean>;
       launcher?: {
         list: (refresh?: boolean) => Promise<{ supported: boolean; warning: string; items: Array<{ id: string; name: string; kind: "app" | "setting"; keywords: string; description: string }> }>;
         open: (id: string) => Promise<void>;
@@ -126,7 +127,7 @@ export interface DesktopBrowserState {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab";
+  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login";
   sessionId?: string;
   tabId?: string;
   url?: string;

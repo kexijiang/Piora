@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 const runtime = Object.freeze({
+  restartForDataImport(): Promise<boolean> { return ipcRenderer.invoke("pi:restart-for-data-import") as Promise<boolean>; },
   platform: process.platform,
   versions: Object.freeze({
     chrome: process.versions.chrome,

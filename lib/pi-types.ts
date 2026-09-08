@@ -1,5 +1,6 @@
 import type {
   AgentSessionEvent,
+  ModelRuntime,
   SessionManager,
   SettingsManager,
   SlashCommandInfo,
@@ -149,10 +150,7 @@ export interface AgentSessionLike {
   readonly autoCompactionEnabled: boolean;
   readonly autoRetryEnabled: boolean;
   readonly model: ModelLike | undefined;
-  readonly modelRuntime: {
-    getModel: (provider: string, modelId: string) => ModelLike | undefined;
-    refresh: (options?: { allowNetwork?: boolean }) => Promise<unknown>;
-  };
+  readonly modelRuntime: ModelRuntime;
   readonly sessionManager: SessionManager;
   readonly settingsManager: SettingsManager;
   readonly agent: {
@@ -182,6 +180,7 @@ export interface AgentSessionLike {
     preflightResult?: (success: boolean) => void;
   }): Promise<void>;
   abort(): Promise<void>;
+  sendCustomMessage(message: { customType: string; content: string; display: boolean; details?: Record<string, unknown> }, options?: { triggerTurn?: boolean }): Promise<void>;
   executeBash(command: string, onChunk?: (chunk: string) => void, options?: { excludeFromContext?: boolean }): Promise<{ output: string; exitCode?: number; cancelled?: boolean; truncated?: boolean; fullOutputPath?: string }>;
   abortBash(): void;
   readonly isBashRunning: boolean;

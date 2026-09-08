@@ -425,7 +425,14 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
         }}>
           {onRetry ? <button type="button" title={t("chat.retryMessageTitle")} disabled={retryDisabled || retrying}
             onClick={() => { if (retrying || retryDisabled) return; setRetrying(true); setRetryError(null); void onRetry(message, entryId).catch((reason) => setRetryError(reason instanceof Error ? reason.message : String(reason))).finally(() => setRetrying(false)); }}
-            style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", height: 22, background: "none", border: "none", borderRadius: "var(--radius-control)", color: "var(--text-dim)", cursor: retryDisabled || retrying ? "not-allowed" : "pointer", opacity: retryDisabled ? 0.45 : 1, fontSize: "var(--text-xs)" }}>
+            style={{
+              display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", height: 22,
+              background: "none", border: "none", borderRadius: "var(--radius-control)",
+              color: "var(--text-dim)", cursor: retryDisabled || retrying ? "not-allowed" : "pointer",
+              opacity: hovered ? (retryDisabled ? 0.45 : 1) : 0,
+              pointerEvents: hovered ? "auto" : "none",
+              transition: "opacity 0.12s", fontSize: "var(--text-xs)",
+            }}>
             <AliIcon name="reload" size={11} />{t(retrying ? "chat.retryMessageSending" : "chat.retryMessage")}
           </button> : null}
           <div style={{

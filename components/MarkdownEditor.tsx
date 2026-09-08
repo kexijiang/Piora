@@ -3,7 +3,11 @@
 import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
 import { Compartment, EditorState, StateField, type Range } from "@codemirror/state";
 import { Decoration, EditorView, keymap, placeholder, WidgetType, type DecorationSet } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { defaultKeymap, history, historyKeymap, undo, redo } from "@codemirror/commands";
+import { search, searchKeymap, openSearchPanel } from "@codemirror/search";
+import { useI18n } from "@/hooks/useI18n";
+import { createEditorSearchPanel, editorSearchChinese } from "@/lib/editor-search-panel";
+import "./EditorSearch.css";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
 import { syntaxTree, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
 
@@ -74,10 +78,12 @@ const livePreview = StateField.define<DecorationSet>({
   provide: (field) => EditorView.decorations.from(field),
 });
 
-export interface MarkdownEditorHandle { insert(before: string, after?: string): void; focus(): void }
+export interface MarkdownEditorHandle { insert(before: string, after?: string): void; focus(): void; search(): void; undo(): void; redo(): void; jumpTo(offset: number): void }
 interface Props { value: string; source: boolean; onChange: (value: string) => void; onSave: () => void; onImage: (file: File) => void }
 
 export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function MarkdownEditor({ value, source, onChange, onSave, onImage }, ref) {
+  const { locale } = useI18n();
+  const language = useRef(new Compartment());
   const container = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const callbacks = useRef({ onChange, onSave, onImage });
@@ -93,19 +99,26 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
     view.dispatch({ changes: { from, to, insert: before + text + after }, selection: { anchor: from + before.length, head: from + before.length + text.length }, scrollIntoView: true });
     view.focus();
   };
-  useImperativeHandle(ref, () => ({ insert, focus: () => viewRef.current?.focus() }));
+  useImperativeHandle(ref, () => ({ insert, focus: () => viewRef.current?.focus(),
+    search: () => { if (viewRef.current) openSearchPanel(viewRef.current); },
+    undo: () => { if (viewRef.current) undo(viewRef.current); },
+    redo: () => { if (viewRef.current) redo(viewRef.current); },
+    jumpTo: (offset) => { const view = viewRef.current; if (view) { const anchor = Math.max(0, Math.min(offset, view.state.doc.length)); view.dispatch({ selection: { anchor }, effects: EditorView.scrollIntoView(anchor, { y: "start" }) }); view.focus(); } },
+  }));
   useEffect(() => {
     if (!container.current) return;
     const view = new EditorView({ parent: container.current, state: EditorState.create({ doc: initial.current.value, extensions: [
-      markdown({ base: markdownLanguage }), history(), EditorView.lineWrapping,
+      markdown({ base: markdownLanguage }), history(), search({ top: true, createPanel: createEditorSearchPanel }), EditorView.lineWrapping,
+      language.current.of([]),
       mode.current.of(initial.current.source ? [syntaxHighlighting(defaultHighlightStyle)] : [livePreview]),
       placeholder("从这里开始写作… 输入 # 标题、**粗体** 或 - 列表"),
       EditorView.contentAttributes.of({ "aria-label": "Markdown 正文", spellcheck: "false" }),
       keymap.of([
+        { key: "Mod-h", run: openSearchPanel },
         { key: "Mod-s", run: () => { callbacks.current.onSave(); return true; } },
         { key: "Mod-b", run: () => { insert("**", "**"); return true; } },
         { key: "Mod-i", run: () => { insert("*", "*"); return true; } },
-        ...defaultKeymap, ...historyKeymap,
+        ...searchKeymap, ...defaultKeymap, ...historyKeymap,
       ]),
       EditorState.transactionFilter.of((transaction) => transaction.docChanged && transaction.newDoc.length > 200_000 ? [] : transaction),
       EditorView.updateListener.of((update) => { if (update.docChanged && !syncing.current) callbacks.current.onChange(update.state.doc.toString()); }),
@@ -119,6 +132,9 @@ export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function M
     return () => { viewRef.current = null; view.destroy(); };
   }, []);
   useEffect(() => { viewRef.current?.dispatch({ effects: mode.current.reconfigure(source ? [syntaxHighlighting(defaultHighlightStyle)] : [livePreview]) }); }, [source]);
+  useEffect(() => { viewRef.current?.dispatch({ effects: language.current.reconfigure(EditorState.phrases.of(locale === "zh-CN" ? {
+    ...editorSearchChinese, "current match": "当前匹配", "replaced $ matches": "已替换 $ 处", "replaced match on line $": "已替换第 $ 行匹配",
+  } : {})) }); }, [locale]);
   useEffect(() => {
     const view = viewRef.current;
     if (!view || view.state.doc.toString() === value) return;

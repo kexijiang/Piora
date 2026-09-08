@@ -358,6 +358,7 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
       <form onSubmit={(event) => { event.preventDefault(); if (address.trim()) void act({ action: "navigate", url: address.trim() }); }}>
         <input ref={addressRef} value={address} aria-label={t("browser.address")} placeholder={t("browser.addressPlaceholder")} onChange={(event) => setAddress(event.target.value)} />
       </form>
+      <button type="button" aria-label={t("browser.siteLogin")} title={t("browser.siteLogin")} disabled={!state || blank} onClick={() => void act({ action: "configure_login" })}><AliIcon name="lock" size={14} /></button>
     </div>
     <div className={styles.browserBookmarkBar} aria-label={t("browser.bookmarkBar")}>
       <div className={styles.browserBookmarkBarItems}>

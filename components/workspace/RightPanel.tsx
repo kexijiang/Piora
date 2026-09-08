@@ -97,6 +97,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
         : enabledCount === items.length
           ? "on"
           : "partial";
+    if (kind === "browser" && status === "on") return null;
     const labelKey = kind === "device" && status === "unavailable"
       ? "sessionTools.panelDeviceUnavailable"
       : kind === "device" && status === "off"

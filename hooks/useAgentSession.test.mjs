@@ -1,8 +1,59 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import ts from "typescript";
+import { randomUUID } from "node:crypto";
 
 const source = await readFile(new URL("./useAgentSession.ts", import.meta.url), "utf8");
+
+function sendHarness(overrides = {}) {
+  const send = source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"));
+  const env = { useCallback: (callback) => callback, isNew: false, newSessionCwd: null, session: { id: "session" }, crypto: { randomUUID },
+    t: (key) => key, userMessageKey: JSON.stringify, dispatch() {}, promoteNewSession() {}, addNotice() {}, closeEvents() {},
+    ensureNewSession: async () => "session", ensureEventsConnected: async () => {}, waitForPromptSettlement() {},
+    uploadPromptMaterialFiles: async () => [], AgentCommandError: class extends Error {}, EventStreamConnectionError: class extends Error {},
+    savePendingPrompt: async (record) => { env.saved = structuredClone(record); }, sendAgentCommand: async () => {},
+  };
+  for (const name of new Set(send.match(/\b\w+Ref\b/g))) env[name] = { current: null };
+  for (const name of new Set(send.match(/\bset[A-Z]\w+(?=\()/g))) env[name] = () => {};
+  env.promptRunIdRef.current = 0;
+  env.sessionIdRef.current = "session";
+  env.promptSettlementByRunRef.current = new Map(); env.promptSettlementPollByRunRef.current = new Map();
+  env.messages = [];
+  env.setMessages = (update) => { env.messages = typeof update === "function" ? update(env.messages) : update; };
+  Object.assign(env, overrides);
+  const js = ts.transpileModule(send, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const run = new Function("env", `with(env) { ${js}; return handleSend; }`)(env);
+  return { env, run };
+}
+
+test("actual send callback commits recovery before network and keeps input after stop during acknowledgement", async () => {
+  let acknowledge;
+  let requestStarted;
+  const started = new Promise((resolve) => { requestStarted = resolve; });
+  const { env, run } = sendHarness({ sendAgentCommand: async (_sid, command) => {
+    assert.equal(command.idempotencyKey, env.saved.id);
+    assert.equal(env.saved.draft.value, "long original\n".repeat(5000));
+    requestStarted(); await new Promise((resolve) => { acknowledge = resolve; });
+  } });
+  const sending = run("long original\n".repeat(5000), [{ data: "YWJj", mimeType: "image/png" }], [{ name: "file", text: "full attachment", size: 15 }]);
+  await started;
+  env.cancelledPromptRunIdRef.current = env.promptRunIdRef.current;
+  acknowledge();
+  assert.equal(await sending, false, "composer must not clear after a late acknowledgement");
+  assert.equal(env.messages.length, 1);
+  assert.equal(env.saved.draft.files[0].text, "full attachment");
+  assert.equal(env.saved.draft.images[0].data, "YWJj");
+});
+
+test("actual send callback never starts the network when its durable recovery commit fails", async () => {
+  let requested = false;
+  const { env, run } = sendHarness({ savePendingPrompt: async () => { throw new Error("quota exceeded"); }, sendAgentCommand: async () => { requested = true; } });
+  assert.equal(await run("retain me"), false);
+  assert.equal(requested, false);
+  assert.equal(env.messages[0].content, "retain me");
+  assert.equal(env.messages[0].sendError, "quota exceeded");
+});
 
 test("closes the session event stream only after prompt settlement or a pre-prompt failure", () => {
   const finishSource = source.slice(
@@ -27,7 +78,7 @@ test("closes the session event stream only after prompt settlement or a pre-prom
   assert.match(agentEndSource, /Keep the stream open until prompt_done/);
   assert.match(sendSource, /e instanceof AgentCommandError && e\.status >= 400 && e\.status < 500/);
   assert.match(sendSource, /if \(promptRequestStarted && sentSessionId && !definitivelyRejected\) \{[\s\S]*?waitForPromptSettlement/);
-  assert.match(sendSource, /if \(promptRequestStarted && sentSessionId && !definitivelyRejected\) \{[\s\S]*?return;[\s\S]*?\}[\s\S]*?closeEvents\(\)/);
+  assert.match(sendSource, /if \(promptRequestStarted && sentSessionId && !definitivelyRejected\) \{[\s\S]*?return false;[\s\S]*?\}[\s\S]*?closeEvents\(\)/);
 });
 
 test("cancels stale session loads when switching tasks", () => {
@@ -106,7 +157,8 @@ test("keeps the first prompt as the new-session title and restores failed materi
   );
   assert.ok(sendSource.indexOf("promoteNewSession(0, displayMessage.slice(0, 2_000))") < sendSource.indexOf("await ensureEventsConnected(sid)"));
   assert.match(sendSource, /uploadPromptMaterialFiles\(materialFiles\)/);
-  assert.match(sendSource, /restoreFailedPrompt\(message, files, images\)/);
+  assert.match(sendSource, /await savePendingPrompt\(recovery\)/);
+  assert.match(sendSource, /recoveryDraft/);
 });
 
 test("refreshes context usage during streaming and after assistant messages", () => {

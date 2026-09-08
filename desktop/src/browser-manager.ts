@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import {
   app,
@@ -74,7 +74,7 @@ export interface ChromeBookmarkImportResult {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab";
+  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login";
   sessionId?: string;
   tabId?: string;
   url?: string;
@@ -88,6 +88,7 @@ export interface DesktopBrowserDownload {
 }
 
 type BrowserTab = {
+  authHost?: string;
   attached: boolean;
   id: string;
   loading: boolean;
@@ -336,6 +337,7 @@ export class DesktopBrowserManager {
   }
 
   private configureSession(): void {
+    this.browserSession.allowNTLMCredentialsForDomains(this.readLoginHosts().join(","));
     try {
       this.browserSession.setDownloadPath(app.getPath("downloads"));
     } catch (error) {
@@ -449,6 +451,17 @@ export class DesktopBrowserManager {
 
   private installTabEvents(tab: BrowserTab): void {
     const contents = tab.view.webContents;
+    contents.on("login", (_event, details, authInfo) => {
+      if (authInfo.isProxy || !/^(ntlm|negotiate)$/i.test(authInfo.scheme)) return;
+      try {
+        const url = new URL(details.url);
+        if (url.protocol === "https:" && url.hostname === authInfo.host) tab.authHost = url.hostname;
+      } catch { /* Ignore malformed authentication challenges. */ }
+      this.log.info("Browser integrated authentication requires site configuration", { host: tab.authHost, scheme: authInfo.scheme });
+    });
+    contents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+      if (isMainFrame && !isInPlace) delete tab.authHost;
+    });
     contents.setWindowOpenHandler(({ url }) => {
       if (isBrowserUrl(url) && this.tabs.length < MAX_TABS) {
         return {
@@ -797,6 +810,7 @@ export class DesktopBrowserManager {
     }
     const active = this.activeTab(this.displayedSessionId);
     if (!active) return;
+    if (input.action === "configure_login") { this.showLoginMenu(active); return; }
     if (input.action === "navigate" && typeof input.url === "string") {
       await this.storageReady;
       await active.view.webContents.loadURL(normalizeAddress(input.url));
@@ -815,6 +829,40 @@ export class DesktopBrowserManager {
     } else if (input.action === "close_tab" && typeof input.tabId === "string") {
       this.closeTab(input.tabId, this.displayedSessionId);
     }
+  }
+
+  private readLoginHosts(): string[] {
+    try {
+      const value: unknown = JSON.parse(readFileSync(join(app.getPath("userData"), "browser-login-hosts.json"), "utf8"));
+      return Array.isArray(value) ? [...new Set(value.filter((host): host is string => typeof host === "string" && /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(host)).map((host) => host.toLowerCase()))].slice(0, 100) : [];
+    } catch { return []; }
+  }
+
+  private showLoginMenu(tab: BrowserTab): void {
+    let host = tab.authHost;
+    try { const url = new URL(tab.view.webContents.getURL()); if (!host && url.protocol === "https:") host = url.hostname; } catch { /* Blank page. */ }
+    const hosts = this.readLoginHosts();
+    const targetHost = host;
+    const checked = Boolean(targetHost && hosts.includes(targetHost));
+    const menu = Menu.buildFromTemplate([
+      { label: targetHost ?? "请先打开需要登录的网站", enabled: false },
+      { label: "允许此站点使用 Windows 免密登录", type: "checkbox", checked, enabled: process.platform === "win32" && Boolean(targetHost), click: () => {
+        if (!targetHost || tab.view.webContents.isDestroyed()) return;
+        const latest = this.readLoginHosts();
+        const next = checked ? latest.filter((value) => value !== targetHost) : [...new Set([...latest, targetHost])];
+        try {
+          const root = app.getPath("userData"); mkdirSync(root, { recursive: true });
+          const file = join(root, "browser-login-hosts.json");
+          writeFileSync(`${file}.tmp`, JSON.stringify(next), { mode: 0o600 }); renameSync(`${file}.tmp`, file);
+          this.browserSession.allowNTLMCredentialsForDomains(next.join(","));
+          tab.view.webContents.reload();
+        } catch (error) { this.log.warn("Unable to configure browser integrated authentication", error); }
+      } },
+      { type: "separator" },
+      { label: "使用系统账户认证，仅对选中的域名生效", enabled: false },
+      { label: "Chrome 的登录状态和企业插件不会自动共享", enabled: false },
+    ]);
+    menu.popup({ window: this.window });
   }
 
   private closeTab(tabId: string, sessionId: string): void {

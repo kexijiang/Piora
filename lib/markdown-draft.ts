@@ -77,6 +77,11 @@ export function createMarkdownDraft(item: CompanionLibraryItem, persist: Persist
       timer = setTimeout(() => { void save(); }, 800);
     },
     save,
+    syncMetadata(next: CompanionLibraryItem) {
+      // Folder moves do not invalidate an in-progress content draft. Only
+      // advance the revision when the persisted text still matches our base.
+      if (!inFlight && next.updatedAt > revision && equal(next, saved)) { revision = next.updatedAt; cache(); }
+    },
     dispose() { clearTimeout(timer); if (!snapshot.error) void save(); },
   };
 }

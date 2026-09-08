@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { BackgroundBootstrap } from "@/components/BackgroundBootstrap";
+import { ApplicationRestoreGate } from "@/components/ApplicationRestoreGate";
 import { AppTooltip } from "@/components/AppTooltip";
 import { PwaRegistration } from "@/components/PwaRegistration";
 import { BACKGROUND_INITIALIZATION_SCRIPT } from "@/lib/backgrounds";
@@ -80,10 +81,10 @@ export default function RootLayout({
         />
       </head>
       <body translate="no" className="notranslate" style={{ height: "100dvh", display: "flex", flexDirection: "column" }}>
-        <BackgroundBootstrap />
+        <ApplicationRestoreGate><BackgroundBootstrap />
         {children}
         <AppTooltip />
-        <PwaRegistration />
+        <PwaRegistration /></ApplicationRestoreGate>
       </body>
     </html>
   );

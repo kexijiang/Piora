@@ -1,4 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { getRuntimeAgentDataDirectory } from "@/lib/runtime-home";
 import {
   isApiRequestAllowed,
   isApiRequestHostAllowed,
@@ -59,6 +62,9 @@ export function proxy(request: NextRequest) {
     });
   }
 
+  if (isApiRequest && !["GET", "HEAD", "OPTIONS"].includes(request.method) && !request.nextUrl.pathname.startsWith("/api/settings/backup") && existsSync(join(`${getRuntimeAgentDataDirectory()}.piora-transfer`, "pending.json"))) {
+    return NextResponse.json({ error: "Piora data import is ready. Restart the application to continue.", code: "backup_pending" }, { status: 503 });
+  }
   return NextResponse.next();
 }
 

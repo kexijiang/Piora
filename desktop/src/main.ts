@@ -1162,6 +1162,14 @@ async function restoreAgentRuntimeAfterDataMigrationFailure(
 }
 
 function registerAgentDataDirectoryHandlers(): void {
+  ipcMain.removeHandler("pi:restart-for-data-import");
+  ipcMain.handle("pi:restart-for-data-import", async (event): Promise<boolean> => {
+    if (!isTrustedMainWindowSender(event) || !piAgentDirectoryPath) return false;
+    if (!existsSync(join(`${piAgentDirectoryPath}.piora-transfer`, "pending.json"))) return false;
+    await suspendAgentRuntimeForDataMigration();
+    setTimeout(() => { app.relaunch(); app.quit(); }, 250).unref();
+    return true;
+  });
   ipcMain.removeHandler(AGENT_DATA_DIRECTORY_GET_CHANNEL);
   ipcMain.removeHandler(AGENT_DATA_DIRECTORY_PICKER_CHANNEL);
   ipcMain.removeHandler(AGENT_DATA_DIRECTORY_APPLY_CHANNEL);
@@ -2030,6 +2038,7 @@ function createStandaloneForProfile(profile: RuntimeProfile): {
   instance: StandaloneServer;
   dataDirectory: string;
 } {
+  process.env.PIORA_DESKTOP_USER_DATA_DIR = app.getPath("userData");
   if (!logger || !serverEntryPath || !serverHostEntryPath || !applicationToken || !piAgentDirectoryPath) {
     throw new Error("Desktop runtime is not ready for a profile switch");
   }

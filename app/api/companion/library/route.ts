@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (!isApiRequestAllowed(request)) return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
   if (!hasJsonContentType(request)) return NextResponse.json({ error: "Expected JSON" }, { status: 415 });
   try {
-    const input = await parseJsonWithinLimit(request, 12 * 1024 * 1024) as { content: string; title?: string; kind?: string; language?: string };
+    const input = await parseJsonWithinLimit(request, 12 * 1024 * 1024) as { content: string; title?: string; kind?: string; language?: string; parentId?: string | null };
     if (typeof input.content !== "string" || (input.title !== undefined && typeof input.title !== "string") || (input.language !== undefined && typeof input.language !== "string")) throw new Error("暂存内容无效。");
     if (input.kind === "image") {
       // Text reading/editing remains available even if a native image module
@@ -35,7 +35,7 @@ export async function PATCH(request: Request) {
   if (!isApiRequestAllowed(request)) return NextResponse.json({ error: "Untrusted API request" }, { status: 403 });
   if (!hasJsonContentType(request)) return NextResponse.json({ error: "Expected JSON" }, { status: 415 });
   try {
-    const input = await parseJsonWithinLimit(request, 2 * 1024 * 1024) as { id: string; pinned?: boolean; title?: string; remove?: boolean; content?: string; expectedUpdatedAt?: number };
+    const input = await parseJsonWithinLimit(request, 2 * 1024 * 1024) as { id: string; pinned?: boolean; title?: string; remove?: boolean; content?: string; expectedUpdatedAt?: number; parentId?: string | null };
     if (typeof input.id !== "string" || (input.title !== undefined && typeof input.title !== "string") || (input.content !== undefined && typeof input.content !== "string") || (input.expectedUpdatedAt !== undefined && !Number.isSafeInteger(input.expectedUpdatedAt))) throw new Error("文档内容无效。");
     initialize(); updateTransferItem(input.id, input);
     return NextResponse.json({ items: transferItemsForClient() });

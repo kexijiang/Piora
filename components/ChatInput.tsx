@@ -104,7 +104,7 @@ interface PromptOptimizationState {
 }
 
 interface Props {
-  onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[]) => false | void | Promise<void>;
+  onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[]) => boolean | void | Promise<boolean | void>;
   onAbort: () => void;
   onSteer?: (message: string, images?: AttachedImage[]) => void;
   onFollowUp?: (message: string, images?: AttachedImage[]) => void;
@@ -368,6 +368,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [atServerResult, setAtServerResult] = useState<{ cwd: string; query: string; matches: FileIndexEntry[] } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitRef = useRef<() => void>(() => {});
+  const sendingRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownPanelRef = useRef<HTMLDivElement>(null);
   const streamingActionMenuRef = useRef<HTMLDivElement>(null);
@@ -594,8 +595,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       void processFileSelection(files);
     },
     restoreFailedPrompt(text: string, files?: AttachedFile[], images?: AttachedImage[]) {
-      setValue((current) => current.trim() ? [text, current].filter((item) => item.trim()).join("\n\n") : text);
-      if (files?.length) setAttachedFiles((current) => [...files, ...current].slice(0, MAX_ATTACHED_FILES));
+      setValue((current) => current === text ? current : current ? [text, current].filter(Boolean).join("\n\n") : text);
+      if (files?.length) setAttachedFiles((current) => [...files, ...current]);
       if (images?.length) {
         setAttachedImages((current) => [
           ...images.map((image) => ({
@@ -603,7 +604,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             previewUrl: `data:${image.mimeType};base64,${image.data}`,
           })),
           ...current,
-        ].slice(0, MAX_ATTACHED_IMAGES));
+        ]);
       }
       requestAnimationFrame(() => {
         const textarea = textareaRef.current;
@@ -711,6 +712,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   }, [stopVoiceInput]);
 
   const handleSend = useCallback(async () => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
+    try {
     const msg = value.trim();
     if (!msg && !attachedImages.length && !attachedFiles.length) return;
     if (isStreaming || isProcessingImages || isAutoModelSelection) return;
@@ -722,11 +726,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         return;
       }
     }
-    let messageToSend = msg;
+    let messageToSend = value;
     let filesToSend = attachedFiles;
     if (msg && shouldMaterializeDirectPrompt(msg, contextUsage)) {
       const existingPastes = attachedFiles.filter((file) => file.kind === "paste" && file.text != null);
-      const combined = [msg, ...existingPastes.map((file) => file.text!)].join("\n\n");
+      const combined = [value, ...existingPastes.map((file) => file.text!)].join("\n\n");
       filesToSend = [
         ...attachedFiles.filter((file) => file.kind !== "paste"),
         {
@@ -738,13 +742,22 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       ];
       messageToSend = "";
     }
-    const accepted = onSend(
+    const sentValue = value;
+    const sentImages = attachedImages;
+    const sentFiles = attachedFiles;
+    const sentDraftKey = draftKeyRef.current;
+    const accepted = await onSend(
       messageToSend,
       attachedImages.length ? attachedImages : undefined,
       filesToSend.length ? filesToSend : undefined,
     );
     if (accepted === false) return;
-    clearInput();
+    // A delayed acknowledgement must never clear newer typing, restored input,
+    // attachments, or another task's composer.
+    if (draftKeyRef.current === sentDraftKey && valueRef.current === sentValue && attachedImagesRef.current === sentImages && attachedFilesRef.current === sentFiles) clearInput();
+    } catch (error) {
+      setAttachmentError(error instanceof Error ? error.message : String(error));
+    } finally { sendingRef.current = false; }
   }, [value, attachedImages, attachedFiles, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, clearInput, contextUsage, t]);
 
   useEffect(() => {

@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { getRuntimeAgentDataDirectory } from "./runtime-home.ts";
 import type { SessionMessageSourceKind, SessionRoomContext } from "./session-message-types";
 
 export type PromptRunFinishReason = "idle" | "error" | "abort" | "destroy" | "fork";
@@ -45,6 +48,7 @@ export function beginPromptRun(
   sessionId: string,
   context: { source?: SessionMessageSourceKind; roomContext?: SessionRoomContext } = {},
 ): PromptRunIdentity {
+  if (existsSync(join(`${getRuntimeAgentDataDirectory()}.piora-transfer`, "pending.json"))) throw new Error("Piora data import is ready. Restart the application before starting another task.");
   if ((globalThis.__pioraDesktopUpdateLease?.expiresAt ?? 0) > Date.now()) {
     throw new Error("Piora is installing an update. Retry after the application reopens.");
   }

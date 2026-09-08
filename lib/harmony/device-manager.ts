@@ -171,6 +171,7 @@ export class HarmonyDeviceManager {
   private readonly referenceSnapshots = new Map<string, StoredReferenceSnapshot[]>();
   private readonly recordings = new Map<string, HarmonyRecordingState>();
   private readonly liveFrameControllers = new Map<string, AbortController>();
+  private readonly logStreamControllers = new Set<AbortController>();
   private readonly liveFramePromises = new Map<string, Promise<HarmonySnapshot>>();
   private readonly liveFrameRevisions = new Map<string, number>();
   private readonly snapshotRevisions = new Map<string, number>();
@@ -459,6 +460,23 @@ export class HarmonyDeviceManager {
         signal: queuedSignal,
       });
     }, options.signal, undefined, options.serial);
+  }
+
+  async streamLogs(serial: string, onEntries: (entries: HarmonyLogEntry[]) => void, signal?: AbortSignal): Promise<void> {
+    validateSerial(serial);
+    const backend = await this.enqueue("start_log_stream", async (queuedSignal) => {
+      await this.onlineDevice(serial, queuedSignal);
+      return this.requireBackend();
+    }, signal, undefined, serial);
+    if (!backend.streamLogs) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "设备不支持实时日志");
+    // The live read must not occupy the physical-device command queue.
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    signal?.addEventListener("abort", abort, { once: true });
+    if (signal?.aborted || this.disposed) controller.abort();
+    this.logStreamControllers.add(controller);
+    try { await backend.streamLogs(serial, onEntries, controller.signal); }
+    finally { signal?.removeEventListener("abort", abort); this.logStreamControllers.delete(controller); }
   }
 
   private async onlineDevice(serial: string, signal?: AbortSignal): Promise<HarmonyDevice> {
@@ -1098,6 +1116,7 @@ export class HarmonyDeviceManager {
 
   async dispose(): Promise<void> {
     if (this.disposed) return;
+    for (const controller of this.logStreamControllers) controller.abort();
     await this.emergencyStop("disposed");
     await Promise.allSettled([...this.operationLanes.values()].map((lane) => lane.tail));
     this.disposed = true;

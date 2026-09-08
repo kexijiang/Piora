@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-import { createRequire } from "node:module";
 import { createReadStream } from "node:fs";
 import {
   access,
@@ -336,7 +335,7 @@ export async function storeManualSpeechPackSource(
   return getManualSpeechPackState();
 }
 
-async function downloadVerified(source: SpeechDownloadSource, destination: string): Promise<void> {
+export async function downloadVerified(source: SpeechDownloadSource, destination: string): Promise<void> {
   updateInstallState({ currentFile: source.name });
   const temporary = `${destination}.partial`;
   if (await verifySpeechSourceFile(source, destination)) {
@@ -365,19 +364,28 @@ async function downloadVerified(source: SpeechDownloadSource, destination: strin
 
   try {
     const partialBytes = (await stat(temporary)).size;
+    if ("bytes" in source && typeof source.bytes === "number" && partialBytes >= source.bytes) {
+      // A full-sized file that failed the checksum cannot be repaired by Range.
+      await rm(temporary, { force: true });
+    } else {
     updateInstallState({
       downloadedBytes: Math.min(
         installGlobal().state.totalBytes,
         installGlobal().state.downloadedBytes + partialBytes,
       ),
     });
+    }
   } catch { /* Start without a resumable partial. */ }
   let lastError: unknown;
+  const urls = [source.url, ...(source.fallbackUrls ?? []), ...(source.url.startsWith("https://registry.npmjs.org/") ? [source.url.replace("https://registry.npmjs.org/", "https://registry.npmmirror.com/")] : [])];
   for (let attempt = 1; attempt <= 4; attempt += 1) {
+    const controller = new AbortController();
+    let timeout = setTimeout(() => controller.abort(new Error("下载连接超时")), 20_000);
     try {
       let existingBytes = 0;
       try { existingBytes = (await stat(temporary)).size; } catch { /* Start a new partial download. */ }
-      const response = await fetch(source.url, {
+      const response = await fetch(urls[(attempt - 1) % urls.length], {
+        signal: controller.signal,
         cache: "no-store",
         redirect: "follow",
         ...(existingBytes > 0 ? { headers: { range: `bytes=${existingBytes}-` } } : {}),
@@ -386,6 +394,10 @@ async function downloadVerified(source: SpeechDownloadSource, destination: strin
         throw new Error(`HTTP ${response.status}`);
       }
       const append = existingBytes > 0 && response.status === 206;
+      if (response.status === 206) {
+        const range = /^bytes (\d+)-(\d+)\/(\d+|\*)$/.exec(response.headers.get("content-range") ?? "");
+        if (!range || Number(range[1]) !== existingBytes) throw new Error("下载服务器返回了错误的续传位置");
+      }
       if (!append && existingBytes > 0) {
         const global = installGlobal();
         updateInstallState({ downloadedBytes: Math.max(0, global.state.downloadedBytes - existingBytes) });
@@ -399,10 +411,17 @@ async function downloadVerified(source: SpeechDownloadSource, destination: strin
       const reader = response.body.getReader();
       try {
         while (true) {
+          clearTimeout(timeout);
+          timeout = setTimeout(() => controller.abort(new Error("下载停滞，已保留续传进度")), 30_000);
           const { done, value } = await reader.read();
           if (done) break;
           hash.update(value);
-          await handle.write(value);
+          let offset = 0;
+          while (offset < value.byteLength) {
+            const { bytesWritten } = await handle.write(value, offset, value.byteLength - offset);
+            if (!bytesWritten) throw new Error("无法继续写入离线包");
+            offset += bytesWritten;
+          }
           const global = installGlobal();
           updateInstallState({
             downloadedBytes: Math.min(
@@ -430,9 +449,11 @@ async function downloadVerified(source: SpeechDownloadSource, destination: strin
         } catch { /* The partial file may already be gone. */ }
       }
       if (attempt < 4) await new Promise((resolveDelay) => setTimeout(resolveDelay, attempt * 1_000));
+    } finally {
+      clearTimeout(timeout);
+      controller.abort();
     }
   }
-  await rm(temporary, { force: true });
   const cause = lastError && typeof lastError === "object" && "cause" in lastError
     ? (lastError as { cause?: { code?: unknown; message?: unknown } }).cause
     : undefined;
@@ -441,7 +462,7 @@ async function downloadVerified(source: SpeechDownloadSource, destination: strin
     : lastError instanceof Error
       ? lastError.message
       : "unknown error";
-  throw new Error(`Unable to download or checksum-verify ${source.name} after 4 attempts (${detail})`);
+  throw new Error(`无法下载 ${source.name}（${detail}）。已尝试备用下载源并保留续传进度，重试可继续；也可在离线包设置中导入文件。`);
 }
 
 function archiveEntryIsSafe(path: string, entryType: unknown): boolean {
@@ -649,6 +670,7 @@ export async function removeSpeechPack(): Promise<SpeechStatus> {
 }
 
 export function createExternalSpeechRequire(packPath: string): NodeJS.Require {
+  const { createRequire } = process.getBuiltinModule("node:module");
   return createRequire(join(packPath, "runtime", "package.json"));
 }
 

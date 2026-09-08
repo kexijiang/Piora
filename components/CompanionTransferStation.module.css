@@ -9,7 +9,27 @@
 .station button:focus-visible, .station a:focus-visible { outline: 2px solid var(--pocket-accent, #7d896c); outline-offset: 2px; }
 .station button:disabled { opacity: .45; cursor: not-allowed; }
 .station .primary { background: var(--btn-primary-bg); color: var(--btn-primary-fg); padding-inline: 12px; }
-.workspace { flex: 1; min-width: 0; min-height: min(580px, 70dvh); display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.workspace { flex: 1; min-width: 0; min-height: min(580px, 70dvh); display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.editorArea { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.fileSidebar { width: clamp(160px, 22%, 230px); flex-shrink: 0; display: flex; flex-direction: column; background: var(--bg-panel); border-right: 1px solid var(--border); }
+.fileSidebarHeader, .folderActions, .folderForm { display: flex; align-items: center; gap: 2px; padding: 6px; min-width: 0; }
+.fileSidebarHeader > :first-child, .folderActions > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fileSidebar .search { flex: 0 0 auto; padding: 9px 12px; border-block: 1px solid var(--border); }
+.folderForm input { min-width: 0; width: 100%; padding: 6px !important; font: inherit; }
+.fileTree { flex: 1; min-height: 100px; max-height: 65dvh; overflow: auto; padding-block: 6px; }
+.station .treeItem { display: flex; width: 100%; justify-content: flex-start; text-align: left; border-radius: 0; min-height: 32px; padding-block: 6px; padding-right: 10px; }
+.treeItem > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.treeItem > svg { flex-shrink: 0; }
+.station .treeItem[aria-current="true"] { background: var(--bg-selected); color: var(--text); }
+.folderChevron { flex: 0 0 8px; font-size: var(--text-sm); }
+.fileCount { padding: 10px; color: var(--text-dim); border-top: 1px solid var(--border); }
+.fileTabGroup { display: flex; align-items: center; flex: 0 0 auto; border-radius: 6px 6px 0 0; border-bottom: 2px solid transparent; }
+.fileTabGroup[data-active="true"] { background: var(--bg); border-bottom-color: var(--pocket-accent, #7d896c); }
+.station .fileTabGroup .fileTab { max-width: 160px; padding-inline: 8px; border-bottom: 0; font-size: var(--text-xs); }
+.station .tabClose { flex: 0 0 24px; padding: 5px; margin-right: 4px; color: var(--text-dim); }
+.openTabsMenu { max-width: 100px; min-width: 32px; margin: 4px; padding: 5px; font: inherit; background: var(--bg-panel); color: var(--text-muted); border: 1px solid var(--border); border-radius: 5px; }
+.breadcrumb { display: flex; align-items: center; gap: 8px; padding: 7px 14px; min-width: 0; font-size: calc(var(--text-xs) * .92); color: var(--text-dim); overflow-wrap: anywhere; border-bottom: 1px solid var(--border); }
+.breadcrumb select { margin-left: auto; max-width: 140px; background: transparent; color: var(--text-muted); border: 1px solid var(--border); font: inherit; }
 .tabBar { display: flex; min-width: 0; align-items: center; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
 .fileTabs { display: flex; flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: thin; gap: 2px; padding: 5px 6px 0; }
 .station .fileTab { flex: 0 0 auto; max-width: 190px; height: 38px; padding: 8px 14px; border-radius: 6px 6px 0 0; border-bottom: 2px solid transparent; font-size: var(--text-sm); }
@@ -65,5 +85,25 @@
 .document :global(.md-marker) { color: var(--pocket-accent, #7d896c); }
 .document :global(.md-image) { display: inline-block; max-width: 100%; max-height: 360px; object-fit: contain; border-radius: 5px; vertical-align: middle; }
 .document :global([data-source="true"] .cm-content) { font-family: var(--font-mono); font-size: var(--text-sm); }
+.workspace { height: 70dvh; min-height: 360px; max-height: 90dvh; resize: vertical; }
+.workspace .fileSidebar { width: var(--transfer-sidebar-width, 210px); max-width: 45%; border-right: 0; }
+.workspace[data-focus="true"] .fileSidebar, .workspace[data-focus="true"] .breadcrumb { display: none; }
+.resizeHandle { flex: 0 0 6px; cursor: col-resize; touch-action: none; border-inline: 2px solid transparent; background: var(--border); background-clip: content-box; }
+.resizeHandle:hover, .resizeHandle:focus-visible { background-color: var(--accent); outline: none; }
+.editorArea, .tabPane, .document { min-height: 0; }
+.writingBody { display: flex; flex: 1; min-height: 0; min-width: 0; }
+.writingContent { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
+.editorMount[hidden] { display: none; }
+.document :global(.pocket-markdown-editor), .readingPreview { box-sizing: border-box; max-width: var(--writing-width, 820px); margin: 0 auto; padding: 22px 24px 80px; font-size: var(--writing-size, 16px); }
+.document :global(.cm-editor) { font-size: var(--writing-size, 16px); }
+.readingPreview { line-height: 1.9; overflow-wrap: anywhere; }
+.outline { flex: 0 0 170px; max-width: 30%; overflow: auto; border-right: 1px solid var(--border); padding: 12px 0; }
+.outline button { display: block; text-align: left; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 0; }
+.outline p { padding: 8px; color: var(--text-dim); }
+.layoutControls { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 10px 12px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; }
+.layoutControls label { display: flex; align-items: center; gap: 8px; }
+.layoutControls input { width: 100px; accent-color: var(--pocket-accent, #7d896c); }
+.layoutControls output { min-width: 45px; font-variant-numeric: tabular-nums; }
+.layoutControls > span { color: var(--text-dim); margin-left: auto; }
 @media (max-width: 760px) { .heading h1 span { display: none; } .documentHeader { padding-inline: 12px; } .editorToolbar { padding-inline: 8px; } .search { flex-basis: 110px; } }
-@media (max-width: 540px) { .tabBar { flex-wrap: wrap; } .fileTabs { flex-basis: 100%; } .search { flex-basis: 100%; border-top: 1px solid var(--border); } .station { gap: 12px; } .documentStatus small { display: none; } .station .fileTab { max-width: 160px; } }
+@media (max-width: 540px) { .fileSidebar { width: 145px; } .station { gap: 12px; } .documentStatus small { display: none; } .station .fileTab { max-width: 130px; } .openTabsMenu { max-width: 55px; } }

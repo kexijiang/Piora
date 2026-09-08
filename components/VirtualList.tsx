@@ -57,6 +57,36 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   const [focusedKey, setFocusedKey] = useState<string | null>(null);
   const frame = useRef<number | null>(null);
   const measuredWidth = useRef(0);
+  const viewportSnapshot = useRef({ width: 0, height: 0, atBottom: false });
+  const resizeBottomAnchor = useRef(false);
+  const resizeSettleFrame = useRef<number | null>(null);
+
+  const rememberViewport = useCallback(() => {
+    const scroller = parent.current;
+    if (!scroller || !root.current) return;
+    viewportSnapshot.current = { width: root.current.getBoundingClientRect().width, height: scroller.clientHeight,
+      atBottom: resizeBottomAnchor.current || Math.abs(scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop) <= 2 };
+  }, []);
+
+  const settleBottomResize = useCallback(() => {
+    if (resizeSettleFrame.current !== null) return;
+    let previous = "", stableFrames = 0;
+    const settle = () => {
+      resizeSettleFrame.current = null;
+      const scroller = parent.current;
+      if (!resizeBottomAnchor.current || !scroller || !root.current) return;
+      if (navigation.current || isChatBottomFollowing(scroller)) { resizeBottomAnchor.current = false; rememberViewport(); return; }
+      // Keep the tail anchored for the whole width transition and its queued
+      // row measurements, rather than releasing after the first React commit.
+      scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+      const geometry = `${root.current.getBoundingClientRect().width}:${scroller.clientHeight}:${scroller.scrollHeight}`;
+      stableFrames = geometry === previous && frame.current === null ? stableFrames + 1 : 0;
+      previous = geometry;
+      if (stableFrames >= 3) { resizeBottomAnchor.current = false; rememberViewport(); }
+      else resizeSettleFrame.current = requestAnimationFrame(settle);
+    };
+    resizeSettleFrame.current = requestAnimationFrame(settle);
+  }, [rememberViewport]);
 
   const listTop = useCallback(() => {
     if (!root.current || !parent.current) return 0;
@@ -68,7 +98,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     // During a bottom jump the DOM height and cached offsets temporarily differ.
     // Keep the tail mounted until its lazy content is measured; otherwise a
     // scroll correction can unmount it, reset its height, and repeat forever.
-    const top = isChatBottomFollowing(scroller)
+    const top = isChatBottomFollowing(scroller) || resizeBottomAnchor.current
       ? Math.max(0, (current.current.offsets.at(-1) ?? 0) - scroller.clientHeight)
       : scroller.scrollTop - listTop();
     const next = virtualRange(current.current.offsets, top, scroller.clientHeight);
@@ -78,18 +108,19 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     const index = current.current.keys.indexOf(key);
     if (index < 0 || !parent.current) return;
     navigation.current = { key };
+    resizeBottomAnchor.current = false;
     setNavigationKey(key);
     anchor.current = null;
     parent.current.scrollTop = Math.max(0, listTop() + current.current.offsets[index] - parent.current.clientHeight * 0.3);
     syncRange();
   }, [listTop, syncRange]);
-  const cancelNavigation = useCallback(() => { navigation.current = null; anchor.current = null; setNavigationKey(null); }, []);
+  const cancelNavigation = useCallback(() => { navigation.current = null; anchor.current = null; resizeBottomAnchor.current = false; setNavigationKey(null); }, []);
   useImperativeHandle(handleRef, () => ({ scrollToKey, cancelNavigation }), [scrollToKey, cancelNavigation]);
 
   const measure = useCallback((key: string, height: number) => {
     height = Math.max(1, height);
     if (Math.abs((heights.current.get(key) ?? estimate) - height) < 1) return;
-    if (!anchor.current && parent.current && !navigation.current && !isChatBottomFollowing(parent.current)) {
+    if (!anchor.current && !resizeBottomAnchor.current && parent.current && !navigation.current && !isChatBottomFollowing(parent.current)) {
       const top = parent.current.scrollTop - listTop();
       const index = virtualIndexAt(current.current.offsets, top);
       if (current.current.keys[index]) anchor.current = { key: current.current.keys[index], inset: top - current.current.offsets[index] };
@@ -111,7 +142,13 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     }
     parent.current = element;
     if (!element) return;
-    const onScroll = () => { syncRange(); };
+    const onScroll = () => {
+      // A browser scroll clamp may arrive before ResizeObserver. Keep the last
+      // pre-resize position until the new geometry has been anchored.
+      if (!resizeBottomAnchor.current && Math.abs((root.current?.getBoundingClientRect().width ?? 0) - viewportSnapshot.current.width) <= 1
+        && element.clientHeight === viewportSnapshot.current.height) rememberViewport();
+      syncRange();
+    };
     const onInput = cancelNavigation;
     element.addEventListener("scroll", onScroll, { passive: true });
     element.addEventListener("wheel", onInput, { passive: true });
@@ -120,10 +157,18 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     document.addEventListener("keydown", onInput);
     const observer = new ResizeObserver(() => {
       const width = root.current?.getBoundingClientRect().width ?? 0;
+      const viewportChanged = width > 0 && viewportSnapshot.current.width > 0
+        && (Math.abs(width - viewportSnapshot.current.width) > 1 || element.clientHeight !== viewportSnapshot.current.height);
+      if (viewportChanged && viewportSnapshot.current.atBottom && !navigation.current && !isChatBottomFollowing(element)) {
+        resizeBottomAnchor.current = true;
+        anchor.current = null;
+        settleBottomResize();
+        setMeasurementVersion((version) => version + 1);
+      }
       if (width > 0 && measuredWidth.current > 0 && Math.abs(width - measuredWidth.current) > 1) {
         const top = element.scrollTop - listTop();
         const index = virtualIndexAt(current.current.offsets, top);
-        if (!navigation.current && !isChatBottomFollowing(element) && current.current.keys[index]) anchor.current = { key: current.current.keys[index], inset: top - current.current.offsets[index] };
+        if (!resizeBottomAnchor.current && !navigation.current && !isChatBottomFollowing(element) && current.current.keys[index]) anchor.current = { key: current.current.keys[index], inset: top - current.current.offsets[index] };
         // Wrapping changes invalidate offscreen heights as well as mounted ones.
         heights.current.clear();
         root.current?.querySelectorAll<HTMLElement>("[data-virtual-key]").forEach((row) => {
@@ -133,6 +178,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
         setMeasurementVersion((version) => version + 1);
       }
       if (width > 0) measuredWidth.current = width;
+      if (!resizeBottomAnchor.current) rememberViewport();
       syncRange();
     });
     observer.observe(element);
@@ -146,7 +192,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
       document.removeEventListener("pointerdown", onInput, true);
       document.removeEventListener("keydown", onInput);
     };
-  }, [scrollContainer, syncRange, cancelNavigation, listTop]);
+  }, [scrollContainer, syncRange, cancelNavigation, listTop, rememberViewport, settleBottomResize]);
 
   useLayoutEffect(() => {
     const scroller = parent.current;
@@ -167,20 +213,23 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
           : listTop() + offsets[index];
         scroller.scrollTop = Math.max(0, top - scroller.clientHeight * 0.3);
       }
+    } else if (resizeBottomAnchor.current && !isChatBottomFollowing(scroller)) {
+      scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
     } else if (anchor.current && !isChatBottomFollowing(scroller)) {
       const index = keys.indexOf(anchor.current.key);
       if (index >= 0) scroller.scrollTop = Math.max(0, listTop() + offsets[index] + anchor.current.inset);
     }
     anchor.current = null;
+    rememberViewport();
     syncRange();
-  }, [keys, offsets, navigationKey, listTop, syncRange, initialTail]);
+  }, [keys, offsets, navigationKey, listTop, syncRange, initialTail, rememberViewport]);
 
   useEffect(() => {
     const retained = new Set(keys);
     for (const key of heights.current.keys()) if (!retained.has(key)) heights.current.delete(key);
     for (const key of rowStates.current.keys()) if (!retained.has(key)) rowStates.current.delete(key);
   }, [keys]);
-  useEffect(() => () => { if (frame.current !== null) cancelAnimationFrame(frame.current); }, []);
+  useEffect(() => () => { if (frame.current !== null) cancelAnimationFrame(frame.current); if (resizeSettleFrame.current !== null) cancelAnimationFrame(resizeSettleFrame.current); }, []);
   const start = Math.min(range.start, keys.length);
   const end = Math.min(Math.max(start, range.end), keys.length);
   const mounted = new Set(Array.from({ length: end - start }, (_, index) => start + index));

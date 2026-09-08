@@ -9,6 +9,7 @@ import { type CommandExecutor, runCommand } from "./command-runner";
 import { HarmonyError, isHarmonyError } from "./errors";
 import { readHarmonyConfig, resolveHdcPath, type ResolveHdcOptions } from "./runtime";
 import { flattenUiTree } from "./ui-tree";
+import { streamHdcLines } from "./log-stream";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -416,6 +417,14 @@ export class HdcBackend implements HarmonyAutomationBackend {
       })
       .filter((entry) => !query || entry.raw.toLocaleLowerCase().includes(query))
       .slice(-limit);
+  }
+
+  async streamLogs(serial: string, onEntries: (entries: HarmonyLogEntry[]) => void, signal?: AbortSignal): Promise<void> {
+    validateSerial(serial);
+    await streamHdcLines(this.hdcPath, ["-t", serial, "shell", "hilog", "-v", "time"], (lines) => {
+      const entries = lines.filter(Boolean).map(parseLogLine);
+      if (entries.length) onEntries(entries);
+    }, signal);
   }
 
   private async pullGeneratedFile(

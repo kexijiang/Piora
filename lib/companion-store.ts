@@ -45,7 +45,7 @@ export interface CompanionQuickPhrase {
   text: string;
 }
 
-export type CompanionLibraryKind = "note" | "code" | "command" | "image";
+export type CompanionLibraryKind = "note" | "code" | "command" | "image" | "folder";
 
 export interface CompanionLibraryItem {
   id: string;
@@ -53,6 +53,7 @@ export interface CompanionLibraryItem {
   title: string;
   content: string;
   language?: string;
+  parentId?: string | null;
   pinned: boolean;
   createdAt: number;
   updatedAt: number;

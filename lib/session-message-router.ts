@@ -378,7 +378,10 @@ export class SessionMessageRouter {
       const unsubscribe = session.onEvent((event) => {
         if (event.commandId !== command.commandId && event.runId !== command.runId) return;
         if (event.type === "prompt_done") finish(command.status === "cancelled" ? "cancelled" : "completed");
-        else if (event.type === "prompt_error") finish(command.status === "cancelled" ? "cancelled" : "failed");
+        else if (event.type === "prompt_error") {
+          if (typeof event.errorMessage === "string") command.errorMessage = safeErrorMessage(event.errorMessage);
+          finish(command.status === "cancelled" ? "cancelled" : "failed");
+        }
       });
       const removeDestroy = session.onDestroy(() => finish(command.status === "cancelled" ? "cancelled" : "interrupted"));
     });
@@ -424,6 +427,7 @@ export class SessionMessageRouter {
           const teamExecution = command.teamExecution ? resolveTeamExecutionContext(command.teamExecution) : undefined;
           const started = await session.startTrackedPrompt({
             commandId: command.commandId,
+            ...(command.source === "ui" ? { clientPromptId: command.idempotencyKey } : {}),
             source: command.source,
             roomContext: command.roomContext,
             message: command.content,
@@ -467,7 +471,7 @@ export class SessionMessageRouter {
           await this.transition(command, "interrupted", {}, "command_interrupted");
         } else {
           command.errorCode = "PROMPT_ERROR";
-          await this.publish({ type: "prompt_error", sessionId, commandId: command.commandId, runId: command.runId, timestamp: Date.now(), errorCode: command.errorCode });
+          await this.publish({ type: "prompt_error", sessionId, commandId: command.commandId, runId: command.runId, timestamp: Date.now(), errorCode: command.errorCode, errorMessage: command.errorMessage });
           await this.transition(command, "failed", {}, "command_failed");
         }
       }

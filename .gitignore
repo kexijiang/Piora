@@ -16,6 +16,7 @@
 /playwright-report/
 /.verification/
 /verification-output/
+/.tmp-pty-probe-*/
 
 # next.js
 /.next/
