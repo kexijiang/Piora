@@ -93,6 +93,7 @@ declare global {
         action: (input: DesktopBrowserAction) => Promise<DesktopBrowserState | null>;
         setViewport: (bounds: { x: number; y: number; width: number; height: number }, visible: boolean) => Promise<boolean>;
         importChromeBookmarks: () => Promise<ChromeBookmarkImportResult | null>;
+        showBookmarkMenu: (nodes: ImportedChromeBookmarkNode[], position: { x: number; y: number }) => Promise<string | null>;
         onState: (listener: (state: DesktopBrowserState) => void) => () => void;
         onDownload: (listener: (download: DesktopBrowserDownload) => void) => () => void;
       };

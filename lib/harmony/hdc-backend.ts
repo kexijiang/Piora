@@ -266,7 +266,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private readonly execute: CommandExecutor;
   private readonly commandTimeoutMs: number;
   private readonly capabilitiesBySerial = new Map<string, HarmonyCapabilities>();
-  private readonly deviceInfoBySerial = new Map<string, Omit<BackendDevice, "state">>();
+  private readonly deviceInfoBySerial = new Map<string, { device: Omit<BackendDevice, "state">; expiresAt: number }>();
   private readonly liveScreenshotPaths = new Map<string, { directory: string; localPath: string; remotePath: string }>();
   private readonly preparedMirrorServers = new Set<string>();
 
@@ -312,7 +312,12 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
   private async safeInfo(serial: string, args: readonly string[], signal?: AbortSignal): Promise<string | undefined> {
     try {
-      return cleanOutput((await this.shell(serial, args, "device_info", signal)).stdout);
+      const value = cleanOutput((await this.shell(serial, args, "device_info", signal)).stdout);
+      // Device shell utilities can print diagnostics and still exit with zero.
+      // Those diagnostics are not device names, models, or versions.
+      if (!value || /[\r\n]/.test(value)
+        || /(?:not found|not exist|permission denied|invalid (?:argument|parameter)|unknown (?:command|option)|get .* fail|^error\b|^usage:|^\/.*(?:sh|shell):)/i.test(value)) return undefined;
+      return value;
     } catch (error) {
       if (isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
       return undefined;
@@ -346,7 +351,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
         return { serial, state, capabilities: { ...NO_UITEST_CAPABILITIES, launchApp: false } };
       }
       const cached = this.deviceInfoBySerial.get(serial);
-      if (cached) return { ...cached, state };
+      if (cached && cached.expiresAt > Date.now()) return { ...cached.device, state };
       const [model, product, userName, persistedName, deviceName, osVersion, apiVersion, uitestVersion] = await Promise.all([
         this.safeInfo(serial, ["param", "get", "const.product.model"], signal),
         this.safeInfo(serial, ["param", "get", "const.product.name"], signal),
@@ -369,7 +374,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
         uitestVersion,
         capabilities,
       };
-      this.deviceInfoBySerial.set(serial, deviceInfo);
+      this.deviceInfoBySerial.set(serial, { device: deviceInfo, expiresAt: Date.now() + 30_000 });
       return { ...deviceInfo, state };
     }));
   }
@@ -543,7 +548,9 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
   private bundledMirrorServerPath(): string {
     const toolsDirectory = process.env.PIORA_HARMONY_TOOLS_DIR?.trim();
-    const serverPath = toolsDirectory ? join(toolsDirectory, "OHScrcpyServer.hap") : "";
+    const serverPath = toolsDirectory
+      ? join(toolsDirectory, "OHScrcpyServer.hap")
+      : join(process.cwd(), "third_party", "harmony-tools", `${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`, "OHScrcpyServer.hap");
     if (!serverPath || !existsSync(serverPath)) {
       throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The bundled Harmony video service is missing from this Piora installation");
     }

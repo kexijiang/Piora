@@ -16,6 +16,7 @@ import {
   type Session,
   type WebContents,
   type BrowserWindowConstructorOptions,
+  type MenuItemConstructorOptions,
 } from "electron";
 import { BrowserCookieStore } from "./browser-cookie-store.js";
 import type { Logger } from "./logger.js";
@@ -26,6 +27,7 @@ export const BROWSER_GET_STATE_CHANNEL = "pi:browser-get-state";
 export const BROWSER_ACTION_CHANNEL = "pi:browser-action";
 export const BROWSER_VIEWPORT_CHANNEL = "pi:browser-viewport";
 export const BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL = "pi:browser-import-chrome-bookmarks";
+export const BROWSER_BOOKMARK_MENU_CHANNEL = "pi:browser-bookmark-menu";
 
 const BROWSER_PARTITION = "persist:piora-browser";
 const MAX_TABS = 20;
@@ -135,6 +137,18 @@ function isBrowserUrl(rawUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+function bookmarkMenuTemplate(value: unknown, select: (url: string) => void, depth = 0): MenuItemConstructorOptions[] {
+  if (!Array.isArray(value) || value.length > 50_000 || depth > 100) throw new Error("Invalid bookmark menu");
+  if (!value.length) return [{ label: "—", enabled: false }];
+  return value.map((node) => {
+    if (!node || typeof node.title !== "string") throw new Error("Invalid bookmark");
+    const label = (node.title || node.url || "—").slice(0, 200).replace(/&/g, "&&");
+    if (node.type === "folder") return { label, submenu: bookmarkMenuTemplate(node.children, select, depth + 1) };
+    if (node.type !== "bookmark" || typeof node.url !== "string" || !isBrowserUrl(node.url)) throw new Error("Invalid bookmark URL");
+    return { label, click: () => select(node.url) };
+  });
 }
 
 function normalizeAddress(value: string): string {
@@ -368,6 +382,21 @@ export class DesktopBrowserManager {
       if (!this.isTrustedSender(event)) return null;
       return readChromeBookmarks();
     });
+    ipcMain.handle(BROWSER_BOOKMARK_MENU_CHANNEL, (event, nodes: unknown, position: unknown): Promise<string | null> | null => {
+      if (!this.isTrustedSender(event)) return null;
+      const point = position as { x?: number; y?: number } | null;
+      if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error("Invalid bookmark menu position");
+      const bounds = this.window.getContentBounds();
+      const zoom = this.window.webContents.getZoomFactor();
+      let selected: string | null = null;
+      const menu = Menu.buildFromTemplate(bookmarkMenuTemplate(nodes, (url) => { selected = url; }));
+      return new Promise((resolve) => menu.popup({
+        window: this.window,
+        x: Math.max(0, Math.min(bounds.width - 1, Math.round(point.x! * zoom))),
+        y: Math.max(0, Math.min(bounds.height - 1, Math.round(point.y! * zoom))),
+        callback: () => resolve(selected),
+      }));
+    });
   }
 
   private removeIpc(): void {
@@ -375,6 +404,7 @@ export class DesktopBrowserManager {
     ipcMain.removeHandler(BROWSER_VIEWPORT_CHANNEL);
     ipcMain.removeHandler(BROWSER_ACTION_CHANNEL);
     ipcMain.removeHandler(BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL);
+    ipcMain.removeHandler(BROWSER_BOOKMARK_MENU_CHANNEL);
   }
 
   private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }): BrowserTab {

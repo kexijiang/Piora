@@ -149,6 +149,9 @@ const runtime = Object.freeze({
     importChromeBookmarks() {
       return ipcRenderer.invoke("pi:browser-import-chrome-bookmarks");
     },
+    showBookmarkMenu(nodes: unknown, position: { x: number; y: number }): Promise<string | null> {
+      return ipcRenderer.invoke("pi:browser-bookmark-menu", nodes, position);
+    },
     onState(listener: (state: unknown) => void) {
       const handler = (_event: Electron.IpcRendererEvent, state: unknown) => listener(state);
       ipcRenderer.on("pi:browser-state", handler);

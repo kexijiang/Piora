@@ -1,4 +1,5 @@
 "use client";
+import { messageImageUrl } from "@/lib/message-images";
 
 import { memo, useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useVirtualRowToggle } from "./VirtualRowState";
@@ -360,16 +361,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
           {imageBlocks.length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: content ? 8 : 0 }}>
               {imageBlocks.map((img, i) => {
-                // lib/types.ts ImageContent uses {source:{type,data,media_type,url}}
-                // pi-ai on-disk format uses flat {data, mimeType} — handle both
-                const flat = img as unknown as { data?: string; mimeType?: string };
-                const src = img.source
-                  ? img.source.type === "base64"
-                    ? `data:${img.source.media_type};base64,${img.source.data}`
-                    : img.source.url ?? ""
-                  : flat.data
-                    ? `data:${flat.mimeType};base64,${flat.data}`
-                    : "";
+                const src = messageImageUrl(img);
                 return src ? <MessageImage key={i} src={src} index={i} onOpen={() => setOpenImageIndex(i)} /> : null;
               })}
             </div>
@@ -1437,13 +1429,7 @@ function getMessageImages(content: CustomMessage["content"] | UserMessage["conte
 }
 
 function imageSource(img: ImageContent): string {
-  const flat = img as unknown as { data?: string; mimeType?: string };
-  if (img.source) {
-    return img.source.type === "base64"
-      ? `data:${img.source.media_type};base64,${img.source.data}`
-      : img.source.url ?? "";
-  }
-  return flat.data ? `data:${flat.mimeType};base64,${flat.data}` : "";
+  return messageImageUrl(img);
 }
 
 function safeJson(value: unknown): string {

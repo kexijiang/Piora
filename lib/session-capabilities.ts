@@ -335,11 +335,11 @@ export function createDefaultSessionCapabilitiesState(
   profile: AgentRuntimeProfile = "normal",
 ): SessionCapabilitiesState {
   const toolNames = profile === "device-control"
-    ? [...HARMONY_AGENT_TOOLS]
+    ? ["harmony_control"]
     : [
         ...BUILTIN_AGENT_TOOLS,
         "browser",
-        ...HARMONY_AGENT_TOOLS,
+        "harmony_control",
         "piora_automation",
         "piora_room",
       ];

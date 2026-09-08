@@ -43,6 +43,8 @@ type StreamConfig = {
 };
 
 type StreamAttempt = {
+  controller: AbortController;
+  watchdog?: number;
   reader?: ReadableStreamDefaultReader<Uint8Array>;
   failure?: Error;
   startedAt: number;
@@ -158,6 +160,20 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     let failures = 0;
     let hasFrame = false;
     let activeAttempt: StreamAttempt | undefined;
+    const closeDecoder = () => {
+      // WebCodecs closes itself after a fatal decode error.
+      if (decoder && decoder.state !== "closed") decoder.close();
+      decoder = undefined;
+    };
+    const armWatchdog = (attempt: StreamAttempt) => {
+      window.clearTimeout(attempt.watchdog);
+      attempt.watchdog = window.setTimeout(() => {
+        if (disposed || activeAttempt !== attempt) return;
+        attempt.failure = new Error("Harmony video stopped producing frames");
+        attempt.controller.abort();
+        void attempt.reader?.cancel(attempt.failure).catch(() => undefined);
+      }, 15_000);
+    };
     setFrame(null);
     setStatus("loading");
     setMode("video");
@@ -169,6 +185,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
       if (disposed) return;
       revision += 1;
       attempt.decodedFrames += 1;
+      armWatchdog(attempt);
       if (attempt.decodedFrames >= STABLE_STREAM_FRAMES || performance.now() - attempt.startedAt >= STABLE_STREAM_MS) {
         failures = 0;
       }
@@ -201,8 +218,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     };
 
     const configureDecoder = async (next: StreamConfig, attempt: StreamAttempt) => {
-      decoder?.close();
-      decoder = undefined;
+      closeDecoder();
       firstKeyframe = false;
       if (next.codec !== H264) return;
       if (!("VideoDecoder" in window)) throw new Error("This Piora runtime does not support hardware video decoding");
@@ -335,8 +351,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     const pollFrames = async () => {
       let fallbackFailures = 0;
       setMode("frames");
-      decoder?.close();
-      decoder = undefined;
+      closeDecoder();
       config = undefined;
       firstKeyframe = false;
       while (!lifecycle.signal.aborted) {
@@ -400,33 +415,38 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     const connect = async () => {
       while (!lifecycle.signal.aborted) {
         const attempt: StreamAttempt = {
+          controller: new AbortController(),
           startedAt: performance.now(),
           decodedFrames: 0,
           jpegChain: Promise.resolve(),
         };
         activeAttempt = attempt;
+        const abortAttempt = () => attempt.controller.abort();
+        lifecycle.signal.addEventListener("abort", abortAttempt, { once: true });
+        armWatchdog(attempt);
         if (!hasFrame) setStatus("loading");
         try {
           const response = await fetch(`/api/harmony/video?serial=${encodeURIComponent(options.serial)}`, {
             cache: "no-store",
             headers: { Accept: "application/vnd.piora.harmony-stream" },
-            signal: lifecycle.signal,
+            signal: attempt.controller.signal,
           });
           if (!response.ok) throw new Error(await responseError(response));
           if (!response.body) throw new Error("Harmony video response has no stream body");
           await consume(response.body, attempt);
         } catch (streamError) {
+          window.clearTimeout(attempt.watchdog);
+          attempt.controller.abort();
           if (lifecycle.signal.aborted || disposed) return;
           failures += 1;
           if (!hasFrame || failures > 1) {
             setStatus("error");
-            setError(streamError instanceof Error ? streamError.message : options.fallbackError);
+            setError(attempt.failure?.message ?? (streamError instanceof Error ? streamError.message : options.fallbackError));
           } else {
             setStatus("live");
             setError(null);
           }
-          decoder?.close();
-          decoder = undefined;
+          closeDecoder();
           config = undefined;
           firstKeyframe = false;
           if ((!hasFrame && failures >= 1) || failures >= 3) {
@@ -442,6 +462,8 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
           await attempt.jpegChain.catch(() => undefined);
           await delay(reconnectDelay(failures), lifecycle.signal);
         } finally {
+          window.clearTimeout(attempt.watchdog);
+          lifecycle.signal.removeEventListener("abort", abortAttempt);
           if (activeAttempt === attempt) activeAttempt = undefined;
         }
       }
@@ -451,7 +473,8 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     return () => {
       disposed = true;
       lifecycle.abort();
-      decoder?.close();
+      window.clearTimeout(activeAttempt?.watchdog);
+      closeDecoder();
       void activeAttempt?.reader?.cancel().catch(() => undefined);
       void activeAttempt?.jpegChain.catch(() => undefined);
     };

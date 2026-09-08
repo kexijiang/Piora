@@ -1,5 +1,13 @@
+const followers = new WeakMap<HTMLElement, () => void>();
+
+/** Virtual rows must settle against the same target as the scroll controller. */
+export function isChatBottomFollowing(container: HTMLElement): boolean {
+  return followers.has(container);
+}
+
 /** Keep a requested bottom jump anchored while virtual rows and lazy content settle. */
 export function followChatBottom(container: HTMLElement, pin: () => void): () => void {
+  followers.get(container)?.();
   let frame = 0;
   let stopped = false;
   const update = () => { frame = 0; if (!stopped) pin(); };
@@ -12,6 +20,7 @@ export function followChatBottom(container: HTMLElement, pin: () => void): () =>
   const cleanup = () => {
     if (stopped) return;
     stopped = true;
+    if (followers.get(container) === cleanup) followers.delete(container);
     resize.disconnect();
     mutation.disconnect();
     container.removeEventListener("load", schedule, true);
@@ -29,6 +38,7 @@ export function followChatBottom(container: HTMLElement, pin: () => void): () =>
   container.addEventListener("touchstart", cleanup, { passive: true });
   container.addEventListener("pointerdown", cleanup, { passive: true });
   container.addEventListener("keydown", onKeyDown);
+  followers.set(container, cleanup);
   update();
   schedule();
   return cleanup;

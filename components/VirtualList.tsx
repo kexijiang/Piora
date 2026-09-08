@@ -3,6 +3,7 @@
 import { Fragment, memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
 import { buildVirtualOffsets, virtualIndexAt, virtualRange } from "@/lib/virtual-window";
 import { createVirtualRowState } from "@/lib/virtual-row-state";
+import { isChatBottomFollowing } from "@/lib/chat-bottom-follow";
 import { VirtualRowStateContext } from "./VirtualRowState";
 
 export interface VirtualListHandle { scrollToKey(key: string): void; cancelNavigation(): void }
@@ -64,7 +65,13 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   const syncRange = useCallback(() => {
     const scroller = parent.current;
     if (!scroller || scroller.clientHeight === 0 || scroller.getClientRects().length === 0) return;
-    const next = virtualRange(current.current.offsets, scroller.scrollTop - listTop(), scroller.clientHeight);
+    // During a bottom jump the DOM height and cached offsets temporarily differ.
+    // Keep the tail mounted until its lazy content is measured; otherwise a
+    // scroll correction can unmount it, reset its height, and repeat forever.
+    const top = isChatBottomFollowing(scroller)
+      ? Math.max(0, (current.current.offsets.at(-1) ?? 0) - scroller.clientHeight)
+      : scroller.scrollTop - listTop();
+    const next = virtualRange(current.current.offsets, top, scroller.clientHeight);
     setRange((previous) => previous.start === next.start && previous.end === next.end ? previous : next);
   }, [listTop]);
   const scrollToKey = useCallback((key: string) => {
@@ -82,7 +89,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   const measure = useCallback((key: string, height: number) => {
     height = Math.max(1, height);
     if (Math.abs((heights.current.get(key) ?? estimate) - height) < 1) return;
-    if (!anchor.current && parent.current && !navigation.current) {
+    if (!anchor.current && parent.current && !navigation.current && !isChatBottomFollowing(parent.current)) {
       const top = parent.current.scrollTop - listTop();
       const index = virtualIndexAt(current.current.offsets, top);
       if (current.current.keys[index]) anchor.current = { key: current.current.keys[index], inset: top - current.current.offsets[index] };
@@ -116,7 +123,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
       if (width > 0 && measuredWidth.current > 0 && Math.abs(width - measuredWidth.current) > 1) {
         const top = element.scrollTop - listTop();
         const index = virtualIndexAt(current.current.offsets, top);
-        if (!navigation.current && current.current.keys[index]) anchor.current = { key: current.current.keys[index], inset: top - current.current.offsets[index] };
+        if (!navigation.current && !isChatBottomFollowing(element) && current.current.keys[index]) anchor.current = { key: current.current.keys[index], inset: top - current.current.offsets[index] };
         // Wrapping changes invalidate offscreen heights as well as mounted ones.
         heights.current.clear();
         root.current?.querySelectorAll<HTMLElement>("[data-virtual-key]").forEach((row) => {
@@ -160,7 +167,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
           : listTop() + offsets[index];
         scroller.scrollTop = Math.max(0, top - scroller.clientHeight * 0.3);
       }
-    } else if (anchor.current) {
+    } else if (anchor.current && !isChatBottomFollowing(scroller)) {
       const index = keys.indexOf(anchor.current.key);
       if (index >= 0) scroller.scrollTop = Math.max(0, listTop() + offsets[index] + anchor.current.inset);
     }

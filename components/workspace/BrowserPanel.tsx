@@ -305,7 +305,22 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
 
   const blank = !state || state.url === "about:blank";
   const barNodes = bookmarkBarNodes(bookmarkProfiles);
-  const openBookmarkFolder = barNodes.find((node) => node.type === "folder" && node.id === openBookmarkFolderId);
+  const openBookmarkMenu = async (node: ImportedChromeBookmarkNode, button: HTMLButtonElement) => {
+    if (node.type !== "folder") return;
+    const rect = button.getBoundingClientRect();
+    setOpenBookmarkFolderId(node.id);
+    try {
+      // A native popup renders above WebContentsView without resizing or hiding
+      // the live page. Its submenus also provide keyboard and Escape handling.
+      const url = await bridge.showBookmarkMenu(node.children, { x: rect.left, y: rect.bottom });
+      if (url) await act({ action: "navigate", url });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("browser.actionFailed"));
+    } finally {
+      setOpenBookmarkFolderId(null);
+      button.focus({ preventScroll: true });
+    }
+  };
   const downloadLabel = download?.state === "completed"
     ? t("browser.downloadComplete", { filename: download.filename })
     : download?.state === "cancelled"
@@ -355,8 +370,9 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
             key={node.id}
             type="button"
             aria-expanded={openBookmarkFolderId === node.id}
+            aria-haspopup="menu"
             title={`${node.title} · ${t("browser.bookmarkCount", { count: bookmarkCount(node.children) })}`}
-            onClick={() => setOpenBookmarkFolderId((current) => current === node.id ? null : node.id)}
+            onClick={(event) => void openBookmarkMenu(node, event.currentTarget)}
           >
             <AliIcon name={openBookmarkFolderId === node.id ? "folder-open" : "folder"} size={13} /><span>{node.title}</span>
           </button>
@@ -373,23 +389,6 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
         <AliIcon name="reload" size={12} />
       </button>
     </div>
-    {openBookmarkFolder?.type === "folder" ? (
-      <div className={styles.browserBookmarkDrawer} aria-label={openBookmarkFolder.title}>
-        <div className={styles.browserBookmarkDrawerHeader}>
-          <AliIcon name="folder-open" size={14} />
-          <strong>{openBookmarkFolder.title}</strong>
-          <span>{t("browser.bookmarkCount", { count: bookmarkCount(openBookmarkFolder.children) })}</span>
-          <button type="button" aria-label={t("browser.closeBookmarks")} onClick={() => setOpenBookmarkFolderId(null)}><AliIcon name="close" size={12} /></button>
-        </div>
-        <BookmarkTree
-          nodes={openBookmarkFolder.children}
-          onNavigate={(url) => {
-            setOpenBookmarkFolderId(null);
-            void act({ action: "navigate", url });
-          }}
-        />
-      </div>
-    ) : null}
     {error ? <div className={styles.browserError} role="alert">{error}</div> : null}
     <div ref={viewportRef} className={styles.browserViewport} data-busy={state?.loading ? "true" : undefined}>
       {blank ? <div className={styles.browserStart} data-onboarding={showOnboarding ? "true" : undefined}>
@@ -411,25 +410,6 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
       </button> : t("browser.profileNotice")}
     </div>
   </div>;
-}
-
-function BookmarkTree({ nodes, onNavigate }: { nodes: ImportedChromeBookmarkNode[]; onNavigate: (url: string) => void }) {
-  return <ul className={styles.browserBookmarkTree}>
-    {nodes.map((node) => node.type === "bookmark" ? (
-      <li key={node.id}>
-        <button type="button" title={node.url} onClick={() => onNavigate(node.url)}>
-          <AliIcon name="earth" size={12} /><span>{node.title}</span><small>{node.url}</small>
-        </button>
-      </li>
-    ) : (
-      <li key={node.id}>
-        <details>
-          <summary><AliIcon name="folder" size={13} /><span>{node.title}</span><small>{bookmarkCount(node.children)}</small></summary>
-          <BookmarkTree nodes={node.children} onNavigate={onNavigate} />
-        </details>
-      </li>
-    ))}
-  </ul>;
 }
 
 function ScreenshotBrowserPanel({ active, sessionId }: { active: boolean; sessionId: string | null }) {

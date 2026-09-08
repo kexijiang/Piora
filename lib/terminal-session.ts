@@ -1,4 +1,5 @@
-import { spawn, type IPty } from "node-pty";
+import type { IPty } from "node-pty";
+import { loadTerminalPty } from "./terminal-pty";
 import { statSync } from "node:fs";
 import path from "node:path";
 import {
@@ -108,7 +109,7 @@ export class TerminalSession {
     const definition = shellDefinition();
     const generation = ++this.generation;
     this.shell = definition.label;
-    const child = spawn(definition.executable, definition.args, {
+    const child = loadTerminalPty().spawn(definition.executable, definition.args, {
       cwd: this.cwd,
       env: Object.fromEntries(Object.entries({ ...process.env, TERM: "xterm-256color", TERM_PROGRAM: "Piora" }).filter((entry): entry is [string, string] => typeof entry[1] === "string")),
       name: "xterm-256color",

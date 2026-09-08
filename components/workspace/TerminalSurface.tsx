@@ -41,6 +41,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
     let disposed = false;
     let cleanup = () => {};
     const abort = new AbortController();
+    if (!readOnly) latest.current.onStatus?.(false, "");
     void (async () => {
       const [{ Terminal }, { FitAddon }, { SearchAddon }] = await Promise.all([
         import("@xterm/xterm"), import("@xterm/addon-fit"), import("@xterm/addon-search"),
@@ -87,17 +88,27 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
         previousOutput.current = latest.current.output;
         term.write(latest.current.output);
       } else if (cwd) {
-        events = new EventSource(`/api/terminal/events?cwd=${encodeURIComponent(cwd)}`);
-        events.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            if (message.type === "snapshot") { term.reset(); term.write(message.output); resize(); }
-            else if (message.type === "output") term.write(message.output);
-            else if (message.type === "clear") term.clear();
-            if (message.type === "snapshot" || message.type === "status") latest.current.onStatus?.(message.connected, message.shell);
-          } catch { /* Ignore malformed transport frames. */ }
-        };
-        events.onerror = () => latest.current.onStatus?.(false, "");
+        // EventSource hides HTTP error bodies. Start explicitly so missing
+        // native libraries and invalid working directories reach the user.
+        void (async () => {
+          const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, action: "start" }), signal: abort.signal });
+          if (!response.ok) {
+            const body = await response.json().catch(() => null);
+            throw new Error(body?.error ?? `HTTP ${response.status}`);
+          }
+          if (disposed) return;
+          events = new EventSource(`/api/terminal/events?cwd=${encodeURIComponent(cwd)}`);
+          events.onmessage = (event) => {
+            try {
+              const message = JSON.parse(event.data);
+              if (message.type === "snapshot") { term.reset(); term.write(message.output); resize(); }
+              else if (message.type === "output") term.write(message.output);
+              else if (message.type === "clear") term.clear();
+              if (message.type === "snapshot" || message.type === "status") latest.current.onStatus?.(message.connected, message.shell);
+            } catch { /* Ignore malformed transport frames. */ }
+          };
+          events.onerror = () => latest.current.onStatus?.(false, "");
+        })().catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
       }
       const input = term.onData((data) => { if (!readOnly && cwd) post({ action: "input", data }); });
       term.attachCustomKeyEventHandler((event) => {

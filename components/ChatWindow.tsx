@@ -15,7 +15,7 @@ import type { NewSessionInitialPrompt } from "./new-session-types";
 import { ChatMinimap } from "./ChatMinimap";
 import { ChatScrollRail } from "./ChatScrollRail";
 import { useI18n } from "@/hooks/useI18n";
-import { useAgentSession, type AgentPhase, type AttachedImage, type BuiltinSlashCommandResult, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
+import { useAgentSession, type AgentPhase, type BuiltinSlashCommandResult, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -28,6 +28,7 @@ import { isProjectlessChatCwd } from "@/lib/projectless-chat-path";
 import { UserInputCard } from "./UserInputCard";
 import type { SessionCapabilitiesState } from "@/lib/session-capabilities";
 import { findVisionAgentStatus, VisionAgentStatus } from "./VisionAgentStatus";
+import { getVisionRetryPayload } from "@/lib/message-images";
 
 interface Props {
   session: SessionInfo | null;
@@ -108,27 +109,6 @@ function getUserInputText(message: AgentMessage): string | null {
       .trim()
     : "";
   return text.length > 0 ? text : null;
-}
-
-function getVisionRetryPayload(messages: readonly AgentMessage[]): { message: string; images?: AttachedImage[] } | null {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role !== "user") continue;
-    const text = getUserInputText(message) ?? "";
-    const images = Array.isArray(message.content)
-      ? message.content.flatMap((block) => {
-        if (block.type !== "image" || block.source.type !== "base64" || !block.source.data) return [];
-        const mimeType = block.source.media_type || "image/png";
-        return [{
-          data: block.source.data,
-          mimeType,
-          previewUrl: `data:${mimeType};base64,${block.source.data}`,
-        } satisfies AttachedImage];
-      })
-      : [];
-    if (text || images.length > 0) return { message: text, ...(images.length > 0 ? { images } : {}) };
-  }
-  return null;
 }
 
 export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
@@ -486,7 +466,8 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
 
   const visibleExtensionStatuses = extensionStatuses;
   const visionStatus = useMemo(() => findVisionAgentStatus(extensionStatuses), [extensionStatuses]);
-  const visionRetryPayload = useMemo(() => getVisionRetryPayload(messages), [messages]);
+  const visionFailed = visionStatus?.phase === "failed";
+  const visionRetryPayload = useMemo(() => visionFailed ? getVisionRetryPayload(messages) : null, [messages, visionFailed]);
   const retryVisionAnalysis = useCallback(() => {
     if (sessionBusy || !visionRetryPayload) return;
     void handleComposerSend(visionRetryPayload.message, visionRetryPayload.images);

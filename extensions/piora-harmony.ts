@@ -1,4 +1,5 @@
 import { Type, validateToolArguments } from "@earendil-works/pi-ai";
+import { gestureCoordinates } from "../lib/harmony/scenario-executor.ts";
 import { defineTool, type ExtensionAPI, type ToolDefinition } from "@earendil-works/pi-coding-agent";
 import {
   getHarmonyDeviceManager,
@@ -772,23 +773,11 @@ const harmonyDeviceTool = defineTool({
             const current = await manager.snapshot({
               serial,
               leaseToken: lease.token,
-              includeTree: false,
-              includeScreenshot: true,
+              includeTree: true,
+              includeScreenshot: false,
               signal,
             });
-            const width = current.screenshot?.width;
-            const height = current.screenshot?.height;
-            if (!width || !height) throw new Error("A valid screenshot is required for a directional gesture.");
-            const left = Math.round(width * 0.2);
-            const right = Math.round(width * 0.8);
-            const top = Math.round(height * 0.25);
-            const bottom = Math.round(height * 0.75);
-            const centerX = Math.round(width * 0.5);
-            const centerY = Math.round(height * 0.5);
-            if (params.direction === "left") [fromX, fromY, toX, toY] = [right, centerY, left, centerY];
-            else if (params.direction === "right") [fromX, fromY, toX, toY] = [left, centerY, right, centerY];
-            else if (params.direction === "up") [fromX, fromY, toX, toY] = [centerX, bottom, centerX, top];
-            else [fromX, fromY, toX, toY] = [centerX, top, centerX, bottom];
+            ({ fromX, fromY, toX, toY } = gestureCoordinates(current.nodes ?? [], params.direction));
             generation = current.generation;
           }
           const options = {

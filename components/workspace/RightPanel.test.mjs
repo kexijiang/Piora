@@ -52,14 +52,16 @@ test("moves files and review into a Codex-style launcher and tool-tab workspace"
 
 test("the command panel owns a persistent workspace shell while file lookup stays in Files", () => {
   const commandPanel = fs.readFileSync(new URL("./CommandPanel.tsx", import.meta.url), "utf8");
-  assert.match(commandPanel, /piora-command-history-v1/);
-  assert.match(commandPanel, /filterCommandHistory/);
-  assert.match(commandPanel, /role="combobox"/);
-  assert.match(commandPanel, /role="listbox"/);
-  assert.match(commandPanel, /\/api\/terminal\/events/);
+  const terminal = fs.readFileSync(new URL("./TerminalSurface.tsx", import.meta.url), "utf8");
+  assert.match(commandPanel, /useAgentTerminal\(sessionId\)/);
+  assert.match(commandPanel, /<TerminalSurface/);
+  assert.match(commandPanel, /role="tablist"/);
+  assert.match(commandPanel, /agent\.commands/);
+  assert.match(terminal, /\/api\/terminal\/events/);
   assert.match(commandPanel, /\/api\/terminal/);
-  assert.match(commandPanel, /new EventSource/);
-  assert.match(commandPanel, /action:\s*"run"|postAction\("run"/);
+  assert.match(terminal, /new EventSource/);
+  assert.match(terminal, /action: "start"/);
+  assert.match(terminal, /action: "input", data/);
   assert.doesNotMatch(commandPanel, /controls\.runCommand|excludeFromContext/);
   assert.match(shell, /navigate\.searchFiles[\s\S]*?setRightPanelTab\("files"\)/);
   assert.match(shell, /focusFileSearch/);
@@ -68,10 +70,10 @@ test("the command panel owns a persistent workspace shell while file lookup stay
 test("the browser panel matches its Chromium viewport and forwards native pointer phases", () => {
   const browser = fs.readFileSync(new URL("./BrowserPanel.tsx", import.meta.url), "utf8");
   assert.match(browser, /new ResizeObserver/);
-  assert.match(browser, /pendingViewportRef/);
-  assert.match(browser, /await bridge\.setViewport/);
+  assert.match(browser, /createBrowserViewportSync/);
+  assert.match(browser, /bridge\.setViewport/);
   assert.match(browser, /transitionend/);
-  assert.match(browser, /\[maximized, syncViewport\]/);
+  assert.match(browser, /\[[^\]]*maximized[^\]]*syncViewport[^\]]*\]/);
   assert.match(browser, /action: "resize"/);
   assert.match(browser, /onPointerMove/);
   assert.match(browser, /action: "mouse_down"/);
