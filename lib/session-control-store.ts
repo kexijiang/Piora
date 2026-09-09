@@ -87,6 +87,15 @@ export class SessionControlStore {
     return join(this.root, "commands", `${safeSessionFileName(sessionId)}.jsonl`);
   }
 
+  /** Successful slash commands need not create a user entry in SDK history. */
+  completedSlashPromptIds(sessionId: string): string[] {
+    return this.loadCommands(sessionId).filter((command) =>
+      command.source === "ui" && command.status === "completed"
+      && command.delivery === "next_turn" && command.content.trimStart().startsWith("/")
+      && !command.images?.length && !command.materials?.length
+    ).map((command) => command.idempotencyKey);
+  }
+
   eventsPath(sessionId: string): string {
     return join(this.root, "events", `${safeSessionFileName(sessionId)}.jsonl`);
   }

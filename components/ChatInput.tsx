@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { useAnchoredMenuPosition } from "@/hooks/useAnchoredMenuPosition";
 import { readPromptOptimizerModel, readPromptOptimizerSystemPrompt } from "@/lib/prompt-optimizer-settings";
 import type { AttachedFile, BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
 import { clearDraft, getDraft, setDraft, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
@@ -104,7 +105,7 @@ interface PromptOptimizationState {
 }
 
 interface Props {
-  onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[]) => boolean | void | Promise<boolean | void>;
+  onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[], onDurable?: () => void) => boolean | void | Promise<boolean | void>;
   onAbort: () => void;
   onSteer?: (message: string, images?: AttachedImage[]) => void;
   onFollowUp?: (message: string, images?: AttachedImage[]) => void;
@@ -367,6 +368,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const [fileIndexLoading, setFileIndexLoading] = useState(false);
   const [atServerResult, setAtServerResult] = useState<{ cwd: string; query: string; matches: FileIndexEntry[] } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputAnchorRef = useRef<HTMLDivElement>(null);
+  const atMenuRef = useRef<HTMLDivElement>(null);
+  const atListRef = useRef<HTMLDivElement>(null);
+  const atListId = React.useId();
+  const atMenuPosition = useAnchoredMenuPosition(inputAnchorRef, atMenuOpen && atQuery !== null);
   const submitRef = useRef<() => void>(() => {});
   const sendingRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -746,15 +752,32 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const sentImages = attachedImages;
     const sentFiles = attachedFiles;
     const sentDraftKey = draftKeyRef.current;
+    let cleared = false;
+    const clearSubmittedDraft = () => {
+      if (cleared || draftKeyRef.current !== sentDraftKey || valueRef.current !== sentValue || attachedImagesRef.current !== sentImages || attachedFilesRef.current !== sentFiles) return;
+      cleared = true;
+      clearInput();
+      valueRef.current = "";
+      attachedImagesRef.current = [];
+      attachedFilesRef.current = [];
+    };
+    const restoreSubmittedDraft = () => {
+      if (!cleared || draftKeyRef.current !== sentDraftKey || valueRef.current || attachedImagesRef.current.length || attachedFilesRef.current.length) return;
+      setValue(sentValue);
+      setAttachedFiles(sentFiles);
+      setAttachedImages(draftImagesToAttachedImages(sentImages.map(imageToDraftImage)));
+    };
+    try {
     const accepted = await onSend(
       messageToSend,
       attachedImages.length ? attachedImages : undefined,
       filesToSend.length ? filesToSend : undefined,
+      clearSubmittedDraft,
     );
-    if (accepted === false) return;
-    // A delayed acknowledgement must never clear newer typing, restored input,
-    // attachments, or another task's composer.
-    if (draftKeyRef.current === sentDraftKey && valueRef.current === sentValue && attachedImagesRef.current === sentImages && attachedFilesRef.current === sentFiles) clearInput();
+    if (accepted === false) { restoreSubmittedDraft(); return; }
+    // Legacy send handlers may not provide an early durable acknowledgement.
+    clearSubmittedDraft();
+    } catch (error) { restoreSubmittedDraft(); throw error; }
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
@@ -1042,8 +1065,14 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   useEffect(() => {
     if (!atMenuOpen) return;
-    atItemRefs.current[atActiveIndex]?.scrollIntoView({ block: "nearest", inline: "nearest" });
-  }, [atActiveIndex, atMenuOpen]);
+    const item = atItemRefs.current[atActiveIndex];
+    const list = atListRef.current;
+    if (!item || !list) return;
+    const row = item.getBoundingClientRect();
+    const bounds = list.getBoundingClientRect();
+    if (row.top < bounds.top) list.scrollTop += row.top - bounds.top;
+    else if (row.bottom > bounds.bottom) list.scrollTop += row.bottom - bounds.bottom;
+  }, [atActiveIndex, atMenuOpen, atMatches.length, atMenuPosition]);
 
   useEffect(() => {
     if (historyActiveIndex >= inputHistory.length) {
@@ -1463,6 +1492,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       if (historyMenuRef.current && !historyMenuRef.current.contains(e.target as Node) && !textareaRef.current?.contains(e.target as Node)) {
         setHistoryMenuOpen(false);
       }
+      if (atMenuRef.current && !atMenuRef.current.contains(e.target as Node) && !textareaRef.current?.contains(e.target as Node)) {
+        setAtMenuOpen(false);
+      }
       if (streamingActionMenuRef.current && !streamingActionMenuRef.current.contains(e.target as Node)) {
         setStreamingActionMenuOpen(false);
       }
@@ -1673,7 +1705,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         )}
 
         {/* Main input */}
-        <div style={{ position: "relative" }}>
+        <div ref={inputAnchorRef} style={{ position: "relative" }}>
           {historyMenuOpen && inputHistory.length > 0 && (
             <div
               ref={historyMenuRef}
@@ -1794,7 +1826,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
               </div>
             </div>
           )}
-          {atMenuOpen && atQuery !== null && (() => {
+          {atMenuOpen && atQuery !== null && atMenuPosition && (() => {
             const indexLoading = fileIndexLoading && (!fileIndex || fileIndex.cwd !== cwd);
              const matchCountLabel = atMatches.length === 1 ? t("chat.match") : t("chat.matches", { count: atMatches.length });
             // With a truncated index, local results are provisional — the
@@ -1802,44 +1834,24 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
             const truncatedHint = fileIndex?.truncated && !serverResultInUse
                ? (atQuery.query ? t("chat.searchingAll") : t("chat.indexTruncated"))
               : "";
-            return (
+            return createPortal(
               <div
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: "calc(100% + 8px)",
-                  zIndex: 120,
-                  background: "var(--bg)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--radius-control)",
-                  boxShadow: "0 -6px 20px rgba(0,0,0,0.12)",
-                  overflow: "hidden",
-                  maxHeight: "min(48vh, 400px)",
-                }}
+                ref={atMenuRef}
+                className="file-mention-menu"
+                data-testid="file-mention-menu"
+                style={atMenuPosition}
               >
-                <div
-                  style={{
-                    padding: "8px 10px",
-                    borderBottom: "1px solid var(--border)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    fontSize: "var(--text-xs)",
-                    color: "var(--text-dim)",
-                  }}
-                >
+                <div className="file-mention-header">
                   <span>
                     {indexLoading
                        ? t("chat.loadingFiles")
                        : t("chat.files", { label: matchCountLabel, hint: truncatedHint })}
                   </span>
-                   <span style={{ fontFamily: "var(--font-mono)" }}>{t("chat.tabEnter")}</span>
+                   <span className="file-mention-hints">{t("chat.tabEnter")}</span>
                 </div>
-                <div style={{ maxHeight: "calc(min(48vh, 400px) - 34px)", overflowY: "auto", padding: 4 }}>
+                <div ref={atListRef} id={atListId} className="file-mention-list" role="listbox" aria-label={t("chat.files", { label: matchCountLabel, hint: truncatedHint })}>
                   {!indexLoading && atMatches.length === 0 ? (
-                    <div style={{ padding: "6px 8px", fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>
+                    <div className="file-mention-empty">
                        {needsServerSearch && !serverResultInUse ? t("chat.searching") : t("chat.noMatchingFiles")}
                     </div>
                   ) : (
@@ -1854,41 +1866,31 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                             atItemRefs.current[index] = node;
                           }}
                           type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            applyAtCompletion(entry);
-                          }}
+                          id={`${atListId}-${index}`}
+                          role="option"
+                          aria-selected={active}
+                          aria-label={entry.path}
+                          title={entry.path}
+                          className="file-mention-item"
+                          data-active={active}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => applyAtCompletion(entry)}
                           onMouseEnter={() => setAtActiveIndex(index)}
-                          style={{
-                            width: "100%",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "6px 8px",
-                            border: "none",
-                            borderRadius: "var(--radius-control)",
-                            background: active ? "var(--bg-selected)" : "none",
-                            color: "var(--text)",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            fontSize: "var(--text-sm)",
-                            fontFamily: "var(--font-mono)",
-                          }}
                         >
-                          <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
+                          <span className="file-mention-icon">
                             {entry.isDir ? <FolderIcon size={14} /> : getFileIcon(name, 14)}
                           </span>
-                          <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {dirPrefix && <span style={{ color: "var(--text-dim)" }}>{dirPrefix}</span>}
-                            {name}
-                            {entry.isDir && <span style={{ color: "var(--text-dim)" }}>/</span>}
+                          <span className="file-mention-copy">
+                            <span className="file-mention-name">{name}{entry.isDir ? "/" : ""}</span>
+                            {dirPrefix && <span className="file-mention-directory">{dirPrefix}</span>}
                           </span>
                         </button>
                       );
                     })
                   )}
                 </div>
-              </div>
+              </div>,
+              document.body,
             );
           })()}
           {promptOptimization && !promptOptimization.loading && (
@@ -1943,6 +1945,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           >
           <textarea
             ref={textareaRef}
+            aria-autocomplete="list"
+            aria-controls={atMenuPosition ? atListId : undefined}
+            aria-activedescendant={atMenuPosition && atMatches[atActiveIndex] ? `${atListId}-${atActiveIndex}` : undefined}
             value={value}
             onChange={(e) => {
               if (localVoiceRecording || voiceTranscribing) stopVoiceInput(true);

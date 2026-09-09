@@ -3,7 +3,7 @@
 import { Fragment, memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
 import { buildVirtualOffsets, virtualIndexAt, virtualRange } from "@/lib/virtual-window";
 import { createVirtualRowState } from "@/lib/virtual-row-state";
-import { isChatBottomFollowing } from "@/lib/chat-bottom-follow";
+import { CHAT_BOTTOM_FOLLOW_EVENT, isChatBottomFollowing, pinChatBottom } from "@/lib/chat-bottom-follow";
 import { VirtualRowStateContext } from "./VirtualRowState";
 
 export interface VirtualListHandle { scrollToKey(key: string): void; cancelNavigation(): void }
@@ -151,6 +151,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     };
     const onInput = cancelNavigation;
     element.addEventListener("scroll", onScroll, { passive: true });
+    element.addEventListener(CHAT_BOTTOM_FOLLOW_EVENT, syncRange);
     element.addEventListener("wheel", onInput, { passive: true });
     element.addEventListener("touchstart", onInput, { passive: true });
     document.addEventListener("pointerdown", onInput, { capture: true, passive: true });
@@ -187,6 +188,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     return () => {
       observer.disconnect();
       element.removeEventListener("scroll", onScroll);
+      element.removeEventListener(CHAT_BOTTOM_FOLLOW_EVENT, syncRange);
       element.removeEventListener("wheel", onInput);
       element.removeEventListener("touchstart", onInput);
       document.removeEventListener("pointerdown", onInput, true);
@@ -223,6 +225,12 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     rememberViewport();
     syncRange();
   }, [keys, offsets, navigationKey, listTop, syncRange, initialTail, rememberViewport]);
+
+  // Range-only commits also replace spacers with measured content. Keep the
+  // requested bottom aligned in the same commit, before the browser paints.
+  useLayoutEffect(() => {
+    if (parent.current) pinChatBottom(parent.current);
+  });
 
   useEffect(() => {
     const retained = new Set(keys);

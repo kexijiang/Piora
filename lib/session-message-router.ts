@@ -458,8 +458,8 @@ export class SessionMessageRouter {
         const status = await terminal.promise;
         this.activeCommands.delete(sessionId);
         if (status === "completed") {
-          await this.publish({ type: "prompt_done", sessionId, commandId: command.commandId, runId: command.runId, timestamp: Date.now() });
           await this.transition(command, "completed", {}, "command_completed");
+          await this.publish({ type: "prompt_done", sessionId, commandId: command.commandId, runId: command.runId, timestamp: Date.now() });
         } else if (status === "cancelled") {
           await this.publish({ type: "prompt_error", sessionId, commandId: command.commandId, runId: command.runId, timestamp: Date.now(), errorCode: "COMMAND_CANCELLED" });
           await this.transition(command, "cancelled", {}, "command_cancelled");

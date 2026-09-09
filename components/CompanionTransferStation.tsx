@@ -11,6 +11,7 @@ import { copyText } from "@/lib/clipboard";
 import { AliIcon } from "./AliIcon";
 import { CompanionStorageSettings } from "./CompanionStorageSettings";
 import { TransferFileTree } from "./TransferFileTree";
+import { TransferWorkspaceFrame, type TransferWorkspaceFrameHandle } from "./TransferWorkspaceFrame";
 import { closeTransferTab, restoreTransferTabs, transferFolderPath, type TransferTabs } from "@/lib/transfer-workspace";
 import type { MarkdownEditorHandle } from "./MarkdownEditor";
 import styles from "./CompanionTransferStation.module.css";
@@ -148,6 +149,7 @@ export function CompanionTransferStation({ items, loaded, loading, pending, erro
   const [focusMode, setFocusMode] = useState(false);
   const widthRef = useRef(210);
   const stationRef = useRef<HTMLDivElement>(null);
+  const workspaceFrame = useRef<TransferWorkspaceFrameHandle>(null);
   const sidebarResize = useResizablePanel({ ariaLabel: "调整文件列表宽度", cssVariable: "--transfer-sidebar-width", defaultWidth: 210, minWidth: 130, maxWidth: 420,
     getMaxWidth: () => Math.max(130, Math.min(420, (stationRef.current?.clientWidth ?? 800) * .45)), growthDirection: "right", storageKey: "piora:transfer-sidebar-width:v1", widthRef, panelRef: stationRef });
   useEffect(() => { try { const saved = JSON.parse(localStorage.getItem("piora:transfer-writing:v1") ?? "null"); if (saved) { if (Number.isFinite(saved.width)) setWritingWidth(Math.max(420, Math.min(1400, saved.width))); if (Number.isFinite(saved.size)) setWritingSize(Math.max(12, Math.min(24, saved.size))); } } catch { /* Optional layout. */ } }, []);
@@ -202,6 +204,18 @@ export function CompanionTransferStation({ items, loaded, loading, pending, erro
     const result = await mutateFolder("PATCH", { id, parentId });
     if (result) { setFolderId(parentId); setTabs((current) => ({ ...current })); }
   };
+  const deleteFile = async (id: string): Promise<boolean> => {
+    if (busy || pending || closing.current.has(id)) return false;
+    closing.current.add(id); setBusy(true); setNotice("");
+    try {
+      const save = saves.current.get(id);
+      if (save && !await save()) { setNotice("文档尚未保存，未删除文件。请先保存或另存副本。"); return false; }
+      await write("PATCH", { id, remove: true });
+      setTabs((current) => closeTransferTab(current, id));
+      return true;
+    } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); return false; }
+    finally { closing.current.delete(id); setBusy(false); }
+  };
   const create = async (title = "未命名文档", content = "") => {
     setBusy(true);
     try { const result = await write("POST", { title, content, language: "markdown", parentId: folderId }); open(result[0]); }
@@ -241,10 +255,12 @@ export function CompanionTransferStation({ items, loaded, loading, pending, erro
     </header>
     <input ref={input} hidden type="file" accept=".md,.markdown,.txt,image/png,image/jpeg,image/webp,image/gif" multiple onChange={(event) => { void importFiles(Array.from(event.target.files ?? [])); event.target.value = ""; }} />
     {settings ? <CompanionStorageSettings scope="library" compact /> : null}
-    {layoutOpen ? <div className={styles.layoutControls}><label>正文宽度 <input type="range" min="420" max="1400" step="20" value={writingWidth} onChange={(event) => updateWriting(Number(event.target.value), writingSize)} /><output>{writingWidth} px</output></label><label>字号 <input type="range" min="12" max="24" value={writingSize} onChange={(event) => updateWriting(writingWidth, Number(event.target.value))} /><output>{writingSize} px</output></label><button type="button" onClick={() => { sidebarResize.resetWidth(); updateWriting(820, 16); }}>恢复默认</button><span>拖动底部调整高度</span></div> : null}
+    {layoutOpen ? <div className={styles.layoutControls}><label>正文宽度 <input type="range" min="420" max="1400" step="20" value={writingWidth} onChange={(event) => updateWriting(Number(event.target.value), writingSize)} /><output>{writingWidth} px</output></label><label>字号 <input type="range" min="12" max="24" value={writingSize} onChange={(event) => updateWriting(writingWidth, Number(event.target.value))} /><output>{writingSize} px</output></label><button type="button" onClick={() => { sidebarResize.resetWidth(); workspaceFrame.current?.resetSize(); updateWriting(820, 16); }}>恢复默认</button><span>拖动左右边缘或底部调整大小</span></div> : null}
     {error || notice ? <div className={styles.error} role="alert"><span>{notice || error}</span><button type="button" onClick={() => { setNotice(""); void refresh().catch(() => {}); }}>重试</button></div> : null}
+    <TransferWorkspaceFrame ref={workspaceFrame}>
     <div ref={stationRef} className={styles.workspace} data-focus={focusMode} style={{ "--writing-width": `${writingWidth}px`, "--writing-size": `${writingSize}px` } as CSSProperties}>
       {sidebarVisible ? <TransferFileTree items={items} selectedId={selected?.id ?? null} folderId={folderId} query={query} onQuery={setQuery} onOpen={open} onFolder={setFolderId} disabled={busy || pending || !loaded}
+        onDeleteFile={deleteFile}
         onMove={(id, parentId) => { void move(id, parentId); }}
         onCreateFolder={async (title) => { const result = await mutateFolder("POST", { title, content: "", kind: "folder", parentId: folderId }); if (result) setFolderId(result[0].id); return Boolean(result); }}
         onRenameFolder={async (title) => Boolean(await mutateFolder("PATCH", { id: folderId, title }))}
@@ -286,5 +302,6 @@ export function CompanionTransferStation({ items, loaded, loading, pending, erro
       </div> : null}
       </div>
     </div>
+    </TransferWorkspaceFrame>
   </section>;
 }

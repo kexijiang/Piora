@@ -3,7 +3,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import type { Terminal } from "@xterm/xterm";
 import type { SearchAddon } from "@xterm/addon-search";
-import { copyText } from "@/lib/clipboard";
+import { copyText, readClipboardText } from "@/lib/clipboard";
+import { isTerminalProtocolReply } from "@/lib/terminal-input";
 import "@xterm/xterm/css/xterm.css";
 import styles from "./TerminalPanel.module.css";
 
@@ -50,9 +51,10 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       const configuredFontSize = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui-font-size")) || 14;
       const term = new Terminal({
         cursorBlink: !readOnly, cursorStyle: "bar", cursorInactiveStyle: "none", disableStdin: readOnly,
+        allowTransparency: true,
         convertEol: readOnly, scrollback: 5000, fontSize: configuredFontSize * 13 / 14, lineHeight: 1.35,
         fontFamily: '"Cascadia Code", "Cascadia Mono", Consolas, "Liberation Mono", monospace',
-        theme: { background: "#101419", foreground: "#dce3ec", cursor: "#80d4c4", selectionBackground: "#324454",
+        theme: { background: "#00000000", foreground: "#dce3ec", cursor: "#80d4c4", selectionBackground: "#324454",
           black: "#202832", red: "#f08c96", green: "#89d4ae", yellow: "#e8c88d", blue: "#8db5f5", magenta: "#c1a0ed", cyan: "#80d4c4", white: "#dce3ec",
           brightBlack: "#748192", brightRed: "#ffacb4", brightGreen: "#b2e9c7", brightYellow: "#ffe1a3", brightBlue: "#bad1ff", brightMagenta: "#dfc7ff", brightCyan: "#b0f0e4", brightWhite: "#ffffff" },
       });
@@ -64,6 +66,18 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       terminal.current = term;
       search.current = finder;
       let chain = Promise.resolve();
+      let rendering = Promise.resolve();
+      let replaying = false;
+      const writeOutput = (output: string, snapshot = false) => {
+        // xterm parses writes asynchronously. Keep the replay flag scoped to
+        // the actual parse, including when live frames follow a large snapshot.
+        rendering = rendering.then(() => new Promise<void>((resolve) => {
+          if (disposed) { resolve(); return; }
+          replaying = snapshot;
+          if (snapshot) term.reset();
+          term.write(output, () => { replaying = false; resolve(); });
+        }));
+      };
       let events: EventSource | undefined;
       let resizeTimer: ReturnType<typeof setTimeout> | undefined;
       const post = (body: object) => {
@@ -101,8 +115,8 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
           events.onmessage = (event) => {
             try {
               const message = JSON.parse(event.data);
-              if (message.type === "snapshot") { term.reset(); term.write(message.output); resize(); }
-              else if (message.type === "output") term.write(message.output);
+              if (message.type === "snapshot") { writeOutput(message.output, true); resize(); }
+              else if (message.type === "output") writeOutput(message.output);
               else if (message.type === "clear") term.clear();
               if (message.type === "snapshot" || message.type === "status") latest.current.onStatus?.(message.connected, message.shell);
             } catch { /* Ignore malformed transport frames. */ }
@@ -110,8 +124,29 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
           events.onerror = () => latest.current.onStatus?.(false, "");
         })().catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
       }
-      const input = term.onData((data) => { if (!readOnly && cwd) post({ action: "input", data }); });
+      const input = term.onData((data) => { if (!readOnly && cwd) post({ action: "input", data, ...(replaying && isTerminalProtocolReply(data) ? { replay: true } : {}) }); });
       term.attachCustomKeyEventHandler((event) => {
+        const pasteShortcut = !event.altKey && (
+          ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v")
+          || (event.shiftKey && !event.ctrlKey && !event.metaKey && event.key === "Insert")
+        );
+        if (pasteShortcut) {
+          if (readOnly || !cwd) {
+            event.preventDefault();
+          } else if (window.piDesktop?.clipboard) {
+            // Electron clipboard reads use the trusted preload bridge. Prevent
+            // native paste too, otherwise the same text can arrive twice.
+            event.preventDefault();
+            if (event.type === "keydown" && !event.repeat) {
+              void readClipboardText().then((text) => {
+                if (!disposed && text) term.paste(text);
+              }).catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
+            }
+          }
+          // In browsers leave the native paste event enabled, but never let
+          // xterm turn Ctrl+V into a shell control character (0x16).
+          return false;
+        }
         if (event.type === "keydown" && (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "c" && term.hasSelection()) {
           event.preventDefault();
           void copyText(term.getSelection()).catch((error) => latest.current.onError?.(String(error)));

@@ -88,6 +88,7 @@ export class TerminalSession {
   private output = "";
   private revision = 0;
   private shell = "";
+  private deviceAttributesAnswered = false;
   private idleTimer: NodeJS.Timeout | null = null;
 
   constructor(readonly cwd: string) {}
@@ -107,6 +108,7 @@ export class TerminalSession {
     if (this.child && this.connected) return this.snapshot();
 
     const definition = shellDefinition();
+    this.deviceAttributesAnswered = false;
     const generation = ++this.generation;
     this.shell = definition.label;
     const child = loadTerminalPty().spawn(definition.executable, definition.args, {
@@ -146,11 +148,17 @@ export class TerminalSession {
     return this.snapshot();
   }
 
-  input(data: unknown): void {
+  input(data: unknown, replay = false): void {
     if (typeof data !== "string" || data.length > MAX_COMMAND_CHARS || data.includes("\0")) {
       throw new TerminalSessionError("Invalid terminal input");
     }
     if (!this.child || !this.connected) throw new TerminalSessionError("Shell is not available", 409, "shell_unavailable");
+    const deviceAttributes = /^\x1b\[\?[\d;]+c$/.test(data);
+    // A first attachment may contain ConPTY's still-unanswered startup query.
+    // Allow that handshake once; replaying old queries must never type replies
+    // into an already-running shell. Live application queries remain unchanged.
+    if (replay && !(process.platform === "win32" && deviceAttributes && !this.deviceAttributesAnswered)) return;
+    if (deviceAttributes) this.deviceAttributesAnswered = true;
     this.child.write(data);
     this.touch();
   }

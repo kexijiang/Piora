@@ -1,0 +1,23 @@
+import fs from "node:fs";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { createJiti } from "jiti";
+
+const jiti = createJiti(import.meta.url);
+const { getCompanionModelsDirectory, validateCompanionGlb, listCompanionModels } = await jiti.import("../lib/companion-models.ts");
+const source = path.resolve(process.argv[2] || "local-pets/jinx-3d");
+const manifest = JSON.parse(fs.readFileSync(path.join(source, "pet.json"), "utf8"));
+if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(manifest.id) || manifest.schemaVersion !== 1 || manifest.renderer !== "glb") throw new Error("Invalid model manifest");
+const model = fs.readFileSync(path.join(source, "model.glb"));
+validateCompanionGlb(model);
+const root = getCompanionModelsDirectory();
+const target = path.join(root, manifest.id);
+if (fs.existsSync(target)) throw new Error(`Already installed: ${target}. Choose a new id to preserve the existing pet.`);
+fs.mkdirSync(root, { recursive: true });
+const stage = path.join(root, `.import-${randomUUID()}`);
+fs.mkdirSync(stage);
+for (const asset of ["model.glb", "preview.png", "pet.json"]) fs.copyFileSync(path.join(source, asset), path.join(stage, asset));
+fs.renameSync(stage, target);
+const result = listCompanionModels();
+if (!result.pets.some((pet) => pet.id === manifest.id)) throw new Error(JSON.stringify(result.diagnostics));
+console.log(`Installed ${manifest.displayName}: ${target}`);

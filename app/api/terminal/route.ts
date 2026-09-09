@@ -27,7 +27,7 @@ export async function POST(request: Request) {
     const cwd = await validateTerminalCwd(record.cwd);
     const terminal = getTerminalSession(cwd);
     switch (record.action) {
-      case "input": terminal.input(record.data); return NextResponse.json({ success: true });
+      case "input": terminal.input(record.data, record.replay === true); return NextResponse.json({ success: true });
       case "resize": terminal.resize(record.cols, record.rows); return NextResponse.json({ success: true });
       case "start": return NextResponse.json(terminal.start());
       case "run": return NextResponse.json(terminal.run(record.command));

@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `54d065cf2462f0c9b5193f6abad2121573f31e2e99b34b38b5d8e20508ff994d`
+Lockfile SHA-256: `5100562969ca405f15713d268314e8407e6d052f692ebf00dc60aed074175c31`
 
-Unique locked packages: **1242**. Runtime packages: **803**. Build/development-only packages: **439**.
+Unique locked packages: **1250**. Runtime packages: **804**. Build/development-only packages: **446**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -760,6 +760,7 @@ Every locked package declares a license.
 | `teen_process` | `2.3.3` | Apache-2.0 | No |
 | `teex` | `1.0.1` | MIT | No |
 | `text-decoder` | `1.2.7` | Apache-2.0 | No |
+| `three` | `0.185.1` | MIT | No |
 | `tiny-typed-emitter` | `2.1.0` | MIT | No |
 | `tinyexec` | `1.1.2` | MIT | No |
 | `toidentifier` | `1.0.1` | MIT | No |
@@ -829,6 +830,7 @@ Every locked package declares a license.
 | `@babel/helper-module-transforms` | `7.29.7` | MIT | No |
 | `@babel/helper-validator-option` | `7.29.7` | MIT | No |
 | `@babel/helpers` | `7.29.7` | MIT | No |
+| `@dimforge/rapier3d-compat` | `0.12.0` | Apache-2.0 | No |
 | `@electron-internal/extract-zip` | `1.0.5` | BSD-2-Clause | No |
 | `@electron/asar` | `3.4.1` | MIT | No |
 | `@electron/fuses` | `1.8.0` | MIT | No |
@@ -890,6 +892,7 @@ Every locked package declares a license.
 | `@tailwindcss/oxide-win32-arm64-msvc` | `4.3.3` | MIT | Yes |
 | `@tailwindcss/oxide-win32-x64-msvc` | `4.3.3` | MIT | Yes |
 | `@tailwindcss/postcss` | `4.3.3` | MIT | No |
+| `@tweenjs/tween.js` | `23.1.3` | MIT | No |
 | `@tybys/wasm-util` | `0.10.1` | MIT | Yes |
 | `@tybys/wasm-util` | `0.10.2` | MIT | Yes |
 | `@types/cacheable-request` | `6.0.3` | MIT | No |
@@ -905,6 +908,9 @@ Every locked package declares a license.
 | `@types/react-dom` | `19.2.4` | MIT | No |
 | `@types/react-syntax-highlighter` | `15.5.13` | MIT | No |
 | `@types/responselike` | `1.0.3` | MIT | No |
+| `@types/stats.js` | `0.17.4` | MIT | No |
+| `@types/three` | `0.185.4` | MIT | No |
+| `@types/webxr` | `0.5.24` | MIT | No |
 | `@typescript-eslint/eslint-plugin` | `8.57.1` | MIT | No |
 | `@typescript-eslint/parser` | `8.57.1` | MIT | No |
 | `@typescript-eslint/project-service` | `8.57.1` | MIT | No |
@@ -1031,6 +1037,7 @@ Every locked package declares a license.
 | `fast-levenshtein` | `2.0.6` | MIT | No |
 | `fastq` | `1.20.1` | ISC | No |
 | `fdir` | `6.5.0` | MIT | No |
+| `fflate` | `0.8.3` | MIT | No |
 | `file-entry-cache` | `8.0.0` | MIT | No |
 | `filelist` | `1.0.6` | Apache-2.0 | No |
 | `fill-range` | `7.1.1` | MIT | No |
@@ -1135,6 +1142,7 @@ Every locked package declares a license.
 | `magic-string` | `0.30.21` | MIT | No |
 | `matcher` | `3.0.0` | MIT | Yes |
 | `merge2` | `1.4.1` | MIT | No |
+| `meshoptimizer` | `1.1.1` | MIT | No |
 | `micromatch` | `4.0.8` | MIT | No |
 | `mime` | `2.6.0` | MIT | No |
 | `mimic-response` | `1.0.1` | MIT | No |

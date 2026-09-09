@@ -1415,6 +1415,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     message: string,
     images?: AttachedImage[],
     files?: AttachedFile[],
+    onDurable?: () => void,
   ) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage && !images?.length && !files?.length) return false;
@@ -1490,6 +1491,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // Commit original text and attachment bytes before starting network work.
       await savePendingPrompt(recovery);
       if (!isCurrentPrompt()) return false;
+      onDurable?.();
       const promptMaterials = materialFiles.length ? await uploadPromptMaterialFiles(materialFiles) : [];
       if (!isCurrentPrompt()) return false;
       if (isNew && newSessionCwd) {

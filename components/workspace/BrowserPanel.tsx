@@ -13,6 +13,7 @@ import type {
 } from "@/components/sidebar/sidebar-types";
 import { useI18n } from "@/hooks/useI18n";
 import { createBrowserViewportSync } from "@/lib/browser-viewport-sync";
+import type { BrowserMode } from "@/lib/browser-config";
 import { AliIcon } from "../AliIcon";
 import styles from "./WorkspacePanel.module.css";
 
@@ -139,11 +140,47 @@ export function BrowserPanel({ active, maximized, sessionId }: { active: boolean
     setDesktopBridge(window.piDesktop?.browser ?? null);
   }, []);
 
+  const [mode, setMode] = useState<BrowserMode | null>(null);
+  const [modeBusy, setModeBusy] = useState(false);
+  const [modeError, setModeError] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/browser/settings", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || t("browser.unavailable"));
+        if (!controller.signal.aborted) setMode(data.mode);
+      }).catch((error) => { if (!controller.signal.aborted) setModeError(String(error)); });
+    return () => controller.abort();
+  }, [t]);
+  const changeMode = async (next: BrowserMode) => {
+    setModeBusy(true); setModeError(null);
+    try {
+      const response = await fetch("/api/browser/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: next }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t("browser.actionFailed"));
+      setMode(data.mode);
+    } catch (error) { setModeError(String(error)); }
+    finally { setModeBusy(false); }
+  };
+
   if (desktopBridge === undefined) {
     return <div className={styles.browserLoading}>{t("browser.starting")}</div>;
   }
-  if (desktopBridge) return <DesktopBrowserPanel active={active} bridge={desktopBridge} maximized={maximized} sessionId={sessionId} />;
-  return <ScreenshotBrowserPanel active={active} sessionId={sessionId} />;
+  return <div className={styles.browserRoot}>
+    <div className={styles.browserModeBar}>
+      <label><input type="checkbox" role="switch" checked={mode === "background"} disabled={modeBusy || mode === null} onChange={(event) => { void changeMode(event.target.checked ? "background" : "builtin"); }} />{t("browser.useBackground")}</label>
+      <span>{t(mode === "background" ? "browser.backgroundMode" : "browser.builtinMode")}</span>
+    </div>
+    {modeError ? <div className={styles.browserError} role="alert">{modeError}</div> : null}
+    <div className={styles.browserModeContent}>
+      {mode === "background" ? <ScreenshotBrowserPanel active={active} sessionId={sessionId} />
+        : mode === "builtin" ? desktopBridge
+          ? <DesktopBrowserPanel active={active} bridge={desktopBridge} maximized={maximized} sessionId={sessionId} />
+          : <ScreenshotBrowserPanel active={active} sessionId={sessionId} />
+          : <div className={styles.browserLoading}>{t("browser.starting")}</div>}
+    </div>
+  </div>;
 }
 
 function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active: boolean; bridge: DesktopBrowserBridge; maximized: boolean; sessionId: string | null }) {
@@ -450,7 +487,8 @@ function ScreenshotBrowserPanel({ active, sessionId }: { active: boolean; sessio
       });
       setError(null);
     } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : t("browser.unavailable"));
+      const message = refreshError instanceof Error ? refreshError.message : t("browser.unavailable");
+      setError(message);
     }
   }, [sessionId, t]);
 
@@ -633,6 +671,6 @@ function ScreenshotBrowserPanel({ active, sessionId }: { active: boolean; sessio
         }}
       />
     </div>
-    <div className={styles.browserPrivacy}>{t("browser.profileNotice")}</div>
+    <div className={styles.browserPrivacy}>{t("browser.backgroundProfileNotice")}</div>
   </div>;
 }

@@ -55,6 +55,24 @@ test("actual send callback never starts the network when its durable recovery co
   assert.equal(env.messages[0].sendError, "quota exceeded");
 });
 
+test("composer acknowledgement follows durable storage but precedes slow network setup", async () => {
+  let commit, connect;
+  let durable = false;
+  const order = [];
+  const { run } = sendHarness({
+    savePendingPrompt: () => new Promise((resolve) => { commit = () => { order.push("stored"); resolve(); }; }),
+    ensureEventsConnected: () => new Promise((resolve) => { order.push("connecting"); connect = resolve; }),
+    sendAgentCommand: async () => { order.push("sent"); },
+  });
+  const sending = run("original", undefined, undefined, () => { durable = true; order.push("clear"); });
+  assert.equal(durable, false);
+  commit();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(durable, true);
+  assert.deepEqual(order, ["stored", "clear", "connecting"]);
+  connect(); assert.equal(await sending, true);
+});
+
 test("closes the session event stream only after prompt settlement or a pre-prompt failure", () => {
   const finishSource = source.slice(
     source.indexOf("const finishPromptWithoutStream"),

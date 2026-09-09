@@ -149,6 +149,11 @@ export function SettingsDialog({
   const [optimizerPromptStatus, setOptimizerPromptStatus] = useState<"idle" | "saved" | "error">("idle");
   const [optimizerModels, setOptimizerModels] = useState<Array<{ provider: string; id: string; name: string }>>([]);
   const [optimizerModelValue, setOptimizerModelValue] = useState("");
+  useEffect(() => {
+    if (!open || activeKey !== "conversation") return;
+    const selected = readPromptOptimizerModel(window.localStorage);
+    setOptimizerModelValue(selected ? JSON.stringify(selected) : "");
+  }, [open, activeKey]);
   const [titlePromptDraft, setTitlePromptDraft] = useState(SESSION_TITLE_PROMPT);
   const [titlePromptSaved, setTitlePromptSaved] = useState(SESSION_TITLE_PROMPT);
   const [titlePromptStatus, setTitlePromptStatus] = useState<"idle" | "saved" | "error">("idle");

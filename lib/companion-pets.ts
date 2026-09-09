@@ -22,6 +22,7 @@ import {
 } from "./runtime-home";
 import { BUNDLED_COMPANION_PETS_PUBLIC_PATH } from "./companion-store";
 import { firstPartyRuntimeRoot } from "./first-party-extensions";
+import { listCompanionModels, type CompanionModel3D } from "./companion-models";
 
 export const PET_MANIFEST_MAX_BYTES = 64 * 1024;
 export const PET_INSTALLED_MANIFEST_MAX_BYTES = 256 * 1024;
@@ -121,6 +122,7 @@ export interface NormalizedPetAnimation {
 }
 
 export interface CompanionPet {
+  model3d?: CompanionModel3D;
   id: string;
   displayName: string;
   description?: string;
@@ -1399,6 +1401,10 @@ export function listCompanionPets(
   );
   const installedById = new Map(bundledResult.pets.map((pet) => [pet.id, pet]));
   for (const pet of installedResult.pets) installedById.set(pet.id, pet);
+  const modelsResult = listCompanionModels(environment);
+  for (const pet of modelsResult.pets) {
+    if (!installedById.has(pet.id)) installedById.set(pet.id, pet);
+  }
   const installed = [...installedById.values()].sort((left, right) => (
     left.displayName.localeCompare(right.displayName)
   ));
@@ -1435,6 +1441,7 @@ export function listCompanionPets(
       ...legacyResult.diagnostics,
       ...bundledResult.diagnostics,
       ...installedResult.diagnostics,
+      ...modelsResult.diagnostics,
     ],
   };
 }

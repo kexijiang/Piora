@@ -167,9 +167,11 @@ On `ChatWindow` mount, `GET /api/agent/[id]` is called. If `state.isStreaming ==
 
 ### User submissions must survive cancellation and reload
 - `useAgentSession` commits full original text and attachments to IndexedDB through `prompt-recovery` before network work. `ChatInput` awaits acceptance and clears only the unchanged originating draft; cancellation, ambiguous responses and storage failures must return `false`.
+- A prompt's optional `onDurable` callback acknowledges that IndexedDB commit before network setup. The composer can clear immediately on this local receipt; failed sends restore an empty originating composer without overwriting newer input or another session. The pending recovery record remains until a disk-backed receipt confirms delivery.
 - Every send carries a unique `clientPromptId`/idempotency key. History hydration merges unconfirmed recovery records. Never confirm by matching text, since identical messages can be distinct sends.
 - The SDK can buffer messages before its first assistant response. UI tracked prompts persist their session file before admission; only IDs read from a disk-backed SessionManager confirm deletion of a local recovery copy, never SSE or an in-memory history response.
 - UI command journals remain a durable send archive without automatic age/count deletion. `/api/sessions/[id]/submissions` powers the recovery picker, including older sends that never reached model history. Recovery rows have no real entry ID and require distinct virtual row keys.
+- Successful attachment-free UI slash commands may produce no SDK user message. Their disk-backed command journal entries confirm the exact idempotency key only after `completed`; session response cache signatures include journal changes. Other pending, failed, and cancelled sends keep their recovery copies.
 
 ### Compaction SSE events
 Newer pi emits `compaction_start` / `compaction_end`; older versions emitted `auto_compaction_start` / `auto_compaction_end`. `handleAgentEvent` accepts both sets to keep `isCompacting` in sync. Manual compact is a blocking POST — the button stays disabled until the response returns.

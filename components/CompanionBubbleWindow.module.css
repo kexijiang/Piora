@@ -58,3 +58,42 @@
 
 .timerPhase { font-weight: 700; }
 .timerBubble small { color: rgba(39, 35, 31, .65); font-size: var(--text-xs); }
+
+.taskBubble {
+  width: 270px;
+  min-width: 0;
+  padding: 9px 14px;
+  display: grid;
+  gap: 2px;
+  text-wrap: nowrap;
+}
+
+.taskHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.taskHeading strong {
+  flex: 1;
+  min-width: 0;
+}
+
+.taskHeading small {
+  flex: none;
+}
+
+.taskHeading strong,
+.taskActivity,
+.taskMessage {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.taskActivity,
+.taskHeading small {
+  color: rgba(39, 35, 31, .65);
+  font-size: var(--text-xs);
+}

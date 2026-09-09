@@ -6,6 +6,8 @@ import { useI18n } from "@/hooks/useI18n";
 import {
   readPromptOptimizerModel,
   readPromptOptimizerSystemPrompt,
+  writePromptOptimizerModel,
+  type PromptOptimizerModelPreference,
 } from "@/lib/prompt-optimizer-settings";
 import type { SystemPromptCatalog, SystemPromptTemplate } from "@/lib/system-prompt-types";
 import { AliIcon } from "./AliIcon";
@@ -33,7 +35,7 @@ const EMPTY_CATALOG: SystemPromptCatalog = {
 const PI_DEFAULT_SELECTION_ID = "__pi_default__";
 
 interface ModelsPayload {
-  modelList?: Array<{ provider: string; id: string }>;
+  modelList?: Array<{ provider: string; id: string; name?: string }>;
   defaultModel?: { provider: string; modelId: string } | null;
   error?: string;
 }
@@ -67,6 +69,29 @@ export function SystemPromptEditor({ effectivePrompt, compact = false, onSaved }
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const optimizerAbortRef = useRef<AbortController | null>(null);
+  const [optimizerModels, setOptimizerModels] = useState<ModelsPayload | null>(null);
+  const [optimizerModel, setOptimizerModel] = useState<PromptOptimizerModelPreference | null>(null);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsError, setModelsError] = useState<string | null>(null);
+  const modelChoice = optimizerModel ?? optimizerModels?.defaultModel;
+  const resolvedOptimizerModel = modelChoice && optimizerModels?.modelList?.some((candidate) => (
+    candidate.provider === modelChoice.provider && candidate.id === modelChoice.modelId
+  )) ? modelChoice : null;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setOptimizerModel(readPromptOptimizerModel(window.localStorage));
+    setModelsLoading(true);
+    void fetch("/api/models", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json() as ModelsPayload;
+        if (!response.ok) throw new Error(data.error ?? `HTTP ${response.status}`);
+        if (!controller.signal.aborted) { setOptimizerModels(data); setModelsError(null); }
+      })
+      .catch((cause) => { if (!controller.signal.aborted) setModelsError(String(cause)); })
+      .finally(() => { if (!controller.signal.aborted) setModelsLoading(false); });
+    return () => controller.abort();
+  }, []);
 
   const selectedTemplate = catalog.templates.find((template) => template.id === selectedId) ?? null;
   const showingPiDefault = !creating && selectedId === PI_DEFAULT_SELECTION_ID;
@@ -184,7 +209,7 @@ export function SystemPromptEditor({ effectivePrompt, compact = false, onSaved }
 
   const optimizePrompt = useCallback(async () => {
     const source = prompt.trim();
-    if (!source || optimizing) return;
+    if (!source || optimizing || !resolvedOptimizerModel) return;
     optimizerAbortRef.current?.abort();
     const controller = new AbortController();
     optimizerAbortRef.current = controller;
@@ -193,14 +218,7 @@ export function SystemPromptEditor({ effectivePrompt, compact = false, onSaved }
     setError(null);
     setStatus(null);
     try {
-      const modelsResponse = await fetch("/api/models", { cache: "no-store", signal: controller.signal });
-      const models = await modelsResponse.json().catch(() => ({})) as ModelsPayload;
-      if (!modelsResponse.ok) throw new Error(models.error ?? t("system.optimizeFailed"));
-      const configured = readPromptOptimizerModel(window.localStorage);
-      const selected = configured && models.modelList?.some((model) => (
-        model.provider === configured.provider && model.id === configured.modelId
-      )) ? configured : models.defaultModel;
-      if (!selected) throw new Error(t("system.optimizeNoModel"));
+      const selected = resolvedOptimizerModel;
 
       const response = await fetch("/api/prompts/optimize", {
         method: "POST",
@@ -227,7 +245,7 @@ export function SystemPromptEditor({ effectivePrompt, compact = false, onSaved }
       if (optimizerAbortRef.current === controller) optimizerAbortRef.current = null;
       if (!controller.signal.aborted) setOptimizing(false);
     }
-  }, [catalog.maxPromptLength, optimizing, prompt, t]);
+  }, [catalog.maxPromptLength, optimizing, prompt, resolvedOptimizerModel, t]);
 
   const remove = useCallback(async () => {
     if (!selectedTemplate || !await requestConfirmation({
@@ -371,13 +389,44 @@ export function SystemPromptEditor({ effectivePrompt, compact = false, onSaved }
                 <label className={styles.fieldLabel} htmlFor={promptFieldId}>{t("system.customLabel")}</label>
                 <button
                   type="button"
-                  disabled={loading || saving || optimizing || !prompt.trim()}
+                  disabled={loading || saving || optimizing || modelsLoading || !resolvedOptimizerModel || !prompt.trim()}
                   onClick={() => { void optimizePrompt(); }}
                 >
                   <AliIcon name="sparkles" size={13} />
                   {t(optimizing ? "system.optimizing" : "system.optimize")}
                 </button>
               </span>
+              <label className={styles.optimizerModel}>
+                <span>{t("settings.promptOptimizerModel")}</span>
+                <select
+                  aria-label={t("settings.promptOptimizerModel")}
+                  value={optimizerModel ? JSON.stringify(optimizerModel) : ""}
+                  disabled={modelsLoading || optimizing}
+                  onChange={(event) => {
+                    try {
+                      const selected = writePromptOptimizerModel(event.target.value ? JSON.parse(event.target.value) : null, window.localStorage);
+                      setOptimizerModel(selected);
+                      setOptimizationPreview(null);
+                      setError(null);
+                    } catch (cause) { setError(String(cause)); }
+                  }}
+                >
+                  <option value="">{t("system.optimizerDefaultModel")}{optimizerModels?.defaultModel ? ` · ${optimizerModels.defaultModel.provider}/${optimizerModels.defaultModel.modelId}` : ""}</option>
+                  {optimizerModel && !resolvedOptimizerModel ? <option value={JSON.stringify(optimizerModel)} disabled>{optimizerModel.provider}/{optimizerModel.modelId} · {t("system.optimizerUnavailable")}</option> : null}
+                  {optimizerModels?.modelList?.map((candidate) => (
+                    <option key={`${candidate.provider}/${candidate.id}`} value={JSON.stringify({ provider: candidate.provider, modelId: candidate.id })}>
+                      {candidate.name || candidate.id} · {candidate.provider}/{candidate.id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className={styles.optimizerModelInfo} role="status">
+                {modelsLoading ? t("system.optimizerModelsLoading") : resolvedOptimizerModel
+                  ? t("system.optimizerUsingModel", { model: `${resolvedOptimizerModel.provider}/${resolvedOptimizerModel.modelId}` })
+                  : t("system.optimizeNoModel")}
+              </span>
+              {modelsError ? <span className={styles.fieldDescription} role="alert">{modelsError}</span> : null}
+              <span className={styles.fieldDescription}>{t("system.optimizerSharedModel")}</span>
               <span className={styles.fieldDescription}>{t("system.templateDescription")}</span>
               <span className={styles.fieldDescription}>{t("system.optimizeDescription")}</span>
               <textarea

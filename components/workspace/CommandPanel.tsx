@@ -6,6 +6,7 @@ import { useAgentTerminal } from "@/hooks/useAgentTerminal";
 import { copyText } from "@/lib/clipboard";
 import { AliIcon } from "../AliIcon";
 import { TerminalSurface, type TerminalSurfaceHandle } from "./TerminalSurface";
+import { TerminalCommandInput } from "./TerminalCommandInput";
 import styles from "./TerminalPanel.module.css";
 
 export function CommandPanel({ cwd, sessionId, onClose }: { cwd?: string | null; sessionId?: string | null; onClose?: () => void }) {
@@ -21,6 +22,10 @@ export function CommandPanel({ cwd, sessionId, onClose }: { cwd?: string | null;
   const surface = useRef<TerminalSurfaceHandle>(null);
   const agent = useAgentTerminal(sessionId);
   const running = agent.commands.filter((item) => item.status === "running").length;
+  const runCommand = async (command: string) => {
+    const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, action: "run", command }) });
+    if (!response.ok) throw new Error((await response.json()).error ?? `HTTP ${response.status}`);
+  };
   const folder = cwd?.replace(/\\/g, "/").replace(/\/$/, "").split("/").pop();
   const action = async (value: "restart" | "clear") => {
     try {
@@ -60,6 +65,7 @@ export function CommandPanel({ cwd, sessionId, onClose }: { cwd?: string | null;
         </article>) : <div className={styles.empty}><span className={styles.emptyMark}><AliIcon name="activity" size={26} /></span><strong>{t("terminal.agentEmpty")}</strong><p>{sessionId ? t("terminal.agentEmptyBody") : t("terminal.selectSession")}</p><span className={styles.hint}>$ <span>command</span> → output</span></div>}
       </div>}
     </div>
+    {tab === "shell" && cwd && <TerminalCommandInput key={cwd} cwd={cwd} disabled={!connected} onRun={runCommand} />}
     <footer className={styles.footer}><span><i data-live={tab === "agent" ? running > 0 : connected} />{tab === "agent" ? t("terminal.linked") : "PTY"}</span><span>{tab === "shell" ? t("terminal.keyboardHint") : t("terminal.agentHint")}</span><span>UTF-8</span></footer>
   </section>;
 }
