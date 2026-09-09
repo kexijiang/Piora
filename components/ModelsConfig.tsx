@@ -1,5 +1,7 @@
 "use client";
 
+import { ModelErrorText } from "./ModelErrorText";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
@@ -10,6 +12,46 @@ import { prioritizeProvider } from "@/lib/model-policy";
 import { AliIcon } from "./AliIcon";
 import { requestConfirmation } from "./ConfirmDialog";
 import { ModelProviderIcon } from "./ModelProviderIcon";
+
+function ModelFallbackSetting() {
+  const { t } = useI18n();
+  const [enabled, setEnabled] = useState(false);
+  const [busy, setBusy] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/models/fallback", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const config = await response.json() as { enabled: boolean };
+        if (!controller.signal.aborted) setEnabled(config.enabled);
+      })
+      .catch((reason) => { if (!controller.signal.aborted) setError(String(reason)); })
+      .finally(() => { if (!controller.signal.aborted) setBusy(false); });
+    return () => controller.abort();
+  }, []);
+  const toggle = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/models/fallback", {
+        method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !enabled }),
+      });
+      const config = await response.json() as { enabled: boolean; error?: string };
+      if (!response.ok) throw new Error(config.error || `HTTP ${response.status}`);
+      setEnabled(config.enabled);
+    } catch (reason) { setError(String(reason)); }
+    finally { setBusy(false); }
+  };
+  return <div data-settings-id="models.fallback" style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+    <label style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text)", fontSize: "var(--text-sm)" }}>
+      <input type="checkbox" role="switch" checked={enabled} disabled={busy} onChange={() => void toggle()} />
+      <strong>{t("models.fallback.title")}</strong>
+    </label>
+    <p style={{ margin: "5px 0 0", color: "var(--text-muted)", fontSize: "var(--text-xs)" }}>{t("models.fallback.description")}</p>
+    {error ? <p role="alert" style={{ color: "var(--error, #dc2626)", margin: "5px 0 0" }}>{<ModelErrorText value={error} />}</p> : null}
+  </div>;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -433,9 +475,9 @@ function VisionAgentDetail({ cwd }: { cwd?: string }) {
         </div>
       </div>
 
-      {error && <div role="alert" style={{ color: "#dc2626", fontSize: "var(--text-sm)" }}>{error}</div>}
+      {error && <div role="alert" style={{ color: "#dc2626", fontSize: "var(--text-sm)" }}>{<ModelErrorText value={error} />}</div>}
       {testState.phase === "success" && <div role="status" style={{ color: "#15803d", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>{t("models.visualAgentTestSuccess", { latency: testState.latencyMs })} · {testState.observation}</div>}
-      {testState.phase === "error" && <div role="alert" style={{ color: "#dc2626", fontSize: "var(--text-xs)" }}>{testState.message}</div>}
+      {testState.phase === "error" && <div role="alert" style={{ color: "#dc2626", fontSize: "var(--text-xs)" }}>{<ModelErrorText value={testState.message} />}</div>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <button
           type="button"
@@ -582,7 +624,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
 
       <Field label="API Key">
         <SecretTextInput value={provider.apiKey ?? ""} onChange={(v) => set("apiKey", v || undefined)}
-          placeholder="ENV_VAR_NAME, !shell-command, or literal key" mono />
+          placeholder={t("models.form.keyHint")} mono />
         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>
           Prefix with <code style={{ fontFamily: "var(--font-mono)" }}>!</code> to run a shell command, or use an env var name
         </span>
@@ -616,7 +658,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
 
         {discoveryState.phase === "error" && (
           <div style={{ padding: "7px 9px", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "var(--radius-control)", color: "#ef4444", fontSize: "var(--text-xs)", lineHeight: 1.4 }}>
-            {discoveryState.message}
+            {<ModelErrorText value={discoveryState.message} />}
           </div>
         )}
 
@@ -1129,7 +1171,7 @@ function ModelDetail({
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <Field label="ID *"><TextInput value={model.id} onChange={(v) => set("id", v)} placeholder="model-id" mono /></Field>
-        <Field label="Name"><TextInput value={model.name ?? ""} onChange={(v) => set("name", v || undefined)} placeholder="Display name" /></Field>
+        <Field label={t("models.form.name")}><TextInput value={model.name ?? ""} onChange={(v) => set("name", v || undefined)} placeholder={t("models.form.displayName")} /></Field>
       </div>
 
       <div data-draft-model-test-actions style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 30 }}>
@@ -1185,7 +1227,7 @@ function ModelDetail({
               boxSizing: "border-box",
             }}
           >
-            {testSummary}
+            {testState.phase === "error" ? <ModelErrorText value={testSummary} /> : testSummary}
           </span>
         )}
       </div>
@@ -1226,7 +1268,7 @@ function ModelDetail({
             title={catalogStatusText ?? undefined}
             style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
           >
-            {catalogStatusText}
+            {catalogState.phase === "error" ? <ModelErrorText value={catalogStatusText ?? ""} /> : catalogStatusText}
           </span>
           {catalogUndoRef.current && (
             <button
@@ -1240,32 +1282,32 @@ function ModelDetail({
       </div>
 
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
-        <Check label="Image input" checked={model.input?.includes("image") ?? false}
+        <Check label={t("models.form.imageInput")} checked={model.input?.includes("image") ?? false}
           onChange={(v) => set("input", v ? ["text", "image"] : undefined)} />
       </div>
       <p style={{ margin: "-8px 0 0", color: "var(--text-dim)", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
-        勾选“图片输入”后，图片会直接发送给该模型；不勾选时，只有启用了视觉代理且选好了视觉模型，图片才会由视觉模型转成文字说明后再发送。此声明仅针对本文件中的自定义模型；云端目录模型若声称支持图片但实际拒收，可在模型列表的“支持图片输入”开关里强制关闭，视觉代理会随之接管该模型的图片。
+        {t("models.form.customImageHint")}
       </p>
 
       <details style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
         <summary style={{ cursor: "pointer", color: "var(--text-muted)", fontSize: "var(--text-sm)", fontWeight: 600 }}>{t("models.advancedSettings")}</summary>
         <div style={{ paddingTop: 14, display: "flex", flexDirection: "column", gap: 16 }}>
-          <Field label="API override">
+          <Field label={t("models.form.apiOverride")}>
             <Select value={model.api ?? ""} onChange={(v) => set("api", v || undefined)} options={API_OPTIONS} />
           </Field>
 
-          <Check label="Reasoning / thinking" checked={model.reasoning ?? false} onChange={(v) => set("reasoning", v || undefined)} />
+          <Check label={t("models.form.reasoning")} checked={model.reasoning ?? false} onChange={(v) => set("reasoning", v || undefined)} />
 
           {model.reasoning && (
         <>
           <Check
-            label="DeepSeek thinking compat"
+            label={t("models.form.deepseek")}
             checked={hasDeepseekCompat(model)}
             onChange={(v) => onChange(setDeepseekCompat(model, v))}
           />
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <SectionTitle>Thinking level map</SectionTitle>
+              <SectionTitle>{t("models.form.thinkingMap")}</SectionTitle>
               {model.thinkingLevelMap && (
                 <button
                   onClick={() => set("thinkingLevelMap", undefined)}
@@ -1284,11 +1326,11 @@ function ModelDetail({
           )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Field label="Context window (tokens)">
+        <Field label={t("models.form.contextWindow")}>
           <NumInput value={model.contextWindow !== undefined ? String(model.contextWindow) : ""}
             onChange={(v) => set("contextWindow", v ? parseInt(v) : undefined)} placeholder="128000" />
         </Field>
-        <Field label="Max output tokens">
+        <Field label={t("models.form.maxTokens")}>
           <NumInput value={model.maxTokens !== undefined ? String(model.maxTokens) : ""}
             onChange={(v) => set("maxTokens", v ? parseInt(v) : undefined)} placeholder="16384" />
         </Field>
@@ -1311,7 +1353,7 @@ function ModelDetail({
           )}
 
       <div>
-        <SectionTitle>Cost (per million tokens)</SectionTitle>
+        <SectionTitle>{t("models.form.cost")}</SectionTitle>
         <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
           {(["input", "output", "cacheRead", "cacheWrite"] as const).map((k) => (
             <Field key={k} label={k}>
@@ -1550,7 +1592,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
              <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "#4ade80" }}>{t("i18n.connectedSuccessfully")}</p>
         )}
         {loginState.phase === "error" && (
-          <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "#f87171" }}>{loginState.message}</p>
+          <div style={{ margin: 0, fontSize: "var(--text-sm)", color: "#f87171" }}><ModelErrorText value={loginState.message} /></div>
         )}
       </div>
 
@@ -1701,7 +1743,7 @@ function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRef
         </div>
       </Field>
 
-      {error && <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "#f87171" }}>{error}</p>}
+      {error && <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "#f87171" }}>{<ModelErrorText value={error} />}</p>}
 
       {provider.configured && provider.canRemoveStoredCredential && (
         <button
@@ -2399,7 +2441,7 @@ export function ModelsConfig({
 
         {modelScopeError && modelScope && (
           <div role="alert" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-sm)" }}>
-            {modelScopeError}
+            {<ModelErrorText value={modelScopeError} />}
           </div>
         )}
 
@@ -2413,7 +2455,7 @@ export function ModelsConfig({
           <div style={{ padding: "12px 0", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>{t("i18n.loading")}</div>
         ) : modelScopeError && !modelScope ? (
           <div role="alert" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-sm)" }}>
-            {modelScopeError}
+            {<ModelErrorText value={modelScopeError} />}
           </div>
         ) : providerModels.length === 0 ? (
           <div style={{ padding: "12px 0", fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>{t("models.noProviderModels")}</div>
@@ -2484,10 +2526,10 @@ export function ModelsConfig({
                           overflowWrap: "anywhere",
                         }}
                       >
-                        {testSummary}
+                        {testState.phase === "error" ? <ModelErrorText value={testSummary} /> : testSummary}
                       </span>
                     )}
-                    <label title="Declare whether this model accepts image input. Unchecking a catalog model that claims image support forces it to be treated as text-only, so the visual agent handles its images." style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 5, color: "var(--text-muted)", fontSize: "var(--text-xs)", cursor: "pointer" }}>
+                    <label title={t("models.form.imageHint")} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 5, color: "var(--text-muted)", fontSize: "var(--text-xs)", cursor: "pointer" }}>
                       <input
                         type="checkbox"
                         checked={modelImageInput[testKey] ?? false}
@@ -2495,7 +2537,7 @@ export function ModelsConfig({
                         onChange={(event) => void updateModelImageInput(model, event.target.checked)}
                         style={{ width: 13, height: 13, accentColor: "var(--accent)" }}
                       />
-                      支持图片输入
+                      {t("models.form.imageSupport")}
                     </label>
                   </span>
                   <button
@@ -2672,6 +2714,8 @@ export function ModelsConfig({
           </div>
           {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} title={t("i18n.close")} aria-label={t("i18n.close")} style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, padding: 0 }}><AliIcon name="close" size={16} /></button>}
         </div>
+
+        <ModelFallbackSetting />
 
         {/* Body */}
         <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", overflow: "hidden" }}>
@@ -2898,7 +2942,7 @@ export function ModelsConfig({
 
         {/* Footer */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "10px 18px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-          {saveError && <span style={{ fontSize: "var(--text-sm)", color: "#f87171", flex: 1 }}>{saveError}</span>}
+          {saveError && <span style={{ fontSize: "var(--text-sm)", color: "#f87171", flex: 1 }}>{<ModelErrorText value={saveError} />}</span>}
           {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, fontSize: "var(--text-base)" }}>
              {t("i18n.close")}
           </button>}

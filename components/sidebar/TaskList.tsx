@@ -37,7 +37,7 @@ interface SessionDragState {
   position: "before" | "after";
 }
 
-export function TaskList({ nodes, scope, onReorderSessions, onSelectSession, ...props }: CommonProps & {
+export function TaskList({ nodes, scope, onReorderSessions, onSelectSession: selectSession, ...props }: CommonProps & {
   nodes: SessionTreeNode[];
   scope: string;
   onReorderSessions: (sourceId: string, targetId: string, position: "before" | "after") => void;
@@ -70,6 +70,13 @@ export function TaskList({ nodes, scope, onReorderSessions, onSelectSession, ...
   const rows = useMemo(() => flattenTaskWindow(index, expanded), [index, expanded]);
   const keys = useMemo(() => rows.map((row) => row.session.id), [rows]);
   const lastRevealed = useRef<string | null>(null);
+  const onSelectSession = useCallback((session: SessionInfo) => {
+    // Direct selection already targets a visible row. Keep its position instead
+    // of re-centering it when the selected-session effect runs.
+    lastRevealed.current = session.id;
+    listRef.current?.cancelNavigation();
+    selectSession(session);
+  }, [selectSession]);
   useEffect(() => {
     const selected = props.selectedSessionId;
     if (selected && selected !== lastRevealed.current && keys.includes(selected)) {

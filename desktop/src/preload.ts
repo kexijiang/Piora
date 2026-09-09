@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 const runtime = Object.freeze({
+  restartForDataImport(): Promise<boolean> { return ipcRenderer.invoke("pi:restart-for-data-import") as Promise<boolean>; },
   platform: process.platform,
   versions: Object.freeze({
     chrome: process.versions.chrome,
@@ -115,8 +116,8 @@ const runtime = Object.freeze({
     ipcRenderer.on("pi:companion-motion-state", handler);
     return () => ipcRenderer.removeListener("pi:companion-motion-state", handler);
   },
-  setCompanionHitTest(interactive: boolean): Promise<boolean> {
-    return ipcRenderer.invoke("pi:companion-hit-test", interactive) as Promise<boolean>;
+  setCompanionHitTest(region: { x: number; y: number; width: number; height: number } | null): Promise<boolean> {
+    return ipcRenderer.invoke("pi:companion-hit-test", region) as Promise<boolean>;
   },
   companionAction(action: "focus-main" | "open-settings" | "open-panel" | "hide"): Promise<boolean> {
     return ipcRenderer.invoke("pi:companion-window-action", action) as Promise<boolean>;
@@ -148,6 +149,9 @@ const runtime = Object.freeze({
     },
     importChromeBookmarks() {
       return ipcRenderer.invoke("pi:browser-import-chrome-bookmarks");
+    },
+    showBookmarkMenu(nodes: unknown, position: { x: number; y: number }): Promise<string | null> {
+      return ipcRenderer.invoke("pi:browser-bookmark-menu", nodes, position);
     },
     onState(listener: (state: unknown) => void) {
       const handler = (_event: Electron.IpcRendererEvent, state: unknown) => listener(state);

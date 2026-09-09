@@ -575,3 +575,28 @@
     flex: 1;
   }
 }
+.optimizerModel {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.optimizerModel select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  text-overflow: ellipsis;
+}
+
+.optimizerModelInfo {
+  color: var(--text-muted);
+  font: var(--text-xs)/1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+}

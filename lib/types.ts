@@ -59,6 +59,10 @@ export interface UserMessage {
   deferredLineCount?: number;
   /** Local-only delivery error for an optimistic message; never persisted to Pi. */
   sendError?: string;
+  /** Stable delivery identity persisted with the SDK user message. */
+  clientPromptId?: string;
+  /** Local recovery includes complete file material, not just the display preview. */
+  recoveryDraft?: import("./draft-store").ChatDraft;
 }
 
 export interface AssistantMessage {

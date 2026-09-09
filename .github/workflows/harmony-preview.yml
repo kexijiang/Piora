@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Verify release-tree hygiene
         run: npm run verify:hygiene
 

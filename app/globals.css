@@ -3992,13 +3992,18 @@ pre, code {
   border-radius: var(--radius-control);
 }
 .markdown-body .markdown-inline-code {
-  background: var(--bg-subtle);
-  border-radius: 5px;
-  padding: 1px 5px;
-  color: var(--text);
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  color: var(--chat-inline-code-color);
   font-family: var(--font-code-family);
   font-size: 0.92em;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent);
+  box-shadow: none;
+}
+.markdown-body mark {
+  color: var(--chat-highlight-color, var(--accent));
+  background: transparent;
+  padding: 0;
 }
 /* Model-authored emphasis stays distinct from prose in every appearance theme. */
 .markdown-assistant-message {
@@ -5467,3 +5472,63 @@ span.linenumber {
     opacity: 1;
   }
 }
+
+/* Viewport-aware file mention picker. */
+.file-mention-menu {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-panel);
+  background: var(--bg-panel);
+  color: var(--text);
+  box-shadow: var(--shadow-popover, 0 8px 28px rgba(0, 0, 0, .18));
+}
+
+.file-mention-header {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+}
+
+.file-mention-hints { font-family: var(--font-mono); white-space: nowrap; }
+
+.file-mention-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+  scrollbar-gutter: stable;
+}
+
+.file-mention-item {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  gap: 10px;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font: var(--text-sm)/1.45 var(--font-mono);
+}
+
+.file-mention-item[data-active="true"] { background: var(--bg-selected); }
+.file-mention-icon { flex: none; display: flex; padding-top: 3px; }
+.file-mention-copy { min-width: 0; flex: 1; display: grid; gap: 2px; }
+.file-mention-name { overflow-wrap: anywhere; font-weight: 550; }
+.file-mention-directory { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-dim); font-size: var(--text-xs); }
+.file-mention-empty { padding: 10px; color: var(--text-dim); font-size: var(--text-sm); }

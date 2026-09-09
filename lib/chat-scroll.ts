@@ -68,6 +68,31 @@ export function getLiveTailScrollLimit({
   return Math.min(nativeMaxScrollTop, Math.max(metrics.maxScrollTop, preservedPinnedTop));
 }
 
+/** Consume viewport wheel input before the compositor enters the invisible tail.
+ * Correcting scrollTop in a later scroll event produces visible bounce on Windows.
+ */
+export function scrollLiveTailWheel(container: HTMLElement, event: WheelEvent, pinnedScrollTop: number | null): boolean {
+  if (event.ctrlKey || !event.cancelable || !event.deltaY || Math.abs(event.deltaX) > Math.abs(event.deltaY)) return false;
+  const spacer = container.querySelector<HTMLElement>("[data-chat-tail-spacer]");
+  if (!spacer) return false;
+  // Code blocks and terminal panes retain their own native scrolling.
+  let child = event.target instanceof Element ? event.target : null;
+  while (child && child !== container) {
+    const style = getComputedStyle(child);
+    if (/(auto|scroll)/.test(style.overflowY) && child.scrollHeight > child.clientHeight + 1) {
+      if (event.deltaY < 0 ? child.scrollTop > 0 : child.scrollTop + child.clientHeight < child.scrollHeight - 1) return false;
+      if (style.overscrollBehaviorY === "contain" || style.overscrollBehaviorY === "none") return false;
+    }
+    child = child.parentElement;
+  }
+  const max = getLiveTailScrollLimit({ scrollHeight: container.scrollHeight, scrollTop: container.scrollTop, clientHeight: container.clientHeight, transientTailHeight: spacer.offsetHeight, pinnedScrollTop });
+  const unit = event.deltaMode === 2 ? container.clientHeight : event.deltaMode === 1 ? 16 : 1;
+  const top = Math.max(0, Math.min(max, container.scrollTop + event.deltaY * unit));
+  event.preventDefault();
+  if (Math.abs(top - container.scrollTop) > 0.01) container.scrollTo({ top, behavior: "instant" });
+  return true;
+}
+
 /**
  * The live chat adds a viewport-sized tail spacer so the latest user message
  * can be positioned near the top while an agent is working. That spacer is a

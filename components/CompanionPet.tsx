@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch, type SetStateAction } from "react";
+import dynamic from "next/dynamic";
+import type { ComponentProps } from "react";
+import type { NormalizedCompanionHitRegion } from "@/lib/companion-hit-region";
 import { useI18n } from "@/hooks/useI18n";
 import type { CompanionPet as CompanionPetMetadata } from "@/lib/companion-pets";
 import {
@@ -24,6 +27,17 @@ import { STATUS_PRESENTATION, type TaskStatusPresentationKey } from "@/lib/task-
 import styles from "./CompanionPet.module.css";
 import { AliIcon } from "./AliIcon";
 import { CompanionDataManager } from "./CompanionDataManager";
+
+const ModelPet = dynamic(() => import("./CompanionModelPet"), { ssr: false });
+
+export function PetRenderer(props: ComponentProps<typeof SpritePet> & {
+  dragging?: boolean;
+  onHitRegionChange?: (region: NormalizedCompanionHitRegion) => void;
+}) {
+  return props.pet.model3d
+    ? <ModelPet key={props.pet.sourceKey} {...props} model={props.pet.model3d} />
+    : <SpritePet {...props} />;
+}
 
 type RenderableAnimationState = {
   id: string;
@@ -378,7 +392,7 @@ export function CompanionPet({
           aria-label={t("companion.pokeHint")}
         >
           {activePet
-            ? <SpritePet
+            ? <PetRenderer
                 pet={activePet}
                 status={activity.status}
                 event={activity.event}

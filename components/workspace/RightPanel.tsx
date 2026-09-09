@@ -97,6 +97,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
         : enabledCount === items.length
           ? "on"
           : "partial";
+    if (kind === "browser" && status === "on") return null;
     const labelKey = kind === "device" && status === "unavailable"
       ? "sessionTools.panelDeviceUnavailable"
       : kind === "device" && status === "off"
@@ -250,6 +251,8 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
             <button className={styles.closeToolTab} type="button" aria-label={t("workspace.closeTool")} onClick={() => closeTool(tool.id)}><AliIcon name="close" size={12} /></button>
           </div>;
         })}
+      </div>
+      <div className={styles.panelChromeActions}>
         <div ref={addMenuRef} className={styles.addToolWrap}>
           <button ref={addButtonRef} className={styles.addToolButton} type="button" aria-label={t("workspace.addTool")} aria-haspopup="menu" aria-expanded={addMenuOpen} onClick={() => setAddMenuOpen((open) => !open)}><AliIcon name="plus" size={15} /></button>
           {addMenuOpen ? createPortal(<div ref={toolMenuRef} className={styles.toolMenu} role="menu" style={addMenuPosition}>
@@ -260,8 +263,6 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
             </button>)}
           </div>, document.body) : null}
         </div>
-      </div>
-      <div className={styles.panelChromeActions}>
         <button type="button" title={t(props.maximized ? "workspace.restorePanel" : "workspace.maximizePanel")} aria-label={t(props.maximized ? "workspace.restorePanel" : "workspace.maximizePanel")} onClick={() => props.onMaximizedChange(!props.maximized)}><AliIcon name={props.maximized ? "fullscreen-exit" : "fullscreen"} size={14} /></button>
         <button type="button" title={t("files.hidePanel")} aria-label={t("files.hidePanel")} onClick={props.onClosePanel}><AliIcon name="layout" size={15} /></button>
       </div>

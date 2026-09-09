@@ -89,6 +89,12 @@ const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
     matches: (name) => HARMONY_TOOL_SET.has(name),
   },
   {
+    legacyId: "computer",
+    kind: "device",
+    profiles: ["normal"],
+    matches: (name) => name === "computer_control",
+  },
+  {
     legacyId: "ask-user",
     kind: "interaction",
     profiles: ["normal"],
@@ -110,7 +116,8 @@ const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
 
 const PRESET_TOOL_NAMES: Record<Exclude<SessionCapabilityPreset, "custom">, ReadonlySet<string>> = {
   chat: new Set(),
-  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser", "harmony_control"]),
+  // The optional computer extension is registered only after explicit opt-in.
+  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser", "harmony_control", "computer_control"]),
   research: new Set(["browser"]),
   device: new Set(HARMONY_AGENT_TOOLS),
 };
@@ -335,11 +342,11 @@ export function createDefaultSessionCapabilitiesState(
   profile: AgentRuntimeProfile = "normal",
 ): SessionCapabilitiesState {
   const toolNames = profile === "device-control"
-    ? [...HARMONY_AGENT_TOOLS]
+    ? ["harmony_control"]
     : [
         ...BUILTIN_AGENT_TOOLS,
         "browser",
-        ...HARMONY_AGENT_TOOLS,
+        "harmony_control",
         "piora_automation",
         "piora_room",
       ];

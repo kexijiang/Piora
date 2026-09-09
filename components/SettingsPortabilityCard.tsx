@@ -18,6 +18,7 @@ import {
 } from "@/lib/settings-portability";
 import { AliIcon } from "./AliIcon";
 import styles from "./SettingsPortabilityCard.module.css";
+import { ApplicationBackupCard } from "./ApplicationBackupCard";
 
 interface ImportPreview {
   fileName: string;
@@ -77,7 +78,7 @@ export function SettingsPortabilityCard() {
   };
 
   return (
-    <section className={styles.card} aria-labelledby="settings-portability-title">
+    <><ApplicationBackupCard /><section className={styles.card} aria-labelledby="settings-portability-title">
       <div className={styles.header}>
         <div>
           <h3 id="settings-portability-title">{t("settings.portability.title")}</h3>
@@ -147,7 +148,7 @@ export function SettingsPortabilityCard() {
           </div>
         </div>
       ) : null}
-    </section>
+    </section></>
   );
 }
 

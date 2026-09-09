@@ -7,6 +7,7 @@ import { getVisibleSessionRoots, type SessionProjectGroup as SessionProjectGroup
 import type { SessionFlags } from "@/lib/session-flags";
 import type { SessionInfo } from "@/lib/types";
 import { AliIcon } from "../AliIcon";
+import { ProjectModelDialog } from "../ProjectModelDialog";
 import styles from "../SessionSidebar.module.css";
 import { applySessionOrder } from "./sidebar-utils";
 import { RunningSessionIndicator, UnreadSessionIndicator } from "./TaskRow";
@@ -88,6 +89,7 @@ export function ProjectSessionGroup({
 }) {
   const { t } = useI18n();
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [modelDialog, setModelDialog] = useState(false);
   // Collapsing is purely presentational. Background agents keep running and
   // report their state on the project row without forcing the folder open.
   const projectOpen = !isCollapsed;
@@ -223,10 +225,12 @@ export function ProjectSessionGroup({
           onRenameProject={onRenameProject}
           onRemoveProject={onRemoveProject}
           onNewSession={() => onNewSession?.(group.preferredCwd)}
+          onChangeModels={() => { setMenuAnchor(null); setModelDialog(true); }}
           onClose={() => setMenuAnchor(null)}
         />,
         document.body,
       )}
+      {modelDialog ? <ProjectModelDialog projectRoot={group.projectRoot} name={displayLabel} onClose={() => setModelDialog(false)} /> : null}
     </section>
   );
 }
@@ -242,6 +246,7 @@ function ProjectContextMenu({
   onRenameProject,
   onRemoveProject,
   onNewSession,
+  onChangeModels,
   onClose,
 }: {
   anchor: { x: number; y: number };
@@ -254,9 +259,10 @@ function ProjectContextMenu({
   onRenameProject: (alias: string) => void;
   onRemoveProject: () => void;
   onNewSession: () => void;
+  onChangeModels: () => void;
   onClose: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
@@ -313,6 +319,7 @@ function ProjectContextMenu({
         <AliIcon name="message" size={14} />
         <span>{t("sidebar.projectTaskSummary", { count: group.sessions.length, running: runningCount })}</span>
       </div>
+      <button type="button" className={styles.menuItem} role="menuitem" onClick={onChangeModels}><AliIcon name="setting" size={14} /><span>{locale === "zh-CN" ? "批量切换会话模型…" : "Change models for all sessions…"}</span></button>
       <div className={styles.menuDivider} />
       {metadata?.repository && (
         <div className={styles.menuItem} title={metadata.repository}>

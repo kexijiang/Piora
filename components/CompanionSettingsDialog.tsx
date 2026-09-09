@@ -35,7 +35,9 @@ function resolvePetSourceKind(pet: CompanionPetSource): CompanionPetSourceKind {
 
 function PetPreview({ pet, large = false }: { pet?: CompanionPet; large?: boolean }) {
   return <span className={`${styles.petPreview}${large ? ` ${styles.petPreviewLarge}` : ""}`} aria-hidden="true">
-    <span className={styles.petPreviewMotion}>{pet ? <SpritePet pet={pet} status="idle" /> : <BuiltinPet status="idle" />}</span>
+    <span className={styles.petPreviewMotion}>{pet?.model3d
+      ? <span style={{ width: "100%", height: "100%", background: `url("${pet.model3d.previewUrl}") center / contain no-repeat` }} />
+      : pet ? <SpritePet pet={pet} status="idle" /> : <BuiltinPet status="idle" />}</span>
   </span>;
 }
 

@@ -192,7 +192,7 @@ export function JsonWorkbench({ busy = false, compact = false, library = EMPTY_L
   const preservePasteErrorRef = useRef(false);
 
   const activeDraft = drafts.find((draft) => draft.id === activeId) ?? drafts[0];
-  const reusableLibrary = useMemo(() => library.filter((item) => item.kind !== "image"), [library]);
+  const reusableLibrary = useMemo(() => library.filter((item) => item.kind !== "image" && item.kind !== "folder"), [library]);
   const options: JsonWorkbenchOptions = { extractJson: autoExtract, indent, multiEscape, removeNbsp: true };
   const deferredContent = useDeferredValue(activeDraft.content);
   const validation = useMemo(() => {

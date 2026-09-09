@@ -400,6 +400,7 @@ export interface HarmonyAutomationBackend {
   readonly hdcPath?: string;
   listDevices(signal?: AbortSignal): Promise<BackendDevice[]>;
   listProcesses?(serial: string, signal?: AbortSignal): Promise<HarmonyProcess[]>;
+  streamLogs?(serial: string, onEntries: (entries: HarmonyLogEntry[]) => void, signal?: AbortSignal): Promise<void>;
   readLogs?(
     serial: string,
     options: Omit<HarmonyLogOptions, "serial" | "signal"> & { signal?: AbortSignal },

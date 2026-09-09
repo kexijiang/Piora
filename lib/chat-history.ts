@@ -35,7 +35,7 @@ export function buildChatHistoryRows(messages: AgentMessage[], entryIds: string[
     const message = override ?? messages[index];
     if (message.role === "toolResult" || message.role === "assistant"
       && !getDisplayableAssistantBlocks(message).length && !getAssistantErrorMessage(message)) return;
-    const key = `${prefix}:${entryIds[index] ?? index}`;
+    const key = `${prefix}:${entryIds[index] || (message.role === "user" ? message.clientPromptId : undefined) || index}`;
     rows.push({ key, index, message, ...options });
     if (entryIds[index] && options.attachRef !== false) entryRows.set(entryIds[index], key);
   };
@@ -62,7 +62,7 @@ export function buildChatHistoryRows(messages: AgentMessage[], entryIds: string[
     const changes = process.some((i) => messages[i].role === "assistant" && hasVisibleToolOutput(getDisplayableAssistantBlocks(messages[i] as AssistantMessage)))
       || hasVisibleToolOutput(split.processBlocks);
     if (count) {
-      const key = `process:${entryIds[start] ?? start}`;
+      const key = `process:${entryIds[start] || start}`;
       if (!changes) {
         const toolCalls = process.reduce((total, i) => total + (messages[i].role === "assistant" ? countToolCallBlocks(getDisplayableAssistantBlocks(messages[i] as AssistantMessage)) : 0), 0)
           + countToolCallBlocks(split.processBlocks);

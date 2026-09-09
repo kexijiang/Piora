@@ -6,12 +6,13 @@ import { previewUserContent, shouldCollapseUserContent } from "@/lib/collapsible
 import { LazyMarkdownBody as MarkdownBody } from "./LazyMarkdownBody";
 import styles from "./RoomWorkspace.module.css";
 
-export function CollapsibleUserContent({ message, cwd, sessionId }: { message: RoomMessage; cwd?: string; sessionId: string }) {
+export function CollapsibleUserContent({ message, cwd, sessionId, onRetry, retryDisabled }: { message: RoomMessage; cwd?: string; sessionId: string; onRetry?: (content: string) => Promise<void>; retryDisabled?: boolean }) {
   const initiallyCollapsed = shouldCollapseUserContent(message.payload);
   const [expanded, setExpanded] = useState(!initiallyCollapsed);
   const [fullContent, setFullContent] = useState(message.payload.truncated ? null : message.content);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
   const visibleContent = useMemo(
     () => expanded ? (fullContent ?? message.content) : previewUserContent(message.content),
     [expanded, fullContent, message.content],
@@ -61,6 +62,11 @@ export function CollapsibleUserContent({ message, cwd, sessionId }: { message: R
           <span>{message.payload.lineCount} 行 · {message.payload.byteLength.toLocaleString()} 字节</span>
         </div>
       ) : null}
+      {onRetry ? <div className={styles.contentActions}><button type="button" disabled={loading || retrying || retryDisabled} title="重新发送这条群聊消息" onClick={() => {
+        if (loading || retrying || retryDisabled) return;
+        setRetrying(true); setError(null);
+        void loadFullContent().then(onRetry).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setRetrying(false));
+      }}>{retrying ? "正在重试…" : "重试"}</button></div> : null}
       {error ? <small className={styles.contentError} role="alert">{error}</small> : null}
     </div>
   );

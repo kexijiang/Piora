@@ -1,243 +1,208 @@
-# Piora
-
 <p align="center">
-  <img src="desktop/build/icon.png" alt="Piora original application icon" width="112" height="112">
+  <img src="desktop/build/icon.png" alt="Piora 应用图标" width="112" height="112">
 </p>
 
-[![CI](https://github.com/kexijiang/piora/actions/workflows/ci.yml/badge.svg)](https://github.com/kexijiang/piora/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Windows](https://img.shields.io/badge/Desktop-Windows%20x64-2563eb.svg)](desktop/README.md)
-[![Linux](https://img.shields.io/badge/Desktop-Linux%20x64-f59e0b.svg)](docs/release.md)
+<p align="center">
+  <strong>Piora</strong><br>
+  本地优先的开源 AI 桌面工作台
+</p>
 
-Piora 是一个面向 [Pi](https://github.com/earendil-works/pi) 的开源桌面应用。它基于
-[pi-web](https://github.com/agegr/pi-web) 演进，目标不是重新发明 Agent，而是在保留 Pi
-运行时、会话、工具、skills 与 extensions 的前提下，提供接近现代代码桌面应用的文件和视觉体验。
+<p align="center">
+  <a href="https://github.com/kexijiang/Piora/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kexijiang/Piora/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
+  <a href="desktop/README.md"><img alt="Windows x64" src="https://img.shields.io/badge/Desktop-Windows%20x64-2563eb.svg"></a>
+  <a href="docs/release.md"><img alt="Linux x64" src="https://img.shields.io/badge/Desktop-Linux%20x64-f59e0b.svg"></a>
+</p>
 
-> Piora 由社区独立维护，不隶属于或代表 Pi、pi-web、OpenAI 或 Codex。
+# 项目介绍
 
-> 是否存在可下载的 Windows 或 Linux 产物，以
-> [GitHub Releases](https://github.com/kexijiang/piora/releases) 为准；本地构建配置不等于已发布、已签名或已完成干净机器验证的二进制。
+Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI 桌面工作台。它把模型对话、项目文件、终端、Git 审阅、网页浏览、多 Agent 协作和设备控制放进同一个窗口，让 Agent 能在你看得见、可检查的本机环境中完成工作。
 
-## 这次版本解决什么
+项目由 [pi-web](https://github.com/agegr/pi-web) 演进而来，沿用 Pi 的 AgentSession、JSONL 会话、模型接入和扩展机制，由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-- 左侧继续保留会话/项目导航与下方文件树。
-- 主聊天消息、Markdown、工具调用和 Process 展示格式保持不变。
-- 右侧文件工作区可以直接编辑文本、代码和 Markdown，不再只是预览。
-- 右侧 Harmony 工具可显示已授权 HarmonyOS NEXT 测试手机的本地投屏，并支持受控 AI 自动化。
-- 右侧“设计转鸿蒙”可导入完整 Figma 文件，按页面或原型流程生成、编译、审阅并明确应用 ArkUI 代码。
-- 保存采用内容版本校验；外部修改不会静默覆盖本地草稿。
-- 内置 20 张原创背景，并支持选择本机图片、遮罩、模糊和一键恢复。
-- 可选桌宠面板展示 Pi 运行状态、待办事项和可配置快捷短语，并可显式导入本机 Codex 宠物素材。
-- Pi 的扩展仍由 Pi 原生资源加载器发现和执行；Piora 不增加自己的 SubAgent 产品层。
+本文对应源码版本 `0.4.41-beta.9`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
-![20 个内置原创背景总览](docs/assets/backgrounds-overview.webp)
+## 能做什么
 
-## 主要能力
+- 在项目会话或无项目聊天中使用不同模型，支持思考等级、图片、Markdown、Mermaid、数学公式和长会话。
+- 浏览和编辑项目文件，查看 Git 差异，执行暂存、提交、推送等常用操作。
+- 使用交互终端和内置浏览器，并让 Agent 调用相应工具完成任务。
+- 创建多 Agent 群聊，配置协调者、执行者和审查者，查看成员活动与共享产物。
+- 管理定时任务、Skills、扩展和插件，按项目或会话选择 Agent 可用能力。
+- 连接 OpenHarmony 设备进行投屏、UI 树观察和自动化；在 Windows 上可选启用桌面控制。
+- 使用随身舱中的待办、专注时钟、JSON 工具和带文件标签页的 Markdown 中转站。
+- 启用透明桌宠，在桌面显示任务和专注状态；桌宠移动受屏幕工作区约束。
 
-### 文件工作区
+## 设计原则
 
-- Source / Edit / Preview / Diff 四种文本视图。
-- 行号、行列状态、Tab/Shift+Tab 缩进、`Ctrl+S` / `Cmd+S`。
-- 文件标签 dirty 标记，跨标签切换保留草稿。
-- 关闭脏标签、切换项目和关闭页面前的数据保护。
-- 磁盘文件变化时，干净状态自动刷新；有草稿时显示冲突而不覆盖。
-- 冲突提供继续编辑、重新载入磁盘版本和明确覆盖三种选择。
-- 图片、音频、PDF 和 DOCX 保持只读预览。
+- **本地优先**：会话、配置和工作区状态默认保存在本机，没有统一账号服务和默认遥测。
+- **过程可见**：回复、思考、工具调用、文件差异和运行状态都可检查。
+- **能力可控**：模型、项目工具、扩展和设备操作由用户配置；敏感凭据不会通过状态接口返回。
+- **兼容 Pi**：保留 Pi 的会话与资源加载方式，避免把 Piora 变成封闭的专用格式。
 
-文件写入只允许发生在已授权项目根目录中的普通 UTF-8 文本文件。后端使用 SHA-256
-内容版本、HTTP 409 冲突、大小限制、路径/符号链接校验、文件锁和原子替换；会话中引用的
-项目外文件不会因为可预览而获得写权限。
+# 新手指南
 
-### HarmonyOS NEXT 设备自动化
+## 1. 下载与安装
 
-- 通过用户安装的官方 HDC/UiTest 发现 USB 设备、读取 UI 树和 PNG 屏幕帧。
-- 右侧工作区提供约 1 FPS 的本地设备投屏、人工点击/滑动、按键、文本和应用启动。
-- 现有投屏链路保持不变；自动化使用按设备复用的 Hypium/UiTest RPC，连接不可用时安全降级到已有 HDC 操作。
-- 模型优先使用 `harmony_run_scenario` 一次执行带语义选择器、等待和断言的完整流程，兼容单步工具继续用于探索和恢复。
-- 每台设备使用独占租约和串行 lane，不同设备可以并行，并保留 generation/ref 陈旧保护和紧急停止。
-- 安装包不内置 Huawei SDK，也不支持绕过锁屏、验证码、支付、系统授权或应用权限。
-- 自动扫描 DevEco Studio/Command Line Tools、环境变量和 `PATH` 中的 HDC，并可从候选列表或 Windows 原生选择器指定 SDK 文件夹/`hdc.exe`。
-- 可将手机截图交给独立视觉模型分析，操作模型默认只接收 UI 树和视觉观察文本；原始截图跨模型转发默认关闭。
-- AI 可等待控件出现、消失或状态变化，也可在指定屏幕区域连续稳定后继续；
-  固定等待只作为没有可观察完成条件时的有界兜底。
+前往 [Releases](https://github.com/kexijiang/Piora/releases)，展开目标版本的 Assets：
 
-使用准备和真机验收见
-[HarmonyOS 设备自动化指南](docs/HARMONYOS_DEVICE_AUTOMATION.md)，架构与安全边界见
-[技术设计](docs/HARMONYOS_NEXT_DEVICE_AUTOMATION_DESIGN.md)。
+| 文件 | 用途 |
+| --- | --- |
+| `Piora-<版本>-win-x64-setup.exe` | Windows 安装版，支持选择目录和应用内更新，推荐日常使用 |
+| `Piora-<版本>-win-x64-portable.exe` | Windows 单文件便携版，升级时手动替换 |
+| `Piora-<版本>-win-x64.zip` | 稳定版免安装目录，解压后运行 `Piora.exe` |
+| `Piora-<版本>-linux-x64-portable.AppImage` | 稳定版 Linux x64 包 |
+| `SHA256SUMS.txt` | 安装包校验值 |
 
-### 完整设计稿转 ArkUI（Beta）
+Windows 目标系统为 Windows 10/11 x64。安装包已包含 Piora 运行时，普通使用不需要另外安装 Node.js。开发工具、Git、编译器以及第三方 Skills 所需程序仍需按任务准备。
 
-- 导入 Figma 完整文件的页面、组件、变量、素材和原型关系，不使用截图作为主要生成输入。
-- 按页面、组件或原型流程分析；流程会递归包含可达页面，并显示组件、变量与交互映射及所有降级项。
-- 真实图片资源与确定性 ArkUI/ArkTS 先写入应用私有预览区，再生成只读补丁；只有经过冲突审阅和一次性确认令牌后才写入项目。
-- 自动检测 Harmony 模块、product、target、SDK 与 Hvigor，在项目影子副本中编译 HAP，不为验证修改当前 checkout。
-- 连接测试设备后可安装、启动并采集稳定截图，以并排、叠加和差异区域方式与设计参考图核对；没有设备时仍可完成导入、生成、补丁和编译验证。
-- 设计版本更新使用完整 Design IR 和依赖关系计算受影响页面；用户手工修改的托管文件不会被静默覆盖。
+## 2. 配置第一个模型
 
-完整能力、开发顺序、安全边界和测试矩阵见
-[Design to Harmony 规格](docs/DESIGN_TO_HARMONY_SPEC.md)。
+1. 启动 Piora，打开 **设置 → 模型**。
+2. 为模型服务填写 API Key，或使用服务支持的 OAuth / 设备码登录。
+3. 使用自定义服务时填写地址、模型 ID 和接口参数，并运行模型测试。
+4. 选择默认模型；新会话会使用该模型，也可以在输入框附近临时切换。
 
-### 主题与背景
+Piora 不提供统一模型订阅或内置 API Key。请求费用、额度和数据处理规则由你选择的模型服务决定。
 
-- 配色主题：Light、Dark、Midnight、Forest、Dream Skin。
-- 20 张本地 WebP 背景，风格覆盖极光玻璃、宣纸植物、趣味涂鸦、祥云、星云、赛博、
-  水彩、山水、侘寂、北欧冰晶、合成波、深海、森林、沙漠、樱花、装饰艺术、包豪斯、
-  亚麻、雨夜散景和星象羊皮纸。
-- 用户可以选择 PNG/JPEG/WebP/AVIF 本地图片；图片优先存入 IndexedDB，不上传。
-- 支持可读性遮罩、模糊和恢复默认。
-- 主题与背景均不能运行 JavaScript、HTML、远程 CSS 或 CDP 注入。
+## 3. 完成第一个任务
 
-生成记录、哈希与许可说明位于
-[`public/themes/dream-backgrounds`](public/themes/dream-backgrounds/README.md)。运行
-`npm run verify:backgrounds` 可验证 20 个资源与 manifest 一致、可解码、尺寸合格且内容不重复。
+1. 在左侧添加项目并选择本机目录，或直接新建无项目聊天。
+2. 写清目标和验收方式，例如：“检查登录页布局，修复后运行相关测试”。可用 `@` 引用文件，或拖入图片和文本附件。
+3. 在对话中查看执行过程。运行期间可以补充要求，必要时停止任务。
+4. 打开右侧面板查看文件、Git 差异、终端或浏览器，确认修改与验证结果。
+5. 对自己发出的消息使用 **重试** 可直接重新发送原文和图片；无需复制粘贴。群聊中的用户消息也支持重试。
 
-### 可选桌宠
+## 4. 常用入口
 
-- 新配置默认关闭，可随时打开或关闭，不是第二个 Agent，也不会增加 SubAgent 能力。
-- 状态来自现有 Pi 会话；TODO、快捷短语、面板状态和所选宠物只保存在本地应用配置中。
-- 快捷短语只有在用户明确点击发送后，才会经过与输入框相同的普通 Pi 消息路径。
-- 只有打开或手动刷新桌宠面板时，才会扫描本机 Codex 宠物目录；导入会把通过校验的
-  声明式 manifest 与 PNG/WebP spritesheet 复制到 `~/.pi/agent/piora/pets`。
-- 不执行宠物包内的 JavaScript、HTML、CSS、npm scripts、CDP hook 或远程资源。
+| 入口 | 用途 |
+| --- | --- |
+| 项目 / 聊天 | 新建与继续会话、搜索、重命名、置顶、归档和恢复 |
+| 右侧加号 | 打开文件、Git 审阅、终端、浏览器、设备和其他工具面板 |
+| 群聊 | 创建多 Agent 协作空间，配置成员、职责、并发与共享工作区 |
+| 随身舱 | 待办、专注、Markdown 中转站、JSON 工具、桌宠和记忆设置 |
+| 设置 | 模型、外观、快捷键、语音、扩展、Skills、插件、通知与更新 |
 
-该能力是独立维护的文件格式兼容层，不是 OpenAI/Codex 官方集成；项目不捆绑 Codex
-宠物图像或品牌素材。详细的数据目录和删除方法见
-[隐私与网络行为](docs/open-source/PRIVACY_AND_NETWORK.md)。
+中转站是一套本地 Markdown 编辑器：每个文件显示为顶部标签页，支持即时排版、源码模式、自动保存、草稿恢复、导入导出和图片插入。切换标签页不会丢失正在编辑的内容。
 
-### Pi 扩展能力
+## 5. 可选能力
 
-Piora 直接使用 Pi 的 AgentSession、资源加载器、SettingsManager 和 package/skill/extension
-机制。Web 开发环境继续使用已经安装的 JavaScript/TypeScript extensions、skills、prompts
-和 packages；桌面打包已保留同一加载路径，但每个公开 Windows 版本必须通过隔离扩展 fixture
-后才能声明打包支持。Piora 不增加 Project Trust 或工具权限档位，项目资源按 Pi 的本地 Agent
-模型直接加载。
+- **Windows 电脑控制**：在电脑控制设置中点击连接即可启用扩展并连接 Windows-MCP。需要本机安装 `uv`；新建编码会话后 `computer_control` 会进入可用工具列表。
+- **OpenHarmony 设备**：安装 DevEco Studio 或 Command Line Tools，开启设备 USB 调试并完成授权，然后在鸿蒙设备面板选择 HDC 和目标设备。
+- **定时任务**：可创建沿用当前会话的周期跟进，或针对项目独立运行的任务。调度依赖 Piora 在本机保持运行。
+- **桌宠**：在设置中启用。透明区域会穿透点击，实际宠物区域可拖动和交互；窗口会保持固定尺寸并被校正到可见屏幕内。
 
-Portable EXE 不内置 npm、npx、Git、编译器、用户扩展、API Key 或 `~/.pi/agent`。因此：
+# 目录说明
 
-- 已安装的常规扩展可以由 Pi 运行时加载；
-- 需要外部 npm/npx/Git 的安装或更新操作依赖系统 `PATH`；
-- 原生 `.node` 模块受 Electron/Node ABI 限制，暂不承诺完整兼容；
-- 假设独占全屏终端的扩展 UI 不是桌面 GUI 的兼容目标。
+```text
+Piora/
+├─ app/                    Next.js 页面与 API 路由
+│  └─ api/                 会话、Agent、群聊、文件、Git、设备等接口
+├─ components/             对话、侧栏、设置、随身舱和工作区组件
+├─ hooks/                  会话流、任务状态、设备画面和界面状态 Hooks
+├─ lib/                    会话运行时、存储、安全、Git、群聊和模型逻辑
+├─ extensions/             Piora 自带的 Pi 扩展
+├─ desktop/                Electron 主进程、预加载脚本与打包配置
+├─ public/                 静态资源、主题和桌宠素材
+├─ scripts/                验证、打包、发布、许可证和资源生成脚本
+├─ docs/                   架构、设备、协作、发布和兼容性文档
+├─ .github/                CI、发布工作流和贡献模板
+├─ AGENTS.md               开发约束、架构边界与易错点
+└─ CHANGELOG.md             版本变更记录
+```
 
-完整边界见 [Pi 扩展兼容说明](docs/open-source/EXTENSION_COMPATIBILITY.md)。
+主要代码入口：
+
+| 文件或目录 | 职责 |
+| --- | --- |
+| `components/AppShell.tsx` | 主界面、URL、项目、会话与工作区组合 |
+| `components/ChatWindow.tsx` | 对话展示、输入与会话控制 |
+| `hooks/useAgentSession.ts` | Agent 命令、SSE、运行恢复和滚动跟随 |
+| `lib/rpc-manager.ts` | AgentSession 生命周期、工具与扩展绑定 |
+| `lib/session-reader.ts` | 只读加载 Pi JSONL 会话与上下文 |
+| `lib/room-*.ts` | 多 Agent 群聊、路由和协调 |
+| `lib/harmony/` | OpenHarmony 设备、HDC、审批、UI 树与视觉能力 |
+| `desktop/src/main.ts` | Electron 窗口、本地服务、更新、托盘和桌宠窗口 |
+
+深入阅读可从 [多 Agent 协作](docs/multi-agent-collaboration.md)、[Worktree 指南](docs/worktrees.zh-CN.md)、[OpenHarmony 自动化](docs/HARMONYOS_DEVICE_AUTOMATION.md)、[扩展兼容说明](docs/open-source/EXTENSION_COMPATIBILITY.md) 和 [发布流程](docs/release.md) 开始。
+
+# 贡献者指南
+
+提交问题前请搜索现有 Issues 和 Pull Requests。缺陷报告应包含操作系统、Piora 版本、复现步骤、期望结果和实际结果；日志需要删除 API Key、私人路径、提示词和会话内容。安全问题请按 [SECURITY.md](SECURITY.md) 私下报告。
+
+提交代码时：
+
+1. 从最新 `main` 创建聚焦的分支，避免混入无关格式化。
+2. 先阅读 [AGENTS.md](AGENTS.md)，尤其是 AgentSession、分叉、SSE、文件访问、认证和扩展相关约束。
+3. 为行为变化补充有意义的测试，并更新用户可见文档。
+4. 运行适合改动范围的检查；提交前至少完成 Lint、类型检查和相关测试。
+5. Pull Request 说明应写清问题、最终行为、验证结果、安全或隐私影响；界面变化附截图或录屏。
+
+完整约定见 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [行为准则](CODE_OF_CONDUCT.md)。贡献遵循仓库的 [MIT License](LICENSE)，请保留适用的上游版权与许可声明。
+
+# 开发者指南
 
 ## 环境要求
 
-- Node.js 22.19.0 或更高版本（仓库包含 `.nvmrc`）
-- npm 10 或更高版本
-- Git
-- Windows 上建议安装 Git for Windows，以便 Pi 工具使用 Bash
-- 桌面发行目标：Windows 10/11 x64、Ubuntu/Linux x64 AppImage
-
-仓库只支持提交的 `package-lock.json` 与 npm 工作流；不维护 Bun、Yarn 或 pnpm 锁文件。
+- Node.js 22.19.0 或更高版本，建议使用仓库 `.nvmrc` 指定的版本。
+- npm 与仓库提交的 `package-lock.json`。
+- Git；在 Windows 上运行 Pi 编码工具时建议安装 Git for Windows。
 
 ## 本地开发
 
 ```powershell
-git clone https://github.com/kexijiang/piora.git
-cd piora
 npm ci
 npm run dev
 ```
 
-开发服务器默认监听 <http://127.0.0.1:30141>。
-
-日常开发不要在活动工作目录运行 Next.js 生产构建，以免 `.next` 与开发服务互相干扰。
-
-## 验证
+开发服务器监听 `http://127.0.0.1:30141`。开发期间不要运行 `next build` 或包含它的打包命令；它会污染 `.next/` 并影响正在运行的开发服务。桌面联调使用：
 
 ```powershell
+npm run dev:desktop
+```
+
+## 质量检查
+
+```powershell
+npm run licenses:check
+npm run verify:hygiene
 npm run lint
 npm run typecheck
 npm test
-npm run verify:hygiene
+npm run perf:check
 npm run verify:backgrounds
-npm run licenses:generate
 ```
 
-第三方包清单由锁文件生成到 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md)。
-该清单覆盖完整锁文件，不代表所有包都会进入最终 Windows 产物。运行依赖若没有包声明或
-版本限定的人工复核许可会使生成流程失败；`format@0.2.2` 与 `khroma@2.1.0` 的 MIT 文本、
-固定上游提交和哈希记录在 `third_party/`。未使用的 LobeHub peer UI 依赖链不进入锁文件，
-正式二进制仍须通过产物级 manifest、SBOM 与许可证文本复核。详见 [NOTICE](NOTICE) 与
-[公开发布检查表](docs/open-source/LAUNCH_CHECKLIST.md)。
+只修改小范围代码时可以先运行相关测试；准备合并或发布时应执行完整检查。CI 在 Windows 和 Linux 上运行源码检查，并在 Windows 上生成和验证解包应用。
 
-## 构建桌面应用
+## 数据与运行边界
 
-```powershell
-# 生成 Web standalone 与 Electron 主进程
-npm run build:app
+| 位置 | 内容 |
+| --- | --- |
+| `~/.pi/agent/sessions/` | Pi JSONL 会话和分支上下文 |
+| `~/.pi/agent/settings.json`、`models.json`、`auth.json` | Pi 设置、模型与凭据 |
+| `~/.pi/agent/piora/` | Piora 扩展、群聊、随身舱和其他本地状态 |
+| Windows `%APPDATA%\Piora` | Electron 配置、浏览器资料和日志 |
 
-> 若打包出的 EXE 打开是黑屏（HTML 能加载但 JS/CSS 404），通常是在 dev 污染的
-> `.next` 目录上打包所致；诊断与修复步骤见
-> [BLACK_SCREEN_TROUBLESHOOTING.md](docs/open-source/BLACK_SCREEN_TROUBLESHOOTING.md)。
-> `stage-standalone.mjs` 已内置 BUILD_ID/静态资源完整性校验，残缺 `.next` 会直接报错。
+`/api/files` 受允许根目录限制，不是通用文件浏览器。AgentSession 生命周期、fork 后销毁、全局热重载状态和运行中 SSE 恢复都有明确约束；修改这些区域前必须阅读 [AGENTS.md](AGENTS.md)。
 
-# 生成 unpacked 测试目录
-npm run pack:win
+## 桌面打包与发布
 
-# 在仓库外隔离验证 standalone 服务
-npm run verify:package
+构建必须在独立、干净的 checkout 或 CI 中完成。Beta 使用 `vX.Y.Z-beta.N` 标签触发 `.github/workflows/harmony-preview.yml`，生成 Windows x64 安装版、便携版、更新元数据和校验文件。稳定版使用 `vX.Y.Z` 标签，另生成 Linux x64 AppImage。
 
-# 生成 portable EXE
-npm run dist:win
+版本发布前需要同步 `package.json`、`desktop/package.json`、`package-lock.json`、`CHANGELOG.md` 和本文版本说明。请遵循 [完整发布流程](docs/release.md)，不要移动已经发布的标签，也不要手工上传绕过验证的安装包。
 
-# Ubuntu/Linux x64 AppImage（在 Linux 构建机运行）
-npm run dist:linux
-```
+# 已知问题
 
-产物位于 `desktop/release/`。Windows 产物未签名，系统可能显示信誉警告；Linux
-AppImage 需要先赋予执行权限。Linux 版当前不捆绑经过复核的本地 whisper.cpp 运行时，
-因此本地语音转写会明确显示不可用，其他桌面能力照常打包。
+- 当前 Beta 是预览通道，可能存在尚未覆盖的设备、显示器、缩放比例和第三方模型兼容问题。
+- Windows 安装包暂未启用代码签名，首次下载或启动时可能出现系统信誉提示。
+- Beta 自动构建当前只发布 Windows x64；Linux x64 AppImage 由稳定版流程生成。Linux 不包含 Windows 专用电脑控制和本地 Whisper 运行时。
+- Windows 电脑控制依赖 `uv` 和首次连接时下载的固定版本 Windows-MCP/Python 环境；无障碍树质量会影响桌面读取和操作效果。
+- OpenHarmony 投屏与自动化依赖官方 HDC、设备开发者选项和 USB 授权；不同设备与系统版本需要实机验证。
+- 定时任务、后台 Agent 和本地更新调度需要 Piora 进程保持运行；电脑关机、休眠或应用完全退出后不会继续执行。
+- 关闭主窗口通常会收起到系统托盘。需要完全退出时，请使用托盘菜单中的退出命令。
+- 便携版不支持安装版的覆盖更新流程，需要手动替换程序。更新前仍建议备份重要项目和 Pi 数据目录。
+- Skills、插件和外部扩展可能依赖 npm、Git、编译器、原生模块或其他本机程序，其兼容性由各自运行环境决定。
+- 桌宠、启动动画、透明窗口和多显示器行为虽然有自动回归保护，特殊显卡驱动或远程桌面环境仍可能需要单独反馈与复现。
 
-Windows EXE、浏览器 favicon 与 PWA 使用同一套原创 Piora 标志。多尺寸 ICO、透明 PNG、
-完整生成提示词和 MIT 许可记录见 [`desktop/build`](desktop/build/README.md)。
-在代码签名、干净虚拟机升级/卸载和数据保留验证完成前，不应把它描述为已签名稳定发行版。
-
-## 数据与网络
-
-Piora 不包含分析 SDK、广告、账号服务或默认遥测。Electron 桌面应用启动只监听动态
-`127.0.0.1` 端口的本地服务，并使用每次启动生成的随机桌面令牌。
-
-模型请求、OAuth、模型发现、skills/packages 安装以及第三方扩展可能按用户操作访问网络；
-具体数据处理由所选提供商与扩展决定。背景功能不会上传本地图片，也不接受远程背景 URL。
-桌宠、TODO 和本机宠物扫描/导入本身不联网；快捷短语只有在用户明确点击发送后才可能访问
-所选模型提供商。
-
-删除或替换 portable EXE 不会清除用户数据。Windows 下 Electron 配置通常保留在
-`%APPDATA%\Piora`，导入的宠物副本位于 `%USERPROFILE%\.pi\agent\piora`；Pi 自己的会话、
-凭据和扩展仍位于 `%USERPROFILE%\.pi\agent`，不应为了清理 Piora 而整体删除。
-详见 [隐私与网络行为](docs/open-source/PRIVACY_AND_NETWORK.md)。
-
-## 项目结构与开发约束
-
-架构、AgentSession 生命周期、分支、SSE、文件 allow-list、认证与扩展陷阱记录在
-[AGENTS.md](AGENTS.md)。涉及这些区域的贡献在修改前必须阅读该文件。
-
-本轮目标、验收与持续进度记录在
-[今晚交付目标](docs/RELEASE_GOAL_2026-07-31.md)。Codex 与 Piora 的体验取舍见
-[UX 对比报告](docs/CODEX_PIORA_UX_COMPARISON_2026-07-31.md)。
-当前已经验证和仍待验证的边界见 [项目状态](docs/open-source/PROJECT_STATUS.md)。
-
-## 贡献、支持与安全
-
-- [贡献指南](CONTRIBUTING.md)
-- [支持范围](SUPPORT.md)
-- [安全政策](SECURITY.md)
-- [行为准则](CODE_OF_CONDUCT.md)
-- [公开发布检查表](docs/open-source/LAUNCH_CHECKLIST.md)
-- [上游关系](docs/open-source/UPSTREAM.md)
-
-请不要在公开 issue 中提交 API Key、OAuth Token、私人提示词、Pi 会话、专有代码、主目录转储或
-未脱敏日志。安全问题请使用 GitHub Private Vulnerability Reporting。
-
-## 上游与许可证
-
-项目代码使用 MIT License；保留的 pi-web 代码继续保留其 MIT 版权声明。Pi 与其他依赖保留
-各自许可证。宠物兼容层对 OpenAI Codex TUI 宠物目录和动画/缓存约定的修改式适配依照
-Apache-2.0 保留来源说明；它不是 OpenAI 官方集成，也不捆绑 Codex 宠物图像或品牌素材。
-参见 [LICENSE](LICENSE)、[NOTICE](NOTICE)、[第三方包清单](THIRD_PARTY_LICENSES.md) 与
-[Codex 兼容层归属](third_party/openai-codex/SOURCE.md)。
-
-`upstream` 应继续指向 `https://github.com/agegr/pi-web.git`，上游更新必须审阅后再合并，
-不能静默覆盖桌面安全边界或 Pi 兼容性处理。
+遇到无法启动、黑屏或安装问题，请查看 [黑屏排查指南](docs/open-source/BLACK_SCREEN_TROUBLESHOOTING.md) 并在 [Issues](https://github.com/kexijiang/Piora/issues) 提交可复现信息。

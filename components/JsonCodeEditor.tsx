@@ -1,20 +1,26 @@
 "use client";
 
 import { json } from "@codemirror/lang-json";
-import { isolateHistory } from "@codemirror/commands";
-import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { isolateHistory, history, defaultKeymap, historyKeymap } from "@codemirror/commands";
+import { HighlightStyle, syntaxHighlighting, foldGutter, codeFolding, indentOnInput, bracketMatching, foldKeymap } from "@codemirror/language";
+import { search, openSearchPanel, searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { closeBrackets, closeBracketsKeymap, autocompletion, completionKeymap } from "@codemirror/autocomplete";
+import { createEditorSearchPanel, editorSearchChinese } from "@/lib/editor-search-panel";
+import { useI18n } from "@/hooks/useI18n";
+import "./EditorSearch.css";
 import { tags } from "@lezer/highlight";
 import { Compartment, EditorState } from "@codemirror/state";
-import { EditorView, keymap, placeholder as codeMirrorPlaceholder } from "@codemirror/view";
-import { basicSetup } from "codemirror";
+import { EditorView, keymap, placeholder as codeMirrorPlaceholder, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, dropCursor, rectangularSelection, crosshairCursor, highlightActiveLine } from "@codemirror/view";
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 
 export type JsonEditorShortcut = "close" | "cycle-backward" | "cycle-forward" | "format" | "new" | "paste-new" | "toggle-lock";
 const pocketHighlighting = HighlightStyle.define([
-  { tag: tags.propertyName, color: "color-mix(in srgb, #719fc2 75%, var(--text))" },
-  { tag: tags.string, color: "color-mix(in srgb, #899b70 75%, var(--text))" },
-  { tag: [tags.number, tags.bool, tags.null], color: "color-mix(in srgb, #b696cb 75%, var(--text))" },
-  { tag: tags.punctuation, color: "var(--text-muted)" },
+  { tag: tags.propertyName, color: "var(--json-key)", fontWeight: "500" },
+  { tag: tags.string, color: "var(--json-string)" },
+  { tag: tags.number, color: "var(--json-number)" },
+  { tag: tags.bool, color: "var(--json-boolean)", fontWeight: "500" },
+  { tag: tags.null, color: "var(--json-null)", fontStyle: "italic" },
+  { tag: tags.punctuation, color: "var(--json-punctuation)" },
 ]);
 
 export interface JsonCodeEditorHandle {
@@ -49,6 +55,9 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
   value,
   wrap,
 }, forwardedRef) {
+  const { locale } = useI18n();
+  const localeRef = useRef(locale);
+  localeRef.current = locale;
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const syncingRef = useRef(false);
@@ -58,13 +67,14 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
   const createStateRef = useRef<((doc: string) => EditorState) | null>(null);
   const maxLengthRef = useRef(maxLength);
   const initialValueRef = useRef(value);
-  const initialOptionsRef = useRef({ ariaLabel, placeholder, wrap });
+  const initialOptionsRef = useRef({ ariaLabel, placeholder, wrap, locale });
   const [optionsCompartment] = useState(() => new Compartment());
 
   callbacksRef.current = { onChange, onPasteText, onShortcut, onLimitExceeded };
   maxLengthRef.current = maxLength;
 
-  const editorOptions = (next: { ariaLabel: string; placeholder: string; wrap: boolean }) => [
+  const editorOptions = (next: { ariaLabel: string; placeholder: string; wrap: boolean; locale: string }) => [
+    EditorState.phrases.of(next.locale === "zh-CN" ? { ...editorSearchChinese, "Fold code": "折叠代码", "Unfold code": "展开代码" } : {}),
     next.wrap ? EditorView.lineWrapping : [],
     codeMirrorPlaceholder(next.placeholder),
     EditorView.contentAttributes.of({ "aria-label": next.ariaLabel, "aria-multiline": "true", spellcheck: "false" }),
@@ -105,6 +115,7 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
             return transaction;
           }),
           keymap.of([
+            { key: "Mod-h", run: openSearchPanel },
             { key: "Mod-Enter", run: runShortcut("format") },
             { key: "Mod-t", run: runShortcut("new") },
             { key: "Mod-n", run: runShortcut("paste-new") },
@@ -113,7 +124,19 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
             { key: "Mod-l", run: runShortcut("toggle-lock") },
             { key: "Mod-q", run: runShortcut("close") },
           ]),
-          basicSetup,
+          search({ top: true, createPanel: createEditorSearchPanel }),
+          lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(), history(), drawSelection(), dropCursor(),
+          EditorState.allowMultipleSelections.of(true), indentOnInput(), bracketMatching(), closeBrackets(), autocompletion(), rectangularSelection(), crosshairCursor(), highlightActiveLine(), highlightSelectionMatches(),
+          keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...searchKeymap, ...historyKeymap, ...foldKeymap, ...completionKeymap]),
+          foldGutter({ markerDOM(open) {
+            const marker = document.createElement("span"); marker.className = "piora-fold-chevron"; marker.dataset.open = String(open);
+            marker.title = localeRef.current === "zh-CN" ? open ? "折叠代码" : "展开代码" : open ? "Fold code" : "Unfold code"; marker.setAttribute("aria-label", marker.title);
+            return marker;
+          } }),
+          codeFolding({ placeholderDOM(view, onclick) {
+            const marker = document.createElement("button"); marker.type = "button"; marker.className = "piora-fold-placeholder";
+            marker.textContent = "···"; marker.setAttribute("aria-label", view.state.phrase("Unfold code")); marker.onclick = onclick; return marker;
+          } }),
           json(),
           syntaxHighlighting(pocketHighlighting),
           optionsCompartment.of(editorOptions(initialOptionsRef.current)),
@@ -157,7 +180,7 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
       view.setState(documentsRef.current.get(documentId) ?? createStateRef.current(value));
       documentIdRef.current = documentId;
     }
-    view.dispatch({ effects: optionsCompartment.reconfigure(editorOptions({ ariaLabel, placeholder, wrap })) });
+    view.dispatch({ effects: optionsCompartment.reconfigure(editorOptions({ ariaLabel, placeholder, wrap, locale })) });
     const current = view.state.doc.toString();
     if (current === value) return;
     const selection = view.state.selection.main;
@@ -165,7 +188,7 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
     syncingRef.current = true;
     view.dispatch({ changes: { from: 0, to: current.length, insert: value }, selection: { anchor }, annotations: isolateHistory.of("full") });
     syncingRef.current = false;
-  }, [documentId, value, ariaLabel, placeholder, wrap, optionsCompartment]);
+  }, [documentId, value, ariaLabel, placeholder, wrap, locale, optionsCompartment]);
 
-  return <div ref={containerRef} className={className} data-wrap={wrap ? "true" : "false"} />;
+  return <div ref={containerRef} className={`piora-json-code-editor ${className ?? ""}`} data-wrap={wrap ? "true" : "false"} />;
 });

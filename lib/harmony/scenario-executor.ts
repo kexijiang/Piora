@@ -98,7 +98,7 @@ function screenBounds(nodes: readonly HarmonyUiNode[], preferred?: HarmonyUiNode
   };
 }
 
-function gestureCoordinates(
+export function gestureCoordinates(
   nodes: readonly HarmonyUiNode[],
   direction: "left" | "right" | "up" | "down",
   preferred?: HarmonyUiNode,

@@ -1,4 +1,22 @@
 export const COMMAND_HISTORY_SUGGESTION_LIMIT = 8;
+const COMMAND_HISTORY_LIMIT = 200;
+
+export function terminalHistoryKey(cwd: string): string {
+  const normalized = /^[a-z]:[\\/]|^\\\\/i.test(cwd) ? cwd.replace(/\\/g, "/").toLowerCase() : cwd;
+  return `piora-terminal-history-v1:${normalized.replace(/\/+$/, "")}`;
+}
+
+export function readCommandHistory(storage: Pick<Storage, "getItem">, cwd: string): string[] {
+  try {
+    const value: unknown = JSON.parse(storage.getItem(terminalHistoryKey(cwd)) ?? "[]");
+    return Array.isArray(value) ? [...new Set(value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()) && item.length <= 65536))].slice(0, COMMAND_HISTORY_LIMIT) : [];
+  } catch { return []; }
+}
+
+export function rememberCommand(history: readonly string[], command: string): string[] {
+  const value = command.trim();
+  return value ? [value, ...history.filter((item) => item !== value)].slice(0, COMMAND_HISTORY_LIMIT) : [...history];
+}
 
 function normalize(value: string): string {
   return value.trim().toLocaleLowerCase();

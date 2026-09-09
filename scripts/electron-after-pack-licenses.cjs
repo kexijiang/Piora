@@ -56,9 +56,11 @@ module.exports = async function generatePackagedLicenses(context) {
   if (launcherSource === originalServerSource) {
     throw new Error("Unable to create the packaged ASAR server launcher");
   }
-  const { createPackage } = require("@electron/asar");
+  const { createWebRuntimeArchive } = await import(pathToFileURL(join(__dirname, "archive-web-runtime.mjs")).href);
   await rm(temporaryArchive, { force: true });
-  await createPackage(webRoot, temporaryArchive);
+  // Keep the entire PTY package together: Windows loads sibling ConPTY DLLs
+  // and starts a worker by filename, neither of which can run inside ASAR.
+  await createWebRuntimeArchive(webRoot, temporaryArchive);
   const archiveEntry = await lstat(temporaryArchive);
   if (!archiveEntry.isFile() || archiveEntry.size < 1_000_000) {
     throw new Error(`Packaged web runtime archive is missing or unexpectedly small: ${temporaryArchive}`);
@@ -66,6 +68,7 @@ module.exports = async function generatePackagedLicenses(context) {
   await rm(webRoot, { recursive: true, force: true });
   await mkdir(webRoot, { recursive: true });
   await rename(temporaryArchive, runtimeArchive);
+  await rename(`${temporaryArchive}.unpacked`, `${runtimeArchive}.unpacked`);
   await writeFile(join(webRoot, "server.js"), launcherSource, "utf8");
   console.log(`Archived the packaged web runtime into runtime.asar (${archiveEntry.size} bytes).`);
 };

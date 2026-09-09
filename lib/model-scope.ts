@@ -29,6 +29,8 @@ export interface ModelScopeResult {
 }
 
 export interface InitialModelScopeOptions {
+  /** Explicitly allow a missing requested model to fall back within this scope. */
+  allowUnavailableRequestedModel?: boolean;
   requestedModel?: { provider: string; modelId: string };
   defaultModel?: { provider: string; modelId: string };
   thinkingLevel?: ThinkingLevel;
@@ -113,7 +115,10 @@ export function selectInitialModelScope(
   const requested = requestedRef
     ? scope.visible.find((model) => matchesModel(model, requestedRef))
     : undefined;
-  if (requestedRef && !requested) {
+  const canFallback = options.allowUnavailableRequestedModel === true
+    && scope.visible.length > 0
+    && !(scope.warnings.length > 0 && scope.scopedModels.length === 0);
+  if (requestedRef && !requested && !canFallback) {
     throw new Error(
       `Model is not available in the enabled scope: ${requestedRef.provider}/${requestedRef.modelId}`,
     );
@@ -130,7 +135,8 @@ export function selectInitialModelScope(
   const defaultVisible = !requested && !fallbackScoped && defaultRef
     ? scope.visible.find((model) => matchesModel(model, defaultRef))
     : undefined;
-  const selectedModel = requested ?? fallbackScoped?.model ?? defaultVisible;
+  const selectedModel = requested ?? fallbackScoped?.model ?? defaultVisible
+    ?? (requestedRef && canFallback ? scope.visible[0] : undefined);
   const scopedSelection = requestedScoped ?? fallbackScoped;
   const thinkingLevel = options.thinkingLevel ?? scopedSelection?.thinkingLevel;
 

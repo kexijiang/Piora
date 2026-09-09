@@ -19,6 +19,7 @@ function sessionOptions(profile: TeamAgentProfile) {
   return {
     ...(toolNames ? { toolNames } : {}),
     ...(profile.modelPolicy.mode === "pinned" ? {
+      allowModelFallback: false,
       initialModel: { provider: profile.modelPolicy.provider, modelId: profile.modelPolicy.modelId },
       thinkingLevel: profile.modelPolicy.thinkingLevel,
     } : {}),

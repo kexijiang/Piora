@@ -56,8 +56,11 @@ The repository's release configuration must enable Next's `output:
 
 Run `npm run build:web` from the repository root to create it and stage
 `public/` plus `.next/static/`. `electron-builder.yml` copies the complete tree
-to unpacked `resources/web/`. The standalone tree remains outside the Electron ASAR so traced packages, Pi
-extensions, and runtime assets can be resolved normally.
+to `resources/web/`. The after-pack step archives the runtime into `runtime.asar`
+behind a small launcher. Native dependencies requiring real paths, including the
+complete node-pty module and its ConPTY worker/DLLs, stay in
+`runtime.asar.unpacked`. Runtime-aware resolution keeps Pi extensions and native
+terminal support available without relying on the developer checkout.
 
 After `npm run pack:win` or `npm run pack:linux`, run `npm run verify:package`
 from the repository root (pass the Linux unpacked `resources/web` path when
@@ -75,11 +78,19 @@ do not hand-edit it or replace it with the broader source lockfile inventory.
 Stable tags publish an assisted Windows x64 NSIS installer, update metadata,
 ZIP/portable EXE artifacts, and a Linux x64 AppImage. The installer allows a
 custom destination and is the recommended edition: installed builds check the
-latest stable GitHub Release after startup, expose progress and restart/install
+appropriate GitHub Release channel after startup, expose progress and restart/install
 actions in Help, and never install an update while a task is running. Portable
 builds link to the installer instead of modifying themselves. The Linux package
 intentionally omits the Windows-only pinned local Whisper runtime, so local
 speech transcription reports unavailable there.
+
+Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` and publish Windows installer,
+portable EXE, blockmap, `beta.yml`, and checksums as a prerelease; they do not run
+the stable Linux/ZIP pipeline. Installed beta builds use the beta update channel.
+Settings > General also provides an opt-in scheduled silent update: installation
+waits for tasks to finish, edits to be saved, and the computer to be idle. This is
+unavailable in portable/development builds. See [release procedure](../docs/release.md)
+for exact metadata, checks, and tag commands.
 
 ## Security boundary
 

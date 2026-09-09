@@ -5,6 +5,7 @@ import type { SettingsKey } from "@/lib/settings-search";
 declare global {
   interface Window {
     piDesktop?: {
+      restartForDataImport?: () => Promise<boolean>;
       launcher?: {
         list: (refresh?: boolean) => Promise<{ supported: boolean; warning: string; items: Array<{ id: string; name: string; kind: "app" | "setting"; keywords: string; description: string }> }>;
         open: (id: string) => Promise<void>;
@@ -67,7 +68,7 @@ declare global {
         moving: boolean;
         direction: "left" | "right" | null;
       }) => void) => () => void;
-      setCompanionHitTest?: (interactive: boolean) => Promise<boolean>;
+      setCompanionHitTest?: (region: { x: number; y: number; width: number; height: number } | null) => Promise<boolean>;
       companionAction?: (action: "focus-main" | "open-settings" | "open-panel" | "hide") => Promise<boolean>;
       getAutoLaunchState?: () => Promise<{
         supported: boolean;
@@ -93,6 +94,7 @@ declare global {
         action: (input: DesktopBrowserAction) => Promise<DesktopBrowserState | null>;
         setViewport: (bounds: { x: number; y: number; width: number; height: number }, visible: boolean) => Promise<boolean>;
         importChromeBookmarks: () => Promise<ChromeBookmarkImportResult | null>;
+        showBookmarkMenu: (nodes: ImportedChromeBookmarkNode[], position: { x: number; y: number }) => Promise<string | null>;
         onState: (listener: (state: DesktopBrowserState) => void) => () => void;
         onDownload: (listener: (download: DesktopBrowserDownload) => void) => () => void;
       };
@@ -125,7 +127,7 @@ export interface DesktopBrowserState {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab";
+  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login";
   sessionId?: string;
   tabId?: string;
   url?: string;

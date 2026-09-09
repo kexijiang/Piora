@@ -1,0 +1,33 @@
+.piora-json-code-editor { container: piora-editor / inline-size; --json-key: #994019; --json-string: #187342; --json-number: #1a61bd; --json-boolean: #8145b5; --json-null: #89612b; --json-punctuation: #626b79; }
+.piora-json-code-editor.piora-json-code-editor .cm-editor { font-size: calc(var(--ui-font-size, 14px) * 1); }
+html.dark .piora-json-code-editor { --json-key: #ffb580; --json-string: #91d9a4; --json-number: #8ab9ff; --json-boolean: #c9a0f6; --json-null: #d9be84; --json-punctuation: #adb8c8; }
+.piora-search { box-sizing: border-box; display: grid; gap: 8px; padding: 12px 14px 9px; font: 12px/1.45 var(--font-ui, system-ui); color: var(--text); background: var(--bg-panel); border-bottom: 1px solid var(--border); }
+.piora-search .piora-search-row { display: flex; gap: 6px; align-items: center; min-width: 0; flex-wrap: wrap; }
+.piora-search input { box-sizing: border-box; flex: 1 1 130px; min-width: 80px; width: 0; height: 32px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); color: var(--text); font: 12px/1.4 var(--font-mono, monospace); box-shadow: none; outline: none; }
+.piora-search input:focus { border-color: #df7541; box-shadow: 0 0 0 2px rgb(223 117 65 / 13%); }
+.piora-search input[aria-invalid="true"] { border-color: #c85252; }
+.piora-search input::placeholder { color: var(--text-dim); }
+.piora-search button { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; height: 30px; min-width: 28px; padding: 4px 7px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--text-muted); font: 12px/1.4 var(--font-ui, system-ui); cursor: pointer; box-shadow: none; }
+.piora-search button:hover:not(:disabled) { background: var(--bg-hover); color: var(--text); }
+.piora-search button:focus-visible { outline: 2px solid #df7541; outline-offset: 1px; }
+.piora-search button:disabled { opacity: .36; cursor: default; }
+.piora-search button[aria-pressed="true"] { background: rgb(223 117 65 / 12%); color: var(--text); border-color: rgb(223 117 65 / 50%); }
+.piora-search .piora-search-options { display: flex; align-items: center; gap: 2px; padding-right: 5px; border-right: 1px solid var(--border); }
+.piora-search .piora-search-word { text-decoration: underline; text-underline-offset: 3px; }
+.piora-search .piora-replace-row button { padding-inline: 10px; border-color: var(--border); background: var(--bg); }
+.piora-search .piora-search-count { min-height: 16px; color: var(--text-dim); font-variant-numeric: tabular-nums; font-size: calc(var(--text-xs) * .92); }
+.piora-search .piora-search-count[data-error="true"] { color: #c85252; }
+.piora-json-code-editor .cm-searchMatch { background: rgb(237 166 69 / 22%); outline: 1px solid rgb(237 166 69 / 45%); border-radius: 2px; }
+.piora-json-code-editor .cm-searchMatch-selected { background: rgb(231 125 63 / 40%); outline-color: #df7541; }
+.piora-json-code-editor .cm-foldGutter .cm-gutterElement { display: flex; justify-content: center; align-items: center; width: 20px; cursor: pointer; }
+.piora-fold-chevron { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 4px; color: var(--text-dim); }
+.piora-fold-chevron::before { content: ""; width: 5px; height: 5px; border-right: 1.4px solid currentColor; border-bottom: 1.4px solid currentColor; transform: rotate(-45deg); }
+.piora-fold-chevron[data-open="true"]::before { transform: translateY(-2px) rotate(45deg); }
+.piora-fold-chevron:hover { background: var(--bg-hover); color: var(--text); }
+.piora-json-code-editor .piora-fold-placeholder { display: inline-flex; padding: 0 7px; min-height: 17px; margin: 0 3px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg-panel); color: var(--text-muted); font: 12px/1 var(--font-mono, monospace); letter-spacing: 1px; cursor: pointer; vertical-align: middle; }
+@container piora-editor (max-width: 440px) {
+  .piora-search .piora-search-row { display: grid; grid-template-columns: 1fr repeat(3, 28px); }
+  .piora-search input { grid-column: 1 / -1; width: 100%; min-width: 0; }
+  .piora-search .piora-search-options { justify-self: start; border: 0; padding: 0; }
+  .piora-search .piora-replace-row { grid-template-columns: 1fr 1fr; }
+}

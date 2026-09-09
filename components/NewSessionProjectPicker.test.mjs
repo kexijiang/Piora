@@ -50,8 +50,8 @@ test("global new-session actions open the project-selectable launcher", () => {
 });
 
 test("new conversations default to projectless and keep workspace selection optional", () => {
-  assert.match(chatInput, /const accepted = onSend\(/);
-  assert.match(chatInput, /if \(accepted === false\) return;[\s\S]*?clearInput\(\)/);
+  assert.match(chatInput, /const accepted = await onSend\(/);
+  assert.match(chatInput, /if \(accepted === false\) \{ restoreSubmittedDraft\(\); return; \}[\s\S]*?clearSubmittedDraft\(\)/);
   assert.match(picker, /fetch\("\/api\/chat-workspace"/);
   assert.match(picker, /const \[selectedProject, setSelectedProject\] = useState<ProjectChoice \| null>\(null\)/);
   assert.match(picker, /const cwd = selectedProject\?\.cwd \?\? projectlessCwd/);

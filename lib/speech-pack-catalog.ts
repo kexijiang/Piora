@@ -8,6 +8,7 @@ const SPEECH_PACK_RELEASE_BASE_URL = `https://github.com/kexijiang/Piora/release
 export interface SpeechDownloadSource {
   name: string;
   url: string;
+  fallbackUrls?: string[];
   algorithm: "sha256" | "sha512";
   digest: string;
   encoding: "hex" | "base64";
@@ -79,6 +80,7 @@ const RUNTIME_SOURCES: Record<string, SpeechRuntimeSource> = {
 export const SENSEVOICE_MODEL_SOURCE: SpeechDownloadSource & { bytes: number } = {
   name: "model.int8.onnx",
   url: `${SPEECH_PACK_RELEASE_BASE_URL}/model.int8.onnx`,
+  fallbackUrls: ["https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.int8.onnx", "https://hf-mirror.com/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/model.int8.onnx"],
   algorithm: "sha256",
   digest: "c71f0ce00bec95b07744e116345e33d8cbbe08cef896382cf907bf4b51a2cd51",
   encoding: "hex",
@@ -88,6 +90,7 @@ export const SENSEVOICE_MODEL_SOURCE: SpeechDownloadSource & { bytes: number } =
 export const SENSEVOICE_TOKENS_SOURCE: SpeechDownloadSource & { bytes: number } = {
   name: "tokens.txt",
   url: `${SPEECH_PACK_RELEASE_BASE_URL}/tokens.txt`,
+  fallbackUrls: ["https://huggingface.co/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt", "https://hf-mirror.com/csukuangfj/sherpa-onnx-sense-voice-zh-en-ja-ko-yue-2024-07-17/resolve/main/tokens.txt"],
   algorithm: "sha256",
   digest: "f449eb28dc567533d7fa59be34e2abca8784f771850c78a47fb731a31429a1dc",
   encoding: "hex",

@@ -43,7 +43,8 @@ import {
 import type { CompanionAutonomyLevel, CompanionFocusTimer, CompanionRuntimeState } from "@/lib/companion-runtime";
 import { planCompanionWander } from "@/lib/companion-wander";
 import type { TaskRuntimeSnapshot } from "@/lib/task-status";
-import { BuiltinPet, COMPANION_ACTIVITY_COLORS, SpritePet } from "./CompanionPet";
+import { BuiltinPet, COMPANION_ACTIVITY_COLORS, PetRenderer } from "./CompanionPet";
+import type { NormalizedCompanionHitRegion } from "@/lib/companion-hit-region";
 import styles from "./DesktopCompanionWindow.module.css";
 
 const DEFAULT_ACTIVITY: CompanionActivity = { status: "idle", cause: "" };
@@ -82,7 +83,11 @@ export function DesktopCompanionWindow() {
     [pets.catalog?.installed, preferences.selectedPetId],
   );
   const [visibleFrameIndex, setVisibleFrameIndex] = useState(0);
-  const hitRegions = useCompanionHitRegions(activePet?.atlasUrl
+  const [modelHitRegion, setModelHitRegion] = useState<NormalizedCompanionHitRegion | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const hitRegions = useCompanionHitRegions(activePet?.model3d
+    ? { url: activePet.model3d.previewUrl }
+    : activePet?.atlasUrl
     ? {
         url: activePet.atlasUrl,
         frameWidth: activePet.frame.width,
@@ -91,7 +96,7 @@ export function DesktopCompanionWindow() {
         rows: activePet.frame.rows,
       }
     : { url: "/companion-pets/piora-bot.webp" });
-  const hitRegion = hitRegions?.[visibleFrameIndex] ?? hitRegions?.[0] ?? DEFAULT_PET_HIT_REGION;
+  const hitRegion = (activePet?.model3d ? modelHitRegion : null) ?? hitRegions?.[visibleFrameIndex] ?? hitRegions?.[0] ?? DEFAULT_PET_HIT_REGION;
   const hitRegionStyle = {
     left: `${hitRegion.left * 100}%`,
     top: `${hitRegion.top * 100}%`,
@@ -100,6 +105,7 @@ export function DesktopCompanionWindow() {
   } satisfies CSSProperties;
 
   useEffect(() => setVisibleFrameIndex(0), [activePet?.sourceKey]);
+  useEffect(() => setModelHitRegion(null), [activePet?.sourceKey]);
 
   // --- Pet interaction state: one-shot model-driven reactions. ---
   const [overlayEvent, setOverlayEvent] = useState<CompanionActivityEvent | null>(null);
@@ -322,20 +328,24 @@ export function DesktopCompanionWindow() {
   }, []);
 
   useEffect(() => {
-    let interactive = false;
-    const update = (event: MouseEvent) => {
-      const next = Boolean((event.target as Element | null)?.closest?.("[data-testid='companion-pet-viewport'], [data-testid='companion-bubble-toggle']"));
-      if (next === interactive) return;
-      interactive = next;
-      void window.piDesktop?.setCompanionHitTest?.(next);
+    const update = () => {
+      const pet = document.querySelector<HTMLElement>("[data-testid='companion-pet-viewport']");
+      const rect = pet?.getBoundingClientRect();
+      const region = rect && rect.width > 0 && rect.height > 0 && document.visibilityState === "visible"
+        ? { x: rect.x, y: rect.y, width: rect.width, height: rect.height } : null;
+      void window.piDesktop?.setCompanionHitTest?.(region).catch(() => {});
     };
-    const leave = () => { interactive = false; void window.piDesktop?.setCompanionHitTest?.(false); };
-    window.addEventListener("mousemove", update, { passive: true });
-    window.addEventListener("mouseleave", leave);
+    // Publish fresh local geometry even when the sprite moves under a stationary
+    // cursor. The main process owns hit testing and expires stalled renderers.
+    update();
+    const timer = window.setInterval(update, 250);
+    window.addEventListener("resize", update);
+    document.addEventListener("visibilitychange", update);
     return () => {
-      window.removeEventListener("mousemove", update);
-      window.removeEventListener("mouseleave", leave);
-      void window.piDesktop?.setCompanionHitTest?.(false);
+      window.clearInterval(timer);
+      window.removeEventListener("resize", update);
+      document.removeEventListener("visibilitychange", update);
+      void window.piDesktop?.setCompanionHitTest?.(null).catch(() => {});
     };
   }, []);
 
@@ -568,6 +578,7 @@ export function DesktopCompanionWindow() {
     const drag = pointerDragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
     pointerDragRef.current = null;
+    setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -608,6 +619,7 @@ export function DesktopCompanionWindow() {
     const distance = Math.hypot(event.screenX - drag.startX, event.screenY - drag.startY);
     if (!drag.moved && distance < PET_DRAG_THRESHOLD_PX) return;
     drag.moved = true;
+    setDragging(true);
     void window.piDesktop?.moveCompanionWindow?.({ kind: "drag-move" });
   }, []);
 
@@ -645,7 +657,7 @@ export function DesktopCompanionWindow() {
         <div className={styles.petStage} data-moving={motionDirection ?? undefined}>
           <div className={styles.petVisual} data-testid="companion-pet-visual" aria-hidden="true">
             {activePet
-              ? <SpritePet
+              ? <PetRenderer
                   pet={activePet}
                   status={displayActivity.status}
                   event={displayActivity.event}
@@ -653,6 +665,8 @@ export function DesktopCompanionWindow() {
                   idleTricks={idleTricksEnabled}
                   motionDirection={motionDirection}
                   onFrameChange={setVisibleFrameIndex}
+                  dragging={dragging}
+                  onHitRegionChange={setModelHitRegion}
                 />
               : <BuiltinPet status={motionDirection ? "running" : displayActivity.status} />}
           </div>
@@ -668,6 +682,7 @@ export function DesktopCompanionWindow() {
             onPointerMove={handlePetPointerMove}
             onPointerUp={(event) => endPointerDrag(event, false)}
             onPointerCancel={(event) => endPointerDrag(event, true)}
+            onLostPointerCapture={(event) => endPointerDrag(event, true)}
             onDoubleClick={() => {
               if (clickTimerRef.current !== null) window.clearTimeout(clickTimerRef.current);
               clickTimerRef.current = null;

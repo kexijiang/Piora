@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.4.41-beta.5",
+  "version": "0.4.41-beta.11",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -35,10 +35,10 @@
       "brace-expansion": "5.0.9"
     },
     "dompurify": "3.4.13",
-    "js-yaml": "4.3.1",
+    "js-yaml": "4.3.2",
     "postcss": "$postcss",
     "nanoid": "3.3.18",
-    "sharp@0.34.5": "0.35.3",
+    "sharp@0.34.5": "0.35.4",
     "undici": "$undici",
     "xmldom": "npm:@xmldom/xmldom@0.9.12"
   },
@@ -69,7 +69,7 @@
     "build:desktop": "npm run build --workspace @piora/desktop",
     "build:app": "npm run build:web && npm run build:desktop",
     "typecheck": "tsc --noEmit && npm run typecheck --workspace @piora/desktop",
-    "test": "node --test components/*.test.mjs hooks/*.test.mjs lib/*.test.mjs lib/i18n/*.test.mjs",
+    "test": "node --test --test-concurrency=2 components/*.test.mjs hooks/*.test.mjs lib/*.test.mjs lib/i18n/*.test.mjs",
     "test:team": "node --test lib/team-*.test.mjs lib/runtime-evidence.test.mjs components/CollapsibleUserContent.test.mjs",
     "test:team:acceptance": "node scripts/run-team-acceptance.mjs",
     "test:team:soak": "node scripts/run-team-soak.mjs",
@@ -98,9 +98,12 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@codemirror/autocomplete": "6.20.3",
     "@codemirror/commands": "^6.11.0",
     "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.2",
     "@codemirror/language": "^6.12.4",
+    "@codemirror/search": "6.7.2",
     "@codemirror/state": "^6.7.2",
     "@codemirror/view": "^6.43.10",
     "@earendil-works/pi-agent-core": "0.84.3",
@@ -137,8 +140,9 @@
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
     "rrule": "^2.8.1",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.4",
     "tar": "7.5.22",
+    "three": "^0.185.1",
     "undici": "8.9.0"
   },
   "devDependencies": {
@@ -149,6 +153,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "@types/three": "^0.185.4",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "eslint-plugin-react-hooks": "^7.1.1",

@@ -1,103 +1,99 @@
 # Piora release procedure
 
-The Piora release process publishes source code, two unsigned Windows x64 no-install packages, and one Linux x64 AppImage from
-[`kexijiang/piora`](https://github.com/kexijiang/piora). It does not publish the former
-`@agegr/pi-web` npm package.
+Piora publishes desktop packages from [`kexijiang/Piora`](https://github.com/kexijiang/Piora). It does not publish the former `@agegr/pi-web` npm package. The release source is the commit referenced by the version tag, and that commit must be contained in `origin/main`.
 
-Each release contains an extract-and-run ZIP whose root includes `Piora.exe`, a
-single-file Windows portable executable, a Linux AppImage, and one `SHA256SUMS.txt`
-covering all three packages.
+## Channels and artifacts
 
-## Prerequisites
+| Channel | Tag | Workflow | Packages |
+| --- | --- | --- | --- |
+| Beta | `vX.Y.Z-beta.N` | `.github/workflows/harmony-preview.yml` | Windows x64 NSIS installer, portable EXE, installer blockmap, `beta.yml`, `SHA256SUMS.txt` |
+| Stable | `vX.Y.Z` | `.github/workflows/release.yml` | Windows installer, portable EXE, extract-and-run ZIP, installer blockmap, `latest.yml`, Linux x64 AppImage, combined `SHA256SUMS.txt` |
 
-- Node.js `22.19.0` (see `.nvmrc`).
-- A clean reviewed commit on `main`.
-- No credentials, user sessions, project files, local pet imports, build output, or signing
-  material in the release tree.
-- The third-party notices and 20 bundled backgrounds match the committed lockfile and manifest.
+Beta is published as a GitHub prerelease. Stable publication is marked latest. The stable workflow ignores prerelease tags even though its tag trigger matches `v*`. A push to `main` runs CI; it does not itself publish a package.
 
-## Local verification
+Windows installers support application updates; beta installers consume beta update metadata. Portable builds are replaced manually. The optional scheduled silent-update setting is disabled by default and defers installation while tasks or unsaved edits remain. Packages are unsigned. Linux does not bundle the Windows local Whisper runtime.
 
-Run source checks in the working tree:
+## Prepare the source
+
+Use Node.js 22.19.0 (see `.nvmrc`) and the committed npm lockfile. Review the entire release diff, including previously uncommitted work. Keep credentials, sessions, user imports, logs and generated build output out of Git.
+
+Update all version locations together:
+
+- `package.json` and `desktop/package.json`;
+- `package-lock.json`: top-level version, `packages[""].version`, and `packages.desktop.version`;
+- the matching dated heading in `CHANGELOG.md`;
+- the README source-version statement when preparing a documented release.
+
+Regenerate the license inventory after version or lockfile changes. Its freshness check includes the lockfile hash; an unchanged dependency list does not make an old inventory current.
 
 ```powershell
 npm ci
-npm run verify:hygiene
+npm run licenses:generate
 npm run licenses:check
+npm run verify:hygiene
 npm run lint
 npm run typecheck
 npm test
+npm run perf:check
 npm run verify:backgrounds
 ```
 
-Do not run `next build` in an active development worktree. Create an isolated worktree or clean
-release checkout, then run:
+For a beta candidate, validate metadata and generate reviewable notes before tagging:
+
+```powershell
+node scripts/verify-release-metadata.mjs v0.4.41-beta.8 --prerelease
+node scripts/create-release-notes.mjs v0.4.41-beta.8 .verification/release-notes.md
+```
+
+Replace the example version with the actual candidate. Generated notes come from the matching CHANGELOG section; do not claim unperformed device or installation checks passed.
+
+## Isolated local packaging
+
+Never run `next build` or scripts containing it in an active development worktree. Use a separate clean checkout/worktree or let CI build the tagged commit.
 
 ```powershell
 npm ci
-npm run dist:win
-npm run dist:linux # run from a clean Linux checkout
+npm run dist:win:preview  # beta
+# npm run dist:win       # stable Windows
+# npm run dist:linux     # stable Linux, on a Linux build machine
 npm run verify:package
-node scripts/smoke-test-portable.mjs --expected-version 0.1.0
+npm run licenses:package:check
+node scripts/verify-windows-update-artifacts.mjs desktop/release v0.4.41-beta.8
+node scripts/smoke-test-portable.mjs desktop/release/win-unpacked/Piora.exe --expected-version v0.4.41-beta.8 --packaged-runtime
 ```
 
-`verify:package` starts the packaged standalone service in an isolated home directory and checks
-HTTP authentication, Pi session startup, external package/extension/tool/Skill discovery,
-the exact packaged npm dependency manifest, CycloneDX SBOM, content-hashed third-party license
-texts, project license files, and the absence of known development-only packages. Electron
-Builder generates this material from the final `resources/web` tree before creating the portable
-executable; do not hand-edit `resources/licenses/third-party`. For a normal packaged verification,
-the extension fixture runs through the executable in `win-unpacked` with Electron's
-`ELECTRON_RUN_AS_NODE` mode rather than the developer's Node.js executable.
+The staging script validates standalone output and matching static assets. Packaging archives the web runtime into `resources/web/runtime.asar`; native dependencies needing real paths, including the complete node-pty module and ConPTY helpers, live in the adjacent unpacked tree. Do not manually rearrange native binaries or reuse stale `.next` output.
 
-The portable smoke script launches the final portable EXE in an isolated profile and requires its reported
-application version to match `--expected-version`. It also requires the hidden smoke window to load
-the renderer, expose the preload bridge, and reach the Piora application shell before passing.
-The default five-minute timeout includes first-run extraction and cleanup of the complete portable
-payload; a healthy marker alone is insufficient if the wrapper never exits cleanly.
+`verify:package` copies the packaged service to an isolated location and checks desktop authentication, authenticated root/health responses, Pi sessions, external package/extension/Skill discovery, packaged terminal support and license material. It uses packaged Electron as the Node runtime when required. The after-pack step generates an exact package-copy manifest, CycloneDX SBOM and content-addressed license texts under `resources/licenses/third-party/`; these are separate from the broader source lockfile inventory.
 
-## Publish a stable release
+The smoke script verifies the embedded application version, renderer and preload bridge in an isolated profile. Hosted Windows CI exercises the unpacked Electron payload because antivirus scanning can stall the portable wrapper. Final portable-wrapper behavior and actual upgrade/data retention should also be checked on a release machine.
 
-After the local gates pass, push `main`, wait for the public CI matrix, then create and push the
-matching version tag:
+## Commit, push and trigger
+
+After the source gates pass, commit the complete release input and push `main`. Use an unused version tag; do not move a published tag to another commit.
 
 ```powershell
-git tag -a v0.4.2 -m "Piora v0.4.2"
-git push origin v0.4.2
+git push origin main
+git tag -a v0.4.41-beta.8 -m "Piora v0.4.41-beta.8"
+node scripts/verify-release-metadata.mjs v0.4.41-beta.8 --prerelease --require-origin-main
+git push origin v0.4.41-beta.8
+gh run list --repo kexijiang/Piora --workflow harmony-preview.yml --limit 5
 ```
 
-The tag workflow first runs the complete source gate on Ubuntu with Node.js 22.19.0. Windows and
-Linux builds start only after that gate passes. Windows repeats the source checks and builds the portable
-artifact and extract-and-run ZIP, verifies the packaged service through the packaged Electron runtime,
-smoke-tests the final EXE and its embedded version in an isolated profile, verifies the ZIP structure, creates
-its checksums, while Linux builds and extracts the AppImage and smoke-tests its packaged runtime under Xvfb.
-The publisher verifies both manifests, combines them into `SHA256SUMS.txt`, and creates a public GitHub
-Release marked as latest only after every gate succeeds. Packages remain unsigned; release notes disclose
-the Windows reputation warning, manual-update model, and Linux local-speech limitation.
+For stable releases, wait for main-branch CI before creating `vX.Y.Z`, omit `--prerelease` from metadata verification, and follow `release.yml`. Always pass `--repo kexijiang/Piora` to `gh`: a fork checkout with an `upstream` remote may otherwise select the upstream project.
 
-The preview uses the original Piora icon recorded in
-[`desktop/build/README.md`](../desktop/build/README.md). Electron Builder consumes the reviewed
-multi-resolution `icon.ico`; the same mark is exported to the browser/PWA icons. Before publishing,
-verify the ICO sizes and transparent edge on light and dark surfaces, then extract and inspect the
-icons embedded in both `win-unpacked/Piora.exe` and the final portable EXE. A completed visual
-identity does not imply that the executable is signed.
+Beta CI validates metadata, installs dependencies, runs source hygiene, licenses, lint, types, tests, backgrounds and performance budgets, then builds Windows packages. It checks updater metadata, package isolation, package licenses, the Electron runtime and installed application, creates checksums and notes, uploads artifacts, and only then creates the prerelease.
 
-## Stable-release acceptance before tagging
+Stable CI first runs the Ubuntu source gate, builds Windows and Linux, verifies their runtimes and artifacts, combines checksums, and publishes only after both platforms succeed. Do not bypass a failed gate by manually uploading unverified binaries.
 
-- Start on a clean Windows 10/11 x64 environment and verify first launch, project selection, chat,
-  file editing/conflicts, portable-folder replacement, data retention/removal behavior,
-  backgrounds, companion opt-in/import, the built-in browser, and an external Pi extension package.
-- Confirm project selection through the native folder picker immediately binds the new conversation,
-  and verify model selection with both short and long model ids at normal desktop widths.
-- Import a real Chrome bookmarks bar and verify direct top-level folders, folder expansion, and the
-  absence of profile or bookmarks-bar wrapper folders.
-- Do not create the stable tag until the reviewed commit has passed public CI. If a binary gate fails,
-  delete or supersede the candidate tag rather than publishing unverified assets manually.
+## Verify and report
 
-## Post-release record
+- Confirm the Actions run belongs to the intended repository, tag and exact commit.
+- Report queued, building, failed and published distinctly. A pushed tag is not proof of a successful release.
+- If a gate fails, inspect that step's log, fix the source and use a new candidate version when the tagged source must change.
+- After success, check the Release contains the expected package set and verify downloaded SHA-256 checksums.
+- On clean machines, verify startup, model setup, image history reload, project selection, editing/conflicts, terminal, browser login, device control when hardware is available, and external extension loading.
+- For installed updates, test download, busy/unsaved deferral, installation, restart and data retention. Verify portable replacement separately.
+- Record the exact commit, run and Release URLs. Historical acceptance/design documents describe their own tested versions, not automatic proof for the new release.
 
-- Confirm the public Release page exposes the reviewed assets and checksums.
-- Download all three packages and the checksum, verify every SHA-256 entry on a separate path, and confirm
-  that the ZIP opens directly to `Piora.exe` plus its runtime files rather than an extra wrapper folder.
-- Update `docs/open-source/PROJECT_STATUS.md`, `docs/open-source/LAUNCH_CHECKLIST.md`, and the
-  release goal with the exact commit, CI run, and Release URL.
+See [README](../README.md), [desktop development](../desktop/README.md), [release checklist](open-source/LAUNCH_CHECKLIST.md) and [black-screen troubleshooting](open-source/BLACK_SCREEN_TROUBLESHOOTING.md).

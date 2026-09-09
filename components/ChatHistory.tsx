@@ -10,7 +10,7 @@ import { VirtualList, type VirtualListHandle } from "./VirtualList";
 
 export interface ChatHistoryHandle { revealEntry(id: string): void; cancelNavigation(): void }
 type MessageProps = ComponentProps<typeof MessageView>;
-interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "sessionId" | "onOpenAutomation"> {
+interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "onRetry" | "retryDisabled" | "sessionId" | "onOpenAutomation"> {
   messages: AgentMessage[];
   entryIds: string[];
   busy: boolean;

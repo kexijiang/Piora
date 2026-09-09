@@ -161,9 +161,9 @@
   flex-direction: column;
 }
 
-.columnResizeHandle { position: absolute; z-index: 22; top: 12px; bottom: 16px; left: max(3px, calc((100% - var(--room-column-width, 840px)) / 2 - 12px)); width: 10px; cursor: col-resize; touch-action: none; outline: none; }
-.columnResizeHandle::after { content: ""; position: absolute; left: 4px; top: 0; bottom: 0; width: 2px; background: transparent; border-radius: 2px; }
-.columnResizeHandle:hover::after, .columnResizeHandle:focus-visible::after { background: var(--accent); }
+.columnResizeHandle { position: absolute; z-index: 22; top: 0; bottom: 0; left: max(2px, calc((100% - var(--room-column-width, 840px)) / 2 - 24px)); width: 12px; cursor: col-resize; touch-action: none; outline: none; }
+.columnResizeHandle::after { content: ""; position: absolute; left: 5px; top: 50%; height: 64px; width: 2px; background: color-mix(in srgb, var(--border) 72%, transparent); opacity: .35; border-radius: 999px; transform: translateY(-50%); transition: height .14s ease, opacity .14s ease, background .14s ease; }
+.columnResizeHandle:hover::after, .columnResizeHandle:focus-visible::after, .columnResizeHandle[aria-valuenow]:active::after { height: 92px; opacity: .9; background: color-mix(in srgb, var(--accent) 52%, var(--text-muted)); }
 .activityMessage .messageColumn { flex: 1; }
 .activityBody { padding: 8px 0; min-width: 0; }
 .activityBody pre { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: var(--text-xs)/1.7 var(--font-mono); }
@@ -181,9 +181,9 @@
 .messages {
   min-width: 0;
   flex: 1;
-  padding: 22px max(20px, calc((100% - var(--room-column-width, 840px)) / 2)) 28px;
+    padding: 22px max(28px, calc((100% - var(--room-column-width, 840px)) / 2)) 28px;
   overflow-y: auto;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .scrollToBottomLayer {

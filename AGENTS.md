@@ -153,11 +153,25 @@ Piora does not expose tool permission tiers or Project Trust. New and existing s
 ### Model defaults for new sessions
 `GET /api/models` returns `defaultModel` read from `~/.pi/agent/settings.json`. `ChatWindow` pre-selects this on mount for new sessions.
 
+### Automatic model fallback
+- Settings > Models exposes a global switch, disabled by default, persisted in `<agentDir>/piora/model-fallback.json` through `/api/models/fallback`.
+- `lib/model-fallback.ts` handles provider availability failures (including 401/402/403/429/5xx) after SDK retries settle. It tries at most three distinct enabled, authenticated candidates per prompt, preserving image support and known context requirements. Context overflow remains the SDK compaction path; tool failures, invalid requests, refusals, and cancellation do not trigger model fallback.
+- Recovery stays inside the same wrapper/PromptRun. An admitted prompt continues through `sendCustomMessage(..., { triggerTurn: true })`, retaining tool results instead of replaying the original user prompt. Every switch is recorded in the transcript, and `model_fallback` updates the UI selection. Only terminal failure emits `prompt_error`; the session router preserves its reason for scheduled-task history.
+- Missing explicitly requested startup models may fall back only when the switch is enabled. Pinned Team profiles prohibit fallback both at provisioning and during execution. Failed model candidates are tracked only within the current prompt, never globally across sessions.
+
 ### `enabledModels` scoping
 The `enabledModels` setting uses pi's `--models` syntax: minimatch globs against `provider/modelId` or a bare `modelId`, fuzzy matching for non-glob patterns, and an optional `:thinkingLevel` suffix. Never compare those patterns as literal strings — `lib/model-scope.ts` delegates to the SDK's `resolveModelScopeWithDiagnostics()` so pi-web and the TUI agree on the visible model list, and falls back to all available models when patterns resolve to nothing. `startRpcSession()` resolves that scope before creating an AgentSession and passes the selected initial model, thinking pin, and SDK-native `scopedModels` atomically; `GET /api/models` reuses the helper only for selector data, `thinkingLevelPins`, and `modelScopeWarnings` display.
 
 ### SSE reconnect on page refresh mid-stream
 On `ChatWindow` mount, `GET /api/agent/[id]` is called. If `state.isStreaming === true`, SSE is reconnected automatically. `thinkingLevel` and `isCompacting` are also synced from this response.
+
+### User submissions must survive cancellation and reload
+- `useAgentSession` commits full original text and attachments to IndexedDB through `prompt-recovery` before network work. `ChatInput` awaits acceptance and clears only the unchanged originating draft; cancellation, ambiguous responses and storage failures must return `false`.
+- A prompt's optional `onDurable` callback acknowledges that IndexedDB commit before network setup. The composer can clear immediately on this local receipt; failed sends restore an empty originating composer without overwriting newer input or another session. The pending recovery record remains until a disk-backed receipt confirms delivery.
+- Every send carries a unique `clientPromptId`/idempotency key. History hydration merges unconfirmed recovery records. Never confirm by matching text, since identical messages can be distinct sends.
+- The SDK can buffer messages before its first assistant response. UI tracked prompts persist their session file before admission; only IDs read from a disk-backed SessionManager confirm deletion of a local recovery copy, never SSE or an in-memory history response.
+- UI command journals remain a durable send archive without automatic age/count deletion. `/api/sessions/[id]/submissions` powers the recovery picker, including older sends that never reached model history. Recovery rows have no real entry ID and require distinct virtual row keys.
+- Successful attachment-free UI slash commands may produce no SDK user message. Their disk-backed command journal entries confirm the exact idempotency key only after `completed`; session response cache signatures include journal changes. Other pending, failed, and cancelled sends keep their recovery copies.
 
 ### Compaction SSE events
 Newer pi emits `compaction_start` / `compaction_end`; older versions emitted `auto_compaction_start` / `auto_compaction_end`. `handleAgentEvent` accepts both sets to keep `isCompacting` in sync. Manual compact is a blocking POST — the button stays disabled until the response returns.

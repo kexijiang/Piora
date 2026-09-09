@@ -58,7 +58,7 @@ async function appendLocked(path: string, line: string): Promise<void> {
       retries: { retries: 50, factor: 1.15, minTimeout: 4, maxTimeout: 50 },
     });
     try {
-      appendFileSync(path, `${line}\n`, { encoding: "utf8", mode: 0o600 });
+      appendFileSync(path, `${line}\n`, { encoding: "utf8", mode: 0o600, flush: true });
       chmodSync(path, 0o600);
     } finally {
       await release();
@@ -85,6 +85,15 @@ export class SessionControlStore {
 
   commandsPath(sessionId: string): string {
     return join(this.root, "commands", `${safeSessionFileName(sessionId)}.jsonl`);
+  }
+
+  /** Successful slash commands need not create a user entry in SDK history. */
+  completedSlashPromptIds(sessionId: string): string[] {
+    return this.loadCommands(sessionId).filter((command) =>
+      command.source === "ui" && command.status === "completed"
+      && command.delivery === "next_turn" && command.content.trimStart().startsWith("/")
+      && !command.images?.length && !command.materials?.length
+    ).map((command) => command.idempotencyKey);
   }
 
   eventsPath(sessionId: string): string {
@@ -199,7 +208,10 @@ export class SessionControlStore {
         const commands = this.loadCommands(sessionId);
         const cutoff = now - this.retentionDays * 24 * 60 * 60 * 1000;
         const terminal = new Set<SessionCommandStatus>(["completed", "failed", "cancelled", "expired", "interrupted"]);
-        const keep = commands.filter((command) => !terminal.has(command.status) || command.acceptedAt >= cutoff).slice(-this.retentionCount);
+        // UI submissions are the durable recovery archive, including commands
+        // stopped before the SDK wrote a user message. Never age them out.
+        const retained = new Set(commands.filter((command) => command.source !== "ui" && (!terminal.has(command.status) || command.acceptedAt >= cutoff)).slice(-this.retentionCount));
+        const keep = commands.filter((command) => command.source === "ui" || retained.has(command));
         if (keep.length === commands.length) return;
         const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
         writeFileSync(temporary, keep.map((command) => JSON.stringify({ kind: "command", command } satisfies CommandJournalEntry)).join("\n") + (keep.length ? "\n" : ""), { encoding: "utf8", mode: 0o600 });

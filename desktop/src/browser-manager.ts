@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, readdirSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import {
   app,
@@ -16,6 +16,7 @@ import {
   type Session,
   type WebContents,
   type BrowserWindowConstructorOptions,
+  type MenuItemConstructorOptions,
 } from "electron";
 import { BrowserCookieStore } from "./browser-cookie-store.js";
 import type { Logger } from "./logger.js";
@@ -26,6 +27,7 @@ export const BROWSER_GET_STATE_CHANNEL = "pi:browser-get-state";
 export const BROWSER_ACTION_CHANNEL = "pi:browser-action";
 export const BROWSER_VIEWPORT_CHANNEL = "pi:browser-viewport";
 export const BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL = "pi:browser-import-chrome-bookmarks";
+export const BROWSER_BOOKMARK_MENU_CHANNEL = "pi:browser-bookmark-menu";
 
 const BROWSER_PARTITION = "persist:piora-browser";
 const MAX_TABS = 20;
@@ -72,7 +74,7 @@ export interface ChromeBookmarkImportResult {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab";
+  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login";
   sessionId?: string;
   tabId?: string;
   url?: string;
@@ -86,6 +88,7 @@ export interface DesktopBrowserDownload {
 }
 
 type BrowserTab = {
+  authHost?: string;
   attached: boolean;
   id: string;
   loading: boolean;
@@ -135,6 +138,18 @@ function isBrowserUrl(rawUrl: string): boolean {
   } catch {
     return false;
   }
+}
+
+function bookmarkMenuTemplate(value: unknown, select: (url: string) => void, depth = 0): MenuItemConstructorOptions[] {
+  if (!Array.isArray(value) || value.length > 50_000 || depth > 100) throw new Error("Invalid bookmark menu");
+  if (!value.length) return [{ label: "—", enabled: false }];
+  return value.map((node) => {
+    if (!node || typeof node.title !== "string") throw new Error("Invalid bookmark");
+    const label = (node.title || node.url || "—").slice(0, 200).replace(/&/g, "&&");
+    if (node.type === "folder") return { label, submenu: bookmarkMenuTemplate(node.children, select, depth + 1) };
+    if (node.type !== "bookmark" || typeof node.url !== "string" || !isBrowserUrl(node.url)) throw new Error("Invalid bookmark URL");
+    return { label, click: () => select(node.url) };
+  });
 }
 
 function normalizeAddress(value: string): string {
@@ -322,6 +337,7 @@ export class DesktopBrowserManager {
   }
 
   private configureSession(): void {
+    this.browserSession.allowNTLMCredentialsForDomains(this.readLoginHosts().join(","));
     try {
       this.browserSession.setDownloadPath(app.getPath("downloads"));
     } catch (error) {
@@ -368,6 +384,21 @@ export class DesktopBrowserManager {
       if (!this.isTrustedSender(event)) return null;
       return readChromeBookmarks();
     });
+    ipcMain.handle(BROWSER_BOOKMARK_MENU_CHANNEL, (event, nodes: unknown, position: unknown): Promise<string | null> | null => {
+      if (!this.isTrustedSender(event)) return null;
+      const point = position as { x?: number; y?: number } | null;
+      if (!point || !Number.isFinite(point.x) || !Number.isFinite(point.y)) throw new Error("Invalid bookmark menu position");
+      const bounds = this.window.getContentBounds();
+      const zoom = this.window.webContents.getZoomFactor();
+      let selected: string | null = null;
+      const menu = Menu.buildFromTemplate(bookmarkMenuTemplate(nodes, (url) => { selected = url; }));
+      return new Promise((resolve) => menu.popup({
+        window: this.window,
+        x: Math.max(0, Math.min(bounds.width - 1, Math.round(point.x! * zoom))),
+        y: Math.max(0, Math.min(bounds.height - 1, Math.round(point.y! * zoom))),
+        callback: () => resolve(selected),
+      }));
+    });
   }
 
   private removeIpc(): void {
@@ -375,6 +406,7 @@ export class DesktopBrowserManager {
     ipcMain.removeHandler(BROWSER_VIEWPORT_CHANNEL);
     ipcMain.removeHandler(BROWSER_ACTION_CHANNEL);
     ipcMain.removeHandler(BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL);
+    ipcMain.removeHandler(BROWSER_BOOKMARK_MENU_CHANNEL);
   }
 
   private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }): BrowserTab {
@@ -419,6 +451,17 @@ export class DesktopBrowserManager {
 
   private installTabEvents(tab: BrowserTab): void {
     const contents = tab.view.webContents;
+    contents.on("login", (_event, details, authInfo) => {
+      if (authInfo.isProxy || !/^(ntlm|negotiate)$/i.test(authInfo.scheme)) return;
+      try {
+        const url = new URL(details.url);
+        if (url.protocol === "https:" && url.hostname === authInfo.host) tab.authHost = url.hostname;
+      } catch { /* Ignore malformed authentication challenges. */ }
+      this.log.info("Browser integrated authentication requires site configuration", { host: tab.authHost, scheme: authInfo.scheme });
+    });
+    contents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+      if (isMainFrame && !isInPlace) delete tab.authHost;
+    });
     contents.setWindowOpenHandler(({ url }) => {
       if (isBrowserUrl(url) && this.tabs.length < MAX_TABS) {
         return {
@@ -767,6 +810,7 @@ export class DesktopBrowserManager {
     }
     const active = this.activeTab(this.displayedSessionId);
     if (!active) return;
+    if (input.action === "configure_login") { this.showLoginMenu(active); return; }
     if (input.action === "navigate" && typeof input.url === "string") {
       await this.storageReady;
       await active.view.webContents.loadURL(normalizeAddress(input.url));
@@ -785,6 +829,40 @@ export class DesktopBrowserManager {
     } else if (input.action === "close_tab" && typeof input.tabId === "string") {
       this.closeTab(input.tabId, this.displayedSessionId);
     }
+  }
+
+  private readLoginHosts(): string[] {
+    try {
+      const value: unknown = JSON.parse(readFileSync(join(app.getPath("userData"), "browser-login-hosts.json"), "utf8"));
+      return Array.isArray(value) ? [...new Set(value.filter((host): host is string => typeof host === "string" && /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(host)).map((host) => host.toLowerCase()))].slice(0, 100) : [];
+    } catch { return []; }
+  }
+
+  private showLoginMenu(tab: BrowserTab): void {
+    let host = tab.authHost;
+    try { const url = new URL(tab.view.webContents.getURL()); if (!host && url.protocol === "https:") host = url.hostname; } catch { /* Blank page. */ }
+    const hosts = this.readLoginHosts();
+    const targetHost = host;
+    const checked = Boolean(targetHost && hosts.includes(targetHost));
+    const menu = Menu.buildFromTemplate([
+      { label: targetHost ?? "请先打开需要登录的网站", enabled: false },
+      { label: "允许此站点使用 Windows 免密登录", type: "checkbox", checked, enabled: process.platform === "win32" && Boolean(targetHost), click: () => {
+        if (!targetHost || tab.view.webContents.isDestroyed()) return;
+        const latest = this.readLoginHosts();
+        const next = checked ? latest.filter((value) => value !== targetHost) : [...new Set([...latest, targetHost])];
+        try {
+          const root = app.getPath("userData"); mkdirSync(root, { recursive: true });
+          const file = join(root, "browser-login-hosts.json");
+          writeFileSync(`${file}.tmp`, JSON.stringify(next), { mode: 0o600 }); renameSync(`${file}.tmp`, file);
+          this.browserSession.allowNTLMCredentialsForDomains(next.join(","));
+          tab.view.webContents.reload();
+        } catch (error) { this.log.warn("Unable to configure browser integrated authentication", error); }
+      } },
+      { type: "separator" },
+      { label: "使用系统账户认证，仅对选中的域名生效", enabled: false },
+      { label: "Chrome 的登录状态和企业插件不会自动共享", enabled: false },
+    ]);
+    menu.popup({ window: this.window });
   }
 
   private closeTab(tabId: string, sessionId: string): void {

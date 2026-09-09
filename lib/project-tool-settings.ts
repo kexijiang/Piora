@@ -99,9 +99,13 @@ export function readProjectToolSettings(
 }
 
 export function projectToolSelection(record: ProjectToolSettingsRecord): SessionCapabilitySelection {
+  // Project selections predate the compact gateway and have no known-id list.
+  // Replace retired operations so subsequent saves cannot retain stale grants.
+  const enabledCapabilityIds = [...new Set(record.enabledCapabilityIds.map((id) =>
+    id.startsWith("tool:harmony_") ? "tool:harmony_control" : id))];
   return {
     preset: record.preset,
-    ...(record.preset === "custom" ? { enabledCapabilityIds: [...record.enabledCapabilityIds] } : {}),
+    ...(record.preset === "custom" ? { enabledCapabilityIds } : {}),
   };
 }
 

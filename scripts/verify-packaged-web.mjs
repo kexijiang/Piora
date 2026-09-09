@@ -124,6 +124,7 @@ const requiredPaths = [
   "node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/dark.json",
   "node_modules/rrule/package.json",
   "node_modules/tslib/package.json",
+  "node_modules/node-pty/package.json",
   "node_modules/hypium-driver/package.json",
   "node_modules/hypium-driver/build/lib/resource/uitest_agent_v1.2.2.so",
   "node_modules/xmldom/package.json",
@@ -757,9 +758,10 @@ async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
   const packagedWebEntries = (await readdir(packagedWebRoot)).sort();
-  if (JSON.stringify(packagedWebEntries) !== JSON.stringify(["runtime.asar", "server.js"])) {
-    throw new Error(`Packaged web container must contain only the launcher and runtime archive: ${packagedWebEntries.join(", ")}`);
+  if (JSON.stringify(packagedWebEntries) !== JSON.stringify(["runtime.asar", "runtime.asar.unpacked", "server.js"])) {
+    throw new Error(`Packaged web container must contain the launcher, runtime archive and native sidecar: ${packagedWebEntries.join(", ")}`);
   }
+  await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "node_modules", "node-pty", "package.json"));
   const launcherSource = await readFile(join(packagedWebRoot, "server.js"), "utf8");
   if (
     !launcherSource.includes("const dir = path.join(__dirname, 'runtime.asar')")

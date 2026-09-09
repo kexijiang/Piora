@@ -6,6 +6,7 @@ import { useAgentTerminal } from "@/hooks/useAgentTerminal";
 import { copyText } from "@/lib/clipboard";
 import { AliIcon } from "../AliIcon";
 import { TerminalSurface, type TerminalSurfaceHandle } from "./TerminalSurface";
+import { TerminalCommandInput } from "./TerminalCommandInput";
 import styles from "./TerminalPanel.module.css";
 
 export function CommandPanel({ cwd, sessionId, onClose }: { cwd?: string | null; sessionId?: string | null; onClose?: () => void }) {
@@ -14,17 +15,23 @@ export function CommandPanel({ cwd, sessionId, onClose }: { cwd?: string | null;
   const [connected, setConnected] = useState(false);
   const [shell, setShell] = useState("");
   const [error, setError] = useState("");
+  const [connectionAttempt, setConnectionAttempt] = useState(0);
   const [query, setQuery] = useState("");
   const [finding, setFinding] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const surface = useRef<TerminalSurfaceHandle>(null);
   const agent = useAgentTerminal(sessionId);
   const running = agent.commands.filter((item) => item.status === "running").length;
+  const runCommand = async (command: string) => {
+    const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, action: "run", command }) });
+    if (!response.ok) throw new Error((await response.json()).error ?? `HTTP ${response.status}`);
+  };
   const folder = cwd?.replace(/\\/g, "/").replace(/\/$/, "").split("/").pop();
   const action = async (value: "restart" | "clear") => {
     try {
       const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, action: value }) });
       if (!response.ok) throw new Error((await response.json()).error ?? `HTTP ${response.status}`);
+      if (value === "restart") setConnectionAttempt((current) => current + 1);
       setError(""); surface.current?.focus();
     } catch (cause) { setError(String(cause)); }
   };
@@ -48,7 +55,7 @@ export function CommandPanel({ cwd, sessionId, onClose }: { cwd?: string | null;
     {finding && <div className={styles.find}><AliIcon name="search" size={13} /><input autoFocus value={query} placeholder={t("commandPanel.findOutput")} aria-label={t("commandPanel.findOutput")} onChange={(event) => { setQuery(event.target.value); surface.current?.search(event.target.value); }} onKeyDown={(event) => { if (event.key === "Enter") surface.current?.search(query, event.shiftKey); if (event.key === "Escape") { setFinding(false); surface.current?.focus(); } }} /><button onClick={() => { setFinding(false); setQuery(""); surface.current?.search(""); }} aria-label={t("i18n.close")}><AliIcon name="close" size={13} /></button></div>}
     {(error || agent.error) && <div className={styles.error} role="alert">{error || agent.error}</div>}
     <div className={styles.body} role="tabpanel">
-      {tab === "shell" ? cwd ? <TerminalSurface key={cwd} ref={surface} cwd={cwd} onStatus={(ready, name) => { setConnected(ready); setShell(name); }} onError={setError} /> : <div className={styles.empty}><AliIcon name="folder-open" size={28} /><strong>{t("commandPanel.noWorkspace")}</strong><p>{t("commandPanel.noWorkspaceDescription")}</p></div> : <div className={styles.feed}>
+      {tab === "shell" ? cwd ? <TerminalSurface key={`${cwd}:${connectionAttempt}`} ref={surface} cwd={cwd} onStatus={(ready, name) => { setConnected(ready); setShell(name); if (ready) setError(""); }} onError={setError} /> : <div className={styles.empty}><AliIcon name="folder-open" size={28} /><strong>{t("commandPanel.noWorkspace")}</strong><p>{t("commandPanel.noWorkspaceDescription")}</p></div> : <div className={styles.feed}>
         <div className={styles.feedHeading}><span>{t("terminal.sessionCommands")}</span><span>{running ? t("terminal.runningCount", { count: running }) : t("terminal.synced")}</span></div>
         {agent.commands.length ? agent.commands.filter((item) => !query || `${item.command} ${item.output}`.toLowerCase().includes(query.toLowerCase())).map((item, index) => <article className={styles.command} key={item.id} data-status={item.status}>
           <button className={styles.commandTrigger} aria-expanded={expanded === item.id} onClick={() => setExpanded(expanded === item.id ? null : item.id)}>
@@ -58,6 +65,7 @@ export function CommandPanel({ cwd, sessionId, onClose }: { cwd?: string | null;
         </article>) : <div className={styles.empty}><span className={styles.emptyMark}><AliIcon name="activity" size={26} /></span><strong>{t("terminal.agentEmpty")}</strong><p>{sessionId ? t("terminal.agentEmptyBody") : t("terminal.selectSession")}</p><span className={styles.hint}>$ <span>command</span> → output</span></div>}
       </div>}
     </div>
+    {tab === "shell" && cwd && <TerminalCommandInput key={cwd} cwd={cwd} disabled={!connected} onRun={runCommand} />}
     <footer className={styles.footer}><span><i data-live={tab === "agent" ? running > 0 : connected} />{tab === "agent" ? t("terminal.linked") : "PTY"}</span><span>{tab === "shell" ? t("terminal.keyboardHint") : t("terminal.agentHint")}</span><span>UTF-8</span></footer>
   </section>;
 }

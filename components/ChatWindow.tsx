@@ -1,7 +1,8 @@
 "use client";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { AgentMessage, BashExecutionMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode } from "@/lib/types";
+import type { AgentMessage, BashExecutionMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, UserMessage } from "@/lib/types";
+import { prepareMessageRetry } from "@/lib/message-retry";
 import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { messageFingerprint } from "@/lib/chat-history";
@@ -9,13 +10,14 @@ import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { PromptSubmissionArchive } from "./PromptSubmissionArchive";
 import { NewSessionContextChip, NewSessionLauncher } from "./NewSessionLauncher";
 import { SystemPromptSelector } from "./SystemPromptSelector";
 import type { NewSessionInitialPrompt } from "./new-session-types";
 import { ChatMinimap } from "./ChatMinimap";
 import { ChatScrollRail } from "./ChatScrollRail";
 import { useI18n } from "@/hooks/useI18n";
-import { useAgentSession, type AgentPhase, type AttachedImage, type BuiltinSlashCommandResult, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
+import { useAgentSession, type AgentPhase, type BuiltinSlashCommandResult, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -28,6 +30,7 @@ import { isProjectlessChatCwd } from "@/lib/projectless-chat-path";
 import { UserInputCard } from "./UserInputCard";
 import type { SessionCapabilitiesState } from "@/lib/session-capabilities";
 import { findVisionAgentStatus, VisionAgentStatus } from "./VisionAgentStatus";
+import { getVisionRetryPayload } from "@/lib/message-images";
 
 interface Props {
   session: SessionInfo | null;
@@ -110,29 +113,9 @@ function getUserInputText(message: AgentMessage): string | null {
   return text.length > 0 ? text : null;
 }
 
-function getVisionRetryPayload(messages: readonly AgentMessage[]): { message: string; images?: AttachedImage[] } | null {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message.role !== "user") continue;
-    const text = getUserInputText(message) ?? "";
-    const images = Array.isArray(message.content)
-      ? message.content.flatMap((block) => {
-        if (block.type !== "image" || block.source.type !== "base64" || !block.source.data) return [];
-        const mimeType = block.source.media_type || "image/png";
-        return [{
-          data: block.source.data,
-          mimeType,
-          previewUrl: `data:${mimeType};base64,${block.source.data}`,
-        } satisfies AttachedImage];
-      })
-      : [];
-    if (text || images.length > 0) return { message: text, ...(images.length > 0 ? { images } : {}) };
-  }
-  return null;
-}
-
 export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
   const { t } = useI18n();
+  const recoveryInputRef = useRef<ChatInputHandle | null>(null);
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
   const chatColumnWidthRef = useRef(CHAT_COLUMN_DEFAULT_WIDTH);
@@ -200,9 +183,34 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
   const sessionBusy = agentRunning || bashRunning;
   const locallyClaimedInitialPromptRef = useRef<string | null>(null);
   const handleComposerSend = useCallback(async (...args: Parameters<typeof handleSend>) => {
-    await handleSend(...args);
-    onPromptSubmitted?.();
+    const accepted = await handleSend(...args);
+    if (accepted !== false) onPromptSubmitted?.();
+    return accepted;
   }, [handleSend, onPromptSubmitted]);
+  const retryInFlight = useRef(false);
+  const [preparingRetry, setPreparingRetry] = useState(false);
+  const retrySession = useRef(session?.id);
+  retrySession.current = session?.id;
+  useEffect(() => {
+    retrySession.current = session?.id;
+    return () => { retrySession.current = undefined; };
+  }, [session?.id]);
+  const handleRetryMessage = useCallback(async (message: UserMessage, entryId?: string) => {
+    if (sessionBusy || retryInFlight.current) return;
+    const id = session?.id;
+    retryInFlight.current = true; setPreparingRetry(true);
+    try {
+      const payload = await prepareMessageRetry(message, async () => {
+        if (!id || !entryId) throw new Error(t("chat.longMessageUnavailable"));
+        const response = await fetch(`/api/sessions/${encodeURIComponent(id)}/entries/${encodeURIComponent(entryId)}/prompt-material`);
+        const data = await response.json();
+        if (!response.ok || typeof data.content !== "string") throw new Error(data.error ?? `HTTP ${response.status}`);
+        return data.content;
+      });
+      if (retrySession.current !== id) return;
+      await handleComposerSend(payload.message, payload.images, payload.files);
+    } finally { retryInFlight.current = false; setPreparingRetry(false); }
+  }, [sessionBusy, session?.id, handleComposerSend, t]);
 
   useEffect(() => {
     if (!isNew || !initialPrompt || sessionBusy || isAutoModelSelection) return;
@@ -486,7 +494,8 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
 
   const visibleExtensionStatuses = extensionStatuses;
   const visionStatus = useMemo(() => findVisionAgentStatus(extensionStatuses), [extensionStatuses]);
-  const visionRetryPayload = useMemo(() => getVisionRetryPayload(messages), [messages]);
+  const visionFailed = visionStatus?.phase === "failed";
+  const visionRetryPayload = useMemo(() => visionFailed ? getVisionRetryPayload(messages) : null, [messages, visionFailed]);
   const retryVisionAnalysis = useCallback(() => {
     if (sessionBusy || !visionRetryPayload) return;
     void handleComposerSend(visionRetryPayload.message, visionRetryPayload.images);
@@ -494,7 +503,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
 
   const chatInputElement = (
     <ChatInput
-      ref={chatInputRef}
+      ref={chatInputRef ?? recoveryInputRef}
       variant={isEmptyNew ? "launcher" : "conversation"}
       placeholder={isEmptyNew ? t("newSession.placeholder") : undefined}
       contextControl={(
@@ -511,6 +520,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
             disabled={sessionBusy || systemPromptSaving}
             onChange={handleSystemPromptSelection}
           />
+          {(session?.id ?? sessionIdRef.current) && <PromptSubmissionArchive key={session?.id ?? sessionIdRef.current} sessionId={(session?.id ?? sessionIdRef.current)!} onRestore={(draft) => (chatInputRef ?? recoveryInputRef).current?.restoreFailedPrompt(draft.value, draft.files, draft.images.map((image) => ({ ...image, previewUrl: `data:${image.mimeType};base64,${image.data}` })))} />}
         </>
       )}
       onSend={handleComposerSend}
@@ -677,6 +687,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}
               onFork={handleFork} onNavigate={handleNavigate} onEditContent={handleEditContent}
+              onRetry={handleRetryMessage} retryDisabled={sessionBusy || preparingRetry}
               sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation}
             />
             {streamState.isStreaming && streamState.streamingMessage && (

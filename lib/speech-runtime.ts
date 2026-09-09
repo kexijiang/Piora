@@ -50,7 +50,7 @@ function prependLibraryPath(name: "LD_LIBRARY_PATH" | "DYLD_LIBRARY_PATH", path:
   if (!current.includes(path)) process.env[name] = [path, ...current].join(delimiter);
 }
 
-async function createRuntime(): Promise<SpeechRuntimeState> {
+async function createRuntime(language: "zh" | "en"): Promise<SpeechRuntimeState> {
   const { path: packPath } = await verifiedSpeechPackPath();
   const hardware = detectSpeechHardware();
   if (!hardware.supported || !hardware.runtimePackage) {
@@ -77,7 +77,7 @@ async function createRuntime(): Promise<SpeechRuntimeState> {
     modelConfig: {
       senseVoice: {
         model: join(modelRoot, "model.int8.onnx"),
-        language: "auto",
+        language,
         useInverseTextNormalization: 1,
       },
       tokens: join(modelRoot, "tokens.txt"),
@@ -86,21 +86,25 @@ async function createRuntime(): Promise<SpeechRuntimeState> {
       provider: "cpu",
     },
   }).catch((error: unknown) => {
+    const target = globalThis as SpeechRuntimeGlobalThis;
+    if (target.__pioraLocalSpeechRuntime?.recognizer === recognizer) delete target.__pioraLocalSpeechRuntime;
     throw new SpeechUnavailableError(
       `Unable to initialize the local speech model: ${error instanceof Error ? error.message : String(error)}`,
     );
   });
-  return { key: `${packPath}:${hardware.threads}`, recognizer, sherpa, tail: Promise.resolve() };
+  return { key: `${packPath}:${hardware.threads}:${language}`, recognizer, sherpa, tail: Promise.resolve() };
 }
 
-async function getRuntime(): Promise<SpeechRuntimeState> {
+async function getRuntime(language: "zh" | "en" = "zh"): Promise<SpeechRuntimeState> {
   const { path: packPath } = await verifiedSpeechPackPath();
   const hardware = detectSpeechHardware();
-  const key = `${packPath}:${hardware.threads}`;
+  const key = `${packPath}:${hardware.threads}:${language}`;
   const target = globalThis as SpeechRuntimeGlobalThis;
   if (target.__pioraLocalSpeechRuntime?.key === key) return target.__pioraLocalSpeechRuntime;
-  const runtime = await createRuntime();
+  const runtime = await createRuntime(language);
   target.__pioraLocalSpeechRuntime = runtime;
+  // Covers even an initialization rejection that settled before cache assignment.
+  void runtime.recognizer.catch(() => { if (target.__pioraLocalSpeechRuntime === runtime) delete target.__pioraLocalSpeechRuntime; });
   return runtime;
 }
 
@@ -157,7 +161,7 @@ function decodePcm16Wav(bytes: Uint8Array): SherpaWave {
 }
 
 export async function transcribeLocalSpeechWav(bytes: Uint8Array, language: "zh" | "en" = "zh"): Promise<string> {
-  const runtime = await getRuntime();
+  const runtime = await getRuntime(language);
   const job = runtime.tail.then(async () => {
     let wave: SherpaWave;
     try {

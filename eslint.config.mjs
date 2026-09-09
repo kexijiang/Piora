@@ -6,6 +6,12 @@ const eslintConfig = [
   {
     ignores: [
       ".verification/**",
+      "local-pets/**",
+      ".pi/**",
+      ".codex/**",
+      ".piora-data/**",
+      "node_modules.broken/**",
+      ".tmp-pty-probe-*/**",
       "desktop/dist/**",
       "desktop/release/**",
       "Piora-*-win-x64/**",

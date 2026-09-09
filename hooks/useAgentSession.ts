@@ -1,6 +1,7 @@
 "use client";
 
 import { createAgentEventDecoder } from "@/lib/agent-event-transport";
+import { savePendingPrompt, readPendingPrompts, mergePendingPrompts, confirmPendingPrompts, type PendingPrompt } from "@/lib/prompt-recovery";
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, useReducer } from "react";
 import { invalidatePrefetchedSession, peekPrefetchedSession, takePrefetchedSession } from "@/lib/session-prefetch";
@@ -29,7 +30,7 @@ import {
 } from "@/lib/session-capabilities";
 import { runModelChange } from "@/lib/model-change-coordinator";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
-import { getContentScrollMetrics, getLiveTailScrollLimit } from "@/lib/chat-scroll";
+import { getContentScrollMetrics, getLiveTailScrollLimit, scrollLiveTailWheel } from "@/lib/chat-scroll";
 import { followChatBottom } from "@/lib/chat-bottom-follow";
 import type {
   SessionSystemPromptBinding,
@@ -39,6 +40,7 @@ import type {
 export type { AgentPhase } from "@/lib/agent-phase";
 
 export interface SessionData {
+  persistedPromptIds?: string[];
   sessionId: string;
   filePath: string;
   info?: SessionInfo | null;
@@ -93,6 +95,7 @@ interface LastAssistantTextResponse {
 }
 
 type AgentStateResponse = {
+  model?: { provider: string; id: string };
   contextUsage?: ContextUsage | null;
   systemPrompt?: string;
   systemPromptBinding?: SessionSystemPromptBinding | null;
@@ -474,6 +477,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const sessionIdRef = useRef<string | null>(session?.id ?? null);
   const agentRunningRef = useRef(false);
+  useEffect(() => {
+    const receive = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (!agentRunningRef.current && sessionIdRef.current && detail?.ids?.includes(sessionIdRef.current) && typeof detail.provider === "string" && typeof detail.modelId === "string") setCurrentModelOverride({ provider: detail.provider, modelId: detail.modelId });
+    };
+    window.addEventListener("piora:project-model-changed", receive);
+    return () => window.removeEventListener("piora:project-model-changed", receive);
+  }, []);
   const bashRunningRef = useRef(false);
   const bashRecoveryIdRef = useRef(0);
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
@@ -586,10 +597,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           signal: controller.signal,
         });
         if (res.status === 404) {
+          const recovered = mergePendingPrompts([], [], await readPendingPrompts(sid));
+          if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
+          if (recovered.messages.length) { setMessages(recovered.messages); setEntryIds(recovered.entryIds); }
           if (showLoading) {
             setData(null);
             setActiveLeafId(null);
-            setMessages([]);
+            if (!recovered.messages.length) setMessages([]);
             setError(null);
           }
           return null;
@@ -598,10 +612,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         d = await res.json() as SessionData;
       }
       if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
+      const recovered = mergePendingPrompts(d.context.messages, d.context.entryIds ?? [], await readPendingPrompts(sid), d.persistedPromptIds);
+      if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
       setData(d);
       setActiveLeafId(d.leafId);
-      setMessages(d.context.messages);
-      setEntryIds(d.context.entryIds ?? []);
+      setMessages(recovered.messages);
+      setEntryIds(recovered.entryIds);
+      void confirmPendingPrompts(recovered.confirmedIds).catch(console.error);
       setSystemPromptBinding(d.systemPromptBinding ?? null);
       const restoredSystemPromptSelection = selectionFromSystemPromptBinding(d.systemPromptBinding ?? null);
       systemPromptSelectionRef.current = restoredSystemPromptSelection;
@@ -661,6 +678,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, []);
 
   const loadContext = useCallback(async (sid: string, leafId: string | null) => {
+    const runId = promptRunIdRef.current;
     try {
       const params = new URLSearchParams({ deferThinking: "1", deferMedia: "1" });
       if (leafId) params.set("leafId", leafId);
@@ -668,8 +686,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[] } };
-      setMessages(d.context.messages);
-      setEntryIds(d.context.entryIds ?? []);
+      const recovered = mergePendingPrompts(d.context.messages, d.context.entryIds ?? [], await readPendingPrompts(sid));
+      if (sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return;
+      setMessages(recovered.messages);
+      setEntryIds(recovered.entryIds);
     } catch (e) {
       console.error("Failed to load context:", e);
     }
@@ -1126,6 +1146,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setIsCompacting(cancelledPromptRunIdRef.current === runId ? false : state?.isCompacting ?? false);
       setQueuedMessages(normalizeQueuedMessages(state?.queuedMessages));
       if (state?.capabilities !== undefined) setCapabilities(state.capabilities);
+      if (state?.model && phaseEventRevisionRef.current === phaseRevision) {
+        setCurrentModelOverride({ provider: state.model.provider, modelId: state.model.id });
+        if (state.thinkingLevel !== undefined) setThinkingLevel(state.thinkingLevel as ThinkingLevelOption);
+      }
       const busy = data.running && state
         && (state.isStreaming || state.isPromptRunning || state.isCompacting || state.runtime === "stopping");
       if (state?.runtime === "stopping") setAgentPhase({ kind: "stopping" });
@@ -1344,6 +1368,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       case "capabilities_changed":
         if (event.capabilities) setCapabilities(event.capabilities as SessionCapabilitiesState);
         break;
+      case "project_model_changed": {
+        if (typeof event.provider === "string" && typeof event.modelId === "string") setCurrentModelOverride({ provider: event.provider, modelId: event.modelId });
+        break;
+      }
+      case "model_fallback": {
+        const model = event.model as { provider?: string; id?: string } | undefined;
+        if (model?.provider && model.id) setCurrentModelOverride({ provider: model.provider, modelId: model.id });
+        if (typeof event.thinkingLevel === "string") setThinkingLevel(event.thinkingLevel as ThinkingLevelOption);
+        break;
+      }
       case "system_prompt_reloaded":
         if (typeof event.systemPrompt === "string") setSystemPrompt(event.systemPrompt);
         break;
@@ -1381,19 +1415,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     message: string,
     images?: AttachedImage[],
     files?: AttachedFile[],
+    onDurable?: () => void,
   ) => {
     const trimmedMessage = message.trim();
-    if (!trimmedMessage && !images?.length && !files?.length) return;
-    if (agentRunningRef.current || bashRunningRef.current) return;
+    if (!trimmedMessage && !images?.length && !files?.length) return false;
+    if (agentRunningRef.current || bashRunningRef.current) return false;
     const isSlashCommandPrompt = !images?.length && !files?.length && trimmedMessage.startsWith("/");
 
     const isBashCommand = !images?.length && !files?.length && trimmedMessage.startsWith("!");
     if (isBashCommand) {
       const isExcluded = trimmedMessage.startsWith("!!");
       const bashCmd = (isExcluded ? trimmedMessage.slice(2) : trimmedMessage.slice(1)).trim();
-      if (!bashCmd) return;
+      if (!bashCmd) return false;
       await executeBashRef.current?.(bashCmd, isExcluded);
-      return;
+      return true;
     }
 
     const promptRunId = promptRunIdRef.current + 1;
@@ -1420,8 +1455,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       .join("\n\n");
 
     const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
-    const userMsg: AgentMessage = {
+    const clientPromptId = crypto.randomUUID();
+    const recoveryDraft = { value: message, files: (files ?? []).map((file) => ({ ...file })), images: (images ?? []).map(({ data, mimeType }) => ({ data, mimeType })) };
+    const userMsg: import("@/lib/types").UserMessage = {
       role: "user",
+      clientPromptId,
+      recoveryDraft,
       content: imageBlocks?.length
         ? [...(displayMessage ? [{ type: "text" as const, text: displayMessage }] : []), ...imageBlocks]
         : displayMessage,
@@ -1431,7 +1470,6 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     optimisticUserMessageKeyRef.current = userMessageKey(userMsg);
     cancelPreparedPromptRef.current = () => {
       setMessages((current) => current.map((entry) => entry === userMsg ? { ...entry, sendError: t("chat.sendCancelled") } : entry));
-      opts.chatInputRef?.current?.restoreFailedPrompt(message, files, images);
     };
     promptRunIdRef.current = promptRunId;
     suppressCompletionNotificationRef.current = false;
@@ -1447,25 +1485,33 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     let sentSessionId: string | null = null;
     let promptRequestStarted = false;
+    const recovery: PendingPrompt = { id: clientPromptId, scope: sessionIdRef.current ?? `new:${newSessionCwd}`, message: userMsg, draft: recoveryDraft };
 
     try {
+      // Commit original text and attachment bytes before starting network work.
+      await savePendingPrompt(recovery);
+      if (!isCurrentPrompt()) return false;
+      onDurable?.();
       const promptMaterials = materialFiles.length ? await uploadPromptMaterialFiles(materialFiles) : [];
-      if (!isCurrentPrompt()) return;
+      if (!isCurrentPrompt()) return false;
       if (isNew && newSessionCwd) {
         const existingSid = sessionIdRef.current ?? await ensuringNewSessionRef.current;
         const sid = existingSid ?? await ensureNewSession();
-        if (!isCurrentPrompt()) return;
+        if (!isCurrentPrompt()) return false;
 
         if (sid) {
           sentSessionId = sid;
+          await savePendingPrompt({ ...recovery, scope: sid });
+          if (!isCurrentPrompt()) return false;
           promoteNewSession(0, displayMessage.slice(0, 2_000));
           await ensureEventsConnected(sid);
-          if (!isCurrentPrompt()) return;
+          if (!isCurrentPrompt()) return false;
           preparingPromptRunIdRef.current = null;
           cancelPreparedPromptRef.current = null;
           promptRequestStarted = true;
           await sendAgentCommand(sid, {
             type: "prompt",
+            idempotencyKey: clientPromptId,
             message: effectiveMessage,
             ...(promptMaterials.length ? { materials: promptMaterials } : {}),
             ...(piImages?.length ? { images: piImages } : {}),
@@ -1474,12 +1520,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       } else if (session) {
         sentSessionId = session.id;
         await ensureEventsConnected(session.id);
-        if (!isCurrentPrompt()) return;
+        if (!isCurrentPrompt()) return false;
         preparingPromptRunIdRef.current = null;
         cancelPreparedPromptRef.current = null;
         promptRequestStarted = true;
         await sendAgentCommand(session.id, {
           type: "prompt",
+          idempotencyKey: clientPromptId,
           message: effectiveMessage,
           ...(promptMaterials.length ? { materials: promptMaterials } : {}),
           ...(piImages?.length ? { images: piImages } : {}),
@@ -1488,8 +1535,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (isCurrentPrompt() && isSlashCommandPrompt && sentSessionId) {
         void waitForPromptSettlement(sentSessionId, promptRunId);
       }
+      return isCurrentPrompt() && promptRequestStarted;
     } catch (e) {
-      if (!isCurrentPrompt()) return;
+      if (!isCurrentPrompt()) return false;
       console.error("Failed to send message:", e);
       // A failed prompt POST is ambiguous: the server may have accepted it
       // before the response connection was lost. Keep SSE alive until the
@@ -1497,7 +1545,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const definitivelyRejected = e instanceof AgentCommandError && e.status >= 400 && e.status < 500;
       if (promptRequestStarted && sentSessionId && !definitivelyRejected) {
         void waitForPromptSettlement(sentSessionId, promptRunId);
-        return;
+        return false;
       }
       agentRunningRef.current = false;
       closeEvents();
@@ -1520,18 +1568,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         type: "error",
         message: sendError,
       });
-      opts.chatInputRef?.current?.restoreFailedPrompt(message, files, images);
       optimisticUserMessageKeyRef.current = null;
       setAgentRunning(false);
       setAgentPhase(null);
       dispatch({ type: "end" });
+      return false;
     } finally {
       if (preparingPromptRunIdRef.current === promptRunId) {
         preparingPromptRunIdRef.current = null;
         cancelPreparedPromptRef.current = null;
       }
     }
-  }, [isNew, newSessionCwd, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, closeEvents, opts.chatInputRef, t]);
+  }, [isNew, newSessionCwd, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, closeEvents, t]);
 
   const executeBash = useCallback(async (command: string, excludeFromContext: boolean) => {
     if (agentRunningRef.current || bashRunningRef.current) return;
@@ -2016,19 +2064,25 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, []);
 
   const markUserScrollIntent = useCallback((event: Event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const isConversationViewport = Boolean(target?.closest("#chat-scroll-container, .chat-column-scroll-rail"));
     if (event instanceof KeyboardEvent) {
       if (!SCROLL_KEYS.has(event.key)) return;
-      if (event.target instanceof Element && event.target.closest("input, textarea, [contenteditable='true']")) return;
+      if (target?.closest("input, textarea, [contenteditable='true'], button, a, select, [role='button']")) return;
+      if (!isConversationViewport && target !== document.body && target !== document.documentElement) return;
+    } else if (!isConversationViewport) {
+      // Opening a side panel changes wrapping, but is not a request to scroll
+      // the conversation. Keep its bottom anchor through those layout changes.
+      return;
     }
     stopInitialBottomPin();
     userScrollIntentUntilRef.current = Date.now() + USER_SCROLL_INTENT_MS;
-    const target = event.target instanceof Element ? event.target : null;
-    const isConversationViewport = Boolean(target?.closest("#chat-scroll-container, .chat-column-scroll-rail"));
     const isDirectScrollIntent = event instanceof KeyboardEvent
       || (event instanceof WheelEvent && isConversationViewport)
       || (event instanceof TouchEvent && isConversationViewport)
       || (event instanceof PointerEvent && Boolean(target?.closest(".chat-column-scroll-rail")));
-    if (liveOutputAutoScrollEnabled && agentRunningRef.current && isDirectScrollIntent) {
+    if ((agentRunningRef.current || bashRunningRef.current) && isDirectScrollIntent) completionScrollAllowedRef.current = false;
+    if (liveOutputAutoScrollEnabled && (agentRunningRef.current || bashRunningRef.current) && isDirectScrollIntent) {
       liveOutputFollowRef.current = false;
       setLiveOutputFollowPaused(true);
     }
@@ -2036,7 +2090,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const handleScrollPositionChange = useCallback(() => {
     if (clampLiveTailScroll()) return;
-    if (!agentRunningRef.current) return;
+    if (!agentRunningRef.current && !bashRunningRef.current) return;
     if (Date.now() < ignoreProgrammaticScrollUntilRef.current) return;
     if (Date.now() > userScrollIntentUntilRef.current) return;
     completionScrollAllowedRef.current = false;
@@ -2088,6 +2142,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           if (agentState.state.capabilities !== undefined) setCapabilities(agentState.state.capabilities);
         }
       });
+    } else if (newSessionCwd) {
+      const initialRun = promptRunIdRef.current;
+      void readPendingPrompts(`new:${newSessionCwd}`).then((pending) => {
+        if (promptRunIdRef.current !== initialRun || sessionIdRef.current) return;
+        const recovered = mergePendingPrompts([], [], pending);
+        setMessages(recovered.messages);
+        setEntryIds(recovered.entryIds);
+      }).catch((error) => setError(String(error)));
     }
     return () => {
       bashRecoveryIdRef.current += 1;
@@ -2131,11 +2193,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    container.addEventListener("wheel", markUserScrollIntent, { passive: true });
+    const onWheel = (event: WheelEvent) => {
+      markUserScrollIntent(event);
+      scrollLiveTailWheel(container, event, liveTailPinnedScrollTopRef.current);
+    };
+    container.addEventListener("wheel", onWheel, { passive: false });
     container.addEventListener("touchstart", markUserScrollIntent, { passive: true });
     container.addEventListener("scroll", handleScrollPositionChange, { passive: true });
     return () => {
-      container.removeEventListener("wheel", markUserScrollIntent);
+      container.removeEventListener("wheel", onWheel);
       container.removeEventListener("touchstart", markUserScrollIntent);
       container.removeEventListener("scroll", handleScrollPositionChange);
     };
@@ -2144,7 +2210,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => stopInitialBottomPin, [stopInitialBottomPin]);
 
   useLayoutEffect(() => {
-    if (!liveOutputAutoScrollEnabled || !agentRunning || loading) return;
+    if (!liveOutputAutoScrollEnabled || (!agentRunning && !bashRunning) || loading) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -2173,7 +2239,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       container.removeEventListener("load", schedulePin, true);
       if (frame !== 0) cancelAnimationFrame(frame);
     };
-  }, [agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
+  }, [agentRunning, bashRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
 
   useLayoutEffect(() => {
     // Loading may publish the message array before the loading shell is
@@ -2190,7 +2256,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } else if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
       startInitialBottomPin();
-    } else if (!agentRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
+    } else if (!agentRunningRef.current && !bashRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
       scrollToBottom("smooth");
     }
   }, [messages.length, agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom, scrollUserMsgToTop, startInitialBottomPin]);
