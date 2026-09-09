@@ -4,6 +4,14 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.11] - 2026-09-09
+
+### 修复
+
+- 升级 XML、YAML 与图片处理依赖的兼容补丁版本，修复发布检查发现的高危依赖问题。
+- Beta 打包流程增加生产依赖审计，审计通过后才继续构建安装包。
+- 保留 beta.10 的本地 3D 桌宠、视线互动、浏览器模式及终端体验改进。
+
 ## [0.4.41-beta.10] - 2026-09-09
 
 ### 新增与优化

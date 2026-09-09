@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `5100562969ca405f15713d268314e8407e6d052f692ebf00dc60aed074175c31`
+Lockfile SHA-256: `f119f3b90eb2cee964b5e53e6f5bd3ecb96f3e8fbbfe9770602c1002a81e320b`
 
 Unique locked packages: **1250**. Runtime packages: **804**. Build/development-only packages: **446**.
 
@@ -115,32 +115,32 @@ Every locked package declares a license.
 | `@iconify/types` | `2.0.0` | MIT | No |
 | `@iconify/utils` | `3.1.1` | MIT | No |
 | `@img/colour` | `1.1.0` | MIT | No |
-| `@img/sharp-darwin-arm64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-darwin-x64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-freebsd-wasm32` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-libvips-darwin-arm64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-darwin-x64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-arm` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-arm64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-ppc64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-riscv64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-s390x` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-x64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linuxmusl-arm64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linuxmusl-x64` | `1.3.2` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-linux-arm` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-linux-arm64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-linux-ppc64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-linux-riscv64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-linux-s390x` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-linux-x64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-linuxmusl-arm64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-linuxmusl-x64` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-wasm32` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later AND MIT | Yes |
-| `@img/sharp-webcontainers-wasm32` | `0.35.3` | Apache-2.0 | Yes |
-| `@img/sharp-win32-arm64` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
-| `@img/sharp-win32-ia32` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
-| `@img/sharp-win32-x64` | `0.35.3` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
+| `@img/sharp-darwin-arm64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-darwin-x64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-freebsd-wasm32` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-libvips-darwin-arm64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-darwin-x64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-arm` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-arm64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-ppc64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-riscv64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-s390x` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-x64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linuxmusl-arm64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linuxmusl-x64` | `1.3.3` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-linux-arm` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-linux-arm64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-linux-ppc64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-linux-riscv64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-linux-s390x` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-linux-x64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-linuxmusl-arm64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-linuxmusl-x64` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-wasm32` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later AND MIT | Yes |
+| `@img/sharp-webcontainers-wasm32` | `0.35.4` | Apache-2.0 | Yes |
+| `@img/sharp-win32-arm64` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
+| `@img/sharp-win32-ia32` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
+| `@img/sharp-win32-x64` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
 | `@isaacs/cliui` | `8.0.2` | ISC | No |
 | `@isaacs/fs-minipass` | `4.0.1` | ISC | No |
 | `@jridgewell/gen-mapping` | `0.3.13` | MIT | No |
@@ -263,7 +263,7 @@ Every locked package declares a license.
 | `@types/unist` | `3.0.3` | MIT | No |
 | `@ungap/structured-clone` | `1.3.0` | ISC | No |
 | `@upsetjs/venn.js` | `2.0.0` | MIT | No |
-| `@xmldom/xmldom` | `0.8.13` | MIT | No |
+| `@xmldom/xmldom` | `0.8.15` | MIT | No |
 | `@xterm/addon-fit` | `0.11.0` | MIT | No |
 | `@xterm/addon-search` | `0.16.0` | MIT | No |
 | `@xterm/xterm` | `6.0.0` | MIT | No |
@@ -526,7 +526,7 @@ Every locked package declares a license.
 | `jiti` | `2.7.0` | MIT | No |
 | `jose` | `6.2.12` | MIT | No |
 | `js-tokens` | `4.0.0` | MIT | No |
-| `js-yaml` | `4.3.1` | MIT | No |
+| `js-yaml` | `4.3.2` | MIT | No |
 | `jsesc` | `3.1.0` | MIT | No |
 | `json-bigint` | `1.0.0` | MIT | No |
 | `json-parse-even-better-errors` | `2.3.1` | MIT | No |
@@ -719,7 +719,7 @@ Every locked package declares a license.
 | `serve-static` | `2.2.1` | MIT | No |
 | `setimmediate` | `1.0.5` | MIT | No |
 | `setprototypeof` | `1.2.0` | ISC | No |
-| `sharp` | `0.35.3` | Apache-2.0 | No |
+| `sharp` | `0.35.4` | Apache-2.0 | No |
 | `shebang-command` | `2.0.0` | MIT | No |
 | `shebang-regex` | `3.0.0` | MIT | No |
 | `shell-quote` | `1.10.0` | MIT | No |
