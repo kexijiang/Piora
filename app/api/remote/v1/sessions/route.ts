@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     const principal = requireRemotePrincipal(request, "session.create");
     const key = idempotencyKey(request);
     const body = await readRemoteJson(request);
+    if (body.policy !== undefined && body.policy !== "notes" && body.policy !== "agent") throw new Error("Unknown remote session policy");
     const cwd = typeof body.cwd === "string" ? body.cwd.trim() : "";
     if (!cwd || cwd.length > 32_768) throw new Error("cwd is required.");
     if (body.runtimeProfile !== undefined) throw new Error("runtimeProfile is selected only at process startup.");
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
       if (existingSessionId) return { sessionId: existingSessionId, idempotent: true };
       const created = await createSession({
         cwd,
+        remotePolicy: body.policy === "notes" ? "notes" : "agent",
         ...(provider && modelId ? { initialModel: { provider, modelId } } : {}),
         ...(thinkingLevel ? { thinkingLevel } : {}),
         ...(name ? { name } : {}),

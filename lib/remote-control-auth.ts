@@ -1,4 +1,4 @@
-import { authenticateRemoteCapabilityToken, touchRemoteCapabilityToken } from "./remote-control-store";
+import { authenticateRemoteCapabilityToken, touchRemoteCapabilityToken, readRemoteCapabilityStore } from "./remote-control-store";
 import type { RemoteCapabilityPrincipal, RemoteControlScope } from "./remote-control-types";
 
 export type RemoteAuthErrorCode =
@@ -73,4 +73,11 @@ export function remoteAuthErrorResponse(error: unknown): Response {
 
 export function resetRemoteAuthForTests(): void {
   globalThis.__pioraRemoteRateLimits?.clear();
+}
+
+export function assertRemotePrincipalCurrent(principal: RemoteCapabilityPrincipal, scope: RemoteControlScope, sessionId: string): void {
+  const token = readRemoteCapabilityStore().tokens.find(record => record.id === principal.tokenId);
+  if (!token || token.revokedAt || (token.expiresAt !== undefined && token.expiresAt <= Date.now())) throw new RemoteControlAuthError("REMOTE_TOKEN_EXPIRED", "Remote capability expired or revoked");
+  if (!token.scopes.includes(scope)) throw new RemoteControlAuthError("REMOTE_SCOPE_DENIED", "Scope was revoked");
+  if (!token.allowedSessionIds.includes(sessionId)) throw new RemoteControlAuthError("SESSION_NOT_ALLOWED", "Session access was revoked");
 }
