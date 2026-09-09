@@ -71,7 +71,10 @@ export function remapBackupPath(value: string, mappings: BackupPathMapping[]): s
     const insensitive = /^[a-z]:\//i.test(prefix);
     const v = insensitive ? normalized.toLowerCase() : normalized, p = insensitive ? prefix.toLowerCase() : prefix;
     if (v === p) return to;
-    if (v.startsWith(p + "/")) return path.join(to, ...normalized.slice(prefix.length + 1).split("/"));
+    if (v.startsWith(p + "/")) {
+      const destinationPath = path.win32.isAbsolute(to) && !path.posix.isAbsolute(to) ? path.win32 : path.posix;
+      return destinationPath.join(to, ...normalized.slice(prefix.length + 1).split("/"));
+    }
   }
   return value;
 }
