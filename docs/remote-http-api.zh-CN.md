@@ -72,3 +72,13 @@ GET /api/remote/v1/commands/<commandId>
 | GET | `/commands/:id` | `session.messages.read` | 查询命令状态与失败信息 |
 
 所有写入请求使用 JSON；单次远程 JSON 请求上限为 256 KiB。Session 创建和消息投递都应使用稳定、可重试的 `Idempotency-Key`。
+
+## 令牌记录管理
+
+设置 → 远程控制默认显示有效令牌，已撤销或已过期令牌归入默认收起的“已撤销记录”。撤销立即使令牌失效，但保留记录。展开历史区后可选择“删除记录”，二次确认后永久清除令牌及其会话创建幂等记录，不会删除会话本身。有效令牌必须先撤销，才能删除记录。
+
+管理接口 `DELETE /api/remote/tokens/<id>` 保持撤销语义；添加 `?permanent=true` 才会永久删除失效记录。有效令牌返回 `409`，不存在的记录返回 `404`。
+
+### 界面预览
+
+![远程控制令牌创建表单](assets/remote-control-settings.png)

@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
+import { AliIcon } from "./AliIcon";
+import styles from "./RemoteControlSettings.module.css";
 
 type Token = {
   id: string;
@@ -12,23 +14,40 @@ type Token = {
   expiresAt?: number;
   lastUsedAt?: number;
   active: boolean;
+  revokedAt?: number;
 };
 
-const SCOPE_OPTIONS = [
-  ["capabilities.read", "remote.scopeCapabilities"],
-  ["session.create", "remote.scopeCreate"],
-  ["session.state.read", "remote.scopeState"],
-  ["session.history.read", "remote.scopeHistory"],
-  ["session.tools.read", "remote.scopeTools"],
-  ["session.message.send", "remote.scopeMessage"],
-  ["session.steer", "remote.scopeSteer"],
-  ["session.abort", "remote.scopeAbort"],
-  ["session.events.read", "remote.scopeEvents"],
-  ["session.messages.read", "remote.scopeMessages"],
+const SCOPE_GROUPS = [
+  {
+    title: "remote.readScopes",
+    icon: "eye",
+    options: [
+      ["capabilities.read", "remote.scopeCapabilities"],
+      ["session.state.read", "remote.scopeState"],
+      ["session.history.read", "remote.scopeHistory"],
+      ["session.tools.read", "remote.scopeTools"],
+      ["session.events.read", "remote.scopeEvents"],
+      ["session.messages.read", "remote.scopeMessages"],
+    ],
+  },
+  {
+    title: "remote.controlScopes",
+    icon: "compose",
+    options: [
+      ["session.create", "remote.scopeCreate"],
+      ["session.message.send", "remote.scopeMessage"],
+      ["session.steer", "remote.scopeSteer"],
+      ["session.abort", "remote.scopeAbort"],
+    ],
+  },
 ] as const;
 
 export function RemoteControlSettings({ sessionId }: { sessionId?: string | null }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const formId = useId();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
+  const [copied, setCopied] = useState<"base" | "token" | null>(null);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [name, setName] = useState("Remote client");
   const [scopes, setScopes] = useState<string[]>([
@@ -44,7 +63,12 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
   const [apiBase, setApiBase] = useState("/api/remote/v1");
   const [connector, setConnector] = useState<{ state?: string; enabled?: boolean; lastError?: string }>({});
   const [queueLength, setQueueLength] = useState<number | null>(null);
+  const [busyTokenId, setBusyTokenId] = useState<string | null>(null);
+  const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
+  const activeTokens = tokens.filter((token) => token.active);
+  const inactiveTokens = tokens.filter((token) => !token.active);
   const [error, setError] = useState<string | null>(null);
+  const canCreate = name.trim().length > 0 && scopes.length > 0 && Boolean(sessionId || scopes.includes("session.create"));
 
   const load = useCallback(async () => {
     try {
@@ -52,13 +76,18 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
         fetch("/api/remote/tokens", { cache: "no-store" }),
         fetch(`/api/remote/status${sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : ""}`, { cache: "no-store" }),
       ]);
+      if (!tokenResponse.ok) throw new Error(`HTTP ${tokenResponse.status}`);
       if (tokenResponse.ok) setTokens((await tokenResponse.json() as { tokens?: Token[] }).tokens ?? []);
       if (statusResponse.ok) {
         const status = await statusResponse.json() as { connector?: typeof connector; state?: { queueLength?: number } };
         setConnector(status.connector ?? {});
         setQueueLength(status.state?.queueLength ?? null);
       }
-    } catch { /* settings remains usable while the server is restarting */ }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setIsLoading(false);
+    }
   }, [sessionId]);
 
   useEffect(() => {
@@ -66,8 +95,16 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
     void load();
   }, [load]);
 
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(null), 2000);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
+
   const create = async () => {
-    if ((!sessionId && !scopes.includes("session.create")) || scopes.length === 0) return;
+    if (!canCreate || isCreating) return;
+    setIsCreating(true);
+    setCopied(null);
     setError(null);
     try {
       const response = await fetch("/api/remote/tokens", {
@@ -80,49 +117,195 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
       setNewToken(data.token);
       setName("Remote client");
       await load();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const revoke = async (id: string) => {
-    await fetch(`/api/remote/tokens/${encodeURIComponent(id)}`, { method: "DELETE" });
-    await load();
+  const mutateToken = async (id: string, permanent: boolean) => {
+    if (busyTokenId) return;
+    setBusyTokenId(id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/remote/tokens/${encodeURIComponent(id)}${permanent ? "?permanent=true" : ""}`, { method: "DELETE" });
+      if (!response.ok) {
+        const data = await response.json() as { error?: string };
+        throw new Error(data.error ?? `HTTP ${response.status}`);
+      }
+      setDeleteConfirmationId(null);
+      await load();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBusyTokenId(null);
+    }
   };
 
-  const copyToken = async () => { if (newToken) await navigator.clipboard?.writeText(newToken); };
-  const copyApiBase = async () => { await navigator.clipboard?.writeText(apiBase); };
-  const date = useMemo(() => new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }), []);
+  const revoke = (id: string) => mutateToken(id, false);
+
+  const copy = async (value: string, target: "base" | "token") => {
+    try {
+      if (!navigator.clipboard) throw new Error(t("remote.copyUnavailable"));
+      await navigator.clipboard.writeText(value);
+      setCopied(target);
+    } catch {
+      setError(t("remote.copyUnavailable"));
+    }
+  };
+
+  const date = useMemo(() => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }), [locale]);
+
+  const renderToken = (token: Token) => (
+    <article key={token.id} className={styles.tokenRow}>
+      <div className={styles.tokenMain}>
+        <span className={styles.tokenIcon}><AliIcon name="key" size={18} /></span>
+        <div className={styles.tokenInfo}>
+          <div className={styles.tokenTitle}>
+            <strong>{token.name}</strong>
+            <span className={styles.statusBadge} data-active={token.active}>
+              <span className={styles.statusDot} />
+              {t(token.active ? "remote.active" : token.revokedAt ? "remote.revokedStatus" : "remote.expiredStatus")}
+            </span>
+          </div>
+          <div className={styles.tokenMeta}>
+            <span>{t("remote.createdAt", { date: date.format(token.createdAt) })}</span>
+            <span>{token.lastUsedAt ? t("remote.lastUsedAt", { date: date.format(token.lastUsedAt) }) : t("remote.neverUsed")}</span>
+            <span>{t("remote.scopeCount", { count: token.scopes.length })}</span>
+          </div>
+        </div>
+        {token.active ? (
+          <button type="button" className="ui-button" data-variant="danger" disabled={busyTokenId !== null} onClick={() => void revoke(token.id)}>{t("remote.revoke")}</button>
+        ) : (
+          <button type="button" className="ui-button" data-variant="danger" disabled={busyTokenId !== null || deleteConfirmationId === token.id} onClick={() => setDeleteConfirmationId(token.id)}><AliIcon name="delete" />{t("remote.deleteRecord")}</button>
+        )}
+      </div>
+      {deleteConfirmationId === token.id ? (
+        <div className={styles.confirmation}>
+          <p>{t("remote.deleteConfirm", { name: token.name })}</p>
+          <div className="ui-inline-actions">
+            <button type="button" className="ui-button" data-variant="danger" disabled={busyTokenId !== null} onClick={() => void mutateToken(token.id, true)}>{t("remote.confirmDelete")}</button>
+            <button type="button" className="ui-button" disabled={busyTokenId !== null} onClick={() => setDeleteConfirmationId(null)}>{t("remote.cancelDelete")}</button>
+          </div>
+        </div>
+      ) : null}
+    </article>
+  );
 
   return (
-    <div className="settings-embedded-surface" style={{ height: "100%", overflowY: "auto", padding: "26px 30px 34px" }}>
-      <div style={{ marginBottom: 22 }}>
-        <h2 style={{ margin: 0, color: "var(--text)", fontSize: "calc(var(--text-lg) * 1.22)", fontWeight: 680 }}>{t("remote.title")}</h2>
-        <p style={{ margin: "7px 0 0", color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>{t("remote.description")}</p>
+    <div className={styles.page}>
+      <div className={styles.content}>
+        <header className={styles.header}>
+          <span className={styles.headerIcon}><AliIcon name="api" size={24} /></span>
+          <div>
+            <h2>{t("remote.title")}</h2>
+            <p>{t("remote.description")}</p>
+          </div>
+        </header>
+
+        {error ? <div role="alert" className={styles.error}><AliIcon name="alert" size={17} /><span>{error}</span></div> : null}
+
+        <section className={styles.endpoint} aria-labelledby={formId + "-endpoint"}>
+          <div className={styles.sectionHeading}>
+            <h3 id={formId + "-endpoint"}><AliIcon name="link" size={17} />{t("remote.apiBase")}</h3>
+            <span className={styles.protocol}>HTTP / SSE</span>
+          </div>
+          <div className={styles.addressRow}>
+            <code>{apiBase}</code>
+            <button type="button" className="ui-button" onClick={() => void copy(apiBase, "base")}><AliIcon name={copied === "base" ? "check" : "copy"} />{t(copied === "base" ? "remote.copied" : "remote.copyBase")}</button>
+          </div>
+          <p className={styles.hint}>{t("remote.endpointHelp")}</p>
+        </section>
+
+        <form className={styles.card} onSubmit={(event) => { event.preventDefault(); void create(); }} aria-labelledby={formId + "-create"}>
+          <div className={styles.cardHeading}>
+            <div>
+              <h3 id={formId + "-create"}>{t("remote.createTitle")}</h3>
+              <p>{t("remote.createHelp")}</p>
+            </div>
+            <AliIcon name="key" size={20} />
+          </div>
+          <div className={styles.formBody}>
+            <label className={styles.nameField} htmlFor={formId + "-name"}>
+              <span>{t("remote.tokenName")}</span>
+              <input id={formId + "-name"} className="ui-input" value={name} required maxLength={120} disabled={isCreating} placeholder={t("remote.namePlaceholder")} onChange={(event) => setName(event.target.value)} />
+            </label>
+            <div className={styles.permissionsHeading}>
+              <span>{t("remote.permissions")}</span>
+              <span className={styles.count}>{t("remote.selectedScopes", { count: scopes.length })}</span>
+            </div>
+            <div className={styles.scopeGrid}>
+              {SCOPE_GROUPS.map((group) => (
+                <fieldset key={group.title} className={styles.scopeGroup} disabled={isCreating}>
+                  <legend><AliIcon name={group.icon} size={15} />{t(group.title)}</legend>
+                  {group.options.map(([scope, key]) => (
+                    <label key={scope} className={styles.scopeOption}>
+                      <input type="checkbox" checked={scopes.includes(scope)} onChange={() => setScopes((current) => current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope])} />
+                      <span>{t(key)}</span>
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+            </div>
+            <div className={styles.warning}>
+              <AliIcon name="lock" size={17} />
+              <p>{t("remote.warning")}</p>
+            </div>
+          </div>
+          <div className={styles.formFooter}>
+            <p className={styles.hint}>
+              {t(!name.trim() ? "remote.nameRequired" : scopes.length === 0 ? "remote.scopesRequired" : !sessionId ? "remote.noSession" : "remote.sessionBound")}
+            </p>
+            <button type="submit" className="ui-button" data-variant="accent" disabled={!canCreate || isCreating}><AliIcon name="plus" />{t(isCreating ? "remote.creating" : "remote.create")}</button>
+          </div>
+        </form>
+
+        {newToken ? (
+          <section className={styles.secret} aria-labelledby={formId + "-secret"}>
+            <h3 id={formId + "-secret"}><AliIcon name="check-circle" size={18} />{t("remote.tokenCreated")}</h3>
+            <p>{t("remote.tokenOnce")}</p>
+            <code className={styles.secretValue}>{newToken}</code>
+            <div className="ui-inline-actions">
+              <button type="button" className="ui-button" data-variant="accent" onClick={() => void copy(newToken, "token")}><AliIcon name={copied === "token" ? "check" : "copy"} />{t(copied === "token" ? "remote.copied" : "remote.copy")}</button>
+              <button type="button" className="ui-button" onClick={() => setNewToken(null)}>{t("remote.dismiss")}</button>
+            </div>
+          </section>
+        ) : null}
+        <span className={styles.srOnly} role="status">{copied ? t("remote.copied") : ""}</span>
+
+        <section className={styles.card} aria-labelledby={formId + "-tokens"} aria-busy={isLoading}>
+          <div className={styles.cardHeading}>
+            <div>
+              <h3 id={formId + "-tokens"}>{t("remote.tokens")}<span className={styles.count}>{isLoading ? "—" : activeTokens.length}</span></h3>
+              <p>{t("remote.manageHelp")}</p>
+            </div>
+            <AliIcon name="lock" size={20} />
+          </div>
+          {isLoading ? <p className={styles.emptyState} role="status">{t("remote.loading")}</p> : activeTokens.length === 0 ? (
+            <div className={styles.emptyState}><AliIcon name="key" size={23} /><strong>{t("remote.noActiveTokens")}</strong><span>{t("remote.emptyHelp")}</span></div>
+          ) : activeTokens.map(renderToken)}
+          <details className={styles.history}>
+            <summary><AliIcon name="history" size={16} /><span>{t("remote.revokedRecords")}</span><span className={styles.count}>{isLoading ? "—" : inactiveTokens.length}</span><AliIcon name="chevron-right" className={styles.chevron} size={16} /></summary>
+            <p className={styles.historyHelp}>{t("remote.historyHelp")}</p>
+            {inactiveTokens.length === 0 ? <p className={styles.historyHelp}>{t("remote.noInactiveTokens")}</p> : inactiveTokens.map(renderToken)}
+          </details>
+        </section>
+
+        <section className={styles.connector} aria-labelledby={formId + "-connector"}>
+          <span className={styles.connectorIcon}><AliIcon name="cloud" size={21} /></span>
+          <div className={styles.connectorBody}>
+            <div className={styles.sectionHeading}>
+              <h3 id={formId + "-connector"}>{t("remote.connector")}</h3>
+              <span className={styles.statusBadge}>{isLoading ? t("remote.loading") : connector.enabled ? connector.state ?? t("remote.unknownState") : t("remote.disabled")}</span>
+            </div>
+            <p className={styles.hint}>{t("remote.connectorHelp")}</p>
+            {!isLoading && !connector.enabled ? <p className={styles.hint}>{t("remote.connectorDisabled")}</p> : null}
+            {connector.lastError ? <p className={styles.connectorError}>{connector.lastError}</p> : null}
+            {sessionId ? <p className={styles.hint}>{t("remote.queue")}: {queueLength ?? "—"}</p> : null}
+          </div>
+        </section>
       </div>
-      <section className="settings-conversation-section">
-        <p style={{ color: "var(--status-attention)", lineHeight: 1.5 }}>{t("remote.warning")}</p>
-        <label style={{ display: "grid", gap: 6, maxWidth: 720, marginBottom: 14 }}>
-          <span>{t("remote.apiBase")}</span>
-          <span style={{ display: "flex", gap: 8 }}><code style={{ flex: 1, overflowWrap: "anywhere" }}>{apiBase}</code><button type="button" onClick={() => void copyApiBase()}>{t("remote.copyBase")}</button></span>
-        </label>
-        <label style={{ display: "grid", gap: 6, maxWidth: 520 }}><span>{t("remote.tokenName")}</span><input value={name} onChange={(event) => setName(event.target.value)} /></label>
-        <div style={{ display: "grid", gap: 7, marginTop: 14 }}>
-          {SCOPE_OPTIONS.map(([scope, key]) => <label key={scope} style={{ display: "flex", gap: 8, alignItems: "center" }}><input type="checkbox" checked={scopes.includes(scope)} onChange={() => setScopes((current) => current.includes(scope) ? current.filter((item) => item !== scope) : [...current, scope])} /><span>{t(key)}</span></label>)}
-        </div>
-        <button type="button" disabled={(!sessionId && !scopes.includes("session.create")) || scopes.length === 0} onClick={() => void create()}>{t("remote.create")}</button>
-        {!sessionId ? <p>{t("remote.noSession")}</p> : null}
-        {newToken ? <div style={{ marginTop: 14, padding: 12, border: "1px solid var(--accent)", borderRadius: "var(--radius-control)" }}><strong>{t("remote.tokenOnce")}</strong><code style={{ display: "block", margin: "8px 0", overflowWrap: "anywhere" }}>{newToken}</code><button type="button" onClick={() => void copyToken()}>{t("remote.copy")}</button><button type="button" onClick={() => setNewToken(null)} style={{ marginLeft: 8 }}>{t("remote.dismiss")}</button></div> : null}
-        {error ? <p role="alert" style={{ color: "var(--status-failed)" }}>{error}</p> : null}
-      </section>
-      <section className="settings-conversation-section" style={{ marginTop: 18 }}>
-        <h3>{t("remote.tokens")}</h3>
-        {tokens.length === 0 ? <p>{t("remote.noTokens")}</p> : tokens.map((token) => <div key={token.id} style={{ display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", padding: "9px 0", borderTop: "1px solid var(--border)" }}><div><strong>{token.name}</strong><div style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)" }}>{token.active ? t("remote.active") : t("remote.revoked")} · {date.format(token.createdAt)} · {token.lastUsedAt ? date.format(token.lastUsedAt) : t("remote.neverUsed")}</div></div>{token.active ? <button type="button" onClick={() => void revoke(token.id)}>{t("remote.revoke")}</button> : null}</div>)}
-      </section>
-      <section className="settings-conversation-section" style={{ marginTop: 18 }}>
-        <h3>{t("remote.connector")}</h3>
-        <p>{connector.enabled ? `${t("remote.connectorState")}: ${connector.state ?? "unknown"}` : t("remote.connectorDisabled")}</p>
-        {connector.lastError ? <p>{connector.lastError}</p> : null}
-        {sessionId ? <p>{t("remote.queue")}: {queueLength ?? 0}</p> : null}
-      </section>
     </div>
   );
 }
