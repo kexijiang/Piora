@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.25] - 2026-09-10
+
+### 发布修复
+
+- 将 GitHub 共享 Windows runner 上 10 万条 Shell 历史压力测试的总时限提高至 300 秒，功能断言、前台查询延迟门禁及本地时限保持不变。
+- `0.4.41-beta.24` 的压力测试在正常完成数据处理时耗时 202 秒，超过 180 秒 CI 总时限，因而在打包前终止。
+
 ## [0.4.41-beta.24] - 2026-09-10
 
 ### 发布修复
