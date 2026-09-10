@@ -5,6 +5,7 @@ import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { load as parseYaml } from "js-yaml";
 import { listPackage } from "@electron/asar";
+import { extractVersionNotes } from "./create-release-notes.mjs";
 
 const VERSION_PATTERN = /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.(0|[1-9]\d*))?$/;
 
@@ -36,7 +37,16 @@ export function normalizeAsarEntry(entry) {
   return entry.replaceAll("\\", "/");
 }
 
-export async function verifyWindowsUpdateArtifacts(releaseRoot, requestedVersion) {
+export function verifyUpdateReleaseNotes(metadata, expected, label = "update metadata") {
+  if (typeof metadata.releaseNotes !== "string" || !metadata.releaseNotes.trim()) {
+    throw new Error(`${label} is missing releaseNotes; the in-app update dialog would have no change list.`);
+  }
+  if (expected !== undefined && metadata.releaseNotes.trim() !== expected.trim()) {
+    throw new Error(`${label} releaseNotes do not match the tagged CHANGELOG section.`);
+  }
+}
+
+export async function verifyWindowsUpdateArtifacts(releaseRoot, requestedVersion, expectedReleaseNotes) {
   const root = resolve(releaseRoot);
   const version = normalizeVersion(requestedVersion);
   const channel = version.includes("-beta.") ? "beta" : "latest";
@@ -65,6 +75,7 @@ export async function verifyWindowsUpdateArtifacts(releaseRoot, requestedVersion
   if (metadata.version !== version) {
     throw new Error(`${metadataName} version ${metadata.version} does not match ${version}.`);
   }
+  verifyUpdateReleaseNotes(metadata, expectedReleaseNotes, metadataName);
   if (!Array.isArray(metadata.files) || metadata.files.length !== 1) {
     throw new Error(`${metadataName} must describe exactly one Windows installer.`);
   }
@@ -116,7 +127,8 @@ async function main() {
   const version = requestedVersion ?? JSON.parse(
     await readFile(new URL("../package.json", import.meta.url), "utf8"),
   ).version;
-  const result = await verifyWindowsUpdateArtifacts(releaseRoot, version);
+  const changelog = await readFile(new URL("../CHANGELOG.md", import.meta.url), "utf8");
+  const result = await verifyWindowsUpdateArtifacts(releaseRoot, version, extractVersionNotes(changelog, version));
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 

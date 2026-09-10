@@ -5,6 +5,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { prioritizeProvider, resolveDefaultModelPreference } from "./model-policy";
+import { modelScopeWarnings } from "./model-scope";
 
 export interface ModelScopeModelView {
   provider: string;
@@ -191,7 +192,7 @@ export async function buildModelScopeSettingsState(options: {
       enabled: enabledModelKeys.has(modelKey(model)),
     })),
     enabledPatterns: cleanedPatterns.length > 0 ? cleanedPatterns : null,
-    warnings: (resolved?.diagnostics ?? []).map((diagnostic) => diagnostic.message),
+    warnings: modelScopeWarnings(resolved?.diagnostics ?? []),
     enabledCount: enabledModelKeys.size,
     totalCount: availableModelKeys.size,
     configuredDefault: rawDefault,

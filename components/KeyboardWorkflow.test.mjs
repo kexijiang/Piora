@@ -45,13 +45,14 @@ test("completed background tasks are announced without stealing focus", () => {
   assert.match(sidebar, /sidebar\.tasksCompleted/);
 });
 
-test("sidebar task state uses the shared SSE store without a second fixed poll or completion rescan", () => {
+test("sidebar task state shares one polling store without a second poll or completion rescan", () => {
   assert.match(catalog, /useRunningTaskRuntimeState\(\)/);
   assert.doesNotMatch(catalog, /fetch\("\/api\/agent\/running"/);
   assert.doesNotMatch(catalog, /completed\.length > 0\) void loadSessions/);
   assert.match(catalog, /completedIds\.has\(session\.id\) \? \{ \.\.\.session, modified \} : session/);
   assert.match(taskStatusStore, /sessionListeners/);
-  assert.match(taskStatusStore, /eventSource\.onopen = stopFallbackPoll/);
+  assert.match(taskStatusStore, /pollController \|\| listenerCount\(\) === 0/);
+  assert.doesNotMatch(taskStatusStore, /new EventSource/);
   assert.match(taskStatusStore, /subscribeSession\(sessionId, listener\)/);
   const completionHandler = shell.slice(
     shell.indexOf("const handleAgentEnd"),

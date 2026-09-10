@@ -44,7 +44,7 @@ export const TransferWorkspaceFrame = forwardRef<TransferWorkspaceFrameHandle, {
     persist();
   };
   const labels: Record<Edge, string> = { left: "从左侧调整中转站宽度", right: "从右侧调整中转站宽度", bottom: "调整中转站高度", corner: "调整中转站宽度和高度" };
-  return <div ref={frame} className={styles.workspaceFrame} style={{ width: size.width === null ? "100%" : `${size.width}px`, height: size.height === null ? "70dvh" : `${size.height}px` }}>
+  return <div ref={frame} className={styles.workspaceFrame} data-auto-height={size.height === null} style={{ width: size.width === null ? "100%" : `${size.width}px`, height: size.height === null ? undefined : `${size.height}px` }}>
     {children}
     {(["left", "right", "bottom", "corner"] as const).map((edge) => <div key={edge} className={styles.workspaceGrip} data-edge={edge} role={edge === "corner" ? "button" : "separator"} tabIndex={0}
       aria-label={labels[edge]} title={`${labels[edge]} · 拖动或方向键调整 · 双击恢复`}

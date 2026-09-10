@@ -47,7 +47,7 @@ export async function legacyTerminalAction(terminal: ManagedShellSession, body: 
   switch (body.action) {
     case "input": if (typeof body.data !== "string") throw new ShellError("Invalid terminal input"); terminal.input(body.data, body.replay === true); return { success: true };
     case "resize": terminal.resize(Number(body.cols), Number(body.rows)); return { success: true };
-    case "start": await terminal.start(); break;
+    case "start": await terminal.connect(); break;
     case "run": {
       const command = shellText(body.command, "command"); await terminal.start();
       if (terminal.state.integration === "ready") await terminal.execute(command, typeof body.clientRequestId === "string" ? body.clientRequestId : randomUUID());
@@ -57,7 +57,7 @@ export async function legacyTerminalAction(terminal: ManagedShellSession, body: 
     case "clear": terminal.clear(); break;
     case "stop": case "restart":
       if (terminal.state.activeRunId) await controlShellAgent(terminal, "cancel");
-      await terminal.stop(); if (body.action === "restart") await terminal.start(); break;
+      await terminal.stop(); if (body.action === "restart") await terminal.connect(); break;
     default: throw new ShellError("Unsupported terminal action");
   }
   return legacyTerminalSnapshot(terminal);

@@ -413,6 +413,8 @@ type SlashCommandsResponse = {
 
 export function useAgentSession(opts: UseAgentSessionOptions) {
   const { t } = useI18n();
+  const translateRef = useRef(t);
+  translateRef.current = t;
   const {
     session, newSessionCwd, newSessionInitialModel, newSessionInitialSystemPromptSelection, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
@@ -587,17 +589,27 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionLoadAbortRef.current = controller;
     const runId = promptRunIdRef.current;
     let messagesLoaded = false;
+    let timedOut = false;
+    const aborted = new Promise<never>((_resolve, reject) => {
+      controller.signal.addEventListener("abort", () => reject(controller.signal.reason), { once: true });
+    });
+    const wait = <T,>(value: T | PromiseLike<T>): Promise<T> => Promise.race([Promise.resolve(value), aborted]);
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      invalidatePrefetchedSession(sid);
+    }, 30_000);
     try {
       if (showLoading) setLoading(true);
-      let d = await prefetchedData as SessionData | null;
+      let d = await wait(prefetchedData) as SessionData | null;
       if (controller.signal.aborted) return null;
       if (!d) {
         const params = new URLSearchParams({ deferThinking: "1", deferMedia: "1" });
-        const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}?${params}`, {
+        const res = await wait(fetch(`/api/sessions/${encodeURIComponent(sid)}?${params}`, {
           signal: controller.signal,
-        });
+        }));
         if (res.status === 404) {
-          const recovered = mergePendingPrompts([], [], await readPendingPrompts(sid));
+          const recovered = mergePendingPrompts([], [], await wait(readPendingPrompts(sid)));
           if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
           if (recovered.messages.length) { setMessages(recovered.messages); setEntryIds(recovered.entryIds); }
           if (showLoading) {
@@ -609,10 +621,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           return null;
         }
         if (!res.ok) throw await sessionResponseError(res);
-        d = await res.json() as SessionData;
+        d = await wait(res.json()) as SessionData;
       }
       if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
-      const recovered = mergePendingPrompts(d.context.messages, d.context.entryIds ?? [], await readPendingPrompts(sid), d.persistedPromptIds);
+      const recovered = mergePendingPrompts(d.context.messages, d.context.entryIds ?? [], await wait(readPendingPrompts(sid)), d.persistedPromptIds);
       if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
       setData(d);
       setActiveLeafId(d.leafId);
@@ -630,15 +642,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
 
       messagesLoaded = true;
-      if (showLoading && sessionLoadAbortRef.current === controller) setLoading(false);
+      if (sessionLoadAbortRef.current === controller) setLoading(false);
       if (!includeState) return null;
 
       try {
-        const stateRes = await fetch(`/api/sessions/${encodeURIComponent(sid)}/state`, {
+        const stateRes = await wait(fetch(`/api/sessions/${encodeURIComponent(sid)}/state`, {
           signal: controller.signal,
-        });
+        }));
         if (!stateRes.ok) throw new Error(`HTTP ${stateRes.status}`);
-        const agentState = await stateRes.json() as { running: boolean; state?: AgentStateResponse };
+        const agentState = await wait(stateRes.json()) as { running: boolean; state?: AgentStateResponse };
         if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
 
         const liveState = agentState.state;
@@ -670,9 +682,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setError(String(e));
       return null;
     } finally {
+      clearTimeout(timeout);
       if (sessionLoadAbortRef.current === controller) {
         sessionLoadAbortRef.current = null;
-        if (showLoading && !messagesLoaded) setLoading(false);
+        if (timedOut && !messagesLoaded && sessionIdRef.current === sid && promptRunIdRef.current === runId) setError(translateRef.current("chat.loadSessionTimeout"));
+        setLoading(false);
       }
     }
   }, []);
@@ -1415,7 +1429,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     message: string,
     images?: AttachedImage[],
     files?: AttachedFile[],
-    onDurable?: () => void,
+    onDurable?: (clientPromptId?: string) => void,
+    retryOfPromptIds?: string[],
   ) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage && !images?.length && !files?.length) return false;
@@ -1456,7 +1471,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
     const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
     const clientPromptId = crypto.randomUUID();
-    const recoveryDraft = { value: message, files: (files ?? []).map((file) => ({ ...file })), images: (images ?? []).map(({ data, mimeType }) => ({ data, mimeType })) };
+    const recoveryDraft = { value: message, files: (files ?? []).map((file) => ({ ...file })), images: (images ?? []).map(({ data, mimeType }) => ({ data, mimeType })),
+      ...(retryOfPromptIds?.length ? { retryOfPromptIds: [...new Set(retryOfPromptIds)] } : {}),
+    };
     const userMsg: import("@/lib/types").UserMessage = {
       role: "user",
       clientPromptId,
@@ -1491,7 +1508,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // Commit original text and attachment bytes before starting network work.
       await savePendingPrompt(recovery);
       if (!isCurrentPrompt()) return false;
-      onDurable?.();
+      onDurable?.(clientPromptId);
       const promptMaterials = materialFiles.length ? await uploadPromptMaterialFiles(materialFiles) : [];
       if (!isCurrentPrompt()) return false;
       if (isNew && newSessionCwd) {

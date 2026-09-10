@@ -70,6 +70,9 @@ export class ClipboardRuntime {
       }
     }, 500);
     this.initialized = true;
+    // Populate the first view from the current system clipboard too. Automatic
+    // capture still honors a saved pause, app exclusions and locked screens.
+    await this.capture(false, true);
     await this.dragCache.clean().catch(() => { this.error = "临时拖拽文件清理失败，稍后将重试。"; });
   }
   reconnect(): Promise<void> {
@@ -140,7 +143,7 @@ export class ClipboardRuntime {
     }
     return input.text || input.html || input.rtf || input.image || input.files?.length ? input : null;
   }
-  async capture(manual: boolean): Promise<void> {
+  async capture(manual: boolean, initial = false): Promise<void> {
     if (this.store.failure || this.reconnecting) { if (manual) throw this.store.failure ?? new Error("正在重新连接剪贴板存储，请稍后再试。"); return; }
     if (this.stopped || this.locked) { if (manual) throw new Error("请解锁后再收录。"); return; }
     if (!manual && (!this.settings.enabled || this.full)) return;
@@ -150,7 +153,7 @@ export class ClipboardRuntime {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const sequence = this.native?.currentSequence() ?? -1;
-        if (!manual && this.native && sequence === this.lastSequence) return;
+        if (!manual && !initial && this.native && sequence === this.lastSequence) return;
         const input = this.snapshot();
         if (this.native && sequence !== this.native.currentSequence()) { await delay(10); continue; }
         if (epoch !== this.captureEpoch || this.stopped || this.locked) return;
@@ -159,7 +162,7 @@ export class ClipboardRuntime {
         const identity = fingerprint(input);
         // On Windows the sequence identifies a copy action: copying identical
         // content again must still update its timestamp and copy count.
-        if (!manual && !this.native && (!this.lastFingerprint || identity === this.lastFingerprint)) { this.lastFingerprint = identity; return; }
+        if (!manual && !initial && !this.native && (!this.lastFingerprint || identity === this.lastFingerprint)) { this.lastFingerprint = identity; return; }
         this.lastFingerprint = identity;
         const bytes = (input.image?.byteLength ?? 0) + Buffer.byteLength(input.text ?? "") + Buffer.byteLength(input.html ?? "") + Buffer.byteLength(input.rtf ?? "");
         if (this.admittedBytes + bytes > 128 * 1024 ** 2) throw new Error("剪贴板写入队列繁忙，已跳过本条。现有历史未受影响。");

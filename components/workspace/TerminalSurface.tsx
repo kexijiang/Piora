@@ -5,6 +5,7 @@ import type { Terminal } from "@xterm/xterm";
 import type { SearchAddon } from "@xterm/addon-search";
 import { copyText, readClipboardText } from "@/lib/clipboard";
 import { isTerminalProtocolReply } from "@/lib/terminal-input";
+import type { ShellEvent } from "@/lib/shell/types";
 import "@xterm/xterm/css/xterm.css";
 import styles from "./TerminalPanel.module.css";
 
@@ -16,6 +17,7 @@ export interface TerminalSurfaceHandle {
 interface Props {
   cwd?: string | null;
   terminalId?: string;
+  subscribeToShell?: (listener: (event: ShellEvent) => void) => () => void;
   inputEnabled?: boolean;
   output?: string;
   readOnly?: boolean;
@@ -23,7 +25,7 @@ interface Props {
   onError?: (error: string) => void;
 }
 
-export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function TerminalSurface({ cwd, terminalId, inputEnabled = true, output = "", readOnly = false, onStatus, onError }, ref) {
+export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function TerminalSurface({ cwd, terminalId, subscribeToShell, inputEnabled = true, output = "", readOnly = false, onStatus, onError }, ref) {
   const host = useRef<HTMLDivElement>(null);
   const terminal = useRef<Terminal | null>(null);
   const search = useRef<SearchAddon | null>(null);
@@ -84,6 +86,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
         }));
       };
       let events: EventSource | undefined;
+      let unsubscribe: (() => void) | undefined;
       let resizeTimer: ReturnType<typeof setTimeout> | undefined;
       const post = (body: object) => {
         const queuedGeneration = generation;
@@ -113,8 +116,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
         // native libraries and invalid working directories reach the user.
         void (async () => {
           if (disposed) return;
-          events = new EventSource(terminalId ? `/api/shell/sessions/${terminalId}/events` : `/api/terminal/events?cwd=${encodeURIComponent(cwd)}`);
-          events.onmessage = (event) => {
+          const onMessage = (event: { data: string }) => {
             if (disposed) return;
             try {
               const message = JSON.parse(event.data);
@@ -127,6 +129,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
               if (message.type === "snapshot") { writeOutput(terminalId ? message.snapshot.output : message.output, true); resize(); }
               else if (message.type === "output") writeOutput(terminalId ? message.data : message.output);
               else if (message.type === "clear") writeOutput("", true);
+              else if (message.type === "error") latest.current.onError?.(message.error);
               if (terminalId && (message.type === "snapshot" || message.type === "session")) {
                 const session = message.type === "snapshot" ? message.snapshot.session : message.session;
                 term.options.disableStdin = !latest.current.inputEnabled || session.owner === "agent";
@@ -134,14 +137,27 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
               } else if (message.type === "snapshot" || message.type === "status") latest.current.onStatus?.(message.connected, message.shell);
             } catch { /* Ignore malformed transport frames. */ }
           };
-          events.onerror = () => { if (!disposed) latest.current.onStatus?.(false, ""); };
-          // Show startup output immediately. Profiles can request interactive
-          // input before enhanced shell integration announces readiness.
+          // The command cards already own this shell's stream. Reuse it rather
+          // than occupying a second HTTP/1 connection for the native viewport.
+          if (terminalId && subscribeToShell) {
+            unsubscribe = subscribeToShell(message => onMessage({ data: JSON.stringify(message) }));
+            return;
+          }
+          // Startup returns as soon as the PTY exists, before profiles finish.
+          // Use that snapshot before SSE reserves a long-lived HTTP connection.
           const response = await fetch(terminalId ? `/api/shell/sessions/${terminalId}/actions` : "/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, action: "start" }), signal: abort.signal });
           if (!response.ok) {
             const body = await response.json().catch(() => null);
             throw new Error(body?.error ?? `HTTP ${response.status}`);
           }
+          const snapshot = await response.json();
+          if (disposed) return;
+          onMessage({ data: JSON.stringify(terminalId
+            ? { type: "snapshot", terminalId, generation: snapshot.session.generation, sequence: snapshot.sequence, snapshot }
+            : { type: "snapshot", ...snapshot }) });
+          events = new EventSource(terminalId ? `/api/shell/sessions/${terminalId}/events` : `/api/terminal/events?cwd=${encodeURIComponent(cwd)}`);
+          events.onmessage = onMessage;
+          events.onerror = () => { if (!disposed) latest.current.onStatus?.(false, ""); };
         })().catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
       }
       const input = term.onData((data) => { if (!readOnly && cwd && (latest.current.inputEnabled || isTerminalProtocolReply(data))) post({ action: "input", data, ...(replaying && isTerminalProtocolReply(data) ? { replay: true } : {}) }); });
@@ -181,13 +197,13 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       const element = host.current;
       element.addEventListener("keydown", stopShortcut);
       cleanup = () => {
-        clearTimeout(resizeTimer); observer.disconnect(); events?.close(); input.dispose();
+        clearTimeout(resizeTimer); observer.disconnect(); events?.close(); unsubscribe?.(); input.dispose();
         element.removeEventListener("keydown", stopShortcut); term.dispose();
         terminal.current = null; search.current = null; previousOutput.current = "";
       };
     })().catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
     return () => { disposed = true; abort.abort(); cleanup(); };
-  }, [cwd, readOnly, terminalId]);
+  }, [cwd, readOnly, terminalId, subscribeToShell]);
 
   useEffect(() => { if (terminal.current) terminal.current.options.disableStdin = readOnly || !inputEnabled; }, [inputEnabled, readOnly]);
 

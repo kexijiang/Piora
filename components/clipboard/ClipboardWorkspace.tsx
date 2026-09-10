@@ -34,7 +34,7 @@ function Match({ text, query }: { text: string; query: string }) {
   return start < 0 ? text : <>{text.slice(0, start)}<mark>{text.slice(start, start + term.length)}</mark>{text.slice(start + term.length)}</>;
 }
 
-export function ClipboardWorkspace({ surface = "manager", onSave }: { surface?: "quick" | "manager" | "shelf"; onSave?: (entry: ClipboardDetail) => Promise<void> }) {
+export function ClipboardWorkspace({ surface = "manager", onSave, visible = true, copyOnClick = false }: { surface?: "quick" | "manager" | "shelf"; onSave?: (entry: ClipboardDetail) => Promise<void>; visible?: boolean; copyOnClick?: boolean }) {
   const { tr, locale } = useClipboardI18n();
   const [bridge, setBridge] = useState<ClipboardBridge | null | undefined>(undefined);
   const [view, setView] = useState(() => initialView(surface));
@@ -56,6 +56,12 @@ export function ClipboardWorkspace({ surface = "manager", onSave }: { surface?: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [copyNotice, setCopyNotice] = useState<object | null>(null);
+  useEffect(() => {
+    if (!copyNotice) return;
+    const timer = setTimeout(() => setCopyNotice(null), 1300);
+    return () => clearTimeout(timer);
+  }, [copyNotice]);
   const [newCount, setNewCount] = useState(0);
   const [settings, setSettings] = useState(false);
   const [separator, setSeparator] = useState("\n");
@@ -94,7 +100,7 @@ export function ClipboardWorkspace({ surface = "manager", onSave }: { surface?: 
   const report = useCallback((error: unknown) => setError(errorText(error)), []);
   const draftGuard = useClipboardDraftGuard(report);
   const { guard, draft: draftRef } = draftGuard;
-  useFocusTrap(modal, Boolean(draftGuard.open || settings || confirm || merge !== null));
+  useFocusTrap(modal, visible && Boolean(draftGuard.open || settings || confirm || merge !== null));
   useEffect(() => { setRecovered(value => value?.entryId === active?.id ? value : null); }, [active?.id]);
   const detailChanged = useCallback(() => { setError(""); refresh(); }, [refresh]);
   const createdCopy = useCallback(async (id: string) => {
@@ -214,7 +220,7 @@ export function ClipboardWorkspace({ surface = "manager", onSave }: { surface?: 
     return () => { alive = false; };
   }, [bridge, dragKey, report, epoch]);
   const run = async (task: () => Promise<unknown>, success = "") => {
-    if (operation.current) return; operation.current = true; setBusy(true); setError(""); setNotice("");
+    if (operation.current) return; operation.current = true; setBusy(true); setError(""); setNotice(""); setCopyNotice(null);
     try { await task(); if (success) setNotice(success); } catch (error) { report(error); } finally { operation.current = false; setBusy(false); }
   };
   const mutate = (mutation: ClipboardMutation, success = "") => {
@@ -226,17 +232,26 @@ export function ClipboardWorkspace({ surface = "manager", onSave }: { surface?: 
     if (!plain && known.some(item => item && belongsToClipboardGroup(item, "text")) && known.some(item => item && belongsToClipboardGroup(item, "files"))) throw new Error(tr("文字与图片或文件需要分组使用，请先在多选栏选择一组。"));
     const value: ClipboardOperation = { ids: usingIds, plain, separator, ...(targetToken.current ? { targetToken: targetToken.current } : {}) };
     const result = await (paste ? bridge!.paste(value) : bridge!.copy(value));
-    if (result.status !== "input-sent" && result.status !== "copied") setError(result.message); else setNotice(result.message);
+    if (result.status !== "input-sent" && result.status !== "copied") setError(result.message);
+    else if (copyOnClick && !paste) setCopyNotice({});
+    else setNotice(result.message);
   }); });
   const toggle = (item: ClipboardItem) => { setSelectionBeforeGroup(null); setSelected(existing => existing.some(entry => entry.id === item.id) ? existing.filter(entry => entry.id !== item.id) : [...existing, item]); };
   const selectGroup = (group: ClipboardSelectionGroup) => { setSelectionBeforeGroup(selected); setSelected(selected.filter(item => belongsToClipboardGroup(item, group))); setMerge(null); };
+  const canClickCopy = copyOnClick && view.filter !== "trash" && !storageUnavailable;
   const choose = (event: MouseEvent, item: ClipboardItem) => guard(() => {
+    if ((event.target as HTMLElement).closest("button,input")) return;
     if (event.shiftKey) {
       setSelectionBeforeGroup(null);
       const start = Math.max(0, items.findIndex(entry => entry.id === active?.id)), end = items.indexOf(item);
       const range = items.slice(Math.min(start, end), Math.max(start, end) + 1);
       setSelected(existing => [...existing, ...range.filter(entry => !existing.some(old => old.id === entry.id))]);
     } else if (event.ctrlKey || event.metaKey) toggle(item);
+    else if (canClickCopy) {
+      setActiveId(item.id); setSelected([]); list.current?.focus();
+      if (event.detail < 2) execute(false, false, [item.id]);
+      return;
+    }
     setActiveId(item.id); setNarrowDetail(true); if (surface === "manager" && window.matchMedia("(max-width:600px)").matches) setView(existing => ({ ...existing, preview: true })); list.current?.focus();
   });
   const changeView = (patch: Partial<typeof view>) => guard(() => { setView(existing => ({ ...existing, ...patch, position: null })); setActiveId(null); setScroll(0); if (list.current) list.current.scrollTop = 0; });
@@ -276,7 +291,7 @@ export function ClipboardWorkspace({ surface = "manager", onSave }: { surface?: 
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault(); const index = items.findIndex(item => item.id === active?.id), next = Math.max(0, Math.min(items.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)));
       if (items[next]) guard(() => { setActiveId(items[next].id); if (list.current) { if (offsets[next] < list.current.scrollTop) list.current.scrollTop = offsets[next]; else if (offsets[next + 1] > list.current.scrollTop + height) list.current.scrollTop = offsets[next + 1] - height; } });
-    } else if (event.key === "Enter" && ids.length && view.filter !== "trash") { event.preventDefault(); void execute(true, event.shiftKey); }
+    } else if (event.key === "Enter" && ids.length && view.filter !== "trash") { event.preventDefault(); void execute(!copyOnClick, event.shiftKey); }
     else if (event.key === " " && !input && active) { event.preventDefault(); toggle(active); }
     else if (event.key === "Delete" && !input && ids.length) { event.preventDefault(); if (view.filter === "trash") setConfirm({ type: "purge", ids }); else void mutate({ type: "delete", ids }, tr("已移入回收站")); }
     else if (!input && !mod && !event.altKey && event.key.length === 1) { search.current?.focus(); changeView({ text: event.key }); }
@@ -296,12 +311,13 @@ export function ClipboardWorkspace({ surface = "manager", onSave }: { surface?: 
   };
   if (bridge === null) return <section className={styles.unsupported}><h2>{tr("剪贴板需要 Piora 桌面端")}</h2><p>{tr("在新版桌面端打开后，可开启系统剪贴板记录、搜索和粘贴。")}</p></section>;
   return <section className={styles.workspace} data-surface={surface} data-locale={locale} data-preview={view.preview} data-detail={narrowDetail} data-multiple={selected.length > 0} aria-label={surface === "shelf" ? tr("屏幕暂存") : tr("剪贴板")} onKeyDown={keyDown}>
+    {copyNotice && visible ? <div className={styles.copyToast} role="status" aria-live="polite"><span aria-hidden="true">✓</span>{tr("已复制")}</div> : null}
     <ClipboardToolbar surface={surface} view={view} status={status} busy={busy} search={search} onAction={toolbarAction} onView={patch => { if (Object.keys(patch).every(key => key === "preview")) guard(() => { setView(existing => ({ ...existing, ...patch })); setNarrowDetail(true); }); else { changeView(patch); setNarrowDetail(false); } }} />
     {newCount ? <button className={styles.newItems} onClick={() => guard(() => { lastQuery.current = null; setView(existing => ({ ...existing, position: null })); setNewCount(0); setActiveId(null); setScroll(0); if (list.current) list.current.scrollTop = 0; refresh(); })}>{tr("新增")} {newCount} {tr("条 · 查看最新")}</button> : null}
     {narrowDetail && view.preview ? <button className={styles.backToList} onClick={() => { setNarrowDetail(false); list.current?.focus(); }}><AliIcon name="arrowleft" size={16} />{tr("返回列表")}</button> : null}
     <div className={styles.body} style={{ "--clipboard-list-width": `${view.width}px` } as React.CSSProperties}>
       <div ref={list} className={styles.list} role="listbox" aria-label={tr("剪贴板记录")} aria-multiselectable="true" aria-activedescendant={active ? `clipboard-${active.id}` : undefined} tabIndex={0} onScroll={event => setScroll(event.currentTarget.scrollTop)}>
-        {!items.length ? <div className={styles.empty}>{loading || bridge === undefined ? tr("正在读取…") : view.text ? tr("没有匹配记录，试试更短的关键词。") : view.filter === "shelf" ? tr("把常用内容加入屏幕暂存，在这里反复使用。") : status?.settings.enabled ? tr("从下一次复制开始记录。") : tr("开启记录，或收录当前剪贴板。")}</div> : <div className={styles.virtualSpace} style={{ height: listHeight }}>{items.slice(start, end).map((item, index) => <div key={item.id} id={`clipboard-${item.id}`} role="option" aria-selected={selectedIds.has(item.id) || active?.id === item.id} className={styles.row} data-active={active?.id === item.id} data-selected={selectedIds.has(item.id)} style={{ top: offsets[start + index], height: offsets[start + index + 1] - offsets[start + index] }} onClick={event => choose(event, item)} onDoubleClick={event => { if ((event.target as HTMLElement).closest("button,input")) return; if (view.filter !== "trash") void execute(true, false, selectedIds.has(item.id) ? ids : [item.id]); }} onContextMenu={event => { event.preventDefault(); guard(() => { setActiveId(item.id); void menu(item); }); }} draggable={dragReady === JSON.stringify(selectedIds.has(item.id) ? ids : [item.id])} onDragStart={event => { event.preventDefault(); bridge?.startDrag(selectedIds.has(item.id) ? ids : [item.id]); }}>
+        {!items.length ? <div className={styles.empty}>{loading || bridge === undefined ? tr("正在读取…") : view.text ? tr("没有匹配记录，试试更短的关键词。") : view.filter === "shelf" ? tr("把常用内容加入屏幕暂存，在这里反复使用。") : status?.settings.enabled ? tr("从下一次复制开始记录。") : tr("开启记录，或收录当前剪贴板。")}</div> : <div className={styles.virtualSpace} style={{ height: listHeight }}>{items.slice(start, end).map((item, index) => <div key={item.id} id={`clipboard-${item.id}`} role="option" aria-selected={selectedIds.has(item.id) || active?.id === item.id} className={styles.row} data-copyable={canClickCopy} data-active={active?.id === item.id} data-selected={selectedIds.has(item.id)} style={{ top: offsets[start + index], height: offsets[start + index + 1] - offsets[start + index] }} onClick={event => choose(event, item)} onDoubleClick={event => { if ((event.target as HTMLElement).closest("button,input")) return; if (!copyOnClick && view.filter !== "trash") void execute(true, false, selectedIds.has(item.id) ? ids : [item.id]); }} onContextMenu={event => { event.preventDefault(); guard(() => { setActiveId(item.id); void menu(item); }); }} draggable={dragReady === JSON.stringify(selectedIds.has(item.id) ? ids : [item.id])} onDragStart={event => { event.preventDefault(); bridge?.startDrag(selectedIds.has(item.id) ? ids : [item.id]); }}>
           {surface === "shelf" && item.kind === "image" && bridge ? <div className={styles.shelfImage}><ClipboardImage bridge={bridge} id={item.id} title={item.title} thumbnail /></div> : <span className={styles.type}>{item.kind === "image" && bridge ? <ClipboardImage bridge={bridge} id={item.id} title="" thumbnail /> : <AliIcon name={item.kind === "files" ? "folder" : item.kind === "link" ? "link" : "file"} size={22} />}</span>}
           <div className={styles.rowContent}><strong><Match text={item.remark || item.title} query={view.text} /></strong><small><Match text={surface === "shelf" && item.kind === "image" ? `${item.image?.width ?? 0} × ${item.image?.height ?? 0}` : item.preview} query={view.text} /></small></div>
           {surface === "shelf" ? <button className={styles.rowMenu} aria-label={tr("操作 {title}", { title: item.title })} onClick={event => { event.stopPropagation(); guard(() => { setActiveId(item.id); void menu(item); }); }}><AliIcon name="ellipsis" size={18} /></button> : <div className={styles.rowMeta}><time>{new Date(item.copiedAt).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" })}</time><span>{item.starred ? "★ " : ""}{item.source.name || tr("来源未知")}</span></div>}

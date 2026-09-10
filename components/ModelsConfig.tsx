@@ -1,6 +1,7 @@
 "use client";
 
 import { ModelErrorText } from "./ModelErrorText";
+import styles from "./ModelsConfig.module.css";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -208,7 +209,7 @@ const API_OPTIONS = ["openai-completions", "openai-responses", "anthropic-messag
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+    <div className={styles.field} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <label style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontWeight: 500 }}>{label}</label>
       {children}
     </div>
@@ -311,7 +312,7 @@ function Select({ value, onChange, options, required }: { value: string; onChang
   return (
     <select value={value} onChange={(e) => onChange(e.target.value)}
       style={{ ...inputStyle, color: value ? "var(--text)" : "var(--text-dim)" }}>
-       {!required && <option value="">— {t("i18n.default")} / none —</option>}
+       {!required && <option value="">— {t("models.form.inherit")} —</option>}
       {options.map((o) => <option key={o} value={o}>{o}</option>)}
     </select>
   );
@@ -510,6 +511,31 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
   const { t } = useI18n();
   const [editingName, setEditingName] = useState(name);
   const [discoveryState, setDiscoveryState] = useState<ModelDiscoveryState>({ phase: "idle" });
+  const [connectionTest, setConnectionTest] = useState<ModelTestState>({ phase: "idle" });
+  const connectionRequestRef = useRef(0);
+  useEffect(() => {
+    const requests = connectionRequestRef;
+    requests.current++;
+    setConnectionTest({ phase: "idle" });
+    return () => { requests.current++; };
+  }, [name, provider]);
+  const testConnection = async () => {
+    const model = provider.models?.find(model => model.id.trim());
+    if (!model || connectionTest.phase === "testing") return;
+    const token = ++connectionRequestRef.current;
+    setConnectionTest({ phase: "testing" });
+    try {
+      const response = await fetch("/api/models-config/test", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ providerName: name, provider, model }),
+      });
+      const result = await response.json() as { ok?: boolean; error?: string; latencyMs?: number };
+      if (token !== connectionRequestRef.current) return;
+      setConnectionTest(response.ok && result.ok ? { phase: "success", latencyMs: result.latencyMs } : { phase: "error", message: result.error ?? `HTTP ${response.status}` });
+    } catch (error) {
+      if (token === connectionRequestRef.current) setConnectionTest({ phase: "error", message: String(error) });
+    }
+  };
   const [discoveryQuery, setDiscoveryQuery] = useState("");
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const discoveryRequestIdRef = useRef(0);
@@ -596,9 +622,9 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-         <SectionTitle>{t("i18n.provider")}</SectionTitle>
+    <div className={styles.connectionCard} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div className={styles.connectionHeader} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+         <div className={styles.connectionTitle}><AliIcon name="api" size={21} /><span>{name}</span></div>
         <button onClick={async () => {
           if (await requestConfirmation({ title: t("i18n.delete"), message: t("models.deleteProviderConfirm", { name }), confirmLabel: t("i18n.delete"), tone: "danger" })) onDelete();
         }}
@@ -607,7 +633,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
         </button>
       </div>
 
-       <Field label={t("i18n.providerName")}>
+       <Field label={t("models.ui.providerName")}>
         <TextInput value={editingName} onChange={setEditingName} placeholder="provider-name" mono />
         {editingName !== name && editingName.trim() && (
           <button onClick={() => onRename(editingName.trim())}
@@ -617,44 +643,37 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
         )}
       </Field>
 
-      <Field label="Base URL">
+      <Field label={t("models.form.endpoint")}>
         <TextInput value={provider.baseUrl ?? ""} onChange={(v) => set("baseUrl", v || undefined)}
           placeholder="https://api.example.com/v1" mono />
       </Field>
 
-      <Field label="API Key">
+      <Field label={t("models.form.secretKey")}>
         <SecretTextInput value={provider.apiKey ?? ""} onChange={(v) => set("apiKey", v || undefined)}
           placeholder={t("models.form.keyHint")} mono />
         <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>
-          Prefix with <code style={{ fontFamily: "var(--font-mono)" }}>!</code> to run a shell command, or use an env var name
+          {t("models.form.secretHint")}
         </span>
       </Field>
 
-      <Field label="API">
+      <Field label={t("models.form.protocol")}>
         <Select value={provider.api ?? "openai-completions"} onChange={(v) => set("api", v)} options={API_OPTIONS} required />
       </Field>
 
-      <details style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+      <div className={styles.connectionActions}>
+        <button className={styles.testConnection} disabled={!provider.models?.some(model => model.id.trim()) || connectionTest.phase === "testing"} title={!provider.models?.some(model => model.id.trim()) ? t("models.ui.testNeedsModel") : undefined} onClick={() => void testConnection()}><AliIcon name="link" size={16} />{connectionTest.phase === "testing" ? t("i18n.checking") : t("models.ui.testConnection")}</button>
+        <button className={styles.testConnection} onClick={() => void handleDiscoverModels()} disabled={!provider.baseUrl?.trim() || discoveryState.phase === "loading"}><AliIcon name="download" size={15} />{discoveryState.phase === "loading" ? t("models.discoveryFetching") : t("models.discoveryFetch")}</button>
+        {connectionTest.phase === "success" ? <span role="status" className={styles.connectionResult}>✓ {t("models.ui.connectionPassed")}{connectionTest.latencyMs != null ? ` · ${connectionTest.latencyMs} ms` : ""}</span> : null}
+      </div>
+      {connectionTest.phase === "error" ? <div role="alert"><ModelErrorText value={connectionTest.message} /></div> : null}
+      <details className={styles.advanced} style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
         <summary style={{ cursor: "pointer", color: "var(--text-muted)", fontSize: "var(--text-sm)", fontWeight: 600 }}>{t("models.advancedSettings")}</summary>
         <div style={{ paddingTop: 12 }}>
           <CompatOverridesEditor compat={provider.compat} onChange={(c) => set("compat", c)} />
         </div>
       </details>
 
-      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-        {discoveryState.phase !== "success" && (
-          <button
-            onClick={handleDiscoverModels}
-            disabled={!provider.baseUrl?.trim() || discoveryState.phase === "loading"}
-            style={{
-              alignSelf: "flex-start", height: 30, padding: "0 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)",
-              background: "var(--bg-panel)", color: !provider.baseUrl?.trim() || discoveryState.phase === "loading" ? "var(--text-dim)" : "var(--text-muted)",
-              cursor: !provider.baseUrl?.trim() || discoveryState.phase === "loading" ? "not-allowed" : "pointer", fontSize: "var(--text-xs)",
-            }}
-          >
-            {discoveryState.phase === "loading" ? t("models.discoveryFetching") : t("models.discoveryFetch")}
-          </button>
-        )}
+      <div className={styles.importArea} style={{ borderTop: "1px solid var(--border)", paddingTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
 
         {discoveryState.phase === "error" && (
           <div style={{ padding: "7px 9px", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "var(--radius-control)", color: "#ef4444", fontSize: "var(--text-xs)", lineHeight: 1.4 }}>
@@ -749,6 +768,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
 
 const THINKING_LEVELS = ["off", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
 type ThinkingLevel = typeof THINKING_LEVELS[number];
+const THINKING_LABELS = { off: "chat.thinkingLevelOff", minimal: "chat.thinkingLevelMinimal", low: "chat.thinkingLevelLow", medium: "chat.thinkingLevelMedium", high: "chat.thinkingLevelHigh", xhigh: "chat.thinkingLevelXhigh", max: "chat.thinkingLevelMax" } as const;
 
 const LEVEL_COLORS: Record<ThinkingLevel, string> = {
   off:     "var(--text-dim)",
@@ -767,6 +787,7 @@ function ThinkingLevelMapEditor({
   value: Record<string, string | null> | undefined;
   onChange: (v: Record<string, string | null> | undefined) => void;
 }) {
+  const { t } = useI18n();
   const map = value ?? {};
 
   const setLevel = (level: ThinkingLevel, entry: string | null | "omit") => {
@@ -832,7 +853,7 @@ function ThinkingLevelMapEditor({
                 color: state === "null" ? "var(--text-dim)" : "var(--text-muted)",
                 textDecoration: state === "null" ? "line-through" : "none",
               }}>
-                {level}
+                {t(THINKING_LABELS[level])}
               </span>
             </div>
 
@@ -842,13 +863,13 @@ function ThinkingLevelMapEditor({
                 onClick={() => setLevel(level, "omit")}
                 style={{ ...btnBase, ...(state === "omit" ? btnActive : {}) }}
               >
-                Default
+                {t("i18n.default")}
               </button>
               <button
                 onClick={() => setLevel(level, null)}
                 style={{ ...btnBase, borderLeft: "1px solid var(--border)", ...(state === "null" ? btnActiveDisabled : {}) }}
               >
-                Disabled
+                {t("i18n.disabled")}
               </button>
             </div>
 
@@ -858,7 +879,7 @@ function ThinkingLevelMapEditor({
                 onClick={() => setLevel(level, strVal || level)}
                 style={{ ...btnBase, ...(state === "string" ? btnActive : {}), borderRight: "1px solid var(--border)", flexShrink: 0 }}
               >
-                Custom
+                {t("i18n.custom")}
               </button>
               <input
                 value={strVal}
@@ -1170,7 +1191,7 @@ function ModelDetail({
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Field label="ID *"><TextInput value={model.id} onChange={(v) => set("id", v)} placeholder="model-id" mono /></Field>
+        <Field label={t("models.form.modelId")}><TextInput value={model.id} onChange={(v) => set("id", v)} placeholder="model-id" mono /></Field>
         <Field label={t("models.form.name")}><TextInput value={model.name ?? ""} onChange={(v) => set("name", v || undefined)} placeholder={t("models.form.displayName")} /></Field>
       </div>
 
@@ -1313,7 +1334,7 @@ function ModelDetail({
                   onClick={() => set("thinkingLevelMap", undefined)}
                   style={{ fontSize: "var(--text-xs)", padding: "2px 7px", background: "none", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-dim)", cursor: "pointer" }}
                 >
-                  clear all
+                  {t("i18n.clearAll")}
                 </button>
               )}
             </div>
@@ -1356,7 +1377,7 @@ function ModelDetail({
         <SectionTitle>{t("models.form.cost")}</SectionTitle>
         <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8 }}>
           {(["input", "output", "cacheRead", "cacheWrite"] as const).map((k) => (
-            <Field key={k} label={k}>
+            <Field key={k} label={t(`models.form.cost.${k}`)}>
               <NumInput value={costVal(k)} onChange={(v) => setCost(k, v)} placeholder="0" />
             </Field>
           ))}
@@ -1538,14 +1559,14 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--text-muted)", lineHeight: 1.5 }}>
               {loginState.phase === "auth"
-                ? "Complete sign-in in the browser, then copy the redirect URL from the address bar and paste it below."
+                ? t("models.login.browserHint")
                 : loginState.message}
             </p>
             {loginState.phase === "auth" && (
               <p style={{ margin: 0, fontSize: "var(--text-xs)", color: "var(--text-dim)", lineHeight: 1.5 }}>
-                If the browser window did not open,{" "}
+                {t("models.login.notOpened")}
                 <a href={loginState.url} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent)", wordBreak: "break-all" }}>
-                  click here to open the login page
+                  {t("models.login.open")}
                 </a>
                 .
               </p>
@@ -1572,7 +1593,7 @@ function OAuthDetail({ provider, onRefresh }: { provider: OAuthProvider; onRefre
         {loginState.phase === "device_code" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p style={{ margin: 0, fontSize: "var(--text-sm)", color: "var(--text-muted)", lineHeight: 1.5 }}>
-              Open the verification page and enter this code:
+              {t("models.login.codeHint")}
             </p>
             <div style={{ padding: "8px 10px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text)", fontSize: "var(--text-md)", fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: 0 }}>
               {loginState.userCode}
@@ -1693,7 +1714,7 @@ function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRef
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-         <SectionTitle>API Key</SectionTitle>
+         <SectionTitle>{t("models.form.secretKey")}</SectionTitle>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ width: 7, height: 7, borderRadius: "50%", background: provider.configured ? "#4ade80" : "var(--border)", display: "inline-block" }} />
           <span style={{ fontSize: "var(--text-xs)", color: provider.configured ? "#4ade80" : "var(--text-dim)" }}>
@@ -1710,7 +1731,7 @@ function ApiKeyDetail({ provider, onRefresh }: { provider: ApiKeyProvider; onRef
           : t("models.apiKeyConfigureHint", { name: provider.displayName, count: provider.modelCount })}
       </p>
 
-      <Field label="API Key">
+      <Field label={t("models.form.secretKey")}>
         <div style={{ display: "flex", gap: 6 }}>
           <SecretTextInput
             value={apiKey}
@@ -1894,7 +1915,7 @@ function AddProviderPicker({
               )}
 
               {availableApiKey.length > 0 && (
-                <div style={{ gridColumn: "1 / -1", paddingTop: visibleHiddenProviders.length > 0 ? 6 : 0, fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em" }}>API Key</div>
+                <div style={{ gridColumn: "1 / -1", paddingTop: visibleHiddenProviders.length > 0 ? 6 : 0, fontSize: "var(--text-xs)", fontWeight: 600, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.07em" }}>{t("models.form.secretKey")}</div>
               )}
               {availableApiKey.map((p) => (
                 <button key={p.id} onClick={() => { onSelectApiKey(p.id); onClose(); }}
@@ -1904,7 +1925,7 @@ function AddProviderPicker({
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.displayName}</div>
-                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>{p.modelCount} models</div>
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>{t("models.form.count", { count: p.modelCount })}</div>
                   </div>
                   <ModelProviderIcon provider={p.id} size={28} />
                 </button>
@@ -1921,7 +1942,7 @@ function AddProviderPicker({
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>OAuth</div>
+                    <div style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>{t("models.login.oauth")}</div>
                   </div>
                   <ModelProviderIcon provider={p.id} size={28} />
                 </button>
@@ -1938,7 +1959,7 @@ function AddProviderPicker({
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "var(--bg-panel)"; }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>OpenAI / Anthropic compatible</div>
+                    <div style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--text)", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t("models.form.compatible")}</div>
                      <div style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginTop: 2 }}>{t("i18n.customEndpoint")}</div>
                   </div>
                   <span style={{ width: 26, height: 26, borderRadius: "var(--radius-control)", background: "var(--bg-hover)", border: "1px dashed var(--border)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -1976,6 +1997,8 @@ export function ModelsConfig({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedOk, setSavedOk] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [detailTab, setDetailTab] = useState<"connection" | "models">("connection");
+  useEffect(() => setDetailTab("connection"), [selection]);
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
   const [apiKeyProviders, setApiKeyProviders] = useState<ApiKeyProvider[]>([]);
   const [oauthProvidersLoaded, setOauthProvidersLoaded] = useState(false);
@@ -1990,6 +2013,17 @@ export function ModelsConfig({
   const [modelCapabilityBusyKey, setModelCapabilityBusyKey] = useState<string | null>(null);
   const modelScopeMutationRef = useRef(false);
   const persistedConfiguredModelKeysRef = useRef<Set<string>>(new Set());
+  const configMutationRef = useRef(false);
+  const persistedProviderNamesRef = useRef(new Map<string, string>());
+  const persistedModelTargetsRef = useRef(new WeakMap<ModelEntry, ConfiguredModelRef>());
+  const rememberPersistedConfig = useCallback((saved: ModelsJson) => {
+    persistedProviderNamesRef.current = new Map();
+    persistedModelTargetsRef.current = new WeakMap();
+    for (const [provider, value] of Object.entries(saved.providers ?? {})) {
+      persistedProviderNamesRef.current.set(provider, provider);
+      for (const model of value.models ?? []) persistedModelTargetsRef.current.set(model, { provider, id: model.id });
+    }
+  }, []);
   const dialogRef = useRef<HTMLDivElement>(null);
   useFocusTrap(dialogRef, !embedded, {
     onEscape: modelScopeBusyKey === null && !saving ? onClose : undefined,
@@ -2077,6 +2111,7 @@ export function ModelsConfig({
       .then((d: ModelsJson) => {
         const normalized = d.providers ? d : { ...d, providers: {} };
         setConfig(normalized);
+        rememberPersistedConfig(normalized);
         persistedConfiguredModelKeysRef.current = new Set(
           collectConfiguredModelRefs(normalized).map(configuredModelKey),
         );
@@ -2086,7 +2121,7 @@ export function ModelsConfig({
     refreshAuthProviders();
     void loadModelScope();
     void loadModelCapabilities();
-  }, [loadModelCapabilities, loadModelScope, refreshAuthProviders]);
+  }, [loadModelCapabilities, loadModelScope, refreshAuthProviders, rememberPersistedConfig]);
 
   useEffect(() => {
     setManagedModelTests({});
@@ -2105,6 +2140,9 @@ export function ModelsConfig({
   }, []);
 
   const renameProvider = useCallback((oldName: string, newName: string) => {
+    const persistedName = persistedProviderNamesRef.current.get(oldName);
+    persistedProviderNamesRef.current.delete(oldName);
+    if (persistedName) persistedProviderNamesRef.current.set(newName, persistedName);
     setConfig((prev) => {
       const entries = Object.entries(prev.providers ?? {});
       const idx = entries.findIndex(([k]) => k === oldName);
@@ -2120,18 +2158,32 @@ export function ModelsConfig({
     });
   }, []);
 
+  const persistDeletion = useCallback(async (target: { provider: string; id?: string } | undefined, apply: () => void) => {
+    if (configMutationRef.current) return;
+    configMutationRef.current = true;
+    setSaving(true); setSaveError(null); setSavedOk(false);
+    try {
+      if (target) {
+        const response = await fetch("/api/models-config", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify(target) });
+        const result = await response.json() as { success?: boolean; error?: string };
+        if (!response.ok || !result.success) throw new Error(result.error ?? `HTTP ${response.status}`);
+        for (const key of persistedConfiguredModelKeysRef.current) {
+          if (target.id === undefined ? key.startsWith(`${target.provider}/`) : key === configuredModelKey({ provider: target.provider, id: target.id })) persistedConfiguredModelKeysRef.current.delete(key);
+        }
+      }
+      apply(); setManagedModelTests({});
+      if (target) { onModelsChanged?.(); refreshAuthProviders(); await loadModelScope(); }
+    } catch (error) { setSaveError(error instanceof Error ? error.message : String(error)); }
+    finally { configMutationRef.current = false; setSaving(false); }
+  }, [loadModelScope, onModelsChanged, refreshAuthProviders]);
+
   const deleteProvider = useCallback((name: string) => {
-    setConfig((prev) => {
-      const providers = { ...(prev.providers ?? {}) };
-      delete providers[name];
-      return { ...prev, providers };
+    const provider = persistedProviderNamesRef.current.get(name);
+    void persistDeletion(provider ? { provider } : undefined, () => {
+      setConfig((prev) => { const providers = { ...(prev.providers ?? {}) }; delete providers[name]; return { ...prev, providers }; });
+      persistedProviderNamesRef.current.delete(name); setSelection(null);
     });
-    setConfig((prev) => {
-      const remaining = Object.keys(prev.providers ?? {});
-      setSelection(remaining.length > 0 ? { type: "provider", name: remaining[0] } : null);
-      return prev;
-    });
-  }, []);
+  }, [persistDeletion]);
 
   const addModel = useCallback((providerName: string) => {
     const index = config.providers?.[providerName]?.models?.length ?? 0;
@@ -2158,23 +2210,29 @@ export function ModelsConfig({
   }, []);
 
   const updateModel = useCallback((providerName: string, index: number, m: ModelEntry) => {
+    const previous = config.providers?.[providerName]?.models?.[index];
+    const target = previous && persistedModelTargetsRef.current.get(previous);
+    if (target) persistedModelTargetsRef.current.set(m, target);
     setConfig((prev) => {
       const provider = prev.providers?.[providerName] ?? {};
       const models = [...(provider.models ?? [])];
       models[index] = m;
       return { ...prev, providers: { ...(prev.providers ?? {}), [providerName]: { ...provider, models } } };
     });
-  }, []);
+  }, [config.providers]);
 
   const removeModel = useCallback((providerName: string, index: number) => {
-    setConfig((prev) => {
-      const provider = prev.providers?.[providerName] ?? {};
-      const models = [...(provider.models ?? [])];
-      models.splice(index, 1);
-      return { ...prev, providers: { ...(prev.providers ?? {}), [providerName]: { ...provider, models: models.length ? models : undefined } } };
+    const model = config.providers?.[providerName]?.models?.[index];
+    if (!model) return;
+    void persistDeletion(persistedModelTargetsRef.current.get(model), () => {
+      setConfig((prev) => {
+        const provider = prev.providers?.[providerName] ?? {};
+        const models = (provider.models ?? []).filter(entry => entry !== model);
+        return { ...prev, providers: { ...(prev.providers ?? {}), [providerName]: { ...provider, models: models.length ? models : undefined } } };
+      });
+      setSelection({ type: "provider", name: providerName });
     });
-    setSelection({ type: "provider", name: providerName });
-  }, []);
+  }, [config.providers, persistDeletion]);
 
   const updateModelScope = useCallback(async (
     action: "hide" | "restore" | "hide-provider" | "restore-provider" | "restore-all",
@@ -2279,6 +2337,8 @@ export function ModelsConfig({
   }, [loadModelScope, refreshAuthProviders]);
 
   const handleSave = useCallback(async () => {
+    if (configMutationRef.current) return;
+    configMutationRef.current = true;
     const configuredModels = collectConfiguredModelRefs(config);
     const newlyConfiguredModels = configuredModels.filter(
       (model) => !persistedConfiguredModelKeysRef.current.has(configuredModelKey(model)),
@@ -2295,6 +2355,7 @@ export function ModelsConfig({
       const d = await res.json() as { success?: boolean; error?: string };
       if (!res.ok || d.error) setSaveError(d.error ?? `HTTP ${res.status}`);
       else {
+        rememberPersistedConfig(config);
         setSavedOk(true);
         setManagedModelTests({});
         setTimeout(() => setSavedOk(false), 2000);
@@ -2311,9 +2372,10 @@ export function ModelsConfig({
     } catch (e) {
       setSaveError(String(e));
     } finally {
+      configMutationRef.current = false;
       setSaving(false);
     }
-  }, [config, loadModelScope, onModelsChanged, refreshAuthProviders, updateModelScope]);
+  }, [config, loadModelScope, onModelsChanged, refreshAuthProviders, updateModelScope, rememberPersistedConfig]);
 
   const configuredProviders = prioritizeProvider(
     Object.entries(config.providers ?? {}),
@@ -2384,7 +2446,7 @@ export function ModelsConfig({
     const scopeMutationBusy = modelScopeBusyKey !== null;
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+      <div className={styles.modelsCard} style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <SectionTitle>{t("models.availableModels")}</SectionTitle>
           {!modelScopeLoading && providerModels.length > 0 && (
@@ -2435,9 +2497,6 @@ export function ModelsConfig({
           )}
         </div>
 
-        <div role="note" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "var(--bg-panel)", color: "var(--text-muted)", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
-          配置顺序：先确认渠道可用，再在模型行勾选“支持图片输入”（仅在渠道实际支持时勾选），最后可用“测试”验证文本连接。勾选后，聊天会直接发送图片；未勾选的模型则交由你在“视觉代理”中选择的图片模型处理。
-        </div>
 
         {modelScopeError && modelScope && (
           <div role="alert" style={{ padding: "9px 10px", borderRadius: "var(--radius-control)", background: "rgba(239,68,68,0.08)", color: "#dc2626", fontSize: "var(--text-sm)" }}>
@@ -2460,10 +2519,12 @@ export function ModelsConfig({
         ) : providerModels.length === 0 ? (
           <div style={{ padding: "12px 0", fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>{t("models.noProviderModels")}</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", overflow: "hidden" }}>
+          <div className={styles.modelTable} style={{ display: "flex", flexDirection: "column", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", overflow: "hidden" }}>
+            <div className={styles.tableHeader}><span>{t("models.form.modelName")}</span><span>{t("models.form.imageInput")}</span><span>{t("i18n.test")}</span><span>{t("models.ui.actions")}</span></div>
             {providerModels.map((model, index) => {
               const isDefault = modelScope?.effectiveDefault?.provider === model.provider
                 && modelScope.effectiveDefault.modelId === model.id;
+              const customIndex = config.providers?.[providerId]?.models?.findIndex(entry => entry.id === model.id) ?? -1;
               const testKey = `${model.provider}/${model.id}`;
               const testState = managedModelTests[testKey] ?? { phase: "idle" };
               const testMeta = testState.phase === "success" || testState.phase === "error"
@@ -2482,6 +2543,7 @@ export function ModelsConfig({
               return (
                 <div
                   key={`${model.provider}/${model.id}`}
+                  className={styles.modelDataRow}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -2529,6 +2591,8 @@ export function ModelsConfig({
                         {testState.phase === "error" ? <ModelErrorText value={testSummary} /> : testSummary}
                       </span>
                     )}
+
+                  </span>
                     <label title={t("models.form.imageHint")} style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 5, color: "var(--text-muted)", fontSize: "var(--text-xs)", cursor: "pointer" }}>
                       <input
                         type="checkbox"
@@ -2539,7 +2603,6 @@ export function ModelsConfig({
                       />
                       {t("models.form.imageSupport")}
                     </label>
-                  </span>
                   <button
                     type="button"
                     data-model-test={testKey}
@@ -2589,8 +2652,12 @@ export function ModelsConfig({
                   </button>
                   <button
                     type="button"
-                    disabled={scopeMutationBusy || modelScope?.projectOverride}
+                    disabled={scopeMutationBusy || (customIndex < 0 && modelScope?.projectOverride)}
                     onClick={async () => {
+                      if (customIndex >= 0) {
+                        if (await requestConfirmation({ title: t("i18n.delete"), message: t("models.deleteModelConfirm", { id: model.id }), confirmLabel: t("i18n.delete"), tone: "danger" })) removeModel(providerId, customIndex);
+                        return;
+                      }
                       if (model.enabled) {
                         if (!await requestConfirmation({ title: t("models.hideModel"), message: t("models.hideModelConfirm", { id: model.name || model.id }), confirmLabel: t("models.hideModel") })) return;
                         void updateModelScope("hide", model);
@@ -2598,8 +2665,8 @@ export function ModelsConfig({
                         void updateModelScope("restore", model);
                       }
                     }}
-                    title={model.enabled ? t("models.hideModel") : t("models.restoreModel")}
-                    aria-label={model.enabled ? t("models.hideModel") : t("models.restoreModel")}
+                    title={customIndex >= 0 ? t("i18n.delete") : model.enabled ? t("models.hideModel") : t("models.restoreModel")}
+                    aria-label={customIndex >= 0 ? t("i18n.delete") : model.enabled ? t("models.hideModel") : t("models.restoreModel")}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -2632,9 +2699,7 @@ export function ModelsConfig({
             {t("models.projectScopeOverride")}
           </div>
         )}
-        <div style={{ fontSize: "var(--text-xs)", lineHeight: 1.5, color: "var(--text-dim)" }}>
-          {t("models.scopeChangeHint")}
-        </div>
+        <details className={styles.modelGuide}><summary>{t("models.ui.usageHelp")}</summary><p>{t("models.scopeChangeHint")}</p></details>
       </div>
     );
   };
@@ -2642,7 +2707,9 @@ export function ModelsConfig({
   // Resolve current detail
   const detailContent = (() => {
     if (!selection) return null;
-    if (selection.type === "vision-agent") return <VisionAgentDetail cwd={cwd} />;
+    if (selection.type === "vision-agent") return <div className={styles.visionPage}><ModelFallbackSetting /><VisionAgentDetail cwd={cwd} /></div>;
+    const selectedProvider = selection.type === "provider" ? selection.name : selection.type === "model" ? selection.providerName : selection.providerId;
+    if (detailTab === "models") return renderManagedModels(selectedProvider);
     if (selection.type === "oauth") {
       const p = oauthProviders.find((p) => p.id === selection.providerId);
       if (!p) return null;
@@ -2704,31 +2771,30 @@ export function ModelsConfig({
     <>
     <div className={embedded ? undefined : "app-shell-dialog-backdrop"} style={{ position: embedded ? "relative" : "fixed", inset: embedded ? undefined : 0, zIndex: embedded ? undefined : 1000, width: "100%", height: "100%", minHeight: 0, background: embedded ? "var(--bg)" : "rgba(0,0,0,0.35)", display: "flex", alignItems: "center", justifyContent: "center" }}
       onClick={(e) => { if (!embedded && e.target === e.currentTarget && modelScopeBusyKey === null && !saving) onClose(); }}>
-      <div ref={dialogRef} className={embedded ? undefined : "app-shell-dialog"} role={embedded ? "region" : "dialog"} aria-modal={embedded ? undefined : true} aria-label={t("common.models")} style={{ width: embedded ? "100%" : isMobile ? "calc(100vw - 16px)" : 860, maxWidth: embedded ? "none" : "calc(100vw - 16px)", height: embedded ? "100%" : isMobile ? "calc(100dvh - 16px)" : "78vh", maxHeight: embedded ? "none" : "calc(100dvh - 16px)", background: "var(--bg)", border: embedded ? "none" : "1px solid var(--border)", borderRadius: embedded ? 0 : 10, display: "flex", flexDirection: "column", boxShadow: embedded ? "none" : "0 8px 32px rgba(0,0,0,0.18)", overflow: "hidden" }}>
+      <div ref={dialogRef} className={`${styles.dialog} ${embedded ? "" : "app-shell-dialog"}`} role={embedded ? "region" : "dialog"} aria-modal={embedded ? undefined : true} aria-label={t("common.models")} style={{ width: embedded ? "100%" : isMobile ? "calc(100vw - 16px)" : 1100, maxWidth: embedded ? "none" : "calc(100vw - 16px)", height: embedded ? "100%" : isMobile ? "calc(100dvh - 16px)" : "88vh", maxHeight: embedded ? "none" : "calc(100dvh - 16px)", background: "var(--bg)", border: embedded ? "none" : "1px solid var(--border)", borderRadius: embedded ? 0 : 14, display: "flex", flexDirection: "column", boxShadow: embedded ? "none" : "0 8px 32px rgba(0,0,0,0.18)", overflow: "hidden" }}>
 
         {/* Header */}
-        <div className="app-shell-dialog-header" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+        <div className={`app-shell-dialog-header ${styles.header}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-             <span style={{ fontSize: "var(--text-md)", fontWeight: 700, color: "var(--text)" }}>{t("common.models")}</span>
-            <code style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>Pi registry · ~/.pi/agent/models.json</code>
+             <span className={styles.heading}><AliIcon name="setting" size={22} />{t("models.ui.title")}</span>
+            <span className={styles.subtitle}>{t("models.form.subtitle")}</span>
           </div>
           {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} title={t("i18n.close")} aria-label={t("i18n.close")} style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, padding: 0 }}><AliIcon name="close" size={16} /></button>}
         </div>
 
-        <ModelFallbackSetting />
-
         {/* Body */}
-        <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", overflow: "hidden" }}>
+        <div inert={saving} aria-busy={saving} style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", overflow: "hidden" }}>
 
           {/* Left: tree */}
-          <div style={{
+          <div className={styles.sidebar} style={{
             width: isMobile ? "100%" : 210,
             maxHeight: isMobile ? "40vh" : undefined,
             borderRight: isMobile ? "none" : "1px solid var(--border)",
             borderBottom: isMobile ? "1px solid var(--border)" : "none",
             display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-panel)",
           }}>
-            <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
+            <div className={styles.sidebarHeading}><span>{t("models.ui.providers")}</span><button className={styles.addChannel} onClick={() => setPickerOpen(true)}><AliIcon name="plus" size={13} />{t("models.ui.addProvider")}</button></div>
+            <div className={styles.tree} style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
               <div
                 onClick={() => setSelection({ type: "vision-agent" })}
                 style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 8px", marginBottom: 6, borderRadius: "var(--radius-control)", cursor: "pointer", background: selection?.type === "vision-agent" ? "var(--bg-selected)" : "none" }}
@@ -2736,7 +2802,7 @@ export function ModelsConfig({
                 onMouseLeave={(event) => { if (selection?.type !== "vision-agent") event.currentTarget.style.background = "none"; }}
               >
                 <AliIcon name="eye" size={16} style={{ color: "var(--accent)" }} />
-                <span style={{ fontSize: "var(--text-sm)", color: "var(--text)", fontWeight: selection?.type === "vision-agent" ? 600 : 400 }}>{t("models.visualAgent")}</span>
+                <span style={{ fontSize: "var(--text-sm)", color: "var(--text)", fontWeight: selection?.type === "vision-agent" ? 600 : 400 }}>{t("models.ui.vision")}</span>
               </div>
               <div style={{ margin: "0 8px 6px", borderTop: "1px solid var(--border)" }} />
               {/* Active API key providers are first so DeepSeek is globally first when configured. */}
@@ -2811,9 +2877,10 @@ export function ModelsConfig({
                 const isProviderSelected = selection?.type === "provider" && selection.name === pName;
                 const models = pData.models ?? [];
                 return (
-                  <div key={pName} style={{ marginBottom: 2 }}>
+                  <div key={pName} className={styles.providerGroup} style={{ marginBottom: 2 }}>
                     {/* Provider row */}
                     <div
+                      className={styles.providerRow} data-selected={isProviderSelected}
                       onClick={() => setSelection({ type: "provider", name: pName })}
                       style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 8px", borderRadius: "var(--radius-control)", cursor: "pointer", background: isProviderSelected ? "var(--bg-selected)" : "none" }}
                       onMouseEnter={(e) => { if (!isProviderSelected) e.currentTarget.style.background = "var(--bg-hover)"; }}
@@ -2858,6 +2925,7 @@ export function ModelsConfig({
                       return (
                         <div
                           key={i}
+                          className={styles.modelTreeRow}
                           onClick={() => setSelection({ type: "model", providerName: pName, index: i })}
                           style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px 5px 26px", borderRadius: "var(--radius-control)", cursor: "pointer", background: isModelSelected ? "var(--bg-selected)" : "none" }}
                           onMouseEnter={(e) => { if (!isModelSelected) e.currentTarget.style.background = "var(--bg-hover)"; }}
@@ -2915,23 +2983,14 @@ export function ModelsConfig({
               })}
             </div>
 
-            {/* Add provider */}
-            <div style={{ borderTop: "1px solid var(--border)", padding: "8px 6px" }}>
-              <button onClick={() => setPickerOpen(true)} style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
-                width: "100%", padding: "6px 0", background: "none", border: "1px dashed var(--border)", borderRadius: "var(--radius-control)",
-                color: "var(--text-muted)", cursor: "pointer", fontSize: "var(--text-sm)",
-              }}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text-muted)"; }}
-              >
-                 + {t("i18n.addProvider")}
-              </button>
-            </div>
+
           </div>
 
           {/* Right: detail */}
-          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+          <div className={styles.detail} style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+            <nav className={styles.tabs} aria-label={t("models.ui.sections")}>
+              {selection?.type !== "vision-agent" ? <><button aria-pressed={detailTab === "connection"} onClick={() => setDetailTab("connection")}><AliIcon name="link" size={17} />{t("models.ui.connection")}</button><button aria-pressed={detailTab === "models"} onClick={() => setDetailTab("models")}><AliIcon name="brain" size={17} />{t("models.ui.models")}</button></> : <button aria-pressed="true">{t("models.ui.vision")}</button>}
+            </nav>
             {loading ? null : detailContent ?? (
               <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-dim)", fontSize: "var(--text-base)" }}>
                  {t("i18n.selectProviderModel")}
@@ -2941,8 +3000,8 @@ export function ModelsConfig({
         </div>
 
         {/* Footer */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "10px 18px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
-          {saveError && <span style={{ fontSize: "var(--text-sm)", color: "#f87171", flex: 1 }}>{<ModelErrorText value={saveError} />}</span>}
+        <div className={styles.footer} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "10px 18px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+          {saveError && <span role="alert" style={{ fontSize: "var(--text-sm)", color: "#f87171", flex: 1 }}>{<ModelErrorText value={saveError} />}</span>}
           {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, fontSize: "var(--text-base)" }}>
              {t("i18n.close")}
           </button>}

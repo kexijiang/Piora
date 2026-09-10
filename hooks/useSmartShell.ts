@@ -24,7 +24,12 @@ export function useSmartShell(cwd: string) {
   const confirmed = useRef(new Set<string>());
   const subscribers = useRef(new Set<(event: ShellEvent) => void>());
   const inventoryRequest = useRef(0);
-  const subscribe = useCallback((listener: (event: ShellEvent) => void) => { subscribers.current.add(listener); return () => { subscribers.current.delete(listener); }; }, []);
+  const subscribe = useCallback((listener: (event: ShellEvent) => void) => {
+    subscribers.current.add(listener);
+    const snapshot = current.current;
+    if (snapshot?.session.id === active.current) listener({ type: "snapshot", snapshot, terminalId: snapshot.session.id, generation: snapshot.session.generation, sequence: snapshot.sequence });
+    return () => { subscribers.current.delete(listener); };
+  }, []);
   const refreshSessions = useCallback(async () => {
     const request = ++inventoryRequest.current;
     const result = await shellRequest<{ sessions: ShellSession[] }>(`sessions?cwd=${encodeURIComponent(cwd)}`);
@@ -82,19 +87,30 @@ export function useSmartShell(cwd: string) {
       }
       for (const listener of subscribers.current) listener(event);
     };
-    const events = new EventSource(`/api/shell/sessions/${encodeURIComponent(activeId)}/events`);
-    events.onmessage = event => { if (disposed) return; try { publish(JSON.parse(event.data)); sseConnected = true; setConnected(true); } catch { /* Ignore invalid transport frames. */ } };
-    events.onerror = () => { if (!disposed) { sseConnected = false; setConnected(false); } };
+    let events: EventSource | undefined;
+    const publishSnapshot = (next: ShellSnapshot) => {
+      publish({ type: "snapshot", snapshot: next, terminalId: activeId, generation: next.session.generation, sequence: next.sequence });
+      if (!disposed) setConnected(true);
+    };
     const reconcile = async () => {
       if (document.hidden || reconciling || disposed) return;
       reconciling = true;
       try {
         const next = await shellRequest<ShellSnapshot>(`sessions/${activeId}`, undefined, { signal: controller.signal });
-        publish({ type: "snapshot", snapshot: next, terminalId: activeId, generation: next.session.generation, sequence: next.sequence });
+        publishSnapshot(next);
       } catch (cause) { if (!disposed) setError(String(cause)); }
       finally { reconciling = false; }
     };
-    void shellRequest(`sessions/${activeId}/actions`, { action: "start" }, { signal: controller.signal }).catch(cause => { if (!disposed) setError(String(cause)); });
+    // Finish the short startup request before reserving a long-lived HTTP/1
+    // connection. Its snapshot also makes the terminal usable if SSE stalls.
+    void (async () => {
+      const next = await shellRequest<ShellSnapshot>(`sessions/${activeId}/actions`, { action: "start" }, { signal: controller.signal });
+      if (disposed) return;
+      publishSnapshot(next);
+      events = new EventSource(`/api/shell/sessions/${encodeURIComponent(activeId)}/events`);
+      events.onmessage = event => { if (disposed) return; try { publish(JSON.parse(event.data)); sseConnected = true; setConnected(true); } catch { /* Ignore invalid transport frames. */ } };
+      events.onerror = () => { if (!disposed) { sseConnected = false; setConnected(false); } };
+    })().catch(cause => { if (!disposed) setError(String(cause)); });
     void pendingShellSubmissions(activeId).then(items => { if (!disposed) setPending(items); }).catch(cause => { if (!disposed) setError(String(cause)); });
     const refresh = () => {
       if (document.hidden || disposed) return;
@@ -110,7 +126,7 @@ export function useSmartShell(cwd: string) {
     const resume = () => { lastInventory = 0; void reconcile(); refresh(); };
     const timer = setInterval(refresh, 2500);
     window.addEventListener("online", resume); document.addEventListener("visibilitychange", resume);
-    return () => { disposed = true; controller.abort(); events.close(); clearInterval(timer); window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume); };
+    return () => { disposed = true; controller.abort(); events?.close(); clearInterval(timer); window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume); };
   }, [activeId, cwd, refreshSessions]);
   const action = useCallback(async (body: object) => {
     if (!activeId) return;

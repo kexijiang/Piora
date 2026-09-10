@@ -1,4 +1,4 @@
-.station { min-height: 100%; display: flex; flex-direction: column; gap: 18px; color: var(--text); font-size: var(--text-xs); }
+.station { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 18px; color: var(--text); font-size: var(--text-xs); }
 .heading, .headingActions, .documentHeader, .documentActions, .editorToolbar, .documentStatus { display: flex; align-items: center; gap: 8px; }
 .heading { justify-content: space-between; flex-wrap: wrap; }
 .heading h1 { margin: 0; font-size: calc(var(--text-xl) * 1.1); font-weight: 600; letter-spacing: -.5px; }
@@ -16,7 +16,7 @@
 .fileSidebarHeader > :first-child, .folderActions > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fileSidebar .search { flex: 0 0 auto; padding: 9px 12px; border-block: 1px solid var(--border); }
 .folderForm input { min-width: 0; width: 100%; padding: 6px !important; font: inherit; }
-.fileTree { flex: 1; min-height: 100px; max-height: 65dvh; overflow: auto; padding-block: 6px; }
+.fileTree { flex: 1; min-height: 100px; overflow: auto; padding-block: 6px; }
 .station .treeItem { display: flex; width: 100%; justify-content: flex-start; text-align: left; border-radius: 0; min-height: 32px; padding-block: 6px; padding-right: 10px; }
 .treeItem > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .treeItem > svg { flex-shrink: 0; }
@@ -65,6 +65,7 @@
 .imageDocument a { color: var(--text-muted); }
 .largeImage { height: 45dvh; margin: 16px 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .workspaceFrame { position: relative; flex: 0 0 auto; max-width: 100%; min-height: 360px; margin-inline: auto; }
+.workspaceFrame[data-auto-height="true"] { flex: 1 0 360px; }
 .workspaceFrame .workspace { width: 100%; height: 100%; min-height: 0; flex: none; }
 .workspaceGrip { position: absolute; z-index: 4; touch-action: none; user-select: none; display: flex; align-items: center; justify-content: center; outline: none; border-radius: 5px; }
 .workspaceGrip[data-edge="left"], .workspaceGrip[data-edge="right"] { width: 12px; top: 16px; bottom: 16px; cursor: ew-resize; }

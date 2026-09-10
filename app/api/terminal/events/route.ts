@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   try {
     if (!isApiRequestAllowed(request)) throw new ShellError("Untrusted API request", 403);
     const terminal = await getLegacyTerminal(new URL(request.url).searchParams.get("cwd"));
-    await terminal.start();
+    await terminal.connect();
     let unsubscribe = () => {};
     let heartbeat: NodeJS.Timeout | null = null;
     let closed = false;

@@ -12,6 +12,8 @@ function sha256(contents) {
 
 module.exports = async function prepareDesktopBuild(context) {
   const projectRoot = resolve(context.appDir, "..");
+  const { prepareBuildReleaseNotes } = await import("./create-release-notes.mjs");
+  await prepareBuildReleaseNotes(projectRoot);
   const targetPlatform = context.electronPlatformName ?? process.platform;
   if (targetPlatform !== "win32") return true;
   const customTemplatePath = join(projectRoot, "desktop", "build", "portable-cache.nsi");

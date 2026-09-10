@@ -14,6 +14,8 @@ export interface ChatDraft {
   value: string;
   images: ChatDraftImage[];
   files: ChatDraftFile[];
+  /** Failed submissions represented by this restored draft, not same-text sends. */
+  retryOfPromptIds?: string[];
 }
 
 const drafts = new Map<string, ChatDraft>();
@@ -28,6 +30,7 @@ function cloneDraft(draft: ChatDraft): ChatDraft {
     value: draft.value,
     images: draft.images.map((image) => ({ ...image })),
     files: draft.files.map((file) => ({ ...file })),
+    ...(draft.retryOfPromptIds?.length ? { retryOfPromptIds: [...draft.retryOfPromptIds] } : {}),
   };
 }
 

@@ -206,7 +206,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
         return data.content;
       });
       if (retrySession.current !== id) return;
-      await handleComposerSend(payload.message, payload.images, payload.files);
+      await handleComposerSend(payload.message, payload.images, payload.files, undefined, payload.retryOfPromptIds);
     } finally { retryInFlight.current = false; setPreparingRetry(false); }
   }, [sessionBusy, session?.id, handleComposerSend, t]);
 

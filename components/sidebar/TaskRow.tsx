@@ -379,11 +379,11 @@ export const TaskRow = memo(function TaskRow({
             </button>
           ) : null}
 
-          {/* Action buttons stay absolutely positioned so hover never reflows the row. */}
+          {/* Keep hover actions clear of the branch toggle without reflowing the row. */}
           <div
             aria-hidden={!hovered}
             style={{
-              position: "absolute", right: 4, top: 0, height: itemHeight, zIndex: 2,
+              position: "absolute", right: hasChildren ? 30 : 4, top: 0, height: itemHeight, zIndex: 2,
               display: "flex", alignItems: "center", gap: 4, paddingLeft: 14,
               opacity: hovered ? 1 : 0, visibility: hovered ? "visible" : "hidden",
               pointerEvents: hovered ? "auto" : "none",

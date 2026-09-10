@@ -11,6 +11,15 @@ Lint: `npm run lint`
 **Never run `next build` during dev** — pollutes `.next/` and breaks `npm run dev`.
 **Never build release packages locally** — push the release commit and tag, and let GitHub Actions build, verify, and publish all beta/stable artifacts.
 
+## 提交与发布规范（长期执行）
+
+- 每次提交前梳理本次全部修改，同步更新 `CHANGELOG.md`：未发布工作写入 `Unreleased`，发布时归入带日期的准确版本。使用清楚的中文说明用户可感知的变化；纯工程改动也应说明用途。
+- 提交标题与正文写清实际改动、修复的问题及验证结果，不使用只有“修复一些问题”“优化体验”的笼统描述。未完成的安装或实机验证不得写成通过。
+- 每次 beta/stable 发布同步根与桌面包版本、锁文件、README 版本说明及许可证清单，使用未占用的新标签；不得移动已发布标签。
+- `CHANGELOG.md` 对应版本是唯一更新说明来源。GitHub Release 正文及更新元数据（`beta.yml` / `latest.yml`）必须包含同一份说明，使用户在应用“本次更新”界面能看到具体更新点。
+- 打包前由 `electron-before-build.cjs` 生成说明，发布前验证更新元数据中的说明完整且与目标版本一致；缺失或不一致时必须修复，不能绕过检查发布。
+- 发布包只在 GitHub Actions 构建。推送后确认仓库、标签、提交与工作流一致，明确报告“已触发”“构建中”“失败”或“已发布”，不能把推送标签当成发布完成。
+
 ---
 
 ## Architecture

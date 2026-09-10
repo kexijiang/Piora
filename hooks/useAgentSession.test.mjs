@@ -55,6 +55,15 @@ test("actual send callback never starts the network when its durable recovery co
   assert.equal(env.messages[0].sendError, "quota exceeded");
 });
 
+test("retry lineage is durable before the replacement prompt is admitted", async () => {
+  let acknowledged;
+  const { env, run } = sendHarness();
+  assert.equal(await run("retry contents", undefined, undefined, id => { acknowledged = id; }, ["failed-send"]), true);
+  assert.equal(acknowledged, env.saved.id);
+  assert.deepEqual(env.saved.draft.retryOfPromptIds, ["failed-send"]);
+  assert.notEqual(env.saved.id, "failed-send", "a retry remains a new idempotent send");
+});
+
 test("composer acknowledgement follows durable storage but precedes slow network setup", async () => {
   let commit, connect;
   let durable = false;
@@ -109,6 +118,52 @@ test("cancels stale session loads when switching tasks", () => {
   assert.match(loadSource, /signal: controller\.signal/);
   assert.match(loadSource, /if \(controller\.signal\.aborted\) return null/);
   assert.match(loadSource, /throw await sessionResponseError\(res\)/);
+});
+
+function sessionLoadHarness(overrides = {}) {
+  const load = source.slice(source.indexOf("  const loadSession = useCallback"), source.indexOf("  const loadContext = useCallback"));
+  const env = {
+    useCallback: callback => callback, AbortController, URLSearchParams,
+    sessionLoadAbortRef: { current: null }, sessionIdRef: { current: "session" }, promptRunIdRef: { current: 0 },
+    translateRef: { current: key => key }, invalidatePrefetchedSession() {},
+    setTimeout: callback => { env.expire = callback; return 1; }, clearTimeout() {},
+    readPendingPrompts: async () => [], mergePendingPrompts: messages => ({ messages, entryIds: [], confirmedIds: [] }),
+    confirmPendingPrompts: async () => {}, selectionFromSystemPromptBinding: () => null, systemPromptSelectionRef: { current: null },
+  };
+  for (const name of new Set(load.match(/\bset[A-Z]\w+(?=\()/g))) {
+    if (!(name in env)) env[name] = value => { env[name + "Value"] = value; };
+  }
+  Object.assign(env, overrides);
+  const js = ts.transpileModule(load, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const run = new Function("env", `with(env) { ${js}; return loadSession; }`)(env);
+  return { env, run };
+}
+
+test("a stalled prefetch or recovery read releases session loading and reports a retryable timeout", async () => {
+  const payload = { context: { messages: [], entryIds: [] }, leafId: null };
+  for (const phase of ["prefetch", "recovery"]) {
+    const never = new Promise(() => {});
+    const { env, run } = sessionLoadHarness(phase === "recovery" ? { readPendingPrompts: () => never } : {});
+    const pending = run("session", true, false, phase === "prefetch" ? never : Promise.resolve(payload));
+    await Promise.resolve();
+    env.expire();
+    assert.equal(await pending, null);
+    assert.equal(env.setLoadingValue, false);
+    assert.equal(env.setErrorValue, "chat.loadSessionTimeout");
+    assert.equal(env.sessionLoadAbortRef.current, null);
+  }
+});
+
+test("a silent replacement load clears an initial spinner without showing a cancelled load error", async () => {
+  const { env, run } = sessionLoadHarness();
+  let release;
+  const initial = run("session", true, false, new Promise(resolve => { release = resolve; }));
+  const replacement = run("session", false, false, Promise.resolve({ context: { messages: [], entryIds: [] }, leafId: null }));
+  await replacement;
+  release(null);
+  await Promise.all([initial, replacement]);
+  assert.equal(env.setLoadingValue, false);
+  assert.equal(env.setErrorValue, null);
 });
 
 test("settles the local stream as soon as the server accepts an abort", () => {

@@ -133,7 +133,7 @@ export async function handleShellRequest(request: Request, parts: string[]): Pro
       }
       if (parts[2] === "actions") {
         switch (data.action) {
-          case "start": await session.start(); break;
+          case "start": await session.connect(); break;
           case "submit": {
             const text = shellText(data.text, "input", 32000);
             const mode = data.mode === "command" || data.mode === "agent" ? data.mode : "auto" as ShellInputMode;
@@ -159,7 +159,7 @@ export async function handleShellRequest(request: Request, parts: string[]): Pro
               const { controlShellAgent } = await import("./agent");
               await controlShellAgent(session, "cancel");
             }
-            await session.stop(); await session.start(); break;
+            await session.stop(); await session.connect(); break;
           case "cancel": case "takeover": case "approve": case "reject": case "answer": {
             const { controlShellAgent } = await import("./agent");
             await controlShellAgent(session, data.action, typeof data.id === "string" ? data.id : undefined, typeof data.answer === "string" ? data.answer : undefined);

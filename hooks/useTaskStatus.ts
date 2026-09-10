@@ -22,7 +22,7 @@ const snapshotSignatures = new Map<string, string>();
 const sessionListeners = new Map<string, Set<() => void>>();
 const storeListeners = new Set<() => void>();
 let runtimeStoreState: { ready: boolean; snapshots: TaskRuntimeSnapshot[] } = { ready: false, snapshots: [] };
-let eventSource: EventSource | null = null;
+let pollController: AbortController | null = null;
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let visibilityBound = false;
 
@@ -87,63 +87,66 @@ function applyPayload(payload: Partial<RunningSessionsPayload>): void {
 }
 
 async function pollSnapshot(): Promise<void> {
-  if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+  if (pollController || listenerCount() === 0 || document.visibilityState !== "visible") return;
+  const controller = new AbortController();
+  pollController = controller;
+  const timeout = setTimeout(() => controller.abort(), 10_000);
   try {
-    const response = await fetch("/api/agent/running", { cache: "no-store" });
-    if (response.ok) applyPayload(await response.json() as RunningSessionsPayload);
+    const response = await fetch("/api/agent/running", { cache: "no-store", signal: controller.signal });
+    if (response.ok) {
+      const payload = await response.json() as RunningSessionsPayload;
+      if (!controller.signal.aborted) applyPayload(payload);
+    }
   } catch {
-    // SSE reconnect and the next fallback poll both retry automatically.
+    // The next visible poll retries transient failures.
+  } finally {
+    clearTimeout(timeout);
+    if (pollController === controller) {
+      pollController = null;
+      schedulePoll();
+    }
   }
 }
 
-function scheduleFallbackPoll(): void {
-  if (pollTimer !== null || listenerCount() === 0) return;
+function schedulePoll(): void {
+  if (pollTimer !== null || listenerCount() === 0 || document.visibilityState !== "visible") return;
   pollTimer = setTimeout(() => {
     pollTimer = null;
-    void pollSnapshot().finally(() => {
-      if (eventSource?.readyState !== EventSource.OPEN) scheduleFallbackPoll();
-    });
+    void pollSnapshot();
   }, 2_500);
 }
 
-function stopFallbackPoll(): void {
+function stopPolling(): void {
   if (pollTimer !== null) clearTimeout(pollTimer);
   pollTimer = null;
+  pollController?.abort();
+  pollController = null;
 }
 
 function connect(): void {
-  if (typeof window === "undefined" || eventSource || listenerCount() === 0) return;
-  void pollSnapshot();
-  eventSource = new EventSource("/api/agent/running/events");
-  eventSource.onopen = stopFallbackPoll;
-  eventSource.onmessage = (message) => {
-    try {
-      const payload = JSON.parse(message.data) as { type?: string } & RunningSessionsPayload;
-      if (!payload.type || payload.type === "running") applyPayload(payload);
-    } catch {
-      // Ignore malformed frames while keeping the stream alive.
-    }
-  };
-  eventSource.onerror = scheduleFallbackPoll;
-
+  if (typeof window === "undefined" || listenerCount() === 0) return;
+  // Reserve persistent HTTP/1 connections for actual chat/shell output. Each
+  // desktop window otherwise holds a status SSE slot even while idle.
   if (!visibilityBound) {
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", handleVisibilityChange);
     visibilityBound = true;
+    void pollSnapshot();
   }
 }
 
 function disconnect(): void {
   if (listenerCount() > 0) return;
-  eventSource?.close();
-  eventSource = null;
-  stopFallbackPoll();
+  stopPolling();
   if (visibilityBound) {
     document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("online", handleVisibilityChange);
     visibilityBound = false;
   }
 }
 
 function handleVisibilityChange(): void {
+  stopPolling();
   if (document.visibilityState === "visible") void pollSnapshot();
 }
 

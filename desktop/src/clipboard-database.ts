@@ -478,7 +478,7 @@ export class ClipboardDatabase {
       } catch (cause) { this.warnings.push(`旧记录 ${index + 1} 未导入：${cause instanceof Error ? cause.message : "格式错误"}`); }
     }
     this.transaction(() => {
-      if (!this.meta("settings")) this.setMeta("settings", JSON.stringify({ ...DEFAULT_CLIPBOARD_SETTINGS, enabled: data.enabled === true }));
+      if (!this.meta("settings")) this.setMeta("settings", JSON.stringify({ ...DEFAULT_CLIPBOARD_SETTINGS, enabled: data.enabled !== false }));
       this.setMeta("migration-warnings", JSON.stringify(this.warnings)); this.setMeta("legacy-migrated", "1");
     });
   }

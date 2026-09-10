@@ -2,10 +2,12 @@ import type { UserMessage } from "./types";
 import { getMessageImageSource, type VisionRetryPayload } from "./message-images";
 
 /** Restore deferred text before resending, and keep both Pi and UI image formats. */
-export async function prepareMessageRetry(message: UserMessage, loadText: () => Promise<string>): Promise<VisionRetryPayload & { files?: import("./draft-store").ChatDraftFile[] }> {
+export async function prepareMessageRetry(message: UserMessage, loadText: () => Promise<string>): Promise<VisionRetryPayload & { files?: import("./draft-store").ChatDraftFile[]; retryOfPromptIds?: string[] }> {
   if (message.recoveryDraft) {
     const draft = message.recoveryDraft;
-    return { message: draft.value, files: draft.files, images: draft.images.map((image) => ({ ...image, previewUrl: `data:${image.mimeType};base64,${image.data}` })) };
+    return { message: draft.value, files: draft.files, images: draft.images.map((image) => ({ ...image, previewUrl: `data:${image.mimeType};base64,${image.data}` })),
+      ...(message.sendError && message.clientPromptId ? { retryOfPromptIds: [...new Set([message.clientPromptId, ...(draft.retryOfPromptIds ?? [])])] } : {}),
+    };
   }
   const blocks = Array.isArray(message.content) ? message.content : [];
   const text = message.deferredContent ? await loadText() : typeof message.content === "string" ? message.content

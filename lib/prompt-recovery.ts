@@ -25,7 +25,22 @@ export async function savePendingPrompt(record: PendingPrompt): Promise<void> {
   const db = await openDatabase();
   await new Promise<void>((resolve, reject) => {
     const transaction = db.transaction("prompts", "readwrite", { durability: "strict" });
-    transaction.objectStore("prompts").put(record);
+    const store = transaction.objectStore("prompts");
+    // When a new-chat draft acquires a session id, move its linked recovery
+    // copies with it so one disk receipt can settle the whole retry chain.
+    const previous = store.get(record.id);
+    previous.onsuccess = () => {
+      const oldScope = (previous.result as PendingPrompt | undefined)?.scope;
+      if (!oldScope || oldScope === record.scope) return;
+      for (const id of record.draft.retryOfPromptIds ?? []) {
+        const ancestor = store.get(id);
+        ancestor.onsuccess = () => {
+          const saved = ancestor.result as PendingPrompt | undefined;
+          if (saved?.scope === oldScope) store.put({ ...saved, scope: record.scope });
+        };
+      }
+    };
+    store.put(record);
     transaction.oncomplete = () => resolve();
     transaction.onabort = () => reject(transaction.error ?? new Error("无法保存发送恢复副本，输入内容未清除。"));
     transaction.onerror = () => reject(transaction.error);
@@ -56,6 +71,16 @@ export async function confirmPendingPrompts(ids: string[]): Promise<void> {
 export function mergePendingPrompts(messages: AgentMessage[], entryIds: string[], pending: PendingPrompt[], persistedIds: string[] = []) {
   const displayed = new Set(messages.flatMap((message) => message.role === "user" && message.clientPromptId ? [message.clientPromptId] : []));
   const confirmed = new Set(persistedIds);
+  const byId = new Map(pending.map(record => [record.id, record]));
+  const receipts = [...confirmed];
+  while (receipts.length) {
+    const record = byId.get(receipts.pop()!);
+    for (const id of record?.draft.retryOfPromptIds ?? []) {
+      if (confirmed.has(id)) continue;
+      confirmed.add(id);
+      receipts.push(id);
+    }
+  }
   const missing = pending.filter((record) => !displayed.has(record.id) && !confirmed.has(record.id)).sort((a, b) => (a.message.timestamp ?? 0) - (b.message.timestamp ?? 0));
   return {
     messages: [...messages, ...missing.map((record) => ({ ...record.message, clientPromptId: record.id, recoveryDraft: record.draft, sendError: "发送未完成确认，原文和附件已保留，可重新发送。" }))] as AgentMessage[],

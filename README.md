@@ -20,7 +20,7 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 
 项目由 [pi-web](https://github.com/agegr/pi-web) 演进而来，沿用 Pi 的 AgentSession、JSONL 会话、模型接入和扩展机制，由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-本文对应源码版本 `0.4.41-beta.9`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
+本文对应源码版本 `0.4.41-beta.26`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
 ## 能做什么
 
@@ -188,7 +188,7 @@ npm run verify:backgrounds
 
 ## 桌面打包与发布
 
-构建必须在独立、干净的 checkout 或 CI 中完成。Beta 使用 `vX.Y.Z-beta.N` 标签触发 `.github/workflows/harmony-preview.yml`，生成 Windows x64 安装版、便携版、更新元数据和校验文件。稳定版使用 `vX.Y.Z` 标签，另生成 Linux x64 AppImage。
+发布安装包统一由 GitHub Actions 构建，不在本地打包。Beta 使用 `vX.Y.Z-beta.N` 标签触发 `.github/workflows/harmony-preview.yml`，生成 Windows x64 安装版、便携版、更新元数据和校验文件。稳定版使用 `vX.Y.Z` 标签，另生成 Linux x64 AppImage。
 
 版本发布前需要同步 `package.json`、`desktop/package.json`、`package-lock.json`、`CHANGELOG.md` 和本文版本说明。请遵循 [完整发布流程](docs/release.md)，不要移动已经发布的标签，也不要手工上传绕过验证的安装包。
 

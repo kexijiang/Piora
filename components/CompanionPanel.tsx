@@ -112,9 +112,8 @@ function parseModelValue(value: string): CompanionInteractionModel | null {
 export function CompanionPanel() {
   const [tab, setTab] = useState<Tab>("home");
   const [jsonOpened, setJsonOpened] = useState(false);
-  const [libraryOpened, setLibraryOpened] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const navigate = useCallback((next: Tab) => { setTab(next); if (next === "json") setJsonOpened(true); if (next === "library") setLibraryOpened(true); }, []);
+  const navigate = useCallback((next: Tab) => { setTab(next); if (next === "json") setJsonOpened(true); }, []);
   useEffect(() => window.piDesktop?.onMenuAction?.((action) => { if (action === "clipboard-history") navigate("clipboard"); }), [navigate]);
   useEffect(() => { if (new URLSearchParams(window.location.search).get("tool") === "clipboard") navigate("clipboard"); }, [navigate]);
   const [state, setState] = useState<CompanionRuntimeState>(emptyRuntimeState);
@@ -149,7 +148,7 @@ export function CompanionPanel() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [navigate]);
-  const transfer = useTransferStation(jsonOpened || libraryOpened || tab === "clipboard");
+  const transfer = useTransferStation(true);
 
   const applyState = useCallback((next: CompanionRuntimeState) => {
     if (next.updatedAt < stateRef.current.updatedAt) return false;
@@ -465,8 +464,8 @@ export function CompanionPanel() {
           </article>
         </> : null}
 
-        {libraryOpened ? <div className={styles.libraryPane} hidden={tab !== "library"}><CompanionTransferStation {...transfer} /></div> : null}
-        {tab === "clipboard" ? <ClipboardWorkbench onSave={async (entry) => { await transfer.write("POST", { title: entry.title, content: entry.content, ...(entry.kind === "image" ? { kind: "image" } : { language: "markdown" }) }); }} /> : null}
+        <div className={styles.libraryPane} hidden={tab !== "library"}><CompanionTransferStation {...transfer} /></div>
+        <div hidden={tab !== "clipboard"} inert={tab !== "clipboard"}><ClipboardWorkbench visible={tab === "clipboard"} onSave={async (entry) => { await transfer.write("POST", { title: entry.title, content: entry.content, ...(entry.kind === "image" ? { kind: "image" } : { language: "markdown" }) }); }} /></div>
 
         {tab === "memory" ? <>
           <div className={styles.pageHeading}><div><h1>记忆</h1><p>让陪伴更懂你一点。</p></div></div>

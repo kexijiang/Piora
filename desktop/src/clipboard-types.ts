@@ -83,7 +83,7 @@ export interface ClipboardBridge {
   asset: (id: string, thumbnail?: boolean) => Promise<string>;
 }
 export const DEFAULT_CLIPBOARD_SETTINGS: ClipboardSettings = {
-  enabled: false, captureText: true, captureImages: true, captureFiles: true,
+  enabled: true, captureText: true, captureImages: true, captureFiles: true,
   excludedApps: [], budgetBytes: 1024 ** 3,
 };
 export const CLIPBOARD_TEXT_LIMIT = 2 * 1024 ** 2;

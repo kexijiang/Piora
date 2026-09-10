@@ -28,6 +28,7 @@
 /desktop/node_modules/
 /desktop/build/whisper/
 /desktop/build/whisper-downloads/
+/desktop/build/release-notes.md
 
 # electron download cache
 .electron-cache/

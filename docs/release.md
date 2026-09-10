@@ -47,9 +47,17 @@ node scripts/create-release-notes.mjs v0.4.41-beta.8 .verification/release-notes
 
 Replace the example version with the actual candidate. Generated notes come from the matching CHANGELOG section; do not claim unperformed device or installation checks passed.
 
-## Isolated local packaging
+## 每次提交与发布的更新说明
 
-Never run `next build` or scripts containing it in an active development worktree. Use a separate clean checkout/worktree or let CI build the tagged commit.
+每次提交都必须在 `CHANGELOG.md` 记录实际更新点：平时写入 `Unreleased`，发布前整理到带日期的目标版本中。使用明确的中文描述问题和改进后的行为，提交正文同时记录相关验证结果；不要仅写“修复若干问题”或将尚未执行的安装验证写成通过。
+
+GitHub Release 与应用更新窗口共用该版本的说明。`electron-before-build.cjs` 调用 `prepareBuildReleaseNotes()` 生成 `desktop/build/release-notes.md`，electron-builder 的 `releaseInfo.releaseNotesFile` 将内容写入更新 YAML；生成文件不提交到 Git。Beta 更新器使用 generic feed，不能只依赖 GitHub Release 正文。
+
+`verify-windows-update-artifacts.mjs` 必须验证更新 YAML 的 `releaseNotes` 非空并与目标 CHANGELOG 版本完全一致。不得为了完成发布而跳过更新说明检查。此规范适用于之后所有提交和 beta/stable 发布。
+
+## GitHub Actions packaging
+
+Never build release packages locally, including in a separate worktree. Push the reviewed commit and tag; GitHub Actions alone builds, verifies and publishes artifacts. The commands below describe CI steps, not local release instructions.
 
 ```powershell
 npm ci

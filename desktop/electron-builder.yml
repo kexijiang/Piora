@@ -11,6 +11,8 @@ asarUnpack:
 compression: normal
 afterPack: ../scripts/electron-after-pack-licenses.cjs
 beforeBuild: ../scripts/electron-before-build.cjs
+releaseInfo:
+  releaseNotesFile: release-notes.md
 
 directories:
   buildResources: build

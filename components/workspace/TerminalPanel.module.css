@@ -19,8 +19,9 @@
 .count { border-radius: 4px; padding: 0 5px; font-size: calc(var(--ui-font-size) * 10 / 14); background: #ffffff08; }
 .count[data-running="true"] { background: #80d4c41a; color: #80d4c4; }
 .body { flex: 1; min-height: 0; display: flex; }
-.surface { padding: 13px 8px 8px 16px; min-width: 0; min-height: 0; width: 100%; height: 100%; overflow: hidden; }
-.surface :global(.xterm) { height: 100%; }
+.surface { min-width: 0; min-height: 0; width: 100%; height: 100%; overflow: hidden; }
+/* FitAddon subtracts padding on .xterm, not padding on its parent. */
+.surface :global(.xterm) { height: 100%; padding: 13px 8px 8px 16px; }
 .surface :global(.xterm-viewport) { background-color: transparent !important; }
 .find { display: flex; align-items: center; gap: 8px; margin: 8px 12px 0; padding: 3px 8px; border: 1px solid #ffffff18; background: #171d25; border-radius: var(--radius-control); }
 .find input { min-width: 0; flex: 1; background: none; border: 0; color: inherit; outline: none; font: inherit; }

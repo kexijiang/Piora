@@ -5,7 +5,7 @@ import { ClipboardWorkspace } from "./clipboard/ClipboardWorkspace";
 
 export interface ClipboardTransferEntry { title: string; content: string; kind: "text" | "image" }
 
-export function ClipboardWorkbench({ onSave }: { onSave: (entry: ClipboardTransferEntry) => Promise<void> }) {
+export function ClipboardWorkbench({ onSave, visible = true }: { onSave: (entry: ClipboardTransferEntry) => Promise<void>; visible?: boolean }) {
   const { tr } = useClipboardI18n();
   const save = async (entry: ClipboardDetail) => {
     if (entry.kind === "image") {
@@ -24,5 +24,5 @@ export function ClipboardWorkbench({ onSave }: { onSave: (entry: ClipboardTransf
       await onSave({ title: entry.remark || entry.title, content, kind: "text" });
     }
   };
-  return <ClipboardWorkspace onSave={save} />;
+  return <ClipboardWorkspace onSave={save} visible={visible} copyOnClick />;
 }

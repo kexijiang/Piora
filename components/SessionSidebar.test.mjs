@@ -37,11 +37,12 @@ test("does not register row-level session deletion shortcuts", () => {
   assert.doesNotMatch(sessionItemSource, /tabIndex=\{0\}/);
 });
 
-test("streams running sessions and polls only as an SSE fallback", () => {
+test("shares bounded visible status polling without reserving an idle SSE connection", () => {
   assert.doesNotMatch(source, /fetch\("\/api\/agent\/running"/);
-  assert.match(taskStatusSource, /new EventSource\("\/api\/agent\/running\/events"\)/);
-  assert.match(taskStatusSource, /eventSource\.onerror = scheduleFallbackPoll/);
-  assert.match(taskStatusSource, /eventSource\.onopen = stopFallbackPoll/);
+  assert.doesNotMatch(taskStatusSource, /new EventSource/);
+  assert.match(taskStatusSource, /fetch\("\/api\/agent\/running", \{ cache: "no-store", signal: controller.signal \}\)/);
+  assert.match(taskStatusSource, /pollController \|\| listenerCount\(\) === 0/);
+  assert.match(taskStatusSource, /controller\.abort\(\), 10_000/);
   assert.match(taskStatusSource, /document\.visibilityState !== "visible"/);
   assert.match(taskStatusSource, /document\.addEventListener\("visibilitychange", handleVisibilityChange\)/);
 });

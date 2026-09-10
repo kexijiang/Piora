@@ -105,7 +105,7 @@ interface PromptOptimizationState {
 }
 
 interface Props {
-  onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[], onDurable?: () => void) => boolean | void | Promise<boolean | void>;
+  onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[], onDurable?: (clientPromptId?: string) => void, retryOfPromptIds?: string[]) => boolean | void | Promise<boolean | void>;
   onAbort: () => void;
   onSteer?: (message: string, images?: AttachedImage[]) => void;
   onFollowUp?: (message: string, images?: AttachedImage[]) => void;
@@ -399,6 +399,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const fileIndexMetaRef = useRef<{ cwd: string; fetchedAt: number } | null>(null);
   const fileIndexFetchingRef = useRef<string | null>(null);
   const draftKeyRef = useRef(draftKey);
+  const retryOfPromptIdsRef = useRef<string[]>(draftKey ? getDraft(draftKey)?.retryOfPromptIds ?? [] : []);
   const valueRef = useRef(value);
   const attachedImagesRef = useRef(attachedImages);
   const pendingImageCountRef = useRef(0);
@@ -647,6 +648,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   }, []);
 
   const clearInput = useCallback(() => {
+    retryOfPromptIdsRef.current = [];
     stopVoiceInput(true);
     setValue("");
     setAtQuery(null);
@@ -665,10 +667,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   useEffect(() => {
     if (!draftKey || draftKeyRef.current !== draftKey) return;
+    if (!value && !attachedImages.length && !attachedFiles.length) retryOfPromptIdsRef.current = [];
     setDraft(draftKey, {
       value,
       images: attachedImages.map(imageToDraftImage),
       files: attachedFiles.map(attachedFileToDraftFile),
+      ...(retryOfPromptIdsRef.current.length ? { retryOfPromptIds: [...retryOfPromptIdsRef.current] } : {}),
     });
   }, [attachedFiles, attachedImages, draftKey, value]);
 
@@ -683,11 +687,13 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         value: valueRef.current,
         images: attachedImagesRef.current.map(imageToDraftImage),
         files: attachedFilesRef.current.map(attachedFileToDraftFile),
+        ...(retryOfPromptIdsRef.current.length ? { retryOfPromptIds: [...retryOfPromptIdsRef.current] } : {}),
       });
     }
 
     const draft = draftKey ? getDraft(draftKey) : null;
     draftKeyRef.current = draftKey;
+    retryOfPromptIdsRef.current = draft?.retryOfPromptIds ?? [];
     promptOptimizerAbortRef.current?.abort();
     promptOptimizerAbortRef.current = null;
     setPromptOptimization(null);
@@ -752,8 +758,11 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const sentImages = attachedImages;
     const sentFiles = attachedFiles;
     const sentDraftKey = draftKeyRef.current;
+    const sentRetryOfPromptIds = [...retryOfPromptIdsRef.current];
+    let submittedPromptId: string | undefined;
     let cleared = false;
-    const clearSubmittedDraft = () => {
+    const clearSubmittedDraft = (clientPromptId?: string) => {
+      submittedPromptId ??= clientPromptId;
       if (cleared || draftKeyRef.current !== sentDraftKey || valueRef.current !== sentValue || attachedImagesRef.current !== sentImages || attachedFilesRef.current !== sentFiles) return;
       cleared = true;
       clearInput();
@@ -763,6 +772,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     };
     const restoreSubmittedDraft = () => {
       if (!cleared || draftKeyRef.current !== sentDraftKey || valueRef.current || attachedImagesRef.current.length || attachedFilesRef.current.length) return;
+      retryOfPromptIdsRef.current = [...new Set([...(submittedPromptId ? [submittedPromptId] : []), ...sentRetryOfPromptIds])];
       setValue(sentValue);
       setAttachedFiles(sentFiles);
       setAttachedImages(draftImagesToAttachedImages(sentImages.map(imageToDraftImage)));
@@ -773,6 +783,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       attachedImages.length ? attachedImages : undefined,
       filesToSend.length ? filesToSend : undefined,
       clearSubmittedDraft,
+      sentRetryOfPromptIds.length ? sentRetryOfPromptIds : undefined,
     );
     if (accepted === false) { restoreSubmittedDraft(); return; }
     // Legacy send handlers may not provide an early durable acknowledgement.

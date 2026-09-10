@@ -20,6 +20,7 @@ export class ManagedShellSession {
   private commands: CommandBlock[] = [];
   private runs: ShellRun[] = [];
   private starting: Promise<void> | null = null;
+  private integrationReady: Promise<void> = Promise.resolve();
   private readyResolve: (() => void) | null = null;
   private serialized: Promise<unknown> = Promise.resolve();
   private persistence: Promise<unknown> = Promise.resolve();
@@ -72,6 +73,11 @@ export class ManagedShellSession {
   }
   private assertStorage(): void { if (this.storageError) throw new ShellError(`Shell storage unavailable: ${this.storageError}`, 503, "storage_unavailable"); }
   async start(): Promise<void> {
+    await this.connect();
+    await this.integrationReady;
+  }
+  /** Connect the PTY without waiting for profiles or the first integrated prompt. */
+  async connect(): Promise<void> {
     if (this.starting) return this.starting;
     if (this.child) return;
     this.starting = this.launch().finally(() => { this.starting = null; });
@@ -120,7 +126,7 @@ export class ManagedShellSession {
       }
       this.readyResolve?.(); this.readyResolve = null;
     }, 30_000);
-    await ready; clearTimeout(timeout);
+    this.integrationReady = ready.finally(() => clearTimeout(timeout));
   }
   private onIntegration(message: ShellIntegrationMessage): void {
     if (message.cwd) this.state.cwd = message.cwd;

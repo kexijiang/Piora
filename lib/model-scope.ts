@@ -1,6 +1,7 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import {
   resolveModelScopeWithDiagnostics,
+  type ModelScopeDiagnostic,
   type ModelRuntime,
   type ScopedModel,
 } from "@earendil-works/pi-coding-agent";
@@ -24,8 +25,18 @@ export interface ModelScopeResult {
   scopedModels: readonly ScopedModel[];
   /** `provider/modelId` → thinking level pinned with a `:level` pattern suffix. */
   thinkingLevelPins: Record<string, string>;
-  /** Resolver diagnostics, e.g. a pattern that matched no model. */
+  /** Actionable diagnostics for models still present in the current catalog. */
   warnings: string[];
+  /** A saved scope matched nothing; retain this state independently of UI warnings. */
+  unresolvedScope: boolean;
+}
+
+export function modelScopeWarnings(diagnostics: readonly ModelScopeDiagnostic[]): string[] {
+  // Saved scopes can outlive deleted models, removed providers, or credentials.
+  // Keep those patterns for future availability without repeatedly warning
+  // about models the user can no longer select in this catalog.
+  const unmatched = new Set(diagnostics.filter((item) => item.code === "no-match").map((item) => item.pattern));
+  return diagnostics.filter((item) => !unmatched.has(item.pattern)).map((item) => item.message);
 }
 
 export interface InitialModelScopeOptions {
@@ -67,17 +78,19 @@ export async function resolveVisibleModels(
       scopedModels: [],
       thinkingLevelPins: {},
       warnings: [],
+      unresolvedScope: false,
     };
   }
 
   const { scopedModels, diagnostics } = await resolveModelScopeWithDiagnostics(cleaned, modelRuntime);
-  const warnings = diagnostics.map((diagnostic) => diagnostic.message);
+  const warnings = modelScopeWarnings(diagnostics);
   if (scopedModels.length === 0) {
     return {
       visible: await modelRuntime.getAvailable(),
       scopedModels: [],
       thinkingLevelPins: {},
       warnings,
+      unresolvedScope: true,
     };
   }
 
@@ -95,6 +108,7 @@ export async function resolveVisibleModels(
     scopedModels,
     thinkingLevelPins,
     warnings,
+    unresolvedScope: false,
   };
 }
 
@@ -117,7 +131,7 @@ export function selectInitialModelScope(
     : undefined;
   const canFallback = options.allowUnavailableRequestedModel === true
     && scope.visible.length > 0
-    && !(scope.warnings.length > 0 && scope.scopedModels.length === 0);
+    && !scope.unresolvedScope;
   if (requestedRef && !requested && !canFallback) {
     throw new Error(
       `Model is not available in the enabled scope: ${requestedRef.provider}/${requestedRef.modelId}`,
