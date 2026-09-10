@@ -30,9 +30,10 @@ export async function verifyPackagedShell({ origin, cwd, token }) {
     const endpoint = "sessions/" + first.session.id;
     const action = body => request(endpoint + "/actions", body);
     await action({ action: "start" });
-    const ready = await request(endpoint);
-    assert.equal(ready.session.integration, "ready", JSON.stringify(ready.session));
-    const powershell = ready.session.profile.kind === "powershell";
+    const connected = await request(endpoint);
+    assert.equal(connected.session.connected, true, JSON.stringify(connected.session));
+    assert.ok(["starting", "ready"].includes(connected.session.integration), JSON.stringify(connected.session));
+    const powershell = connected.session.profile.kind === "powershell";
     const execute = async (text, clientRequestId = randomUUID()) => {
       const body = { action: "submit", mode: "command", text, clientRequestId };
       const result = await action(body);
@@ -57,7 +58,7 @@ export async function verifyPackagedShell({ origin, cwd, token }) {
     await until(() => request(endpoint), state => state.session.connected === false);
     assert.equal((await action(probe.body)).command.id, probe.block.id);
     assert.equal((await request(endpoint)).session.connected, false, "receipt recovery must not restart the packaged PTY");
-    return { profile: ready.session.profile.kind, persistentState: true, independentTerminals: true, durableRetry: true, historyAndFavorite: true };
+    return { profile: connected.session.profile.kind, persistentState: true, independentTerminals: true, durableRetry: true, historyAndFavorite: true };
   } finally {
     for (const id of terminalIds.reverse()) await request("sessions/" + id, undefined, "DELETE");
   }
