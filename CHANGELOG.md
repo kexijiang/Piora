@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.22] - 2026-09-10
+
+### 发布修复
+
+- 刷新桌面工作区版本变更后的第三方许可证清单，保证发布树中的生成文件与锁文件完全一致。
+- `0.4.41-beta.21` 已通过版本元数据、依赖审计与发布树检查，但在许可证新鲜度门禁阶段、打包前终止。
+
 ## [0.4.41-beta.21] - 2026-09-10
 
 ### 发布修复
