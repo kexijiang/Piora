@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.18] - 2026-09-10
+
+### 发布修复
+
+- 所有 CI 单测进程统一隔离 GitHub Windows 镜像的全局 PowerShell 模块目录，修复 Shell Agent 步数上限与打包隔离探针被第三方模块发现拖慢的问题。
+- `0.4.41-beta.17` 的标签流水线在普通单测阶段、打包前终止，未生成或发布安装包。
+
 ## [0.4.41-beta.17] - 2026-09-10
 
 ### 发布修复

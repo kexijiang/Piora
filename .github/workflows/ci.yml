@@ -61,6 +61,7 @@ jobs:
         run: npm test
         env:
           PIORA_SKIP_RESOURCE_TESTS: ${{ runner.os == 'Windows' && '1' || '0' }}
+          PSModulePath: ""
 
       - name: Resource-intensive Shell tests
         if: runner.os == 'Windows'

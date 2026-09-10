@@ -111,6 +111,7 @@ jobs:
         run: npm test
         env:
           PIORA_SKIP_RESOURCE_TESTS: "1"
+          PSModulePath: ""
 
       - name: Resource-intensive Shell tests
         run: npm run test:shell-resource
