@@ -911,7 +911,12 @@ async function main() {
       }),
       shell: false,
       windowsHide: true,
-      stdio: ["ignore", "ignore", "pipe"],
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      stderr = (stderr + `[stdout] ${chunk}`).slice(-16_384);
+      activeServerStderr = stderr;
     });
     child.stderr.setEncoding("utf8");
     child.stderr.on("data", (chunk) => {
@@ -960,7 +965,15 @@ async function main() {
     }
 
     await assertFile(extensionMarker);
-    const smartShell = await verifyPackagedShell({ origin, cwd: isolatedProjectDir, token });
+    let smartShell;
+    try {
+      smartShell = await verifyPackagedShell({ origin, cwd: isolatedProjectDir, token });
+    } catch (error) {
+      throw new Error(
+        `${error instanceof Error ? error.stack ?? error.message : String(error)}` +
+        (activeServerStderr ? `\nPackaged server output:\n${activeServerStderr}` : ""),
+      );
+    }
 
     const { body: plugins } = await fetchJson(
       origin,

@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.23] - 2026-09-10
+
+### 发布修复
+
+- 打包后 Shell 验证失败时附带独立服务的 stdout 与 stderr，直接呈现 Next.js 服务器及 Worker 初始化错误。
+- `0.4.41-beta.22` 已在 GitHub 完成构建，但 Shell 存储 Worker 在独立服务验证中超时，未创建 Release。
+
 ## [0.4.41-beta.22] - 2026-09-10
 
 ### 发布修复
