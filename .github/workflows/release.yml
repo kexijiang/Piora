@@ -114,6 +114,8 @@ jobs:
 
       - name: Resource-intensive Shell tests
         run: npm run test:shell-resource
+        env:
+          PSModulePath: ""
 
       - name: Verify bundled backgrounds
         run: npm run verify:backgrounds

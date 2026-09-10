@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.16] - 2026-09-10
+
+### 发布修复
+
+- 重资源 Shell CI 使用空的 `PSModulePath`，避免 GitHub Windows 镜像预装的大型 Azure/Graph 模块目录拖慢 PowerShell 命令发现；真实 PTY、别名、函数和状态持久化仍完整验证。
+- `0.4.41-beta.15` 已通过全量单测，但独立 Shell 门禁在打包前终止，未生成或发布安装包。
+
 ## [0.4.41-beta.15] - 2026-09-10
 
 ### 发布修复
