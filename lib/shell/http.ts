@@ -14,8 +14,6 @@ import { readShellSettings, writeShellSettings, normalizeShellModel, normalizeSh
 import { discoverHistorySources, syncShellHistory } from "./history";
 import { shellCompletions, commandCatalog } from "./completions";
 import { classifyShellInput } from "./intent";
-import { startShellAgent, controlShellAgent, normalizeShellReferences } from "./agent";
-import { searchHistoryByIntent, normalizeHistoryFilters } from "./history-search";
 import type { ShellEvent, HistoryQuery, HistoryRecord, ShellInputMode } from "./types";
 import type { ManagedShellSession } from "./session";
 
@@ -111,7 +109,10 @@ export async function handleShellRequest(request: Request, parts: string[]): Pro
       return json(session.snapshot(), 201);
     }
     if (endpoint === "history/sync") return json({ sources: await syncShellHistory(true) });
-    if (endpoint === "history/search") return json(await searchHistoryByIntent(await getShell(shellId(data.terminalId)), shellText(data.query, "query", 2000), request.signal, normalizeHistoryFilters(data.filters)));
+    if (endpoint === "history/search") {
+      const { searchHistoryByIntent, normalizeHistoryFilters } = await import("./history-search");
+      return json(await searchHistoryByIntent(await getShell(shellId(data.terminalId)), shellText(data.query, "query", 2000), request.signal, normalizeHistoryFilters(data.filters)));
+    }
     if (endpoint === "history/migrate") {
       if (!Array.isArray(data.entries) || data.entries.length > 1000) throw new ShellError("Invalid legacy history batch");
       const records: HistoryRecord[] = data.entries.map(entry => {
@@ -145,6 +146,7 @@ export async function handleShellRequest(request: Request, parts: string[]): Pro
             const intent = admittedIntent || classifyShellInput(text, await commandCatalog(session), mode);
             if (intent === "ambiguous") return json({ intent, accepted: false });
             if (intent === "command") return json({ accepted: true, durable: true, command: await session.execute(text, requestId) });
+            const { normalizeShellReferences, startShellAgent } = await import("./agent");
             return json({ accepted: true, durable: true, run: await startShellAgent(session, text, requestId, normalizeShellReferences(data.references)) });
           }
           case "input":
@@ -152,8 +154,17 @@ export async function handleShellRequest(request: Request, parts: string[]): Pro
             session.input(typeof data.data === "string" ? data.data : "", data.replay === true); break;
           case "resize": session.resize(Number(data.cols), Number(data.rows)); break;
           case "clear": session.clear(); break;
-          case "restart": if (session.state.activeRunId) await controlShellAgent(session, "cancel"); await session.stop(); await session.start(); break;
-          case "cancel": case "takeover": case "approve": case "reject": case "answer": await controlShellAgent(session, data.action, typeof data.id === "string" ? data.id : undefined, typeof data.answer === "string" ? data.answer : undefined); break;
+          case "restart":
+            if (session.state.activeRunId) {
+              const { controlShellAgent } = await import("./agent");
+              await controlShellAgent(session, "cancel");
+            }
+            await session.stop(); await session.start(); break;
+          case "cancel": case "takeover": case "approve": case "reject": case "answer": {
+            const { controlShellAgent } = await import("./agent");
+            await controlShellAgent(session, data.action, typeof data.id === "string" ? data.id : undefined, typeof data.answer === "string" ? data.answer : undefined);
+            break;
+          }
           default: throw new ShellError("Unsupported Shell action");
         }
         return json(session.snapshot());

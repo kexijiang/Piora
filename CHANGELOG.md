@@ -4,6 +4,14 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.20] - 2026-09-10
+
+### 发布修复
+
+- Shell 设置与终端基础接口不再预加载 Agent 模型运行时，缩小独立安装包首次打开 Shell API 时的模块依赖边界。
+- 打包验证现在保留非 JSON 错误响应，后续云端失败可直接显示真实 HTTP 状态与正文。
+- `0.4.41-beta.19` 已在 GitHub Actions 完成安装包编译，但发布前的独立服务验证失败，因此未创建 GitHub Release。
+
 ## [0.4.41-beta.19] - 2026-09-10
 
 ### 发布修复

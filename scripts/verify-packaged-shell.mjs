@@ -8,7 +8,10 @@ export async function verifyPackagedShell({ origin, cwd, token }) {
       method, headers: { "X-Pi-Desktop-Token": token, Origin: origin, ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }), signal: AbortSignal.timeout(60000),
     });
-    const result = await response.json();
+    const responseText = await response.text();
+    let result;
+    try { result = JSON.parse(responseText); }
+    catch { result = { error: responseText || "Response did not contain JSON" }; }
     assert.ok(response.ok, "Packaged Shell " + endpoint + " returned " + response.status + ": " + JSON.stringify(result));
     return result;
   };
