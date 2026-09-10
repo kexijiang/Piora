@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.21] - 2026-09-10
+
+### 发布修复
+
+- 同步根应用、桌面工作区及锁文件中的 beta 版本号，确保标签元数据在 GitHub 的全新检出环境中一致。
+- `0.4.41-beta.20` 因桌面工作区锁文件版本未同步，在元数据门禁阶段、打包前终止。
+
 ## [0.4.41-beta.20] - 2026-09-10
 
 ### 发布修复
