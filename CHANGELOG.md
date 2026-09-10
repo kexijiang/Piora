@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.14] - 2026-09-10
+
+### 发布修复
+
+- 为 GitHub Windows runner 上仍在正常推进的大规模 Shell 历史导入与 PowerShell 命令目录枚举提供独立的 CI 超时预算；本地性能阈值保持不变。
+- `0.4.41-beta.13` 的标签流水线在单元测试超时后、打包前终止，未生成或发布安装包。
+
 ## [0.4.41-beta.13] - 2026-09-10
 
 ### 发布修复
