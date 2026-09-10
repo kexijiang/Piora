@@ -4,6 +4,15 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.13] - 2026-09-10
+
+### 发布修复
+
+- 单元测试运行前先编译桌面 TypeScript 输出，确保全新 GitHub runner 可以加载剪贴板原生降级测试所需模块。
+- 修复 Windows 临时目录短路径与规范路径差异造成的 Shell 测试误报，并提高 GitHub runner 上大规模历史导入与 Shell 初始化测试的资源波动容忍度。
+- 剪贴板浏览器验收改为按稳定内容标识选择富文本记录，避免虚拟列表排序变化导致误选。
+- `0.4.41-beta.12` 的标签流水线在单元测试阶段终止，未生成或发布安装包；本版重新触发完整云端构建与发布。
+
 ## [0.4.41-beta.12] - 2026-09-10
 
 ### 新增与优化

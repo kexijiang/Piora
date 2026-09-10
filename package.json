@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.4.41-beta.12",
+  "version": "0.4.41-beta.13",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -74,6 +74,7 @@
     "build:desktop": "npm run build --workspace @piora/desktop",
     "build:app": "npm run build:web && npm run build:desktop",
     "typecheck": "tsc --noEmit && npm run typecheck --workspace @piora/desktop",
+    "pretest": "npm run build:desktop",
     "test": "node --test --test-concurrency=2 components/*.test.mjs hooks/*.test.mjs lib/*.test.mjs lib/i18n/*.test.mjs",
     "test:team": "node --test lib/team-*.test.mjs lib/runtime-evidence.test.mjs components/CollapsibleUserContent.test.mjs",
     "test:team:acceptance": "node scripts/run-team-acceptance.mjs",
