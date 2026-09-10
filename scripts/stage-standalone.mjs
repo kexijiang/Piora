@@ -33,6 +33,17 @@ const assets = [
     rejectSymlinks: false,
   },
   {
+    // Next 16 can omit a server chunk from the standalone file trace when an
+    // App Router handler reaches it only through a dynamic import. Copy the
+    // complete production server chunk set so route.js references cannot turn
+    // into MODULE_NOT_FOUND only after the runtime has been archived.
+    name: "Next.js server chunks",
+    source: join(nextDirectory, "server", "chunks"),
+    destination: join(standaloneDirectory, ".next", "server", "chunks"),
+    required: true,
+    rejectSymlinks: false,
+  },
+  {
     // Next 16's standalone trace can omit the client reference manifest for
     // this secondary App Router entry. The main page still works, but opening
     // the Electron companion window then returns 500 and crashes its renderer.

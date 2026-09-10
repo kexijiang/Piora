@@ -4,6 +4,14 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.24] - 2026-09-10
+
+### 发布修复
+
+- 独立运行时现在完整收集 Next.js 生产服务端 chunks，修复动态 Shell 路由引用的 chunk 被 standalone 文件追踪遗漏后在安装包中报 `MODULE_NOT_FOUND`。
+- 新增发布加固测试，确保服务端 chunk 目录持续进入打包暂存树。
+- `0.4.41-beta.23` 已精确定位缺失文件为 `.next/server/chunks/7190.js`，其 GitHub 构建通过但发布前验证失败，未创建 Release。
+
 ## [0.4.41-beta.23] - 2026-09-10
 
 ### 发布修复
