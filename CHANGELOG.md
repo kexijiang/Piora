@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.17] - 2026-09-10
+
+### 发布修复
+
+- 修复剪贴板草稿浏览器测试的还原竞态：用例现在恢复当前记录的实际基准备注，避免把有效的未保存更改误当成已还原状态。
+- `0.4.41-beta.16` 的标签流水线在普通单测阶段、打包前终止，未生成或发布安装包。
+
 ## [0.4.41-beta.16] - 2026-09-10
 
 ### 发布修复
