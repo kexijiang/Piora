@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.15] - 2026-09-10
+
+### 发布修复
+
+- Windows CI 将两个重资源 Shell 集成测试从 1638 项并发套件中拆出并串行执行，保留完整断言与性能门禁，同时避免共享 runner 资源争用导致的虚假超时。
+- `0.4.41-beta.14` 的标签流水线仍在单元测试阶段、打包前终止，未生成或发布安装包。
+
 ## [0.4.41-beta.14] - 2026-09-10
 
 ### 发布修复

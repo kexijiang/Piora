@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.4.41-beta.14",
+  "version": "0.4.41-beta.15",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -76,6 +76,7 @@
     "typecheck": "tsc --noEmit && npm run typecheck --workspace @piora/desktop",
     "pretest": "npm run build:desktop",
     "test": "node --test --test-concurrency=2 components/*.test.mjs hooks/*.test.mjs lib/*.test.mjs lib/i18n/*.test.mjs",
+    "test:shell-resource": "node --test --test-concurrency=1 --test-name-pattern=\"the history worker serves queries|managed PTY preserves state\" lib/shell-history.test.mjs lib/shell-runtime.test.mjs",
     "test:team": "node --test lib/team-*.test.mjs lib/runtime-evidence.test.mjs components/CollapsibleUserContent.test.mjs",
     "test:team:acceptance": "node scripts/run-team-acceptance.mjs",
     "test:team:soak": "node scripts/run-team-soak.mjs",

@@ -109,6 +109,11 @@ jobs:
 
       - name: Unit tests
         run: npm test
+        env:
+          PIORA_SKIP_RESOURCE_TESTS: "1"
+
+      - name: Resource-intensive Shell tests
+        run: npm run test:shell-resource
 
       - name: Verify bundled backgrounds
         run: npm run verify:backgrounds

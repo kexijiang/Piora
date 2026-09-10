@@ -59,6 +59,12 @@ jobs:
 
       - name: Unit tests
         run: npm test
+        env:
+          PIORA_SKIP_RESOURCE_TESTS: ${{ runner.os == 'Windows' && '1' || '0' }}
+
+      - name: Resource-intensive Shell tests
+        if: runner.os == 'Windows'
+        run: npm run test:shell-resource
 
       - name: Check performance budgets
         if: runner.os == 'Linux'
