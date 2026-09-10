@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.4.41-beta.19] - 2026-09-10
+
+### 发布修复
+
+- 修复 Shell 新终端恢复测试中遗漏的一处 Windows 8.3 短路径与规范路径比较。
+- `0.4.41-beta.18` 已通过普通单测，独立 Shell 门禁仅因该路径表示差异在打包前终止，未生成或发布安装包。
+
 ## [0.4.41-beta.18] - 2026-09-10
 
 ### 发布修复
