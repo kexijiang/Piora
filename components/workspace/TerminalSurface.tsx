@@ -15,19 +15,21 @@ export interface TerminalSurfaceHandle {
 }
 interface Props {
   cwd?: string | null;
+  terminalId?: string;
+  inputEnabled?: boolean;
   output?: string;
   readOnly?: boolean;
   onStatus?: (connected: boolean, shell: string) => void;
   onError?: (error: string) => void;
 }
 
-export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function TerminalSurface({ cwd, output = "", readOnly = false, onStatus, onError }, ref) {
+export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function TerminalSurface({ cwd, terminalId, inputEnabled = true, output = "", readOnly = false, onStatus, onError }, ref) {
   const host = useRef<HTMLDivElement>(null);
   const terminal = useRef<Terminal | null>(null);
   const search = useRef<SearchAddon | null>(null);
   const previousOutput = useRef("");
-  const latest = useRef({ output, onStatus, onError });
-  useEffect(() => { latest.current = { output, onStatus, onError }; });
+  const latest = useRef({ output, onStatus, onError, inputEnabled });
+  useEffect(() => { latest.current = { output, onStatus, onError, inputEnabled }; });
   useImperativeHandle(ref, () => ({
     focus: () => terminal.current?.focus(),
     search: (query, previous) => {
@@ -50,7 +52,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       if (disposed || !host.current) return;
       const configuredFontSize = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui-font-size")) || 14;
       const term = new Terminal({
-        cursorBlink: !readOnly, cursorStyle: "bar", cursorInactiveStyle: "none", disableStdin: readOnly,
+        cursorBlink: !readOnly, cursorStyle: "bar", cursorInactiveStyle: "none", disableStdin: readOnly || !latest.current.inputEnabled,
         allowTransparency: true,
         convertEol: readOnly, scrollback: 5000, fontSize: configuredFontSize * 13 / 14, lineHeight: 1.35,
         fontFamily: '"Cascadia Code", "Cascadia Mono", Consolas, "Liberation Mono", monospace',
@@ -68,11 +70,14 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       let chain = Promise.resolve();
       let rendering = Promise.resolve();
       let replaying = false;
+      let generation = -1, sequence = -1, renderEpoch = 0;
       const writeOutput = (output: string, snapshot = false) => {
+        if (snapshot) renderEpoch++;
+        const epoch = renderEpoch;
         // xterm parses writes asynchronously. Keep the replay flag scoped to
         // the actual parse, including when live frames follow a large snapshot.
         rendering = rendering.then(() => new Promise<void>((resolve) => {
-          if (disposed) { resolve(); return; }
+          if (disposed || epoch !== renderEpoch) { resolve(); return; }
           replaying = snapshot;
           if (snapshot) term.reset();
           term.write(output, () => { replaying = false; resolve(); });
@@ -81,9 +86,11 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       let events: EventSource | undefined;
       let resizeTimer: ReturnType<typeof setTimeout> | undefined;
       const post = (body: object) => {
+        const queuedGeneration = generation;
         chain = chain.then(async () => {
           if (disposed) return;
-          const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, ...body }), signal: abort.signal });
+          if (terminalId && queuedGeneration !== generation) return;
+          const response = await fetch(terminalId ? `/api/shell/sessions/${terminalId}/actions` : "/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, ...body, ...(terminalId ? { generation: queuedGeneration } : {}) }), signal: abort.signal });
           if (!response.ok) throw new Error((await response.json()).error ?? `HTTP ${response.status}`);
         }).catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
       };
@@ -105,33 +112,46 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
         // EventSource hides HTTP error bodies. Start explicitly so missing
         // native libraries and invalid working directories reach the user.
         void (async () => {
-          const response = await fetch("/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, action: "start" }), signal: abort.signal });
+          if (disposed) return;
+          events = new EventSource(terminalId ? `/api/shell/sessions/${terminalId}/events` : `/api/terminal/events?cwd=${encodeURIComponent(cwd)}`);
+          events.onmessage = (event) => {
+            if (disposed) return;
+            try {
+              const message = JSON.parse(event.data);
+              if (terminalId) {
+                if (message.terminalId !== terminalId || !Number.isInteger(message.generation) || !Number.isInteger(message.sequence)) return;
+                if (message.generation < generation || message.generation === generation && (message.sequence < sequence || message.sequence === sequence && message.type !== "snapshot")) return;
+                if (message.generation > generation) renderEpoch++;
+                generation = message.generation; sequence = message.sequence;
+              }
+              if (message.type === "snapshot") { writeOutput(terminalId ? message.snapshot.output : message.output, true); resize(); }
+              else if (message.type === "output") writeOutput(terminalId ? message.data : message.output);
+              else if (message.type === "clear") writeOutput("", true);
+              if (terminalId && (message.type === "snapshot" || message.type === "session")) {
+                const session = message.type === "snapshot" ? message.snapshot.session : message.session;
+                term.options.disableStdin = !latest.current.inputEnabled || session.owner === "agent";
+                latest.current.onStatus?.(session.connected, session.profile.label);
+              } else if (message.type === "snapshot" || message.type === "status") latest.current.onStatus?.(message.connected, message.shell);
+            } catch { /* Ignore malformed transport frames. */ }
+          };
+          events.onerror = () => { if (!disposed) latest.current.onStatus?.(false, ""); };
+          // Show startup output immediately. Profiles can request interactive
+          // input before enhanced shell integration announces readiness.
+          const response = await fetch(terminalId ? `/api/shell/sessions/${terminalId}/actions` : "/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, action: "start" }), signal: abort.signal });
           if (!response.ok) {
             const body = await response.json().catch(() => null);
             throw new Error(body?.error ?? `HTTP ${response.status}`);
           }
-          if (disposed) return;
-          events = new EventSource(`/api/terminal/events?cwd=${encodeURIComponent(cwd)}`);
-          events.onmessage = (event) => {
-            try {
-              const message = JSON.parse(event.data);
-              if (message.type === "snapshot") { writeOutput(message.output, true); resize(); }
-              else if (message.type === "output") writeOutput(message.output);
-              else if (message.type === "clear") term.clear();
-              if (message.type === "snapshot" || message.type === "status") latest.current.onStatus?.(message.connected, message.shell);
-            } catch { /* Ignore malformed transport frames. */ }
-          };
-          events.onerror = () => latest.current.onStatus?.(false, "");
         })().catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
       }
-      const input = term.onData((data) => { if (!readOnly && cwd) post({ action: "input", data, ...(replaying && isTerminalProtocolReply(data) ? { replay: true } : {}) }); });
+      const input = term.onData((data) => { if (!readOnly && cwd && (latest.current.inputEnabled || isTerminalProtocolReply(data))) post({ action: "input", data, ...(replaying && isTerminalProtocolReply(data) ? { replay: true } : {}) }); });
       term.attachCustomKeyEventHandler((event) => {
         const pasteShortcut = !event.altKey && (
           ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "v")
           || (event.shiftKey && !event.ctrlKey && !event.metaKey && event.key === "Insert")
         );
         if (pasteShortcut) {
-          if (readOnly || !cwd) {
+          if (readOnly || !cwd || !latest.current.inputEnabled) {
             event.preventDefault();
           } else if (window.piDesktop?.clipboard) {
             // Electron clipboard reads use the trusted preload bridge. Prevent
@@ -167,7 +187,9 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       };
     })().catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
     return () => { disposed = true; abort.abort(); cleanup(); };
-  }, [cwd, readOnly]);
+  }, [cwd, readOnly, terminalId]);
+
+  useEffect(() => { if (terminal.current) terminal.current.options.disableStdin = readOnly || !inputEnabled; }, [inputEnabled, readOnly]);
 
   useEffect(() => {
     if (!readOnly || !terminal.current) return;

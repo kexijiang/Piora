@@ -1,10 +1,12 @@
 import type { LocalePlugin } from "../types";
+import { smartShellEn } from "./smart-shell";
 
 /** Pi Web 内置英语语言包。 */
 export const enLocale: LocalePlugin = {
   id: "en",
   label: "English",
   messages: {
+    ...smartShellEn,
     "models.form.name": "Name",
     "models.form.displayName": "Display name",
     "models.form.keyHint": "Environment variable, !shell command, or API key",
@@ -426,6 +428,8 @@ export const enLocale: LocalePlugin = {
     "shortcuts.openReviewDescription": "Open the Git review panel.",
     "shortcuts.openBrowserDescription": "Open the built-in browser panel.",
     "shortcuts.companionPanelDescription": "Open or hide the companion panel from anywhere; clicking outside hides it.",
+    "shortcuts.clipboardDescription": "Open clipboard history to search and paste into the previous application.",
+    "commands.openClipboard": "Open clipboard",
     "shortcuts.settingsDescription": "Open General settings.",
     "automations.title": "Scheduled tasks",
     "automations.description": "Run recurring prompts in the current chat or as standalone project tasks.",
@@ -1035,6 +1039,7 @@ export const enLocale: LocalePlugin = {
     "browser.keyboardCapture": "Type into the focused web page",
     "browser.profileNotice": "Dedicated Piora profile · website sign-ins persist on this device",
     "browser.useBackground": "Use background browser",
+    "settings.backgroundBrowserDescription": "Off by default to keep the current embedded browser. When enabled, Chrome/Edge runs without a window and reuses sign-ins saved by the original Piora browser, separately from everyday Chrome. Changes apply automatically.",
     "browser.builtinMode": "Current embedded browser",
     "browser.backgroundMode": "Runs without a window",
     "browser.backgroundProfileNotice": "Background Chrome/Edge · Reuses original Piora sign-ins and saves them locally · Separate from everyday Chrome and the embedded desktop browser",

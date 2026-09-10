@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.4.41-beta.11",
+  "version": "0.4.41-beta.12",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -61,9 +61,14 @@
   ],
   "scripts": {
     "brand:icons": "node scripts/build-brand-icon.mjs",
+    "predev": "node scripts/stage-editor-assets.mjs",
     "dev": "next dev -H 127.0.0.1 -p 30141",
+    "predev:desktop": "node scripts/stage-editor-assets.mjs",
     "dev:desktop": "node scripts/dev-desktop.mjs",
+    "predev:lan": "node scripts/stage-editor-assets.mjs",
     "dev:lan": "next dev -H 0.0.0.0 -p 30141",
+    "prebuild": "node scripts/stage-editor-assets.mjs",
+    "prebuild:web": "node scripts/stage-editor-assets.mjs",
     "build": "next build --webpack",
     "build:web": "next build --webpack && node scripts/stage-standalone.mjs",
     "build:desktop": "npm run build --workspace @piora/desktop",
@@ -92,7 +97,7 @@
     "licenses:check": "node scripts/generate-license-inventory.mjs --check",
     "licenses:package": "node scripts/package-license-bundle.mjs",
     "licenses:package:check": "node scripts/package-license-bundle.mjs --check",
-    "postinstall": "node scripts/patch-bundled-dependencies.mjs",
+    "postinstall": "node scripts/patch-bundled-dependencies.mjs && node scripts/stage-editor-assets.mjs",
     "start": "next start -H 127.0.0.1 -p 30141",
     "start:lan": "next start -H 0.0.0.0 -p 30141",
     "lint": "eslint ."
@@ -143,7 +148,8 @@
     "sharp": "^0.35.4",
     "tar": "7.5.22",
     "three": "^0.185.1",
-    "undici": "8.9.0"
+    "undici": "8.9.0",
+    "vditor": "4.0.0"
   },
   "devDependencies": {
     "@electron/asar": "3.4.1",

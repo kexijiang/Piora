@@ -10,6 +10,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { extractAll, listPackage } from "@electron/asar";
 import { generateLicenseInventory } from "./generate-license-inventory.mjs";
 import { generatePackageLicenseBundle } from "./package-license-bundle.mjs";
+import { verifyPackagedClipboard } from "./verify-packaged-clipboard.mjs";
+import { verifyPackagedShell } from "./verify-packaged-shell.mjs";
 import {
   createIsolatedProcessEnvironment,
   prepareIsolatedEnvironment,
@@ -114,6 +116,7 @@ const requiredPaths = [
   "lib/team-run-store.ts",
   "lib/team-tool-service.ts",
   ".next/server/app/desktop-pet/page_client-reference-manifest.js",
+  ".next/server/app/desktop-clipboard/page_client-reference-manifest.js",
   "node_modules/next/package.json",
   "node_modules/@modelcontextprotocol/sdk/package.json",
   "node_modules/@earendil-works/pi-agent-core/package.json",
@@ -640,12 +643,14 @@ async function inspectElectronShell(webRoot, required) {
   if (!executable) {
     throw new Error(`The packaged Piora application executable was not found in ${unpackedRoot}`);
   }
+  const clipboard = isWindowsPackage ? await verifyPackagedClipboard(unpackedRoot) : null;
 
   return {
     checked: true,
     executable,
     executablePath: join(unpackedRoot, executable),
     packageLicenses,
+    clipboard,
   };
 }
 
@@ -762,6 +767,9 @@ async function main() {
     throw new Error(`Packaged web container must contain the launcher, runtime archive and native sidecar: ${packagedWebEntries.join(", ")}`);
   }
   await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "node_modules", "node-pty", "package.json"));
+  for (const name of ["store-worker.cjs", "history-import.cjs", "integration.ps1", "integration.bash", "integration.zsh"]) {
+    await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "shell", "runtime", name));
+  }
   const launcherSource = await readFile(join(packagedWebRoot, "server.js"), "utf8");
   if (
     !launcherSource.includes("const dir = path.join(__dirname, 'runtime.asar')")
@@ -935,6 +943,12 @@ async function main() {
     if (!companionPageResponse.ok) {
       throw new Error(`Packaged companion page returned ${companionPageResponse.status}`);
     }
+    const clipboardPageStatuses = {};
+    for (const surface of ["quick", "shelf"]) {
+      const response = await fetch(`${origin}/desktop-clipboard?surface=${surface}`, { headers: { "X-Pi-Desktop-Token": token } });
+      if (!response.ok) throw new Error(`Packaged clipboard ${surface} page returned ${response.status}`);
+      clipboardPageStatuses[surface] = response.status;
+    }
 
     const { response: newSessionResponse, body: newSession } = await postJson(
       origin,
@@ -946,6 +960,7 @@ async function main() {
     }
 
     await assertFile(extensionMarker);
+    const smartShell = await verifyPackagedShell({ origin, cwd: isolatedProjectDir, token });
 
     const { body: plugins } = await fetchJson(
       origin,
@@ -1062,6 +1077,7 @@ async function main() {
 
     console.log(JSON.stringify({
       isolated: true,
+      smartShell,
       dependencyChecks: requiredPaths.length,
       packagedPiAiRuntime,
       packagedPiAiModules,
@@ -1078,6 +1094,8 @@ async function main() {
       healthStatus: 200,
       rootStatus: rootResponse.status,
       companionPageStatus: companionPageResponse.status,
+      clipboardPageStatuses,
+      clipboardNative: electronShell.clipboard ?? null,
       agentSessionStatus: newSessionResponse.status,
       piPackage: fixturePackageName,
       extensionCommand: fixtureCommandName,

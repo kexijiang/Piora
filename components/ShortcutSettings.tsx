@@ -33,7 +33,7 @@ const SHORTCUT_GROUPS = [
     titleKey: "shortcuts.group.system",
     descriptionKey: "shortcuts.group.systemDescription",
     icon: "sparkles",
-    includes: (id: ApplicationShortcutId) => id === "companion.togglePanel" || id === "settings.general",
+    includes: (id: ApplicationShortcutId) => id.startsWith("companion.") || id === "settings.general",
   },
 ] as const;
 

@@ -12,6 +12,7 @@ import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
 import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
 import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
+import { BrowserModeSetting } from "./BrowserModeSetting";
 import { SystemPromptEditor } from "./SystemPromptEditor";
 import { PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH, PROMPT_OPTIMIZER_SYSTEM_PROMPT } from "@/lib/prompt-optimizer";
 import {
@@ -203,6 +204,12 @@ export function SettingsDialog({
       icon: <AliIcon name="calendar" size={16} />,
     },
     {
+      key: "shell",
+      labelKey: "shell.title",
+      descriptionKey: "shell.description",
+      icon: <AliIcon name="code" size={16} />,
+    },
+    {
       key: "models",
       labelKey: "common.models",
       descriptionKey: "settings.modelsDescription",
@@ -284,7 +291,7 @@ export function SettingsDialog({
   ], []);
 
   const entryGroups = useMemo(() => [
-    { labelKey: "settings.group.personal", keys: ["general", "conversation", "shortcuts", "speech", "automations", "models", "appearance", "language", "companion"] as SettingsKey[] },
+    { labelKey: "settings.group.personal", keys: ["general", "conversation", "shortcuts", "speech", "automations", "models", "shell", "appearance", "language", "companion"] as SettingsKey[] },
     { labelKey: "settings.group.capabilities", keys: ["capabilities", "tools", "capabilityBundles", "extensions", "skills", "plugins", "harmony", "remote"] as SettingsKey[] },
     { labelKey: "settings.group.history", keys: ["usage", "archived", "trash"] as SettingsKey[] },
   ], []);
@@ -585,6 +592,7 @@ export function SettingsDialog({
                   <p>{t("settings.generalDescription")}</p>
                 </div>
                 <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>
+                <BrowserModeSetting />
                 <div data-settings-id="general.proxy"><NetworkProxySettings /></div>
                 {onOpenOnboarding ? <section className={styles.conversationSection}>
                   <div className={styles.conversationRow}>

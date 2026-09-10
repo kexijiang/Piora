@@ -1,8 +1,9 @@
 # Browser modes
 
-The browser panel's **Use background browser** switch is **off by default**.
+The **Settings > General > Use background browser** switch is **off by default**.
 The selection is saved globally in `<agentDir>/piora/browser.json` and applies
-to both the panel and subsequent agent `browser` tool calls.
+to both the panel and subsequent agent `browser` tool calls. An open browser
+panel updates after a successful save; reopening a panel loads the saved mode.
 
 - **Off (`builtin`):** keep the current browser. On desktop this is Electron's
   embedded view with the existing `persist:piora-browser` partition. Web mode

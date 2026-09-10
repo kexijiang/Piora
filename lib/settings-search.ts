@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "general" | "conversation" | "shortcuts" | "speech" | "automations" | "models" | "capabilities" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "language" | "companion" | "remote" | "usage" | "archived" | "trash";
+export type SettingsKey = "general" | "conversation" | "shortcuts" | "speech" | "automations" | "models" | "shell" | "capabilities" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "language" | "companion" | "remote" | "usage" | "archived" | "trash";
 
 export interface SettingsSearchItem {
   id: string;
@@ -13,6 +13,10 @@ export interface SettingsSearchItem {
 }
 
 export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
+  { id: "shell", section: "shell", labelKey: "shell.title", descriptionKey: "shell.description", keywords: ["terminal", "shell", "agent", "终端", "智能", "命令"] },
+  { id: "shell.model", section: "shell", labelKey: "shell.model", descriptionKey: "shell.settingsHint", keywords: ["model", "thinking", "模型", "思考"] },
+  { id: "shell.history", section: "shell", labelKey: "shell.sources", descriptionKey: "shell.historyHint", keywords: ["history", "PowerShell", "Bash", "Zsh", "历史", "导入"] },
+  { id: "general.browser", section: "general", labelKey: "browser.useBackground", descriptionKey: "settings.backgroundBrowserDescription", keywords: ["browser", "background", "Chrome", "Edge", "headless", "浏览器", "后台", "无窗口", "登录态"] },
   { id: "general.updateSchedule", section: "general", requiresDesktop: true, labelKey: "settings.updateSchedule", descriptionKey: "settings.updateScheduleDescription", keywords: ["update", "schedule", "silent", "更新", "静默", "安装", "定时"] },
   { id: "capabilities", section: "capabilities", labelKey: "settings.capabilities.title", descriptionKey: "settings.capabilities.description", keywords: ["install", "enable", "configure", "安装", "启用", "配置", "能力"] },
   { id: "general", section: "general", labelKey: "settings.general", descriptionKey: "settings.generalDescription", keywords: ["preferences", "偏好"] },

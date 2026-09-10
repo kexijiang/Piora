@@ -2,6 +2,9 @@ appId: io.github.kexijiang.piora
 productName: Piora
 copyright: Copyright © 2026 Piora contributors
 asar: true
+asarUnpack:
+  - node_modules/koffi/**/*
+  - node_modules/@koromix/koffi-*/**/*
 # The portable launcher prepares its runtime cache only once. Normal zlib
 # compression keeps that first-time download/extraction small, while cached
 # launches below no longer pay any decompression cost.

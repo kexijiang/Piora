@@ -10,6 +10,7 @@ export const DESKTOP_SHORTCUT_IDS = [
   "panel.review",
   "panel.browser",
   "companion.togglePanel",
+  "companion.clipboard",
   "settings.general",
 ] as const;
 
@@ -28,6 +29,7 @@ export const DEFAULT_DESKTOP_SHORTCUT_BINDINGS: DesktopShortcutBindings = {
   "panel.review": "Mod+Shift+G",
   "panel.browser": "Mod+T",
   "companion.togglePanel": "Ctrl+Space",
+  "companion.clipboard": "Mod+Alt+V",
   "settings.general": "Mod+,",
 };
 

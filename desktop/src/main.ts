@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { SystemLauncher } from "./system-launcher";
+import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -15,6 +16,7 @@ import {
   net,
   Notification,
   powerMonitor,
+  protocol,
   screen,
   session as electronSession,
   shell,
@@ -89,6 +91,7 @@ import {
 } from "./auto-launch.js";
 
 const DESKTOP_PARTITION = "persist:piora";
+protocol.registerSchemesAsPrivileged([{ scheme: "piora-clipboard", privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }]);
 const DESKTOP_TOKEN_HEADER = "X-Pi-Desktop-Token";
 const COMPLETION_NOTIFICATION_CHANNEL = "pi:completion-notification";
 const NOTIFICATION_SESSION_CHANNEL = "pi:notification-session";
@@ -160,6 +163,7 @@ let mainWindow: BrowserWindow | null = null;
 let companionWindow: BrowserWindow | null = null;
 let companionBubbleWindow: BrowserWindow | null = null;
 let companionPanelWindow: BrowserWindow | null = null;
+let clipboardController: ClipboardController | undefined;
 let logger: FileLogger | undefined;
 let server: StandaloneServer | undefined;
 let serverUrl: URL | undefined;
@@ -216,6 +220,15 @@ async function handleStandaloneMessage(message: unknown): Promise<unknown> {
     sessionId?: unknown;
     params?: unknown;
   };
+  if (candidate.type === "pi-desktop:clipboard-backup-request" && typeof candidate.requestId === "string" && /^[a-f0-9-]{36}$/.test(candidate.requestId)) {
+    const requestId = candidate.requestId;
+    try {
+      if (!clipboardController) throw new Error("backup_clipboard_unavailable");
+      const file = join(app.getPath("userData"), "clipboard", "backup-exports", `${requestId}.piora-clipboard`);
+      await clipboardController.runtime.store.exportArchive(file);
+      return { type: "pi-desktop:clipboard-backup-response", requestId, ok: true, snapshotId: requestId };
+    } catch (error) { return { type: "pi-desktop:clipboard-backup-response", requestId, ok: false, error: error instanceof Error ? error.message : "backup_clipboard_unavailable" }; }
+  }
   if (candidate.type === "pi-desktop:browser-cancel" && typeof candidate.requestId === "string") {
     desktopBrowserRequestControllers.get(candidate.requestId)?.abort("browser_request_cancelled");
     return undefined;
@@ -458,8 +471,9 @@ function registerKeyboardShortcutHandler(): void {
     }
     keyboardShortcutBindings = parsed;
     const companionShortcutRegistered = syncCompanionPanelShortcut();
+    const clipboardShortcutRegistered = clipboardController?.setShortcut(toElectronAccelerator(parsed["companion.clipboard"])) ?? true;
     installApplicationMenu();
-    return companionShortcutRegistered;
+    return companionShortcutRegistered && clipboardShortcutRegistered;
   });
 }
 
@@ -654,6 +668,11 @@ async function installDownloadedDesktopUpdate(confirmInstallation = true, silent
     return true;
   } catch (error) {
     logger?.error("Unable to launch the downloaded desktop update", error);
+    if (error instanceof ClipboardDraftFlushError) {
+      quitRequested = false; shutdownPromise = undefined;
+      dialog.showErrorBox(chinese ? "编辑草稿尚未保存" : "Edit draft is not saved", chinese ? "请回到剪贴板重试保存草稿，然后再安装更新。应用仍保持打开。" : error.message);
+      return false;
+    }
     shutdownComplete = true;
     if (!silent) dialog.showErrorBox(
       chinese ? "无法安装 Piora 更新" : "Unable to install Piora update",
@@ -1731,7 +1750,7 @@ function createCompanionBubbleWindow(url: URL, log: Logger): BrowserWindow {
   return window;
 }
 
-function createCompanionPanelWindow(url: URL, log: Logger): BrowserWindow {
+function createCompanionPanelWindow(url: URL, log: Logger, initialTool?: "clipboard"): BrowserWindow {
   companionPanelKeepVisibleUntilClose = false;
   const display = screen.getPrimaryDisplay().workArea;
   const window = new BrowserWindow({
@@ -1773,14 +1792,14 @@ function createCompanionPanelWindow(url: URL, log: Logger): BrowserWindow {
     companionPanelKeepVisibleUntilClose = false;
     if (companionPanelWindow === window) companionPanelWindow = null;
   });
-  void window.loadURL(new URL("/desktop-companion-panel", url).toString());
+  void window.loadURL(new URL(initialTool === "clipboard" ? "/desktop-companion-panel?tool=clipboard" : "/desktop-companion-panel", url).toString());
   return window;
 }
 
-function showCompanionPanel(): boolean {
+function showCompanionPanel(initialTool?: "clipboard"): boolean {
   if (!serverUrl || !logger) return false;
   if (!companionPanelWindow || companionPanelWindow.isDestroyed()) {
-    companionPanelWindow = createCompanionPanelWindow(serverUrl, logger);
+    companionPanelWindow = createCompanionPanelWindow(serverUrl, logger, initialTool);
     return true;
   }
   if (companionPanelWindow.isMinimized()) companionPanelWindow.restore();
@@ -2413,11 +2432,12 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
     });
   });
   const startupDocument = createStartupDocument({ chinese: app.getLocale().toLocaleLowerCase().startsWith("zh"), version: app.getVersion(), updated, ...media });
+  let navigation: Promise<void> = Promise.resolve();
   try {
     // The embedded film exceeds Chromium's navigation URL limit. Loading the
     // same local HTML from a file keeps media offline without a huge data URL.
     writeFileSync(startupPath, startupDocument, { encoding: "utf8", mode: 0o600 });
-    void window.loadFile(startupPath).catch((error) => {
+    navigation = window.loadFile(startupPath).catch((error) => {
       log.warn("Unable to load startup animation; continuing to the application", error);
       finishIntro();
     });
@@ -2425,8 +2445,16 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
     log.warn("Unable to prepare startup animation; continuing to the application", error);
     finishIntro();
   }
-  void finished.then(() => { if (!window.isDestroyed()) window.webContents.removeListener("will-navigate", continueIntro); });
-  return { window, ready, finished };
+  const handedOff = finished.then(async () => {
+    if (!window.isDestroyed()) {
+      window.webContents.removeListener("will-navigate", continueIntro);
+      // The watchdog may expire while loadFile is still navigating. Settle that
+      // navigation before loadURL, so its late events cannot abort the app page.
+      window.webContents.stop();
+    }
+    await navigation;
+  });
+  return { window, ready, finished: handedOff };
 }
 
 type SmokeRendererState = {
@@ -2560,6 +2588,7 @@ async function startApplication(): Promise<void> {
     if (!smokeMarker) {
       throw new Error("PIORA_SMOKE_MARKER is required in portable smoke-test mode.");
     }
+    await startup.finished;
     await loadApplicationWindow(mainWindow, serverUrl, logger);
     const rendererState = await waitForSmokeRenderer(mainWindow);
     await startup.ready;
@@ -2586,16 +2615,32 @@ async function startApplication(): Promise<void> {
   installApplicationMenu();
   registerApplicationMenuPopupHandler();
   initializeDesktopUpdater(logger);
+  clipboardController = new ClipboardController({
+    directory: join(app.getPath("userData"), "clipboard"), origin: serverUrl, partition: DESKTOP_PARTITION, host: mainWindow,
+    trusted: event => isTrustedMainWindowSender(event) || isTrustedCompanionSurfaceSender(event),
+    openManager: () => {
+      if (!showCompanionPanel("clipboard") || !companionPanelWindow) return null;
+      const window = companionPanelWindow;
+      const open = () => { if (!window.isDestroyed()) window.webContents.send("pi:menu-action", "clipboard-history"); };
+      if (window.webContents.isLoading()) window.webContents.once("did-finish-load", open); else open();
+      return window;
+    },
+    onError: error => logger?.warn("Clipboard operation failed", error),
+  });
+  await clipboardController.start().catch(error => logger?.warn("Clipboard startup failed; application remains available", error));
+  clipboardController.setShortcut(toElectronAccelerator(keyboardShortcutBindings["companion.clipboard"]));
   registerFileShellHandlers();
   installDisplayReconciliation();
 
   await startup.finished;
   await loadApplicationWindow(mainWindow, serverUrl, logger);
+  void clipboardController.warm().catch(error => logger?.warn("Clipboard window preload failed", error));
   writeLastLaunchedVersion(app.getPath("userData"), app.getVersion(), logger);
   logger.info("Application window is ready", { elapsedMs: Date.now() - startupStartedAt });
 }
 
 async function stopApplication(): Promise<void> {
+  await clipboardController?.stop().catch(error => { if (error instanceof ClipboardDraftFlushError) throw error; logger?.warn("Clipboard shutdown failed", error); });
   if (scheduledUpdateTimer) clearInterval(scheduledUpdateTimer);
   scheduledUpdateTimer = undefined;
   logger?.info("Stopping Piora");
@@ -2676,10 +2721,16 @@ if (!hasSingleInstanceLock) {
     event.preventDefault();
 
     shutdownPromise ??= stopApplication()
-      .catch((error) => logger?.error("Desktop shutdown failed", error))
-      .finally(() => {
+      .then(() => {
         shutdownComplete = true;
         app.quit();
+      }).catch((error) => {
+        logger?.error("Desktop shutdown failed", error);
+        if (error instanceof ClipboardDraftFlushError) {
+          quitRequested = false; shutdownPromise = undefined;
+          const chinese = app.getLocale().toLowerCase().startsWith("zh");
+          dialog.showErrorBox(chinese ? "编辑草稿尚未保存" : "Edit draft is not saved", chinese ? "请回到剪贴板重试保存草稿，再退出应用。应用仍保持打开。" : error.message);
+        } else { shutdownComplete = true; app.quit(); }
       });
   });
 

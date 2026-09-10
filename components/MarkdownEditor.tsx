@@ -1,146 +1,240 @@
 "use client";
 
-import { useEffect, useRef, useImperativeHandle, forwardRef } from "react";
-import { Compartment, EditorState, StateField, type Range } from "@codemirror/state";
-import { Decoration, EditorView, keymap, placeholder, WidgetType, type DecorationSet } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap, undo, redo } from "@codemirror/commands";
-import { search, searchKeymap, openSearchPanel } from "@codemirror/search";
-import { useI18n } from "@/hooks/useI18n";
-import { createEditorSearchPanel, editorSearchChinese } from "@/lib/editor-search-panel";
-import "./EditorSearch.css";
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
-import { syntaxTree, syntaxHighlighting, defaultHighlightStyle } from "@codemirror/language";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type Ref } from "react";
+import Vditor from "vditor";
+import { loadMarkdownEditorAssets, MARKDOWN_EDITOR_CDN } from "@/lib/markdown-editor-assets";
+import { markdownOutline } from "@/lib/markdown-outline";
+import { preserveMarkdownImageSizes } from "@/lib/markdown-editor-images";
+import "vditor/dist/index.css";
+import "./MarkdownEditor.css";
 
-class TextWidget extends WidgetType {
-  constructor(readonly text: string) { super(); }
-  eq(other: TextWidget) { return this.text === other.text; }
-  toDOM() { const span = document.createElement("span"); span.textContent = this.text; span.className = "md-marker"; return span; }
+export interface MarkdownEditorHandle {
+  insert(before: string, after?: string): void;
+  focus(): void;
+  search(): void;
+  jumpTo(offset: number): void;
+  flush(): Promise<boolean>;
+  isBusy(): boolean;
+  getHTML(): string;
+}
+interface Props { value: string; onChange(value: string): void; onSave(): void; onImage(file: File): Promise<string>; editorRef?: Ref<MarkdownEditorHandle> }
+
+function destroyEditor(editor: Vditor) {
+  // Vditor removes a page-global icon script on destroy, even while another
+  // document is open. Retain the already-executed script for sibling editors.
+  const icons = document.getElementById("vditorIconScript");
+  clearTimeout(editor.vditor.wysiwyg?.afterRenderTimeoutId);
+  clearTimeout(editor.vditor.ir?.processTimeoutId);
+  editor.destroy();
+  if (icons && !icons.isConnected) document.head.appendChild(icons);
 }
 
-class ImageWidget extends WidgetType {
-  constructor(readonly url: string, readonly alt: string) { super(); }
-  eq(other: ImageWidget) { return this.url === other.url && this.alt === other.alt; }
-  toDOM(view: EditorView) {
-    const img = document.createElement("img");
-    img.src = this.url; img.alt = this.alt; img.className = "md-image";
-    img.addEventListener("load", () => view.requestMeasure());
-    return img;
-  }
-  ignoreEvent() { return false; }
-}
+export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function MarkdownEditor(props, ref) {
+  const host = useRef<HTMLDivElement>(null);
+  const engine = useRef<Vditor | null>(null);
+  const latest = useRef(props);
+  latest.current = props;
+  const lastPublished = useRef(props.value);
+  const baseline = useRef("");
+  const uploads = useRef<Promise<void> | null>(null);
+  const composing = useRef(false);
+  const publishRef = useRef<() => void>(() => {});
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState("");
+  const [replacement, setReplacement] = useState("");
+  const [searchStatus, setSearchStatus] = useState("");
+  const searchInput = useRef<HTMLInputElement>(null);
 
-function previewDecorations(state: EditorState): DecorationSet {
-  const decorations: Range<Decoration>[] = [];
-  const active = state.selection.ranges.map((range) => ({ from: state.doc.lineAt(range.from).from, to: state.doc.lineAt(range.to).to }));
-  const editing = (from: number, to: number) => active.some((range) => range.from <= to && range.to >= from);
-  const hide = (from: number, to: number) => { if (from < to) decorations.push(Decoration.replace({}).range(from, to)); };
-  syntaxTree(state).iterate({ enter(node) {
-    const { name, from, to } = node;
-    const line = state.doc.lineAt(from);
-    const selected = editing(from, to);
-    if (/^ATXHeading[1-6]$/.test(name)) decorations.push(Decoration.line({ class: `md-h${name.slice(-1)}` }).range(line.from));
-    if (["StrongEmphasis", "Emphasis", "Strikethrough", "InlineCode", "Link"].includes(name)) {
-      decorations.push(Decoration.mark({ class: `md-${name}` }).range(from, to));
-    }
-    if (name === "FencedCode") {
-      for (let n = line.number; n <= state.doc.lineAt(to).number; n++) decorations.push(Decoration.line({ class: "md-code-line" }).range(state.doc.line(n).from));
-    }
-    if (name === "Blockquote") {
-      for (let n = line.number; n <= state.doc.lineAt(to).number; n++) decorations.push(Decoration.line({ class: "md-quote" }).range(state.doc.line(n).from));
-    }
-    if (selected) return;
-    if (name === "Image") {
-      const match = /^!\[([^\]]*)\]\(([^\s)]+)\)$/.exec(state.doc.sliceString(from, to));
-      if (match && /^(https?:\/\/|\/api\/companion\/library\/image\?|data:image\/(png|jpeg|webp|gif);base64,)/i.test(match[2])) {
-        decorations.push(Decoration.replace({ widget: new ImageWidget(match[2], match[1]) }).range(from, to));
-        return false;
-      }
-    }
-    if (name === "HeaderMark" || name === "QuoteMark") hide(from, Math.min(to + 1, line.to));
-    if (["EmphasisMark", "StrikethroughMark", "CodeMark"].includes(name)) hide(from, to);
-    if (name === "ListMark" && /^[*+-]$/.test(state.doc.sliceString(from, to))) decorations.push(Decoration.replace({ widget: new TextWidget("•") }).range(from, to));
-    if (name === "TaskMarker") decorations.push(Decoration.replace({ widget: new TextWidget(state.doc.sliceString(from, to).toLowerCase() === "[x]" ? "☑" : "☐") }).range(from, to));
-    if (name === "Link") {
-      const url = node.node.getChild("URL");
-      if (url) {
-        hide(from, from + 1);
-        hide(url.from - 2, to);
-        return false;
-      }
-    }
-  } });
-  return Decoration.set(decorations, true);
-}
-
-const livePreview = StateField.define<DecorationSet>({
-  create: previewDecorations,
-  update: (_decorations, transaction) => previewDecorations(transaction.state),
-  provide: (field) => EditorView.decorations.from(field),
-});
-
-export interface MarkdownEditorHandle { insert(before: string, after?: string): void; focus(): void; search(): void; undo(): void; redo(): void; jumpTo(offset: number): void }
-interface Props { value: string; source: boolean; onChange: (value: string) => void; onSave: () => void; onImage: (file: File) => void }
-
-export const MarkdownEditor = forwardRef<MarkdownEditorHandle, Props>(function MarkdownEditor({ value, source, onChange, onSave, onImage }, ref) {
-  const { locale } = useI18n();
-  const language = useRef(new Compartment());
-  const container = useRef<HTMLDivElement>(null);
-  const viewRef = useRef<EditorView | null>(null);
-  const callbacks = useRef({ onChange, onSave, onImage });
-  callbacks.current = { onChange, onSave, onImage };
-  const initial = useRef({ value, source });
-  const mode = useRef(new Compartment());
-  const syncing = useRef(false);
-  const insert = (before: string, after = "") => {
-    const view = viewRef.current;
-    if (!view) return;
-    const { from, to } = view.state.selection.main;
-    const text = view.state.sliceDoc(from, to);
-    view.dispatch({ changes: { from, to, insert: before + text + after }, selection: { anchor: from + before.length, head: from + before.length + text.length }, scrollIntoView: true });
-    view.focus();
+  const sourceMode = () => {
+    const editor = engine.current;
+    if (!editor || uploads.current) return;
+    if (editor.getCurrentMode() !== "sv") editor.vditor.toolbar!.elements!["edit-mode"].querySelector<HTMLButtonElement>('[data-mode="sv"]')?.click();
+    return editor.vditor.sv!.element;
   };
-  useImperativeHandle(ref, () => ({ insert, focus: () => viewRef.current?.focus(),
-    search: () => { if (viewRef.current) openSearchPanel(viewRef.current); },
-    undo: () => { if (viewRef.current) undo(viewRef.current); },
-    redo: () => { if (viewRef.current) redo(viewRef.current); },
-    jumpTo: (offset) => { const view = viewRef.current; if (view) { const anchor = Math.max(0, Math.min(offset, view.state.doc.length)); view.dispatch({ selection: { anchor }, effects: EditorView.scrollIntoView(anchor, { y: "start" }) }); view.focus(); } },
+  const openSearch = () => { if (sourceMode()) { setSearching(true); requestAnimationFrame(() => searchInput.current?.focus()); } };
+  const find = (replace = false, all = false) => {
+    const editor = engine.current, input = sourceMode();
+    if (!editor || !input || !query) return;
+    if (replace && all) {
+      const matches = input.value.split(query).length - 1;
+      const next = input.value.split(query).join(replacement);
+      if (next.length > 200_000) { setSearchStatus("替换后超过 200,000 字符限制"); return; }
+      editor.setValue(next); publishRef.current(); setSearchStatus(`已替换 ${matches} 处`); return;
+    }
+    if (replace && input.value.slice(input.selectionStart, input.selectionEnd) === query) { editor.insertMD(replacement); publishRef.current(); }
+    const start = input.value.indexOf(query, input.selectionEnd);
+    const found = start < 0 ? input.value.indexOf(query) : start;
+    if (found < 0) { setSearchStatus("没有找到匹配内容"); return; }
+    input.focus(); input.setSelectionRange(found, found + query.length);
+    input.scrollTop = (input.value.slice(0, found).split("\n").length - 1) * parseFloat(getComputedStyle(input).lineHeight) - input.clientHeight / 2;
+    setSearchStatus(`共 ${input.value.split(query).length - 1} 处匹配`);
+  };
+  // next/dynamic reserves `ref` for its loadable handle. The explicit prop
+  // reaches this editor through that boundary; direct mounts can still use ref.
+  useImperativeHandle(props.editorRef ?? ref, () => ({
+    insert(before, after = "") { const editor = engine.current; if (editor && !uploads.current) { editor.focus(); editor.insertMD(before + editor.getSelection() + after); publishRef.current(); } },
+    focus() { engine.current?.focus(); }, search: openSearch,
+    async flush() { await uploads.current; publishRef.current(); return !composing.current && (engine.current?.getValue().length ?? 0) <= 200_000; },
+    isBusy: () => Boolean(uploads.current) || composing.current || (engine.current?.getValue().length ?? 0) > 200_000,
+    getHTML: () => engine.current?.getHTML() ?? "",
+    jumpTo(offset) {
+      const editor = engine.current;
+      if (!editor || uploads.current) return;
+      if (editor.getCurrentMode() === "sv") {
+        const input = editor.vditor.sv!.element;
+        input.focus(); input.setSelectionRange(offset, offset);
+        input.scrollTop = input.value.slice(0, offset).split("\n").length * parseFloat(getComputedStyle(input).lineHeight) - 30;
+      } else {
+        const index = markdownOutline(latest.current.value).findIndex((entry) => entry.offset === offset);
+        const heading = editor.vditor[editor.getCurrentMode()]!.element.querySelectorAll("h1,h2,h3,h4,h5,h6")[index];
+        if (heading) { const range = document.createRange(); range.selectNodeContents(heading); range.collapse(true); editor.focus(); getSelection()?.removeAllRanges(); getSelection()?.addRange(range); heading.scrollIntoView({ block: "start" }); }
+      }
+    },
   }));
+
   useEffect(() => {
-    if (!container.current) return;
-    const view = new EditorView({ parent: container.current, state: EditorState.create({ doc: initial.current.value, extensions: [
-      markdown({ base: markdownLanguage }), history(), search({ top: true, createPanel: createEditorSearchPanel }), EditorView.lineWrapping,
-      language.current.of([]),
-      mode.current.of(initial.current.source ? [syntaxHighlighting(defaultHighlightStyle)] : [livePreview]),
-      placeholder("从这里开始写作… 输入 # 标题、**粗体** 或 - 列表"),
-      EditorView.contentAttributes.of({ "aria-label": "Markdown 正文", spellcheck: "false" }),
-      keymap.of([
-        { key: "Mod-h", run: openSearchPanel },
-        { key: "Mod-s", run: () => { callbacks.current.onSave(); return true; } },
-        { key: "Mod-b", run: () => { insert("**", "**"); return true; } },
-        { key: "Mod-i", run: () => { insert("*", "*"); return true; } },
-        ...searchKeymap, ...defaultKeymap, ...historyKeymap,
-      ]),
-      EditorState.transactionFilter.of((transaction) => transaction.docChanged && transaction.newDoc.length > 200_000 ? [] : transaction),
-      EditorView.updateListener.of((update) => { if (update.docChanged && !syncing.current) callbacks.current.onChange(update.state.doc.toString()); }),
-      EditorView.domEventHandlers({ paste(event) {
-        const file = Array.from(event.clipboardData?.files ?? []).find((entry) => entry.type.startsWith("image/"));
-        if (!file) return false;
-        event.preventDefault(); callbacks.current.onImage(file); return true;
-      } }),
-    ] }) });
-    viewRef.current = view;
-    return () => { viewRef.current = null; view.destroy(); };
-  }, []);
-  useEffect(() => { viewRef.current?.dispatch({ effects: mode.current.reconfigure(source ? [syntaxHighlighting(defaultHighlightStyle)] : [livePreview]) }); }, [source]);
-  useEffect(() => { viewRef.current?.dispatch({ effects: language.current.reconfigure(EditorState.phrases.of(locale === "zh-CN" ? {
-    ...editorSearchChinese, "current match": "当前匹配", "replaced $ matches": "已替换 $ 处", "replaced match on line $": "已替换第 $ 行匹配",
-  } : {})) }); }, [locale]);
+    let disposed = false;
+    let instance: Vditor | null = null;
+    let ready = false;
+    let overLimit = false;
+    const element = document.createElement("div");
+    host.current?.appendChild(element);
+    const publish = () => {
+      if (!ready || !instance || composing.current) return;
+      const value = instance.getValue();
+      if (value.length > 200_000) { overLimit = true; setError("文档最多支持 200,000 字符。请撤销或删减后保存。"); return; }
+      if (overLimit) { overLimit = false; setError(""); }
+      // Opening a document must not normalize and overwrite its original source.
+      if (value === baseline.current) return;
+      baseline.current = value; lastPublished.current = value; latest.current.onChange(value);
+    };
+    publishRef.current = publish;
+    const upload = (files: File[]) => {
+      if (!instance || uploads.current) return uploads.current ?? Promise.resolve();
+      const editor = instance;
+      const selection = getSelection();
+      const range = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+      const input = editor.vditor.sv!.element;
+      const start = input.selectionStart, end = input.selectionEnd;
+      editor.disabled(); setUploading(true); setError("");
+      const operation = (async () => {
+        const inserted: string[] = [], failures: string[] = [];
+        for (const file of files) {
+          try { inserted.push(`![${file.name.replace(/[\[\]\\\r\n]/g, "_")}](${await latest.current.onImage(file)})`); }
+          catch (cause) { failures.push(cause instanceof Error ? cause.message : String(cause)); }
+        }
+        if (disposed) return;
+        editor.enable();
+        if (editor.getCurrentMode() === "sv") input.setSelectionRange(start, end);
+        else if (range && element.contains(range.startContainer)) { selection?.removeAllRanges(); selection?.addRange(range); }
+        if (inserted.length) { editor.insertMD(`\n${inserted.join("\n\n")}\n`); publish(); }
+        if (failures.length) setError(failures.join("；"));
+      })().finally(() => { uploads.current = null; if (!disposed) { editor.enable(); setUploading(false); } });
+      uploads.current = operation;
+      return operation;
+    };
+    element.addEventListener("keydown", (event) => {
+      if (!(event.ctrlKey || event.metaKey) || event.isComposing) return;
+      if (event.key.toLowerCase() === "s") { event.preventDefault(); event.stopPropagation(); publish(); latest.current.onSave(); }
+      if (["f", "h"].includes(event.key.toLowerCase())) { event.preventDefault(); event.stopPropagation(); openSearch(); }
+    }, true);
+    element.addEventListener("paste", (event) => {
+      const files = Array.from(event.clipboardData?.files ?? []);
+      if (files.length) { event.preventDefault(); event.stopPropagation(); void upload(files); }
+    }, true);
+    element.addEventListener("drop", (event) => {
+      const files = Array.from(event.dataTransfer?.files ?? []);
+      if (!files.length) return;
+      event.preventDefault(); event.stopPropagation();
+      if (instance?.getCurrentMode() !== "sv") {
+        const range = document.caretRangeFromPoint(event.clientX, event.clientY);
+        if (range && element.contains(range.startContainer)) { getSelection()?.removeAllRanges(); getSelection()?.addRange(range); }
+      }
+      void upload(files);
+    }, true);
+    element.addEventListener("dragover", (event) => { if (event.dataTransfer?.types.includes("Files")) event.preventDefault(); });
+    element.addEventListener("compositionstart", () => { composing.current = true; }, true);
+    element.addEventListener("compositionend", () => { composing.current = false; queueMicrotask(publish); }, true);
+    // The engine's delayed input callback is secondary; draft recovery receives
+    // actual DOM input immediately, including Chinese composition completion.
+    element.addEventListener("beforeinput", (event) => { if (ready && event.target instanceof Element && event.target.closest(".vditor-panel")) instance?.vditor.undo?.addToUndoStack(instance.vditor); }, true);
+    element.addEventListener("input", (event) => queueMicrotask(() => { publish(); if (ready && event.target instanceof Element && event.target.closest(".vditor-panel")) instance?.vditor.undo?.addToUndoStack(instance.vditor); }));
+    void loadMarkdownEditorAssets().then(() => {
+      if (disposed) return;
+      instance = new Vditor(element, {
+        value: latest.current.value, mode: "wysiwyg", lang: "zh_CN", cdn: MARKDOWN_EDITOR_CDN,
+        cache: { enable: false }, height: "100%", undoDelay: 150,
+        placeholder: "从这里开始写作…", toolbarConfig: { pin: false },
+        toolbar: ["headings", "bold", "italic", "strike", "|", "list", "ordered-list", "check", "quote", "|", "link", "upload", "table", "code", "|", "undo", "redo", "|", "edit-mode"],
+        preview: { mode: "editor", theme: { current: "", path: "" }, hljs: { enable: false }, markdown: { sanitize: true, codeBlockPreview: false, autoSpace: false, fixTermTypo: false }, math: { engine: "KaTeX" } },
+        hint: { emoji: {}, emojiPath: "" }, link: { isOpen: false }, image: { isPreview: false },
+        upload: { handler: async (files) => { await upload(files); return null; }, accept: "image/png,image/jpeg,image/webp,image/gif", multiple: true },
+        input: () => { if (!disposed) publish(); },
+        customWysiwygToolbar(type, panel) {
+          queueMicrotask(() => {
+            if (disposed || !panel.isConnected) return;
+            const bounds = panel.parentElement!.getBoundingClientRect(), rect = panel.getBoundingClientRect();
+            const top = Math.max(bounds.top + 8, Math.min(rect.top, bounds.bottom - rect.height - 8));
+            const left = Math.max(bounds.left + 8, Math.min(rect.left, bounds.right - rect.width - 8));
+            panel.style.top = `${parseFloat(panel.style.top || "0") + top - rect.top}px`;
+            panel.style.left = `${parseFloat(panel.style.left || "0") + left - rect.left}px`;
+          });
+          panel.querySelectorAll<HTMLInputElement>("input[placeholder]").forEach((input) => input.setAttribute("aria-label", input.placeholder));
+          if (type !== "image" || !instance) return;
+          const img = instance.vditor.wysiwyg!.element.querySelector<HTMLImageElement>("img[data-piora-selected]");
+          if (!img) return;
+          const label = document.createElement("label"); label.textContent = "宽度 ";
+          const width = document.createElement("input"); width.type = "number"; width.min = "40"; width.max = "2400"; width.placeholder = "原始"; width.setAttribute("aria-label", "图片宽度（像素）"); width.value = img.getAttribute("width") ?? "";
+          width.onchange = () => {
+            if (!instance) return;
+            instance.vditor.undo!.addToUndoStack(instance.vditor);
+            if (width.value) { const pixels = Math.max(40, Math.min(2400, Number(width.value))); img.setAttribute("width", String(pixels)); img.style.width = `${pixels}px`; } else { img.removeAttribute("width"); img.style.removeProperty("width"); }
+            instance.vditor.undo!.addToUndoStack(instance.vditor); publish();
+          };
+          label.appendChild(width); panel.appendChild(label);
+        },
+        after() {
+          if (!instance) return;
+          if (disposed) { destroyEditor(instance); element.remove(); return; }
+          preserveMarkdownImageSizes(instance.vditor.lute!);
+          instance.setValue(latest.current.value, true);
+          ready = true; engine.current = instance; baseline.current = instance.getValue(); lastPublished.current = latest.current.value;
+          for (const mode of ["wysiwyg", "ir", "sv"] as const) { const body = instance.vditor[mode]!.element; body.setAttribute("aria-label", mode === "sv" ? "Markdown 源码" : "Markdown 正文"); body.setAttribute("role", "textbox"); body.setAttribute("aria-multiline", "true"); }
+          const sourceButton = element.querySelector('[data-mode="sv"]'); if (sourceButton) sourceButton.textContent = "Markdown 源码 ‹Ctrl+Alt+9›";
+          element.querySelector('input[type="file"]')?.setAttribute("aria-label", "插入图片");
+          element.addEventListener("click", (event) => { element.querySelectorAll("[data-piora-selected]").forEach((img) => img.removeAttribute("data-piora-selected")); if (event.target instanceof HTMLImageElement) event.target.setAttribute("data-piora-selected", "true"); }, true);
+          setLoading(false);
+        },
+      });
+    }).catch((cause) => { if (!disposed) { setError(String(cause instanceof Error ? cause.message : cause)); setLoading(false); } });
+    return () => {
+      publish(); disposed = true; engine.current = null;
+      if (instance && ready) destroyEditor(instance);
+      element.remove();
+    };
+    // One engine per document; autosaves and hidden tabs must retain selection
+    // and native undo stacks. Callbacks and incoming values use refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attempt]);
   useEffect(() => {
-    const view = viewRef.current;
-    if (!view || view.state.doc.toString() === value) return;
-    syncing.current = true;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value } });
-    syncing.current = false;
-  }, [value]);
-  return <div ref={container} className="pocket-markdown-editor" data-source={source} />;
+    const editor = engine.current;
+    if (!editor || props.value === lastPublished.current) return;
+    editor.setValue(props.value); baseline.current = editor.getValue(); lastPublished.current = props.value;
+  }, [props.value]);
+
+  return <div className="pocket-markdown-editor" data-uploading={uploading}>
+    {searching ? <div className="pocket-editor-search" role="search" aria-label="查找与替换 Markdown 源码">
+      <input ref={searchInput} aria-label="查找内容" placeholder="查找源码" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") find(); if (event.key === "Escape") setSearching(false); }} />
+      <input aria-label="替换为" placeholder="替换为" value={replacement} onChange={(event) => setReplacement(event.target.value)} />
+      <button type="button" onClick={() => find()}>下一处</button><button type="button" onClick={() => find(true)}>替换</button><button type="button" onClick={() => find(true, true)}>全部替换</button><button type="button" aria-label="关闭查找" onClick={() => setSearching(false)}>×</button><span role="status">{searchStatus}</span>
+    </div> : null}
+    {loading ? <p role="status">正在打开编辑器…</p> : null}
+    {uploading ? <p className="pocket-editor-notice" role="status">正在保存图片，完成后可继续编辑…</p> : null}
+    {error ? <p className="pocket-editor-notice" role="alert">{error}{!engine.current ? <button type="button" onClick={() => { setLoading(true); setError(""); setAttempt((value) => value + 1); }}>重试</button> : <button type="button" onClick={() => setError("")}>关闭</button>}</p> : null}
+    <div ref={host} className="pocket-editor-host" />
+  </div>;
 });

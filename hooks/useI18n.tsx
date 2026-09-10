@@ -107,6 +107,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       }
       if (localeRequestRef.current !== requestId) return;
       setLocaleState(next);
+      setHydrated(true);
       document.documentElement.lang = next;
       try {
         window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
@@ -116,6 +117,13 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     };
     void applyLocale();
   }, []);
+
+  useEffect(() => {
+    const sync = (event: StorageEvent) => {
+      if (event.key === LOCALE_STORAGE_KEY && (event.newValue === "en" || event.newValue === "zh-CN")) setLocale(event.newValue);
+    };
+    window.addEventListener("storage", sync); return () => window.removeEventListener("storage", sync);
+  }, [setLocale]);
 
   const t = useCallback((key: string, params?: TranslationParams) => translateMessage(locale, key, messages, params), [locale, messages]);
   const value = useMemo(() => ({ locale: hydrated ? locale : defaultLocale, setLocale, t, supportedLocales }), [hydrated, locale, setLocale, t]);

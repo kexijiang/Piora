@@ -34,12 +34,14 @@ import { CompanionTransferStation } from "./CompanionTransferStation";
 import { useTransferStation } from "@/hooks/useTransferStation";
 
 const JsonWorkbench = dynamic(() => import("./JsonWorkbench").then((module) => module.JsonWorkbench), { loading: () => <p role="status">正在打开 JSON 工具…</p> });
-type Tab = "home" | "json" | "now" | "tasks" | "focus" | "library" | "memory" | "mind";
+const ClipboardWorkbench = dynamic(() => import("./ClipboardWorkbench").then((module) => module.ClipboardWorkbench), { loading: () => <p role="status">正在打开剪贴板…</p> });
+type Tab = "home" | "json" | "clipboard" | "now" | "tasks" | "focus" | "library" | "memory" | "mind";
 const TOOLS: Array<{ id: Tab; icon: AliIconName; label: string; description: string; keywords: string }> = [
+  { id: "clipboard", icon: "copy", label: "剪贴板", description: "查找复制历史，粘贴回原应用", keywords: "剪贴板 clipboard 历史 复制 粘贴 图片 收藏" },
   { id: "json", icon: "code", label: "JSON 工具", description: "格式化、校验与文本转换", keywords: "json 格式化 转换 base64 url unicode" },
   { id: "tasks", icon: "check-circle", label: "待办清单", description: "记下要做的，一件件完成", keywords: "任务 待办 todo" },
   { id: "focus", icon: "timer", label: "专注时钟", description: "留一段时间，只做一件事", keywords: "番茄钟 专注 focus timer" },
-  { id: "library", icon: "archive", label: "中转站", description: "轻量 Markdown 编辑与自动保存", keywords: "中转 markdown 编辑 写作 文档 暂存 收藏 资料 笔记 代码 图片" },
+  { id: "library", icon: "archive", label: "中转站", description: "可视化 Markdown、表格与图片编辑", keywords: "中转 markdown 编辑 写作 文档 暂存 收藏 资料 笔记 代码 图片 表格" },
 ];
 
 function emptyRuntimeState(): CompanionRuntimeState {
@@ -110,8 +112,11 @@ function parseModelValue(value: string): CompanionInteractionModel | null {
 export function CompanionPanel() {
   const [tab, setTab] = useState<Tab>("home");
   const [jsonOpened, setJsonOpened] = useState(false);
+  const [libraryOpened, setLibraryOpened] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
-  const navigate = useCallback((next: Tab) => { setTab(next); if (next === "json") setJsonOpened(true); }, []);
+  const navigate = useCallback((next: Tab) => { setTab(next); if (next === "json") setJsonOpened(true); if (next === "library") setLibraryOpened(true); }, []);
+  useEffect(() => window.piDesktop?.onMenuAction?.((action) => { if (action === "clipboard-history") navigate("clipboard"); }), [navigate]);
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("tool") === "clipboard") navigate("clipboard"); }, [navigate]);
   const [state, setState] = useState<CompanionRuntimeState>(emptyRuntimeState);
   const [models, setModels] = useState<ModelsData | null>(null);
   const [modelsError, setModelsError] = useState("");
@@ -135,6 +140,7 @@ export function CompanionPanel() {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.target instanceof Element && event.target.closest(".pocket-markdown-editor")) return;
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault(); navigate("home");
         requestAnimationFrame(() => searchRef.current?.focus());
@@ -143,7 +149,7 @@ export function CompanionPanel() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [navigate]);
-  const transfer = useTransferStation(jsonOpened || tab === "library");
+  const transfer = useTransferStation(jsonOpened || libraryOpened || tab === "clipboard");
 
   const applyState = useCallback((next: CompanionRuntimeState) => {
     if (next.updatedAt < stateRef.current.updatedAt) return false;
@@ -340,6 +346,7 @@ export function CompanionPanel() {
   const tabs: Array<{ id: Tab; icon: AliIconName; label: string }> = [
     { id: "home", icon: "home", label: "工具台" },
     { id: "json", icon: "code", label: "JSON" },
+    { id: "clipboard", icon: "copy", label: "剪贴板" },
     { id: "tasks", icon: "check-circle", label: "待办" },
     { id: "focus", icon: "timer", label: "专注" },
     { id: "library", icon: "archive", label: "中转站" },
@@ -360,7 +367,7 @@ export function CompanionPanel() {
           const next = event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : (index + (event.key === "ArrowDown" ? 1 : -1) + tabs.length) % tabs.length;
           navigate(tabs[next].id); document.getElementById(`cabin-tab-${tabs[next].id}`)?.focus();
         }}>
-          {tabs.map(({ id, icon, label }, index) => <button type="button" role="tab" id={`cabin-tab-${id}`} aria-controls="cabin-content" tabIndex={tab === id ? 0 : -1} key={id} aria-selected={tab === id} data-active={tab === id} data-secondary={index === 5} onClick={() => navigate(id)}><AliIcon name={icon} size={18} /><span>{label}</span>{id === "tasks" && activeTasks.length > 0 ? <small>{activeTasks.length}</small> : null}</button>)}
+          {tabs.map(({ id, icon, label }) => <button type="button" role="tab" id={`cabin-tab-${id}`} aria-controls="cabin-content" tabIndex={tab === id ? 0 : -1} key={id} aria-selected={tab === id} data-active={tab === id} data-secondary={id === "now"} onClick={() => navigate(id)}><AliIcon name={icon} size={18} /><span>{label}</span>{id === "tasks" && activeTasks.length > 0 ? <small>{activeTasks.length}</small> : null}</button>)}
         </nav>
         <span className={styles.sidebarFoot}>随开 · 随用</span>
       </aside>
@@ -458,7 +465,8 @@ export function CompanionPanel() {
           </article>
         </> : null}
 
-        {tab === "library" ? <CompanionTransferStation {...transfer} /> : null}
+        {libraryOpened ? <div className={styles.libraryPane} hidden={tab !== "library"}><CompanionTransferStation {...transfer} /></div> : null}
+        {tab === "clipboard" ? <ClipboardWorkbench onSave={async (entry) => { await transfer.write("POST", { title: entry.title, content: entry.content, ...(entry.kind === "image" ? { kind: "image" } : { language: "markdown" }) }); }} /> : null}
 
         {tab === "memory" ? <>
           <div className={styles.pageHeading}><div><h1>记忆</h1><p>让陪伴更懂你一点。</p></div></div>

@@ -11,6 +11,7 @@ declare global {
         open: (id: string) => Promise<void>;
       };
       clipboard?: {
+        historyV2?: import("@/desktop/src/clipboard-types").ClipboardBridge;
         readText: () => Promise<string>;
         writeText: (text: string) => Promise<void>;
         readImage: () => Promise<string | null>;

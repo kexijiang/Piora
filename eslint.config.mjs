@@ -15,6 +15,7 @@ const eslintConfig = [
       "desktop/dist/**",
       "desktop/release/**",
       "Piora-*-win-x64/**",
+      "public/vendor/**",
       "website/.next/**",
       "website/.vinext/**",
       "website/.wrangler/**",

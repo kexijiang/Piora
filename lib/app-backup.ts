@@ -10,11 +10,24 @@ import { writePrivateFileAtomicSync } from "./atomic-file";
 import { validateClientBackup } from "./app-backup-client";
 import { PROMPT_MATERIAL_MARKER_PREFIX, PROMPT_MATERIAL_MARKER_SUFFIX, type PromptMaterialMarkerPayload } from "./prompt-material-format";
 import { backupInventory, createBackupArchive, extractBackupArchive, safeBackupPath, type BackupManifest, type BackupRoot } from "./app-backup-archive";
+import { requestDesktopClipboardBackup } from "./desktop-clipboard-backup";
+import { ClipboardDatabase } from "../desktop/src/clipboard-database";
+import { importClipboardArchive } from "../desktop/src/clipboard-archive";
 
 export const backupControlRoot = () => `${getRuntimeAgentDataDirectory()}.piora-transfer`;
 export function backupJob(id: string) { if (!/^[a-f0-9-]{36}$/.test(id)) throw new Error("backup_job"); return path.join(backupControlRoot(), id); }
 export async function newBackupJob() { const id = randomUUID(); await mkdir(backupJob(id), { recursive: true, mode: 0o700 }); return id; }
 function relativeInside(root: string, file: string) { const result = path.relative(root, file); return result === "" || (!result.startsWith("..") && !path.isAbsolute(result)); }
+function clipboardRestoreTarget(agent: string) {
+  if (!process.env.PIORA_DESKTOP_USER_DATA_DIR) return null;
+  const clipboard = path.resolve(process.env.PIORA_DESKTOP_USER_DATA_DIR, "clipboard");
+  // These directories are swapped independently. Overlapping roots could move
+  // the other root or the recovery journal midway through a restore.
+  for (const root of [agent, backupControlRoot()]) {
+    if (relativeInside(root, clipboard) || relativeInside(clipboard, root)) throw new Error("backup_clipboard_overlap");
+  }
+  return clipboard;
+}
 
 export async function exportApplicationBackup(password: string, client: unknown, projects: string[]) {
   validateClientBackup(client);
@@ -41,6 +54,14 @@ export async function exportApplicationBackup(password: string, client: unknown,
   if (desktopData) add({ id: "desktop-runtime", source: desktopData, destination: "piora/migrated/desktop-runtime", files: ["speech-settings.json", "harmony.json"].filter((file) => existsSync(path.join(desktopData, file))) });
   const desktopHome = process.env.PIORA_DESKTOP_USER_DATA_DIR;
   if (desktopHome) add({ id: "desktop", source: desktopHome, destination: "piora/migrated/desktop", files: ["desktop-state.json", "browser-login-hosts.json"].filter((file) => existsSync(path.join(desktopHome, file))) });
+  if (desktopHome && existsSync(path.join(desktopHome, "clipboard", "clipboard.sqlite"))) {
+    const snapshotId = await requestDesktopClipboardBackup();
+    const source = path.join(desktopHome, "clipboard", "backup-exports", `${snapshotId}.piora-clipboard`);
+    const directory = path.join(backupJob(id), "clipboard"); await mkdir(directory);
+    try { await cp(source, path.join(directory, "history.piora-clipboard"), { errorOnExist: true }); }
+    finally { await unlink(source).catch(() => {}); }
+    roots.push({ id: "clipboard", source: directory, destination: "piora/migrated/clipboard", files: ["history.piora-clipboard"] });
+  }
   projects.forEach((project, index) => {
     const source = path.join(project, ".pi");
     if (existsSync(path.join(source, "settings.json"))) roots.push({ id: `project-${index}`, source, destination: `piora/migrated/projects/${index}`, files: ["settings.json"] });
@@ -48,7 +69,7 @@ export async function exportApplicationBackup(password: string, client: unknown,
   const clientRoot = path.join(backupJob(id), "client"); await mkdir(clientRoot);
   await writeFile(path.join(clientRoot, "state.json"), JSON.stringify(client), { mode: 0o600 });
   roots.push({ id: "client", source: clientRoot, destination: "piora/migrated/client" });
-  const entries = await backupInventory(roots, warnings);
+  const entries = (await backupInventory(roots, warnings)).filter(entry => !roots.some(root => root.id === "clipboard") || entry.name !== "agent/piora/migrated/clipboard/history.piora-clipboard");
   const manifest: BackupManifest = { product: "piora", version: 1, platform: process.platform, exportedAt: new Date().toISOString(), roots, projects: [...new Set(projects)], warnings, files: entries.length, bytes: entries.reduce((sum, entry) => sum + entry.size, 0) };
   await createBackupArchive(path.join(backupJob(id), "backup.piora"), password, manifest, entries);
   return { id, manifest };
@@ -62,7 +83,7 @@ export async function previewApplicationBackup(id: string, password: string) {
 }
 export function readBackupPreview(id: string): { attempt: string; manifest: BackupManifest } { return JSON.parse(readFileSync(path.join(backupJob(id), "preview.json"), "utf8")); }
 
-const destinations: Record<string, string> = { agent: ".", companion: "piora/migrated/companion", library: "piora/migrated/library", json: "piora/migrated/json", speech: "piora/migrated/speech", skills: "piora/migrated/skills", rooms: "piora/rooms", "session-control": "piora/session-control", "remote-control": "piora/remote-control", "desktop-runtime": "piora/migrated/desktop-runtime", desktop: "piora/migrated/desktop", client: "piora/migrated/client" };
+const destinations: Record<string, string> = { agent: ".", companion: "piora/migrated/companion", library: "piora/migrated/library", json: "piora/migrated/json", speech: "piora/migrated/speech", skills: "piora/migrated/skills", rooms: "piora/rooms", "session-control": "piora/session-control", "remote-control": "piora/remote-control", "desktop-runtime": "piora/migrated/desktop-runtime", desktop: "piora/migrated/desktop", clipboard: "piora/migrated/clipboard", client: "piora/migrated/client" };
 export interface BackupPathMapping { from: string; to: string }
 export function remapBackupPath(value: string, mappings: BackupPathMapping[]): string {
   const normalized = value.replace(/\\/g, "/");
@@ -142,6 +163,20 @@ export async function prepareApplicationRestore(id: string, requestedMappings: B
     if (root.id !== "client" && !projectMatch) mappings.push({ from: root.source, to: destination === "." ? target : safeBackupPath(target, destination) });
   }
   await mapJsonFiles(staged, mappings);
+  const directories: Array<{ source: string; target: string; previous: string; existed: boolean }> = [];
+  if (seen.has("clipboard")) {
+    const clipboardTarget = clipboardRestoreTarget(target);
+    // Build and validate a fresh database before writing a restore journal. A bad
+    // clipboard archive must not become a partially applied application restore.
+    const source = path.join(backupJob(id), `clipboard-ready-${randomUUID()}`);
+    const database = new ClipboardDatabase(source, Date.now, { maintenance: false });
+    try { await importClipboardArchive(database, path.join(staged, destinations.clipboard, "history.piora-clipboard"), { restoreSettings: true, mappings }); }
+    finally { database.close(); }
+    await writeFile(path.join(source, "restore.json"), JSON.stringify({ id }), { mode: 0o600 });
+    if (clipboardTarget) {
+      directories.push({ source, target: clipboardTarget, previous: `${clipboardTarget}.before-import-${id}`, existed: existsSync(clipboardTarget) });
+    }
+  }
   const patch = async (file: string, update: (value: Record<string, unknown>) => unknown) => { let data = {}; try { data = JSON.parse(await readFile(file, "utf8")); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; } await mkdir(path.dirname(file), { recursive: true }); await writeFile(file, JSON.stringify(update(data)), { mode: 0o600 }); };
   if (seen.has("companion")) await patch(path.join(staged, "piora/companion-storage.json"), (data) => ({ ...data, version: 1, directory: path.join(target, destinations.companion) }));
   await patch(path.join(staged, "piora/pocket-storage.json"), (data) => ({ ...data, version: 1, ...Object.fromEntries(["library", "json"].flatMap((id) => seen.has(id) ? [[id, path.join(target, destinations[id])]] : typeof data[id] === "string" ? [[id, remapBackupPath(data[id], mappings)]] : [])) }));
@@ -171,7 +206,7 @@ export async function prepareApplicationRestore(id: string, requestedMappings: B
     external.push({ source: desktopState, target: destination });
   }
   // The journal is outside every directory being swapped. Original data is retained as a recovery copy.
-  const transaction = { id, staged, target, previous: `${target}.before-import-${id}`, phase: "prepared", external: external.filter((file) => !relativeInside(target, file.target)).map((file, index) => ({ target: file.target, content: readFileSync(file.source, "utf8"), previous: path.join(backupJob(id), `external-before-${index}`), existed: existsSync(file.target) })) };
+  const transaction = { id, staged, target, previous: `${target}.before-import-${id}`, phase: "prepared", directories, external: external.filter((file) => !relativeInside(target, file.target)).map((file, index) => ({ target: file.target, content: readFileSync(file.source, "utf8"), previous: path.join(backupJob(id), `external-before-${index}`), existed: existsSync(file.target) })) };
   const journal = path.join(backupControlRoot(), "pending.json");
   if (existsSync(journal)) throw new Error("backup_pending");
   await writeFile(journal, JSON.stringify(transaction), { flag: "wx", mode: 0o600 });
@@ -183,6 +218,9 @@ export async function applyPendingApplicationRestore() {
   const journal = path.join(backupControlRoot(), "pending.json"); if (!existsSync(journal)) return;
   const tx = JSON.parse(await readFile(journal, "utf8"));
   if (tx.target !== getRuntimeAgentDataDirectory() || tx.previous !== `${tx.target}.before-import-${tx.id}` || path.dirname(tx.staged) !== backupJob(tx.id)) throw new Error("backup_journal");
+  for (const directory of tx.directories ?? []) {
+    if (path.resolve(directory.target) !== clipboardRestoreTarget(tx.target) || directory.previous !== `${directory.target}.before-import-${tx.id}` || path.dirname(directory.source) !== backupJob(tx.id) || !/^clipboard-ready-[a-f0-9-]{36}$/.test(path.basename(directory.source))) throw new Error("backup_journal");
+  }
   const save = () => writePrivateFileAtomicSync(journal, JSON.stringify(tx));
   try {
     if (tx.phase === "prepared") {
@@ -197,9 +235,26 @@ export async function applyPendingApplicationRestore() {
       tx.phase = "external"; save();
     }
     for (const file of tx.external) { mkdirSync(path.dirname(file.target), { recursive: true }); writePrivateFileAtomicSync(file.target, file.content); }
+    for (const directory of tx.directories ?? []) {
+      if (existsSync(directory.source)) {
+        if (existsSync(directory.target)) {
+          if (existsSync(directory.previous)) throw new Error("backup_journal");
+          await rename(directory.target, directory.previous);
+        }
+        await mkdir(path.dirname(directory.target), { recursive: true });
+        await rename(directory.source, directory.target);
+      }
+      if (JSON.parse(await readFile(path.join(directory.target, "restore.json"), "utf8")).id !== tx.id) throw new Error("backup_journal");
+    }
     tx.phase = "complete"; save();
     await rename(journal, path.join(backupJob(tx.id), "completed.json"));
   } catch (error) {
+    for (const directory of [...(tx.directories ?? [])].reverse()) {
+      if (existsSync(directory.previous)) {
+        if (existsSync(directory.target)) await rename(directory.target, path.join(backupJob(tx.id), `clipboard-failed-${randomUUID()}`));
+        await rename(directory.previous, directory.target);
+      } else if (!directory.existed && !existsSync(directory.source) && existsSync(directory.target)) await rename(directory.target, path.join(backupJob(tx.id), `clipboard-failed-${randomUUID()}`));
+    }
     // Keep all copies. A failed restore returns to the pre-import data on the next startup.
     if (existsSync(tx.previous)) {
       if (existsSync(tx.target)) await rename(tx.target, path.join(backupJob(tx.id), `failed-${randomUUID()}`));

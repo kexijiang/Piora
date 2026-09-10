@@ -121,6 +121,7 @@ const RightPanel = dynamic(() => import("./workspace/RightPanel").then((module) 
 const SystemPromptEditor = dynamic(() => import("./SystemPromptEditor").then((module) => module.SystemPromptEditor), { ssr: false });
 const CompanionPet = dynamic(() => import("./CompanionPet").then((module) => module.CompanionPet), { ssr: false });
 const ModelsConfig = dynamic(() => import("./ModelsConfig").then((module) => module.ModelsConfig), { ssr: false });
+const SmartShellSettings = dynamic(() => import("./SmartShellSettings").then((module) => module.SmartShellSettings), { ssr: false, loading: SettingsSectionLoading });
 const SkillsConfig = dynamic(() => import("./SkillsConfig").then((module) => module.SkillsConfig), { ssr: false, loading: SettingsSectionLoading });
 const PluginsConfig = dynamic(() => import("./PluginsConfig").then((module) => module.PluginsConfig), { ssr: false, loading: SettingsSectionLoading });
 const ExtensionsConfig = dynamic(() => import("./ExtensionsConfig").then((module) => module.ExtensionsConfig), { ssr: false, loading: SettingsSectionLoading });
@@ -1623,6 +1624,7 @@ export function AppShell() {
     "panel.browser": () => { setRightPanelTab("browser"); setRightPanelOpen(true); requestAnimationFrame(() => rightPanelRef.current?.focusActiveTab()); },
     "panel.design": () => { setRightPanelTab("design"); setRightPanelOpen(true); requestAnimationFrame(() => rightPanelRef.current?.focusActiveTab()); },
     "companion.togglePanel": () => { void window.piDesktop?.companionAction?.("open-panel"); },
+    "companion.clipboard": () => { void window.piDesktop?.clipboard?.historyV2?.open("quick"); },
     "panel.toggleSidebar": () => setSidebarOpen((open) => !open),
     "panel.close": () => setRightPanelOpen(false),
     "settings.general": () => openSettings("general"),
@@ -1769,6 +1771,7 @@ export function AppShell() {
       }}
       modelCwd={projectCwd ?? activeCwd ?? undefined}
       sections={{
+        shell: <SmartShellSettings cwd={projectCwd ?? activeCwd ?? undefined} />,
         tools: (currentProjectPath ?? settingsProjectCwd) ? (
           <ProjectToolsConfig cwd={(currentProjectPath ?? settingsProjectCwd)!} onChanged={setSessionCapabilities} />
         ) : chooseSettingsProject,
@@ -2803,6 +2806,7 @@ export function AppShell() {
           sessionId={selectedRoom ? roomPanelMember?.binding.sessionId ?? null : selectedSession?.id ?? null}
           sessionName={selectedRoom ? roomPanelMember?.profile.name : selectedSession?.name}
           sessionRunning={Boolean(taskControls?.disabled)}
+          onOpenShellSettings={() => { setSettingsKey("shell"); setSettingsDialogOpen(true); }}
           onGuideAgent={(prompt) => {
             setRightPanelMaximized(false);
             if (selectedRoom) { roomWorkspaceRef.current?.guideMember(roomPanelMember?.binding.sessionId ?? null, prompt); return; }

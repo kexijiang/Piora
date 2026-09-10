@@ -1,10 +1,12 @@
 import type { LocalePlugin } from "../types";
+import { smartShellZh } from "./smart-shell";
 
 /** Pi Web 内置简体中文语言包。 */
 export const zhCNLocale: LocalePlugin = {
   id: "zh-CN",
   label: "简体中文",
   messages: {
+    ...smartShellZh,
     "models.form.name": "名称",
     "models.form.displayName": "显示名称",
     "models.form.keyHint": "环境变量名、!Shell 命令或 API Key",
@@ -426,6 +428,8 @@ export const zhCNLocale: LocalePlugin = {
     "shortcuts.openReviewDescription": "打开 Git 审阅面板。",
     "shortcuts.openBrowserDescription": "打开内置浏览器面板。",
     "shortcuts.companionPanelDescription": "在桌面任意位置打开或隐藏随身舱；点击窗口外会自动隐藏。",
+    "shortcuts.clipboardDescription": "打开剪贴板快捷弹窗，搜索历史并粘贴到原应用。",
+    "commands.openClipboard": "打开剪贴板",
     "shortcuts.settingsDescription": "打开通用设置。",
     "automations.title": "定时任务",
     "automations.description": "让提示词按计划在当前会话中重复运行，或作为独立项目任务执行。",
@@ -1035,6 +1039,7 @@ export const zhCNLocale: LocalePlugin = {
     "browser.keyboardCapture": "在当前网页焦点处输入",
     "browser.profileNotice": "Piora 专用浏览器配置 · 网站登录状态保存在本机",
     "browser.useBackground": "使用后台浏览器",
+    "settings.backgroundBrowserDescription": "默认关闭，使用当前内置浏览器。开启后，Chrome/Edge 在后台无窗口运行，复用旧版 Piora 保存的登录态；与日常 Chrome 的登录态独立。修改后自动生效。",
     "browser.builtinMode": "当前内置浏览器",
     "browser.backgroundMode": "无窗口运行",
     "browser.backgroundProfileNotice": "后台 Chrome/Edge · 复用旧版 Piora 登录态，登录后保存在本机 · 与日常 Chrome、桌面内置浏览器的登录态独立",

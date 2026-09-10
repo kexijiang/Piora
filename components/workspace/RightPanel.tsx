@@ -50,6 +50,7 @@ interface Props {
   sessionName?: string;
   sessionRunning?: boolean;
   onGuideAgent?: ((prompt?: string) => void) | undefined;
+  onOpenShellSettings?: () => void;
   onSelectAutomation?: (id: string) => void;
   onAutomationChanged?: () => void;
   capabilities: SessionCapabilitiesState | null;
@@ -75,6 +76,7 @@ type ToolTab = Exclude<RightPanelTab, "home">;
 export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPanel(props, ref) {
   const { t } = useI18n();
   const explorerRef = useRef<FileExplorerHandle>(null);
+  const [browserNavigation, setBrowserNavigation] = useState<{ id: string; url: string } | undefined>();
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
   const firstLauncherRef = useRef<HTMLButtonElement | null>(null);
   const addMenuRef = useRef<HTMLDivElement | null>(null);
@@ -302,10 +304,10 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
       </RenderErrorBoundary> : null}
     </section>
     <section id="workspace-commands" role="tabpanel" aria-labelledby="workspace-commands-tab" hidden={activeTab !== "commands"} className={styles.panel}>
-      {activeTab === "commands" ? <RenderErrorBoundary resetKey={`commands:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><CommandPanel cwd={cwd} sessionId={props.sessionId} onClose={() => closeTool("commands")} /></RenderErrorBoundary> : null}
+      {activeTab === "commands" ? <RenderErrorBoundary resetKey={`commands:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><CommandPanel cwd={cwd} sessionId={props.sessionId} onClose={() => closeTool("commands")} onSettings={props.onOpenShellSettings} onToChat={props.onGuideAgent} onOpenFile={file => { props.onOpenFile(file, file.replace(/\\/g, "/").split("/").pop() || file); onActiveTabChange("files"); }} onOpenUrl={url => { if (/^https?:\/\//i.test(url)) { setBrowserNavigation({ id: crypto.randomUUID(), url }); onActiveTabChange("browser"); } }} /></RenderErrorBoundary> : null}
     </section>
     <section id="workspace-browser" role="tabpanel" aria-labelledby="workspace-browser-tab" hidden={activeTab !== "browser"} className={styles.panel}>
-      {activeTab === "browser" ? <div className={styles.capabilityPanel}>{capabilityAccess("browser")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`browser:${props.sessionId ?? "manual"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><BrowserPanel active={active && activeTab === "browser"} maximized={props.maximized} sessionId={props.sessionId} /></RenderErrorBoundary></div></div> : null}
+      {activeTab === "browser" ? <div className={styles.capabilityPanel}>{capabilityAccess("browser")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`browser:${props.sessionId ?? "manual"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><BrowserPanel active={active && activeTab === "browser"} maximized={props.maximized} sessionId={props.sessionId} navigationRequest={browserNavigation} onNavigationConsumed={() => setBrowserNavigation(undefined)} /></RenderErrorBoundary></div></div> : null}
     </section>
     <section id="workspace-harmony" role="tabpanel" aria-labelledby="workspace-harmony-tab" hidden={activeTab !== "harmony"} className={styles.panel}>
       {activeTab === "harmony" ? <div className={styles.capabilityPanel}>{capabilityAccess("device")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`harmony:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><SafeHarmonyPanel active={active && activeTab === "harmony"} sessionRunning={props.sessionRunning} onGuideAgent={props.onGuideAgent} /></RenderErrorBoundary></div></div> : null}

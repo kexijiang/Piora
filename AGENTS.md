@@ -9,6 +9,7 @@ npm run dev   # port 30141
 Typecheck: `node_modules/.bin/tsc --noEmit`  
 Lint: `npm run lint`  
 **Never run `next build` during dev** — pollutes `.next/` and breaks `npm run dev`.
+**Never build release packages locally** — push the release commit and tag, and let GitHub Actions build, verify, and publish all beta/stable artifacts.
 
 ---
 
@@ -170,7 +171,7 @@ On `ChatWindow` mount, `GET /api/agent/[id]` is called. If `state.isStreaming ==
 - A prompt's optional `onDurable` callback acknowledges that IndexedDB commit before network setup. The composer can clear immediately on this local receipt; failed sends restore an empty originating composer without overwriting newer input or another session. The pending recovery record remains until a disk-backed receipt confirms delivery.
 - Every send carries a unique `clientPromptId`/idempotency key. History hydration merges unconfirmed recovery records. Never confirm by matching text, since identical messages can be distinct sends.
 - The SDK can buffer messages before its first assistant response. UI tracked prompts persist their session file before admission; only IDs read from a disk-backed SessionManager confirm deletion of a local recovery copy, never SSE or an in-memory history response.
-- UI command journals remain a durable send archive without automatic age/count deletion. `/api/sessions/[id]/submissions` powers the recovery picker, including older sends that never reached model history. Recovery rows have no real entry ID and require distinct virtual row keys.
+- UI command journals remain a durable send archive without automatic age/count deletion. `/api/sessions/[id]/submissions` exposes older sends that never reached model history, but the composer has no send-history button or archive popup. Automatic prompt recovery remains active. Recovery rows have no real entry ID and require distinct virtual row keys.
 - Successful attachment-free UI slash commands may produce no SDK user message. Their disk-backed command journal entries confirm the exact idempotency key only after `completed`; session response cache signatures include journal changes. Other pending, failed, and cancelled sends keep their recovery copies.
 
 ### Compaction SSE events

@@ -52,6 +52,8 @@ const nextConfig: NextConfig = {
     "hypium-driver",
   ],
   webpack(config, { isServer, dev }) {
+    // Shared desktop TypeScript uses Node16 .js import specifiers.
+    config.resolve.extensionAlias = { ...config.resolve.extensionAlias, ".js": [".js", ".ts", ".tsx"] };
     // Release builds are one-shot and never reuse this cache. Disabling the
     // multi-hundred-megabyte filesystem cache also avoids a Webpack cache
     // finalization stall observed on Windows packaging machines.

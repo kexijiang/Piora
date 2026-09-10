@@ -23,10 +23,12 @@ interface Props {
   write: Write; refresh: () => Promise<void>;
 }
 
-function downloadMarkdown(title: string, content: string) {
-  const url = URL.createObjectURL(new Blob([content], { type: "text/markdown;charset=utf-8" }));
+async function downloadMarkdown(title: string, content: string) {
+  const { exportMarkdown } = await import("@/lib/markdown-export");
+  const result = await exportMarkdown(title, content);
+  const url = URL.createObjectURL(result.blob);
   const link = document.createElement("a");
-  link.href = url; link.download = `${(title || "未命名文档").replace(/[<>:"/\\|?*]/g, "_")}.md`;
+  link.href = url; link.download = result.filename;
   link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
@@ -50,7 +52,6 @@ function MarkdownDocument({ item, write, onCreated, onDeleted, registerSave }: {
     return saved;
   }, typeof window === "undefined" ? undefined : window.localStorage));
   const draft = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
-  const [source, setSource] = useState(false);
   const [preview, setPreview] = useState(false);
   const [outlineVisible, setOutlineVisible] = useState(false);
   const outline = useMemo(() => markdownOutline(draft.content), [draft.content]);
@@ -58,30 +59,31 @@ function MarkdownDocument({ item, write, onCreated, onDeleted, registerSave }: {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionPending, setActionPending] = useState(false);
   const editor = useRef<MarkdownEditorHandle>(null);
-  const imageInput = useRef<HTMLInputElement>(null);
+  const save = useCallback(async () => { if (await editor.current?.flush() === false) return false; return controller.save(); }, [controller]);
   useEffect(() => () => controller.dispose(), [controller]);
   useEffect(() => controller.syncMetadata(item), [controller, item]);
-  useEffect(() => { registerSave(item.id, controller.save); return () => registerSave(item.id, null); }, [controller, item.id, registerSave]);
+  useEffect(() => { registerSave(item.id, save); return () => registerSave(item.id, null); }, [save, item.id, registerSave]);
   useEffect(() => {
-    const flush = () => { if (document.visibilityState === "hidden") void controller.save(); };
-    const leave = (event: BeforeUnloadEvent) => { const current = controller.getSnapshot(); if (current.dirty || current.saving) event.preventDefault(); };
+    const flush = () => { if (document.visibilityState === "hidden") void save(); };
+    const leave = (event: BeforeUnloadEvent) => { const current = controller.getSnapshot(); if (current.dirty || current.saving || editor.current?.isBusy()) event.preventDefault(); };
     document.addEventListener("visibilitychange", flush);
     window.addEventListener("beforeunload", leave);
     return () => { document.removeEventListener("visibilitychange", flush); window.removeEventListener("beforeunload", leave); };
-  }, [controller]);
+  }, [controller, save]);
   const action = async (run: () => Promise<void>) => {
     setActionPending(true); setNotice("");
     try { await run(); } catch (cause) { setNotice(cause instanceof Error ? cause.message : String(cause)); }
     finally { setActionPending(false); }
   };
-  const uploadImage = (file: File) => action(async () => {
+  const uploadImage = async (file: File) => {
     const items = await write("POST", { content: await imageData(file), title: file.name, kind: "image" });
-    editor.current?.insert(`\n${imageMarkdown(items[0])}\n`);
-  });
+    if (!items[0]?.content) throw new Error("图片保存失败，请重试。");
+    return items[0].content;
+  };
   const remove = () => {
     if (!confirmDelete) { setConfirmDelete(true); return; }
     void action(async () => {
-      if (!await controller.save()) return;
+      if (!await save()) return;
       await write("PATCH", { id: item.id, remove: true }); onDeleted();
     });
   };
@@ -89,37 +91,23 @@ function MarkdownDocument({ item, write, onCreated, onDeleted, registerSave }: {
     <div className={styles.documentHeader}>
       <input className={styles.title} aria-label="文档标题" maxLength={120} placeholder="未命名文档" value={draft.title} onChange={(event) => controller.update({ title: event.target.value })} />
       <div className={styles.documentActions}>
-        <button type="button" title="导出 Markdown" aria-label="导出 Markdown" onClick={() => downloadMarkdown(draft.title, draft.content)}><AliIcon name="download" size={15} /></button>
-        <button type="button" title="复制 Markdown" aria-label="复制 Markdown" onClick={() => void action(async () => { await copyText(draft.content); setNotice("已复制 Markdown"); })}><AliIcon name="copy" size={15} /></button>
+        <button type="button" title="导出 Markdown（有本机图片时打包为 ZIP）" aria-label="导出 Markdown" disabled={actionPending} onClick={() => void action(async () => { if (await editor.current?.flush() === false) return; const current = controller.getSnapshot(); await downloadMarkdown(current.title, current.content); })}><AliIcon name="download" size={15} /></button>
+        <button type="button" title="复制 Markdown" aria-label="复制 Markdown" onClick={() => void action(async () => { if (await editor.current?.flush() === false) return; await copyText(controller.getSnapshot().content); setNotice("已复制 Markdown"); })}><AliIcon name="copy" size={15} /></button>
         <button type="button" aria-label="删除文档" disabled={actionPending} onClick={remove}>{confirmDelete ? "确认删除" : <AliIcon name="delete" size={15} />}</button>
         {confirmDelete ? <button type="button" onClick={() => setConfirmDelete(false)}>取消</button> : null}
       </div>
     </div>
-    <div className={styles.editorToolbar} role="toolbar" aria-label="Markdown 格式">
-      <button type="button" title="撤销 · Ctrl+Z" aria-label="撤销" disabled={preview} onClick={() => editor.current?.undo()}>↶</button>
-      <button type="button" title="重做 · Ctrl+Shift+Z" aria-label="重做" disabled={preview} onClick={() => editor.current?.redo()}>↷</button>
-      <button type="button" aria-label="插入标题" onClick={() => editor.current?.insert("## ")}>H₂</button>
-      <button type="button" aria-label="加粗" title="加粗 · Ctrl+B" onClick={() => editor.current?.insert("**", "**")}><b>B</b></button>
-      <button type="button" aria-label="斜体" title="斜体 · Ctrl+I" onClick={() => editor.current?.insert("*", "*")}><i>I</i></button>
-      <button type="button" aria-label="插入列表" onClick={() => editor.current?.insert("\n- ")}>≡</button>
-      <button type="button" aria-label="插入待办" onClick={() => editor.current?.insert("\n- [ ] ")}>☐</button>
-      <button type="button" aria-label="插入引用" onClick={() => editor.current?.insert("\n> ")}>❞</button>
-      <button type="button" aria-label="插入代码块" onClick={() => editor.current?.insert("\n```\n", "\n```\n")}>{"</>"}</button>
-      <button type="button" aria-label="插入链接" onClick={() => editor.current?.insert("[", "](https://)")}>↗</button>
-      <button type="button" aria-label="插入图片" disabled={actionPending} onClick={() => imageInput.current?.click()}><AliIcon name="attachment" size={15} /></button>
-      <button type="button" aria-label="插入表格" onClick={() => editor.current?.insert("\n| 标题 | 标题 |\n| --- | --- |\n| 内容 | 内容 |\n")}>▦</button>
-      <button type="button" aria-label="插入公式" onClick={() => editor.current?.insert("\n$$\n", "\n$$\n")}>∑</button>
+    <div className={styles.editorToolbar} role="toolbar" aria-label="文档视图">
+      <span className={styles.editorHint}>Markdown</span>
       <span className={styles.toolbarSpace} />
       <button type="button" aria-pressed={outlineVisible} onClick={() => setOutlineVisible(!outlineVisible)}>大纲</button>
       <button type="button" title="查找与替换 · Ctrl+F / Ctrl+H" disabled={preview} onClick={() => editor.current?.search()}><AliIcon name="search" size={14} /></button>
-      <button type="button" aria-pressed={source && !preview} onClick={() => { setPreview(false); setSource(!source); }}>{source ? "即时排版" : "源码"}</button>
-      <button type="button" aria-pressed={preview} onClick={() => setPreview(!preview)}>{preview ? "编辑" : "阅读"}</button>
+      <button type="button" aria-pressed={preview} onClick={() => { void editor.current?.flush().then((ok) => { if (ok) setPreview(!preview); }); }}>{preview ? "编辑" : "阅读"}</button>
     </div>
-    <input ref={imageInput} hidden type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadImage(file); event.target.value = ""; }} />
     <div className={styles.writingBody}>
       {outlineVisible ? <nav className={styles.outline} aria-label="文档大纲">{outline.length ? outline.map((heading) => <button type="button" key={heading.offset} title={heading.title} style={{ paddingLeft: 10 + (heading.level - 1) * 12 }} onClick={() => { setPreview(false); requestAnimationFrame(() => editor.current?.jumpTo(heading.offset)); }}>{heading.title || "无标题"}</button>) : <p>使用 # 标题建立大纲</p>}</nav> : null}
       <div className={styles.writingContent}>
-        <div hidden={preview} className={styles.editorMount}><MarkdownEditor ref={editor} value={draft.content} source={source} onChange={(content) => { controller.update({ content }); setNotice(""); }} onSave={() => { void controller.save(); }} onImage={(file) => { void uploadImage(file); }} /></div>
+        <div hidden={preview} className={styles.editorMount}><MarkdownEditor editorRef={editor} value={draft.content} onChange={(content) => { controller.update({ content }); setNotice(""); }} onSave={() => { void save(); }} onImage={uploadImage} /></div>
         {preview ? <div className={styles.readingPreview}><MarkdownBody>{draft.content}</MarkdownBody></div> : null}
       </div>
     </div>
@@ -128,7 +116,7 @@ function MarkdownDocument({ item, write, onCreated, onDeleted, registerSave }: {
       {draft.error ? <button type="button" disabled={actionPending} onClick={() => void action(async () => {
         const items = await write("POST", { title: `${draft.title || "未命名文档"}（副本）`, content: draft.content, language: "markdown" }); onCreated(items[0]);
       })}>另存副本</button> : null}
-      {draft.dirty ? <button type="button" disabled={draft.saving} onClick={() => void controller.save()}>保存</button> : null}
+      {draft.dirty ? <button type="button" disabled={draft.saving} onClick={() => void save()}>保存</button> : null}
       <small>{draft.content.length.toLocaleString()} 字符 · Markdown</small>
     </footer>
   </article>;

@@ -1,4 +1,7 @@
-import { validateTerminalCwd, getTerminalSession, TerminalSessionError } from "@/lib/terminal-session";
+import { isTerminalSessionError } from "@/lib/terminal-session";
+import { ShellError, isShellError } from "@/lib/shell/errors";
+import { isApiRequestAllowed } from "@/lib/request-security";
+import { getLegacyTerminal, legacyTerminalEvent, legacyTerminalSnapshot } from "@/lib/shell/legacy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -7,37 +10,38 @@ const encoder = new TextEncoder();
 
 export async function GET(request: Request) {
   try {
-    const cwd = await validateTerminalCwd(new URL(request.url).searchParams.get("cwd"));
-    const terminal = getTerminalSession(cwd);
-    terminal.start();
+    if (!isApiRequestAllowed(request)) throw new ShellError("Untrusted API request", 403);
+    const terminal = await getLegacyTerminal(new URL(request.url).searchParams.get("cwd"));
+    await terminal.start();
     let unsubscribe = () => {};
     let heartbeat: NodeJS.Timeout | null = null;
     let closed = false;
+    let close = () => {};
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
         const send = (value: unknown) => {
           if (!closed) controller.enqueue(encoder.encode(`data: ${JSON.stringify(value)}\n\n`));
         };
-        const close = () => {
+        close = () => {
           if (closed) return;
           closed = true;
           unsubscribe();
           if (heartbeat) clearInterval(heartbeat);
+          request.signal.removeEventListener("abort", close);
           try { controller.close(); } catch { /* The client may already be gone. */ }
         };
-        send({ type: "snapshot", ...terminal.snapshot() });
-        unsubscribe = terminal.subscribe(send);
+        send({ type: "snapshot", ...legacyTerminalSnapshot(terminal) });
+        unsubscribe = terminal.subscribe(event => { const mapped = legacyTerminalEvent(event); if (mapped) send(mapped); });
         heartbeat = setInterval(() => {
           if (!closed) controller.enqueue(encoder.encode(": keepalive\n\n"));
         }, 15_000);
         heartbeat.unref?.();
         request.signal.addEventListener("abort", close, { once: true });
+        if (request.signal.aborted) close();
       },
       cancel() {
-        closed = true;
-        unsubscribe();
-        if (heartbeat) clearInterval(heartbeat);
+        close();
       },
     });
 
@@ -50,7 +54,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    const status = error instanceof TerminalSessionError ? error.status : 500;
+    const status = isTerminalSessionError(error) || isShellError(error) ? error.status : 500;
     return new Response(error instanceof Error ? error.message : String(error), { status });
   }
 }

@@ -172,8 +172,11 @@
 .topbar small { margin-left: 14px; font-size: calc(var(--ui-font-size) * 9 / 14); letter-spacing: 1.3px; font-weight: 400; }
 .panel .topbar button { display: flex; align-items: center; gap: 9px; background: transparent; border: 0; color: var(--text-dim); padding: 5px; }
 .panel kbd { font: 10px var(--font-mono); color: var(--text-dim); }
-.content > :not(.jsonPane) { max-width: 880px; margin-inline: auto; }
+.content > :not(.jsonPane):not(.libraryPane) { max-width: 880px; margin-inline: auto; }
+.libraryPane { min-width: 0; width: 100%; }
+.libraryPane[hidden] { display: none; }
 .content[data-tool="library"] > * { width: 100%; max-width: none; }
+.content[data-tool="clipboard"] > * { width: 100%; max-width: 1240px; }
 .content[data-tool="json"] { display: flex; padding: 18px; overflow: hidden; }
 .jsonPane { flex: 1; min-width: 0; min-height: 0; display: flex; }
 .jsonPane[hidden] { display: none; }

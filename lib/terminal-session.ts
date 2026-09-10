@@ -39,6 +39,12 @@ export class TerminalSessionError extends Error {
   }
 }
 
+export function isTerminalSessionError(value: unknown): value is TerminalSessionError {
+  if (!(value instanceof Error) || value.name !== "TerminalSessionError") return false;
+  const error = value as TerminalSessionError;
+  return Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 && typeof error.code === "string";
+}
+
 function shellDefinition(): { executable: string; args: string[]; label: string } {
   const configured = process.env.PI_TERMINAL_SHELL?.trim();
   if (configured) {

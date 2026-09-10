@@ -19,6 +19,13 @@ const assets = [
     rejectSymlinks: true,
   },
   {
+    name: "desktop clipboard client reference manifest",
+    source: join(nextDirectory, "server", "app", "desktop-clipboard", "page_client-reference-manifest.js"),
+    destination: join(standaloneDirectory, ".next", "server", "app", "desktop-clipboard", "page_client-reference-manifest.js"),
+    required: true,
+    rejectSymlinks: true,
+  },
+  {
     name: "Next.js static assets",
     source: join(nextDirectory, "static"),
     destination: join(standaloneDirectory, ".next", "static"),

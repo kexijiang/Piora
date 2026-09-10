@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, memo, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref, type RefObject } from "react";
+import { flushSync } from "react-dom";
 import { buildVirtualOffsets, virtualIndexAt, virtualRange } from "@/lib/virtual-window";
 import { createVirtualRowState } from "@/lib/virtual-row-state";
 import { CHAT_BOTTOM_FOLLOW_EVENT, isChatBottomFollowing, pinChatBottom } from "@/lib/chat-bottom-follow";
@@ -58,6 +59,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   const frame = useRef<number | null>(null);
   const measuredWidth = useRef(0);
   const viewportSnapshot = useRef({ width: 0, height: 0, atBottom: false });
+  // Shared by viewport resizes and manual wheel navigation to the bottom.
   const resizeBottomAnchor = useRef(false);
   const resizeSettleFrame = useRef<number | null>(null);
 
@@ -75,7 +77,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
       resizeSettleFrame.current = null;
       const scroller = parent.current;
       if (!resizeBottomAnchor.current || !scroller || !root.current) return;
-      if (navigation.current || isChatBottomFollowing(scroller)) { resizeBottomAnchor.current = false; rememberViewport(); return; }
+      if (navigation.current || isChatBottomFollowing(scroller) || scroller.querySelector("[data-chat-tail-spacer]")) { resizeBottomAnchor.current = false; rememberViewport(); return; }
       // Keep the tail anchored for the whole width transition and its queued
       // row measurements, rather than releasing after the first React commit.
       scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
@@ -95,6 +97,12 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   const syncRange = useCallback(() => {
     const scroller = parent.current;
     if (!scroller || scroller.clientHeight === 0 || scroller.getClientRects().length === 0) return;
+    // Mounted rows have already changed the DOM height, but their offsets are
+    // published in the next measurement commit. A scroll/clamp in this gap
+    // must not recycle rows using the old offsets: remounting deferred content
+    // resets its height and can restart the same scroll/measurement cycle.
+    // The measurement layout effect below restores the anchor and retries.
+    if (frame.current !== null) return;
     // During a bottom jump the DOM height and cached offsets temporarily differ.
     // Keep the tail mounted until its lazy content is measured; otherwise a
     // scroll correction can unmount it, reset its height, and repeat forever.
@@ -120,6 +128,16 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   const measure = useCallback((key: string, height: number) => {
     height = Math.max(1, height);
     if (Math.abs((heights.current.get(key) ?? estimate) - height) < 1) return;
+    const scroller = parent.current;
+    // Shrinking content can clamp native scrolling before ResizeObserver is
+    // delivered. Preserve an already-visible bottom instead of interpreting
+    // that clamp as navigation into older messages using the previous offsets.
+    if (scroller && viewportSnapshot.current.atBottom && !navigation.current && !isChatBottomFollowing(scroller)
+      && !scroller.querySelector("[data-chat-tail-spacer]")) {
+      resizeBottomAnchor.current = true;
+      anchor.current = null;
+      settleBottomResize();
+    }
     if (!anchor.current && !resizeBottomAnchor.current && parent.current && !navigation.current && !isChatBottomFollowing(parent.current)) {
       const top = parent.current.scrollTop - listTop();
       const index = virtualIndexAt(current.current.offsets, top);
@@ -128,9 +146,22 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     heights.current.set(key, height);
     if (frame.current === null) frame.current = requestAnimationFrame(() => {
       frame.current = null;
-      setMeasurementVersion((version) => version + 1);
+      // Publish offsets and restore the reading anchor in this frame before
+      // another scroll event can consume the old geometry.
+      flushSync(() => setMeasurementVersion((version) => version + 1));
     });
-  }, [estimate, listTop]);
+  }, [estimate, listTop, settleBottomResize]);
+
+  const measureChangedLayout = useCallback(() => {
+    const element = root.current;
+    if (!element || Math.abs(element.getBoundingClientRect().height - (current.current.offsets.at(-1) ?? 0)) < 1) return;
+    // Scroll events may precede the row observers. Detect that gap before
+    // choosing a window, not only after the observers queue their update.
+    element.querySelectorAll<HTMLElement>(":scope > [data-virtual-key]").forEach((row) => {
+      const rect = row.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0 && row.dataset.virtualKey) measure(row.dataset.virtualKey, rect.height);
+    });
+  }, [measure]);
 
   useLayoutEffect(() => {
     let element = scrollContainer?.current ?? root.current?.parentElement ?? null;
@@ -143,13 +174,27 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     parent.current = element;
     if (!element) return;
     const onScroll = () => {
+      // Reaching the bottom with the wheel needs the same stable tail window
+      // as an explicit jump. Keep it through row recycling and deferred sizes;
+      // otherwise the native clamp can look like a request for older rows.
+      if (!navigation.current && !isChatBottomFollowing(element)
+        && Math.abs(element.scrollHeight - element.clientHeight - element.scrollTop) <= 2
+        && !element.querySelector("[data-chat-tail-spacer]")) {
+        resizeBottomAnchor.current = true;
+        anchor.current = null;
+        settleBottomResize();
+      }
+      measureChangedLayout();
       // A browser scroll clamp may arrive before ResizeObserver. Keep the last
       // pre-resize position until the new geometry has been anchored.
       if (!resizeBottomAnchor.current && Math.abs((root.current?.getBoundingClientRect().width ?? 0) - viewportSnapshot.current.width) <= 1
         && element.clientHeight === viewportSnapshot.current.height) rememberViewport();
       syncRange();
     };
-    const onInput = cancelNavigation;
+    const onInput = (event: Event) => {
+      cancelNavigation();
+      if (event.type === "wheel" || event.type === "touchstart") viewportSnapshot.current.atBottom = false;
+    };
     element.addEventListener("scroll", onScroll, { passive: true });
     element.addEventListener(CHAT_BOTTOM_FOLLOW_EVENT, syncRange);
     element.addEventListener("wheel", onInput, { passive: true });
@@ -157,6 +202,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     document.addEventListener("pointerdown", onInput, { capture: true, passive: true });
     document.addEventListener("keydown", onInput);
     const observer = new ResizeObserver(() => {
+      measureChangedLayout();
       const width = root.current?.getBoundingClientRect().width ?? 0;
       const viewportChanged = width > 0 && viewportSnapshot.current.width > 0
         && (Math.abs(width - viewportSnapshot.current.width) > 1 || element.clientHeight !== viewportSnapshot.current.height);
@@ -194,7 +240,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
       document.removeEventListener("pointerdown", onInput, true);
       document.removeEventListener("keydown", onInput);
     };
-  }, [scrollContainer, syncRange, cancelNavigation, listTop, rememberViewport, settleBottomResize]);
+  }, [scrollContainer, syncRange, cancelNavigation, listTop, rememberViewport, settleBottomResize, measureChangedLayout]);
 
   useLayoutEffect(() => {
     const scroller = parent.current;
@@ -229,7 +275,11 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   // Range-only commits also replace spacers with measured content. Keep the
   // requested bottom aligned in the same commit, before the browser paints.
   useLayoutEffect(() => {
-    if (parent.current) pinChatBottom(parent.current);
+    const scroller = parent.current;
+    if (!scroller) return;
+    if (resizeBottomAnchor.current && !isChatBottomFollowing(scroller)) {
+      scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
+    } else pinChatBottom(scroller);
   });
 
   useEffect(() => {
@@ -237,7 +287,17 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     for (const key of heights.current.keys()) if (!retained.has(key)) heights.current.delete(key);
     for (const key of rowStates.current.keys()) if (!retained.has(key)) rowStates.current.delete(key);
   }, [keys]);
-  useEffect(() => () => { if (frame.current !== null) cancelAnimationFrame(frame.current); if (resizeSettleFrame.current !== null) cancelAnimationFrame(resizeSettleFrame.current); }, []);
+  useEffect(() => {
+    // Strict Mode can cancel the initial measurement frame and replay effects
+    // with the populated map. Publish it even if the row sizes did not change.
+    if (frame.current === null && heights.current.size) setMeasurementVersion((version) => version + 1);
+    return () => {
+      if (frame.current !== null) cancelAnimationFrame(frame.current);
+      if (resizeSettleFrame.current !== null) cancelAnimationFrame(resizeSettleFrame.current);
+      frame.current = null;
+      resizeSettleFrame.current = null;
+    };
+  }, []);
   const start = Math.min(range.start, keys.length);
   const end = Math.min(Math.max(start, range.end), keys.length);
   const mounted = new Set(Array.from({ length: end - start }, (_, index) => start + index));

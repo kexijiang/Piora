@@ -1,4 +1,49 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { ClipboardBridge, ClipboardChange, ClipboardMutation, ClipboardOperation, ClipboardQuery } from "./clipboard-types.js";
+declare const document: { documentElement: { inert: boolean } };
+
+const clipboardCloseHandlers = new Set<() => Promise<void>>();
+let clipboardWasInert = false;
+ipcRenderer.on("pi:clipboard-v2-prepare-close", async (_event, token: unknown) => {
+  if (typeof token !== "string") return;
+  clipboardWasInert = document.documentElement.inert;
+  document.documentElement.inert = true;
+  let ok = true;
+  try { await Promise.all([...clipboardCloseHandlers].map(flush => flush())); } catch { ok = false; }
+  void ipcRenderer.invoke("pi:clipboard-v2-close-ready", { token, ok }).catch(() => {});
+});
+ipcRenderer.on("pi:clipboard-v2-cancel-close", () => { document.documentElement.inert = clipboardWasInert; });
+const clipboardHistory = Object.freeze({
+  reconnect: () => ipcRenderer.invoke("pi:clipboard-v2-reconnect"),
+  onBeforeClose: (flush: () => Promise<void>) => { clipboardCloseHandlers.add(flush); return () => { clipboardCloseHandlers.delete(flush); }; },
+  setLocale: (locale: "en" | "zh-CN") => ipcRenderer.invoke("pi:clipboard-v2-locale", locale),
+  query: (query: ClipboardQuery) => ipcRenderer.invoke("pi:clipboard-v2-query", query),
+  cancelQuery: (requestId: number) => ipcRenderer.invoke("pi:clipboard-v2-cancel-query", requestId),
+  getDetail: (id: string) => ipcRenderer.invoke("pi:clipboard-v2-detail", id),
+  status: () => ipcRenderer.invoke("pi:clipboard-v2-status"),
+  subscribe: (listener: (change: ClipboardChange) => void) => {
+    let disposed = false;
+    const handler = (_event: Electron.IpcRendererEvent, change: ClipboardChange) => { if (!disposed) listener(change); };
+    ipcRenderer.on("pi:clipboard-v2-change", handler);
+    void ipcRenderer.invoke("pi:clipboard-v2-watch").then(change => { if (!disposed) listener(change); }).catch(() => {});
+    return () => { disposed = true; ipcRenderer.removeListener("pi:clipboard-v2-change", handler); void ipcRenderer.invoke("pi:clipboard-v2-unwatch").catch(() => {}); };
+  },
+  mutate: (mutation: ClipboardMutation) => ipcRenderer.invoke("pi:clipboard-v2-mutate", mutation),
+  capture: () => ipcRenderer.invoke("pi:clipboard-v2-capture"),
+  copy: (operation: ClipboardOperation) => ipcRenderer.invoke("pi:clipboard-v2-copy", operation),
+  paste: (operation: ClipboardOperation) => ipcRenderer.invoke("pi:clipboard-v2-paste", operation),
+  prepareDrag: (ids: string[]) => ipcRenderer.invoke("pi:clipboard-v2-prepare-drag", ids),
+  startDrag: (ids: string[]) => ipcRenderer.send("pi:clipboard-v2-drag", ids),
+  menu: (ids: string[]) => ipcRenderer.invoke("pi:clipboard-v2-menu", ids),
+  open: (surface: "quick" | "manager" | "shelf") => ipcRenderer.invoke("pi:clipboard-v2-open", surface),
+  hide: () => ipcRenderer.invoke("pi:clipboard-v2-hide"),
+  saveAs: (id: string) => ipcRenderer.invoke("pi:clipboard-v2-save", id),
+  exportArchive: () => ipcRenderer.invoke("pi:clipboard-v2-export"),
+  importArchive: () => ipcRenderer.invoke("pi:clipboard-v2-import"),
+  revealFile: (id: string, index: number) => ipcRenderer.invoke("pi:clipboard-v2-reveal", { id, index }),
+  openLink: (id: string) => ipcRenderer.invoke("pi:clipboard-v2-open-link", id),
+  asset: (id: string, thumbnail = false) => ipcRenderer.invoke("pi:clipboard-v2-asset", { id, thumbnail }),
+} satisfies ClipboardBridge);
 
 const runtime = Object.freeze({
   restartForDataImport(): Promise<boolean> { return ipcRenderer.invoke("pi:restart-for-data-import") as Promise<boolean>; },
@@ -54,6 +99,7 @@ const runtime = Object.freeze({
     return ipcRenderer.invoke("pi:open-path", filePath) as Promise<boolean>;
   },
   clipboard: Object.freeze({
+    historyV2: clipboardHistory,
     readText: (): Promise<string> => ipcRenderer.invoke("pi:clipboard-read", false),
     writeText: (text: string): Promise<void> => ipcRenderer.invoke("pi:clipboard-write", text, false),
     readImage: (): Promise<string | null> => ipcRenderer.invoke("pi:clipboard-read", true),

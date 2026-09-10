@@ -13,7 +13,7 @@ import type {
 } from "@/components/sidebar/sidebar-types";
 import { useI18n } from "@/hooks/useI18n";
 import { createBrowserViewportSync } from "@/lib/browser-viewport-sync";
-import type { BrowserMode } from "@/lib/browser-config";
+import { useBrowserMode } from "@/hooks/useBrowserMode";
 import { AliIcon } from "../AliIcon";
 import styles from "./WorkspacePanel.module.css";
 
@@ -132,7 +132,16 @@ function bookmarkBarNodes(profiles: ImportedChromeBookmarkProfile[]): ImportedCh
   return profiles.flatMap((profile) => profile.children);
 }
 
-export function BrowserPanel({ active, maximized, sessionId }: { active: boolean; maximized: boolean; sessionId: string | null }) {
+interface BrowserNavigationProps { navigationRequest?: { id: string; url: string }; onNavigationConsumed?: () => void }
+function useRequestedNavigation(request: BrowserNavigationProps["navigationRequest"], ready: boolean, navigate: (input: { action: "navigate"; url: string }) => Promise<void>, consumed?: () => void) {
+  const previous = useRef<string | null>(null);
+  useEffect(() => {
+    if (!request || !ready || previous.current === request.id || !/^https?:\/\//i.test(request.url)) return;
+    previous.current = request.id; void navigate({ action: "navigate", url: request.url }); consumed?.();
+  }, [request, ready, navigate, consumed]);
+}
+
+export function BrowserPanel({ active, maximized, sessionId, navigationRequest, onNavigationConsumed }: { active: boolean; maximized: boolean; sessionId: string | null } & BrowserNavigationProps) {
   const { t } = useI18n();
   const [desktopBridge, setDesktopBridge] = useState<DesktopBrowserBridge | null | undefined>(undefined);
 
@@ -140,50 +149,24 @@ export function BrowserPanel({ active, maximized, sessionId }: { active: boolean
     setDesktopBridge(window.piDesktop?.browser ?? null);
   }, []);
 
-  const [mode, setMode] = useState<BrowserMode | null>(null);
-  const [modeBusy, setModeBusy] = useState(false);
-  const [modeError, setModeError] = useState<string | null>(null);
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/browser/settings", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || t("browser.unavailable"));
-        if (!controller.signal.aborted) setMode(data.mode);
-      }).catch((error) => { if (!controller.signal.aborted) setModeError(String(error)); });
-    return () => controller.abort();
-  }, [t]);
-  const changeMode = async (next: BrowserMode) => {
-    setModeBusy(true); setModeError(null);
-    try {
-      const response = await fetch("/api/browser/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: next }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || t("browser.actionFailed"));
-      setMode(data.mode);
-    } catch (error) { setModeError(String(error)); }
-    finally { setModeBusy(false); }
-  };
+  const { mode, error: modeError } = useBrowserMode(active);
 
   if (desktopBridge === undefined) {
     return <div className={styles.browserLoading}>{t("browser.starting")}</div>;
   }
   return <div className={styles.browserRoot}>
-    <div className={styles.browserModeBar}>
-      <label><input type="checkbox" role="switch" checked={mode === "background"} disabled={modeBusy || mode === null} onChange={(event) => { void changeMode(event.target.checked ? "background" : "builtin"); }} />{t("browser.useBackground")}</label>
-      <span>{t(mode === "background" ? "browser.backgroundMode" : "browser.builtinMode")}</span>
-    </div>
     {modeError ? <div className={styles.browserError} role="alert">{modeError}</div> : null}
     <div className={styles.browserModeContent}>
-      {mode === "background" ? <ScreenshotBrowserPanel active={active} sessionId={sessionId} />
+      {mode === "background" ? <ScreenshotBrowserPanel active={active} sessionId={sessionId} navigationRequest={navigationRequest} onNavigationConsumed={onNavigationConsumed} />
         : mode === "builtin" ? desktopBridge
-          ? <DesktopBrowserPanel active={active} bridge={desktopBridge} maximized={maximized} sessionId={sessionId} />
-          : <ScreenshotBrowserPanel active={active} sessionId={sessionId} />
+          ? <DesktopBrowserPanel active={active} bridge={desktopBridge} maximized={maximized} sessionId={sessionId} navigationRequest={navigationRequest} onNavigationConsumed={onNavigationConsumed} />
+          : <ScreenshotBrowserPanel active={active} sessionId={sessionId} navigationRequest={navigationRequest} onNavigationConsumed={onNavigationConsumed} />
           : <div className={styles.browserLoading}>{t("browser.starting")}</div>}
     </div>
   </div>;
 }
 
-function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active: boolean; bridge: DesktopBrowserBridge; maximized: boolean; sessionId: string | null }) {
+function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationRequest, onNavigationConsumed }: { active: boolean; bridge: DesktopBrowserBridge; maximized: boolean; sessionId: string | null } & BrowserNavigationProps) {
   const { t } = useI18n();
   const [state, setState] = useState<DesktopBrowserState | null>(null);
   const [address, setAddress] = useState("");
@@ -253,6 +236,7 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
     };
   }, [applyState, bridge, t]);
 
+
   const syncViewport = useCallback((visible = state?.url !== "about:blank") => {
     const element = viewportRef.current;
     if (!element) return;
@@ -314,6 +298,8 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
       setError(actionError instanceof Error ? actionError.message : t("browser.actionFailed"));
     }
   }, [applyState, bridge, t]);
+
+  useRequestedNavigation(navigationRequest, active && Boolean(state), act, onNavigationConsumed);
 
   const finishOnboarding = () => {
     window.localStorage.setItem(BROWSER_ONBOARDING_KEY, "done");
@@ -450,7 +436,7 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId }: { active:
   </div>;
 }
 
-function ScreenshotBrowserPanel({ active, sessionId }: { active: boolean; sessionId: string | null }) {
+function ScreenshotBrowserPanel({ active, sessionId, navigationRequest, onNavigationConsumed }: { active: boolean; sessionId: string | null } & BrowserNavigationProps) {
   const { t } = useI18n();
   const [state, setState] = useState<BrowserState | null>(null);
   const [address, setAddress] = useState("");
@@ -527,6 +513,8 @@ function ScreenshotBrowserPanel({ active, sessionId }: { active: boolean; sessio
     actionQueueRef.current = queued;
     return queued;
   }, [applyState, sessionId, t]);
+
+  useRequestedNavigation(navigationRequest, active && Boolean(state), act, onNavigationConsumed);
 
   useEffect(() => {
     if (!active || !viewportRef.current) return;

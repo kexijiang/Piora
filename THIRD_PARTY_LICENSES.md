@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `f119f3b90eb2cee964b5e53e6f5bd3ecb96f3e8fbbfe9770602c1002a81e320b`
+Lockfile SHA-256: `1879f458408a3f6cf0f793d361294454ccdba8df348dd783e49432f4c0c4fef0`
 
-Unique locked packages: **1250**. Runtime packages: **804**. Build/development-only packages: **446**.
+Unique locked packages: **1271**. Runtime packages: **825**. Build/development-only packages: **446**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -148,6 +148,24 @@ Every locked package declares a license.
 | `@jridgewell/sourcemap-codec` | `1.5.5` | MIT | No |
 | `@jridgewell/trace-mapping` | `0.3.31` | MIT | No |
 | `@js-sdsl/ordered-map` | `4.4.2` | MIT | No |
+| `@koromix/koffi-android-arm64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-android-x64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-darwin-arm64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-darwin-x64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-freebsd-arm64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-freebsd-ia32` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-freebsd-x64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-linux-arm` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-linux-arm64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-linux-ia32` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-linux-loong64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-linux-riscv64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-linux-x64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-openbsd-ia32` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-openbsd-x64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-win32-arm64` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-win32-ia32` | `3.2.1` | MIT | Yes |
+| `@koromix/koffi-win32-x64` | `3.2.1` | MIT | Yes |
 | `@lezer/common` | `1.5.2` | MIT | No |
 | `@lezer/css` | `1.3.6` | MIT | No |
 | `@lezer/highlight` | `1.2.3` | MIT | No |
@@ -402,6 +420,7 @@ Every locked package declares a license.
 | `detect-libc` | `2.1.2` | Apache-2.0 | No |
 | `devlop` | `1.1.0` | MIT | No |
 | `diff` | `8.0.4` | BSD-3-Clause | No |
+| `diff-match-patch` | `1.0.5` | Apache-2.0 | No |
 | `dingbat-to-unicode` | `1.0.1` | BSD-2-Clause | No |
 | `dompurify` | `3.4.13` | (MPL-2.0 OR Apache-2.0) | No |
 | `duck` | `0.1.12` | BSD | No |
@@ -540,6 +559,7 @@ Every locked package declares a license.
 | `jws` | `4.0.1` | MIT | No |
 | `katex` | `0.16.47` | MIT | No |
 | `khroma` | `2.1.0` | MIT | No |
+| `koffi` | `3.2.1` | MIT | No |
 | `layout-base` | `1.0.2` | MIT | No |
 | `layout-base` | `2.0.1` | MIT | No |
 | `lazy-val` | `1.0.5` | MIT | No |
@@ -790,6 +810,7 @@ Every locked package declares a license.
 | `util-deprecate` | `1.0.2` | MIT | No |
 | `uuid` | `11.1.1` | MIT | No |
 | `vary` | `1.1.2` | MIT | No |
+| `vditor` | `4.0.0` | MIT | No |
 | `vfile` | `6.0.3` | MIT | No |
 | `vfile-location` | `5.0.3` | MIT | No |
 | `vfile-message` | `4.0.3` | MIT | No |

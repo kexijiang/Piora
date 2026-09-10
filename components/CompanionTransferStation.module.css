@@ -64,27 +64,6 @@
 .imageDocument h2 { font-size: calc(var(--text-lg) * 1.05); overflow-wrap: anywhere; }
 .imageDocument a { color: var(--text-muted); }
 .largeImage { height: 45dvh; margin: 16px 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
-.document :global(.pocket-markdown-editor) { flex: 1; min-width: 0; padding: 22px clamp(16px, 3vw, 40px) 40px; }
-.document :global(.cm-editor) { min-height: 340px; font-family: inherit; font-size: var(--text-base); line-height: 1.9; background: transparent; }
-.document :global(.cm-editor.cm-focused) { outline: none; }
-.document :global(.cm-content) { font-family: inherit; padding: 0; caret-color: var(--text); }
-.document :global(.cm-scroller) { font-family: inherit; overflow-x: auto; }
-.document :global(.cm-line) { padding: 0; }
-.document :global(.cm-selectionBackground) { background: color-mix(in srgb, var(--pocket-accent, #7d896c) 25%, transparent) !important; }
-.document :global(.cm-placeholder) { color: var(--text-dim); }
-.document :global(.md-h1) { font-size: 1.9em; font-weight: 650; line-height: 1.5; padding-block: 12px 8px; }
-.document :global(.md-h2) { font-size: 1.5em; font-weight: 600; line-height: 1.6; padding-block: 10px 6px; }
-.document :global(.md-h3), .document :global(.md-h4), .document :global(.md-h5), .document :global(.md-h6) { font-size: 1.2em; font-weight: 600; padding-block: 6px; }
-.document :global(.md-StrongEmphasis) { font-weight: 700; }
-.document :global(.md-Emphasis) { font-style: italic; }
-.document :global(.md-Strikethrough) { text-decoration: line-through; }
-.document :global(.md-InlineCode) { font-family: var(--font-mono); font-size: .9em; padding: 2px 3px; border-radius: 3px; background: var(--bg-hover); }
-.document :global(.md-code-line) { font-family: var(--font-mono); font-size: var(--text-sm); background: var(--bg-panel); padding-inline: 12px; }
-.document :global(.md-quote) { border-left: 3px solid var(--pocket-accent, #7d896c); padding-left: 14px; color: var(--text-muted); }
-.document :global(.md-Link) { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
-.document :global(.md-marker) { color: var(--pocket-accent, #7d896c); }
-.document :global(.md-image) { display: inline-block; max-width: 100%; max-height: 360px; object-fit: contain; border-radius: 5px; vertical-align: middle; }
-.document :global([data-source="true"] .cm-content) { font-family: var(--font-mono); font-size: var(--text-sm); }
 .workspaceFrame { position: relative; flex: 0 0 auto; max-width: 100%; min-height: 360px; margin-inline: auto; }
 .workspaceFrame .workspace { width: 100%; height: 100%; min-height: 0; flex: none; }
 .workspaceGrip { position: absolute; z-index: 4; touch-action: none; user-select: none; display: flex; align-items: center; justify-content: center; outline: none; border-radius: 5px; }
@@ -115,8 +94,10 @@
 .writingBody { display: flex; flex: 1; min-height: 0; min-width: 0; }
 .writingContent { flex: 1; min-height: 0; min-width: 0; overflow: auto; }
 .editorMount[hidden] { display: none; }
-.document :global(.pocket-markdown-editor), .readingPreview { box-sizing: border-box; max-width: var(--writing-width, 820px); margin: 0 auto; padding: 22px 24px 80px; font-size: var(--writing-size, 16px); }
-.document :global(.cm-editor) { font-size: var(--writing-size, 16px); }
+.editorMount { height: 100%; min-height: 0; }
+.editorHint { color: var(--text-dim); font-size: calc(var(--ui-font-size) * 11 / 14); padding: 4px 0; }
+.readingPreview { box-sizing: border-box; max-width: var(--writing-width, 820px); margin: 0 auto; padding: 22px 24px 80px; font-size: var(--writing-size, 16px); }
+.document :global(.pocket-markdown-editor) { max-width: none; margin: 0; padding: 0; }
 .readingPreview { line-height: 1.9; overflow-wrap: anywhere; }
 .outline { flex: 0 0 170px; max-width: 30%; overflow: auto; border-right: 1px solid var(--border); padding: 12px 0; }
 .outline button { display: block; text-align: left; width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; border-radius: 0; }
