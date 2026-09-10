@@ -1,4 +1,6 @@
 import { recordAgentTerminalEvent } from "./agent-terminal-registry";
+import { assertRemotePolicyCommand, readRemoteSessionPolicy, remotePolicyResources, type RemoteSessionPolicy } from "./remote-session-policy";
+import { RemoteContentProjection } from "./remote-content";
 import { readPendingSessionModel, clearPendingSessionModel } from "./session-model-selection";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SessionManager, SettingsManager, type AgentSessionServices } from "@earendil-works/pi-coding-agent";
@@ -146,6 +148,7 @@ type ExtensionBindingOptions = {
 };
 
 export interface RpcSessionStartOptions {
+  remotePolicy?: RemoteSessionPolicy;
   /** Pinned Team profiles prohibit startup model fallback. */
   allowModelFallback?: boolean;
   toolNames?: string[];
@@ -164,6 +167,8 @@ const DEVICE_CONTROL_DENIED_RPC_COMMANDS = new Set(["bash", "abort_bash"]);
 // ============================================================================
 
 export class AgentSessionWrapper {
+  readonly remotePolicy: RemoteSessionPolicy;
+  private remoteContent = new RemoteContentProjection();
   private listeners: EventListener[] = [];
   private pendingUiResponses = new Map<string, PendingUiResponse>();
   private pendingUiRequests = new Map<string, AgentEvent>();
@@ -222,11 +227,12 @@ export class AgentSessionWrapper {
       projectManaged?: boolean;
     } = {},
   ) {
+    this.remotePolicy = readRemoteSessionPolicy(inner.sessionManager.getEntries());
     this.cachedSessionTitle = inner.sessionManager.getSessionName()?.trim() || null;
     this.capabilityCatalog = buildSessionCapabilityCatalog(inner.getAllTools(), runtimeProfile);
     this.capabilityPolicy = capabilityOptions.policy
       ?? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), this.capabilityCatalog, runtimeProfile);
-    this.toolNameCeiling = capabilityOptions.toolNameCeiling
+    this.toolNameCeiling = this.remotePolicy === "notes" ? new Set<string>() : capabilityOptions.toolNameCeiling
       ? new Set(capabilityOptions.toolNameCeiling)
       : undefined;
     this._projectRoot = capabilityOptions.projectRoot ?? inner.sessionManager.getCwd();
@@ -264,6 +270,11 @@ export class AgentSessionWrapper {
 
   isRunning(): boolean {
     return this._alive && this.getRuntime() !== "idle";
+  }
+
+  getRemoteContentSnapshot() {
+    const snapshot = this.remoteContent.snapshot();
+    return { ...snapshot, text: this.isRunning() ? snapshot.text : "", sessionId: this.sessionId, runId: this.activePromptRun?.runId ?? null, running: this.isRunning() };
   }
 
   private refreshCapabilityCatalog(): void {
@@ -581,6 +592,7 @@ export class AgentSessionWrapper {
 
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
+      this.remoteContent.update(event);
       if (event.type === "message_end" && (event.message as { role?: string } | undefined)?.role === "user" && this.pendingClientPromptId) {
         // The SDK emits this event before appending the same object to its
         // SessionManager. Persist the receipt alongside the actual user text.
@@ -820,6 +832,7 @@ export class AgentSessionWrapper {
   }
 
   async send(command: Record<string, unknown>): Promise<unknown> {
+    assertRemotePolicyCommand(this.remotePolicy, command);
     if (command.type !== "abort" && command.type !== "get_state") assertSessionNotMutating(this.sessionId);
     this.resetIdleTimer();
     this.flushPendingProjectCapabilitySettings();
@@ -1046,6 +1059,7 @@ export class AgentSessionWrapper {
         return {
           sessionId: this.inner.sessionId,
           runtimeProfile: this.runtimeProfile,
+          remotePolicy: this.remotePolicy,
           sessionFile: this.inner.sessionFile ?? "",
           isStreaming: this.inner.isStreaming,
           isPromptRunning: this.promptRunning,
@@ -2184,6 +2198,13 @@ export async function startRpcSession(
       ? SessionManager.open(sessionFile, undefined)
       : SessionManager.create(cwd, undefined);
 
+    if (!sessionFile && options.remotePolicy === "notes") {
+      if (runtimeProfile !== "normal") throw new Error("Notes-only sessions require the normal process runtime");
+      sessionManager.appendCustomEntry("piora-remote-policy", { policy: "notes" });
+    }
+    const remotePolicy = readRemoteSessionPolicy(sessionManager.getEntries());
+    const notesOnly = remotePolicy === "notes";
+
     if (
       runtimeProfile === "normal"
       && !readLatestSessionSystemPromptBinding(sessionManager.getEntries())
@@ -2199,7 +2220,9 @@ export async function startRpcSession(
     // Determine which tools to pass based on requested toolNames.
     // Since v0.68.0, session creation expects string[] tool names instead of Tool[] instances.
     let toolsOption: string[] | undefined;
-    if (runtimeProfile === "device-control") {
+    if (notesOnly) {
+      toolsOption = [];
+    } else if (runtimeProfile === "device-control") {
       // Passing the exact allow-list prevents built-in coding tools from even
       // entering the AgentSession registry. This is stronger than merely
       // marking them inactive after extensions have loaded.
@@ -2219,6 +2242,10 @@ export async function startRpcSession(
     // composer hidden while switching sessions).
     const sessionServicesKey = `${runtimeProfile}:${sessionId}`;
     let services = getServicesCache().get(sessionServicesKey);
+    if (!services && notesOnly) {
+      services = await createAgentSessionServices({ cwd, agentDir, settingsManager: SettingsManager.create(cwd, agentDir), resourceLoaderOptions: remotePolicyResources(remotePolicy) });
+      getServicesCache().set(sessionServicesKey, services);
+    }
     if (!services) {
       const settingsManager = SettingsManager.create(cwd, agentDir);
       const extensionPlan = await resolveExtensionLoadPlan({ cwd, agentDir, settingsManager, profile: runtimeProfile, installMissing: true });
@@ -2349,7 +2376,7 @@ export async function startRpcSession(
       policy: restoredPolicy,
       projectRoot,
       projectManaged: Boolean(projectToolRecord),
-      ...(toolNames !== undefined ? { toolNameCeiling: toolNames } : {}),
+      ...(notesOnly ? { toolNameCeiling: [] } : toolNames !== undefined ? { toolNameCeiling: toolNames } : {}),
     });
     wrapper.initializeSessionCapabilities();
     wrapper.start();

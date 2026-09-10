@@ -16,6 +16,19 @@ Authorization: Bearer <能力令牌>
 
 ## 推荐调用流程
 
+### Obsidian 原型所需增量（2026-09-09）
+
+以下能力属于本次源码实现；已安装的桌面包不一定包含，应先查询 /capabilities，而非根据端口或版本名称假定支持。
+
+- POST /sessions 新增可选 policy，值为 notes 或 agent，省略保持 agent。notes 会话创建时立即持久化策略；重启或切换分支后仍禁用全部工具、扩展、技能及项目上下文，并拒绝 Shell、斜杠命令、fork 与修改工具集等命令。state 与 history 返回 remotePolicy。
+- notes 是单个会话的受限运行策略，不是系统沙箱。目前 session.create 令牌仍能选择 agent 和请求 cwd，没有每令牌 policy/cwd 白名单；只能发给可信客户端。前述扩展尽力加载规则仅适用于 agent 会话。
+- GET /models 要求 session.create，返回核心模型配置的目录及思考级别，不加载项目扩展。
+- GET /sessions/:id/content-events 同时要求 session.history.read、session.events.read 及会话授权。SSE 发送 content.snapshot 正文/工具名称快照，约 250ms 合并更新，正文上限 100000 字符；不发送 thinking、工具参数或 Base64。连接时同步内存快照，最终内容仍以 history 为准。
+- 正文流写入前复核令牌撤销、过期和授权，失权后以 REMOTE_ACCESS_ENDED 终止；客户端不应无限重连。原有 /events 生命周期流继续保留。
+- /capabilities 的 features 声明 contentStream、sessionPolicies 与 models；正文流是否可用取决于令牌的两个读取作用域。
+
+验证：32 项 Remote API/运行时相关测试通过（node --test lib/remote-*.test.mjs lib/rpc-manager-behavior.test.mjs），包括真实 SDK 的 notes 创建及恢复、禁止项目扩展执行、正文过滤和撤销后断流；TypeScript 检查及 lint 通过。未执行 next build，也未完成真实 Obsidian 宿主验收。
+
 ### 1. 发现当前令牌能力
 
 ```bash
@@ -72,3 +85,13 @@ GET /api/remote/v1/commands/<commandId>
 | GET | `/commands/:id` | `session.messages.read` | 查询命令状态与失败信息 |
 
 所有写入请求使用 JSON；单次远程 JSON 请求上限为 256 KiB。Session 创建和消息投递都应使用稳定、可重试的 `Idempotency-Key`。
+
+## 令牌记录管理
+
+设置 → 远程控制默认显示有效令牌，已撤销或已过期令牌归入默认收起的“已撤销记录”。撤销立即使令牌失效，但保留记录。展开历史区后可选择“删除记录”，二次确认后永久清除令牌及其会话创建幂等记录，不会删除会话本身。有效令牌必须先撤销，才能删除记录。
+
+管理接口 `DELETE /api/remote/tokens/<id>` 保持撤销语义；添加 `?permanent=true` 才会永久删除失效记录。有效令牌返回 `409`，不存在的记录返回 `404`。
+
+### 界面预览
+
+![远程控制令牌创建表单](assets/remote-control-settings.png)

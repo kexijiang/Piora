@@ -19,6 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     );
     return Response.json({
       sessionId: id,
+      remotePolicy: session.remotePolicy,
       leafId: manager.getLeafId(),
       messages: context.messages,
       entryIds: context.entryIds,

@@ -3905,6 +3905,10 @@ select:focus-visible,
 .ui-button:hover:not(:disabled) { background: var(--bg-hover); }
 .ui-button[data-variant="primary"] { background: var(--btn-primary-bg); color: var(--btn-primary-fg); border-color: transparent; }
 .ui-button[data-variant="primary"]:hover:not(:disabled) { background: var(--btn-primary-bg-hover); }
+.ui-button[data-variant="accent"] { background: var(--accent); color: var(--bg); border-color: transparent; }
+.ui-button[data-variant="accent"]:hover:not(:disabled) { background: var(--accent-hover); }
+.ui-button[data-variant="danger"] { background: color-mix(in srgb, var(--status-failed) 80%, black); color: #fff; border-color: transparent; }
+.ui-button[data-variant="danger"]:hover:not(:disabled) { background: color-mix(in srgb, var(--status-failed) 65%, black); }
 .ui-input { min-width: 0; max-width: 100%; }
 .ui-input:focus { border-color: var(--accent); }
 .ui-error { color: var(--status-failed); font-size: var(--text-sm); line-height: 1.5; }

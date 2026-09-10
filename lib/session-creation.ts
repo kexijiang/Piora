@@ -19,6 +19,7 @@ export function parseSessionThinkingLevel(value: unknown): ThinkingLevel | undef
 }
 
 export interface CreateSessionInput {
+  remotePolicy?: "agent" | "notes";
   cwd: string;
   initialModel?: { provider: string; modelId: string };
   thinkingLevel?: ThinkingLevel;
@@ -49,6 +50,7 @@ export async function createSession(input: CreateSessionInput): Promise<CreatedS
   const runtimeProfile = input.runtimeProfile ?? getAgentRuntimeProfile();
   const { session, realSessionId } = await startRpcSession(`__new__${randomUUID()}`, "", cwd, {
     ...(input.toolNames ? { toolNames: input.toolNames } : {}),
+    ...(input.remotePolicy ? { remotePolicy: input.remotePolicy } : {}),
     ...(input.capabilitySelection ? { capabilitySelection: input.capabilitySelection } : {}),
     ...(input.systemPromptSelection ? { systemPromptSelection: input.systemPromptSelection } : {}),
     ...(input.initialModel ? { initialModel: input.initialModel } : {}),
@@ -57,6 +59,7 @@ export async function createSession(input: CreateSessionInput): Promise<CreatedS
   });
   try {
     if (input.name?.trim()) await session.send({ type: "set_session_name", name: input.name.trim().slice(0, 200) });
+    if (input.remotePolicy) session.persistSessionFile();
 
     allowFileRoot(cwd);
     invalidateSessionListCache();

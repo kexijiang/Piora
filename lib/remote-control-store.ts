@@ -152,6 +152,19 @@ export function authenticateRemoteCapabilityToken(token: string, path = getRemot
   return undefined;
 }
 
+export async function deleteRemoteCapabilityToken(id: string, path = getRemoteControlStorePath()): Promise<"deleted" | "not_found" | "active"> {
+  return withStoreLock(path, () => {
+    const store = readRemoteCapabilityStore(path);
+    const token = store.tokens.find((candidate) => candidate.id === id);
+    if (!token) return "not_found";
+    if (publicToken(token).active) return "active";
+    store.tokens = store.tokens.filter((candidate) => candidate.id !== id);
+    store.sessionCreations = store.sessionCreations.filter((entry) => entry.tokenId !== id);
+    persist(path, store);
+    return "deleted";
+  });
+}
+
 export async function touchRemoteCapabilityToken(id: string, path = getRemoteControlStorePath()): Promise<void> {
   await withStoreLock(path, () => {
     const store = readRemoteCapabilityStore(path);
