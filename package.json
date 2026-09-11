@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.4.41-beta.30",
+  "version": "0.4.41-beta.31",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -76,7 +76,7 @@
     "typecheck": "tsc --noEmit && npm run typecheck --workspace @piora/desktop",
     "pretest": "npm run build:desktop",
     "test": "node --test --test-concurrency=1 components/*.test.mjs hooks/*.test.mjs lib/*.test.mjs lib/i18n/*.test.mjs",
-    "test:shell-resource": "node --test --test-concurrency=1 --test-name-pattern=\"managed PTY preserves state\" lib/shell-runtime.test.mjs",
+    "test:shell-resource": "node --test --test-concurrency=1 --test-name-pattern=\"clipboard copies on click|packaged Electron Shell opens|managed xterm handles|managed PTY preserves state\" lib/clipboard-click-browser.test.mjs lib/shell-packaging.test.mjs lib/shell-runtime.test.mjs lib/shell-surface-browser.test.mjs",
     "test:team": "node --test lib/team-*.test.mjs lib/runtime-evidence.test.mjs components/CollapsibleUserContent.test.mjs",
     "test:team:acceptance": "node scripts/run-team-acceptance.mjs",
     "test:team:soak": "node scripts/run-team-soak.mjs",
