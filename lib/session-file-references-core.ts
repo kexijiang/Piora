@@ -74,9 +74,13 @@ export function isFilePathReferencedByEntries(filePath: string, entries: Session
 }
 
 export function isBashOutputPathReferencedByEntries(filePath: string, entries: SessionEntry[]): boolean {
-  return entries.some((entry) => (
-    entry.type === "message"
-    && entry.message.role === "bashExecution"
-    && entry.message.fullOutputPath === filePath
-  ));
+  return entries.some((entry) => {
+    if (entry.type !== "message") return false;
+    if (entry.message.role === "bashExecution") return entry.message.fullOutputPath === filePath;
+    if (entry.message.role !== "toolResult") return false;
+    if (!/^(?:bash|powershell)(?:\s|$)/i.test(entry.message.toolName ?? "")) return false;
+    const details = entry.message.details;
+    return typeof details === "object" && details !== null && !Array.isArray(details)
+      && (details as { fullOutputPath?: unknown }).fullOutputPath === filePath;
+  });
 }

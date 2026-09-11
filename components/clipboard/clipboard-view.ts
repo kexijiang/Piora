@@ -2,7 +2,7 @@ import type { ClipboardFilter, ClipboardItem } from "@/desktop/src/clipboard-typ
 
 export type ClipboardSurface = "quick" | "manager" | "shelf";
 export function clipboardRowHeight(surface: ClipboardSurface, item: ClipboardItem) {
-  return surface === "shelf" ? item.kind === "image" ? 128 : item.kind === "files" ? 72 : 84 : surface === "manager" ? 64 : 56;
+  return surface === "shelf" ? item.kind === "image" ? 128 : item.kind === "files" ? 72 : 84 : item.kind === "image" ? 112 : surface === "manager" ? 64 : 56;
 }
 export function clipboardCursor(item: ClipboardItem, filter: ClipboardFilter): string {
   const value = JSON.stringify([filter === "shelf" ? item.shelfOrder : item.copiedAt, item.id]);

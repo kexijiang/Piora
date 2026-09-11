@@ -435,6 +435,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [error, setError] = useState<string | null>(null);
   const [activeLeafId, setActiveLeafId] = useState<string | null>(initialSessionData?.leafId ?? null);
   const [messages, setMessages] = useState<AgentMessage[]>(initialSessionData?.context.messages ?? []);
+  const [deletingMessage, setDeletingMessage] = useState(false);
+  const messageMutationRef = useRef(false);
+  const historyRevisionRef = useRef(0);
   const [entryIds, setEntryIds] = useState<string[]>(initialSessionData?.context.entryIds ?? []);
   const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
   const [agentRunning, setAgentRunning] = useState(false);
@@ -693,17 +696,19 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const loadContext = useCallback(async (sid: string, leafId: string | null) => {
     const runId = promptRunIdRef.current;
+    const revision = historyRevisionRef.current;
     try {
       const params = new URLSearchParams({ deferThinking: "1", deferMedia: "1" });
       if (leafId) params.set("leafId", leafId);
       const url = `/api/sessions/${encodeURIComponent(sid)}/context?${params}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[] } };
-      const recovered = mergePendingPrompts(d.context.messages, d.context.entryIds ?? [], await readPendingPrompts(sid));
-      if (sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return;
+      const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[] }; persistedPromptIds?: string[] };
+      const recovered = mergePendingPrompts(d.context.messages, d.context.entryIds ?? [], await readPendingPrompts(sid), d.persistedPromptIds);
+      if (sessionIdRef.current !== sid || promptRunIdRef.current !== runId || historyRevisionRef.current !== revision) return;
       setMessages(recovered.messages);
       setEntryIds(recovered.entryIds);
+      void confirmPendingPrompts(recovered.confirmedIds).catch(console.error);
     } catch (e) {
       console.error("Failed to load context:", e);
     }
@@ -1349,13 +1354,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       }
       case "tool_execution_update": {
         if (!agentRunningRef.current) break;
-        const partial = event.partialResult as { content?: unknown } | undefined;
+        const partial = event.partialResult as { content?: unknown; details?: unknown } | undefined;
         if (typeof event.toolCallId !== "string" || !Array.isArray(partial?.content)) break;
         const update: AgentMessage = {
           role: "toolResult", toolCallId: event.toolCallId,
           isStreaming: true,
           toolName: typeof event.toolName === "string" ? event.toolName : undefined,
           content: partial.content,
+          details: partial.details,
         };
         setMessages((current) => {
           const index = current.findIndex((message) => message.role === "toolResult" && message.toolCallId === update.toolCallId);
@@ -1434,7 +1440,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   ) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage && !images?.length && !files?.length) return false;
-    if (agentRunningRef.current || bashRunningRef.current) return false;
+    if (agentRunningRef.current || bashRunningRef.current || messageMutationRef.current) return false;
     const isSlashCommandPrompt = !images?.length && !files?.length && trimmedMessage.startsWith("/");
 
     const isBashCommand = !images?.length && !files?.length && trimmedMessage.startsWith("!");
@@ -1673,6 +1679,39 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [addNotice, finishPromptWithoutStream, t]);
 
+  const handleDeleteMessage = useCallback(async (message: AgentMessage, entryId?: string) => {
+    if (messageMutationRef.current || agentRunningRef.current || bashRunningRef.current || isCompacting) throw new Error(t("chat.deleteMessageBusy"));
+    const sid = sessionIdRef.current;
+    const promptId = message.role === "user" ? message.clientPromptId : undefined;
+    if (!entryId && !promptId) throw new Error(t("chat.deleteMessageUnavailable"));
+    messageMutationRef.current = true;
+    setDeletingMessage(true);
+    historyRevisionRef.current++;
+    sessionLoadAbortRef.current?.abort();
+    try {
+      let deletedIds: string[] = [];
+      if (entryId) {
+        if (!sid) throw new Error(t("chat.deleteMessageUnavailable"));
+        const res = await fetch(`/api/sessions/${encodeURIComponent(sid)}/messages/${encodeURIComponent(entryId)}`, { method: "DELETE", signal: AbortSignal.timeout(30_000) });
+        const result = await res.json() as { success?: boolean; error?: string; deletedIds?: string[] };
+        if (!res.ok || !result.success) throw new Error(result.error ?? `HTTP ${res.status}`);
+        deletedIds = result.deletedIds ?? [entryId];
+      }
+      // An explicit user deletion can retire a recovery copy without a receipt.
+      if (promptId) await confirmPendingPrompts([promptId]);
+      if (sessionIdRef.current !== sid) return;
+      const remove = new Set(deletedIds);
+      const keep = messages.map((entry, index) => !remove.has(entryIds[index]) && !(promptId && entry.role === "user" && entry.clientPromptId === promptId));
+      setMessages(messages.filter((_entry, index) => keep[index]));
+      setEntryIds(entryIds.filter((_entry, index) => keep[index]));
+      if (sid) invalidatePrefetchedSession(sid);
+      if (entryId && sid) {
+        await loadSession(sid);
+        if (activeLeafId) { setActiveLeafId(activeLeafId); await loadContext(sid, activeLeafId); }
+      }
+    } finally { messageMutationRef.current = false; setDeletingMessage(false); }
+  }, [activeLeafId, entryIds, isCompacting, loadContext, loadSession, messages, t]);
+
   const handleFork = useCallback(async (entryId: string) => {
     if (bashRunningRef.current) return;
     const sid = sessionIdRef.current;
@@ -1771,12 +1810,16 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
   }, [isCompacting, loadSession]);
 
-  const loadModels = useCallback(async (signal?: AbortSignal) => {
+  const modelLoadIdRef = useRef(0);
+  const loadModels = useCallback(async (signal?: AbortSignal, forceRefresh = false) => {
+    const loadId = ++modelLoadIdRef.current;
     const modelCwd = newSessionCwd ?? session?.cwd ?? "";
     const d = await fetchModelCatalog({
+      forceRefresh,
       ...(modelCwd ? { cwd: modelCwd } : {}),
       ...(signal ? { signal } : {}),
     });
+    if (signal?.aborted || loadId !== modelLoadIdRef.current) return;
     setModelNames(d.models);
     setModelError(d.modelError ?? null);
     setModelThinkingLevels(d.thinkingLevels ?? {});
@@ -2287,6 +2330,42 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return () => controller.abort();
   }, [loadModels, modelsRefreshKey]);
 
+  // A file edited outside Settings produces no refresh notification. Recheck
+  // errors until the config recovers, without touching the running session.
+  useEffect(() => {
+    if (!modelError) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    let loading = false;
+    const retry = async () => {
+      clearTimeout(timer);
+      if (controller.signal.aborted || loading) return;
+      if (document.visibilityState === "visible") {
+        loading = true;
+        try {
+          await loadModels(controller.signal, true);
+        } catch {
+          // Keep the last actionable error until a successful response.
+        } finally {
+          loading = false;
+        }
+      }
+      if (!controller.signal.aborted) timer = setTimeout(retry, 5_000);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void retry();
+    };
+    timer = setTimeout(retry, 5_000);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onVisible);
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onVisible);
+    };
+  }, [modelError, loadModels, modelsRefreshKey]);
+
   useEffect(() => {
     if (!compactResult) return;
     const t = setTimeout(() => setCompactResult(null), 6000);
@@ -2330,7 +2409,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
-    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange,
+    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleDeleteMessage, deletingMessage,
     handleScrollToBottom, pauseHistoryFollow,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,

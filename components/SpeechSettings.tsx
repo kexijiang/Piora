@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import { useI18n } from "@/hooks/useI18n";
 import { matchManualSpeechSourceName } from "@/lib/speech-manual-file";
 import type { SpeechStatus } from "@/lib/speech-types";
+import { getSettingsSnapshot, readSettingsJson, rememberSettingsSnapshot } from "@/lib/settings-read-client";
 import { AliIcon } from "./AliIcon";
 import styles from "./SpeechSettings.module.css";
 
@@ -42,58 +43,61 @@ async function responseError(response: Response): Promise<string> {
 
 export function SpeechSettings() {
   const { t } = useI18n();
-  const [status, setStatus] = useState<SpeechStatus | null>(null);
+  const [status, setStatus] = useState<SpeechStatus | null>(() => getSettingsSnapshot("/api/speech/settings"));
+  const [retryKey, setRetryKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [manualBusy, setManualBusy] = useState(false);
   const [manualFeedback, setManualFeedback] = useState<{ kind: "info" | "success" | "error"; message: string } | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [manual, setManual] = useState<ManualSpeechPackState | null>(null);
+  const [manual, setManual] = useState<ManualSpeechPackState | null>(() => getSettingsSnapshot("/api/speech/manual"));
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const load = useCallback(async () => {
-    const response = await fetch("/api/speech/settings", { cache: "no-store" });
-    if (!response.ok) throw new Error(await responseError(response));
-    const next = await response.json() as SpeechStatus;
+  const load = useCallback(async (signal?: AbortSignal) => {
+    const next = await readSettingsJson<SpeechStatus>("/api/speech/settings", signal);
     setStatus(next);
     return next;
   }, []);
 
-  const loadManual = useCallback(async () => {
-    const response = await fetch("/api/speech/manual", { cache: "no-store" });
-    if (!response.ok) throw new Error(await responseError(response));
-    const next = await response.json() as ManualSpeechPackState;
+  const loadManual = useCallback(async (signal?: AbortSignal) => {
+    const next = await readSettingsJson<ManualSpeechPackState>("/api/speech/manual", signal);
     setManual(next);
     return next;
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    void load()
+    const controller = new AbortController();
+    setLoading(true); setError(null);
+    void load(controller.signal)
       .catch((loadError: unknown) => {
-        if (!cancelled) setError(loadError instanceof Error ? loadError.message : String(loadError));
+        if (!controller.signal.aborted) setError(loadError instanceof Error ? loadError.message : String(loadError));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       });
-    return () => { cancelled = true; };
-  }, [load]);
+    return () => controller.abort();
+  }, [load, retryKey]);
 
   useEffect(() => {
-    void loadManual().catch((loadError: unknown) => {
-      setError(loadError instanceof Error ? loadError.message : String(loadError));
+    const controller = new AbortController();
+    void loadManual(controller.signal).catch((loadError: unknown) => {
+      if (!controller.signal.aborted) setError(loadError instanceof Error ? loadError.message : String(loadError));
     });
-  }, [loadManual]);
+    return () => controller.abort();
+  }, [loadManual, retryKey]);
 
   useEffect(() => {
     if (status?.install.phase !== "downloading" && status?.install.phase !== "installing") return;
-    const timer = window.setInterval(() => {
-      void load().catch((loadError: unknown) => {
-        setError(loadError instanceof Error ? loadError.message : String(loadError));
-      });
-    }, 650);
-    return () => window.clearInterval(timer);
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try { if (!document.hidden) await load(controller.signal); }
+      catch (loadError) { if (!controller.signal.aborted) setError(String(loadError)); }
+      finally { if (!controller.signal.aborted) timer = setTimeout(refresh, 650); }
+    };
+    timer = setTimeout(refresh, 650);
+    return () => { controller.abort(); clearTimeout(timer); };
   }, [load, status?.install.phase]);
 
   const patchSettings = useCallback(async (body: Record<string, unknown>) => {
@@ -104,7 +108,7 @@ export function SpeechSettings() {
     });
     if (!response.ok) throw new Error(await responseError(response));
     const next = await response.json() as SpeechStatus;
-    setStatus(next);
+    setStatus(rememberSettingsSnapshot("/api/speech/settings", next));
     window.dispatchEvent(new Event(SPEECH_SETTINGS_CHANGED_EVENT));
   }, []);
 
@@ -129,7 +133,7 @@ export function SpeechSettings() {
   const remove = () => runAction(async () => {
     const response = await fetch("/api/speech/packs", { method: "DELETE" });
     if (!response.ok) throw new Error(await responseError(response));
-    setStatus(await response.json() as SpeechStatus);
+    setStatus(rememberSettingsSnapshot("/api/speech/settings", await response.json() as SpeechStatus));
     window.dispatchEvent(new Event(SPEECH_SETTINGS_CHANGED_EVENT));
   });
 
@@ -169,7 +173,7 @@ export function SpeechSettings() {
         if (!response.ok) throw new Error(await responseError(response));
         const payload = await response.json() as { manual: ManualSpeechPackState };
         next = payload.manual;
-        setManual(next);
+        setManual(rememberSettingsSnapshot("/api/speech/manual", next));
         const uploadedCount = next.sources.filter((source) => source.uploaded).length;
         setManualFeedback({
           kind: "success",
@@ -205,10 +209,6 @@ export function SpeechSettings() {
     ? Math.min(100, Math.round(status.install.downloadedBytes / status.install.totalBytes * 100))
     : 0;
 
-  if (loading && !status) {
-    return <div className={styles.loading}>{t("speech.loading")}</div>;
-  }
-
   return (
     <div className={styles.page}>
       <header className={styles.header}>
@@ -219,7 +219,8 @@ export function SpeechSettings() {
         <span className={styles.privacyBadge}><AliIcon name="lock" size={14} />{t("speech.offlineBadge")}</span>
       </header>
 
-      {error ? <div className={styles.error} role="alert">{error}</div> : null}
+      {loading && !status ? <p className={styles.hint} role="status">{t("speech.loading")}</p> : null}
+      {error ? <div className={styles.error} role="alert">{error} <button type="button" onClick={() => setRetryKey(key => key + 1)}>{t("common.retry")}</button></div> : null}
       {status?.install.phase === "error" && status.install.error
         ? <div className={styles.error} role="alert">{status.install.error}</div>
         : null}
@@ -242,7 +243,7 @@ export function SpeechSettings() {
             <span />
           </button>
         </div>
-        {!status?.installed ? <p className={styles.hint}>{t("speech.installBeforeEnable")}</p> : null}
+        {status && !status.installed ? <p className={styles.hint}>{t("speech.installBeforeEnable")}</p> : null}
       </section>
 
       <section className={styles.card}>
@@ -252,7 +253,7 @@ export function SpeechSettings() {
             <p>{t("speech.packDescription")}</p>
           </div>
           <span className={status?.installed ? styles.ready : styles.notInstalled}>
-            {status?.installed ? t("speech.installed") : t("speech.notInstalled")}
+            {status ? status.installed ? t("speech.installed") : t("speech.notInstalled") : "—"}
           </span>
         </div>
 
@@ -318,7 +319,7 @@ export function SpeechSettings() {
           <strong>{status?.installed ? t("speech.manualInstalled") : manualBusy ? t("speech.manualVerifying") : t("speech.manualDrop")}</strong>
           <span>{status?.installed ? t("speech.manualInstalledHint") : t("speech.manualDropHint")}</span>
           {!status?.installed ? (
-            <button type="button" className={styles.secondary} disabled={manualBusy} onClick={() => fileInputRef.current?.click()}>
+            <button type="button" className={styles.secondary} disabled={manualBusy || !manual || !status} onClick={() => fileInputRef.current?.click()}>
               {t("speech.manualChooseFiles")}
             </button>
           ) : null}
@@ -327,7 +328,7 @@ export function SpeechSettings() {
             type="file"
             multiple
             hidden
-            disabled={manualBusy || status?.installed}
+            disabled={manualBusy || !manual || !status || status.installed}
             onChange={(event) => void importManualFiles(Array.from(event.target.files ?? []))}
           />
         </div>
@@ -370,7 +371,7 @@ export function SpeechSettings() {
         <div className={styles.pathRow}>
           <code>{status?.packDirectory ?? "—"}</code>
           {window.piDesktop?.selectSpeechPackDirectory ? (
-            <button type="button" className={styles.secondary} disabled={busy || installActive} onClick={chooseDirectory}>
+            <button type="button" className={styles.secondary} disabled={busy || installActive || !status} onClick={chooseDirectory}>
               {t("speech.chooseLocation")}
             </button>
           ) : null}

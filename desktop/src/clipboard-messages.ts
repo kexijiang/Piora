@@ -2,6 +2,12 @@
 export type ClipboardLocale = "zh-CN" | "en";
 export const clipboardEnglish: Record<string, string> = {
   "已复制": "Copied",
+  "查看大图": "View full image",
+  "查看大图：{title}": "View full image: {title}",
+  "图片大图预览": "Full image preview",
+  "关闭大图预览": "Close image preview",
+  "图片预览区域": "Image preview area",
+  "复制图片": "Copy image",
   "剪贴板存储进程无法启动，请重新连接存储。": "Clipboard storage could not start. Reconnect storage.",
   "剪贴板存储连接中断，未确认的操作不会自动重放。请重新连接后检查最近记录。": "Clipboard storage disconnected. Unconfirmed actions will not be replayed. Reconnect and check recent items.",
   "剪贴板存储连接已更换，请重新执行此操作。": "The storage connection changed. Please perform this action again.",

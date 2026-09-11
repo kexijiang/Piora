@@ -10,7 +10,7 @@ import { VirtualList, type VirtualListHandle } from "./VirtualList";
 
 export interface ChatHistoryHandle { revealEntry(id: string): void; cancelNavigation(): void }
 type MessageProps = ComponentProps<typeof MessageView>;
-interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "onRetry" | "retryDisabled" | "sessionId" | "onOpenAutomation"> {
+interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "onRetry" | "retryDisabled" | "sessionId" | "onOpenAutomation" | "onOpenCommandExecution"> {
   messages: AgentMessage[];
   entryIds: string[];
   busy: boolean;
@@ -22,10 +22,26 @@ interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" |
   pendingScrollToUserRef: RefObject<boolean>;
   scrollContainer: RefObject<HTMLDivElement | null>;
   handleRef: Ref<ChatHistoryHandle>;
+  onDeleteMessage?: (message: AgentMessage, entryId?: string) => Promise<void>;
+  deleteDisabled?: boolean;
+}
+
+function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message: AgentMessage; entryId?: string; onDelete: NonNullable<Props["onDeleteMessage"]>; disabled: boolean }) {
+  const { t } = useI18n();
+  const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  return <div className="message-delete-action" style={{ display: "flex", justifyContent: message.role === "user" ? "flex-end" : "flex-start", alignItems: "center", gap: 8, marginBottom: 8 }}>
+    {error ? <span role="alert" style={{ fontSize: "var(--text-xs)", color: "var(--status-failed)" }}>{error}</span> : null}
+    <button type="button" disabled={disabled || deleting} title={disabled ? t("chat.deleteMessageBusy") : t("chat.deleteMessage")}
+      onClick={() => { if (disabled || deleting) return; setDeleting(true); setError(""); void onDelete(message, entryId).catch(reason => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setDeleting(false)); }}
+      style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", border: "none", background: "none", color: "var(--text-dim)", fontSize: "var(--text-xs)", cursor: disabled || deleting ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1 }}>
+      <AliIcon name="delete" size={12} />{t(deleting ? "chat.deletingMessage" : "chat.deleteMessage")}
+    </button>
+  </div>;
 }
 
 /** Live text stays in ChatWindow. Stable history does not render on token updates. */
-export const ChatHistory = memo(function ChatHistory({ messages, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, ...messageProps }: Props) {
+export const ChatHistory = memo(function ChatHistory({ messages, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, ...messageProps }: Props) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const list = useRef<VirtualListHandle>(null);
@@ -88,6 +104,7 @@ export const ChatHistory = memo(function ChatHistory({ messages, entryIds, busy,
           showTimestamp={showTimestamp} prevTimestamp={messages[index - 1]?.timestamp}
           responseStartedAt={showTimestamp && !(busy && index > metadata.lastUser) ? metadata.responseStarts.get(index) : undefined} />
       </RenderErrorBoundary>
+      {onDeleteMessage && (entryIds[index] || message.role === "user" && message.clientPromptId) ? <DeleteMessageAction message={messages[index]} entryId={entryIds[index]} onDelete={onDeleteMessage} disabled={deleteDisabled || busy || streaming} /> : null}
     </div>;
   }} />;
 });

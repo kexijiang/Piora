@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { AutomationDefinition, AutomationNotificationPolicy, AutomationRun, AutomationSummary } from "@/lib/automation-types";
+import { getSettingsSnapshot, readSettingsJson } from "@/lib/settings-read-client";
 import { AliIcon } from "./AliIcon";
 import styles from "./AutomationPanel.module.css";
 
@@ -82,7 +83,8 @@ function runLabel(status: AutomationRun["status"], t: (key: string) => string): 
 
 export function AutomationPanel({ automationId, sessionId, sessionName, cwd, embedded, onSelectAutomation, onAutomationChanged }: AutomationPanelProps) {
   const { t, locale } = useI18n();
-  const [items, setItems] = useState<AutomationSummary[]>([]);
+  const [items, setItems] = useState<AutomationSummary[]>(() => getSettingsSnapshot<{ automations: AutomationSummary[] }>("/api/automations")?.automations ?? []);
+  const [retryKey, setRetryKey] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(automationId ?? null);
   const [detail, setDetail] = useState<DetailPayload | null>(null);
   const [draft, setDraft] = useState<Draft>(() => newDraft(Boolean(sessionId)));
@@ -93,33 +95,40 @@ export function AutomationPanel({ automationId, sessionId, sessionName, cwd, emb
   const [menuOpen, setMenuOpen] = useState(false);
 
   const effectiveId = automationId ?? selectedId;
-  const loadList = useCallback(async () => {
-    const payload = await jsonRequest<{ automations: AutomationSummary[] }>("/api/automations", { cache: "no-store" });
+  const loadList = useCallback(async (signal?: AbortSignal) => {
+    const payload = await readSettingsJson<{ automations: AutomationSummary[] }>("/api/automations", signal);
     setItems(payload.automations);
   }, []);
-  const loadDetail = useCallback(async (id: string) => {
-    const payload = await jsonRequest<DetailPayload>(`/api/automations/${encodeURIComponent(id)}`, { cache: "no-store" });
+  const loadDetail = useCallback(async (id: string, signal?: AbortSignal, refreshDraft = true) => {
+    const payload = await readSettingsJson<DetailPayload>(`/api/automations/${encodeURIComponent(id)}`, signal);
     setDetail(payload);
-    setDraft(editDraft(payload.automation));
+    if (refreshDraft) setDraft(editDraft(payload.automation));
   }, []);
 
   useEffect(() => { if (automationId !== undefined) setSelectedId(automationId); }, [automationId]);
   useEffect(() => { setMenuOpen(false); }, [effectiveId]);
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
-    Promise.all([loadList(), effectiveId ? loadDetail(effectiveId) : Promise.resolve()])
-      .catch((reason) => { if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason)); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [effectiveId, loadDetail, loadList]);
+    Promise.all([loadList(controller.signal), effectiveId ? loadDetail(effectiveId, controller.signal) : Promise.resolve()])
+      .catch((reason) => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason)); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
+  }, [effectiveId, loadDetail, loadList, retryKey]);
 
   useEffect(() => {
-    if (!effectiveId) return;
-    const timer = setInterval(() => { void loadDetail(effectiveId).catch(() => undefined); }, 5_000);
-    return () => clearInterval(timer);
-  }, [effectiveId, loadDetail]);
+    if (!effectiveId || loading) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    const refresh = async () => {
+      try { if (!document.hidden) await loadDetail(effectiveId, controller.signal, false); }
+      catch { /* Keep the last loaded detail on a transient polling failure. */ }
+      finally { if (!controller.signal.aborted) timer = setTimeout(refresh, 5_000); }
+    };
+    timer = setTimeout(refresh, 5_000);
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [effectiveId, loadDetail, loading]);
 
   const targetDescription = useMemo(() => draft.kind === "heartbeat"
     ? (sessionName || detail?.automation.target.type === "session" && detail.automation.target.sessionName || t("automations.currentChat"))
@@ -200,8 +209,6 @@ export function AutomationPanel({ automationId, sessionId, sessionName, cwd, emb
     setSelectedId(null); setDetail(null); setCreating(true); setDraft(newDraft(Boolean(sessionId))); setError(null);
   };
 
-  if (loading && !detail && items.length === 0) return <div className={styles.state}>{t("automations.loading")}</div>;
-
   const showingEditor = creating || Boolean(effectiveId && detail);
   return <div className={`${styles.root}${embedded ? ` ${styles.embedded}` : ""}`}>
     <header className={styles.header}>
@@ -234,9 +241,9 @@ export function AutomationPanel({ automationId, sessionId, sessionName, cwd, emb
         </div> : null}
       </div>
     </header>
-    {error ? <div className={styles.error} role="alert">{error}</div> : null}
+    {error ? <div className={styles.error} role="alert">{error} <button type="button" onClick={() => setRetryKey(key => key + 1)}>{t("common.retry")}</button></div> : null}
     {!showingEditor ? <div className={styles.list}>
-      {items.length === 0 ? <div className={styles.empty}><AliIcon name="calendar" size={22} /><strong>{t("automations.empty")}</strong><span>{t("automations.emptyDescription")}</span></div> : items.map((item) => <button className={styles.listItem} type="button" key={item.id} aria-label={`${item.name} · ${item.status === "ACTIVE" ? t("automations.active") : t("automations.paused")} · ${scheduleLabel(item.rrule, t)}`} onClick={() => select(item.id)}>
+      {items.length === 0 && (loading || error) ? <div className={styles.state} role="status">{loading ? t("automations.loading") : null}</div> : items.length === 0 ? <div className={styles.empty}><AliIcon name="calendar" size={22} /><strong>{t("automations.empty")}</strong><span>{t("automations.emptyDescription")}</span></div> : items.map((item) => <button className={styles.listItem} type="button" key={item.id} aria-label={`${item.name} · ${item.status === "ACTIVE" ? t("automations.active") : t("automations.paused")} · ${scheduleLabel(item.rrule, t)}`} onClick={() => select(item.id)}>
         <span className={styles.clock}><AliIcon name="calendar" size={16} /></span>
         <span className={styles.listText}><strong>{item.name}</strong><small>{item.status === "ACTIVE" ? t("automations.active") : t("automations.paused")} · {scheduleLabel(item.rrule, t)}</small></span>
         <span className={styles.chevron}>›</span>

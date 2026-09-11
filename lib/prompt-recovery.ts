@@ -81,10 +81,26 @@ export function mergePendingPrompts(messages: AgentMessage[], entryIds: string[]
       receipts.push(id);
     }
   }
-  const missing = pending.filter((record) => !displayed.has(record.id) && !confirmed.has(record.id)).sort((a, b) => (a.message.timestamp ?? 0) - (b.message.timestamp ?? 0));
+  const missing = pending.filter((record) => !displayed.has(record.id) && !confirmed.has(record.id)).sort((a, b) => (a.message.timestamp ?? Infinity) - (b.message.timestamp ?? Infinity));
+  const mergedMessages: AgentMessage[] = [];
+  const mergedEntryIds: string[] = [];
+  let next = 0;
+  const appendRecovered = () => {
+    const record = missing[next++];
+    mergedMessages.push({ ...record.message, clientPromptId: record.id, recoveryDraft: record.draft, sendUnconfirmed: true, sendError: "尚未确认送达，原文和附件已保留，可重新发送。" });
+    mergedEntryIds.push("");
+  };
+  // Keep disk history in its original order, inserting local recovery copies
+  // beside their send time instead of pinning every old failure to the bottom.
+  messages.forEach((message, index) => {
+    while (next < missing.length && (missing[next].message.timestamp ?? Infinity) < (message.timestamp ?? -Infinity)) appendRecovered();
+    mergedMessages.push(message);
+    mergedEntryIds.push(entryIds[index] ?? "");
+  });
+  while (next < missing.length) appendRecovered();
   return {
-    messages: [...messages, ...missing.map((record) => ({ ...record.message, clientPromptId: record.id, recoveryDraft: record.draft, sendError: "发送未完成确认，原文和附件已保留，可重新发送。" }))] as AgentMessage[],
-    entryIds: [...entryIds, ...missing.map(() => "")],
+    messages: mergedMessages,
+    entryIds: mergedEntryIds,
     confirmedIds: pending.filter((record) => confirmed.has(record.id)).map((record) => record.id),
   };
 }

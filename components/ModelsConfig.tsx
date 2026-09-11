@@ -503,13 +503,12 @@ function VisionAgentDetail({ cwd }: { cwd?: string }) {
 
 // ── Provider detail ───────────────────────────────────────────────────────────
 
-function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddModels }: {
-  name: string; provider: ProviderEntry;
-  onChange: (p: ProviderEntry) => void; onRename: (n: string) => void; onDelete: () => void;
+function ProviderDetail({ name, editingName, provider, onChange, onNameChange, onDelete, onAddModels }: {
+  name: string; editingName: string; provider: ProviderEntry;
+  onChange: (p: ProviderEntry) => void; onNameChange: (n: string) => void; onDelete: () => void;
   onAddModels: (models: DiscoveredModel[]) => void;
 }) {
   const { t } = useI18n();
-  const [editingName, setEditingName] = useState(name);
   const [discoveryState, setDiscoveryState] = useState<ModelDiscoveryState>({ phase: "idle" });
   const [connectionTest, setConnectionTest] = useState<ModelTestState>({ phase: "idle" });
   const connectionRequestRef = useRef(0);
@@ -540,7 +539,6 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const discoveryRequestIdRef = useRef(0);
   const selectShownRef = useRef<HTMLInputElement>(null);
-  useEffect(() => setEditingName(name), [name]);
   const set = <K extends keyof ProviderEntry>(k: K, v: ProviderEntry[K]) => onChange({ ...provider, [k]: v });
 
   useEffect(() => {
@@ -634,13 +632,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
       </div>
 
        <Field label={t("models.ui.providerName")}>
-        <TextInput value={editingName} onChange={setEditingName} placeholder="provider-name" mono />
-        {editingName !== name && editingName.trim() && (
-          <button onClick={() => onRename(editingName.trim())}
-            style={{ marginTop: 4, padding: "3px 10px", background: "var(--accent)", border: "none", borderRadius: 4, color: "#fff", cursor: "pointer", fontSize: "var(--text-xs)", alignSelf: "flex-start" }}>
-             {t("i18n.rename")}
-          </button>
-        )}
+        <TextInput value={editingName} onChange={onNameChange} placeholder="provider-name" mono />
       </Field>
 
       <Field label={t("models.form.endpoint")}>
@@ -662,7 +654,7 @@ function ProviderDetail({ name, provider, onChange, onRename, onDelete, onAddMod
 
       <div className={styles.connectionActions}>
         <button className={styles.testConnection} disabled={!provider.models?.some(model => model.id.trim()) || connectionTest.phase === "testing"} title={!provider.models?.some(model => model.id.trim()) ? t("models.ui.testNeedsModel") : undefined} onClick={() => void testConnection()}><AliIcon name="link" size={16} />{connectionTest.phase === "testing" ? t("i18n.checking") : t("models.ui.testConnection")}</button>
-        <button className={styles.testConnection} onClick={() => void handleDiscoverModels()} disabled={!provider.baseUrl?.trim() || discoveryState.phase === "loading"}><AliIcon name="download" size={15} />{discoveryState.phase === "loading" ? t("models.discoveryFetching") : t("models.discoveryFetch")}</button>
+        <button className={styles.testConnection} onClick={() => void handleDiscoverModels()} disabled={!provider.baseUrl?.trim() || discoveryState.phase === "loading"}><AliIcon name="search" size={15} />{discoveryState.phase === "loading" ? t("models.discoveryFetching") : t("models.discoveryFetch")}</button>
         {connectionTest.phase === "success" ? <span role="status" className={styles.connectionResult}>✓ {t("models.ui.connectionPassed")}{connectionTest.latencyMs != null ? ` · ${connectionTest.latencyMs} ms` : ""}</span> : null}
       </div>
       {connectionTest.phase === "error" ? <div role="alert"><ModelErrorText value={connectionTest.message} /></div> : null}
@@ -1992,6 +1984,7 @@ export function ModelsConfig({
   const isMobile = useIsMobile();
   const { t } = useI18n();
   const [config, setConfig] = useState<ModelsJson>({ providers: {} });
+  const [providerNameDrafts, setProviderNameDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -2139,23 +2132,10 @@ export function ModelsConfig({
     setConfig((prev) => ({ ...prev, providers: { ...(prev.providers ?? {}), [name]: p } }));
   }, []);
 
-  const renameProvider = useCallback((oldName: string, newName: string) => {
-    const persistedName = persistedProviderNamesRef.current.get(oldName);
-    persistedProviderNamesRef.current.delete(oldName);
-    if (persistedName) persistedProviderNamesRef.current.set(newName, persistedName);
-    setConfig((prev) => {
-      const entries = Object.entries(prev.providers ?? {});
-      const idx = entries.findIndex(([k]) => k === oldName);
-      if (idx === -1) return prev;
-      entries[idx] = [newName, entries[idx][1]];
-      return { ...prev, providers: Object.fromEntries(entries) };
-    });
-    setSelection((prev) => {
-      if (!prev) return prev;
-      if (prev.type === "provider" && prev.name === oldName) return { type: "provider", name: newName };
-      if (prev.type === "model" && prev.providerName === oldName) return { ...prev, providerName: newName };
-      return prev;
-    });
+  const editProviderName = useCallback((name: string, value: string) => {
+    setProviderNameDrafts((prev) => ({ ...prev, [name]: value }));
+    setSavedOk(false);
+    setSaveError(null);
   }, []);
 
   const persistDeletion = useCallback(async (target: { provider: string; id?: string } | undefined, apply: () => void) => {
@@ -2181,6 +2161,7 @@ export function ModelsConfig({
     const provider = persistedProviderNamesRef.current.get(name);
     void persistDeletion(provider ? { provider } : undefined, () => {
       setConfig((prev) => { const providers = { ...(prev.providers ?? {}) }; delete providers[name]; return { ...prev, providers }; });
+      setProviderNameDrafts((prev) => { const drafts = { ...prev }; delete drafts[name]; return drafts; });
       persistedProviderNamesRef.current.delete(name); setSelection(null);
     });
   }, [persistDeletion]);
@@ -2338,8 +2319,24 @@ export function ModelsConfig({
 
   const handleSave = useCallback(async () => {
     if (configMutationRef.current) return;
+    // Keep names as drafts until the same save that persists the other fields.
+    // Resolve all names together so collisions cannot silently drop a provider.
+    const names = new Map<string, string>();
+    const usedNames = new Set<string>();
+    for (const name of Object.keys(config.providers ?? {})) {
+      const nextName = Object.hasOwn(providerNameDrafts, name) ? providerNameDrafts[name].trim() : name;
+      if (!nextName || usedNames.has(nextName)) {
+        setSaveError(t(!nextName ? "models.providerNameRequired" : "models.providerNameDuplicate", { name: nextName }));
+        return;
+      }
+      names.set(name, nextName);
+      usedNames.add(nextName);
+    }
+    const configToSave = { ...config, providers: Object.fromEntries(
+      Object.entries(config.providers ?? {}).map(([name, provider]) => [names.get(name) ?? name, provider]),
+    ) };
     configMutationRef.current = true;
-    const configuredModels = collectConfiguredModelRefs(config);
+    const configuredModels = collectConfiguredModelRefs(configToSave);
     const newlyConfiguredModels = configuredModels.filter(
       (model) => !persistedConfiguredModelKeysRef.current.has(configuredModelKey(model)),
     );
@@ -2350,12 +2347,25 @@ export function ModelsConfig({
       const res = await fetch("/api/models-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(config),
+        body: JSON.stringify(configToSave),
       });
       const d = await res.json() as { success?: boolean; error?: string };
       if (!res.ok || d.error) setSaveError(d.error ?? `HTTP ${res.status}`);
       else {
-        rememberPersistedConfig(config);
+        rememberPersistedConfig(configToSave);
+        setConfig((current) => ({ ...current, providers: Object.fromEntries(
+          Object.entries(current.providers ?? {}).map(([name, provider]) => [names.get(name) ?? name, provider]),
+        ) }));
+        setProviderNameDrafts((current) => Object.fromEntries(
+          Object.entries(current)
+            .filter(([name, value]) => value !== providerNameDrafts[name])
+            .map(([name, value]) => [names.get(name) ?? name, value]),
+        ));
+        setSelection((current) => {
+          if (current?.type === "provider" && names.get(current.name) !== current.name) return { ...current, name: names.get(current.name) ?? current.name };
+          if (current?.type === "model" && names.get(current.providerName) !== current.providerName) return { ...current, providerName: names.get(current.providerName) ?? current.providerName };
+          return current;
+        });
         setSavedOk(true);
         setManagedModelTests({});
         setTimeout(() => setSavedOk(false), 2000);
@@ -2375,7 +2385,7 @@ export function ModelsConfig({
       configMutationRef.current = false;
       setSaving(false);
     }
-  }, [config, loadModelScope, onModelsChanged, refreshAuthProviders, updateModelScope, rememberPersistedConfig]);
+  }, [config, providerNameDrafts, t, loadModelScope, onModelsChanged, refreshAuthProviders, updateModelScope, rememberPersistedConfig]);
 
   const configuredProviders = prioritizeProvider(
     Object.entries(config.providers ?? {}),
@@ -2438,9 +2448,14 @@ export function ModelsConfig({
   }, [apiKeyProvidersLoaded, firstApiKeyProviderId, firstCustomProviderName, firstOAuthProviderId, firstScopeOnlyProviderId, modelScopeLoading, oauthProvidersLoaded, selection]);
 
   const renderManagedModels = (providerId: string) => {
-    const providerModels = (modelScope?.models ?? []).filter((model) => model.provider === providerId);
-    const visibleCount = providerModels.filter((model) => model.enabled).length;
-    const hiddenCount = providerModels.length - visibleCount;
+    const allProviderModels = (modelScope?.models ?? []).filter((model) => model.provider === providerId);
+    const customModelIds = new Set((config.providers?.[providerId]?.models ?? []).map((entry) => entry.id));
+    // Deleting a model removes it from this table instead of leaving a greyed-out
+    // "hidden" row behind. Custom models stay listed even while Pi's scope disables
+    // them, so they can still be deleted from ~/.pi/agent/models.json.
+    const providerModels = allProviderModels.filter((model) => model.enabled || customModelIds.has(model.id));
+    const visibleCount = allProviderModels.filter((model) => model.enabled).length;
+    const hiddenCount = allProviderModels.length - visibleCount;
     const restoreAllBusy = modelScopeBusyKey === "restore-all";
     const hideProviderBusy = modelScopeBusyKey === `hide-provider:${providerId}`;
     const scopeMutationBusy = modelScopeBusyKey !== null;
@@ -2449,9 +2464,9 @@ export function ModelsConfig({
       <div className={styles.modelsCard} style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <SectionTitle>{t("models.availableModels")}</SectionTitle>
-          {!modelScopeLoading && providerModels.length > 0 && (
+          {!modelScopeLoading && allProviderModels.length > 0 && (
             <span style={{ marginLeft: "auto", fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>
-              {t("models.visibleCount", { visible: visibleCount, total: providerModels.length })}
+              {t("models.visibleCount", { visible: visibleCount, total: allProviderModels.length })}
             </span>
           )}
           {hiddenCount > 0 && (
@@ -2517,7 +2532,9 @@ export function ModelsConfig({
             {<ModelErrorText value={modelScopeError} />}
           </div>
         ) : providerModels.length === 0 ? (
-          <div style={{ padding: "12px 0", fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>{t("models.noProviderModels")}</div>
+          <div style={{ padding: "12px 0", fontSize: "var(--text-sm)", color: "var(--text-dim)" }}>
+            {allProviderModels.length === 0 ? t("models.noProviderModels") : t("models.allModelsDeleted")}
+          </div>
         ) : (
           <div className={styles.modelTable} style={{ display: "flex", flexDirection: "column", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", overflow: "hidden" }}>
             <div className={styles.tableHeader}><span>{t("models.form.modelName")}</span><span>{t("models.form.imageInput")}</span><span>{t("i18n.test")}</span><span>{t("models.ui.actions")}</span></div>
@@ -2658,15 +2675,11 @@ export function ModelsConfig({
                         if (await requestConfirmation({ title: t("i18n.delete"), message: t("models.deleteModelConfirm", { id: model.id }), confirmLabel: t("i18n.delete"), tone: "danger" })) removeModel(providerId, customIndex);
                         return;
                       }
-                      if (model.enabled) {
-                        if (!await requestConfirmation({ title: t("models.hideModel"), message: t("models.hideModelConfirm", { id: model.name || model.id }), confirmLabel: t("models.hideModel") })) return;
-                        void updateModelScope("hide", model);
-                      } else {
-                        void updateModelScope("restore", model);
-                      }
+                      if (!await requestConfirmation({ title: t("models.deleteManagedModel"), message: t("models.deleteManagedModelConfirm", { id: model.name || model.id }), confirmLabel: t("i18n.delete"), tone: "danger" })) return;
+                      void updateModelScope("hide", model);
                     }}
-                    title={customIndex >= 0 ? t("i18n.delete") : model.enabled ? t("models.hideModel") : t("models.restoreModel")}
-                    aria-label={customIndex >= 0 ? t("i18n.delete") : model.enabled ? t("models.hideModel") : t("models.restoreModel")}
+                    title={customIndex >= 0 ? t("i18n.delete") : t("models.deleteManagedModel")}
+                    aria-label={customIndex >= 0 ? t("i18n.delete") : t("models.deleteManagedModel")}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -2677,16 +2690,12 @@ export function ModelsConfig({
                       border: "none",
                       borderRadius: "var(--radius-control)",
                       background: "transparent",
-                      color: model.enabled ? "#ef4444" : "var(--accent)",
+                      color: "#ef4444",
                       cursor: scopeMutationBusy || modelScope?.projectOverride ? "not-allowed" : "pointer",
                       opacity: scopeMutationBusy || modelScope?.projectOverride ? 0.45 : 0.82,
                     }}
                   >
-                    {model.enabled ? (
-                      <AliIcon name="delete" size={13} />
-                    ) : (
-                      <AliIcon name="reload" size={13} />
-                    )}
+                    <AliIcon name="delete" size={13} />
                   </button>
                 </div>
               );
@@ -2742,9 +2751,10 @@ export function ModelsConfig({
           <ProviderDetail
             key={selection.name}
             name={selection.name}
+            editingName={Object.hasOwn(providerNameDrafts, selection.name) ? providerNameDrafts[selection.name] : selection.name}
             provider={provider}
             onChange={(p) => updateProvider(selection.name, p)}
-            onRename={(n) => renameProvider(selection.name, n)}
+            onNameChange={(n) => editProviderName(selection.name, n)}
             onDelete={() => deleteProvider(selection.name)}
             onAddModels={(models) => addDiscoveredModels(selection.name, models)}
           />

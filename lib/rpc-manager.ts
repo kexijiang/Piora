@@ -73,6 +73,7 @@ import { buildPromptWithMaterials, resolvePromptMaterialReferences, restorePromp
 import type { PromptMaterialReference } from "./prompt-material-format";
 import type { UserInputResult } from "./user-input";
 import { estimateContextUsageBreakdown } from "./context-usage";
+import { mergeCommandOutputDetails } from "./command-execution";
 import {
   fitToolNamesWithinDefinitionBudget,
   estimateToolDefinitionPromptTokens,
@@ -206,7 +207,7 @@ export class AgentSessionWrapper {
   private onDestroyCallbacks = new Set<() => void>();
   private activePromptRun: PromptRunIdentity | undefined;
   private activeCommandId: string | undefined;
-  private runtimeToolCalls = new Map<string, { toolName: string; args: unknown }>();
+  private runtimeToolCalls = new Map<string, { toolName: string; args: unknown; outputDetails?: Record<string, unknown> }>();
   private capabilityPolicy: SessionCapabilityPolicy;
   private capabilityCatalog: ReturnType<typeof buildSessionCapabilityCatalog>;
   private toolNameCeiling: Set<string> | undefined;
@@ -611,11 +612,26 @@ export class AgentSessionWrapper {
           this.runtimeToolCalls.set(toolCallId, { toolName, args: event.args });
         }
       }
+      if (event.type === "tool_execution_update") {
+        const toolCallId = typeof event.toolCallId === "string" ? event.toolCallId : "";
+        const started = toolCallId ? this.runtimeToolCalls.get(toolCallId) : undefined;
+        const partial = event.partialResult as { details?: unknown } | undefined;
+        if (started && partial?.details && typeof partial.details === "object" && !Array.isArray(partial.details)) {
+          started.outputDetails = { ...started.outputDetails, ...(partial.details as Record<string, unknown>) };
+        }
+      }
       if (event.type === "tool_execution_end") {
         const toolCallId = typeof event.toolCallId === "string" ? event.toolCallId : "";
         const started = toolCallId ? this.runtimeToolCalls.get(toolCallId) : undefined;
-        if (toolCallId) this.runtimeToolCalls.delete(toolCallId);
         const toolName = started?.toolName ?? (typeof event.toolName === "string" ? event.toolName : "");
+        // Shell tools can throw after producing a truncated output snapshot. Pi's
+        // error conversion keeps the text but replaces details with {}, so merge
+        // the last streamed metadata back before the toolResult is persisted.
+        if (started?.outputDetails && event.result && typeof event.result === "object") {
+          const result = event.result as { details?: unknown };
+          result.details = mergeCommandOutputDetails(toolName, started.outputDetails, result.details);
+        }
+        if (toolCallId) this.runtimeToolCalls.delete(toolCallId);
         if (this.activePromptRun && toolCallId && toolName) {
           void captureTeamRuntimeToolResult(
             this.activePromptRun,
@@ -2141,11 +2157,14 @@ export function notifyRunningChange(): void {
  * thinking pin, and SDK scopedModels share one settings snapshot.
  * Pass options.toolNames to pre-configure active tools (empty = all disabled).
  */
-export async function stopRpcSessionsForFileMutation(ids: readonly string[]): Promise<void> {
+export async function stopRpcSessionsForFileMutation(ids: readonly string[], options: { rejectRunning?: boolean } = {}): Promise<void> {
   const selected = new Set(ids);
   // Starts admitted before the mutation lock may still be constructing a wrapper.
   await Promise.allSettled([...getLocks()].filter(([key]) => ids.some((id) => key.endsWith(`:${id}`))).map(([, promise]) => promise));
   await drainSessionFileOperations(ids);
+  if (options.rejectRunning && [...getRegistry()].some(([id, session]) => selected.has(id) && session.isRunning())) {
+    throw new Error("任务正在运行，请停止或等待完成后再删除消息。");
+  }
   await Promise.all([...getRegistry()].filter(([id]) => selected.has(id)).map(([, session]) => session.shutdownForFileMutation()));
 }
 

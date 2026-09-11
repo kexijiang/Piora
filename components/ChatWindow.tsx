@@ -30,6 +30,8 @@ import { UserInputCard } from "./UserInputCard";
 import type { SessionCapabilitiesState } from "@/lib/session-capabilities";
 import { findVisionAgentStatus, VisionAgentStatus } from "./VisionAgentStatus";
 import { getVisionRetryPayload } from "@/lib/message-images";
+import type { CommandExecutionData } from "@/lib/command-execution";
+import { CommandExecutionDialog } from "./CommandExecutionView";
 
 interface Props {
   session: SessionInfo | null;
@@ -167,7 +169,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     sessionIdRef, messagesEndRef, scrollContainerRef,
     lastUserMsgRef,
     pendingScrollToUserRef,
-    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleScrollToBottom, pauseHistoryFollow,
+    handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleScrollToBottom, pauseHistoryFollow, handleDeleteMessage, deletingMessage,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,
@@ -226,6 +228,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
   // only appearing as transient notices, so the user can see what a command
   // did without opening panels or reading toasts.
   const [commandEchoes, setCommandEchoes] = useState<Array<{ id: number; text: string; message?: string; error?: string }>>([]);
+  const [commandExecutionDialog, setCommandExecutionDialog] = useState<CommandExecutionData | null>(null);
   const commandEchoCounterRef = useRef(0);
   useEffect(() => {
     setCommandEchoes([]);
@@ -683,13 +686,14 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}
-              onFork={handleFork} onNavigate={handleNavigate} onEditContent={handleEditContent}
-              onRetry={handleRetryMessage} retryDisabled={sessionBusy || preparingRetry}
-              sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation}
+              onFork={deletingMessage ? undefined : handleFork} onNavigate={deletingMessage ? undefined : handleNavigate} onEditContent={handleEditContent}
+              onRetry={handleRetryMessage} retryDisabled={sessionBusy || deletingMessage || preparingRetry}
+              onDeleteMessage={handleDeleteMessage} deleteDisabled={sessionBusy || deletingMessage || isCompacting || preparingRetry}
+              sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={setCommandExecutionDialog}
             />
             {streamState.isStreaming && streamState.streamingMessage && (
               <RenderErrorBoundary resetKey={messageFingerprint(streamState.streamingMessage as AgentMessage)} fallbackLabel={t("chat.messageRenderFailed")}>
-                <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} />
+                <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={setCommandExecutionDialog} />
               </RenderErrorBoundary>
             )}
 
@@ -728,6 +732,8 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
                   excludeFromContext: pendingBash.excludeFromContext,
                 } as BashExecutionMessage}
                 sessionId={session?.id ?? sessionIdRef.current ?? undefined}
+                cwd={messageCwd}
+                onOpenCommandExecution={setCommandExecutionDialog}
               />
             )}
 
@@ -813,6 +819,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
       </div>
       </>
       )}
+      {commandExecutionDialog ? <CommandExecutionDialog data={commandExecutionDialog} onClose={() => setCommandExecutionDialog(null)} /> : null}
     </div>
   );
 }

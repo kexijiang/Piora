@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { existsSync, statSync } from "fs";
 import { createHash } from "node:crypto";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { persistedMessagePromptIds } from "@/lib/session-message-delete";
 import { readLatestSessionSystemPromptBinding } from "@/lib/session-system-prompt";
 import {
   resolveSessionPath,
@@ -163,10 +164,7 @@ async function buildSessionResponse(
     // A live manager can contain buffered messages before its first disk flush.
     // User receipts require disk history; completed slash commands instead use
     // the durable command journal, since the SDK may never add a user message.
-    persistedPromptIds: [...new SessionControlStore().completedSlashPromptIds(id), ...(manager ? [] : sm.getEntries().flatMap((entry) => {
-      const message = entry.type === "message" ? entry.message as { role: string; clientPromptId?: string } : null;
-      return message?.role === "user" && message.clientPromptId ? [message.clientPromptId] : [];
-    }))],
+    persistedPromptIds: [...new SessionControlStore().completedSlashPromptIds(id), ...(manager ? [] : persistedMessagePromptIds(sm.getEntries()))],
     filePath,
     info,
     leafId,

@@ -15,8 +15,10 @@ import {
 
 export default function registerVisionAgent(api: ExtensionAPI): void {
   let activeStatus: VisionAgentStatus | undefined;
+  const failedAttempts = new Set<string>();
 
   api.on("before_agent_start", (_event, ctx) => {
+    failedAttempts.clear();
     // A failure remains visible after the failed turn, but should not leak into
     // the next prompt while its new routing decision is still being made.
     if (activeStatus?.phase === "failed") {
@@ -64,6 +66,7 @@ export default function registerVisionAgent(api: ExtensionAPI): void {
         messages: event.messages,
         config,
         cache,
+        failedAttempts,
         signal: ctx.signal,
         modelRegistry: ctx.modelRegistry,
         cwd: ctx.cwd,

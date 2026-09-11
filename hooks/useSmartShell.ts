@@ -11,6 +11,8 @@ export function useSmartShell(cwd: string) {
   const activeId = selection.cwd === cwd ? selection.id : null;
   const [snapshot, setSnapshot] = useState<ShellSnapshot | null>(null);
   const [error, setError] = useState("");
+  const [connectionError, setConnectionError] = useState("");
+  const [retryKey, setRetryKey] = useState(0);
   const [connected, setConnected] = useState(false);
   const [pending, setPending] = useState<ShellSubmission[]>([]);
   const [archive, setArchive] = useState<(ShellTimelinePage & { terminalId: string; loading: boolean; failed: boolean }) | null>(null);
@@ -30,42 +32,70 @@ export function useSmartShell(cwd: string) {
     if (snapshot?.session.id === active.current) listener({ type: "snapshot", snapshot, terminalId: snapshot.session.id, generation: snapshot.session.generation, sequence: snapshot.sequence });
     return () => { subscribers.current.delete(listener); };
   }, []);
+  const inventoryFlight = useRef<{ cwd: string; controller: AbortController; promise: Promise<ShellSession[]> } | null>(null);
   const refreshSessions = useCallback(async () => {
+    const previous = inventoryFlight.current;
+    if (previous?.cwd === cwd && !previous.controller.signal.aborted) return previous.promise;
+    previous?.controller.abort();
+    const controller = new AbortController();
     const request = ++inventoryRequest.current;
-    const result = await shellRequest<{ sessions: ShellSession[] }>(`sessions?cwd=${encodeURIComponent(cwd)}`);
-    if (scope.current === cwd && request === inventoryRequest.current) setInventory({ cwd, sessions: result.sessions });
-    return result.sessions;
+    const promise = shellRequest<{ sessions: ShellSession[] }>(`sessions?cwd=${encodeURIComponent(cwd)}`, undefined, { signal: controller.signal, timeoutMs: 15_000 }).then(result => {
+      if (!controller.signal.aborted && scope.current === cwd && request === inventoryRequest.current) setInventory({ cwd, sessions: result.sessions });
+      return result.sessions;
+    }).finally(() => { if (inventoryFlight.current?.controller === controller) inventoryFlight.current = null; });
+    inventoryFlight.current = { cwd, controller, promise };
+    return promise;
   }, [cwd]);
   const select = useCallback((id: string) => {
-    setError(""); setConnected(false);
+    setError(""); if (active.current !== id) setConnected(false);
     active.current = id; setSelection({ cwd, id });
     try { localStorage.setItem(`piora-shell-active:${cwd}`, id); } catch { /* Selection is also recoverable from the session list. */ }
   }, [cwd]);
   const create = useCallback(async () => {
     try {
-      const created = await shellRequest<ShellSnapshot>("sessions", { cwd });
+      const created = await shellRequest<ShellSnapshot>("sessions", { cwd }, { timeoutMs: 15_000 });
       if (scope.current !== cwd) return;
-      await refreshSessions(); select(created.session.id);
+      setInventory(previous => ({ cwd, sessions: [...(previous.cwd === cwd ? previous.sessions : []), created.session] }));
+      select(created.session.id);
     } catch (cause) { setError(String(cause)); }
-  }, [cwd, refreshSessions, select]);
+  }, [cwd, select]);
   useEffect(() => {
-    let disposed = false;
-    void refreshSessions().then(async list => {
-      if (disposed) return;
-      let selected: string | null = null;
-      try { selected = localStorage.getItem(`piora-shell-active:${cwd}`); } catch { /* Optional preference. */ }
-      if (list.length) select(list.find(item => item.id === selected)?.id || list[0].id);
-      else {
-        const created = await shellRequest<ShellSnapshot>("sessions", { cwd, ensure: true });
-        if (!disposed) { setInventory({ cwd, sessions: [created.session] }); select(created.session.id); }
-      }
-    }).catch(cause => { if (!disposed) setError(String(cause)); });
-    return () => { disposed = true; };
-  }, [cwd, refreshSessions, select]);
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>, loading = false;
+    setConnectionError("");
+    const initialize = async () => {
+      clearTimeout(timer);
+      if (controller.signal.aborted || loading || document.hidden) return;
+      loading = true;
+      try {
+        const list = await refreshSessions();
+        if (controller.signal.aborted) return;
+        let selected: string | null = null;
+        try { selected = localStorage.getItem(`piora-shell-active:${cwd}`); } catch { /* Optional preference. */ }
+        if (list.length) select(list.find(item => item.id === active.current)?.id || list.find(item => item.id === selected)?.id || list[0].id);
+        else {
+          const created = await shellRequest<ShellSnapshot>("sessions", { cwd, ensure: true }, { signal: controller.signal, timeoutMs: 15_000 });
+          if (!controller.signal.aborted) { setInventory({ cwd, sessions: [created.session] }); select(created.session.id); }
+        }
+        if (!controller.signal.aborted) setConnectionError("");
+      } catch (cause) {
+        if (!controller.signal.aborted) { setConnectionError(String(cause)); timer = setTimeout(initialize, 5_000); }
+      } finally { loading = false; }
+    };
+    const resume = () => { if (!active.current) void initialize(); };
+    void initialize();
+    window.addEventListener("online", resume); document.addEventListener("visibilitychange", resume);
+    return () => {
+      controller.abort(); inventoryFlight.current?.controller.abort(); clearTimeout(timer);
+      window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume);
+    };
+  }, [cwd, refreshSessions, select, retryKey]);
   useEffect(() => {
     if (!activeId) return;
     const controller = new AbortController(); let disposed = false, sseConnected = false, reconciling = false;
-    let lastInventory = 0;
+    let lastInventory = 0, lastSnapshot = 0, streamStartedAt = 0, nextStreamAt = 0;
+    let started = false;
+    setConnected(false); setConnectionError("");
     current.current = null;
     const publish = (event: ShellEvent) => {
       if (disposed) return;
@@ -89,45 +119,67 @@ export function useSmartShell(cwd: string) {
     };
     let events: EventSource | undefined;
     const publishSnapshot = (next: ShellSnapshot) => {
+      lastSnapshot = Date.now();
       publish({ type: "snapshot", snapshot: next, terminalId: activeId, generation: next.session.generation, sequence: next.sequence });
-      if (!disposed) setConnected(true);
+      if (!disposed) { setConnected(true); setConnectionError(""); }
+    };
+    const closeStream = () => { events?.close(); events = undefined; sseConnected = false; };
+    const openStream = () => {
+      if (events || disposed || document.hidden || Date.now() < nextStreamAt) return;
+      streamStartedAt = Date.now();
+      const stream = new EventSource(`/api/shell/sessions/${encodeURIComponent(activeId)}/events`);
+      events = stream;
+      stream.onmessage = event => {
+        if (disposed || events !== stream) return;
+        try { publish(JSON.parse(event.data)); sseConnected = true; setConnected(true); setConnectionError(""); } catch { /* Ignore invalid transport frames. */ }
+      };
+      stream.onerror = () => {
+        if (disposed || events !== stream) return;
+        closeStream(); nextStreamAt = Date.now() + 5_000;
+        // HTTP snapshots remain usable when the event stream reconnects.
+        // Only a failed snapshot request marks the connection unavailable.
+      };
     };
     const reconcile = async () => {
       if (document.hidden || reconciling || disposed) return;
       reconciling = true;
       try {
-        const next = await shellRequest<ShellSnapshot>(`sessions/${activeId}`, undefined, { signal: controller.signal });
+        // Starting is idempotent. Retry it after a failed/ambiguous initial
+        // request instead of endlessly polling a PTY that was never started.
+        const next = await shellRequest<ShellSnapshot>(started ? `sessions/${activeId}` : `sessions/${activeId}/actions`, started ? undefined : { action: "start" }, { signal: controller.signal, timeoutMs: 15_000 });
+        if (disposed) return;
+        started = true;
         publishSnapshot(next);
-      } catch (cause) { if (!disposed) setError(String(cause)); }
+        openStream();
+      } catch (cause) { if (!disposed) { setConnectionError(String(cause)); setConnected(false); closeStream(); nextStreamAt = Date.now() + 5_000; } }
       finally { reconciling = false; }
     };
     // Finish the short startup request before reserving a long-lived HTTP/1
     // connection. Its snapshot also makes the terminal usable if SSE stalls.
-    void (async () => {
-      const next = await shellRequest<ShellSnapshot>(`sessions/${activeId}/actions`, { action: "start" }, { signal: controller.signal });
-      if (disposed) return;
-      publishSnapshot(next);
-      events = new EventSource(`/api/shell/sessions/${encodeURIComponent(activeId)}/events`);
-      events.onmessage = event => { if (disposed) return; try { publish(JSON.parse(event.data)); sseConnected = true; setConnected(true); } catch { /* Ignore invalid transport frames. */ } };
-      events.onerror = () => { if (!disposed) { sseConnected = false; setConnected(false); } };
-    })().catch(cause => { if (!disposed) setError(String(cause)); });
+    void reconcile();
     void pendingShellSubmissions(activeId).then(items => { if (!disposed) setPending(items); }).catch(cause => { if (!disposed) setError(String(cause)); });
     const refresh = () => {
-      if (document.hidden || disposed) return;
+      if (disposed) return;
+      if (document.hidden) { closeStream(); return; }
+      // A queued EventSource can consume a browser connection indefinitely.
+      // Release it and continue through short requests while reconnecting.
+      if (events && !sseConnected && Date.now() - streamStartedAt >= 10_000) {
+        closeStream(); nextStreamAt = Date.now() + 5_000;
+      }
       const state = current.current?.session;
-      if (state?.activeRunId || state?.activeCommandId || !sseConnected) void reconcile();
+      if (state?.activeRunId || state?.activeCommandId || !sseConnected || Date.now() - lastSnapshot >= 10_000) void reconcile();
       // Background PTYs have their own event stream. Discover them without
       // changing the user's selected terminal, including after the parent ends.
       if (state?.activeRunId || Date.now() - lastInventory >= 10000) {
         lastInventory = Date.now();
-        void refreshSessions().catch(cause => { if (!disposed) setError(String(cause)); });
+        void refreshSessions().catch(() => { /* Active connection owns transport errors. */ });
       }
     };
     const resume = () => { lastInventory = 0; void reconcile(); refresh(); };
     const timer = setInterval(refresh, 2500);
     window.addEventListener("online", resume); document.addEventListener("visibilitychange", resume);
     return () => { disposed = true; controller.abort(); events?.close(); clearInterval(timer); window.removeEventListener("online", resume); document.removeEventListener("visibilitychange", resume); };
-  }, [activeId, cwd, refreshSessions]);
+  }, [activeId, cwd, refreshSessions, retryKey]);
   const action = useCallback(async (body: object) => {
     if (!activeId) return;
     try { setError(""); await shellRequest(`sessions/${activeId}/actions`, body); } catch (cause) { setError(String(cause)); throw cause; }
@@ -180,5 +232,5 @@ export function useSmartShell(cwd: string) {
   }, [activeId]);
   useEffect(() => { void loadArchive(true); return () => archiveRequest.current?.abort(); }, [loadArchive]);
   const combined = useMemo(() => snapshot?.session.id === activeId ? archive?.terminalId === activeId ? mergeShellTimeline(snapshot, archive) : snapshot : null, [snapshot, archive, activeId]);
-  return { sessions, activeId, select, create, close, snapshot: combined, getSnapshot: () => current.current, subscribe, action, submit, pending, error, setError, connected, refreshSessions, loadOlder: () => loadArchive(), hasOlder: archive?.terminalId === activeId && Boolean(archive.nextCursor || archive.failed), loadingOlder: archive?.terminalId === activeId && archive.loading };
+  return { sessions, activeId, select, create, close, snapshot: combined, getSnapshot: () => current.current, subscribe, action, submit, pending, error, setError, connectionError, reconnect: () => setRetryKey(key => key + 1), connected, refreshSessions, loadOlder: () => loadArchive(), hasOlder: archive?.terminalId === activeId && Boolean(archive.nextCursor || archive.failed), loadingOlder: archive?.terminalId === activeId && archive.loading };
 }

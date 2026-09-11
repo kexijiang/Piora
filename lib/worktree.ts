@@ -38,6 +38,9 @@ declare global {
 }
 
 const PROJECT_CACHE_TTL_MS = 60_000;
+const GIT_QUERY_TIMEOUT_MS = 10_000;
+// Checkout/removal touches every file and can be slow on Windows disks.
+const GIT_WORKTREE_TIMEOUT_MS = 5 * 60_000;
 
 function getProjectCache(): Map<string, { info: ProjectInfo; expiresAt: number }> {
   if (!globalThis.__piProjectCache) globalThis.__piProjectCache = new Map();
@@ -48,9 +51,10 @@ export function invalidateProjectCache(): void {
   globalThis.__piProjectCache?.clear();
 }
 
-async function git(cwd: string, args: string[]): Promise<string> {
+async function git(cwd: string, args: string[], timeout = GIT_QUERY_TIMEOUT_MS): Promise<string> {
   const { stdout } = await execFileAsync("git", ["-C", cwd, ...args], {
-    timeout: 10_000,
+    timeout,
+    windowsHide: true,
     maxBuffer: 1024 * 1024,
     // Pin the message locale so error-text matching (e.g. the dirty-worktree
     // detection in the DELETE route) works regardless of system language.
@@ -219,12 +223,13 @@ export async function addWorktree(cwd: string, branch: string): Promise<{ path: 
 
   try {
     if (branchExists) {
-      await git(repoRoot, ["worktree", "add", "--", worktreePath, trimmed]);
+      await git(repoRoot, ["worktree", "add", "--quiet", "--", worktreePath, trimmed], GIT_WORKTREE_TIMEOUT_MS);
     } else {
-      await git(repoRoot, ["worktree", "add", "-b", trimmed, "--", worktreePath]);
+      await git(repoRoot, ["worktree", "add", "--quiet", "-b", trimmed, "--", worktreePath], GIT_WORKTREE_TIMEOUT_MS);
     }
   } catch (error) {
-    throw new Error(extractGitError(error));
+    invalidateProjectCache();
+    throw new Error(extractGitError(error, "创建独立工作目录"));
   }
 
   allowFileRoot(worktreePath);
@@ -239,15 +244,29 @@ export async function removeWorktree(cwd: string, worktreePath: string, force = 
   if (target.isMain) throw new Error("Cannot remove the main worktree");
 
   try {
-    await git(cwd, ["worktree", "remove", ...(force ? ["--force"] : []), target.path]);
+    await git(cwd, ["worktree", "remove", ...(force ? ["--force"] : []), target.path], GIT_WORKTREE_TIMEOUT_MS);
   } catch (error) {
-    throw new Error(extractGitError(error));
+    throw new Error(extractGitError(error, "移除独立工作目录"));
   }
   invalidateProjectCache();
 }
 
-function extractGitError(error: unknown): string {
-  const stderr = (error as { stderr?: string }).stderr;
-  if (typeof stderr === "string" && stderr.trim()) return stderr.trim();
+function extractGitError(error: unknown, operation: string): string {
+  const details = error as { stderr?: string; killed?: boolean; code?: string } | null;
+  if (details?.code === "ERR_CHILD_PROCESS_STDIO_MAXBUFFER") {
+    return `${operation}失败：Git 输出超过限制，请检查 Git 钩子或文件过滤器。`;
+  }
+  if (details?.killed) {
+    return `${operation}超时（5 分钟），尚未完成。请检查磁盘或 Git 钩子状态后重试。`;
+  }
+  const stderr = details?.stderr;
+  if (typeof stderr === "string" && stderr.trim()) {
+    // Carriage-return progress output is not a failure reason. Keep actual
+    // fatal/error lines, including dirty-worktree diagnostics used by callers.
+    const diagnostic = stderr.split(/[\r\n]+/u)
+      .filter((line) => !/^\s*(?:Updating files:|Preparing worktree \()/u.test(line))
+      .join("\n").trim();
+    return diagnostic || `${operation}未完成，Git 未返回具体错误原因。`;
+  }
   return error instanceof Error ? error.message : String(error);
 }

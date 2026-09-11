@@ -12,11 +12,21 @@ export function mergeShellTimeline(current: ShellSnapshot, archive: Pick<ShellTi
   return { ...current, commands: [...new Map([...archive.commands, ...current.commands].map(command => [command.id, command])).values()], runs: [...new Map([...archive.runs, ...current.runs].map(run => [run.id, run])).values()] };
 }
 
-export async function shellRequest<T>(endpoint: string, body?: unknown, options: { method?: string; signal?: AbortSignal } = {}): Promise<T> {
-  const response = await fetch(`/api/shell/${endpoint}`, { method: options.method || (body === undefined ? "GET" : "POST"), headers: body === undefined ? undefined : { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: options.signal, cache: "no-store" });
-  const value = await response.json();
-  if (!response.ok) throw new Error(value.error || `HTTP ${response.status}`);
-  return value as T;
+export async function shellRequest<T>(endpoint: string, body?: unknown, options: { method?: string; signal?: AbortSignal; timeoutMs?: number } = {}): Promise<T> {
+  const controller = new AbortController();
+  const abort = () => controller.abort(options.signal?.reason);
+  if (options.signal?.aborted) abort();
+  else options.signal?.addEventListener("abort", abort, { once: true });
+  const timer = options.timeoutMs === undefined ? undefined : setTimeout(() => controller.abort(new Error("终端连接超时，请重试。")), options.timeoutMs);
+  try {
+    const response = await fetch(`/api/shell/${endpoint}`, { method: options.method || (body === undefined ? "GET" : "POST"), headers: body === undefined ? undefined : { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal, cache: "no-store" });
+    const value = await response.json();
+    if (!response.ok) throw new Error(value.error || `HTTP ${response.status}`);
+    return value as T;
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", abort);
+  }
 }
 export function applyShellEvent(current: ShellSnapshot | null, event: ShellEvent): ShellSnapshot | null {
   if (current && current.session.id !== event.terminalId) return current;

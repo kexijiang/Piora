@@ -61,7 +61,7 @@ export function loadModelsWithCache(cwd: string, loader: () => Promise<ModelsDat
   const loadPromise: Promise<ModelsData> = Promise.resolve()
     .then(loader)
     .then((data) => {
-      if (state.generation === generation && state.inFlight.get(cwd) === loadPromise) {
+      if (!data.modelError && state.generation === generation && state.inFlight.get(cwd) === loadPromise) {
         const now = Date.now();
         for (const [key, entry] of state.entries) {
           if (entry.expiresAt <= now) state.entries.delete(key);

@@ -435,6 +435,7 @@ export function RoomSettingsDialog({
                   <div><h4>添加智能体</h4><p>只需填写名称即可创建，其余设置会使用稳妥的默认值。</p></div>
                   <label className={styles.field}><span>显示名称</span><input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="例如：代码实现" /></label>
                   <div className={styles.actions}><button type="button" className={styles.primary} disabled={Boolean(busy) || !newName.trim()} onClick={() => { void createManagedAgent(); }}>创建智能体</button></div>
+                  {busy === "provision_agent" ? <p role="status">正在准备工作目录与会话，项目文件较多时可能需要几分钟。</p> : null}
                   <details className={styles.advancedAdd}>
                     <summary>更多选项</summary>
                     <div className={styles.advancedAddBody}>

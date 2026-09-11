@@ -17,6 +17,8 @@ const { VirtualRowStateContext } = await jiti.import("./VirtualRowState");
 const { createVirtualRowState } = await jiti.import("@/lib/virtual-row-state");
 const messageImageSource = readFileSync(new URL("./MessageImage.tsx", import.meta.url), "utf8");
 const messageViewSource = readFileSync(new URL("./MessageView.tsx", import.meta.url), "utf8");
+const commandViewSource = readFileSync(new URL("./CommandExecutionView.tsx", import.meta.url), "utf8");
+const commandLogSource = readFileSync(new URL("./CommandLogViewer.tsx", import.meta.url), "utf8");
 const globalStyles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 function renderMessage(message, props = {}) {
@@ -41,6 +43,34 @@ test("shell output stays collapsed by default, including live chunks", () => {
   }
   const local = renderMessage({ role: "bashExecution", command: "echo hello", output: "local live output", excludeFromContext: true });
   assert.doesNotMatch(local, /local live output/);
+});
+
+test("shell cards expose complete commands and persistent error summaries", () => {
+  const command = "npm run check -- --project ./packages/a/tsconfig.json\nnode ./scripts/verify.mjs --all";
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "shell", toolName: "powershell", input: { command } }] };
+  const result = { role: "toolResult", toolCallId: "shell", toolName: "powershell", isError: true,
+    content: [{ type: "text", text: "src/a.ts(4): error TS2322: wrong type\nCommand exited with code 2" }],
+    details: { truncation: { truncated: true }, fullOutputPath: "C:\\Temp\\pi-powershell-a.log" } };
+  const collapsed = renderMessage(message, { sessionId: "550e8400-e29b-41d4-a716-446655440000", cwd: "F:\\Piora", toolResults: new Map([["shell", result]]) });
+  assert.match(collapsed, /PowerShell/);
+  assert.match(collapsed, /退出码 2/);
+  assert.match(collapsed, /错误摘录/);
+  assert.match(collapsed, /src\/a\.ts\(4\): error TS2322/);
+  assert.match(collapsed, /复制完整命令/);
+
+  const rowState = createVirtualRowState();
+  rowState.set("command:shell", true);
+  const expanded = renderToStaticMarkup(React.createElement(I18nProvider, null,
+    React.createElement(VirtualRowStateContext.Provider, { value: rowState }, React.createElement(MessageView, { message, cwd: "F:\\Piora", toolResults: new Map([["shell", result]]) }))));
+  assert.match(expanded, /完整命令/);
+  assert.match(expanded, /npm run check/);
+  assert.match(expanded, /当前仅显示部分输出/);
+  assert.match(expanded, /这条历史记录没有保存完整日志位置/);
+  assert.match(expanded, /诊断信息/);
+  assert.match(commandViewSource, /createPortal/);
+  assert.match(commandLogSource, /lineNumbers\(\)/);
+  assert.match(commandLogSource, /setSearchQuery/);
+  assert.match(commandLogSource, /followingRef/);
 });
 
 test("collapses long user queries to an eight-line preview", () => {

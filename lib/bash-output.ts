@@ -7,7 +7,7 @@ export const MAX_INLINE_BASH_OUTPUT_BYTES = 5 * 1024 * 1024;
 export function resolveBashOutputPath(filePath: string, tempRoot: string): string | null {
   const resolvedPath = resolve(filePath);
   if (dirname(resolvedPath) !== resolve(tempRoot)) return null;
-  if (!/^pi-bash-[A-Za-z0-9_-]+\.log$/.test(basename(resolvedPath))) return null;
+  if (!/^pi-(?:bash|powershell)-[A-Za-z0-9_-]+\.log$/.test(basename(resolvedPath))) return null;
   return resolvedPath;
 }
 

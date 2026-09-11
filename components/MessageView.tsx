@@ -9,6 +9,7 @@ import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/hooks/useI18n";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
 import { summarizeToolCall } from "@/lib/tool-summary";
+import { commandExitCode, commandResultMetadata, commandStatus, isCommandToolName, toolResultText, type CommandExecutionData } from "@/lib/command-execution";
 import { getFileChangeInfo, type FileChangeInfo } from "@/lib/file-change";
 import {
   getAssistantErrorMessage,
@@ -33,6 +34,7 @@ import type {
 } from "@/lib/types";
 import { AliIcon, type AliIconName } from "./AliIcon";
 import { MessageImage, MessageImageViewer } from "./MessageImage";
+import { CommandExecutionCard } from "./CommandExecutionView";
 
 const DiffView = dynamic(
   () => import("./DiffView").then((module) => module.DiffView),
@@ -133,6 +135,7 @@ interface Props {
   responseStartedAt?: number;
   sessionId?: string;
   onOpenAutomation?: (automationId: string) => void;
+  onOpenCommandExecution?: (data: CommandExecutionData) => void;
 }
 
 function formatTime(ts?: number): string | null {
@@ -187,12 +190,12 @@ export function getAutomationToolCardDetails(
   };
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation }: Props) {
+export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
   if (message.role === "user") {
     return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} responseStartedAt={responseStartedAt} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} />;
+    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} responseStartedAt={responseStartedAt} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -216,7 +219,7 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     return <CustomMessageView message={message as CustomMessage} cwd={cwd} onOpenFile={onOpenFile} />;
   }
   if (message.role === "bashExecution") {
-    return <BashExecutionView message={message as BashExecutionMessage} sessionId={sessionId} />;
+    return <BashExecutionView message={message as BashExecutionMessage} sessionId={sessionId} cwd={cwd} onOpenCommandExecution={onOpenCommandExecution} />;
   }
   return null;
 }, (prev, next) => {
@@ -238,7 +241,8 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     && prev.showTimestamp === next.showTimestamp
     && prev.prevTimestamp === next.prevTimestamp
     && prev.sessionId === next.sessionId
-    && prev.onOpenAutomation === next.onOpenAutomation;
+    && prev.onOpenAutomation === next.onOpenAutomation
+    && prev.onOpenCommandExecution === next.onOpenCommandExecution;
 });
 
 function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, sessionId }: {
@@ -412,7 +416,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
 
       {sendError && (
         <div role="alert" style={{ marginTop: -10, marginBottom: 10, color: "var(--status-failed, #dc2626)", fontSize: "var(--text-xs)", maxWidth: "85%" }}>
-          发送失败：{sendError}
+          {t(message.sendUnconfirmed ? "chat.sendUnconfirmed" : "chat.sendFailed")}：{sendError}
         </div>
       )}
 
@@ -545,6 +549,7 @@ function AssistantMessageView({
   sessionId,
   entryId,
   onOpenAutomation,
+  onOpenCommandExecution,
 }: {
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -558,6 +563,7 @@ function AssistantMessageView({
   sessionId?: string;
   entryId?: string;
   onOpenAutomation?: (automationId: string) => void;
+  onOpenCommandExecution?: (data: CommandExecutionData) => void;
 }) {
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
@@ -729,7 +735,7 @@ function AssistantMessageView({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {blockItems.map(({ block, originalIndex }) => (
-          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} />
+          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
         ))}
       </div>
 
@@ -803,7 +809,7 @@ function AssistantMessageView({
   );
 }
 
-function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations, cwd, onOpenFile, sessionId, entryId, blockIndex, onOpenAutomation }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number>; cwd?: string; onOpenFile?: (filePath: string) => void; sessionId?: string; entryId?: string; blockIndex: number; onOpenAutomation?: (automationId: string) => void }) {
+function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations, cwd, onOpenFile, sessionId, entryId, blockIndex, onOpenAutomation, onOpenCommandExecution }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number>; cwd?: string; onOpenFile?: (filePath: string) => void; sessionId?: string; entryId?: string; blockIndex: number; onOpenAutomation?: (automationId: string) => void; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
   if (block.type === "text") {
     return <TextBlock block={block as TextContent} isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile} />;
   }
@@ -815,7 +821,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
     const tc = block as ToolCallContent;
     const result = toolResults?.get(tc.toolCallId);
     const duration = toolCallDurations?.get(tc.toolCallId);
-    return <ToolCallBlock block={tc} result={result} duration={duration} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} />;
+    return <ToolCallBlock block={tc} result={result} duration={duration} cwd={cwd} sessionId={sessionId} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
   }
   return null;
 }
@@ -892,7 +898,7 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 }
 
 
-function ToolCallBlock({ block, result, duration, onOpenFile, onOpenAutomation }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void }) {
+function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, onOpenAutomation, onOpenCommandExecution }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; cwd?: string; sessionId?: string; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`);
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`diagnostics:${block.toolCallId}`);
@@ -901,6 +907,27 @@ function ToolCallBlock({ block, result, duration, onOpenFile, onOpenAutomation }
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
   const summary = summarizeToolCall(block.toolName, block.input, result?.isStreaming ? undefined : result, t);
   const automationDetails = getAutomationToolCardDetails(block, result);
+
+  if (isCommandToolName(block.toolName)) {
+    const output = toolResultText(result);
+    const metadata = commandResultMetadata(result);
+    const data: CommandExecutionData = {
+      id: block.toolCallId,
+      toolName: block.toolName,
+      command: typeof block.input.command === "string" ? block.input.command : "",
+      output,
+      status: commandStatus(result, output),
+      isStreaming: !result || result.isStreaming === true,
+      duration,
+      cwd,
+      exitCode: commandExitCode(result, output),
+      truncated: metadata.truncated,
+      fullOutputPath: metadata.fullOutputPath,
+      sessionId,
+      diagnostics,
+    };
+    return <CommandExecutionCard data={data} onOpen={onOpenCommandExecution} />;
+  }
 
   if (automationDetails) {
     return (
@@ -1489,83 +1516,28 @@ function formatUsage(usage: {
   return parts.join(" · ");
 }
 
-function BashExecutionView({ message, sessionId }: { message: BashExecutionMessage; sessionId?: string }) {
-  const [fullOutput, setFullOutput] = useState<string | null>(null);
-  const [loadingFull, setLoadingFull] = useState(false);
-  const [fullError, setFullError] = useState<string | null>(null);
-
+function BashExecutionView({ message, sessionId, cwd, onOpenCommandExecution }: { message: BashExecutionMessage; sessionId?: string; cwd?: string; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
   const isPending = !message.output && message.exitCode === undefined && !message.cancelled;
-  const isError = message.cancelled || (message.exitCode !== undefined && message.exitCode !== 0);
-  const fullOutputUrl = sessionId && message.fullOutputPath
-    ? `/api/agent/${encodeURIComponent(sessionId)}/bash-output?path=${encodeURIComponent(message.fullOutputPath)}`
-    : null;
-  const showFullButton = message.truncated && fullOutputUrl && fullOutput === null;
-  const displayOutput = fullOutput ?? message.output;
-
-  async function loadFullOutput() {
-    if (!fullOutputUrl) return;
-    setLoadingFull(true);
-    setFullError(null);
-    try {
-      const res = await fetch(fullOutputUrl);
-      const d = await res.json() as { success?: boolean; data?: { output?: string }; error?: string };
-      if (d.success) {
-        setFullOutput(d.data?.output ?? "");
-      } else {
-        setFullError(d.error ?? "failed");
-      }
-    } catch (e) {
-      setFullError(String(e));
-    } finally {
-      setLoadingFull(false);
-    }
-  }
-
-  // Reuse the existing ToolCallBlock so user-run bash looks identical to an
-  // agent-run bash tool call: same header, collapse behavior, result pane.
-  // Synthesize an equivalent ToolCallContent + ToolResultMessage pair.
   const toolName = message.excludeFromContext ? "bash (local)" : "bash";
-  const block: ToolCallContent = {
-    type: "toolCall",
-    toolCallId: `bash-${message.timestamp ?? ""}`,
+  const data: CommandExecutionData = {
+    id: `bash-${message.timestamp ?? message.command}`,
     toolName,
-    input: { command: message.command },
+    command: message.command,
+    output: message.output,
+    status: isPending || message.exitCode === undefined && !message.cancelled ? "running" : message.cancelled ? "cancelled" : message.exitCode === 0 ? "success" : "failed",
+    isStreaming: message.exitCode === undefined && !message.cancelled,
+    cwd,
+    exitCode: message.exitCode,
+    truncated: message.truncated === true,
+    fullOutputPath: message.fullOutputPath,
+    sessionId,
+    diagnostics: safeJson({
+      command: message.command,
+      exitCode: message.exitCode,
+      cancelled: message.cancelled,
+      truncated: message.truncated,
+      fullOutputPath: message.fullOutputPath,
+    }),
   };
-  const result: ToolResultMessage | undefined = isPending
-    ? undefined
-    : {
-        role: "toolResult",
-        isStreaming: message.exitCode === undefined && !message.cancelled,
-        toolCallId: block.toolCallId,
-        toolName,
-        content: displayOutput ? [{ type: "text", text: displayOutput }] : [],
-        isError,
-        timestamp: message.timestamp,
-      };
-
-  return (
-    <div style={{ margin: "6px 0" }}>
-      <ToolCallBlock block={block} result={result} />
-      {message.truncated && fullOutputUrl && (
-        <div style={{ padding: "4px 10px", fontSize: "var(--text-xs)", marginTop: -1 }}>
-          {showFullButton && (
-            <button
-              onClick={loadFullOutput}
-              disabled={loadingFull}
-              style={{ background: "none", border: "none", color: "var(--accent)", cursor: loadingFull ? "default" : "pointer", fontSize: "var(--text-xs)", padding: 0, textDecoration: "underline" }}
-            >
-              {loadingFull ? "loading…" : "view full output"}
-            </button>
-          )}
-          <a
-            href={`${fullOutputUrl}&download=1`}
-            style={{ marginLeft: showFullButton ? 10 : 0, color: "var(--accent)", fontSize: "var(--text-xs)", textDecoration: "underline" }}
-          >
-            download full output
-          </a>
-          {fullError && <span style={{ marginLeft: 6, color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>({fullError})</span>}
-        </div>
-      )}
-    </div>
-  );
+  return <div style={{ margin: "6px 0" }}><CommandExecutionCard data={data} onOpen={onOpenCommandExecution} /></div>;
 }

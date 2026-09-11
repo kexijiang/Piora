@@ -30,6 +30,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
   const terminal = useRef<Terminal | null>(null);
   const search = useRef<SearchAddon | null>(null);
   const previousOutput = useRef("");
+  const outputWriter = useRef<((value: string, snapshot?: boolean) => void) | null>(null);
   const latest = useRef({ output, onStatus, onError, inputEnabled });
   useEffect(() => { latest.current = { output, onStatus, onError, inputEnabled }; });
   useImperativeHandle(ref, () => ({
@@ -73,7 +74,21 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       let rendering = Promise.resolve();
       let replaying = false;
       let generation = -1, sequence = -1, renderEpoch = 0;
-      const writeOutput = (output: string, snapshot = false) => {
+      let pendingOutput = "", pendingReset = false, hasPendingOutput = false;
+      const fitVisibleHost = () => {
+        const element = host.current;
+        // A display:none ancestor leaves computed width as "100%". FitAddon
+        // parses that as 100 pixels, collapsing the terminal to a few columns.
+        if (!element?.clientWidth || !element.clientHeight) return false;
+        const dimensions = fit.proposeDimensions();
+        if (!dimensions || !Number.isFinite(dimensions.cols) || !Number.isFinite(dimensions.rows)) return false;
+        fit.fit();
+        return true;
+      };
+      const flushOutput = () => {
+        if (!hasPendingOutput || !fitVisibleHost()) return;
+        const output = pendingOutput, snapshot = pendingReset;
+        pendingOutput = ""; pendingReset = false; hasPendingOutput = false;
         if (snapshot) renderEpoch++;
         const epoch = renderEpoch;
         // xterm parses writes asynchronously. Keep the replay flag scoped to
@@ -85,9 +100,18 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
           term.write(output, () => { replaying = false; resolve(); });
         }));
       };
+      const writeOutput = (output: string, snapshot = false) => {
+        pendingOutput = (snapshot ? output : pendingOutput + output).slice(-500_000);
+        pendingReset ||= snapshot;
+        hasPendingOutput = true;
+        flushOutput();
+      };
+      outputWriter.current = writeOutput;
       let events: EventSource | undefined;
       let unsubscribe: (() => void) | undefined;
       let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+      let resizeFrame = 0;
+      let lastResize = "";
       const post = (body: object) => {
         const queuedGeneration = generation;
         chain = chain.then(async () => {
@@ -98,19 +122,23 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
         }).catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
       };
       const resize = () => {
+        cancelAnimationFrame(resizeFrame);
+        if (disposed) return;
         if (!host.current?.clientWidth || !host.current.clientHeight) return;
-        fit.fit();
-        if (!readOnly && cwd) post({ action: "resize", cols: term.cols, rows: term.rows });
+        if (!fitVisibleHost()) { resizeFrame = requestAnimationFrame(resize); return; }
+        flushOutput();
+        const key = `${generation}:${term.cols}:${term.rows}`;
+        if (!readOnly && cwd && key !== lastResize) { lastResize = key; post({ action: "resize", cols: term.cols, rows: term.rows }); }
       };
       const observer = new ResizeObserver(() => {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(resize, 80);
       });
       observer.observe(host.current);
-      fit.fit();
+      resize();
       if (readOnly) {
         previousOutput.current = latest.current.output;
-        term.write(latest.current.output);
+        writeOutput(latest.current.output, true);
       } else if (cwd) {
         // EventSource hides HTTP error bodies. Start explicitly so missing
         // native libraries and invalid working directories reach the user.
@@ -197,9 +225,9 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       const element = host.current;
       element.addEventListener("keydown", stopShortcut);
       cleanup = () => {
-        clearTimeout(resizeTimer); observer.disconnect(); events?.close(); unsubscribe?.(); input.dispose();
+        clearTimeout(resizeTimer); cancelAnimationFrame(resizeFrame); observer.disconnect(); events?.close(); unsubscribe?.(); input.dispose();
         element.removeEventListener("keydown", stopShortcut); term.dispose();
-        terminal.current = null; search.current = null; previousOutput.current = "";
+        terminal.current = null; search.current = null; outputWriter.current = null; previousOutput.current = "";
       };
     })().catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
     return () => { disposed = true; abort.abort(); cleanup(); };
@@ -210,8 +238,8 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
   useEffect(() => {
     if (!readOnly || !terminal.current) return;
     const previous = previousOutput.current;
-    if (output.startsWith(previous)) terminal.current.write(output.slice(previous.length));
-    else { terminal.current.reset(); terminal.current.write(output); }
+    if (output.startsWith(previous)) outputWriter.current?.(output.slice(previous.length));
+    else outputWriter.current?.(output, true);
     previousOutput.current = output;
   }, [output, readOnly]);
 

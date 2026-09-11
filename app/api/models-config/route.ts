@@ -5,6 +5,7 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { writePrivateFileAtomicSync } from "@/lib/atomic-file";
 import { invalidateModelsCache } from "@/lib/models-cache";
 import { invalidateServicesCache } from "@/lib/rpc-manager";
+import { normalizeModelConfigCosts } from "@/lib/model-config-cost";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +36,13 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
+  let body: Record<string, unknown>;
   try {
-    const body = await req.json() as Record<string, unknown>;
+    body = normalizeModelConfigCosts(await req.json());
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 });
+  }
+  try {
     writeModelsJson(body);
     invalidateModelsCache();
     invalidateServicesCache();

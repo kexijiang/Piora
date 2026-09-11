@@ -15,6 +15,17 @@ test("separates Pi-native model visibility from custom config deletion", () => {
   assert.match(source, /fetch\("\/api\/models-config"/);
 });
 
+test("deleting a managed model removes its row instead of hiding it", () => {
+  assert.match(source, /models\.deleteManagedModel/);
+  assert.match(source, /models\.deleteManagedModelConfirm/);
+  assert.match(source, /updateModelScope\("hide", model\)/);
+  assert.match(source, /const allProviderModels = \(modelScope\?\.models \?\? \[\]\)\.filter/);
+  assert.match(source, /allProviderModels\.filter\(\(model\) => model\.enabled \|\| customModelIds\.has\(model\.id\)\)/);
+  assert.match(source, /models\.allModelsDeleted/);
+  assert.doesNotMatch(source, /models\.hideModel\b/);
+  assert.doesNotMatch(source, /models\.restoreModel\b/);
+});
+
 test("separates provider visibility, credential removal, and custom deletion", () => {
   assert.match(source, /hiddenProviderIds/);
   assert.match(source, /models\.hiddenProviders/);

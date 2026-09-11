@@ -2627,12 +2627,15 @@ async function startApplication(): Promise<void> {
     },
     onError: error => logger?.warn("Clipboard operation failed", error),
   });
-  await clipboardController.start().catch(error => logger?.warn("Clipboard startup failed; application remains available", error));
+  // Existing archives may need migration or maintenance. Keep this optional
+  // worker off the critical path to the main application window.
+  void clipboardController.start().catch(error => logger?.warn("Clipboard startup failed; application remains available", error));
   clipboardController.setShortcut(toElectronAccelerator(keyboardShortcutBindings["companion.clipboard"]));
   registerFileShellHandlers();
   installDisplayReconciliation();
 
   await startup.finished;
+  if (quitRequested || mainWindow.isDestroyed() || !serverUrl) return;
   await loadApplicationWindow(mainWindow, serverUrl, logger);
   void clipboardController.warm().catch(error => logger?.warn("Clipboard window preload failed", error));
   writeLastLaunchedVersion(app.getPath("userData"), app.getVersion(), logger);
@@ -2735,6 +2738,8 @@ if (!hasSingleInstanceLock) {
   });
 
   void startApplication().catch(async (error: unknown) => {
+    // A requested shutdown can cancel in-flight service/window startup.
+    if (quitRequested) return;
     const message = error instanceof Error ? error.message : String(error);
     logger?.error("Desktop startup failed", error);
     const detail = logger ? `${message}\n\nDiagnostic log: ${logger.filePath}` : message;

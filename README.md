@@ -20,7 +20,7 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 
 项目由 [pi-web](https://github.com/agegr/pi-web) 演进而来，沿用 Pi 的 AgentSession、JSONL 会话、模型接入和扩展机制，由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-本文对应源码版本 `0.4.41-beta.28`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
+本文对应源码版本 `0.4.41-beta.29`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
 ## 能做什么
 

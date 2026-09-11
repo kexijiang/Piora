@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { getAutomationStore } from "@/lib/automation-store";
 import type { CreateAutomationInput } from "@/lib/automation-types";
-import { resolveOrStartRpcSession } from "@/lib/session-runtime-resolver";
 
 export const dynamic = "force-dynamic";
 const MAX_BODY_BYTES = 128 * 1_024;
@@ -31,6 +30,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const { resolveOrStartRpcSession } = await import("@/lib/session-runtime-resolver");
     const body = await parseJsonWithinLimit(request, MAX_BODY_BYTES) as CreateAutomationInput;
     if (!body || typeof body !== "object") throw new Error("Automation input is required.");
     if (body.kind === "heartbeat" && body.target?.type === "session") await resolveOrStartRpcSession(body.target.sessionId);

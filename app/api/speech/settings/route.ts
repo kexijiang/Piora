@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { InvalidJsonBodyError, JsonBodyTooLargeError, parseJsonWithinLimit } from "@/lib/bounded-json";
 import { getSpeechStatus, updateSpeechSettings } from "@/lib/speech-pack-manager";
-import { resetLocalSpeechRuntime, warmLocalSpeechRuntime } from "@/lib/speech-runtime";
 import { hasJsonContentType, isApiRequestAllowed } from "@/lib/request-security";
 
 export const runtime = "nodejs";
@@ -27,6 +26,7 @@ export async function PATCH(request: Request) {
     if (body.packDirectory !== undefined && body.packDirectory !== null && typeof body.packDirectory !== "string") {
       return json({ error: "packDirectory must be an absolute path or null" }, 400);
     }
+    const { resetLocalSpeechRuntime, warmLocalSpeechRuntime } = await import("@/lib/speech-runtime");
     resetLocalSpeechRuntime();
     const status = await updateSpeechSettings({
       ...(typeof body.enabled === "boolean" ? { enabled: body.enabled } : {}),

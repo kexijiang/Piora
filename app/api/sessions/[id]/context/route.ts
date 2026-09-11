@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { resolveSessionPath, buildSessionContext } from "@/lib/session-reader";
+import { persistedMessagePromptIds } from "@/lib/session-message-delete";
+import { SessionControlStore } from "@/lib/session-control-store";
 
 export async function GET(
   req: Request,
@@ -24,7 +26,7 @@ export async function GET(
       deferToolResultImages,
     });
 
-    return NextResponse.json({ context });
+    return NextResponse.json({ context, persistedPromptIds: [...persistedMessagePromptIds(sm.getEntries()), ...new SessionControlStore().completedSlashPromptIds(id)] });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
