@@ -1,7 +1,7 @@
 "use client";
 import { messageImageUrl } from "@/lib/message-images";
 
-import { memo, useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { memo, useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { useVirtualRowToggle } from "./VirtualRowState";
 import dynamic from "next/dynamic";
 import { LazyMarkdownBody as MarkdownBody } from "./LazyMarkdownBody";
@@ -116,6 +116,7 @@ function loadThinkingContent(sessionId: string, entryId: string, blockIndex: num
 }
 
 interface Props {
+  messageActions?: ReactNode;
   message: AgentMessage;
   isStreaming?: boolean;
   toolResults?: Map<string, ToolResultMessage>;
@@ -190,12 +191,12 @@ export function getAutomationToolCardDetails(
   };
 }
 
-export const MessageView = memo(function MessageView({ message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
+export const MessageView = memo(function MessageView({ messageActions, message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
   if (message.role === "user") {
-    return <UserMessageView message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
+    return <UserMessageView messageActions={messageActions} message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} responseStartedAt={responseStartedAt} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
+    return <AssistantMessageView messageActions={messageActions} message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} responseStartedAt={responseStartedAt} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -203,27 +204,28 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
   }
   if (message.role === "custom") {
     if ((message as CustomMessage).customType === "compaction") {
-      return <CompactionMessageView message={message as CustomMessage} />;
+      return <div className="message-row"><CompactionMessageView message={message as CustomMessage} /><div className="message-hover-actions">{messageActions}</div></div>;
     }
     if ((message as CustomMessage).customType === "piora-automation") {
       const details = (message as CustomMessage).details as { automationId?: unknown; name?: unknown; rrule?: unknown } | undefined;
       return typeof details?.automationId === "string" ? (
-        <AutomationCard
+        <div className="message-row"><AutomationCard
           automationId={details.automationId}
           fallbackName={typeof details.name === "string" ? details.name : undefined}
           fallbackRrule={typeof details.rrule === "string" ? details.rrule : undefined}
           onOpen={onOpenAutomation}
-        />
+        /><div className="message-hover-actions">{messageActions}</div></div>
       ) : null;
     }
-    return <CustomMessageView message={message as CustomMessage} cwd={cwd} onOpenFile={onOpenFile} />;
+    return <CustomMessageView messageActions={messageActions} message={message as CustomMessage} cwd={cwd} onOpenFile={onOpenFile} />;
   }
   if (message.role === "bashExecution") {
-    return <BashExecutionView message={message as BashExecutionMessage} sessionId={sessionId} cwd={cwd} onOpenCommandExecution={onOpenCommandExecution} />;
+    return <BashExecutionView messageActions={messageActions} message={message as BashExecutionMessage} sessionId={sessionId} cwd={cwd} onOpenCommandExecution={onOpenCommandExecution} />;
   }
   return null;
 }, (prev, next) => {
   return prev.message === next.message
+    && prev.messageActions === next.messageActions
     && prev.isStreaming === next.isStreaming
     && haveSameRelevantToolResults(prev.message, prev.toolResults, next.toolResults)
     && prev.modelNames === next.modelNames
@@ -245,7 +247,8 @@ export const MessageView = memo(function MessageView({ message, isStreaming, too
     && prev.onOpenCommandExecution === next.onOpenCommandExecution;
 });
 
-function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, sessionId }: {
+function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, sessionId }: {
+  messageActions?: ReactNode;
   message: UserMessage;
   cwd?: string;
   onOpenFile?: (filePath: string) => void;
@@ -469,6 +472,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
               )}
                {copied ? t("i18n.copied") : t("i18n.copy")}
             </button>
+            {messageActions}
           </div>
           {(canFork || canNavigate) && (
             <div style={{
@@ -537,6 +541,7 @@ function UserMessageView({ message, cwd, onOpenFile, entryId, onFork, forking, o
 }
 
 function AssistantMessageView({
+  messageActions,
   message,
   isStreaming,
   toolResults,
@@ -551,6 +556,7 @@ function AssistantMessageView({
   onOpenAutomation,
   onOpenCommandExecution,
 }: {
+  messageActions?: ReactNode;
   message: AssistantMessage;
   isStreaming?: boolean;
   toolResults?: Map<string, ToolResultMessage>;
@@ -801,6 +807,7 @@ function AssistantMessageView({
              {copied ? t("i18n.copied") : t("i18n.copy")}
           </button>
         )}
+        {!isStreaming ? <span className="message-hover-actions">{messageActions}</span> : null}
         {time && !isStreaming && (
           <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
         )}
@@ -1299,7 +1306,7 @@ function CompactionFileList({ title, files }: { title: string; files: string[] }
   );
 }
 
-function CustomMessageView({ message, cwd, onOpenFile }: { message: CustomMessage; cwd?: string; onOpenFile?: (filePath: string) => void }) {
+function CustomMessageView({ messageActions, message, cwd, onOpenFile }: { messageActions?: ReactNode; message: CustomMessage; cwd?: string; onOpenFile?: (filePath: string) => void }) {
   const { t } = useI18n();
   const isHiddenDisplay = message.display === false;
   const [contentExpanded, setContentExpanded] = useState(!isHiddenDisplay);
@@ -1321,7 +1328,7 @@ function CustomMessageView({ message, cwd, onOpenFile }: { message: CustomMessag
   };
 
   return (
-    <div style={{ marginBottom: 16 }}>
+    <div className="message-row" style={{ marginBottom: 16 }}>
       <div
         style={{
           border: "1px solid var(--border)",
@@ -1414,6 +1421,7 @@ function CustomMessageView({ message, cwd, onOpenFile }: { message: CustomMessag
                {copied ? t("i18n.copied") : t("i18n.copy")}
             </button>
           ) : null}
+          <span className="message-hover-actions">{messageActions}</span>
           {(hasDetails || isHiddenDisplay) && (
             <button
               onClick={() => {
@@ -1516,7 +1524,7 @@ function formatUsage(usage: {
   return parts.join(" · ");
 }
 
-function BashExecutionView({ message, sessionId, cwd, onOpenCommandExecution }: { message: BashExecutionMessage; sessionId?: string; cwd?: string; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
+function BashExecutionView({ messageActions, message, sessionId, cwd, onOpenCommandExecution }: { messageActions?: ReactNode; message: BashExecutionMessage; sessionId?: string; cwd?: string; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
   const isPending = !message.output && message.exitCode === undefined && !message.cancelled;
   const toolName = message.excludeFromContext ? "bash (local)" : "bash";
   const data: CommandExecutionData = {
@@ -1539,5 +1547,5 @@ function BashExecutionView({ message, sessionId, cwd, onOpenCommandExecution }: 
       fullOutputPath: message.fullOutputPath,
     }),
   };
-  return <div style={{ margin: "6px 0" }}><CommandExecutionCard data={data} onOpen={onOpenCommandExecution} /></div>;
+  return <div style={{ margin: "6px 0" }}><CommandExecutionCard data={data} onOpen={onOpenCommandExecution} actions={messageActions} /></div>;
 }

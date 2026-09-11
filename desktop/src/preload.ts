@@ -46,6 +46,7 @@ const clipboardHistory = Object.freeze({
 } satisfies ClipboardBridge);
 
 const runtime = Object.freeze({
+  finishStartupIntro(): void { ipcRenderer.send("pi:startup-continue"); },
   restartForDataImport(): Promise<boolean> { return ipcRenderer.invoke("pi:restart-for-data-import") as Promise<boolean>; },
   platform: process.platform,
   versions: Object.freeze({

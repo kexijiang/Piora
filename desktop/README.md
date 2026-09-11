@@ -109,6 +109,25 @@ for exact metadata, checks, and tag commands.
 - Child stdout/stderr and lifecycle events are written to
   `<userData>/logs/piora.log` with one rotated backup.
 
+## Startup diagnostics
+
+On Windows, press Win+R and enter `%APPDATA%\Piora\logs` to find `piora.log`
+and its previous 5 MiB rotation, `piora.log.1`. Installed and portable builds use
+the same location. If that directory cannot be written, new builds fall back to
+`%TEMP%\Piora\logs\piora-startup-<pid>.log`; the failure dialog shows the actual path.
+
+Logs record the version, operating system, executable path, process ID, startup
+stages and elapsed time, local server stdout/stderr, and renderer failures.
+While startup remains pending, the last stage is recorded every 15 seconds.
+The startup failure dialog can copy the error details or open the log folder.
+These are local files; they are not automatically uploaded.
+
+For a failed launch, collect both log files immediately after reproducing it,
+along with the version, installed/portable choice, Windows version, and whether
+there was no window, a crash, a stalled startup screen, or an error dialog.
+Failures before Electron loads the JavaScript entry point (for example an OS
+loader failure) may leave no application log and need Windows Event Viewer data.
+
 ## Integrated title bar
 
 The desktop window uses Electron's native Window Controls Overlay rather than

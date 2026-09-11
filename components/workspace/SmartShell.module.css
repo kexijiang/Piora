@@ -93,7 +93,7 @@
 .historyRecord code { white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 var(--font-code-family, ui-monospace, Consolas, monospace); }
 .model { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .recovery { background: var(--bg-selected); border-bottom: 1px solid var(--border); padding: 10px 12px; font-size: calc(var(--ui-font-size) * 11 / 14); }
-.settings { --shell-accent: var(--accent, #72cdb6); padding: 28px; max-width: 980px; margin-inline: auto; color: var(--text); display: grid; gap: 18px; }
+.settings { --shell-accent: var(--accent, #72cdb6); width: 100%; height: 100%; min-height: 0; overflow-y: auto; padding: 28px; max-width: 980px; margin-inline: auto; color: var(--text); display: grid; align-content: start; gap: 18px; }
 .settings h2, .settings h3 { margin: 0; }
 .settings h2 { font-size: calc(var(--ui-font-size) * 24 / 14); font-weight: 650; line-height: 1.4; }
 .settings p { margin: 6px 0 0; color: var(--text-muted); font-size: calc(var(--ui-font-size) * 13 / 14); line-height: 1.7; }

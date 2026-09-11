@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { copyText } from "@/lib/clipboard";
 import { commandDisplayName, commandErrorExcerpt, type CommandExecutionData } from "@/lib/command-execution";
@@ -127,15 +127,15 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
   );
 }
 
-export function CommandExecutionCard({ data, onOpen }: { data: CommandExecutionData; onOpen?: (data: CommandExecutionData) => void }) {
+export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandExecutionData; onOpen?: (data: CommandExecutionData) => void; actions?: ReactNode }) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useVirtualRowToggle(`command:${data.id}`);
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`command-diagnostics:${data.id}`);
   const [errorSearch, setErrorSearch] = useState("");
   const errorExcerpt = useMemo(() => data.status === "failed" || data.status === "cancelled" || data.status === "timed_out" ? commandErrorExcerpt(data.output) : "", [data.output, data.status]);
   const statusParts = [t(statusKey(data.status))];
-  if (data.exitCode !== undefined) statusParts.push(t("command.exitCode", { code: data.exitCode }));
-  if (data.duration !== undefined) statusParts.push(t("command.duration", { seconds: data.duration }));
+  if (expanded && data.exitCode !== undefined) statusParts.push(t("command.exitCode", { code: data.exitCode }));
+  if (expanded && data.duration !== undefined) statusParts.push(t("command.duration", { seconds: data.duration }));
 
   useEffect(() => {
     window.dispatchEvent(new CustomEvent<CommandExecutionData>("piora-command-execution-update", { detail: data }));
@@ -153,11 +153,11 @@ export function CommandExecutionCard({ data, onOpen }: { data: CommandExecutionD
         </button>
         <div className="command-header-actions">
           <CopyButton text={data.command} compact />
+          {actions ? <span className="command-message-actions">{actions}</span> : null}
           {onOpen ? <IconButton icon="expand" label={t("command.openLargeViewer")} onClick={() => onOpen(data)} /> : null}
         </div>
       </div>
-      {!expanded ? <pre className="command-preview">{data.command}</pre> : null}
-      {errorExcerpt ? (
+      {expanded && errorExcerpt ? (
         <button type="button" className="command-error-excerpt" onClick={() => { setErrorSearch(errorExcerpt.split("\n")[0] ?? ""); setExpanded(true); }}>
           <span>{t("command.errorExcerpt")}</span><code>{errorExcerpt}</code><small>{t("command.viewErrorContext")}</small>
         </button>
@@ -201,6 +201,8 @@ function togglePreservingScroll(control: HTMLElement, toggle: () => void) {
 export function CommandExecutionDialog({ data, onClose }: { data: CommandExecutionData; onClose: () => void }) {
   const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const hasDesktopChrome = typeof window !== "undefined" && Boolean(window.piDesktop);
+  const close = () => { dialogRef.current?.close(); onClose(); };
   const [current, setCurrent] = useState(data);
   useEffect(() => setCurrent(data), [data]);
   useEffect(() => {
@@ -216,17 +218,18 @@ export function CommandExecutionDialog({ data, onClose }: { data: CommandExecuti
     if (!dialog) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    dialog.showModal();
+    if (!dialog.open) dialog.showModal();
     return () => { document.body.style.overflow = previousOverflow; if (dialog.open) dialog.close(); };
   }, []);
   if (typeof document === "undefined") return null;
   return createPortal(
     <dialog ref={dialogRef} className="command-execution-dialog" aria-label={t("command.largeViewer")}
-      onCancel={(event) => { event.preventDefault(); onClose(); }} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      data-desktop-chrome={hasDesktopChrome ? "true" : undefined}
+      onCancel={(event) => { event.preventDefault(); close(); }} onClick={(event) => { event.stopPropagation(); if (event.target === event.currentTarget) close(); }}>
       <div className="command-dialog-layout">
         <header className="command-dialog-header">
           <div><strong>{commandDisplayName(current.toolName)}</strong><span>{t(statusKey(current.status))}</span></div>
-          <button type="button" className="command-icon-button" onClick={onClose} title={t("i18n.close")} aria-label={t("i18n.close")}><AliIcon name="close" size={15} /></button>
+          <button type="button" className="command-icon-button" onClick={close} title={t("i18n.close")} aria-label={t("i18n.close")}><AliIcon name="close" size={15} /></button>
         </header>
         <section className="command-source-section command-dialog-source">
           <div className="command-section-toolbar"><span className="command-section-label">{t("command.command")}</span>{current.cwd ? <span className="command-cwd">{t("command.cwd")}: {current.cwd}</span> : null}<span className="command-toolbar-spacer" /><CopyButton text={current.command} /></div>

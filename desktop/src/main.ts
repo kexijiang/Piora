@@ -5,6 +5,7 @@ import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, 
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createConnection } from "node:net";
+import { release as osRelease } from "node:os";
 import {
   app,
   BrowserWindow,
@@ -31,7 +32,7 @@ import { autoUpdater } from "electron-updater";
 import { ScheduledDesktopUpdater, parseUpdateSchedule, type UpdateSchedule } from "./update-schedule.js";
 import { readUpdateSchedule, writeUpdateSchedule } from "./desktop-state.js";
 import { readLastLaunchedVersion, writeLastLaunchedVersion } from "./desktop-state.js";
-import { createStartupDocument, loadStartupMedia, STARTUP_MEDIA_TIMEOUT_MS, STARTUP_CONTINUE_URL } from "./startup-scene.js";
+import { createStartupDocument, loadStartupMedia, STARTUP_MEDIA_TIMEOUT_MS, STARTUP_CONTINUE_CHANNEL } from "./startup-scene.js";
 import {
   companionFacingDirection,
   companionMotionPoint,
@@ -60,6 +61,7 @@ import {
 } from "./agent-data-directory.js";
 import { DesktopBrowserManager } from "./browser-manager.js";
 import { FileLogger, type Logger } from "./logger.js";
+import { runOptionalStartupTask } from "./startup-tasks.js";
 import { ensurePortableDesktopShortcut, type PortableShortcutResult } from "./portable-shortcut.js";
 import { StandaloneServer, type ServerExit } from "./server-supervisor.js";
 import { fitBoundsToVisibleDisplays } from "./window-bounds.js";
@@ -164,7 +166,23 @@ let companionWindow: BrowserWindow | null = null;
 let companionBubbleWindow: BrowserWindow | null = null;
 let companionPanelWindow: BrowserWindow | null = null;
 let clipboardController: ClipboardController | undefined;
-let logger: FileLogger | undefined;
+let logger: FileLogger | undefined = new FileLogger(app.getPath("userData"));
+let startupStage = "initializing-desktop";
+const desktopStartedAt = Date.now();
+function recordStartupStage(stage: string): void {
+  startupStage = stage;
+  logger?.info("Desktop startup stage", { stage, elapsedMs: Date.now() - desktopStartedAt });
+}
+logger.info("Desktop process initialized", {
+  appVersion: app.getVersion(), electronVersion: process.versions.electron,
+  platform: process.platform, arch: process.arch, osRelease: osRelease(),
+  pid: process.pid, packaged: app.isPackaged, executable: process.execPath,
+  userData: app.getPath("userData"), logPath: logger.filePath,
+});
+// Observe fatal errors without swallowing them or changing Node's exit policy.
+process.on("uncaughtExceptionMonitor", (error, origin) => logger?.error("Uncaught desktop exception", { stage: startupStage, origin, error }));
+process.on("exit", code => logger?.info("Desktop process exiting", { code, stage: startupStage }));
+app.on("child-process-gone", (_event, details) => logger?.error("Desktop child process exited", { stage: startupStage, ...details }));
 let server: StandaloneServer | undefined;
 let serverUrl: URL | undefined;
 let shutdownPromise: Promise<void> | undefined;
@@ -274,21 +292,23 @@ function installRendererDiagnostics(window: BrowserWindow, surface: "Main" | "Co
 }
 
 async function clearObsoleteDesktopWebCaches(log: Logger): Promise<void> {
-  const runtimeSession = electronSession.fromPartition(DESKTOP_PARTITION, { cache: true });
-  try {
-    // Piora used to register its browser PWA service worker inside Electron's
-    // persistent partition. Across desktop upgrades that worker could retain
-    // an older Next.js asset graph and crash hydration before the app mounted.
-    // This partition is app-owned, and these two stores contain no user data.
-    await runtimeSession.clearStorageData({
-      storages: ["serviceworkers", "cachestorage"],
-    });
-    log.info("Cleared obsolete desktop service worker caches");
-  } catch (error) {
-    // Cache cleanup is hardening, not a startup dependency. The renderer-side
-    // cleanup in PwaRegistration gets another chance after a successful mount.
-    log.warn("Unable to clear obsolete desktop service worker caches", error);
-  }
+  await runOptionalStartupTask("Desktop cache cleanup", async () => {
+    const runtimeSession = electronSession.fromPartition(DESKTOP_PARTITION, { cache: true });
+    try {
+      // Piora used to register its browser PWA service worker inside Electron's
+      // persistent partition. Across desktop upgrades that worker could retain
+      // an older Next.js asset graph and crash hydration before the app mounted.
+      // This partition is app-owned, and these two stores contain no user data.
+      await runtimeSession.clearStorageData({
+        storages: ["serviceworkers", "cachestorage"],
+      });
+      log.info("Cleared obsolete desktop service worker caches");
+    } catch (error) {
+      // Cache cleanup is hardening, not a startup dependency. The renderer-side
+      // cleanup in PwaRegistration gets another chance after a successful mount.
+      log.warn("Unable to clear obsolete desktop service worker caches", error);
+    }
+  }, log);
 }
 
 function prepareWritableDirectory(directory: string): string {
@@ -2389,7 +2409,7 @@ function createMainWindow(
   return window;
 }
 
-function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promise<number>; finished: Promise<void> } {
+function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promise<number>; finished: Promise<void>; ensureVisible: () => void } {
   const { window, initialState } = createMainWindowShell(log);
   const previousVersion = readLastLaunchedVersion(app.getPath("userData"), log);
   const firstLaunchOfVersion = previousVersion !== app.getVersion();
@@ -2405,19 +2425,36 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
   const introTimer = setTimeout(finishIntro, STARTUP_MEDIA_TIMEOUT_MS);
   introTimer.unref();
   void finished.then(() => clearTimeout(introTimer));
-  const continueIntro = (event: Electron.Event, target: string) => {
-    // The pre-service local document has no trusted IPC bridge. Only this exact
-    // application-owned navigation can dismiss its animation.
+  const blockIntroNavigation = (event: Electron.Event) => {
+    // Keep the old document from replacing an in-flight application load.
+    // Main-process loadURL does not emit will-navigate.
     event.preventDefault();
-    if (target === STARTUP_CONTINUE_URL) finishIntro();
   };
-  window.webContents.on("will-navigate", continueIntro);
-  window.webContents.once("did-navigate", (_event, target) => {
-    if (target !== startupUrl) finishIntro();
-  });
-  window.once("closed", finishIntro);
+  const continueIntro = (event: Electron.IpcMainEvent, channel: string) => {
+    if (channel !== STARTUP_CONTINUE_CHANNEL || event.senderFrame !== window.webContents.mainFrame
+      || event.senderFrame?.url !== startupUrl) return;
+    finishIntro();
+  };
+  const cleanupNavigationGuard = () => {
+    window.webContents.removeListener("will-navigate", blockIntroNavigation);
+    window.webContents.removeListener("did-navigate", onNavigation);
+  };
+  const onNavigation = (_event: Electron.Event, target: string) => {
+    if (target === startupUrl) return;
+    cleanupNavigationGuard();
+    finishIntro();
+  };
+  window.webContents.on("will-navigate", blockIntroNavigation);
+  window.webContents.on("ipc-message", continueIntro);
+  window.webContents.on("did-navigate", onNavigation);
+  window.once("closed", () => { cleanupNavigationGuard(); finishIntro(); });
+  let ensureVisible!: () => void;
   const ready = new Promise<number>((resolveReady) => {
-    window.once("ready-to-show", () => {
+    let shown = false;
+    ensureVisible = () => {
+      if (shown || window.isDestroyed()) return;
+      shown = true;
+      window.removeListener("ready-to-show", ensureVisible);
       const readyAt = Date.now();
       if (!PORTABLE_SMOKE_TEST) {
         if (initialState.maximized) window.maximize();
@@ -2429,7 +2466,8 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
       }
       resolveReady(readyAt);
       if (!firstLaunchOfVersion || !media.video || PORTABLE_SMOKE_TEST) finishIntro();
-    });
+    };
+    window.once("ready-to-show", ensureVisible);
   });
   const startupDocument = createStartupDocument({ chinese: app.getLocale().toLocaleLowerCase().startsWith("zh"), version: app.getVersion(), updated, ...media });
   let navigation: Promise<void> = Promise.resolve();
@@ -2446,15 +2484,24 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
     finishIntro();
   }
   const handedOff = finished.then(async () => {
-    if (!window.isDestroyed()) {
-      window.webContents.removeListener("will-navigate", continueIntro);
+    log.info("Releasing startup animation");
+    window.webContents.removeListener("ipc-message", continueIntro);
+    // Leave the Chromium/IPC callback before starting another native operation.
+    await new Promise<void>(resolveTurn => setImmediate(resolveTurn));
+    if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
       // The watchdog may expire while loadFile is still navigating. Settle that
-      // navigation before loadURL, so its late events cannot abort the app page.
-      window.webContents.stop();
+      // navigation before loadURL, but a broken optional document cannot hold
+      // the application hostage even if Chromium never settles its promise.
+      try { window.webContents.stop(); }
+      catch (error) { log.warn("Unable to stop startup animation; continuing to the application", error); }
     }
-    await navigation;
+    await runOptionalStartupTask("Startup animation navigation cleanup", () => navigation, log, 1_000);
+    // A rejected loadFile settles inside did-stop-loading. Loading the app in
+    // that same event can let old completion events settle the new navigation.
+    await new Promise<void>(resolveTurn => setImmediate(resolveTurn));
+    log.info("Startup animation handoff is complete");
   });
-  return { window, ready, finished: handedOff };
+  return { window, ready, finished: handedOff, ensureVisible };
 }
 
 type SmokeRendererState = {
@@ -2526,23 +2573,27 @@ function handleUnexpectedServerExit(exit: ServerExit): void {
 
 async function startApplication(): Promise<void> {
   const startupStartedAt = Date.now();
+  recordStartupStage("waiting-for-electron");
   await app.whenReady();
   app.setAppUserModelId("io.github.kexijiang.piora");
 
-  logger = new FileLogger(app.getPath("userData"));
+  logger ??= new FileLogger(app.getPath("userData"));
   logger.info("Starting Piora", {
     appVersion: app.getVersion(),
     electronVersion: process.versions.electron,
   });
   if (!desktopDevelopmentRuntime) installPortableDesktopShortcut(logger);
+  recordStartupStage("clearing-web-cache");
   await clearObsoleteDesktopWebCaches(logger);
 
+  recordStartupStage("preparing-agent-data");
   piAgentDirectoryPath = resolvePiAgentDirectory(logger);
   logger.info("Using Pi data directory", { directory: piAgentDirectoryPath });
 
   // Show an app-owned shell immediately while the bundled Next.js service
   // starts in parallel. The same BrowserWindow is then navigated to the app,
   // avoiding the process and rendering cost of creating a second window.
+  recordStartupStage("creating-startup-window");
   const startup = createStartupWindow(logger);
   mainWindow = startup.window;
   installTray();
@@ -2551,6 +2602,7 @@ async function startApplication(): Promise<void> {
   });
 
   const token = desktopDevelopmentRuntime?.token ?? randomBytes(32).toString("base64url");
+  recordStartupStage("starting-local-service");
   applicationToken = token;
   if (desktopDevelopmentRuntime) {
     serverUrl = desktopDevelopmentRuntime.url;
@@ -2572,6 +2624,7 @@ async function startApplication(): Promise<void> {
   }
   warmInitialModelCatalog(serverUrl, token, logger);
 
+  recordStartupStage("initializing-desktop-services");
   registerCompletionNotificationHandler();
   registerCompanionWindowHandlers();
   registerAutoLaunchHandlers();
@@ -2588,8 +2641,11 @@ async function startApplication(): Promise<void> {
     if (!smokeMarker) {
       throw new Error("PIORA_SMOKE_MARKER is required in portable smoke-test mode.");
     }
+    recordStartupStage("waiting-for-startup-handoff");
     await startup.finished;
+    recordStartupStage("loading-main-window");
     await loadApplicationWindow(mainWindow, serverUrl, logger);
+    startup.ensureVisible();
     const rendererState = await waitForSmokeRenderer(mainWindow);
     await startup.ready;
     writeFileSync(
@@ -2634,12 +2690,18 @@ async function startApplication(): Promise<void> {
   registerFileShellHandlers();
   installDisplayReconciliation();
 
+  recordStartupStage("waiting-for-startup-handoff");
   await startup.finished;
   if (quitRequested || mainWindow.isDestroyed() || !serverUrl) return;
+  recordStartupStage("loading-main-window");
   await loadApplicationWindow(mainWindow, serverUrl, logger);
+  // An aborted first document can suppress ready-to-show even after a later
+  // successful navigation. Do not leave the recovered application hidden.
+  startup.ensureVisible();
   void clipboardController.warm().catch(error => logger?.warn("Clipboard window preload failed", error));
   writeLastLaunchedVersion(app.getPath("userData"), app.getVersion(), logger);
   logger.info("Application window is ready", { elapsedMs: Date.now() - startupStartedAt });
+  recordStartupStage("ready");
 }
 
 async function stopApplication(): Promise<void> {
@@ -2677,6 +2739,7 @@ async function stopApplication(): Promise<void> {
 // installed app's single-instance lock.
 const hasSingleInstanceLock = PORTABLE_SMOKE_TEST || app.requestSingleInstanceLock();
 if (!hasSingleInstanceLock) {
+  logger.info("Another Piora instance owns the lock; forwarding activation and exiting");
   // A newly downloaded portable version may be opened while an older Piora is
   // still resident in the tray. It cannot take over that live single-instance
   // process, but it can still create the Desktop shortcut when one is missing.
@@ -2737,18 +2800,37 @@ if (!hasSingleInstanceLock) {
       });
   });
 
+  const startupWatchdog = setInterval(() => {
+    logger?.warn("Desktop startup is still pending", { stage: startupStage, elapsedMs: Date.now() - desktopStartedAt });
+  }, 15_000);
+  startupWatchdog.unref();
   void startApplication().catch(async (error: unknown) => {
+    clearInterval(startupWatchdog);
     // A requested shutdown can cancel in-flight service/window startup.
     if (quitRequested) return;
     const message = error instanceof Error ? error.message : String(error);
     logger?.error("Desktop startup failed", error);
-    const detail = logger ? `${message}\n\nDiagnostic log: ${logger.filePath}` : message;
-    dialog.showErrorBox("Piora could not start", detail);
+    const detail = `${message}\n\nStartup stage: ${startupStage}\nVersion: ${app.getVersion()}\n${logger?.fileLoggingAvailable ? `Diagnostic log: ${logger.filePath}` : "Diagnostic log could not be written; copy this error for support."}`;
+    try {
+      const chinese = app.getLocale().toLowerCase().startsWith("zh");
+      const result = await dialog.showMessageBox({
+        type: "error", title: "Piora", message: chinese ? "Piora 启动失败" : "Piora could not start", detail,
+        buttons: logger?.fileLoggingAvailable
+          ? (chinese ? ["关闭", "复制错误信息", "打开日志文件夹"] : ["Close", "Copy error details", "Open log folder"])
+          : (chinese ? ["关闭", "复制错误信息"] : ["Close", "Copy error details"]),
+        defaultId: 1, cancelId: 0, noLink: true,
+      });
+      if (result.response === 1) clipboard.writeText(detail);
+      if (result.response === 2 && logger?.fileLoggingAvailable) shell.showItemInFolder(logger.filePath);
+    } catch (dialogError) {
+      logger?.error("Unable to display startup diagnostics", dialogError);
+      dialog.showErrorBox("Piora could not start", detail);
+    }
     await server?.stop().catch((shutdownError) => {
       logger?.error("Unable to stop the web server after a startup failure", shutdownError);
     });
     quitRequested = true;
     shutdownComplete = true;
     app.exit(1);
-  });
+  }).finally(() => clearInterval(startupWatchdog));
 }

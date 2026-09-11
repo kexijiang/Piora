@@ -30,14 +30,14 @@ function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message
   const { t } = useI18n();
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
-  return <div className="message-delete-action" style={{ display: "flex", justifyContent: message.role === "user" ? "flex-end" : "flex-start", alignItems: "center", gap: 8, marginBottom: 8 }}>
-    {error ? <span role="alert" style={{ fontSize: "var(--text-xs)", color: "var(--status-failed)" }}>{error}</span> : null}
+  return <span className="message-delete-action" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
     <button type="button" disabled={disabled || deleting} title={disabled ? t("chat.deleteMessageBusy") : t("chat.deleteMessage")}
       onClick={() => { if (disabled || deleting) return; setDeleting(true); setError(""); void onDelete(message, entryId).catch(reason => setError(reason instanceof Error ? reason.message : String(reason))).finally(() => setDeleting(false)); }}
-      style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", border: "none", background: "none", color: "var(--text-dim)", fontSize: "var(--text-xs)", cursor: disabled || deleting ? "not-allowed" : "pointer", opacity: disabled ? 0.45 : 1 }}>
-      <AliIcon name="delete" size={12} />{t(deleting ? "chat.deletingMessage" : "chat.deleteMessage")}
+      className="message-delete-button">
+      <AliIcon name="delete" size={11} />{t(deleting ? "chat.deletingMessage" : "chat.deleteMessage")}
     </button>
-  </div>;
+    {error ? <span role="alert" style={{ fontSize: "var(--text-xs)", color: "var(--status-failed)" }}>{error}</span> : null}
+  </span>;
 }
 
 /** Live text stays in ChatWindow. Stable history does not render on token updates. */
@@ -97,6 +97,7 @@ export const ChatHistory = memo(function ChatHistory({ messages, entryIds, busy,
       ref={index === metadata.lastUser ? (element) => { lastUserMsgRef.current = element; if (element && pendingScrollToUserRef.current) list.current?.cancelNavigation(); } : undefined}>
       <RenderErrorBoundary resetKey={messageFingerprint(message, entryIds[index])} fallbackLabel={t("chat.messageRenderFailed")} errorTitle={t("chat.messageRenderError")}>
         <MessageView {...messageProps} message={message} toolResults={metadata.toolResults} entryId={entryIds[index]}
+          messageActions={onDeleteMessage && (entryIds[index] || message.role === "user" && message.clientPromptId) ? <DeleteMessageAction message={messages[index]} entryId={entryIds[index]} onDelete={onDeleteMessage} disabled={deleteDisabled || busy || streaming} /> : null}
           onFork={busy || isNew || index === 0 && message.role === "user" ? undefined : messageProps.onFork}
           onNavigate={busy ? undefined : messageProps.onNavigate}
           forking={forkingEntryId === entryIds[index]}
@@ -104,7 +105,6 @@ export const ChatHistory = memo(function ChatHistory({ messages, entryIds, busy,
           showTimestamp={showTimestamp} prevTimestamp={messages[index - 1]?.timestamp}
           responseStartedAt={showTimestamp && !(busy && index > metadata.lastUser) ? metadata.responseStarts.get(index) : undefined} />
       </RenderErrorBoundary>
-      {onDeleteMessage && (entryIds[index] || message.role === "user" && message.clientPromptId) ? <DeleteMessageAction message={messages[index]} entryId={entryIds[index]} onDelete={onDeleteMessage} disabled={deleteDisabled || busy || streaming} /> : null}
     </div>;
   }} />;
 });

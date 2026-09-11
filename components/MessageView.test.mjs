@@ -45,7 +45,7 @@ test("shell output stays collapsed by default, including live chunks", () => {
   assert.doesNotMatch(local, /local live output/);
 });
 
-test("shell cards expose complete commands and persistent error summaries", () => {
+test("shell cards reveal commands and errors only after expanding", () => {
   const command = "npm run check -- --project ./packages/a/tsconfig.json\nnode ./scripts/verify.mjs --all";
   const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "shell", toolName: "powershell", input: { command } }] };
   const result = { role: "toolResult", toolCallId: "shell", toolName: "powershell", isError: true,
@@ -53,15 +53,16 @@ test("shell cards expose complete commands and persistent error summaries", () =
     details: { truncation: { truncated: true }, fullOutputPath: "C:\\Temp\\pi-powershell-a.log" } };
   const collapsed = renderMessage(message, { sessionId: "550e8400-e29b-41d4-a716-446655440000", cwd: "F:\\Piora", toolResults: new Map([["shell", result]]) });
   assert.match(collapsed, /PowerShell/);
-  assert.match(collapsed, /退出码 2/);
-  assert.match(collapsed, /错误摘录/);
-  assert.match(collapsed, /src\/a\.ts\(4\): error TS2322/);
+  assert.match(collapsed, /失败/);
+  assert.doesNotMatch(collapsed, /退出码 2|错误摘录|TS2322|npm run check|command-preview/);
   assert.match(collapsed, /复制完整命令/);
 
   const rowState = createVirtualRowState();
   rowState.set("command:shell", true);
   const expanded = renderToStaticMarkup(React.createElement(I18nProvider, null,
     React.createElement(VirtualRowStateContext.Provider, { value: rowState }, React.createElement(MessageView, { message, cwd: "F:\\Piora", toolResults: new Map([["shell", result]]) }))));
+  assert.match(expanded, /退出码 2/);
+  assert.match(expanded, /错误摘录/);
   assert.match(expanded, /完整命令/);
   assert.match(expanded, /npm run check/);
   assert.match(expanded, /当前仅显示部分输出/);
