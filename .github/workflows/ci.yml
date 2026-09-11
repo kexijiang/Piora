@@ -41,6 +41,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Playwright Chromium
+        if: runner.os == 'Linux'
+        run: npx --no-install playwright-core install --with-deps chromium
+
       - name: Audit production dependencies
         if: runner.os == 'Linux'
         run: npm audit --omit=dev --audit-level=high

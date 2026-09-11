@@ -4,13 +4,14 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
-## [0.4.41-beta.29] - 2026-09-11
+## [0.4.41-beta.30] - 2026-09-11
 
 ### 工程与发布
 
-- 应用、桌面包、锁文件和 README 版本同步升级至 `0.4.41-beta.29`，安装包由 GitHub Actions 根据本版本说明构建、验证并发布。
+- 应用、桌面包、锁文件和 README 版本同步升级至 `0.4.41-beta.30`，安装包由 GitHub Actions 根据本版本说明构建、验证并发布。
 - 固化提交与推送前的远端同步要求：提交前检查目标分支，提交后、推送前再次确认远端没有前进；出现新提交时先完成 rebase 或 merge、解决冲突并重新验证。
 - 移除容易受本机负载影响的 10 万条 Shell 历史性能基准，保留历史导入正确性、跨块内容与真实 PTY 资源验证。
+- 全量测试改为串行执行，避免真实浏览器、Electron、PowerShell、PTY 与打包夹具并发争抢资源而随机超时；Linux CI 显式安装锁定版本的 Chromium，确保浏览器回归测试使用完整运行环境。
 
 ### 命令执行信息查看
 
