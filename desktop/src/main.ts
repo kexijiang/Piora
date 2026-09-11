@@ -3,7 +3,6 @@ import { SystemLauncher } from "./system-launcher";
 import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { pathToFileURL } from "node:url";
 import { createConnection } from "node:net";
 import { release as osRelease } from "node:os";
 import {
@@ -32,7 +31,7 @@ import { autoUpdater } from "electron-updater";
 import { ScheduledDesktopUpdater, parseUpdateSchedule, type UpdateSchedule } from "./update-schedule.js";
 import { readUpdateSchedule, writeUpdateSchedule } from "./desktop-state.js";
 import { readLastLaunchedVersion, writeLastLaunchedVersion } from "./desktop-state.js";
-import { createStartupDocument, loadStartupMedia, STARTUP_MEDIA_TIMEOUT_MS, STARTUP_CONTINUE_CHANNEL } from "./startup-scene.js";
+import { createStartupDocument, isStartupDocumentUrl, loadStartupMedia, STARTUP_MEDIA_TIMEOUT_MS, STARTUP_CONTINUE_CHANNEL } from "./startup-scene.js";
 import {
   companionFacingDirection,
   companionMotionPoint,
@@ -2426,7 +2425,6 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
   const mediaDirectory = app.isPackaged ? join(process.resourcesPath, "startup") : resolve(__dirname, "../build/startup");
   const media = loadStartupMedia(mediaDirectory);
   const startupPath = join(app.getPath("userData"), "startup.html");
-  const startupUrl = pathToFileURL(startupPath).href;
   let finishIntro!: () => void;
   const finished = new Promise<void>((resolveIntro) => { finishIntro = resolveIntro; });
   // Start the watchdog before loading: a failed navigation never emits
@@ -2441,7 +2439,7 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
   };
   const continueIntro = (event: Electron.IpcMainEvent, channel: string) => {
     if (channel !== STARTUP_CONTINUE_CHANNEL || event.senderFrame !== window.webContents.mainFrame
-      || event.senderFrame?.url !== startupUrl) return;
+      || !event.senderFrame || !isStartupDocumentUrl(event.senderFrame.url, startupPath)) return;
     finishIntro();
   };
   const cleanupNavigationGuard = () => {
@@ -2449,7 +2447,7 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
     window.webContents.removeListener("did-navigate", onNavigation);
   };
   const onNavigation = (_event: Electron.Event, target: string) => {
-    if (target === startupUrl) return;
+    if (isStartupDocumentUrl(target, startupPath)) return;
     cleanupNavigationGuard();
     finishIntro();
   };

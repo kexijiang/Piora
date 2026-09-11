@@ -1,10 +1,22 @@
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const STARTUP_CINEMATIC_MS = 8_000;
 // Allow media initialization without cutting the eight-second film's closing title.
 export const STARTUP_MEDIA_TIMEOUT_MS = STARTUP_CINEMATIC_MS + 2_000;
 export const STARTUP_CONTINUE_CHANNEL = "pi:startup-continue";
+
+export function isStartupDocumentUrl(url: string, expectedPath: string): boolean {
+  const normalize = (path: string) => process.platform === "win32" ? resolve(path).toLowerCase() : resolve(path);
+  try {
+    const actualPath = fileURLToPath(url);
+    // Chromium and Node serialize characters such as ~ differently. Windows
+    // can also represent the same file using a DOS short path or its long name.
+    if (normalize(actualPath) === normalize(expectedPath)) return true;
+    return normalize(realpathSync.native(actualPath)) === normalize(realpathSync.native(expectedPath));
+  } catch { return false; }
+}
 
 function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
