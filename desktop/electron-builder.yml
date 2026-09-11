@@ -83,6 +83,10 @@ extraResources:
 win:
   icon: icon.ico
   extraResources:
+    - from: build/powershell
+      to: powershell
+      filter:
+        - "**/*"
     - from: ../third_party/harmony-tools/windows-x64
       to: harmony-tools
       filter:

@@ -25,6 +25,10 @@ module.exports = async function generatePackagedLicenses(context) {
   const { generatePackageLicenseBundle } = await import(scriptUrl);
   const resourcesRoot = join(context.appOutDir, "resources");
   const webRoot = join(resourcesRoot, "web");
+  if (context.electronPlatformName === "win32") {
+    const { verifyStagedPowerShell } = await import("./stage-powershell.mjs");
+    await verifyStagedPowerShell(join(resourcesRoot, "powershell"));
+  }
   // electron-builder applies package-level `files` allowlists while traversing
   // nested node_modules, even for this extraResources tree. Hypium publishes
   // only `build/` in that allowlist, which strips the root manifest needed by
@@ -51,7 +55,7 @@ module.exports = async function generatePackagedLicenses(context) {
   const originalServerSource = await readFile(join(webRoot, "server.js"), "utf8");
   const launcherSource = originalServerSource.replace(
     "const dir = path.join(__dirname)",
-    "const dir = path.join(__dirname, 'runtime.asar');process.env.PIORA_WEB_RUNTIME_ROOT=process.env.PIORA_WEB_RUNTIME_ROOT||dir",
+    "const dir = path.join(__dirname, 'runtime.asar');process.env.PIORA_WEB_RUNTIME_ROOT=process.env.PIORA_WEB_RUNTIME_ROOT||dir;if(process.platform==='win32')require('../powershell/bootstrap.cjs')",
   );
   if (launcherSource === originalServerSource) {
     throw new Error("Unable to create the packaged ASAR server launcher");

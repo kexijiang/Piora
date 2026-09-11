@@ -14,32 +14,10 @@ import { readShellSettings, writeShellSettings, normalizeShellModel, normalizeSh
 import { discoverHistorySources, syncShellHistory } from "./history";
 import { shellCompletions, commandCatalog } from "./completions";
 import { classifyShellInput } from "./intent";
-import type { ShellEvent, HistoryQuery, HistoryRecord, ShellInputMode } from "./types";
-import type { ManagedShellSession } from "./session";
+import type { HistoryQuery, HistoryRecord, ShellInputMode } from "./types";
+import { shellEventStream } from "./event-stream";
 
 function json(value: unknown, status = 200) { return Response.json(value, { status, headers: { "Cache-Control": "no-store" } }); }
-function eventStream(session: ManagedShellSession, request: Request): Response {
-  const encoder = new TextEncoder();
-  let unsubscribe = () => {}, close = () => {};
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      let closed = false;
-      const send = (event: ShellEvent) => { if (!closed) controller.enqueue(encoder.encode(`id: ${event.generation}:${event.sequence}\ndata: ${JSON.stringify(event)}\n\n`)); };
-      // Snapshot and subscription happen without awaiting, so events cannot fall into a gap.
-      const snapshot = session.snapshot();
-      send({ type: "snapshot", snapshot, terminalId: session.state.id, generation: session.state.generation, sequence: snapshot.sequence });
-      unsubscribe = session.subscribe(send);
-      const heartbeat = setInterval(() => { if (!closed) controller.enqueue(encoder.encode(": keepalive\n\n")); }, 15000);
-      heartbeat.unref();
-      close = () => { if (closed) return; closed = true; unsubscribe(); clearInterval(heartbeat); request.signal.removeEventListener("abort", close); try { controller.close(); } catch { /* Disconnected. */ } };
-      request.signal.addEventListener("abort", close, { once: true });
-      if (request.signal.aborted) close();
-    },
-    cancel() { close(); },
-  });
-  return new Response(stream, { headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", Connection: "keep-alive", "X-Accel-Buffering": "no" } });
-}
-
 export async function handleShellRequest(request: Request, parts: string[]): Promise<Response> {
   try {
     if (!isApiRequestAllowed(request)) throw new ShellError("Untrusted API request", 403);
@@ -66,7 +44,7 @@ export async function handleShellRequest(request: Request, parts: string[]): Pro
       if (parts[0] === "sessions" && parts[1]) {
         const session = await getShell(parts[1]);
         if (parts.length === 2) return json(session.snapshot());
-        if (parts[2] === "events") return eventStream(session, request);
+        if (parts[2] === "events") return shellEventStream(session, request);
         if (parts[2] === "completions") return json(await shellCompletions(session, (url.searchParams.get("q") || "").slice(0, 4096)));
         if (parts[2] === "commands") return json({ commands: await store.list("command", session.state.id, 50, Number(url.searchParams.get("offset")) || 0) });
         if (parts[2] === "timeline") {
@@ -151,8 +129,8 @@ export async function handleShellRequest(request: Request, parts: string[]): Pro
           }
           case "input":
             if (data.generation !== undefined && data.generation !== session.state.generation) throw new ShellError("Terminal restarted before the input arrived", 409, "stale_terminal_input");
-            session.input(typeof data.data === "string" ? data.data : "", data.replay === true); break;
-          case "resize": session.resize(Number(data.cols), Number(data.rows)); break;
+            session.input(typeof data.data === "string" ? data.data : "", data.replay === true); return json({ success: true });
+          case "resize": session.resize(Number(data.cols), Number(data.rows)); return json({ success: true });
           case "clear": session.clear(); break;
           case "restart":
             if (session.state.activeRunId) {

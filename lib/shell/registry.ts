@@ -44,6 +44,12 @@ export async function getShell(id: string): Promise<ManagedShellSession> {
     const state = await store.get<ShellSession>("session", id);
     if (!state || state.closed) throw new ShellError("Terminal not found", 404);
     await validateTerminalCwd(state.initialCwd);
+    // Existing automatically selected PowerShell tabs adopt the packaged shell.
+    // Explicit custom shell preferences are still honored.
+    if (state.profile.kind === "powershell" && !state.profile.bundled && process.env.PIORA_BUNDLED_PWSH) {
+      const settings = await readShellSettings();
+      if (!settings.executable && !process.env.PI_TERMINAL_SHELL) state.profile = await resolveShellProfile();
+    }
     const session = new ManagedShellSession(state, store); await session.hydrate(); registry().set(id, session); return session;
   })().finally(() => loads.delete(id));
   loads.set(id, load); return load;

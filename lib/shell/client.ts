@@ -17,7 +17,7 @@ export async function shellRequest<T>(endpoint: string, body?: unknown, options:
   const abort = () => controller.abort(options.signal?.reason);
   if (options.signal?.aborted) abort();
   else options.signal?.addEventListener("abort", abort, { once: true });
-  const timer = options.timeoutMs === undefined ? undefined : setTimeout(() => controller.abort(new Error("终端连接超时，请重试。")), options.timeoutMs);
+  const timer = setTimeout(() => controller.abort(new Error("终端连接超时，请重试。")), options.timeoutMs ?? 15_000);
   try {
     const response = await fetch(`/api/shell/${endpoint}`, { method: options.method || (body === undefined ? "GET" : "POST"), headers: body === undefined ? undefined : { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body), signal: controller.signal, cache: "no-store" });
     const value = await response.json();

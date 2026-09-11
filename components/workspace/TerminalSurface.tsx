@@ -117,8 +117,10 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
         chain = chain.then(async () => {
           if (disposed) return;
           if (terminalId && queuedGeneration !== generation) return;
-          const response = await fetch(terminalId ? `/api/shell/sessions/${terminalId}/actions` : "/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, ...body, ...(terminalId ? { generation: queuedGeneration } : {}) }), signal: abort.signal });
+          const response = await fetch(terminalId ? `/api/shell/sessions/${terminalId}/actions` : "/api/terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, ...body, ...(terminalId ? { generation: queuedGeneration } : {}) }), signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15_000)]) });
           if (!response.ok) throw new Error((await response.json()).error ?? `HTTP ${response.status}`);
+          // Drain even successful replies before dequeuing the next keystroke.
+          await response.arrayBuffer();
         }).catch((error) => { if (!disposed) latest.current.onError?.(String(error)); });
       };
       const resize = () => {

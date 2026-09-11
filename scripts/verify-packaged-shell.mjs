@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 
 /** Run only against the verifier's isolated server/project; never a user session. */
-export async function verifyPackagedShell({ origin, cwd, token }) {
+export async function verifyPackagedShell({ origin, cwd, token, bundledPowerShell }) {
   const request = async (endpoint, body, method = body === undefined ? "GET" : "POST") => {
     const response = await fetch(origin + "/api/shell/" + endpoint, {
       method, headers: { "X-Pi-Desktop-Token": token, Origin: origin, ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
@@ -34,6 +34,10 @@ export async function verifyPackagedShell({ origin, cwd, token }) {
     assert.equal(connected.session.connected, true, JSON.stringify(connected.session));
     assert.ok(["starting", "ready"].includes(connected.session.integration), JSON.stringify(connected.session));
     const powershell = connected.session.profile.kind === "powershell";
+    if (bundledPowerShell) {
+      assert.equal(connected.session.profile.executable, bundledPowerShell);
+      assert.equal(connected.session.profile.bundled, true);
+    }
     const execute = async (text, clientRequestId = randomUUID()) => {
       const body = { action: "submit", mode: "command", text, clientRequestId };
       const result = await action(body);
@@ -43,6 +47,11 @@ export async function verifyPackagedShell({ origin, cwd, token }) {
       return { body, block };
     };
     await execute(powershell ? "$PioraPackagedValue = 'PERSISTED'" : "PioraPackagedValue=PERSISTED");
+    if (bundledPowerShell) {
+      const { powershellManifest } = await import("./stage-powershell.mjs");
+      const version = await execute("Write-Output ('PIORA_PS_VERSION:' + $PSVersionTable.PSVersion.ToString())");
+      assert.ok(version.block.output.includes(`PIORA_PS_VERSION:${powershellManifest.version}`));
+    }
     const probe = await execute(powershell ? 'Write-Output "PACKAGED_SHELL_STATE:$PioraPackagedValue"' : 'printf "PACKAGED_SHELL_STATE:%s\\n" "$PioraPackagedValue"');
     assert.match(probe.block.output, /PACKAGED_SHELL_STATE:PERSISTED/);
     const duplicate = await action(probe.body);

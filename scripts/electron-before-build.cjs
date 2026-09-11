@@ -16,6 +16,8 @@ module.exports = async function prepareDesktopBuild(context) {
   await prepareBuildReleaseNotes(projectRoot);
   const targetPlatform = context.electronPlatformName ?? process.platform;
   if (targetPlatform !== "win32") return true;
+  const { stagePowerShell } = await import("./stage-powershell.mjs");
+  await stagePowerShell(projectRoot);
   const customTemplatePath = join(projectRoot, "desktop", "build", "portable-cache.nsi");
   const builderPackagePath = require.resolve("app-builder-lib/package.json", { paths: [projectRoot] });
   const stockTemplatePath = join(dirname(builderPackagePath), "templates", "nsis", "portable.nsi");

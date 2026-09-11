@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptPath = fileURLToPath(import.meta.url);
 const defaultProjectRoot = resolve(dirname(scriptPath), "..");
+const bundledPowerShell = JSON.parse(await readFile(resolve(defaultProjectRoot, "third_party/powershell/manifest.json"), "utf8"));
 const REVIEWED_LICENSE_DECLARATIONS = new Map([
   ["format@0.2.2", "MIT"],
   ["khroma@2.1.0", "MIT"],
@@ -122,6 +123,12 @@ export function renderLicenseInventory(records, lockfileSha256) {
       : "Every locked package declares a license.",
     "",
     renderTable("Runtime dependency closure", runtime),
+    "## Bundled Windows PowerShell runtime",
+    "",
+    `PowerShell ${bundledPowerShell.version} (Windows x64, MIT): [Microsoft release](${bundledPowerShell.source}). The complete self-contained ZIP includes .NET and module dependencies; their upstream license and third-party notices are preserved in resources/powershell. See [provenance](third_party/powershell/SOURCE.md).`,
+    "",
+    `Archive SHA-256: \`${bundledPowerShell.sha256}\`.`,
+    "",
     renderTable("Build and development dependency closure", development),
   ].join("\n");
 }

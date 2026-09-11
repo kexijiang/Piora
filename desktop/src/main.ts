@@ -2352,7 +2352,16 @@ function loadApplicationWindow(window: BrowserWindow, url: URL, log: Logger): Pr
     },
   );
 
-  return window.loadURL(url.toString()).then(() => undefined);
+  const loadApp = () => window.loadURL(url.toString()).then(() => undefined);
+  if (window.webContents.getURL().startsWith("file:")) {
+    // stop() cancels loading but does not retire the startup document's scripts.
+    // Even a prevented renderer navigation can reject Electron's next loadURL.
+    // Commit an empty document first so late media events cannot cancel the app.
+    return runOptionalStartupTask("Retiring startup document", () => window.loadURL("about:blank"), log, 2_000)
+      .then(() => new Promise<void>(resolveTurn => setImmediate(resolveTurn)))
+      .then(loadApp);
+  }
+  return loadApp();
 }
 
 function warmInitialModelCatalog(url: URL, token: string, log: Logger): void {

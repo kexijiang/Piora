@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `eba487c4b9b4c31b1251664c42d159a227a45a2cae7a526354f4d41eebd1a2de`
+Lockfile SHA-256: `97018773f99b00c210f6364a90a0dd24380f4d377270d9dd2fa38f54f28a7732`
 
 Unique locked packages: **1271**. Runtime packages: **825**. Build/development-only packages: **446**.
 
@@ -839,6 +839,12 @@ Every locked package declares a license.
 | `zod` | `4.3.6` | MIT | No |
 | `zod-to-json-schema` | `3.25.2` | ISC | No |
 | `zwitch` | `2.0.4` | MIT | No |
+
+## Bundled Windows PowerShell runtime
+
+PowerShell 7.6.6 (Windows x64, MIT): [Microsoft release](https://github.com/PowerShell/PowerShell/releases/tag/v7.6.6). The complete self-contained ZIP includes .NET and module dependencies; their upstream license and third-party notices are preserved in resources/powershell. See [provenance](third_party/powershell/SOURCE.md).
+
+Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c860`.
 
 ## Build and development dependency closure
 

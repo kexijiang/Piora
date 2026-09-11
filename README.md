@@ -20,7 +20,7 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 
 项目由 [pi-web](https://github.com/agegr/pi-web) 演进而来，沿用 Pi 的 AgentSession、JSONL 会话、模型接入和扩展机制，由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-本文对应源码版本 `0.4.41-beta.33`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
+本文对应源码版本 `0.4.41-beta.34`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
 ## 能做什么
 
@@ -55,6 +55,8 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 | `SHA256SUMS.txt` | 安装包校验值 |
 
 Windows 目标系统为 Windows 10/11 x64。安装包已包含 Piora 运行时，普通使用不需要另外安装 Node.js。开发工具、Git、编译器以及第三方 Skills 所需程序仍需按任务准备。
+
+未发布源码已接入内置 PowerShell 7：下一次 Windows 安装版、便携版和 ZIP 构建会携带完整 PowerShell 与 .NET 运行库，默认直接使用随包版本，无需额外安装。具体发布状态以 Releases 为准。
 
 ## 2. 配置第一个模型
 

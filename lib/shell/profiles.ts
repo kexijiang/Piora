@@ -21,6 +21,7 @@ export async function findExecutable(name: string): Promise<string | null> {
   return null;
 }
 export async function discoverShellProfiles(): Promise<ShellProfile[]> {
+  const bundled = await bundledPowerShellProfile();
   const candidates = process.platform === "win32"
     ? ["pwsh", "powershell", process.env.ComSpec || "cmd", "C:\\Program Files\\Git\\bin\\bash.exe"]
     : [process.env.SHELL || "/bin/bash", "/bin/bash", "/bin/zsh", "/bin/sh"];
@@ -34,14 +35,20 @@ export async function discoverShellProfiles(): Promise<ShellProfile[]> {
     }
   }
   const resolved = await Promise.all(candidates.map(findExecutable));
-  return [...new Set(resolved.filter((item): item is string => Boolean(item)))].map(profileFor);
+  return [...(bundled ? [bundled] : []), ...[...new Set(resolved.filter((item): item is string => Boolean(item)))].filter(executable => executable.toLowerCase() !== bundled?.executable.toLowerCase()).map(profileFor)];
+}
+export async function bundledPowerShellProfile(): Promise<ShellProfile | null> {
+  const executable = process.platform === "win32" ? process.env.PIORA_BUNDLED_PWSH : undefined;
+  if (!executable) return null;
+  await access(executable);
+  return { ...profileFor(executable), label: "PowerShell 7", bundled: true };
 }
 export async function resolveShellProfile(configured?: string | null): Promise<ShellProfile> {
   const chosen = configured || process.env.PI_TERMINAL_SHELL?.trim();
   if (chosen) {
     const executable = await findExecutable(chosen);
     if (!executable) throw new Error(`Shell executable not found: ${chosen}`);
-    return profileFor(executable);
+    return executable.toLowerCase() === process.env.PIORA_BUNDLED_PWSH?.toLowerCase() ? (await bundledPowerShellProfile())! : profileFor(executable);
   }
   const profiles = await discoverShellProfiles();
   if (!profiles.length) throw new Error("No shell executable is available");

@@ -26,6 +26,11 @@ export function useSmartShell(cwd: string) {
   const confirmed = useRef(new Set<string>());
   const subscribers = useRef(new Set<(event: ShellEvent) => void>());
   const inventoryRequest = useRef(0);
+  const operations = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController(); operations.current = controller;
+    return () => { controller.abort(); };
+  }, [cwd]);
   const subscribe = useCallback((listener: (event: ShellEvent) => void) => {
     subscribers.current.add(listener);
     const snapshot = current.current;
@@ -52,12 +57,13 @@ export function useSmartShell(cwd: string) {
     try { localStorage.setItem(`piora-shell-active:${cwd}`, id); } catch { /* Selection is also recoverable from the session list. */ }
   }, [cwd]);
   const create = useCallback(async () => {
+    const signal = operations.current?.signal;
     try {
-      const created = await shellRequest<ShellSnapshot>("sessions", { cwd }, { timeoutMs: 15_000 });
-      if (scope.current !== cwd) return;
+      const created = await shellRequest<ShellSnapshot>("sessions", { cwd }, { signal });
+      if (signal?.aborted || scope.current !== cwd) return;
       setInventory(previous => ({ cwd, sessions: [...(previous.cwd === cwd ? previous.sessions : []), created.session] }));
       select(created.session.id);
-    } catch (cause) { setError(String(cause)); }
+    } catch (cause) { if (!signal?.aborted) setError(String(cause)); }
   }, [cwd, select]);
   useEffect(() => {
     const controller = new AbortController();
@@ -182,11 +188,13 @@ export function useSmartShell(cwd: string) {
   }, [activeId, cwd, refreshSessions, retryKey]);
   const action = useCallback(async (body: object) => {
     if (!activeId) return;
-    try { setError(""); await shellRequest(`sessions/${activeId}/actions`, body); } catch (cause) { setError(String(cause)); throw cause; }
+    const signal = operations.current?.signal;
+    try { setError(""); await shellRequest(`sessions/${activeId}/actions`, body, { signal, timeoutMs: 60_000 }); } catch (cause) { if (!signal?.aborted) setError(String(cause)); throw cause; }
   }, [activeId]);
   const submit = useCallback((text: string, mode: ShellInputMode, references: ShellReference[], retry?: ShellSubmission): Promise<"accepted" | "ambiguous" | "failed"> => {
     if (!activeId || retry && retry.terminalId !== activeId) return Promise.resolve("failed");
     const inFlight = sending.current.get(activeId); if (inFlight) return inFlight;
+    const signal = operations.current?.signal;
     const operation = (async (): Promise<"accepted" | "ambiguous" | "failed"> => {
       try {
         const stored = await pendingShellSubmissions(activeId);
@@ -196,7 +204,7 @@ export function useSmartShell(cwd: string) {
         attempts.current.set(activeId, submission);
         await saveShellSubmission(submission);
         if (active.current === activeId) { setError(""); setPending([...stored.filter(item => item.clientRequestId !== submission.clientRequestId), submission]); }
-        const result = await shellRequest<{ accepted: boolean; durable?: boolean; intent?: string }>(`sessions/${submission.terminalId}/actions`, { action: "submit", ...submission });
+        const result = await shellRequest<{ accepted: boolean; durable?: boolean; intent?: string }>(`sessions/${submission.terminalId}/actions`, { action: "submit", ...submission }, { signal, timeoutMs: 60_000 });
         if (!result.durable && result.intent !== "ambiguous") throw new Error("Shell did not confirm a durable receipt");
         confirmed.current.add(submission.clientRequestId); attempts.current.delete(activeId);
         // A server receipt already proves acceptance. Local archive cleanup
@@ -211,8 +219,9 @@ export function useSmartShell(cwd: string) {
     sending.current.set(activeId, operation); return operation;
   }, [activeId]);
   const close = useCallback(async (id: string) => {
-    try { await shellRequest(`sessions/${id}`, undefined, { method: "DELETE" }); const list = await refreshSessions(); if (scope.current === cwd && active.current === id) setSelection({ cwd, id: list[0]?.id || null }); }
-    catch (cause) { setError(String(cause)); }
+    const signal = operations.current?.signal;
+    try { await shellRequest(`sessions/${id}`, undefined, { method: "DELETE", signal }); if (signal?.aborted) return; const list = await refreshSessions(); if (!signal?.aborted && scope.current === cwd && active.current === id) setSelection({ cwd, id: list[0]?.id || null }); }
+    catch (cause) { if (!signal?.aborted) setError(String(cause)); }
   }, [cwd, refreshSessions]);
   const loadArchive = useCallback(async (initial = false) => {
     if (!activeId) return;

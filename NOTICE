@@ -64,3 +64,8 @@ Piora is independently maintained and is not endorsed by or affiliated with
 agegr, earendil-works, or OpenAI. "Codex" and other third-party names are used
 only for descriptive comparison and remain the property of their respective
 owners.
+
+Windows distributions include Microsoft PowerShell 7 and its self-contained
+.NET runtime. See resources/powershell/LICENSE.txt, ThirdPartyNotices.txt and
+module-specific notices for upstream terms; the pinned source and checksum are
+documented in third_party/powershell/manifest.json and SOURCE.md.

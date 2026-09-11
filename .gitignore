@@ -29,6 +29,8 @@
 /desktop/build/whisper/
 /desktop/build/whisper-downloads/
 /desktop/build/release-notes.md
+/desktop/build/powershell/
+/desktop/build/.powershell-*/
 
 # electron download cache
 .electron-cache/

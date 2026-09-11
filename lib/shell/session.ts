@@ -4,7 +4,7 @@ import { loadTerminalPty } from "../terminal-pty";
 import { ShellStore, shellDataDirectory } from "./store";
 import { ShellError, shellId, shellText } from "./errors";
 import { ShellProtocolParser, type ShellIntegrationMessage } from "./protocol";
-import { encodeShellSubmission, prepareShellLaunch } from "./profiles";
+import { bundledPowerShellProfile, encodeShellSubmission, prepareShellLaunch } from "./profiles";
 import type { CommandBlock, HistoryRecord, ShellEvent, ShellRun, ShellSession, ShellSnapshot } from "./types";
 
 type EventBody = ShellEvent extends infer E ? E extends ShellEvent ? Omit<E, "terminalId" | "generation" | "sequence"> : never : never;
@@ -85,6 +85,12 @@ export class ManagedShellSession {
   }
   private async launch(): Promise<void> {
     this.assertStorage();
+    // A portable update can move the runtime. Never reuse its old absolute path.
+    if (this.state.profile.bundled) {
+      const profile = await bundledPowerShellProfile();
+      if (!profile) throw new ShellError("Bundled PowerShell is unavailable", 503);
+      this.state.profile = profile;
+    }
     const token = randomBytes(24).toString("hex");
     const launch = await prepareShellLaunch(this.state.profile, this.state.id, token, this.dataDirectory);
     this.state.generation += 1;

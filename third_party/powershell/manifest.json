@@ -1,0 +1,10 @@
+{
+  "version": "7.6.6",
+  "platform": "win32",
+  "arch": "x64",
+  "asset": "PowerShell-7.6.6-win-x64.zip",
+  "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/PowerShell-7.6.6-win-x64.zip",
+  "sha256": "02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c860",
+  "source": "https://github.com/PowerShell/PowerShell/releases/tag/v7.6.6",
+  "license": "MIT"
+}

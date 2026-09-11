@@ -12,7 +12,7 @@ export interface ShellSettings {
   importPiHistory: boolean;
   sources: HistorySource[];
 }
-export interface ShellProfile { executable: string; label: string; kind: ShellKind; integrated: boolean }
+export interface ShellProfile { executable: string; label: string; kind: ShellKind; integrated: boolean; bundled?: boolean }
 export interface ShellSession {
   id: string;
   title: string;

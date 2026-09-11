@@ -55,8 +55,9 @@ function RunCard({ run, action, onContinue, onToChat, onOpenFile }: { run: Shell
 }
 
 export function SmartShellPanel({ cwd, sessionId, onClose, onToChat, onOpenFile, onOpenUrl, onSettings }: SmartShellPanelProps) {
-  const { t } = useI18n(); const shell = useSmartShell(cwd); const main = useAgentTerminal(sessionId);
+  const { t } = useI18n(); const shell = useSmartShell(cwd);
   const [view, setView] = useState<"blocks" | "native" | "main" | "history">("blocks");
+  const main = useAgentTerminal(view === "main" ? sessionId : null);
   const composer = useRef<ShellComposerHandle>(null); const scroller = useRef<HTMLDivElement>(null);
   const state = shell.snapshot?.session;
   const duplicateTitles = useMemo(() => {

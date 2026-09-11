@@ -858,6 +858,12 @@ async function main() {
       dereference: true,
       force: true,
     });
+    if (process.platform === "win32") {
+      const { verifyStagedPowerShell } = await import("./stage-powershell.mjs");
+      const shellRoot = join(temporaryDirectory, "powershell");
+      await cp(join(dirname(packagedWebRoot), "powershell"), shellRoot, { recursive: true });
+      await verifyStagedPowerShell(shellRoot);
+    }
     const isolatedAgentDir = join(temporaryDirectory, "agent");
     const isolatedHomeDir = join(temporaryDirectory, "home");
     const isolatedProjectDir = join(temporaryDirectory, "project");
@@ -967,7 +973,7 @@ async function main() {
     await assertFile(extensionMarker);
     let smartShell;
     try {
-      smartShell = await verifyPackagedShell({ origin, cwd: isolatedProjectDir, token });
+      smartShell = await verifyPackagedShell({ origin, cwd: isolatedProjectDir, token, bundledPowerShell: process.platform === "win32" ? join(temporaryDirectory, "powershell", "pwsh.exe") : undefined });
     } catch (error) {
       throw new Error(
         `${error instanceof Error ? error.stack ?? error.message : String(error)}` +

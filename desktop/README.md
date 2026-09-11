@@ -141,3 +141,11 @@ The web shell owns a 40 px top drag strip. It should use `app-region: drag`
 `env(titlebar-area-height)`, and mark every interactive child as
 `app-region: no-drag`. These environment variables fall back normally in the
 browser build, so the same shell can serve both web and desktop.
+
+## Bundled PowerShell
+
+Windows 安装版和便携版内置完整 PowerShell 7，终端默认直接启动随包的
+`resources/powershell/pwsh.exe`，无需预装 PowerShell 或 .NET。开发/浏览器模式
+继续发现本机 Shell；用户明确配置的自定义 Shell 仍可使用。内置版本由
+`third_party/powershell/manifest.json` 锁定，GitHub Actions 打包时校验 SHA-256，
+保留全部上游许可文件，并在隔离目录验证内置终端。不要在本机构建发布包。

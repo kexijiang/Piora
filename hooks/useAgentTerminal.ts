@@ -10,11 +10,13 @@ export function useAgentTerminal(sessionId?: string | null) {
     let history: AgentTerminalCommand[] = [];
     let timer: ReturnType<typeof setTimeout>;
     const fetchJson = async (url: string) => {
-      const response = await fetch(url, { signal: controller.signal, cache: "no-store" });
+      const response = await fetch(url, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15_000)]), cache: "no-store" });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       return response.json();
     };
     const refresh = async () => {
+      if (controller.signal.aborted) return;
+      if (document.hidden) { timer = setTimeout(refresh, 1000); return; }
       try {
         const live = await fetchJson(`/api/agent/${encodeURIComponent(sessionId)}/commands`);
         if (controller.signal.aborted) return;
