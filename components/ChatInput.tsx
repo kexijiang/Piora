@@ -112,9 +112,9 @@ interface Props {
   replySource?: ReplySource | null;
   onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[], onDurable?: (clientPromptId?: string) => void, retryOfPromptIds?: string[]) => boolean | void | Promise<boolean | void>;
   onAbort: () => void;
-  onSteer?: (message: string, images?: AttachedImage[]) => void;
-  onFollowUp?: (message: string, images?: AttachedImage[]) => void;
-  onPromptWithStreamingBehavior?: (message: string, behavior: "steer" | "followUp", images?: AttachedImage[]) => void;
+  onSteer?: (message: string, images?: AttachedImage[]) => boolean | void | Promise<boolean | void>;
+  onFollowUp?: (message: string, images?: AttachedImage[]) => boolean | void | Promise<boolean | void>;
+  onPromptWithStreamingBehavior?: (message: string, behavior: "steer" | "followUp", images?: AttachedImage[]) => boolean | void | Promise<boolean | void>;
   isStreaming: boolean;
   model?: { provider: string; modelId: string } | null;
   isAutoModelSelection?: boolean;
@@ -1174,23 +1174,35 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     });
   }, [setValue]);
 
-  const sendQueued = useCallback((mode: "steer" | "followup") => {
+  const sendQueued = useCallback(async (mode: "steer" | "followup") => {
+    if (sendingRef.current) return;
     const msg = value.trim();
-    if (!msg && !attachedImages.length) return;
-    if (attachedImages.length) return;
+    if (!msg || attachedImages.length || attachedFiles.length) return;
     const streamingBehavior = mode === "steer" ? "steer" : "followUp";
-    if (msg.startsWith("/") && onPromptWithStreamingBehavior) {
-      onPromptWithStreamingBehavior(msg, streamingBehavior, attachedImages.length ? attachedImages : undefined);
-      clearInput();
-      return;
+    const sentDraftKey = draftKeyRef.current;
+    sendingRef.current = true;
+    try {
+      let accepted: boolean | void;
+      if (msg.startsWith("/") && onPromptWithStreamingBehavior) {
+        accepted = await onPromptWithStreamingBehavior(msg, streamingBehavior);
+      } else if (mode === "steer" && onSteer) {
+        accepted = await onSteer(msg);
+      } else if (mode === "followup" && onFollowUp) {
+        accepted = await onFollowUp(msg);
+      } else return;
+      if (accepted === false) return;
+      // A late queue receipt must not erase later typing or another task's draft.
+      if (draftKeyRef.current === sentDraftKey && valueRef.current === value
+        && attachedImagesRef.current === attachedImages && attachedFilesRef.current === attachedFiles) {
+        clearInput();
+        valueRef.current = "";
+      }
+    } catch (error) {
+      if (draftKeyRef.current === sentDraftKey) setAttachmentError(error instanceof Error ? error.message : String(error));
+    } finally {
+      sendingRef.current = false;
     }
-    if (mode === "steer" && onSteer) {
-      onSteer(msg, attachedImages.length ? attachedImages : undefined);
-    } else if (mode === "followup" && onFollowUp) {
-      onFollowUp(msg, attachedImages.length ? attachedImages : undefined);
-    }
-    clearInput();
-  }, [value, attachedImages, onPromptWithStreamingBehavior, onSteer, onFollowUp, clearInput]);
+  }, [value, attachedImages, attachedFiles, onPromptWithStreamingBehavior, onSteer, onFollowUp, clearInput]);
 
   const submitStreamingMessage = useCallback(() => {
     if (!canQueueStreamingMessage) return;

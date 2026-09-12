@@ -6,6 +6,12 @@ on:
       - "v*"
 
 jobs:
+  tests:
+    if: ${{ !contains(github.ref_name, '-') }}
+    uses: ./.github/workflows/test-suite.yml
+    permissions:
+      contents: read
+
   source-gate:
     name: Source gate (Ubuntu)
     if: ${{ !contains(github.ref_name, '-') }}
@@ -59,9 +65,6 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm test
-
       - name: Verify bundled backgrounds
         run: npm run verify:backgrounds
 
@@ -94,32 +97,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Verify release-tree hygiene
-        run: npm run verify:hygiene
-
-      - name: Verify license inventory freshness
-        run: npm run licenses:check
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      - name: Unit tests
-        run: npm test
-        env:
-          PIORA_SKIP_RESOURCE_TESTS: "1"
-          PSModulePath: ""
-
-      - name: Resource-intensive Shell tests
-        run: npm run test:shell-resource
-        env:
-          PSModulePath: ""
-
-      - name: Verify bundled backgrounds
-        run: npm run verify:backgrounds
 
       - name: Build Windows desktop applications
         run: npm run dist:win
@@ -292,7 +269,7 @@ jobs:
 
   publish-release:
     name: Publish stable release
-    needs: [windows-build, linux-build]
+    needs: [tests, windows-build, linux-build]
     runs-on: windows-latest
     timeout-minutes: 10
     permissions:

@@ -181,6 +181,7 @@ export class AgentSessionWrapper {
   // set before the async SDK call so two callers cannot both observe idle.
   private promptAdmissionBusy = false;
   private stopping = false;
+  private abortedQueuedMessages: { steering: string[]; followUp: string[] } | undefined;
   private abortCleanupTask: Promise<void> = Promise.resolve();
   private shutdownTask: Promise<void> = Promise.resolve();
   private abortGeneration = 0;
@@ -650,7 +651,9 @@ export class AgentSessionWrapper {
         this.runtimeToolCalls.clear();
         invalidateSessionListCache();
       }
-      this.emit(event);
+      // Cancelled transport events may arrive while the next prompt is already
+      // waiting in the router inbox. They must not paint as that new prompt.
+      if (!this.stopping) this.emit(event);
       // Lifecycle state is immediate; high-frequency text/tool activity is
       // coalesced so a token stream cannot rebuild every live-session snapshot.
       if (isImmediateRunningSnapshotEvent(event)) notifyRunningChange();
@@ -880,6 +883,7 @@ export class AgentSessionWrapper {
         if (!streamingBehavior) {
           this.assertSessionIdle("send a prompt");
           if (this.promptAdmissionBusy) throw new Error("Cannot send a prompt while the session is starting another prompt");
+          this.abortedQueuedMessages = undefined;
         }
         const teamExecution = command.teamExecution as TeamExecutionContext | undefined;
         if (teamExecution && streamingBehavior) throw new Error("Team execution context cannot be attached to a follow-up prompt.");
@@ -981,7 +985,7 @@ export class AgentSessionWrapper {
           }
           if (!streamingBehavior) {
             this.promptAdmissionBusy = false;
-            this.emit({ type: "prompt_done", sessionId: this.sessionId, commandId, runId: promptRun.runId, timestamp: Date.now() });
+            this.emit({ type: "prompt_done", sessionId: this.sessionId, commandId, runId: promptRun.runId, timestamp: Date.now(), aborted: abortGeneration !== this.abortGeneration });
           }
           this.flushPendingProjectCapabilitySettings();
           notifyRunningChange();
@@ -1005,7 +1009,7 @@ export class AgentSessionWrapper {
             timestamp: Date.now(),
             errorMessage: error instanceof Error ? error.message : String(error),
           });
-          if (!streamingBehavior) this.emit({ type: "prompt_done", sessionId: this.sessionId, commandId, runId: promptRun.runId, timestamp: Date.now() });
+          if (!streamingBehavior) this.emit({ type: "prompt_done", sessionId: this.sessionId, commandId, runId: promptRun.runId, timestamp: Date.now(), aborted: cancelled });
           this.flushPendingProjectCapabilitySettings();
           notifyRunningChange();
         }).finally(() => {
@@ -1017,7 +1021,13 @@ export class AgentSessionWrapper {
       }
 
       case "abort": {
-        if (this.stopping) return { accepted: true };
+        const receipt = () => ({
+          accepted: true,
+          ...(this.abortedQueuedMessages ? { queuedMessages: this.abortedQueuedMessages } : {}),
+        });
+        // Keep the handoff available when the client retries a lost stop reply.
+        // A new prompt clears it, so a later stop cannot replay the previous queue.
+        if (this.stopping || (!this.isRunning() && this.abortedQueuedMessages)) return receipt();
         const promptRun = this.activePromptRun;
         this.abortGeneration += 1;
         this.stopping = true;
@@ -1036,7 +1046,8 @@ export class AgentSessionWrapper {
         const compactionTask = signal(() => this.inner.abortCompaction());
         const bashTask = signal(() => this.inner.abortBash());
         const queueTask = signal(() => {
-          this.inner.clearQueue();
+          const queued = this.inner.clearQueue();
+          this.abortedQueuedMessages = queued.steering.length || queued.followUp.length ? queued : undefined;
           this.emit({ type: "queue_update", steering: [], followUp: [] });
         });
         const uiTasks = [
@@ -1059,7 +1070,7 @@ export class AgentSessionWrapper {
           this.emit({ type: "session_idle", sessionId: this.sessionId });
           notifyRunningChange();
         });
-        return { accepted: true };
+        return receipt();
       }
 
       case "get_state": {

@@ -20,7 +20,7 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 
 项目由 [pi-web](https://github.com/agegr/pi-web) 演进而来，沿用 Pi 的 AgentSession、JSONL 会话、模型接入和扩展机制，由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-本文对应源码版本 `0.4.41-beta.36`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
+本文对应源码版本 `0.4.41-beta.37`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
 ## 能做什么
 
@@ -184,6 +184,8 @@ npm run verify:backgrounds
 ```
 
 只修改小范围代码时可以先运行相关测试；准备合并或发布时应执行完整检查。CI 在 Windows 和 Linux 上运行源码检查，并在 Windows 上生成和验证解包应用。
+
+CI 与发布流程通过同一份测试工作流，将完整测试按文件分成 3 组，在独立 runner 上并行执行；每组内部仍串行运行，Windows 的高资源 Shell 测试单独执行一次。`npm test` 在本地仍运行全量测试，也可以用 `npm test -- --test-shard=1/3` 定位某一组（完整验证须跑完 1/3、2/3、3/3）。Beta 和稳定版的测试可与打包并行，发布步骤必须等待所有测试和产物验证通过；稳定版的通用源码检查集中执行一次。
 
 ## 数据与运行边界
 

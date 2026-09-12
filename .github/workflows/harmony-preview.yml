@@ -6,15 +6,20 @@ on:
       - "v*-beta.*"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: preview-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
+  tests:
+    uses: ./.github/workflows/test-suite.yml
+    with:
+      platforms: '["windows-latest"]'
+
   windows-preview:
-    name: Build, verify, and publish preview
+    name: Build and verify preview
     runs-on: windows-latest
     timeout-minutes: 90
 
@@ -54,17 +59,6 @@ jobs:
 
       - name: Typecheck
         run: npm run typecheck
-
-      - name: Unit tests
-        run: npm test
-        env:
-          PIORA_SKIP_RESOURCE_TESTS: "1"
-          PSModulePath: ""
-
-      - name: Resource-intensive Shell tests
-        run: npm run test:shell-resource
-        env:
-          PSModulePath: ""
 
       - name: Verify bundled backgrounds
         run: npm run verify:backgrounds
@@ -154,6 +148,21 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+
+  publish-preview:
+    name: Publish verified preview
+    needs: [tests, windows-preview]
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download verified preview payload
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: piora-windows-${{ github.ref_name }}
+          path: desktop/release
 
       - name: Create GitHub prerelease
         shell: pwsh

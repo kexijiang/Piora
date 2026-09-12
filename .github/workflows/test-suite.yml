@@ -1,0 +1,58 @@
+name: Complete test suite
+
+on:
+  workflow_call:
+    inputs:
+      platforms:
+        description: JSON array of runner labels
+        type: string
+        default: '["ubuntu-latest", "windows-latest"]'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.os }}, shard ${{ matrix.shard }}/3)
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.platforms) }}
+        shard: [1, 2, 3]
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.19.0
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        if: runner.os == 'Linux'
+        run: npx --no-install playwright-core install --with-deps chromium
+
+      # Node partitions the same complete file list across independent runners.
+      # Each shard remains serial so native/browser fixtures do not compete.
+      - name: Run test shard
+        run: npm test -- --test-shard=${{ matrix.shard }}/3
+        env:
+          PIORA_SKIP_RESOURCE_TESTS: ${{ runner.os == 'Windows' && '1' || '0' }}
+          PSModulePath: ""
+
+      # These cases are skipped in the Windows shards and run exactly once here.
+      - name: Resource-intensive Shell tests
+        if: runner.os == 'Windows' && matrix.shard == 1
+        run: npm run test:shell-resource
+        env:
+          PSModulePath: ""

@@ -209,7 +209,7 @@ test("settles the local stream as soon as the server accepts an abort", () => {
 
   assert.match(abortSource, /const runId = promptRunIdRef\.current/);
   assert.match(abortSource, /setAgentPhase\(\{ kind: "stopping" \}\)/);
-  assert.match(abortSource, /await sendAgentCommand\(sid, \{ type: "abort" \}, \{ timeoutMs: 10_000 \}\);[\s\S]*?void finishPromptWithoutStream\(sid, runId\)/);
+  assert.match(abortSource, /await sendAgentCommand(?:<[^>]+>)?\(sid, \{ type: "abort" \}, \{ timeoutMs: 10_000 \}\);[\s\S]*?void finishPromptWithoutStream\(sid, runId\)/);
   assert.match(abortSource, /addNotice\(\{ type: "error", message: t\("chat.stopFailed"/);
 });
 

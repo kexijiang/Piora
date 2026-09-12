@@ -15,7 +15,7 @@ import type {
 } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { AgentCommandError, createAgentSessionRequest, sendAgentCommand } from "@/lib/agent-client";
-import { setDraft, type ChatDraft } from "@/lib/draft-store";
+import { getDraft, setDraft, type ChatDraft } from "@/lib/draft-store";
 import { reduceAgentPhase, type AgentPhase } from "@/lib/agent-phase";
 import { useI18n } from "@/hooks/useI18n";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
@@ -1258,6 +1258,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         dispatch({ type: "end" });
         break;
       case "prompt_done":
+        if (event.aborted) break;
         if (!agentRunningRef.current && !bashRunningRef.current) break;
         // Extension commands can call pi.sendUserMessage(), which starts its
         // agent run asynchronously. In that case prompt_done for the command
@@ -1442,13 +1443,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     files?: AttachedFile[],
     onDurable?: (clientPromptId?: string) => void,
     retryOfPromptIds?: string[],
+    resumeQueuedPrompt = false,
   ) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage && !images?.length && !files?.length) return false;
     if (agentRunningRef.current || bashRunningRef.current || messageMutationRef.current) return false;
     const isSlashCommandPrompt = !images?.length && !files?.length && trimmedMessage.startsWith("/");
 
-    const isBashCommand = !images?.length && !files?.length && trimmedMessage.startsWith("!");
+    const isBashCommand = !resumeQueuedPrompt && !images?.length && !files?.length && trimmedMessage.startsWith("!");
     if (isBashCommand) {
       const isExcluded = trimmedMessage.startsWith("!!");
       const bashCmd = (isExcluded ? trimmedMessage.slice(2) : trimmedMessage.slice(1)).trim();
@@ -1670,20 +1672,40 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!sid) return;
     abortRequestRunIdRef.current = runId;
     try {
-      await sendAgentCommand(sid, { type: "abort" }, { timeoutMs: 10_000 });
+      const result = await sendAgentCommand<{ queuedMessages?: QueuedMessages }>(sid, { type: "abort" }, { timeoutMs: 10_000 });
+      // Only the SDK's cleared queue identifies messages it has not consumed.
+      // The optimistic tray may still contain an already-delivered message.
+      const queued = normalizeQueuedMessages(result?.queuedMessages);
+      const resumeText = [...queued.steering, ...queued.followUp].join("\n\n");
+      const restoreQueuedDraft = () => {
+        if (!resumeText) return;
+        if (sessionIdRef.current === sid) {
+          opts.chatInputRef?.current?.prependText(resumeText);
+        } else {
+          const draft = getDraft(sid) ?? { value: "", images: [], files: [] };
+          setDraft(sid, { ...draft, value: [resumeText, draft.value].filter(Boolean).join("\n\n") });
+        }
+      };
       // The server acknowledges as soon as the SDK cancellation signal has
       // been delivered. End the local stream now instead of waiting for slow
       // model-transport or extension cleanup to emit prompt_done.
-      if (promptRunIdRef.current !== runId) return;
+      if (promptRunIdRef.current !== runId || sessionIdRef.current !== sid) {
+        restoreQueuedDraft();
+        return;
+      }
       setQueuedMessages({ steering: [], followUp: [] });
       void finishPromptWithoutStream(sid, runId);
+      // Normal submission commits the recovered text to IndexedDB and the
+      // server inbox waits for stop cleanup before starting the next prompt.
+      // It never clears a newer composer draft and opens a fresh SSE generation.
+      if (resumeText && !await handleSend(resumeText, undefined, undefined, undefined, undefined, true)) restoreQueuedDraft();
     } catch (e) {
       if (promptRunIdRef.current !== runId) return;
       addNotice({ type: "error", message: t("chat.stopFailed", { reason: e instanceof Error ? e.message : String(e) }) });
     } finally {
       if (abortRequestRunIdRef.current === runId) abortRequestRunIdRef.current = null;
     }
-  }, [addNotice, finishPromptWithoutStream, t]);
+  }, [addNotice, finishPromptWithoutStream, handleSend, opts.chatInputRef, t]);
 
   const handleDeleteMessage = useCallback(async (message: AgentMessage, entryId?: string) => {
     if (messageMutationRef.current || agentRunningRef.current || bashRunningRef.current || isCompacting) throw new Error(t("chat.deleteMessageBusy"));
@@ -1958,7 +1980,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // a ghost message if the queue is recalled.
   const handleSteer = useCallback(async (message: string, images?: AttachedImage[]) => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
+    if (!sid) return false;
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     setQueuedMessages((current) => appendQueuedMessage(current, "steering", message));
     try {
@@ -1967,9 +1989,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         message,
         ...(piImages?.length ? { images: piImages } : {}),
       });
+      return true;
     } catch (e) {
-      setQueuedMessages((current) => removeLastQueuedMessage(current, "steering", message));
+      if (sessionIdRef.current === sid) setQueuedMessages((current) => removeLastQueuedMessage(current, "steering", message));
       console.error("Failed to steer:", e);
+      return false;
     }
   }, []);
 
@@ -1979,7 +2003,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     images?: AttachedImage[],
   ) => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
+    if (!sid) return false;
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     const queueKind = behavior === "steer" ? "steering" : "followUp";
     setQueuedMessages((current) => appendQueuedMessage(current, queueKind, message));
@@ -1990,15 +2014,17 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         streamingBehavior: behavior,
         ...(piImages?.length ? { images: piImages } : {}),
       });
+      return true;
     } catch (e) {
-      setQueuedMessages((current) => removeLastQueuedMessage(current, queueKind, message));
+      if (sessionIdRef.current === sid) setQueuedMessages((current) => removeLastQueuedMessage(current, queueKind, message));
       console.error("Failed to queue prompt:", e);
+      return false;
     }
   }, []);
 
   const handleFollowUp = useCallback(async (message: string, images?: AttachedImage[]) => {
     const sid = sessionIdRef.current;
-    if (!sid) return;
+    if (!sid) return false;
     const piImages = images?.map((img) => ({ type: "image" as const, data: img.data, mimeType: img.mimeType }));
     setQueuedMessages((current) => appendQueuedMessage(current, "followUp", message));
     try {
@@ -2007,9 +2033,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         message,
         ...(piImages?.length ? { images: piImages } : {}),
       });
+      return true;
     } catch (e) {
-      setQueuedMessages((current) => removeLastQueuedMessage(current, "followUp", message));
+      if (sessionIdRef.current === sid) setQueuedMessages((current) => removeLastQueuedMessage(current, "followUp", message));
       console.error("Failed to follow up:", e);
+      return false;
     }
   }, []);
 
