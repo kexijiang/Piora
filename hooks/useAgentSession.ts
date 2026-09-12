@@ -348,7 +348,7 @@ function readCompactResult(result: unknown, reason: string): CompactResultInfo |
 export interface ChatInputHandle {
   insertText: (text: string) => void;
   insertIfEmpty: (content: string) => void;
-  prependText: (text: string) => void;
+  prependText: (text: string, retryOfPromptIds?: string[]) => void;
   addImages: (files: File[]) => void;
   restoreFailedPrompt: (text: string, files?: AttachedFile[], images?: AttachedImage[]) => void;
 }
@@ -520,6 +520,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const preparingPromptRunIdRef = useRef<number | null>(null);
   const cancelPreparedPromptRef = useRef<(() => void) | null>(null);
   const abortRequestRunIdRef = useRef<number | null>(null);
+  const resumedAbortQueueIdRef = useRef<string | null>(null);
   const phaseEventRevisionRef = useRef(0);
   const promptSettlementByRunRef = useRef(new Map<number, Promise<void>>());
   const promptSettlementPollByRunRef = useRef(new Map<number, Promise<void>>());
@@ -1443,14 +1444,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     files?: AttachedFile[],
     onDurable?: (clientPromptId?: string) => void,
     retryOfPromptIds?: string[],
-    resumeQueuedPrompt = false,
+    resumedQueuePromptId?: string,
   ) => {
     const trimmedMessage = message.trim();
     if (!trimmedMessage && !images?.length && !files?.length) return false;
     if (agentRunningRef.current || bashRunningRef.current || messageMutationRef.current) return false;
     const isSlashCommandPrompt = !images?.length && !files?.length && trimmedMessage.startsWith("/");
 
-    const isBashCommand = !resumeQueuedPrompt && !images?.length && !files?.length && trimmedMessage.startsWith("!");
+    const isBashCommand = !resumedQueuePromptId && !images?.length && !files?.length && trimmedMessage.startsWith("!");
     if (isBashCommand) {
       const isExcluded = trimmedMessage.startsWith("!!");
       const bashCmd = (isExcluded ? trimmedMessage.slice(2) : trimmedMessage.slice(1)).trim();
@@ -1483,7 +1484,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       .join("\n\n");
 
     const imageBlocks = images?.map((img) => ({ type: "image" as const, source: { type: "base64" as const, media_type: img.mimeType, data: img.data } }));
-    const clientPromptId = crypto.randomUUID();
+    const clientPromptId = resumedQueuePromptId ?? crypto.randomUUID();
     const recoveryDraft = { value: message, files: (files ?? []).map((file) => ({ ...file })), images: (images ?? []).map(({ data, mimeType }) => ({ data, mimeType })),
       ...(retryOfPromptIds?.length ? { retryOfPromptIds: [...new Set(retryOfPromptIds)] } : {}),
     };
@@ -1672,18 +1673,25 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!sid) return;
     abortRequestRunIdRef.current = runId;
     try {
-      const result = await sendAgentCommand<{ queuedMessages?: QueuedMessages }>(sid, { type: "abort" }, { timeoutMs: 10_000 });
+      const result = await sendAgentCommand<{ queuedMessages?: QueuedMessages & { id: string } }>(sid, { type: "abort" }, { timeoutMs: 10_000 });
       // Only the SDK's cleared queue identifies messages it has not consumed.
       // The optimistic tray may still contain an already-delivered message.
       const queued = normalizeQueuedMessages(result?.queuedMessages);
-      const resumeText = [...queued.steering, ...queued.followUp].join("\n\n");
+      const queuedPromptId = result?.queuedMessages?.id;
+      const resumeText = queuedPromptId && resumedAbortQueueIdRef.current === queuedPromptId
+        ? "" : [...queued.steering, ...queued.followUp].join("\n\n");
+      if (resumeText && queuedPromptId) resumedAbortQueueIdRef.current = queuedPromptId;
       const restoreQueuedDraft = () => {
         if (!resumeText) return;
         if (sessionIdRef.current === sid) {
-          opts.chatInputRef?.current?.prependText(resumeText);
+          opts.chatInputRef?.current?.prependText(resumeText, queuedPromptId ? [queuedPromptId] : undefined);
         } else {
           const draft = getDraft(sid) ?? { value: "", images: [], files: [] };
-          setDraft(sid, { ...draft, value: [resumeText, draft.value].filter(Boolean).join("\n\n") });
+          setDraft(sid, {
+            ...draft,
+            value: [resumeText, draft.value].filter(Boolean).join("\n\n"),
+            ...(queuedPromptId ? { retryOfPromptIds: [...new Set([...(draft.retryOfPromptIds ?? []), queuedPromptId])] } : {}),
+          });
         }
       };
       // The server acknowledges as soon as the SDK cancellation signal has
@@ -1698,7 +1706,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // Normal submission commits the recovered text to IndexedDB and the
       // server inbox waits for stop cleanup before starting the next prompt.
       // It never clears a newer composer draft and opens a fresh SSE generation.
-      if (resumeText && !await handleSend(resumeText, undefined, undefined, undefined, undefined, true)) restoreQueuedDraft();
+      if (resumeText && !await handleSend(resumeText, undefined, undefined, undefined, undefined, queuedPromptId ?? crypto.randomUUID())) restoreQueuedDraft();
     } catch (e) {
       if (promptRunIdRef.current !== runId) return;
       addNotice({ type: "error", message: t("chat.stopFailed", { reason: e instanceof Error ? e.message : String(e) }) });

@@ -157,7 +157,7 @@ export interface ChatInputHandle {
   submit: () => void;
   insertText: (text: string) => void;
   insertIfEmpty: (text: string) => void;
-  prependText: (text: string) => void;
+  prependText: (text: string, retryOfPromptIds?: string[]) => void;
   addImages: (files: File[]) => void;
   addFiles: (files: File[]) => void;
   restoreFailedPrompt: (text: string, files?: AttachedFile[], images?: AttachedImage[]) => void;
@@ -570,8 +570,9 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         resizeComposerTextarea(ta);
       });
     },
-    prependText(text: string) {
+    prependText(text: string, retryOfPromptIds?: string[]) {
       if (!text.trim()) return;
+      if (retryOfPromptIds?.length) retryOfPromptIdsRef.current = [...new Set([...retryOfPromptIdsRef.current, ...retryOfPromptIds])];
       const ta = textareaRef.current;
       const current = ta ? ta.value : value;
       // Mirrors the TUI's queue restore: queued text first, then whatever

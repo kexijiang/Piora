@@ -181,7 +181,7 @@ export class AgentSessionWrapper {
   // set before the async SDK call so two callers cannot both observe idle.
   private promptAdmissionBusy = false;
   private stopping = false;
-  private abortedQueuedMessages: { steering: string[]; followUp: string[] } | undefined;
+  private abortedQueuedMessages: { id: string; steering: string[]; followUp: string[] } | undefined;
   private abortCleanupTask: Promise<void> = Promise.resolve();
   private shutdownTask: Promise<void> = Promise.resolve();
   private abortGeneration = 0;
@@ -1047,7 +1047,7 @@ export class AgentSessionWrapper {
         const bashTask = signal(() => this.inner.abortBash());
         const queueTask = signal(() => {
           const queued = this.inner.clearQueue();
-          this.abortedQueuedMessages = queued.steering.length || queued.followUp.length ? queued : undefined;
+          this.abortedQueuedMessages = queued.steering.length || queued.followUp.length ? { id: randomUUID(), ...queued } : undefined;
           this.emit({ type: "queue_update", steering: [], followUp: [] });
         });
         const uiTasks = [

@@ -90,6 +90,82 @@ test("actual send callback never starts the network when its durable recovery co
   assert.equal(env.messages[0].sendError, "quota exceeded");
 });
 
+test("resumed queue text uses durable prompt submission without reinterpreting a leading bang as a shell command", async () => {
+  const commands = [];
+  const { env, run } = sendHarness({ sendAgentCommand: async (_sid, command) => { commands.push(command); } });
+  assert.equal(await run("!This is guidance, not a shell command", undefined, undefined, undefined, undefined, "queue-handoff"), true);
+  assert.equal(commands.length, 1);
+  assert.equal(commands[0].type, "prompt");
+  assert.equal(commands[0].idempotencyKey, env.saved.id);
+  assert.equal(env.saved.id, "queue-handoff", "a retried handoff uses the same durable submission identity");
+  assert.equal(env.saved.draft.value, commands[0].message);
+});
+
+function abortHarness(overrides = {}) {
+  const handler = source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
+  const calls = [];
+  const env = {
+    useCallback: callback => callback, t: key => key, addNotice: notice => calls.push(notice), crypto: { randomUUID },
+    normalizeQueuedMessages: queue => ({ steering: queue?.steering ?? [], followUp: queue?.followUp ?? [] }),
+    sendAgentCommand: async () => ({ queuedMessages: { id: "queue-handoff", steering: ["correct this", "correct this"], followUp: ["then verify"] } }),
+    opts: { chatInputRef: { current: { prependText: (text, ids) => calls.push(["restore", text, ids]) } } },
+    getDraft: () => ({ value: "new draft", images: [], files: [{ name: "keep.txt", text: "attachment", size: 10 }] }),
+    setDraft: (sid, draft) => calls.push(["draft", sid, draft]),
+    finishPromptWithoutStream: () => { calls.push("finish"); env.agentRunningRef.current = false; return new Promise(() => {}); },
+    handleSend: async (text, ...args) => { assert.equal(env.agentRunningRef.current, false); calls.push(["send", text, args.at(-1)]); env.promptRunIdRef.current += 1; return true; },
+  };
+  for (const name of new Set(handler.match(/\b\w+Ref\b/g))) {
+    if (name !== "chatInputRef") env[name] = { current: null };
+  }
+  for (const name of new Set(handler.match(/\bset[A-Z]\w+(?=\()/g))) {
+    if (!(name in env)) env[name] = () => {};
+  }
+  env.sessionIdRef.current = "session";
+  env.promptRunIdRef.current = 1;
+  env.agentRunningRef.current = true;
+  Object.assign(env, overrides);
+  const js = ts.transpileModule(handler, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  return { env, calls, run: new Function("env", `with(env){${js};return handleAbort;}`)(env) };
+}
+
+test("stop resumes only the server's unconsumed queue once without waiting for history or touching the composer", async () => {
+  const resumed = abortHarness();
+  await resumed.run();
+  assert.deepEqual(resumed.calls, ["finish", ["send", "correct this\n\ncorrect this\n\nthen verify", "queue-handoff"]]);
+  resumed.env.agentRunningRef.current = true;
+  await resumed.run();
+  assert.equal(resumed.calls.filter(call => Array.isArray(call) && call[0] === "send").length, 1, "stopping again during cleanup cannot resume the same handoff twice");
+  const delivered = abortHarness({ sendAgentCommand: async () => ({ accepted: true }) });
+  await delivered.run();
+  assert.deepEqual(delivered.calls, ["finish"], "an already-consumed queue must not be reconstructed from stale UI text");
+  let reply;
+  let stops = 0;
+  const pending = abortHarness({ sendAgentCommand: async () => { stops += 1; return await new Promise(resolve => { reply = resolve; }); } });
+  const stopping = pending.run();
+  await pending.run();
+  assert.equal(stops, 1);
+  reply({ queuedMessages: { id: "queue-once", steering: ["once"] } });
+  await stopping;
+  assert.equal(pending.calls.filter(call => Array.isArray(call) && call[0] === "send").length, 1);
+});
+
+test("failed resume and a session switch preserve queued guidance alongside the originating draft", async () => {
+  const failed = abortHarness({ handleSend: async () => false });
+  await failed.run();
+  assert.deepEqual(failed.calls, ["finish", ["restore", "correct this\n\ncorrect this\n\nthen verify", ["queue-handoff"]]]);
+  let reply;
+  const switched = abortHarness({ sendAgentCommand: async () => await new Promise(resolve => { reply = resolve; }) });
+  const stopping = switched.run();
+  switched.env.sessionIdRef.current = "other-session";
+  switched.env.promptRunIdRef.current += 1;
+  reply({ queuedMessages: { id: "queue-switched", steering: ["original guidance"] } });
+  await stopping;
+  assert.deepEqual(switched.calls, [["draft", "session", {
+    value: "original guidance\n\nnew draft", images: [], files: [{ name: "keep.txt", text: "attachment", size: 10 }],
+    retryOfPromptIds: ["queue-switched"],
+  }]]);
+});
+
 test("retry lineage is durable before the replacement prompt is admitted", async () => {
   let acknowledged;
   const { env, run } = sendHarness();

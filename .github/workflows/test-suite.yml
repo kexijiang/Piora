@@ -42,10 +42,13 @@ jobs:
         if: runner.os == 'Linux'
         run: npx --no-install playwright-core install --with-deps chromium
 
-      # Node partitions the same complete file list across independent runners.
+      - name: Build desktop test fixtures
+        run: npm run build:desktop
+
+      # Call the launcher directly so npm cannot consume the Node test flags.
       # Each shard remains serial so native/browser fixtures do not compete.
       - name: Run test shard
-        run: npm test -- --test-shard=${{ matrix.shard }}/3
+        run: node scripts/run-tests.mjs --test-shard=${{ matrix.shard }}/3
         env:
           PIORA_SKIP_RESOURCE_TESTS: ${{ runner.os == 'Windows' && '1' || '0' }}
           PSModulePath: ""
