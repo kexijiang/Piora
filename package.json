@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.4.41-beta.35",
+  "version": "0.4.41-beta.36",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -62,11 +62,11 @@
   "scripts": {
     "brand:icons": "node scripts/build-brand-icon.mjs",
     "predev": "node scripts/stage-editor-assets.mjs",
-    "dev": "next dev -H 127.0.0.1 -p 30141",
+    "dev": "next dev -H 127.0.0.1 -p 30141 --webpack",
     "predev:desktop": "node scripts/stage-editor-assets.mjs",
     "dev:desktop": "node scripts/dev-desktop.mjs",
     "predev:lan": "node scripts/stage-editor-assets.mjs",
-    "dev:lan": "next dev -H 0.0.0.0 -p 30141",
+    "dev:lan": "next dev -H 0.0.0.0 -p 30141 --webpack",
     "prebuild": "node scripts/stage-editor-assets.mjs",
     "prebuild:web": "node scripts/stage-editor-assets.mjs",
     "build": "next build --webpack",

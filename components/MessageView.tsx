@@ -1,14 +1,14 @@
 "use client";
 import { messageImageUrl } from "@/lib/message-images";
 
-import { memo, useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
+import { createContext, useContext, memo, useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { useVirtualRowToggle } from "./VirtualRowState";
 import dynamic from "next/dynamic";
 import { LazyMarkdownBody as MarkdownBody } from "./LazyMarkdownBody";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/hooks/useI18n";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
-import { summarizeToolCall } from "@/lib/tool-summary";
+import { summarizeToolDisclosure } from "@/lib/tool-summary";
 import { commandExitCode, commandResultMetadata, commandStatus, isCommandToolName, toolResultText, type CommandExecutionData } from "@/lib/command-execution";
 import { getFileChangeInfo, type FileChangeInfo } from "@/lib/file-change";
 import {
@@ -35,6 +35,7 @@ import type {
 import { AliIcon, type AliIconName } from "./AliIcon";
 import { MessageImage, MessageImageViewer } from "./MessageImage";
 import { CommandExecutionCard } from "./CommandExecutionView";
+import { ChatDisclosure, DisclosureChevron, DisclosurePath } from "./ChatDisclosure";
 
 const DiffView = dynamic(
   () => import("./DiffView").then((module) => module.DiffView),
@@ -67,8 +68,8 @@ export function getUserMessagePreview(content: string): { collapsible: boolean; 
   return { collapsible: true, preview, lineCount: lines.length };
 }
 
-function loadThinkingContent(sessionId: string, entryId: string, blockIndex: number): Promise<string> {
-  const key = `${sessionId}:${entryId}:${blockIndex}`;
+function loadThinkingContent(sessionId: string, entryId: string, blockIndex: number, historyVersion?: string): Promise<string> {
+  const key = `${sessionId}:${entryId}:${blockIndex}:${historyVersion ?? "chat"}`;
   const cached = thinkingContentCache.get(key);
   if (cached) {
     thinkingContentCache.delete(key);
@@ -86,10 +87,15 @@ function loadThinkingContent(sessionId: string, entryId: string, blockIndex: num
     }, THINKING_LOAD_TIMEOUT_MS);
     try {
       const response = await fetch(
-        `/api/sessions/${encodeURIComponent(sessionId)}/entries/${encodeURIComponent(entryId)}/thinking?blockIndex=${blockIndex}`,
+        historyVersion
+          ? `/api/sessions/${encodeURIComponent(sessionId)}/history/content?${new URLSearchParams({ entryId, blockIndex: String(blockIndex), kind: "thinking", version: historyVersion })}`
+          : `/api/sessions/${encodeURIComponent(sessionId)}/entries/${encodeURIComponent(entryId)}/thinking?blockIndex=${blockIndex}`,
         { signal: controller.signal },
       );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `HTTP ${response.status}`);
+      }
       const data = await response.json() as { thinking?: unknown };
       if (typeof data.thinking !== "string") throw new Error("Invalid thinking response");
       return data.thinking;
@@ -116,6 +122,8 @@ function loadThinkingContent(sessionId: string, entryId: string, blockIndex: num
 }
 
 interface Props {
+  mode?: "chat" | "history";
+  historyVersion?: string;
   messageActions?: ReactNode;
   message: AgentMessage;
   isStreaming?: boolean;
@@ -191,7 +199,17 @@ export function getAutomationToolCardDetails(
   };
 }
 
-export const MessageView = memo(function MessageView({ messageActions, message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
+const HistoryModeContext = createContext(false);
+const HistoryVersionContext = createContext<string | undefined>(undefined);
+export const MessageView = memo(function MessageView(props: Props) {
+  const history = props.mode === "history";
+  return <HistoryModeContext.Provider value={history}><HistoryVersionContext.Provider value={props.historyVersion}><MessageContent {...props}
+    onFork={history ? undefined : props.onFork} onNavigate={history ? undefined : props.onNavigate}
+    onRetry={history ? undefined : props.onRetry} onEditContent={history ? undefined : props.onEditContent}
+    onOpenAutomation={history ? undefined : props.onOpenAutomation} /></HistoryVersionContext.Provider></HistoryModeContext.Provider>;
+});
+
+const MessageContent = memo(function MessageContent({ mode, messageActions, message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
   if (message.role === "user") {
     return <UserMessageView messageActions={messageActions} message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
   }
@@ -206,7 +224,7 @@ export const MessageView = memo(function MessageView({ messageActions, message, 
     if ((message as CustomMessage).customType === "compaction") {
       return <div className="message-row"><CompactionMessageView message={message as CustomMessage} /><div className="message-hover-actions">{messageActions}</div></div>;
     }
-    if ((message as CustomMessage).customType === "piora-automation") {
+    if (mode !== "history" && (message as CustomMessage).customType === "piora-automation") {
       const details = (message as CustomMessage).details as { automationId?: unknown; name?: unknown; rrule?: unknown } | undefined;
       return typeof details?.automationId === "string" ? (
         <div className="message-row"><AutomationCard
@@ -225,6 +243,7 @@ export const MessageView = memo(function MessageView({ messageActions, message, 
   return null;
 }, (prev, next) => {
   return prev.message === next.message
+    && prev.mode === next.mode
     && prev.messageActions === next.messageActions
     && prev.isStreaming === next.isStreaming
     && haveSameRelevantToolResults(prev.message, prev.toolResults, next.toolResults)
@@ -283,6 +302,8 @@ function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, on
           .join("\n")
         : "";
   const content = loadedContent ?? initialContent;
+  const historyVersion = useContext(HistoryVersionContext);
+  const historyMode = useContext(HistoryModeContext);
   const hasDeferredContent = message.deferredContent === true && loadedContent === null;
 
   const imageBlocks: ImageContent[] =
@@ -311,7 +332,10 @@ function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, on
     setContentLoading(true);
     setContentLoadError(null);
     try {
-      const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}/entries/${encodeURIComponent(entryId)}/prompt-material`);
+      const response = await fetch(historyVersion
+        ? `/api/sessions/${encodeURIComponent(sessionId)}/history/content?${new URLSearchParams({ entryId, kind: "prompt", version: historyVersion })}`
+        : `/api/sessions/${encodeURIComponent(sessionId)}/entries/${encodeURIComponent(entryId)}/prompt-material`,
+      historyVersion ? { signal: AbortSignal.timeout(30_000) } : undefined);
       const body = await response.json().catch(() => ({})) as { content?: unknown; error?: unknown };
       if (!response.ok || typeof body.content !== "string") {
         throw new Error(typeof body.error === "string" ? body.error : `HTTP ${response.status}`);
@@ -325,7 +349,7 @@ function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, on
     } finally {
       setContentLoading(false);
     }
-  }, [hasDeferredContent, content, sessionId, entryId, t]);
+  }, [hasDeferredContent, content, sessionId, entryId, t, historyVersion]);
 
   useEffect(() => {
     if (contentExpanded && hasDeferredContent) void loadFullContent().catch(() => {});
@@ -400,11 +424,7 @@ function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, on
                   onClick={toggleContent}
                   disabled={contentLoading}
                 >
-                  <AliIcon
-                    name="arrowdown"
-                    size={11}
-                    style={{ transform: contentExpanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }}
-                  />
+                  <DisclosureChevron />
                   {contentLoading
                     ? t("chat.loadingLongMessage")
                     : t(contentExpanded ? "chat.collapseLongMessage" : "chat.expandLongMessage", { count: contentLineCount })}
@@ -425,7 +445,7 @@ function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, on
 
       {/* Bottom row: action buttons + timestamp */}
       {retryError ? <div role="alert" style={{ color: "var(--status-failed)", fontSize: "var(--text-xs)" }}>{retryError}</div> : null}
-      {(time || canFork || canNavigate || true) && (
+      {!historyMode && (
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "flex-end",
           gap: 6, marginTop: 3,
@@ -573,6 +593,7 @@ function AssistantMessageView({
 }) {
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
+  const historyMode = useContext(HistoryModeContext);
   const responseDuration = showTimestamp ? formatResponseDuration(responseStartedAt, message.timestamp) : null;
   const blockItems = (Array.isArray(message.content) ? message.content : [])
     .map((block, originalIndex) => ({ block, originalIndex }))
@@ -739,7 +760,7 @@ function AssistantMessageView({
         })()}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="message-assistant-blocks">
         {blockItems.map(({ block, originalIndex }) => (
           <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
         ))}
@@ -779,7 +800,7 @@ function AssistantMessageView({
             {t("i18n.responseTime", { duration: responseDuration })}
           </span>
         )}
-        {textContent && !isStreaming && (
+        {textContent && !isStreaming && !historyMode && (
           <button
             onClick={copyContent}
              title={t("i18n.copyMessage")}
@@ -849,8 +870,9 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 }) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useVirtualRowToggle(`thinking:${blockIndex}`);
+  const historyVersion = useContext(HistoryVersionContext);
   const [loadState, setLoadState] = useState<ThinkingLoadState | null>(null);
-  const sourceKey = sessionId && entryId ? `${sessionId}:${entryId}:${blockIndex}` : null;
+  const sourceKey = sessionId && entryId ? `${sessionId}:${entryId}:${blockIndex}:${historyVersion ?? "chat"}` : null;
   const loadStateRef = useRef(loadState);
   const currentSourceKeyRef = useRef(sourceKey);
   loadStateRef.current = loadState;
@@ -863,56 +885,43 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 
     return subscribeToThinkingLoad(
       sourceKey,
-      loadThinkingContent(sessionId, entryId, blockIndex),
+      loadThinkingContent(sessionId, entryId, blockIndex, historyVersion),
       () => currentSourceKeyRef.current === sourceKey,
       setLoadState,
     );
-  }, [block.deferred, blockIndex, entryId, expanded, sessionId, sourceKey]);
+  }, [block.deferred, blockIndex, entryId, expanded, sessionId, sourceKey, historyVersion]);
 
   const display = block.deferred && !sourceKey
     ? { status: "error" as const, error: t("i18n.thinkingUnavailable") }
     : getThinkingBlockDisplay(block, sourceKey, loadState);
 
   return (
-    <div className={`thinking-block${expanded ? " is-expanded" : ""}`}>
-      <button
-        type="button"
-        className="thinking-block-trigger"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((value) => !value)}
-      >
-        <span className="thinking-block-chevron" aria-hidden="true">
-          <AliIcon name="chevron-right" size={12} strokeWidth={1.8} />
-        </span>
-        <span className="thinking-block-label">{t("i18n.thinking")}</span>
-        {duration !== undefined && (
-          <span className="thinking-block-duration">{duration}s</span>
-        )}
-      </button>
-      {expanded && (
-        <div className={`thinking-block-content${display.status === "error" ? " is-error" : ""}`}>
-          {display.status === "loading"
-            ? <span className="thinking-block-status">{t("i18n.loadingThinking")}</span>
-            : display.status === "error"
-              ? <span className="thinking-block-status">{display.error}</span>
-              : display.status === "content"
-                ? <MarkdownBody className="markdown-thinking" isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile}>{display.content}</MarkdownBody>
-                : null}
-        </div>
-      )}
-    </div>
+    <ChatDisclosure className="thinking-block" triggerClassName="thinking-block-trigger"
+      expanded={expanded} onExpandedChange={setExpanded} icon="brain" label={t("i18n.thinking")}
+      metadata={duration !== undefined ? `${duration}s` : undefined}>
+      <div className={`thinking-block-content${display.status === "error" ? " is-error" : ""}`}>
+        {display.status === "loading"
+          ? <span className="thinking-block-status">{t("i18n.loadingThinking")}</span>
+          : display.status === "error"
+            ? <span className="thinking-block-status">{display.error}</span>
+            : display.status === "content"
+              ? <MarkdownBody className="markdown-thinking" isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile}>{display.content}</MarkdownBody>
+              : null}
+      </div>
+    </ChatDisclosure>
   );
 }
 
 
 function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, onOpenAutomation, onOpenCommandExecution }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; cwd?: string; sessionId?: string; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
   const { t } = useI18n();
+  const historyMode = useContext(HistoryModeContext);
   const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`);
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`diagnostics:${block.toolCallId}`);
   const diagnostics = safeJson({ input: block.input, result: result ?? null });
   const fileChange = getFileChangeInfo(block, result);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
-  const summary = summarizeToolCall(block.toolName, block.input, result?.isStreaming ? undefined : result, t);
+  const summary = summarizeToolDisclosure(block.toolName, block.input, result?.isStreaming ? undefined : result, t);
   const automationDetails = getAutomationToolCardDetails(block, result);
 
   if (isCommandToolName(block.toolName)) {
@@ -924,7 +933,8 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
       command: typeof block.input.command === "string" ? block.input.command : "",
       output,
       status: commandStatus(result, output),
-      isStreaming: !result || result.isStreaming === true,
+      isStreaming: !historyMode && (!result || result.isStreaming === true),
+      historical: historyMode,
       duration,
       cwd,
       exitCode: commandExitCode(result, output),
@@ -936,7 +946,7 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
     return <CommandExecutionCard data={data} onOpen={onOpenCommandExecution} />;
   }
 
-  if (automationDetails) {
+  if (automationDetails && !historyMode) {
     return (
       <AutomationCard
         automationId={automationDetails.id}
@@ -974,78 +984,25 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
   }
 
   return (
-    <div
-      style={{
-        borderRadius: "var(--radius-control)",
-        overflow: "hidden",
-        fontSize: "var(--text-sm)",
-        border: isError ? "1px solid rgba(248,113,113,0.45)" : "1px solid rgba(34,197,94,0.25)",
-        background: isError ? "rgba(248,113,113,0.05)" : "rgba(34,197,94,0.04)",
-      }}
-    >
-      {/* ── Tool call header ── */}
-      <button
-        className="tool-call-toggle"
-        aria-expanded={expanded}
-        onClick={(event) => togglePreservingScroll(event.currentTarget, () => setExpanded((value) => !value))}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          width: "100%",
-          padding: "6px 10px",
-          background: "none",
-          border: "none",
-          color: "var(--text-muted)",
-          cursor: "pointer",
-          fontSize: "var(--text-sm)",
-          textAlign: "left",
-          minWidth: 0,
-        }}
-      >
-        <AliIcon name={summary.icon as AliIconName} size={14} style={{ color: summary.status === "error" ? "var(--status-failed)" : summary.status === "running" ? "var(--status-running)" : "var(--status-completed)", flexShrink: 0 }} />
-        <span style={{ color: "var(--text)", fontWeight: 550, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-          {summary.title}
-        </span>
-        <span style={{ color: "var(--text-dim)", fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
-          {summary.detail ?? ""}
-        </span>
-        {duration !== undefined && (
-          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", flexShrink: 0, fontVariantNumeric: "tabular-nums" }}>{duration}s</span>
-        )}
-        <AliIcon name="arrowdown" size={10} style={{ color: "var(--text-dim)", transform: expanded ? "rotate(180deg)" : "none", transition: "transform 0.15s" }} />
-      </button>
-
-      {/* ── Paired result — only shown when expanded ── */}
-      {expanded && result && (
-        resultDiff ? (
-          <PairedDiffResult
-            diff={resultDiff}
-          />
-        ) : (
-          <PairedResult
-            text={resultText ?? ""}
-            isEmpty={resultIsEmpty}
-            isError={isError}
-          />
-        )
-      )}
-      {expanded && (
-        <div style={{ borderTop: "1px solid var(--border)" }}>
-          <button
-            type="button"
-            onClick={(event) => togglePreservingScroll(event.currentTarget, () => setDiagnosticsOpen((value) => !value))}
-            aria-expanded={diagnosticsOpen}
-            style={{ width: "100%", height: 28, padding: "0 10px", display: "flex", alignItems: "center", gap: 6, border: 0, background: "var(--bg-panel)", color: "var(--text-dim)", cursor: "pointer", fontSize: "var(--text-xs)", textAlign: "left" }}
-          >
-            <AliIcon name="code" size={12} />
-            <span style={{ flex: 1 }}>{t("toolSummary.diagnostics")}</span>
-            <AliIcon name="arrowdown" size={9} style={{ transform: diagnosticsOpen ? "rotate(180deg)" : "none" }} />
-          </button>
-          {diagnosticsOpen && <pre style={{ margin: 0, padding: "8px 10px", maxHeight: 320, overflow: "auto", background: "var(--bg-subtle)", color: "var(--text-muted)", whiteSpace: "pre-wrap", overflowWrap: "anywhere", fontSize: "var(--text-xs)" }}>{diagnostics}</pre>}
-        </div>
-      )}
-    </div>
+    <ChatDisclosure className="tool-call-card" triggerClassName="tool-call-toggle"
+      expanded={expanded} onExpandedChange={setExpanded} icon={summary.icon as AliIconName} label={summary.title}
+      description={summary.subject ? <>
+        {summary.subjectIsPath ? <DisclosurePath path={summary.subject} /> : <span title={summary.subject}>{summary.subject}</span>}
+        {summary.detail ? <span className="tool-call-detail" title={summary.detail}>{summary.detail}</span> : null}
+      </> : summary.detail ? <span title={summary.detail}>{summary.detail}</span> : undefined}
+      metadata={<>
+        <span className={`chat-disclosure-status is-${historyMode && !result ? "unknown" : summary.status}`}>{t(historyMode && !result ? "history.noSavedResult" : summary.status === "running" ? "command.status.running" : summary.status === "error" ? "command.status.failed" : "command.status.success")}</span>
+        {duration !== undefined ? <span>{duration}s</span> : null}
+      </>}>
+      {result ? resultDiff
+        ? <PairedDiffResult diff={resultDiff} />
+        : <PairedResult text={resultText ?? ""} isEmpty={resultIsEmpty} isError={isError} />
+        : <div className="chat-disclosure-notice">{t(historyMode ? "history.noSavedResult" : "command.waitingForOutput")}</div>}
+      <ChatDisclosure variant="inline" expanded={diagnosticsOpen} onExpandedChange={setDiagnosticsOpen}
+        label={t("toolSummary.diagnostics")}>
+        <pre className="chat-disclosure-diagnostics">{diagnostics}</pre>
+      </ChatDisclosure>
+    </ChatDisclosure>
   );
 }
 
@@ -1080,7 +1037,7 @@ function FileChangeBlock({
         : change.kind === "unchanged"
           ? "fileChange.unchanged"
           : "fileChange.edited";
-  const icon: AliIconName = change.kind === "created" ? "file-add" : change.status === "failed" ? "error" : "edit";
+  const icon: AliIconName = change.kind === "created" ? "file-add" : "edit";
   const statusClass = change.status === "failed" ? "is-failed" : change.status === "running" ? "is-running" : "is-complete";
   const noDiffMessage = change.unavailableReason === "too_large"
     ? t("fileChange.tooLarge")
@@ -1091,84 +1048,44 @@ function FileChangeBlock({
         : t("fileChange.unavailable");
 
   return (
-    <div className={`file-change-card ${statusClass}`} data-file-change-path={change.path}>
-      <div className="file-change-header">
-        <button
-          type="button"
-          className="file-change-toggle tool-call-toggle"
-          aria-expanded={expanded}
-          onClick={(event) => togglePreservingScroll(event.currentTarget, () => onExpandedChange(!expanded))}
-        >
-          <span className="file-change-icon" aria-hidden="true"><AliIcon name={icon} size={14} /></span>
-          <span className="file-change-title">{t(titleKey)}</span>
-          <span className="file-change-path" title={change.path}>{change.path}</span>
-          {change.status === "completed" && (change.added > 0 || change.removed > 0) ? (
-            <span className="file-change-stats" aria-label={t("fileChange.stats", { added: change.added, removed: change.removed })}>
-              <span className="file-change-additions">+{change.added}</span>
-              <span className="file-change-deletions">−{change.removed}</span>
-            </span>
-          ) : null}
-          {duration !== undefined ? <span className="file-change-duration">{duration}s</span> : null}
-          <AliIcon name="chevron-right" size={11} style={{ transform: expanded ? "rotate(90deg)" : "none", transition: "transform 0.15s" }} />
-        </button>
-        {onOpenFile ? (
-          <button type="button" className="file-change-open" title={t("diff.openFile")} aria-label={t("diff.openFile")} onClick={() => onOpenFile(change.path)}>
-            <AliIcon name="external-link" size={13} />
-          </button>
+    <ChatDisclosure className={`file-change-card ${statusClass}`} data-file-change-path={change.path}
+      expanded={expanded} onExpandedChange={onExpandedChange} icon={icon} label={t(titleKey)}
+      triggerClassName="file-change-toggle tool-call-toggle" description={<DisclosurePath path={change.path} />}
+      metadata={<>
+        {change.status !== "completed" ? <span className={`chat-disclosure-status is-${change.status}`}>
+          {t(change.status === "running" ? "command.status.running" : "command.status.failed")}
+        </span> : null}
+        {change.status === "completed" && (change.added > 0 || change.removed > 0) ? (
+          <span className="file-change-stats" aria-label={t("fileChange.stats", { added: change.added, removed: change.removed })}>
+            <span className="file-change-additions">+{change.added}</span>
+            <span className="file-change-deletions">−{change.removed}</span>
+          </span>
         ) : null}
-      </div>
-
-      {expanded ? (
-        <div className="file-change-details">
-          {change.patch ? (
-            <DiffView className="file-change-diff" patch={change.patch} filePath={change.path} mode="unified" showFileHeader={false} />
-          ) : change.status === "failed" ? (
-            <PairedResult text={resultText} isEmpty={!resultText.trim()} isError />
-          ) : (
-            <div className="file-change-notice">{noDiffMessage}</div>
-          )}
-          <button
-            type="button"
-            className="file-change-diagnostics-toggle"
-            onClick={(event) => togglePreservingScroll(event.currentTarget, () => onDiagnosticsOpenChange(!diagnosticsOpen))}
-            aria-expanded={diagnosticsOpen}
-          >
-            <AliIcon name="code" size={12} />
-            <span>{t("toolSummary.diagnostics")}</span>
-            <AliIcon name="chevron-right" size={9} style={{ marginLeft: "auto", transform: diagnosticsOpen ? "rotate(90deg)" : "none" }} />
-          </button>
-          {diagnosticsOpen ? <pre className="file-change-diagnostics">{diagnostics}</pre> : null}
-        </div>
-      ) : null}
-    </div>
+        {duration !== undefined ? <span>{duration}s</span> : null}
+      </>}
+      actions={onOpenFile ? <button type="button" className="chat-disclosure-action" title={t("diff.openFile")}
+        aria-label={t("diff.openFile")} onClick={() => onOpenFile(change.path)}><AliIcon name="external-link" size={14} /></button> : null}>
+      {change.patch ? (
+        <DiffView className="file-change-diff" patch={change.patch} filePath={change.path} mode="unified" showFileHeader={false} />
+      ) : change.status === "failed" ? (
+        <PairedResult text={resultText} isEmpty={!resultText.trim()} isError />
+      ) : (
+        <div className="chat-disclosure-notice">{noDiffMessage}</div>
+      )}
+      <ChatDisclosure variant="inline" expanded={diagnosticsOpen} onExpandedChange={onDiagnosticsOpenChange}
+        label={t("toolSummary.diagnostics")}>
+        <pre className="chat-disclosure-diagnostics">{diagnostics}</pre>
+      </ChatDisclosure>
+    </ChatDisclosure>
   );
-}
-
-function togglePreservingScroll(control: HTMLElement, toggle: () => void) {
-  const scroller = control.closest(".overflow-y-auto") as HTMLElement | null;
-  const scrollTop = scroller?.scrollTop;
-  toggle();
-  if (!scroller || scrollTop === undefined) return;
-  requestAnimationFrame(() => { scroller.scrollTop = scrollTop; });
 }
 
 interface ResultDiff {
   text: string;
 }
 
-function PairedDiffResult({ diff }: {
-  diff: ResultDiff;
-}) {
-  return (
-    <div
-      style={{
-        borderTop: "1px solid rgba(34,197,94,0.15)",
-        background: "var(--bg)",
-      }}
-    >
-      <DiffView patch={diff.text} mode="split" />
-    </div>
-  );
+function PairedDiffResult({ diff }: { diff: ResultDiff }) {
+  return <div className="tool-result-diff"><DiffView patch={diff.text} mode="split" /></div>;
 }
 
 function getResultDiff(result: ToolResultMessage): ResultDiff | null {
@@ -1194,33 +1111,9 @@ function PairedResult({ text, isEmpty, isError }: {
   isError: boolean;
 }) {
   const { t } = useI18n();
-  return (
-    <div
-      style={{
-        borderTop: `1px solid ${isError ? "rgba(248,113,113,0.3)" : "rgba(34,197,94,0.15)"}`,
-        background: isError ? "rgba(248,113,113,0.04)" : "var(--bg-subtle)",
-      }}
-    >
-      <pre
-        style={{
-          margin: 0,
-          padding: "8px 10px",
-          color: isError ? "#f87171" : (isEmpty ? "var(--text-dim)" : "var(--text-muted)"),
-          fontSize: "var(--text-sm)",
-          lineHeight: 1.5,
-          overflow: "auto",
-          maxHeight: 400,
-          background: "var(--bg)",
-          whiteSpace: "pre-wrap",
-          wordBreak: "break-all",
-          fontStyle: isEmpty ? "italic" : "normal",
-          opacity: isEmpty ? 0.6 : 1,
-        }}
-      >
-         {isEmpty ? t("i18n.noOutput") : text}
-      </pre>
-    </div>
-  );
+  return <pre className={`tool-result-output${isError ? " is-error" : ""}${isEmpty ? " is-empty" : ""}`}>
+    {isEmpty ? t("i18n.noOutput") : text}
+  </pre>;
 }
 
 function CompactionMessageView({ message }: { message: CustomMessage }) {
@@ -1230,46 +1123,17 @@ function CompactionMessageView({ message }: { message: CustomMessage }) {
   const time = formatTime(message.timestamp);
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <div
-        style={{
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-control)",
-          overflow: "hidden",
-          background: "var(--bg)",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "7px 10px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--bg-panel)",
-            color: "var(--text-muted)",
-          }}
-        >
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", fontWeight: 650 }}>
-            compaction
-          </span>
-          {time && <span style={{ marginLeft: "auto", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>{time}</span>}
-        </div>
-
-        <div style={{ padding: "11px 13px 12px" }}>
-          <div style={{ color: "var(--text)", fontSize: "var(--text-md)", fontWeight: 700, lineHeight: 1.35 }}>
-             {t("i18n.conversationCompacted")}
-          </div>
-          <div style={{ marginTop: 3, marginBottom: 10, color: "var(--text)", fontSize: "var(--text-base)", lineHeight: 1.5 }}>
-             {t("i18n.compactionDescription")}
-          </div>
-          {parsedSummary.body ? (
-            <MarkdownBody className="markdown-compaction-message">{parsedSummary.body}</MarkdownBody>
-          ) : (
-             <span style={{ color: "var(--text-dim)", fontSize: "var(--text-sm)" }}>{t("i18n.noSummary")}</span>
-          )}
-          <CompactionFileMetadata readFiles={parsedSummary.readFiles} modifiedFiles={parsedSummary.modifiedFiles} />
-        </div>
+    <div className="chat-disclosure is-expanded compaction-message-card">
+      <div className="chat-disclosure-heading">
+        <AliIcon name="archive" size={14} aria-hidden="true" />
+        <span className="chat-disclosure-label">{t("i18n.conversationCompacted")}</span>
+        {time ? <span className="chat-disclosure-meta">{time}</span> : null}
+      </div>
+      <div className="chat-disclosure-content">
+        <p className="compaction-description">{t("i18n.compactionDescription")}</p>
+        {parsedSummary.body ? <MarkdownBody className="markdown-compaction-message">{parsedSummary.body}</MarkdownBody>
+          : <span className="chat-disclosure-notice">{t("i18n.noSummary")}</span>}
+        <CompactionFileMetadata readFiles={parsedSummary.readFiles} modifiedFiles={parsedSummary.modifiedFiles} />
       </div>
     </div>
   );
@@ -1286,7 +1150,7 @@ function CompactionFileMetadata({ readFiles, modifiedFiles }: { readFiles: strin
 
   return (
     <details className="compaction-file-details">
-       <summary>{t("i18n.fileContext", { details: parts.join(", ") })}</summary>
+       <summary><DisclosureChevron />{t("i18n.fileContext", { details: parts.join(", ") })}</summary>
        {modifiedFiles.length > 0 && <CompactionFileList title={t("i18n.modifiedFiles")} files={modifiedFiles} />}
        {readFiles.length > 0 && <CompactionFileList title={t("i18n.readFiles")} files={readFiles} />}
     </details>
@@ -1327,145 +1191,54 @@ function CustomMessageView({ messageActions, message, cwd, onOpenFile }: { messa
     });
   };
 
+  const actions = <>
+    {text || detailsText ? <button type="button" className="chat-disclosure-action" onClick={copyContent}
+      title={t(copied ? "i18n.copied" : "i18n.copy")} aria-label={t(copied ? "i18n.copied" : "i18n.copy")}>
+      <AliIcon name={copied ? "check" : "copy"} size={14} />
+    </button> : null}
+    <span className="message-hover-actions">{messageActions}</span>
+  </>;
+  const body = <>
+    {images.length > 0 ? <div className="custom-message-images">
+      {images.map((img, i) => {
+        const src = imageSource(img);
+        return src ? <MessageImage key={i} src={src} index={i} onOpen={() => setOpenImageIndex(i)} /> : null;
+      })}
+    </div> : null}
+    {text ? <MarkdownBody className="markdown-custom-message" cwd={cwd} onOpenFile={onOpenFile}>{text}</MarkdownBody>
+      : <span className="chat-disclosure-notice">{t("i18n.noMessage")}</span>}
+  </>;
+  const details = <pre className="chat-disclosure-diagnostics custom-message-details">{detailsText}</pre>;
+
   return (
-    <div className="message-row" style={{ marginBottom: 16 }}>
-      <div
-        style={{
-          border: "1px solid var(--border)",
-          borderRadius: "var(--radius-control)",
-          overflow: "hidden",
-          background: isHiddenDisplay ? "var(--bg-subtle)" : "var(--bg)",
-          opacity: isHiddenDisplay && !contentExpanded ? 0.82 : 1,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "7px 10px",
-            borderBottom: "1px solid var(--border)",
-            background: "var(--bg-panel)",
-            color: "var(--text-muted)",
-            fontSize: "var(--text-sm)",
-          }}
-        >
-          <span style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)", fontSize: "var(--text-xs)", fontWeight: 650 }}>
-            {title}
-          </span>
-           {isHiddenDisplay && <span style={{ color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>{t("i18n.hiddenExtensionMessage")}</span>}
-          {time && <span style={{ marginLeft: "auto", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>{time}</span>}
-        </div>
-
-        {contentExpanded ? (
-          <div style={{ padding: "6px 9px" }}>
-            {images.length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: text ? 8 : 0 }}>
-                {images.map((img, i) => {
-                  const src = imageSource(img);
-                  if (!src) return null;
-                  return <MessageImage key={i} src={src} index={i} onOpen={() => setOpenImageIndex(i)} />;
-                })}
-              </div>
-            )}
-             {text ? <MarkdownBody className="markdown-custom-message" cwd={cwd} onOpenFile={onOpenFile}>{text}</MarkdownBody> : <span style={{ color: "var(--text-dim)", fontSize: "var(--text-sm)" }}>{t("i18n.noMessage")}</span>}
+    <div className="message-row custom-message-row">
+      {isHiddenDisplay ? (
+        <ChatDisclosure className="custom-message-card" expanded={contentExpanded} onExpandedChange={setContentExpanded}
+          icon="message" label={title} description={text ? previewText(text) : t("i18n.showExtensionMessage")}
+          metadata={<><span>{t("i18n.hiddenExtensionMessage")}</span>{time ? <span>{time}</span> : null}</>} actions={actions}>
+          {body}
+          {hasDetails ? details : null}
+        </ChatDisclosure>
+      ) : (
+        <div className="chat-disclosure is-expanded custom-message-card">
+          <div className="chat-disclosure-header">
+            <div className="chat-disclosure-heading">
+              <AliIcon name="message" size={14} aria-hidden="true" />
+              <span className="chat-disclosure-label">{title}</span>
+              {time ? <span className="chat-disclosure-meta">{time}</span> : null}
+            </div>
+            <div className="chat-disclosure-actions">{actions}</div>
           </div>
-        ) : (
-          <button
-            onClick={() => setContentExpanded(true)}
-            style={{
-              display: "block",
-              width: "100%",
-              padding: "8px 10px",
-              border: "none",
-              background: "transparent",
-              color: "var(--text-dim)",
-              cursor: "pointer",
-              fontSize: "var(--text-sm)",
-              textAlign: "left",
-            }}
-          >
-             {text ? previewText(text) : t("i18n.showExtensionMessage")}
-          </button>
-        )}
-        {openImageIndex !== null && images[openImageIndex] && (
-          <MessageImageViewer
-            src={imageSource(images[openImageIndex])}
-            index={openImageIndex}
-            onClose={() => setOpenImageIndex(null)}
-          />
-        )}
-
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            padding: "4px 9px",
-            borderTop: "1px solid var(--border)",
-            background: "var(--bg-subtle)",
-          }}
-        >
-          {text || detailsText ? (
-            <button
-              onClick={copyContent}
-              style={{
-                padding: "3px 7px",
-                border: "none",
-                background: "none",
-                color: copied ? "var(--accent)" : "var(--text-dim)",
-                cursor: "pointer",
-                fontSize: "var(--text-xs)",
-              }}
-            >
-               {copied ? t("i18n.copied") : t("i18n.copy")}
-            </button>
-          ) : null}
-          <span className="message-hover-actions">{messageActions}</span>
-          {(hasDetails || isHiddenDisplay) && (
-            <button
-              onClick={() => {
-                if (isHiddenDisplay) setContentExpanded((v) => !v);
-                else setDetailsExpanded((v) => !v);
-              }}
-              style={{
-                marginLeft: "auto",
-                padding: "3px 7px",
-                border: "none",
-                background: "none",
-                color: "var(--text-dim)",
-                cursor: "pointer",
-                fontSize: "var(--text-xs)",
-              }}
-            >
-              {isHiddenDisplay
-                 ? (contentExpanded ? t("i18n.collapse") : t("i18n.expand"))
-                 : (detailsExpanded ? t("i18n.hideDetails") : t("i18n.showDetails"))}
-            </button>
-          )}
+          <div className="chat-disclosure-content">
+            {body}
+            {hasDetails ? <ChatDisclosure variant="inline" expanded={detailsExpanded} onExpandedChange={setDetailsExpanded}
+              label={t(detailsExpanded ? "i18n.hideDetails" : "i18n.showDetails")}>{details}</ChatDisclosure> : null}
+          </div>
         </div>
-
-        {hasDetails && ((isHiddenDisplay && contentExpanded) || (!isHiddenDisplay && detailsExpanded)) && (
-          <pre
-            style={{
-              margin: 0,
-              padding: "9px 10px",
-              borderTop: "1px solid var(--border)",
-              background: "var(--bg)",
-              color: "var(--text-muted)",
-              fontSize: "var(--text-sm)",
-              lineHeight: 1.5,
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-word",
-              maxHeight: 360,
-              overflow: "auto",
-              fontFamily: "var(--font-mono)",
-            }}
-          >
-            {detailsText}
-          </pre>
-        )}
-      </div>
+      )}
+      {openImageIndex !== null && images[openImageIndex] ? (
+        <MessageImageViewer src={imageSource(images[openImageIndex])} index={openImageIndex} onClose={() => setOpenImageIndex(null)} />
+      ) : null}
     </div>
   );
 }
@@ -1525,6 +1298,7 @@ function formatUsage(usage: {
 }
 
 function BashExecutionView({ messageActions, message, sessionId, cwd, onOpenCommandExecution }: { messageActions?: ReactNode; message: BashExecutionMessage; sessionId?: string; cwd?: string; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
+  const historyMode = useContext(HistoryModeContext);
   const isPending = !message.output && message.exitCode === undefined && !message.cancelled;
   const toolName = message.excludeFromContext ? "bash (local)" : "bash";
   const data: CommandExecutionData = {
@@ -1533,7 +1307,8 @@ function BashExecutionView({ messageActions, message, sessionId, cwd, onOpenComm
     command: message.command,
     output: message.output,
     status: isPending || message.exitCode === undefined && !message.cancelled ? "running" : message.cancelled ? "cancelled" : message.exitCode === 0 ? "success" : "failed",
-    isStreaming: message.exitCode === undefined && !message.cancelled,
+    isStreaming: !historyMode && message.exitCode === undefined && !message.cancelled,
+    historical: historyMode,
     cwd,
     exitCode: message.exitCode,
     truncated: message.truncated === true,

@@ -4,10 +4,12 @@ import test from "node:test";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createJiti } from "jiti";
+import { fileURLToPath } from "node:url";
 
 const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
+  alias: { "./ReplySuggestionBar.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)) },
 });
 const {
   ChatInput,
@@ -197,7 +199,7 @@ test("keeps voice dictation user-controlled and local-only", () => {
   assert.match(chatInputSource, /voiceTranscribing/);
   assert.doesNotMatch(chatInputSource, /webkitSpeechRecognition|SpeechRecognitionConstructor/);
   assert.match(chatInputSource, /aria-pressed=\{voiceListening\}/);
-  assert.match(chatInputSource, /stopVoiceInput\(true\);[\s\S]*?setValue\(""\)/);
+  assert.match(chatInputSource, /stopVoiceInput\(true\);[\s\S]*?resetReplyDraft\(\{ value: "", spans: \[\] \}\)/);
 });
 
 test("renders an icon-only send control and dynamic context ring", () => {
@@ -386,7 +388,7 @@ test("designs prompt optimization as a preview before replacing the draft", () =
   assert.match(chatInputSource, /chat\.useOptimizedPrompt/);
   assert.match(
     chatInputSource,
-    /className="is-primary"[\s\S]*?onClick=\{\(\) => \{[\s\S]*?setValue\(promptOptimization\.result!\)[\s\S]*?chat\.useOptimizedPrompt/,
+    /className="is-primary"[\s\S]*?onClick=\{\(\) => \{[\s\S]*?commitReplyDraft\(\{ value: promptOptimization\.result!, spans: \[\] \}\)[\s\S]*?chat\.useOptimizedPrompt/,
   );
 });
 

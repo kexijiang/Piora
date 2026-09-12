@@ -1,6 +1,8 @@
 "use client";
+import { latestReplySource } from "@/lib/reply-suggestions";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import type { HistoryChatControls } from "@/lib/history-navigation";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { AgentMessage, BashExecutionMessage, ExtensionUiRequest, SessionInfo, SessionTreeNode, UserMessage } from "@/lib/types";
 import { prepareMessageRetry } from "@/lib/message-retry";
 import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
@@ -34,6 +36,8 @@ import type { CommandExecutionData } from "@/lib/command-execution";
 import { CommandExecutionDialog } from "./CommandExecutionView";
 
 interface Props {
+  historyVisible?: boolean;
+  onHistoryControlsChange?: (controls: HistoryChatControls | null) => void;
   session: SessionInfo | null;
   focusEntryId?: string | null;
   newSessionCwd: string | null;
@@ -114,7 +118,7 @@ function getUserInputText(message: AgentMessage): string | null {
   return text.length > 0 ? text : null;
 }
 
-export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
+export function ChatWindow({ historyVisible = false, onHistoryControlsChange, session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
   const { t } = useI18n();
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
@@ -156,7 +160,7 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
   }, [chatInputRef]);
 
   const {
-    loading, error, messages, entryIds, streamState,
+    loading, error, messages, entryIds, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactError, compactResult, displayModel: displayModelValue, sessionStats,
@@ -350,13 +354,24 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
 
   // Register the abort handler for the global Esc shortcut
   useEffect(() => {
-    registerAbortHandler(sessionBusy ? handleAbort : null);
-  }, [sessionBusy, handleAbort]);
+    registerAbortHandler(sessionBusy && !historyVisible ? handleAbort : null);
+    return () => registerAbortHandler(null);
+  }, [sessionBusy, handleAbort, historyVisible]);
 
   const historyRef = useRef<ChatHistoryHandle>(null);
   const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
   const handledFocusEntryRef = useRef<string | null>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const focusHistoryEntry = useCallback((id: string) => {
+    pauseHistoryFollow();
+    historyRef.current?.revealEntry(id);
+    setHighlightedEntryId(id);
+  }, [pauseHistoryFollow]);
+  useEffect(() => {
+    onHistoryControlsChange?.({ busy: sessionBusy || agentPhase?.kind === "stopping" || isCompacting || loading || deletingMessage || preparingRetry,
+      entryIds, leafId: activeLeafId, switchBranch: switchHistoryBranch, forkQuestion: forkHistoryQuestion, focusEntry: focusHistoryEntry });
+  }, [activeLeafId, agentPhase?.kind, deletingMessage, entryIds, focusHistoryEntry, forkHistoryQuestion, isCompacting, loading, onHistoryControlsChange, preparingRetry, sessionBusy, switchHistoryBranch]);
+  useEffect(() => () => onHistoryControlsChange?.(null), [onHistoryControlsChange]);
   useEffect(() => {
     if (!focusEntryId || loading || !entryIds.includes(focusEntryId)) return;
     const focusKey = (session?.id ?? "new") + ":" + focusEntryId;
@@ -502,9 +517,36 @@ export function ChatWindow({ session, focusEntryId, newSessionCwd, newSessionIni
     void handleComposerSend(visionRetryPayload.message, visionRetryPayload.images);
   }, [handleComposerSend, sessionBusy, visionRetryPayload]);
 
+  const replySource = useMemo(() => {
+    if (!session?.id || loading || error || sessionBusy || streamState.isStreaming || replyHistorySettling || isCompacting || extensionDialog || extensionCustomUi) return null;
+    const source = latestReplySource(messages, entryIds);
+    return source ? { ...source, sessionId: session.id, leafId: activeLeafId ?? null } : null;
+  }, [session?.id, loading, error, sessionBusy, streamState.isStreaming, replyHistorySettling, isCompacting, extensionDialog, extensionCustomUi, messages, entryIds, activeLeafId]);
+
+  useLayoutEffect(() => {
+    if (!replySource) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    let height = container.clientHeight;
+    let wasAtBottom = container.scrollHeight - height - container.scrollTop <= 32;
+    const onScroll = () => {
+      // A resize itself can emit scroll events; compare against the last settled viewport.
+      if (height === container.clientHeight) wasAtBottom = container.scrollHeight - height - container.scrollTop <= 32;
+    };
+    const observer = new ResizeObserver(() => {
+      if (height === container.clientHeight) return;
+      height = container.clientHeight;
+      if (wasAtBottom) container.scrollTop = container.scrollHeight - height;
+    });
+    observer.observe(container);
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => { observer.disconnect(); container.removeEventListener("scroll", onScroll); };
+  }, [replySource, scrollContainerRef]);
+
   const chatInputElement = (
     <ChatInput
       ref={chatInputRef}
+      replySource={replySource}
       variant={isEmptyNew ? "launcher" : "conversation"}
       placeholder={isEmptyNew ? t("newSession.placeholder") : undefined}
       contextControl={(

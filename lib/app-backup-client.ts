@@ -1,4 +1,4 @@
-import { snapshotChatDrafts, restoreChatDrafts, type ChatDraft } from "./draft-store";
+import { snapshotPersistedChatDrafts, restorePersistedChatDrafts, type ChatDraft } from "./draft-store";
 
 export interface ClientBackup { version: 1; local: Record<string, string>; databases: Array<{ name: string; store: string; records: unknown[] }>; drafts: Array<[string, ChatDraft]> }
 const databases = [{ name: "piora-appearance", store: "backgrounds" }, { name: "piora-prompt-recovery", store: "prompts" }];
@@ -34,7 +34,7 @@ export async function snapshotClientBackup(): Promise<ClientBackup> {
   const local: Record<string, string> = {};
   for (let index = 0; index < localStorage.length; index++) { const key = localStorage.key(index); if (key && isPortableClientKey(key)) local[key] = localStorage.getItem(key)!; }
   const stored = await Promise.all(databases.map(async ({ name, store }) => ({ name, store, records: await Promise.all((await readRecords(name, store)).map(serialize)) })));
-  return { version: 1, local, databases: stored, drafts: snapshotChatDrafts() };
+  return { version: 1, local, databases: stored, drafts: await snapshotPersistedChatDrafts() };
 }
 async function applyClient(snapshot: ClientBackup) {
   validateClientBackup(snapshot);
@@ -49,7 +49,7 @@ async function applyClient(snapshot: ClientBackup) {
   }
   for (const key of Object.keys(localStorage)) if (isPortableClientKey(key)) localStorage.removeItem(key);
   for (const [key, value] of Object.entries(snapshot.local)) if (isPortableClientKey(key) && typeof value === "string") localStorage.setItem(key, value);
-  restoreChatDrafts(snapshot.drafts);
+  await restorePersistedChatDrafts(snapshot.drafts);
 }
 export async function restoreClientBackup(snapshot: ClientBackup) {
   const previous = await snapshotClientBackup();

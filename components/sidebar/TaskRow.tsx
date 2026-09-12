@@ -115,6 +115,8 @@ export const TaskRow = memo(function TaskRow({
   const [deleting, setDeleting] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<{ x: number; y: number } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const titleViewportRef = useRef<HTMLSpanElement>(null);
+  const titleTextRef = useRef<HTMLSpanElement>(null);
   const titleOptimizationAbortRef = useRef<AbortController | null>(null);
   const prefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const taskStatus = useTaskStatus({
@@ -124,7 +126,45 @@ export const TaskRow = memo(function TaskRow({
     fallbackRuntime: isRunning ? "running" : "idle",
   });
   const taskStatusPresentationKey = getTaskStatusPresentationKey(taskStatus);
-  const title = session.name || session.firstMessage.slice(0, 50) || t("sidebar.newConversation");
+  const title = session.name || session.firstMessage || t("sidebar.newConversation");
+
+  useEffect(() => {
+    const viewport = titleViewportRef.current;
+    const text = titleTextRef.current;
+    if (!isSelected || renaming || !viewport || !text) return;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let animation: Animation | undefined;
+    let lastMeasurement = "";
+    const update = () => {
+      const distance = Math.max(0, Math.ceil(text.scrollWidth - viewport.getBoundingClientRect().width));
+      const measurement = `${distance}:${reducedMotion.matches}`;
+      if (measurement === lastMeasurement) return;
+      lastMeasurement = measurement;
+      animation?.cancel();
+      delete viewport.dataset.scrolling;
+      if (distance <= 1 || reducedMotion.matches) return;
+      viewport.dataset.scrolling = "true";
+      const travel = Math.max(1_000, distance / 24 * 1_000);
+      const duration = 1_500 + travel + 2_000;
+      animation = text.animate([
+        { transform: "translateX(0)", offset: 0 },
+        { transform: "translateX(0)", offset: 1_500 / duration },
+        { transform: `translateX(-${distance}px)`, offset: (1_500 + travel) / duration },
+        { transform: `translateX(-${distance}px)`, offset: 1 },
+      ], { duration, iterations: Infinity, easing: "linear" });
+    };
+    const observer = new ResizeObserver(update);
+    observer.observe(viewport);
+    observer.observe(text);
+    reducedMotion.addEventListener("change", update);
+    update();
+    return () => {
+      observer.disconnect();
+      reducedMotion.removeEventListener("change", update);
+      animation?.cancel();
+      delete viewport.dataset.scrolling;
+    };
+  }, [isSelected, renaming, title]);
 
   useEffect(() => () => {
     titleOptimizationAbortRef.current?.abort();
@@ -336,13 +376,13 @@ export const TaskRow = memo(function TaskRow({
       ) : (
         <>
           {depth > 0 ? <AliIcon name="fork" size={10} style={{ color: "var(--text-dim)" }} /> : null}
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: hovered ? 64 : 0 }}>
             <div
               style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0, fontSize: "var(--text-sm)", fontWeight: isSelected ? 500 : 400, lineHeight: 1.4, color: "var(--text)" }}
               title={title}
             >
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
-                {title}
+              <span ref={titleViewportRef} className={styles.titleViewport}>
+                <span ref={titleTextRef} className={styles.titleText}>{title}</span>
               </span>
             </div>
           </div>

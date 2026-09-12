@@ -36,7 +36,7 @@ export function safeClipboardDocument(html: string, scheme: "light" | "dark" = "
   return `<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><style>:root{color-scheme:${scheme}}body{background:Canvas;color:CanvasText;margin:16px;font:14px/1.65 system-ui;overflow-wrap:anywhere}pre{white-space:pre-wrap}table{border-collapse:collapse}td,th{border:1px solid #888;padding:6px}</style>${output.body.innerHTML}`;
 }
 
-export function ClipboardImage({ bridge, id, title, thumbnail = false }: { bridge: ClipboardBridge; id: string; title: string; thumbnail?: boolean }) {
+export function ClipboardImage({ bridge, id, title, thumbnail = false, showRetry = true }: { bridge: ClipboardBridge; id: string; title: string; thumbnail?: boolean; showRetry?: boolean }) {
   const { tr } = useClipboardI18n();
   const [url, setUrl] = useState("");
   const [failed, setFailed] = useState(false);
@@ -46,7 +46,7 @@ export function ClipboardImage({ bridge, id, title, thumbnail = false }: { bridg
     void bridge.asset(id, thumbnail).then(value => { if (alive) setUrl(attempt ? `${value}?retry=${attempt}` : value); }).catch(() => { if (alive) setFailed(true); });
     return () => { alive = false; };
   }, [bridge, id, thumbnail, attempt]);
-  if (failed) return thumbnail ? <span aria-label={tr("图片缩略图不可用")}>▧</span> : <div role="status"><p>{tr("图片读取失败")}</p><button onClick={() => setAttempt(value => value + 1)}>{tr("重新加载图片")}</button></div>;
+  if (failed) return thumbnail ? <span aria-label={tr("图片缩略图不可用")}>▧</span> : <div role="status"><p>{tr("图片读取失败")}</p>{showRetry ? <button onClick={() => setAttempt(value => value + 1)}>{tr("重新加载图片")}</button> : null}</div>;
   return url ? <img alt={title} src={url} draggable={false} onError={() => setFailed(true)} /> : <span aria-label={tr("正在读取图片")}>▧</span>;
 }
 

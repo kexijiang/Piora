@@ -6,6 +6,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { AliIcon } from "./AliIcon";
+import { ChatDisclosureTrigger } from "./ChatDisclosure";
 import { VirtualList, type VirtualListHandle } from "./VirtualList";
 
 export interface ChatHistoryHandle { revealEntry(id: string): void; cancelNavigation(): void }
@@ -86,9 +87,9 @@ export const ChatHistory = memo(function ChatHistory({ messages, entryIds, busy,
       const { count, toolCalls, expanded: open } = row.process;
       const parts = [t("chat.processDetails"), `${count} ${t(count === 1 ? "chat.message" : "chat.messages")}`];
       if (toolCalls) parts.push(`${toolCalls} ${t(toolCalls === 1 ? "chat.toolCall" : "chat.toolCalls")}`);
-      return <button type="button" className="chat-process-toggle" aria-expanded={open} onClick={() => toggle(row.key)} title={t(open ? "chat.collapseProcess" : "chat.expandProcess")}>
-        <AliIcon name="arrowright" size={12} style={{ transform: open ? "rotate(90deg)" : "none" }} /><span>{parts.join(" · ")}</span>
-      </button>;
+      return <div className="chat-process-disclosure"><ChatDisclosureTrigger className="chat-process-toggle" expanded={open} icon="activity"
+        label={parts[0]} description={parts.slice(1).join(" · ")} onClick={() => toggle(row.key)}
+        title={t(open ? "chat.collapseProcess" : "chat.expandProcess")} /></div>;
     }
     const index = row.index;
     const message = row.message!;

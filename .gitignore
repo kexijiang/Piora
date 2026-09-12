@@ -20,6 +20,7 @@
 
 # next.js
 /.next/
+/dev/ui/.next/
 /out/
 
 # desktop build output (electron-builder + tsc)

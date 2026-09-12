@@ -33,6 +33,7 @@ export function registerAbortHandler(handler: (() => void) | null): void {
 export function useGlobalKeyboardShortcuts(): void {
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
+      if (e.defaultPrevented || document.querySelector("[data-history-workbench]")) return;
       // ---- Esc: stop agent ----
       if (e.key === "Escape") {
         if (!globalAbortHandler) return;

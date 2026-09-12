@@ -20,7 +20,7 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 
 项目由 [pi-web](https://github.com/agegr/pi-web) 演进而来，沿用 Pi 的 AgentSession、JSONL 会话、模型接入和扩展机制，由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-本文对应源码版本 `0.4.41-beta.35`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
+本文对应源码版本 `0.4.41-beta.36`。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
 ## 能做什么
 
@@ -162,6 +162,14 @@ npm run dev
 ```powershell
 npm run dev:desktop
 ```
+
+该入口已实现 [Issue #46](https://github.com/kexijiang/Piora/issues/46)：自动启动带桌面认证的开发服务器、Electron TypeScript 监听与桌面窗口，无需生产构建或打包。React/CSS 修改热更新；`desktop/src` 修改后重新编译并重启 Electron。首次打开页面需要编译，后续修改只更新受影响的模块。
+
+日常验证流程：启动一次 `npm run dev:desktop`，在打开的桌面窗口中选择要检查的会话，修改并保存代码，直接查看热更新效果；按本次修改范围检查相关交互和测试即可。在终端按 Ctrl+C 停止开发进程。
+
+桌面窗口数据与日志位于 `.piora-data/desktop-dev`，Pi 会话与模型配置仍沿用当前用户的数据目录。浏览器开发与桌面开发共用 30141 端口，二者择一运行；桌面需要改端口时设置 `PIORA_DESKTOP_DEV_PORT`。桌面开发带临时认证令牌，应在自动打开的 Electron 窗口中查看，普通浏览器直接访问同一地址会被认证拦截。
+
+开发入口显式使用 Webpack，以兼容共享桌面 TypeScript 模块中的 `.js` 导入，并保留现有 React/CSS 热更新能力。
 
 ## 质量检查
 

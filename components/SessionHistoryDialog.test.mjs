@@ -3,25 +3,25 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const appShell = readFileSync(new URL("./AppShell.tsx", import.meta.url), "utf8");
-const dialog = readFileSync(new URL("./SessionHistoryDialog.tsx", import.meta.url), "utf8");
+const workbench = readFileSync(new URL("./SessionHistoryWorkbench.tsx", import.meta.url), "utf8");
 const globalStyles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const exportRoute = readFileSync(new URL("../app/api/sessions/[id]/export/route.ts", import.meta.url), "utf8");
 
 test("opens complete session history inside the current application window", () => {
   assert.match(appShell, /setHistoryDialogOpen\(true\)/);
-  assert.match(appShell, /<SessionHistoryDialog/);
+  assert.match(appShell, /<SessionHistoryWorkbench/);
   assert.doesNotMatch(appShell, /window\.open\(/);
-  assert.match(dialog, /role="dialog"/);
-  assert.match(dialog, /aria-modal="true"/);
-  assert.match(dialog, /createPortal\(/);
+  assert.match(appShell, /visibility: historyDialogOpen[^\n]+"hidden"/);
+  assert.match(appShell, /inert=\{historyDialogOpen/);
+  assert.match(workbench, /data-history-workbench/);
+  assert.doesNotMatch(workbench, /<iframe|createPortal\(/);
 });
 
-test("isolates the interactive exported history while retaining download and reload controls", () => {
-  assert.match(dialog, /embed=1&appearance=/);
-  assert.match(dialog, /sandbox="allow-scripts allow-downloads"/);
-  assert.doesNotMatch(dialog, /allow-same-origin/);
-  assert.match(dialog, /href=\{downloadUrl\}/);
-  assert.match(dialog, /setFrameVersion\(\(version\) => version \+ 1\)/);
+test("retains standalone HTML export while reading through the native workbench", () => {
+  assert.match(workbench, /history.exportHtml/);
+  assert.match(workbench, /history.exportJson/);
+  assert.match(workbench, /history.exportMarkdown/);
+  assert.match(workbench, /onClick=\{reload\}/);
   assert.match(exportRoute, /embed \? "frame-ancestors 'self'" : "frame-ancestors 'none'"/);
   assert.match(exportRoute, /pi-session-history:escape/);
 });

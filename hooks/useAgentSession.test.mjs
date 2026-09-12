@@ -6,6 +6,41 @@ import { randomUUID } from "node:crypto";
 
 const source = await readFile(new URL("./useAgentSession.ts", import.meta.url), "utf8");
 
+function historyHarness(overrides = {}) {
+  const callbacks = source.slice(source.indexOf("  const switchHistoryBranch = useCallback"), source.indexOf("  const handleModelChange = useCallback"));
+  const events = [];
+  const env = {
+    useCallback: callback => callback, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
+    t: key => key, sendAgentCommand: async (_id, command) => { events.push(command.type); return command.type === "fork" ? { newSessionId: "new-session" } : {}; },
+    loadContext: async () => { events.push("context"); return true; }, setActiveLeafId: id => events.push(`leaf:${id}`),
+    setDraft: (id, draft) => events.push({ id, draft }), onSessionForked: id => events.push(`open:${id}`), ...overrides,
+  };
+  const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  return { ...new Function("env", `with(env) { ${js}; return { switchHistoryBranch, forkHistoryQuestion }; }`)(env), events };
+}
+
+test("history switches only after success and preserves the preview on cancellation or load failure", async () => {
+  const success = historyHarness();
+  assert.equal(await success.switchHistoryBranch("leaf"), true);
+  assert.deepEqual(success.events, ["navigate_tree", "context", "leaf:leaf"]);
+  const cancelled = historyHarness({ sendAgentCommand: async () => ({ cancelled: true }) });
+  assert.equal(await cancelled.switchHistoryBranch("leaf"), false);
+  assert.deepEqual(cancelled.events, []);
+  const failed = historyHarness({ loadContext: async () => false });
+  await assert.rejects(failed.switchHistoryBranch("leaf"), /history.loadError/);
+  assert.deepEqual(failed.events, ["navigate_tree"]);
+});
+
+test("history fork seeds the original question and attachments without sending; busy sessions cannot fork", async () => {
+  const draft = { value: "检查图片", images: [{ data: "YWJj", mimeType: "image/png" }], files: [{ name: "note.txt", text: "备注", size: 6 }] };
+  const fork = historyHarness();
+  assert.equal(await fork.forkHistoryQuestion("question", draft), true);
+  assert.deepEqual(fork.events, ["fork", { id: "new-session", draft }, "open:new-session"]);
+  const busy = historyHarness({ agentRunningRef: { current: true } });
+  await assert.rejects(busy.forkHistoryQuestion("question", draft), /history.busy/);
+  assert.deepEqual(busy.events, []);
+});
+
 function sendHarness(overrides = {}) {
   const send = source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"));
   const env = { useCallback: (callback) => callback, isNew: false, newSessionCwd: null, session: { id: "session" }, crypto: { randomUUID },
@@ -194,6 +229,7 @@ test("visible termination precedes a stalled history reload and is idempotent", 
     ...refs, useCallback: (callback) => callback,
     closeEvents: () => calls.push("close"),
     setAgentRunning: (value) => calls.push(["running", value]),
+    setReplyHistorySettling: (value) => calls.push(["replySettling", value]),
     setAgentPhase: () => {}, setRetryInfo: () => {}, setIsCompacting: () => {},
     setExtensionDialog: () => {}, setExtensionCustomUi: () => {},
     dispatch: (action) => calls.push(action.type), onAgentEnd: () => calls.push("notify"),
@@ -203,6 +239,7 @@ test("visible termination precedes a stalled history reload and is idempotent", 
   const pending = finish("session", 1);
   assert.equal(refs.agentRunningRef.current, false);
   assert.ok(calls.indexOf("end") < calls.indexOf("history"));
+  assert.ok(calls.some((call) => Array.isArray(call) && call[0] === "replySettling" && call[1] === true));
   assert.equal(calls.includes("notify"), false);
   assert.equal(finish("session", 1), pending);
   refs.promptRunIdRef.current = 2;
@@ -212,6 +249,7 @@ test("visible termination precedes a stalled history reload and is idempotent", 
   releaseHistory();
   await pending;
   assert.equal(refs.agentRunningRef.current, true);
+  assert.equal(calls.some((call) => Array.isArray(call) && call[0] === "replySettling" && call[1] === false), false, "old hydration must not enable suggestions for a newer run");
 });
 
 test("cancelled preparation and replaced SSE connections cannot restart a prompt", () => {

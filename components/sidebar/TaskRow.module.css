@@ -1,3 +1,34 @@
+.titleViewport {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  /* Clip at the text's own left edge, after any branch icon/indentation. */
+  contain: paint;
+}
+
+.titleText {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.titleViewport[data-scrolling="true"] .titleText {
+  width: max-content;
+  overflow: visible;
+  text-overflow: clip;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .titleViewport[data-scrolling="true"] .titleText {
+    width: auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transform: none !important;
+  }
+}
+
 .mutationError {
   flex: 0 0 100%;
   order: 2;

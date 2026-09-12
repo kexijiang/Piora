@@ -115,7 +115,9 @@ export const ChatMinimap = memo(function ChatMinimap({ messages, scrollContainer
   }, [onRevealHistory, users.length]);
   const showPreview = () => { clearTimeout(hideTimer.current); setPreviewOpen(true); };
   const hidePreview = () => { clearTimeout(hideTimer.current); hideTimer.current = setTimeout(() => setPreviewOpen(false), 180); };
-  if (!visible) return null;
+  // Reserve the timeline lane even when the conversation fits the viewport.
+  // Otherwise opening a disclosure inserts 36px into the flex layout and shifts the centered chat.
+  if (!visible) return <div ref={root} className={styles.root} aria-hidden="true" />;
   return <div ref={root} className={styles.root} data-testid="chat-timeline" onMouseEnter={(event) => { if (!previewPinned && root.current && event.clientX >= root.current.getBoundingClientRect().left) setPreviewAnchor(event.clientY - root.current.getBoundingClientRect().top); showPreview(); }} onMouseMove={(event) => { if (!previewPinned && event.target instanceof Element && !event.target.closest("[data-minimap-preview-box], [data-minimap-preview-bridge]") && root.current) setPreviewAnchor(event.clientY - root.current.getBoundingClientRect().top); }} onMouseLeave={hidePreview} onFocusCapture={(event) => { if (!previewPinned && root.current && !previewBox.current?.contains(event.target)) setPreviewAnchor(event.target.getBoundingClientRect().top - root.current.getBoundingClientRect().top + 7); showPreview(); }}
       onBlurCapture={(event) => { if (!event.relatedTarget || !event.currentTarget.contains(event.relatedTarget)) hidePreview(); }}>
     <div className={styles.track} style={{ top: 16, height: Math.max(1, Math.min(height - 32, (users.length - 1) * 44)) }} aria-hidden="true" />

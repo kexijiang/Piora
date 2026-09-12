@@ -14,7 +14,7 @@ import type { Tab } from "./TabBar";
 import type { RightPanelHandle, RightPanelTab } from "./workspace/RightPanel";
 import type { RoomWorkspaceHandle } from "./RoomWorkspace";
 import type { SettingsKey } from "@/lib/settings-search";
-import { isDarkTheme, useTheme, type Theme, type ThemePreset } from "@/hooks/useTheme";
+import { useTheme, type Theme, type ThemePreset } from "@/hooks/useTheme";
 import { useI18n } from "@/hooks/useI18n";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -33,6 +33,7 @@ import { getFileName } from "@/lib/file-paths";
 import { resolveWorkspaceFilePath } from "@/lib/file-links";
 import { buildAtMentionText, buildFileAtMentionsText, buildFileLineMentionText } from "@/lib/file-fuzzy";
 import { getInitialNavigation } from "@/lib/initial-navigation";
+import { historyLocationUrl, readHistoryLocation, type HistoryChatControls, type HistoryLocation } from "@/lib/history-navigation";
 import {
   getDefaultRightPanelWidth,
   getRightPanelMaxWidth,
@@ -139,7 +140,7 @@ const UsageStatsPanel = dynamic(() => import("./UsageStatsPanel").then((module) 
 const TrashSettings = dynamic(() => import("./TrashSettings").then((module) => module.TrashSettings), { ssr: false });
 const ArchivedChatsSettings = dynamic(() => import("./ArchivedChatsSettings").then((module) => module.ArchivedChatsSettings), { ssr: false });
 const AutomationPanel = dynamic(() => import("./AutomationPanel").then((module) => module.AutomationPanel), { ssr: false });
-const SessionHistoryDialog = dynamic(() => import("./SessionHistoryDialog").then((module) => module.SessionHistoryDialog), { ssr: false });
+const SessionHistoryWorkbench = dynamic(() => import("./SessionHistoryWorkbench").then((module) => module.SessionHistoryWorkbench), { ssr: false });
 const CommandPalette = dynamic(() => import("./CommandPalette").then((module) => module.CommandPalette), { ssr: false });
 const DesktopUpdateDialog = dynamic(() => import("./DesktopUpdateDialog").then((module) => module.DesktopUpdateDialog), { ssr: false });
 const ShortcutSettings = dynamic(() => import("./ShortcutSettings").then((module) => module.ShortcutSettings), { ssr: false });
@@ -239,7 +240,10 @@ export function AppShell() {
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
   const [settingsKey, setSettingsKey] = useState<SettingsKey>("general");
   const [settingsItemId, setSettingsItemId] = useState<string>();
-  const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [historyDialogOpen, setHistoryDialogOpen] = useState(() => readHistoryLocation(searchParams ?? new URLSearchParams()).open);
+  const [historyLocation, setHistoryLocation] = useState<HistoryLocation>(() => readHistoryLocation(searchParams ?? new URLSearchParams()));
+  const [historyControls, setHistoryControls] = useState<HistoryChatControls | null>(null);
+  const historyReturnFocus = useRef<HTMLElement | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const [rightPanelMaximized, setRightPanelMaximized] = useState(false);
@@ -484,6 +488,12 @@ export function AppShell() {
     setSettingsKey(key);
     setSettingsDialogOpen(true);
   }, [isMobile]);
+  useEffect(() => {
+    const open = () => openSettings("conversation", "conversation.replySuggestions");
+    window.addEventListener("piora:open-reply-settings", open);
+    return () => window.removeEventListener("piora:open-reply-settings", open);
+  }, [openSettings]);
+
   const openModelsSettings = useCallback(() => openSettings("models"), [openSettings]);
 
   const openSessionStatsPanel = useCallback(() => {
@@ -854,6 +864,7 @@ export function AppShell() {
 
   const handleSelectSession = useCallback((session: SessionInfo, isRestore = false) => {
     setSettingsDialogOpen(false);
+    if (!isRestore) { setHistoryDialogOpen(false); setHistoryLocation({ open: false, leafId: null, entryId: null }); }
     setSelectedRoom(null);
     if (!isRestore && selectedSessionIdRef.current === session.id) {
       setActiveTopPanel(null);
@@ -891,6 +902,27 @@ export function AppShell() {
     handleSelectSession(session);
     setFocusedEntryId(entryId);
     replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}&entry=${encodeURIComponent(entryId)}`);
+  }, [handleSelectSession]);
+
+  useEffect(() => {
+    let controller: AbortController | null = null;
+    const restore = () => {
+      controller?.abort(); controller = null;
+      const requestedUrl = window.location.search;
+      const params = new URLSearchParams(window.location.search);
+      const location = readHistoryLocation(params);
+      setHistoryLocation(location); setHistoryDialogOpen(location.open);
+      const id = params.get("session");
+      if (!id || id === selectedSessionIdRef.current) return;
+      controller = new AbortController();
+      const active = controller;
+      void fetch(`/api/sessions/${encodeURIComponent(id)}?deferThinking=1&deferMedia=1`, { signal: active.signal })
+        .then(async response => response.ok ? response.json() : null)
+        .then(body => { if (!active.signal.aborted && window.location.search === requestedUrl && body?.info) handleSelectSession(body.info, true); })
+        .catch(() => {});
+    };
+    window.addEventListener("popstate", restore);
+    return () => { controller?.abort(); window.removeEventListener("popstate", restore); };
   }, [handleSelectSession]);
 
   const openNotificationSession = useCallback(async (rawSessionId: unknown) => {
@@ -1285,6 +1317,8 @@ export function AppShell() {
   }, []);
 
   const handleSessionForked = useCallback((newSessionId: string) => {
+    setHistoryDialogOpen(false);
+    setHistoryLocation({ open: false, leafId: null, entryId: null });
     setRefreshKey((k) => k + 1);
     setSessionKey((k) => k + 1);
     setNewSessionCwd(null);
@@ -1436,9 +1470,41 @@ export function AppShell() {
 
   const handleViewFullHistory = useCallback(() => {
     if (!selectedSession) return;
+    historyReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setActiveTopPanel(null);
+    setHistoryLocation({ open: true, leafId: null, entryId: null });
     setHistoryDialogOpen(true);
+    if (new URLSearchParams(window.location.search).get("view") !== "history") {
+      window.history.pushState({ ...window.history.state, __NA: true }, "", historyLocationUrl(selectedSession.id));
+    }
   }, [selectedSession]);
+
+  const closeFullHistory = useCallback(() => {
+    setHistoryDialogOpen(false);
+    setHistoryLocation({ open: false, leafId: null, entryId: null });
+    const params = new URLSearchParams(window.location.search);
+    params.delete("view"); params.delete("historyLeaf"); params.delete("historyEntry");
+    window.history.pushState({ ...window.history.state, __NA: true }, "", `?${params}`);
+    requestAnimationFrame(() => {
+      const target = historyReturnFocus.current;
+      if (target?.isConnected) target.focus({ preventScroll: true }); else chatInputRef.current?.focus();
+    });
+  }, []);
+  const navigateHistory = useCallback((leafId: string | null, entryId: string | null) => {
+    const id = selectedSessionIdRef.current;
+    if (!id) return;
+    setHistoryLocation({ open: true, leafId, entryId });
+    const url = historyLocationUrl(id, leafId, entryId);
+    if (window.location.search !== url) window.history.pushState({ ...window.history.state, __NA: true }, "", url);
+  }, []);
+  const openRelatedHistory = useCallback(async (id: string) => {
+    const response = await fetch(`/api/sessions/${encodeURIComponent(id)}?deferThinking=1&deferMedia=1`);
+    const body = await response.json();
+    if (!response.ok || !body.info) throw new Error(body.error || `HTTP ${response.status}`);
+    handleSelectSession(body.info, true);
+    setHistoryLocation({ open: true, leafId: null, entryId: null }); setHistoryDialogOpen(true);
+    window.history.pushState({ ...window.history.state, __NA: true }, "", historyLocationUrl(id));
+  }, [handleSelectSession]);
 
   const handleTaskRename = useCallback(async (name: string) => {
     if (!selectedSession) return;
@@ -1453,9 +1519,8 @@ export function AppShell() {
   }, [selectedSession]);
 
   const handleTaskExport = useCallback(() => {
-    if (!selectedSession) return;
-    setHistoryDialogOpen(true);
-  }, [selectedSession]);
+    handleViewFullHistory();
+  }, [handleViewFullHistory]);
 
   const handleOpenTaskChanges = useCallback(() => {
     if (rightPanelOverlayMode) setSidebarOpen(false);
@@ -1654,13 +1719,14 @@ export function AppShell() {
         isMacPlatform(window.piDesktop?.platform),
       ));
       if (!shortcut) return;
+      if (historyDialogOpen && shortcut.id.startsWith("session.")) return;
       event.preventDefault();
       if (shortcut.id === "palette.open") setCommandPaletteOpen(true);
       else void commandActions[shortcut.id]?.();
     };
     window.addEventListener("keydown", handleApplicationShortcut);
     return () => window.removeEventListener("keydown", handleApplicationShortcut);
-  }, [commandActions, shortcutBindings]);
+  }, [commandActions, historyDialogOpen, shortcutBindings]);
 
   useEffect(() => {
     void window.piDesktop?.setKeyboardShortcuts?.(shortcutBindings);
@@ -2651,7 +2717,7 @@ export function AppShell() {
           <div className="workspace-layout">
             {/* Chat content */}
             <div className="workspace-chat">
-            <div style={{ height: "100%", display: settingsDialogOpen ? "none" : "block" }} aria-hidden={settingsDialogOpen}>
+            <div style={{ height: "100%", display: settingsDialogOpen ? "none" : "block", visibility: historyDialogOpen && !selectedRoom ? "hidden" : undefined }} aria-hidden={settingsDialogOpen || historyDialogOpen && !selectedRoom} inert={historyDialogOpen && !selectedRoom}>
             {selectedRoom ? (
               <RoomWorkspace
                 key={`${sessionKey}:${selectedRoom.id}`}
@@ -2664,6 +2730,8 @@ export function AppShell() {
             ) : showChat ? (
               <ChatWindow
                 key={sessionKey}
+                historyVisible={historyDialogOpen && !settingsDialogOpen}
+                onHistoryControlsChange={setHistoryControls}
                 session={selectedSession}
                 focusEntryId={focusedEntryId}
                 newSessionCwd={effectiveNewSessionCwd}
@@ -2724,6 +2792,10 @@ export function AppShell() {
             ) : null}
             </div>
             {settingsPage}
+            {historyDialogOpen && selectedSession && !selectedRoom && !settingsDialogOpen ? <SessionHistoryWorkbench
+              key={selectedSession.id} sessionId={selectedSession.id} sessionName={selectedSession.name}
+              location={historyLocation} controls={historyControls} onClose={closeFullHistory} onLocation={navigateHistory}
+              onOpenFile={handleOpenLinkedFile} onRelated={openRelatedHistory} /> : null}
             </div>
             {companionOpen && !desktopChrome && !settingsDialogOpen ? <CompanionPet
               open
@@ -2828,14 +2900,6 @@ export function AppShell() {
         search={searchPaletteCommands}
         onRun={runPaletteCommand}
         onClose={() => setCommandPaletteOpen(false)}
-      />
-    ) : null}
-    {historyDialogOpen && selectedSession ? (
-      <SessionHistoryDialog
-        sessionId={selectedSession.id}
-        sessionName={selectedSession.name}
-        appearance={isDarkTheme(theme) ? "dark" : "light"}
-        onClose={() => setHistoryDialogOpen(false)}
       />
     ) : null}
     {desktopUpdateState ? (

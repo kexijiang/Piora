@@ -2,10 +2,14 @@
 
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { useReplyDraft } from "@/hooks/useReplyDraft";
+import { useReplySuggestions } from "@/hooks/useReplySuggestions";
+import { ReplySuggestionBar } from "./ReplySuggestionBar";
+import type { ReplySource } from "@/lib/reply-suggestions";
 import { useAnchoredMenuPosition } from "@/hooks/useAnchoredMenuPosition";
 import { readPromptOptimizerModel, readPromptOptimizerSystemPrompt } from "@/lib/prompt-optimizer-settings";
 import type { AttachedFile, BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
-import { clearDraft, getDraft, setDraft, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
+import { clearDraft, getDraft, setDraft, hydrateDraft, DRAFT_STORAGE_ERROR_EVENT, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
 import {
   MAX_ATTACHED_IMAGE_BYTES,
   MAX_ATTACHED_IMAGE_TOTAL_BYTES,
@@ -105,6 +109,7 @@ interface PromptOptimizationState {
 }
 
 interface Props {
+  replySource?: ReplySource | null;
   onSend: (message: string, images?: AttachedImage[], files?: AttachedFile[], onDurable?: (clientPromptId?: string) => void, retryOfPromptIds?: string[]) => boolean | void | Promise<boolean | void>;
   onAbort: () => void;
   onSteer?: (message: string, images?: AttachedImage[]) => void;
@@ -331,12 +336,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   variant = "conversation",
   placeholder,
   contextControl,
+  replySource = null,
 }: Props, ref) {
   const { t, locale } = useI18n();
   const isMobile = useIsMobile();
   const { shortcut: sendShortcut } = useSendShortcut();
   const { preference: streamingSendPreference } = useStreamingSendPreference();
-  const [value, setValue] = useState(() => (draftKey ? getDraft(draftKey)?.value ?? "" : ""));
+  const { draft: replyDraft, current: replyDraftRef, setValue, commit: commitReplyDraft, reset: resetReplyDraft, undo: undoReplyDraft } = useReplyDraft(() => {
+    const saved = draftKey ? getDraft(draftKey) : null;
+    return { value: saved?.value ?? "", spans: saved?.replySpans ?? [] };
+  });
+  const value = replyDraft.value;
+  const suggestions = useReplySuggestions(isStreaming || isCompacting ? null : replySource, locale);
+  const [hydratedDraftKey, setHydratedDraftKey] = useState<string | undefined>(undefined);
+  const [draftStorageError, setDraftStorageError] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [modelDropdownRect, setModelDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null);
   const [modelMenuSection, setModelMenuSection] = useState<ModelMenuSection>(null);
@@ -638,7 +651,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       textarea.setSelectionRange(textarea.value.length, textarea.value.length);
       resizeComposerTextarea(textarea);
     });
-  }, []);
+  }, [setValue]);
 
   const clearImages = useCallback(() => {
     setAttachedImages((prev) => {
@@ -650,7 +663,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   const clearInput = useCallback(() => {
     retryOfPromptIdsRef.current = [];
     stopVoiceInput(true);
-    setValue("");
+    resetReplyDraft({ value: "", spans: [] });
     setAtQuery(null);
     setHistoryMenuOpen(false);
     setStreamingActionMenuOpen(false);
@@ -663,18 +676,19 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [clearImages, draftKey, stopVoiceInput]);
+  }, [clearImages, draftKey, stopVoiceInput, resetReplyDraft]);
 
   useEffect(() => {
-    if (!draftKey || draftKeyRef.current !== draftKey) return;
+    if (!draftKey || draftKeyRef.current !== draftKey || hydratedDraftKey !== draftKey) return;
     if (!value && !attachedImages.length && !attachedFiles.length) retryOfPromptIdsRef.current = [];
     setDraft(draftKey, {
       value,
+      replySpans: replyDraft.spans,
       images: attachedImages.map(imageToDraftImage),
       files: attachedFiles.map(attachedFileToDraftFile),
       ...(retryOfPromptIdsRef.current.length ? { retryOfPromptIds: [...retryOfPromptIdsRef.current] } : {}),
     });
-  }, [attachedFiles, attachedImages, draftKey, value]);
+  }, [attachedFiles, attachedImages, draftKey, value, replyDraft.spans, hydratedDraftKey]);
 
   useEffect(() => {
     const previousDraftKey = draftKeyRef.current;
@@ -685,6 +699,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     if (previousDraftKey) {
       setDraft(previousDraftKey, {
         value: valueRef.current,
+        replySpans: replyDraftRef.current.spans,
         images: attachedImagesRef.current.map(imageToDraftImage),
         files: attachedFilesRef.current.map(attachedFileToDraftFile),
         ...(retryOfPromptIdsRef.current.length ? { retryOfPromptIds: [...retryOfPromptIdsRef.current] } : {}),
@@ -698,15 +713,43 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     promptOptimizerAbortRef.current = null;
     setPromptOptimization(null);
     setAttachmentMenuOpen(false);
-    setValue(draft?.value ?? "");
+    resetReplyDraft({ value: draft?.value ?? "", spans: draft?.replySpans ?? [] });
+    valueRef.current = draft?.value ?? "";
     setAtQuery(null);
     setHistoryMenuOpen(false);
-    setAttachedImages((prev) => {
-      prev.forEach(revokeImagePreview);
-      return draftImagesToAttachedImages(draft?.images);
-    });
-    setAttachedFiles(draftFilesToAttachedFiles(draft?.files));
-  }, [draftKey, stopVoiceInput]);
+    const nextImages = draftImagesToAttachedImages(draft?.images);
+    const nextFiles = draftFilesToAttachedFiles(draft?.files);
+    attachedImagesRef.current.forEach(revokeImagePreview);
+    attachedImagesRef.current = nextImages;
+    attachedFilesRef.current = nextFiles;
+    setAttachedImages(nextImages);
+    setAttachedFiles(nextFiles);
+  }, [draftKey, stopVoiceInput, resetReplyDraft, replyDraftRef]);
+
+  useEffect(() => {
+    if (!draftKey) return;
+    let alive = true;
+    const before = replyDraftRef.current;
+    const beforeImages = attachedImagesRef.current;
+    const beforeFiles = attachedFilesRef.current;
+    setDraftStorageError(false);
+    void hydrateDraft(draftKey).then((saved) => {
+      if (!alive || draftKeyRef.current !== draftKey) return;
+      if (saved && replyDraftRef.current === before && attachedImagesRef.current === beforeImages && attachedFilesRef.current === beforeFiles) {
+        resetReplyDraft({ value: saved.value, spans: saved.replySpans ?? [] });
+        retryOfPromptIdsRef.current = saved.retryOfPromptIds ?? [];
+        setAttachedImages((images) => { images.forEach(revokeImagePreview); return draftImagesToAttachedImages(saved.images); });
+        setAttachedFiles(draftFilesToAttachedFiles(saved.files));
+      }
+    }).catch(() => { if (alive) setDraftStorageError(true); }).finally(() => { if (alive) setHydratedDraftKey(draftKey); });
+    return () => { alive = false; };
+  }, [draftKey, replyDraftRef, resetReplyDraft]);
+
+  useEffect(() => {
+    const failed = (event: Event) => { if ((event as CustomEvent<string>).detail === draftKeyRef.current) setDraftStorageError(true); };
+    window.addEventListener(DRAFT_STORAGE_ERROR_EVENT, failed);
+    return () => window.removeEventListener(DRAFT_STORAGE_ERROR_EVENT, failed);
+  }, []);
 
   useEffect(() => {
     const ta = textareaRef.current;
@@ -754,6 +797,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       ];
       messageToSend = "";
     }
+    const sentReplyDraft = replyDraftRef.current;
     const sentValue = value;
     const sentImages = attachedImages;
     const sentFiles = attachedFiles;
@@ -773,7 +817,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const restoreSubmittedDraft = () => {
       if (!cleared || draftKeyRef.current !== sentDraftKey || valueRef.current || attachedImagesRef.current.length || attachedFilesRef.current.length) return;
       retryOfPromptIdsRef.current = [...new Set([...(submittedPromptId ? [submittedPromptId] : []), ...sentRetryOfPromptIds])];
-      setValue(sentValue);
+      resetReplyDraft(sentReplyDraft);
       setAttachedFiles(sentFiles);
       setAttachedImages(draftImagesToAttachedImages(sentImages.map(imageToDraftImage)));
     };
@@ -792,7 +836,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
-  }, [value, attachedImages, attachedFiles, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, clearInput, contextUsage, t]);
+  }, [value, attachedImages, attachedFiles, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft]);
 
   useEffect(() => {
     submitRef.current = () => { void handleSend(); };
@@ -913,7 +957,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       element.setSelectionRange(next.selection, next.selection);
       resizeComposerTextarea(element);
     });
-  }, [updateAtQuery]);
+  }, [setValue, updateAtQuery]);
 
   const prepareVoiceInsertion = useCallback(() => {
     const textarea = textareaRef.current;
@@ -1062,7 +1106,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       el.setSelectionRange(newPos, newPos);
       resizeComposerTextarea(el);
     });
-  }, [atQuery, value]);
+  }, [setValue, atQuery, value]);
 
   useEffect(() => {
     if (atActiveIndex >= atMatches.length) {
@@ -1101,7 +1145,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
   }, [historyActiveIndex, historyMenuOpen]);
 
   const applyHistoryInput = useCallback((text: string) => {
-    setValue(text);
+    commitReplyDraft({ value: text, spans: [] });
     setHistoryMenuOpen(false);
     setHistoryActiveIndex(0);
     setAtQuery(null);
@@ -1113,7 +1157,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       ta.style.height = "auto";
       resizeComposerTextarea(ta);
     });
-  }, []);
+  }, [commitReplyDraft]);
 
   const applySlashCommand = useCallback((command: SlashCommandPaletteItem) => {
     const nextValue = `/${command.name} `;
@@ -1128,7 +1172,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       ta.style.height = "auto";
       resizeComposerTextarea(ta);
     });
-  }, []);
+  }, [setValue]);
 
   const sendQueued = useCallback((mode: "steer" | "followup") => {
     const msg = value.trim();
@@ -1212,6 +1256,12 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
       if (e.key === "Enter" && !e.shiftKey && (isComposing || recentlyComposed)) {
         if (recentlyComposed) e.preventDefault();
+        return;
+      }
+
+      if (!isComposing && (e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "z" || e.key.toLowerCase() === "y")) {
+        e.preventDefault();
+        undoReplyDraft(e.shiftKey || e.key.toLowerCase() === "y");
         return;
       }
 
@@ -1352,7 +1402,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
         }
       }
     },
-    [isStreaming, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, canQueueStreamingMessage, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, streamingActionMenuOpen, streamingActionIndex, sendQueued, sendShortcut, submitStreamingMessage]
+    [isStreaming, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, canQueueStreamingMessage, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, streamingActionMenuOpen, streamingActionIndex, sendQueued, sendShortcut, submitStreamingMessage, undoReplyDraft]
   );
 
   const handleInput = useCallback(() => {
@@ -1633,6 +1683,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
           </div>
         )}
         {/* Image previews */}
+        <ReplySuggestionBar {...suggestions} draft={replyDraft} onChange={(next, caret) => {
+          stopVoiceInput(true);
+          promptOptimizerAbortRef.current?.abort();
+          setPromptOptimization(null);
+          commitReplyDraft(next);
+          if (caret !== undefined && !isMobile) requestAnimationFrame(() => {
+            const textarea = textareaRef.current;
+            if (!textarea) return;
+            textarea.focus({ preventScroll: true });
+            textarea.setSelectionRange(caret, caret);
+            resizeComposerTextarea(textarea);
+          });
+        }} />
+        {draftStorageError && <div role="status" style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "8px 0" }}>{t("reply.storageFailed")}</div>}
         {attachmentError && (
           <div role="alert" style={{ marginBottom: 6, color: "#ef4444", fontSize: "var(--text-xs)" }}>
             {attachmentError}
@@ -1924,7 +1988,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
                       type="button"
                       className="is-primary"
                       onClick={() => {
-                        setValue(promptOptimization.result!);
+                        commitReplyDraft({ value: promptOptimization.result!, spans: [] });
                         setPromptOptimization(null);
                         requestAnimationFrame(() => textareaRef.current?.focus());
                       }}

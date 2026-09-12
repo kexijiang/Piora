@@ -19,7 +19,6 @@ const messageImageSource = readFileSync(new URL("./MessageImage.tsx", import.met
 const messageViewSource = readFileSync(new URL("./MessageView.tsx", import.meta.url), "utf8");
 const commandViewSource = readFileSync(new URL("./CommandExecutionView.tsx", import.meta.url), "utf8");
 const commandLogSource = readFileSync(new URL("./CommandLogViewer.tsx", import.meta.url), "utf8");
-const globalStyles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 function renderMessage(message, props = {}) {
   return renderToStaticMarkup(
@@ -30,6 +29,20 @@ function renderMessage(message, props = {}) {
     ),
   );
 }
+
+test("history rendering keeps disclosure and copy while suppressing conversation mutations", () => {
+  const html = renderMessage({ role: "user", content: "保留历史问题" }, {
+    mode: "history", entryId: "question", prevAssistantEntryId: "answer",
+    onFork() {}, onNavigate() {}, onEditContent() {}, onRetry: async () => {},
+  });
+  assert.match(html, /保留历史问题/);
+  assert.doesNotMatch(html, /从这里编辑|重新发送|分叉/);
+  const command = renderMessage({ role: "assistant", content: [{ type: "toolCall", toolCallId: "shell", toolName: "bash", input: { command: "echo hello" } }] }, { mode: "history" });
+  assert.match(command, /尚无已保存的结果/);
+  assert.match(command, /复制完整命令/);
+  assert.match(command, /aria-expanded="false"/);
+  assert.doesNotMatch(command, /is-running/);
+});
 
 test("shell output stays collapsed by default, including live chunks", () => {
   const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "shell", toolName: "bash", input: { command: "echo hello" } }] };
@@ -177,7 +190,7 @@ test("renders partial assistant content before the provider error", () => {
   assert.match(html, /Error: Connection closed/);
 });
 
-test("renders thinking as a rounded disclosure whose content uses Markdown", () => {
+test("renders thinking as an accessible disclosure whose content uses Markdown", () => {
   const html = renderMessage({
     role: "assistant",
     provider: "openai",
@@ -189,12 +202,12 @@ test("renders thinking as a rounded disclosure whose content uses Markdown", () 
     messageViewSource.indexOf("function ToolCallBlock"),
   );
 
-  assert.match(html, /class="thinking-block"/);
-  assert.match(html, /class="thinking-block-trigger"/);
+  assert.match(html, /class="[^"]*\bthinking-block\b[^"]*"/);
+  assert.match(html, /class="[^"]*\bthinking-block-trigger\b[^"]*"/);
   assert.match(html, /aria-expanded="false"/);
+  assert.match(html, /aria-controls="[^"]+"/);
   assert.match(thinkingBlockSource, /<MarkdownBody className="markdown-thinking"[^>]*>\{display\.content\}<\/MarkdownBody>/);
   assert.doesNotMatch(thinkingBlockSource, /whiteSpace:\s*"pre-wrap"/);
-  assert.match(globalStyles, /\.thinking-block\s*\{[^}]*border-radius:\s*var\(--radius-surface\)/s);
 });
 
 test("renders file edits as a collapsed change card with line stats", () => {
@@ -226,7 +239,7 @@ test("renders file edits as a collapsed change card with line stats", () => {
     }]]),
   });
 
-  assert.match(html, /class="file-change-card is-complete"/);
+  assert.match(html, /class="[^"]*\bfile-change-card is-complete"/);
   assert.match(html, /aria-expanded="false"/);
   assert.match(html, /已编辑/);
   assert.match(html, /components\/Card\.tsx/);

@@ -1,0 +1,25 @@
+.bar { container-type: inline-size; min-width: 0; padding: 8px 0 12px; color: var(--text); font-size: var(--text-sm); }
+.actions, .options, .footer { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.action { border: 0; background: transparent; color: var(--text-muted); padding: 4px 6px; border-radius: var(--radius-control, 8px); cursor: pointer; font: inherit; }
+.action:hover { color: var(--text); background: var(--bg-hover); }
+.chip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; max-width: 100%; border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; color: var(--text); background: var(--surface-muted, var(--bg-panel)); cursor: pointer; text-align: start; font: inherit; line-height: 1.4; overflow-wrap: anywhere; }
+.chip:hover { background: var(--bg-hover); }
+.chip[aria-pressed="true"] { background: var(--accent-subtle); border-color: var(--accent); }
+.chip:focus-visible, .action:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.conflict { margin-top: 8px; padding: 12px; border: 1px solid var(--border); border-radius: var(--radius-control, 8px); background: var(--bg-panel); }
+.conflict p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.note { color: var(--text-muted); margin: 8px 0 0; font-size: var(--text-xs); }
+.settingsBody { display: grid; gap: 16px; }
+.field { display: grid; gap: 8px; color: var(--text); font-size: var(--text-sm); }
+.field input:not([type="checkbox"]), .field select, .field textarea, .previewDraft { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-control, 8px); background: var(--bg); color: var(--text); font: inherit; }
+.field textarea { min-height: 200px; resize: vertical; line-height: 1.65; }
+.field small { color: var(--text-muted); line-height: 1.5; }
+.toggle { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); }
+.toggle input { accent-color: var(--accent); width: 16px; height: 16px; }
+.footer { justify-content: space-between; font-size: var(--text-xs); color: var(--text-muted); }
+.test { border-top: 1px solid var(--border); padding-top: 16px; }
+.test summary { cursor: pointer; font-size: var(--text-sm); }
+.test[open] summary { margin-bottom: 16px; }
+.previewDraft { min-height: 100px; resize: vertical; }
+@media (pointer: coarse) { .chip, .action { min-height: 44px; } }
+@container (max-width: 480px) { .chip { padding-inline: 12px; } }

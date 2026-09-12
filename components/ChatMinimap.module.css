@@ -1,6 +1,7 @@
 .root {
   position: relative;
-  z-index: 35;
+  /* Keep history previews above the conversation scroll rail (z-index: 45). */
+  z-index: 50;
   width: 36px;
   flex: 0 0 36px;
   overflow: visible;

@@ -15,6 +15,7 @@ import type {
 } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
 import { AgentCommandError, createAgentSessionRequest, sendAgentCommand } from "@/lib/agent-client";
+import { setDraft, type ChatDraft } from "@/lib/draft-store";
 import { reduceAgentPhase, type AgentPhase } from "@/lib/agent-phase";
 import { useI18n } from "@/hooks/useI18n";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
@@ -441,6 +442,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [entryIds, setEntryIds] = useState<string[]>(initialSessionData?.context.entryIds ?? []);
   const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
   const [agentRunning, setAgentRunning] = useState(false);
+  const [replyHistorySettling, setReplyHistorySettling] = useState(false);
   const [liveOutputFollowPaused, setLiveOutputFollowPaused] = useState(false);
   const [bashRunning, setBashRunning] = useState(false);
   const [pendingBash, setPendingBash] = useState<{ command: string; excludeFromContext: boolean; output?: string } | null>(null);
@@ -709,8 +711,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setMessages(recovered.messages);
       setEntryIds(recovered.entryIds);
       void confirmPendingPrompts(recovered.confirmedIds).catch(console.error);
+      return true;
     } catch (e) {
       console.error("Failed to load context:", e);
+      return false;
     }
   }, []);
 
@@ -1054,12 +1058,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
     const existing = promptSettlementByRunRef.current.get(runId);
     if (existing) return existing;
+    setReplyHistorySettling(true);
     const settlement = (async () => {
       // Bail out before loadSession too: a stale finish for a previous run
       // must not overwrite the messages of the run currently streaming.
       if (promptRunIdRef.current !== runId) return;
       if (sid) await loadSession(sid, false, true);
-    })();
+    })().finally(() => { if (promptRunIdRef.current === runId) setReplyHistorySettling(false); });
     promptSettlementByRunRef.current.set(runId, settlement);
     return settlement;
   }, [closeEvents, loadSession, onAgentEnd]);
@@ -1495,6 +1500,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       setMessages((current) => current.map((entry) => entry === userMsg ? { ...entry, sendError: t("chat.sendCancelled") } : entry));
     };
     promptRunIdRef.current = promptRunId;
+    setReplyHistorySettling(false);
     suppressCompletionNotificationRef.current = false;
     agentRunningRef.current = true;
     setAgentRunning(true);
@@ -1752,6 +1758,27 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       sendAgentCommand(sid, { type: "navigate_tree", targetId: leafId }).catch(() => {});
     }
   }, [loadContext]);
+
+  const switchHistoryBranch = useCallback(async (leafId: string): Promise<boolean> => {
+    const sid = sessionIdRef.current;
+    if (!sid || agentRunningRef.current || bashRunningRef.current || isCompacting) throw new Error(t("history.busy"));
+    const result = await sendAgentCommand<{ cancelled?: boolean }>(sid, { type: "navigate_tree", targetId: leafId });
+    if (result?.cancelled || sessionIdRef.current !== sid) return false;
+    if (!await loadContext(sid, leafId)) throw new Error(t("history.loadError"));
+    setActiveLeafId(leafId);
+    return true;
+  }, [isCompacting, loadContext, t]);
+
+  const forkHistoryQuestion = useCallback(async (entryId: string, draft: ChatDraft): Promise<boolean> => {
+    const sid = sessionIdRef.current;
+    if (!sid || agentRunningRef.current || bashRunningRef.current || isCompacting) throw new Error(t("history.busy"));
+    const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(sid, { type: "fork", entryId });
+    if (result?.cancelled || !result?.newSessionId) return false;
+    // Seed only the newly-created conversation. The originating draft is untouched.
+    setDraft(result.newSessionId, draft);
+    if (sessionIdRef.current === sid) onSessionForked?.(result.newSessionId);
+    return true;
+  }, [isCompacting, onSessionForked, t]);
 
   const handleModelChange = useCallback(async (provider: string, modelId: string): Promise<boolean> => {
     if (isNew) {
@@ -2395,7 +2422,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   return {
     // State
-    data, loading, error, activeLeafId, messages, entryIds, streamState,
+    data, loading, error, activeLeafId, messages, entryIds, streamState, replyHistorySettling,
     agentRunning, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, thinkingLevel,
     retryInfo, contextUsage: effectiveContextUsage, systemPrompt, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactError, compactResult, currentModel, displayModel, sessionStats,
@@ -2411,6 +2438,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleDeleteMessage, deletingMessage,
     handleScrollToBottom, pauseHistoryFollow,
+    switchHistoryBranch, forkHistoryQuestion,
     handleCompact, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handleRecallQueue,
     handleBuiltinSlashCommand,

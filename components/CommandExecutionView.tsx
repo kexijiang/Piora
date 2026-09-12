@@ -8,6 +8,7 @@ import { copyText } from "@/lib/clipboard";
 import { commandDisplayName, commandErrorExcerpt, type CommandExecutionData } from "@/lib/command-execution";
 import { useVirtualRowToggle } from "./VirtualRowState";
 import { AliIcon } from "./AliIcon";
+import { ChatDisclosure } from "./ChatDisclosure";
 
 const CommandLogViewer = dynamic(
   () => import("./CommandLogViewer").then((module) => module.CommandLogViewer),
@@ -116,7 +117,7 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
       ) : null}
       {fullError ? <div className="command-full-error" role="alert">{fullError.message} {fullError.retryable ? <button type="button" onClick={() => void loadFullOutput()}>{t("command.retry")}</button> : null}</div> : null}
       {isEmpty ? (
-        <div className="command-empty-output">{t(data.status === "running" ? "command.waitingForOutput" : data.status === "success" ? "command.noOutput" : "command.noErrorOutput")}</div>
+        <div className="command-empty-output">{t(data.status === "running" ? data.historical ? "history.noSavedResult" : "command.waitingForOutput" : data.status === "success" ? "command.noOutput" : "command.noErrorOutput")}</div>
       ) : (
         <div className="command-log-frame">
           <CommandLogViewer output={output} wrap={wrap} streaming={data.isStreaming} searchText={initialSearch} searchRequest={searchRequest} endRequest={endRequest} ariaLabel={t("command.outputLog")} onFollowChange={setFollowing} />
@@ -133,69 +134,51 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`command-diagnostics:${data.id}`);
   const [errorSearch, setErrorSearch] = useState("");
   const errorExcerpt = useMemo(() => data.status === "failed" || data.status === "cancelled" || data.status === "timed_out" ? commandErrorExcerpt(data.output) : "", [data.output, data.status]);
-  const statusParts = [t(statusKey(data.status))];
+  const statusParts = [t(data.historical && data.status === "running" ? "history.noSavedResult" : statusKey(data.status))];
   if (expanded && data.exitCode !== undefined) statusParts.push(t("command.exitCode", { code: data.exitCode }));
   if (expanded && data.duration !== undefined) statusParts.push(t("command.duration", { seconds: data.duration }));
 
   useEffect(() => {
+    if (data.historical) return;
     window.dispatchEvent(new CustomEvent<CommandExecutionData>("piora-command-execution-update", { detail: data }));
   }, [data]);
 
   return (
-    <div className={`command-execution-card is-${data.status}`}>
-      <div className="command-execution-header">
-        <button type="button" className="command-execution-toggle" aria-expanded={expanded}
-          onClick={(event) => togglePreservingScroll(event.currentTarget, () => setExpanded((value) => !value))}>
-          <span className="command-status-icon" aria-hidden="true"><AliIcon name={data.status === "failed" || data.status === "timed_out" || data.status === "cancelled" ? "error" : data.status === "running" ? "timer" : "check-circle"} size={14} /></span>
-          <span className="command-kind">{commandDisplayName(data.toolName)}</span>
-          <span className="command-status-text">{statusParts.join(" · ")}</span>
-          <AliIcon name="chevron-right" size={11} className="command-chevron" style={{ transform: expanded ? "rotate(90deg)" : "none" }} />
-        </button>
-        <div className="command-header-actions">
-          <CopyButton text={data.command} compact />
-          {actions ? <span className="command-message-actions">{actions}</span> : null}
-          {onOpen ? <IconButton icon="expand" label={t("command.openLargeViewer")} onClick={() => onOpen(data)} /> : null}
-        </div>
-      </div>
-      {expanded && errorExcerpt ? (
+    <ChatDisclosure className={`command-execution-card is-${data.historical && data.status === "running" ? "unknown" : data.status}`}
+      expanded={expanded} onExpandedChange={setExpanded} label={commandDisplayName(data.toolName)} icon="code"
+      triggerClassName="command-execution-toggle"
+      metadata={<span className={`chat-disclosure-status is-${data.historical && data.status === "running" ? "unknown" : data.status}`}>
+        <AliIcon name={data.status === "cancelled" ? "stop" : data.status === "timed_out" ? "timer" : data.status === "failed" ? "error" : data.status === "running" ? "timer" : "check"} size={14} aria-hidden="true" />
+        {statusParts.join(" · ")}
+      </span>}
+      actions={<>
+        <CopyButton text={data.command} compact />
+        {actions ? <span className="command-message-actions">{actions}</span> : null}
+        {onOpen ? <IconButton icon="expand" label={t("command.openLargeViewer")} onClick={() => onOpen(data)} /> : null}
+      </>}>
+      {errorExcerpt ? (
         <button type="button" className="command-error-excerpt" onClick={() => { setErrorSearch(errorExcerpt.split("\n")[0] ?? ""); setExpanded(true); }}>
           <span>{t("command.errorExcerpt")}</span><code>{errorExcerpt}</code><small>{t("command.viewErrorContext")}</small>
         </button>
       ) : null}
-      {expanded ? (
-        <div className="command-execution-details">
-          <section className="command-source-section">
-            <div className="command-section-toolbar">
-              <span className="command-section-label">{t("command.command")}</span>
-              {data.cwd ? <span className="command-cwd" title={data.cwd}>{t("command.cwd")}: {data.cwd}</span> : null}
-              <span className="command-toolbar-spacer" />
-              <CopyButton text={data.command} />
-            </div>
-            <pre>{data.command}</pre>
-          </section>
-          <CommandOutputPanel data={data} initialSearch={errorSearch} />
-          {data.diagnostics ? (
-            <section className="command-diagnostics-section">
-              <button type="button" className="command-diagnostics-toggle" aria-expanded={diagnosticsOpen}
-                onClick={(event) => togglePreservingScroll(event.currentTarget, () => setDiagnosticsOpen((value) => !value))}>
-                <span>{t("toolSummary.diagnostics")}</span>
-                <AliIcon name="chevron-right" size={9} style={{ transform: diagnosticsOpen ? "rotate(90deg)" : "none" }} />
-              </button>
-              {diagnosticsOpen ? <pre>{data.diagnostics}</pre> : null}
-            </section>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+      <div className="command-execution-details">
+        <section className="command-source-section">
+          <div className="command-section-toolbar">
+            <span className="command-section-label">{t("command.command")}</span>
+            {data.cwd ? <span className="command-cwd" title={data.cwd}>{t("command.cwd")}: {data.cwd}</span> : null}
+            <span className="command-toolbar-spacer" />
+            <CopyButton text={data.command} />
+          </div>
+          <pre>{data.command}</pre>
+        </section>
+        <CommandOutputPanel data={data} initialSearch={errorSearch} />
+        {data.diagnostics ? <ChatDisclosure variant="inline" expanded={diagnosticsOpen} onExpandedChange={setDiagnosticsOpen}
+          label={t("toolSummary.diagnostics")}>
+          <pre className="chat-disclosure-diagnostics command-diagnostics">{data.diagnostics}</pre>
+        </ChatDisclosure> : null}
+      </div>
+    </ChatDisclosure>
   );
-}
-
-function togglePreservingScroll(control: HTMLElement, toggle: () => void) {
-  const scroller = control.closest(".overflow-y-auto") as HTMLElement | null;
-  const scrollTop = scroller?.scrollTop;
-  toggle();
-  if (!scroller || scrollTop === undefined) return;
-  requestAnimationFrame(() => { scroller.scrollTop = scrollTop; });
 }
 
 export function CommandExecutionDialog({ data, onClose }: { data: CommandExecutionData; onClose: () => void }) {
@@ -206,13 +189,14 @@ export function CommandExecutionDialog({ data, onClose }: { data: CommandExecuti
   const [current, setCurrent] = useState(data);
   useEffect(() => setCurrent(data), [data]);
   useEffect(() => {
+    if (data.historical) return;
     const update = (event: Event) => {
       const next = (event as CustomEvent<CommandExecutionData>).detail;
       if (next?.id === data.id) setCurrent(next);
     };
     window.addEventListener("piora-command-execution-update", update);
     return () => window.removeEventListener("piora-command-execution-update", update);
-  }, [data.id]);
+  }, [data.id, data.historical]);
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;

@@ -34,6 +34,8 @@ function composer(onSend) {
     env[ref] = { current: env[field] };
     env[setter] = (value) => { env[field] = value; env[ref].current = value; };
   }
+  env.replyDraftRef = { current: { value: env.value, spans: [] } };
+  env.resetReplyDraft = (draft) => { env.replyDraftRef.current = draft; env.setValue(draft.value); };
   env.clearInput = () => {
     env.retryOfPromptIdsRef.current = [];
     env.setValue(""); env.setAttachedImages([]); env.setAttachedFiles([]);

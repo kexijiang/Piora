@@ -175,7 +175,9 @@ async function shutdown(exitCode) {
 async function main() {
   await ensurePortAvailable();
   log("next", `starting authenticated development server at ${applicationUrl.origin}`);
-  nextProcess = spawn(process.execPath, [join(root, "node_modules", "next", "dist", "bin", "next"), "dev", "-H", host, "-p", String(port)], {
+  // Shared desktop modules use .js specifiers for their TypeScript sources;
+  // the repository's Webpack extensionAlias resolves those during development.
+  nextProcess = spawn(process.execPath, [join(root, "node_modules", "next", "dist", "bin", "next"), "dev", "--webpack", "-H", host, "-p", String(port)], {
     cwd: root,
     detached: process.platform !== "win32",
     env: sharedEnvironment,

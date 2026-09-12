@@ -16,6 +16,8 @@ export interface CommandExecutionData {
   fullOutputPath?: string;
   sessionId?: string;
   diagnostics?: string;
+  /** A saved history card must not subscribe to live command updates. */
+  historical?: boolean;
 }
 
 export function isCommandToolName(name: unknown): boolean {

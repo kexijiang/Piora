@@ -1,0 +1,24 @@
+export const replySuggestionsZh: Record<string, string> = {
+  "reply.title": "快捷回复", "reply.description": "从助手已经提出的建议和选项中提取快捷回复，点击加入输入框，可组合后一起发送。",
+  "reply.enable": "自动提取快捷回复", "reply.model": "提取模型", "reply.chooseModel": "请选择独立的提取模型", "reply.searchModels": "搜索模型或提供商", "reply.unavailable": "当前不可用，请检查模型配置和登录状态",
+  "reply.prompt": "提取提示词", "reply.promptHelp": "提示词决定提取规则；JSON 输出格式由应用固定管理。",
+  "reply.local": "设置保存在此设备的浏览器存储中。每次完成回复会额外调用一次所选模型，可能产生费用。默认关闭，不影响当前聊天模型和提示词优化器。",
+  "reply.save": "保存设置", "reply.saved": "已保存", "reply.saveFailed": "保存失败，请检查浏览器存储权限。", "reply.restore": "恢复默认提示词", "reply.invalid": "请选择可用模型，提示词不能为空且不能超过 8,000 个字符。",
+  "reply.preview": "测试提取", "reply.sample": "示例助手回复", "reply.test": "开始测试", "reply.testing": "正在提取…", "reply.previewHelp": "使用尚未保存的模型和提示词测试；此处输入不会发送到会话。",
+  "reply.sampleText": "界面可以选择浅色或深色主题，我推荐深色。还可以添加搜索和导出功能，这两项可以一起做。你想选择哪些？",
+  "reply.previewDraft": "测试输入框", "reply.empty": "这段回复没有可提取的明确选项。", "reply.stalePreview": "配置或示例已变化，请重新测试。",
+  "reply.selected": "已选 {count} 项", "reply.clear": "清空选择", "reply.collapse": "收起", "reply.expand": "展开", "reply.more": "更多选择（{count}）", "reply.settings": "快捷回复设置", "reply.single": "单选", "reply.multiple": "可多选", "reply.recommended": "推荐", "reply.retry": "重试", "reply.failed": "快捷回复暂不可用", "reply.retained": "已保留手动修改的文字。", "reply.edited": "这段文字已被手动修改", "reply.keep": "保留修改", "reply.replace": "替换这段文字", "reply.remove": "移除这段文字", "reply.replacement": "将替换为", "reply.evidence": "原文依据", "reply.storageFailed": "草稿暂时无法保存到本机，刷新前请保留输入内容。",
+  "reply.error.model_unavailable": "提取模型不可用，请重新选择或登录提供商。", "reply.error.invalid_settings": "提取设置不完整，请选择模型并保存提示词。", "reply.error.timeout": "提取超时，可以稍后重试。", "reply.error.invalid_output": "模型返回的选项未通过校验。", "reply.error.provider_error": "提取模型请求失败，请检查提供商连接。", "reply.error.network_error": "网络请求失败，请稍后重试。", "reply.error.busy": "提取请求较多，请稍后重试。",
+};
+export const replySuggestionsEn: Record<string, string> = {
+  "reply.title": "Quick replies", "reply.description": "Extract choices and suggestions already offered by the assistant. Click to add them to your draft and send several together.",
+  "reply.enable": "Extract quick replies automatically", "reply.model": "Extraction model", "reply.chooseModel": "Choose a dedicated extraction model", "reply.searchModels": "Search models or providers", "reply.unavailable": "Unavailable — check model configuration and sign-in",
+  "reply.prompt": "Extraction prompt", "reply.promptHelp": "This prompt controls extraction rules. The app manages the JSON output format.",
+  "reply.local": "Saved in this device’s browser storage. Each completed reply makes an extra call to the selected model and may incur a charge. Off by default; independent of the chat model and prompt optimizer.",
+  "reply.save": "Save settings", "reply.saved": "Saved", "reply.saveFailed": "Could not save. Check browser storage permissions.", "reply.restore": "Restore default prompt", "reply.invalid": "Choose an available model and enter a prompt of up to 8,000 characters.",
+  "reply.preview": "Test extraction", "reply.sample": "Sample assistant reply", "reply.test": "Run test", "reply.testing": "Extracting…", "reply.previewHelp": "Tests your unsaved model and prompt. This draft is never sent to a conversation.",
+  "reply.sampleText": "You can choose a light or dark theme; I recommend dark. We could also add search and export, which can be implemented together. Which would you like?",
+  "reply.previewDraft": "Test draft", "reply.empty": "No explicit choices were found in this reply.", "reply.stalePreview": "The settings or sample changed. Run the test again.",
+  "reply.selected": "{count} selected", "reply.clear": "Clear choices", "reply.collapse": "Collapse", "reply.expand": "Expand", "reply.more": "More choices ({count})", "reply.settings": "Quick reply settings", "reply.single": "Choose one", "reply.multiple": "Choose several", "reply.recommended": "Recommended", "reply.retry": "Retry", "reply.failed": "Quick replies unavailable", "reply.retained": "Your edited text was kept.", "reply.edited": "You edited this text", "reply.keep": "Keep my edits", "reply.replace": "Replace this text", "reply.remove": "Remove this text", "reply.replacement": "Replace with", "reply.evidence": "Source", "reply.storageFailed": "The draft could not be saved locally. Keep a copy before refreshing.",
+  "reply.error.model_unavailable": "The extraction model is unavailable. Choose another or sign in.", "reply.error.invalid_settings": "Choose an extraction model and save a valid prompt.", "reply.error.timeout": "Extraction timed out. Try again later.", "reply.error.invalid_output": "The model’s choices did not pass validation.", "reply.error.provider_error": "The extraction model request failed. Check the provider connection.", "reply.error.network_error": "The network request failed. Try again later.", "reply.error.busy": "Too many extraction requests. Try again later.",
+};

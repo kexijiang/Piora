@@ -332,7 +332,7 @@ function omitToolResultBase64Images(message: AgentMessage): AgentMessage {
 
 // Convert a session entry on the active branch into a UI message.
 // Returns null for entries that do not map to chat history (metadata, non-message types).
-function entryToUiMessage(
+export function entryToUiMessage(
   entry: SessionEntry,
   options: { deferThinking?: boolean; deferToolResultImages?: boolean },
 ): AgentMessage | null {

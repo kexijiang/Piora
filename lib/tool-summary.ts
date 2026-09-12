@@ -20,6 +20,26 @@ export interface ToolSummary {
 
 export type Translate = (key: string, variables?: Record<string, string | number>) => string;
 
+export interface ToolDisclosureSummary extends ToolSummary {
+  subject?: string;
+  subjectIsPath?: boolean;
+}
+
+/** Structured subjects for the chat header, without parsing localized summaries. */
+export function summarizeToolDisclosure(name: string, input: unknown, result: unknown, t: Translate): ToolDisclosureSummary {
+  const summary = summarizeToolCall(name, input, result, t);
+  const values = isRecord(input) ? input : {};
+  if (name === "read" || name === "ls") {
+    return { ...summary, title: t(`toolSummary.action.${name}`),
+      subject: typeof values.path === "string" ? values.path : name === "ls" ? "." : undefined, subjectIsPath: true };
+  }
+  if (name === "grep" || name === "find") {
+    return { ...summary, title: t(`toolSummary.action.${name}`),
+      subject: typeof values.pattern === "string" ? values.pattern : undefined };
+  }
+  return summary;
+}
+
 export function summarizeToolCall(
   name: string,
   input: unknown,

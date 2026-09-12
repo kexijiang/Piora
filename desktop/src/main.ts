@@ -3,7 +3,7 @@ import { SystemLauncher } from "./system-launcher";
 import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { createConnection } from "node:net";
+import { waitForDevelopmentPageAssets } from "./development-readiness.js";
 import { release as osRelease } from "node:os";
 import {
   app,
@@ -528,7 +528,9 @@ async function applyDesktopNetworkProxy(input: unknown): Promise<boolean> {
     } else {
       await target.setProxy({ mode: settings.mode });
     }
-    await target.closeAllConnections();
+    // The shell applies these settings while lazy startup chunks and SSE may
+    // still be loading. Closing all connections aborts those active requests;
+    // let them finish while new connections use the updated proxy settings.
     return true;
   } catch (error) {
     logger?.warn("Unable to apply desktop network proxy", {
@@ -1441,26 +1443,32 @@ function configureSession(runtimeSession: Session, origin: string, token: string
       callback({ requestHeaders: details.requestHeaders });
     },
   );
+
+  // A renderer ChunkLoadError alone loses the underlying Chromium/HTTP error.
+  // Record only app asset paths, never request headers or application content.
+  const assetFilter = { urls: [`${origin}/_next/static/*`] };
+  runtimeSession.webRequest.onErrorOccurred(assetFilter, (details) => {
+    logger?.error("Application asset request failed", {
+      path: new URL(details.url).pathname,
+      error: details.error,
+      resourceType: details.resourceType,
+    });
+  });
+  runtimeSession.webRequest.onCompleted(assetFilter, (details) => {
+    if (details.statusCode < 400) return;
+    logger?.error("Application asset returned an HTTP error", {
+      path: new URL(details.url).pathname,
+      statusCode: details.statusCode,
+      resourceType: details.resourceType,
+    });
+  });
 }
 
-async function waitForDesktopDevelopmentServer(url: URL): Promise<void> {
-  const deadline = Date.now() + 60_000;
-  while (Date.now() < deadline) {
-    const connected = await new Promise<boolean>((resolveConnection) => {
-      const socket = createConnection({ host: url.hostname, port: Number(url.port) });
-      const settle = (value: boolean) => {
-        socket.removeAllListeners();
-        socket.destroy();
-        resolveConnection(value);
-      };
-      socket.setTimeout(1_000, () => settle(false));
-      socket.once("connect", () => settle(true));
-      socket.once("error", () => settle(false));
-    });
-    if (connected) return;
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 175));
-  }
-  throw new Error("Desktop development server was not reachable on loopback within 60 seconds");
+async function waitForDesktopDevelopmentServer(url: URL, token: string): Promise<void> {
+  const readiness = await waitForDevelopmentPageAssets(url, {
+    headers: { [DESKTOP_TOKEN_HEADER]: token },
+  });
+  logger?.info("Development page scripts and styles are ready", readiness);
 }
 
 function emitCompanionMotionState(direction: CompanionMotionDirection | null): void {
@@ -2419,6 +2427,9 @@ function createMainWindow(
 
 function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promise<number>; finished: Promise<void>; ensureVisible: () => void } {
   const { window, initialState } = createMainWindowShell(log);
+  // Retain the EventEmitter while the native window is alive. Accessing
+  // window.webContents from "closed" throws, even just to remove a listener.
+  const webContents = window.webContents;
   const previousVersion = readLastLaunchedVersion(app.getPath("userData"), log);
   const firstLaunchOfVersion = previousVersion !== app.getVersion();
   const updated = Boolean(previousVersion) && firstLaunchOfVersion;
@@ -2438,23 +2449,25 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
     event.preventDefault();
   };
   const continueIntro = (event: Electron.IpcMainEvent, channel: string) => {
-    if (channel !== STARTUP_CONTINUE_CHANNEL || event.senderFrame !== window.webContents.mainFrame
-      || !event.senderFrame || !isStartupDocumentUrl(event.senderFrame.url, startupPath)) return;
+    if (channel !== STARTUP_CONTINUE_CHANNEL || webContents.isDestroyed() || !event.senderFrame
+      || event.senderFrame !== webContents.mainFrame || !isStartupDocumentUrl(event.senderFrame.url, startupPath)) return;
     finishIntro();
   };
   const cleanupNavigationGuard = () => {
-    window.webContents.removeListener("will-navigate", blockIntroNavigation);
-    window.webContents.removeListener("did-navigate", onNavigation);
+    webContents.removeListener("will-navigate", blockIntroNavigation);
+    webContents.removeListener("did-navigate", onNavigation);
+    window.removeListener("closed", onClosed);
   };
   const onNavigation = (_event: Electron.Event, target: string) => {
     if (isStartupDocumentUrl(target, startupPath)) return;
     cleanupNavigationGuard();
     finishIntro();
   };
-  window.webContents.on("will-navigate", blockIntroNavigation);
-  window.webContents.on("ipc-message", continueIntro);
-  window.webContents.on("did-navigate", onNavigation);
-  window.once("closed", () => { cleanupNavigationGuard(); finishIntro(); });
+  const onClosed = () => { cleanupNavigationGuard(); finishIntro(); };
+  webContents.on("will-navigate", blockIntroNavigation);
+  webContents.on("ipc-message", continueIntro);
+  webContents.on("did-navigate", onNavigation);
+  window.once("closed", onClosed);
   let ensureVisible!: () => void;
   const ready = new Promise<number>((resolveReady) => {
     let shown = false;
@@ -2492,14 +2505,14 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
   }
   const handedOff = finished.then(async () => {
     log.info("Releasing startup animation");
-    window.webContents.removeListener("ipc-message", continueIntro);
+    webContents.removeListener("ipc-message", continueIntro);
     // Leave the Chromium/IPC callback before starting another native operation.
     await new Promise<void>(resolveTurn => setImmediate(resolveTurn));
-    if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+    if (!window.isDestroyed() && !webContents.isDestroyed()) {
       // The watchdog may expire while loadFile is still navigating. Settle that
       // navigation before loadURL, but a broken optional document cannot hold
       // the application hostage even if Chromium never settles its promise.
-      try { window.webContents.stop(); }
+      try { webContents.stop(); }
       catch (error) { log.warn("Unable to stop startup animation; continuing to the application", error); }
     }
     await runOptionalStartupTask("Startup animation navigation cleanup", () => navigation, log, 1_000);
@@ -2613,7 +2626,7 @@ async function startApplication(): Promise<void> {
   applicationToken = token;
   if (desktopDevelopmentRuntime) {
     serverUrl = desktopDevelopmentRuntime.url;
-    await waitForDesktopDevelopmentServer(serverUrl);
+    await waitForDesktopDevelopmentServer(serverUrl, token);
     configureSession(electronSession.fromPartition(DESKTOP_PARTITION, { cache: true }), serverUrl.origin, token);
     logger.info("Authenticated development service is ready", { elapsedMs: Date.now() - startupStartedAt });
   } else {

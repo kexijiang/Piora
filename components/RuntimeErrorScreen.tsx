@@ -48,7 +48,12 @@ export function RuntimeErrorScreen({ error, reset }: RuntimeErrorScreenProps) {
         </p>
         <p style={styles.errorSummary}>{error.name}: {error.message}</p>
         <div style={styles.actions}>
-          <button type="button" style={styles.primaryButton} onClick={() => reset()}>
+          <button type="button" style={styles.primaryButton} onClick={() => {
+            // React.lazy retains a rejected import. Resetting its boundary
+            // alone rethrows it; a fresh document must retry the asset graph.
+            if (assetLoadError) window.location.reload();
+            else reset();
+          }}>
             {chinese ? "重试" : "Retry"}
           </button>
           <button type="button" style={styles.secondaryButton} onClick={() => window.location.reload()}>

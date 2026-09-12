@@ -13,6 +13,7 @@ import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
 import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
 import { BrowserModeSetting } from "./BrowserModeSetting";
+import { ReplySuggestionsSettings } from "./ReplySuggestionsSettings";
 import { SystemPromptEditor } from "./SystemPromptEditor";
 import { PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH, PROMPT_OPTIMIZER_SYSTEM_PROMPT } from "@/lib/prompt-optimizer";
 import {
@@ -928,6 +929,8 @@ export function SettingsDialog({
                     </div>
                   </div>
                 </section>
+
+                <ReplySuggestionsSettings cwd={modelCwd} />
 
                 <section className={styles.promptCard} aria-labelledby="system-prompt-heading">
                   <header className={styles.promptCardHeader}>

@@ -108,7 +108,7 @@ test("exposes project-scoped capabilities without permission tiers", () => {
 test("keeps the file drawer toggle inside the shell and aligns both header states", () => {
   assert.match(appShell, /className=\{`topbar-control topbar-icon-button right-panel-toggle/);
   assert.match(appShell, /aria-controls="file-panel"/);
-  assert.match(appShell, /<SessionHistoryDialog/);
+  assert.match(appShell, /<SessionHistoryWorkbench/);
   assert.match(appShell, /\{settingsPage\}/);
   assert.doesNotMatch(appShell, /\{appearanceOpen &&/);
   assert.doesNotMatch(appShell, /position:\s*"fixed", right:\s*8/);
