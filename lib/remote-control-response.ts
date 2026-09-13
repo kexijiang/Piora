@@ -1,8 +1,13 @@
 import { RemoteControlAuthError, remoteAuthErrorResponse } from "./remote-control-auth";
 import { SessionMessageRouterError } from "./session-message-router";
 import { SessionRuntimeResolverError } from "./session-runtime-resolver";
+import { RemoteSessionCreationError } from "./remote-session-creation";
 
 export function remoteErrorResponse(error: unknown): Response {
+  if (error instanceof RemoteSessionCreationError) {
+    const status = error.code === "REMOTE_CREATION_CONFLICT" ? 409 : error.code === "REMOTE_CREATION_BUSY" ? 503 : 500;
+    return Response.json({ error: error.message, code: error.code }, { status, headers: { "Cache-Control": "no-store", ...(status === 503 ? { "Retry-After": "2" } : {}) } });
+  }
   if (error instanceof RemoteControlAuthError) return remoteAuthErrorResponse(error);
   if (error instanceof SessionMessageRouterError) {
     const status = ["SESSION_NOT_FOUND", "SESSION_FILE_INVALID"].includes(error.code) ? 404

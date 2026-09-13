@@ -1,4 +1,4 @@
-export function createRemoteContentStream(input: { snapshot: () => Record<string,unknown>; authorize: () => void; signal: AbortSignal; intervalMs?: number }): ReadableStream<Uint8Array> {
+export function createRemoteContentStream(input: { snapshot: () => Record<string,unknown>; authorize: () => void; alive?: () => boolean; signal: AbortSignal; intervalMs?: number }): ReadableStream<Uint8Array> {
   let cleanup = () => {};
   return new ReadableStream({
     start(controller) {
@@ -12,6 +12,7 @@ export function createRemoteContentStream(input: { snapshot: () => Record<string
         if (closed) return;
         try {
           input.authorize();
+          if (input.alive?.() === false) { controller.enqueue(encoder.encode('data: {"type":"stream.reset","reason":"SESSION_RESTARTED"}\n\n')); cleanup(); return; }
           if ((controller.desiredSize ?? 0) <= 0) return;
           const next = JSON.stringify(input.snapshot());
           if (next !== last) { controller.enqueue(encoder.encode("data: " + next + "\n\n")); last = next; heartbeatAt = Date.now(); }

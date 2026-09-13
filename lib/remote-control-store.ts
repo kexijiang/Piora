@@ -4,6 +4,7 @@ import { join, resolve } from "node:path";
 import lockfile from "proper-lockfile";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { writePrivateFileAtomicSync } from "./atomic-file";
+import {normalizeRemoteCreationPolicy,parseRemoteCreationPolicy,resolveRemoteCreationCwd} from "./remote-creation-policy";
 import { REMOTE_CONTROL_SCOPES, type PublicRemoteCapabilityToken, type RemoteControlScope, type RemoteCapabilityTokenRecord } from "./remote-control-types";
 
 interface RemoteControlStoreFile {
@@ -27,14 +28,36 @@ export function getRemoteControlStorePath(): string {
   return join(rootPath(), "tokens.json");
 }
 
+export function readRemoteServerId(path = join(rootPath(), "identity.json")): string {
+  const value = JSON.parse(readFileSync(path, "utf8")) as { version?: unknown; serverId?: unknown };
+  if (value?.version !== 1 || typeof value.serverId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value.serverId)) throw new Error("Remote server identity is invalid.");
+  return value.serverId;
+}
+
+export async function getRemoteServerId(path = join(rootPath(), "identity.json")): Promise<string> {
+  try { return readRemoteServerId(path); }
+  catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  return withStoreLock(path, () => {
+    try { return readRemoteServerId(path); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    const serverId = randomUUID();
+    writePrivateFileAtomicSync(path, JSON.stringify({ version: 1, serverId }) + "\n");
+    return serverId;
+  });
+}
+
 function parseStore(raw: string): RemoteControlStoreFile {
   const value = JSON.parse(raw) as Partial<RemoteControlStoreFile>;
   if (value.version !== 1 || !Array.isArray(value.tokens)) throw new Error("Remote control token store is invalid.");
   const tokens = value.tokens.flatMap((token) => {
     if (!token || typeof token !== "object" || typeof token.id !== "string" || typeof token.tokenHash !== "string" || typeof token.name !== "string") return [];
     const scopes = Array.isArray(token.scopes) ? token.scopes.filter((scope): scope is RemoteControlScope => REMOTE_CONTROL_SCOPES.includes(scope as RemoteControlScope)) : [];
+    let creationPolicy;
+    try { creationPolicy = token.creationPolicy === undefined ? undefined : parseRemoteCreationPolicy(token.creationPolicy); }
+    catch { return []; }
     return [{
       ...token,
+      ...(creationPolicy ? { creationPolicy } : {}),
       scopes: [...new Set(scopes)],
       allowedSessionIds: Array.isArray(token.allowedSessionIds) ? token.allowedSessionIds.filter((id): id is string => typeof id === "string") : [],
       allowedRoomIds: Array.isArray(token.allowedRoomIds) ? token.allowedRoomIds.filter((id): id is string => typeof id === "string") : [],
@@ -96,6 +119,7 @@ export interface CreateRemoteCapabilityTokenInput {
   allowedSessionIds?: string[];
   allowedRoomIds?: string[];
   expiresAt?: number;
+  creationPolicy?: unknown;
 }
 
 export async function createRemoteCapabilityToken(input: CreateRemoteCapabilityTokenInput, path = getRemoteControlStorePath()): Promise<{ token: string; record: PublicRemoteCapabilityToken }> {
@@ -104,6 +128,7 @@ export async function createRemoteCapabilityToken(input: CreateRemoteCapabilityT
   const scopes = [...new Set(input.scopes)].filter((scope): scope is RemoteControlScope => REMOTE_CONTROL_SCOPES.includes(scope));
   if (scopes.length === 0) throw new Error("At least one remote-control scope is required.");
   if (input.expiresAt !== undefined && (!Number.isFinite(input.expiresAt) || input.expiresAt <= Date.now())) throw new Error("Token expiry must be in the future.");
+  const creationPolicy = scopes.includes("session.create") ? normalizeRemoteCreationPolicy(input.creationPolicy === undefined ? { allowedPolicies: ["notes"], cwdRoots: [] } : input.creationPolicy) : undefined;
   const token = randomBytes(32).toString("base64url");
   const record: RemoteCapabilityTokenRecord = {
     id: `rct_${randomUUID()}`,
@@ -113,6 +138,7 @@ export async function createRemoteCapabilityToken(input: CreateRemoteCapabilityT
     allowedSessionIds: [...new Set((input.allowedSessionIds ?? []).filter(Boolean))],
     allowedRoomIds: [...new Set((input.allowedRoomIds ?? []).filter(Boolean))],
     createdAt: Date.now(),
+    ...(creationPolicy ? { creationPolicy } : {}),
     ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
   };
   await withStoreLock(path, () => {
@@ -191,6 +217,7 @@ export async function grantRemoteCapabilitySession(
   sessionId: string,
   idempotencyKey: string,
   path = getRemoteControlStorePath(),
+  creation?: { policy: "notes" | "agent"; cwd: string },
 ): Promise<void> {
   if (!sessionId || !idempotencyKey || idempotencyKey.length > 512) throw new Error("Invalid remote Session grant.");
   await withStoreLock(path, () => {
@@ -200,8 +227,16 @@ export async function grantRemoteCapabilitySession(
       throw new Error("Remote capability token is no longer active.");
     }
     if (!token.scopes.includes("session.create")) throw new Error("Remote capability does not grant Session creation.");
+    if (creation) {
+      try { resolveRemoteCreationCwd(token.creationPolicy, creation.policy, creation.cwd); }
+      catch { throw new Error("Remote capability creation policy no longer allows this session."); }
+    }
+    const existingCreation = store.sessionCreations.find((entry) => entry.tokenId === tokenId && entry.idempotencyKey === idempotencyKey);
+    if (existingCreation && existingCreation.sessionId !== sessionId) {
+      throw new Error("Remote session creation key is already bound to another session.");
+    }
     if (!token.allowedSessionIds.includes(sessionId)) token.allowedSessionIds.push(sessionId);
-    if (!store.sessionCreations.some((entry) => entry.tokenId === tokenId && entry.idempotencyKey === idempotencyKey)) {
+    if (!existingCreation) {
       store.sessionCreations.push({ tokenId, idempotencyKey, sessionId, createdAt: Date.now() });
     }
     persist(path, store);

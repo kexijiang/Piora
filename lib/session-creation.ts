@@ -9,6 +9,7 @@ import { startRpcSession, type AgentSessionWrapper } from "./rpc-manager";
 import { invalidateSessionListCache } from "./session-reader";
 import type { SessionCapabilitiesState, SessionCapabilitySelection } from "./session-capabilities";
 import type { SystemPromptSelection } from "./system-prompt-types";
+import type { RemoteSessionReservation } from "./remote-session-creation";
 
 const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 
@@ -19,6 +20,7 @@ export function parseSessionThinkingLevel(value: unknown): ThinkingLevel | undef
 }
 
 export interface CreateSessionInput {
+  reservation?: RemoteSessionReservation;
   remotePolicy?: "agent" | "notes";
   cwd: string;
   initialModel?: { provider: string; modelId: string };
@@ -48,7 +50,8 @@ export async function createSession(input: CreateSessionInput): Promise<CreatedS
   if (!isDirectory) throw new Error(`Directory does not exist: ${cwd}`);
 
   const runtimeProfile = input.runtimeProfile ?? getAgentRuntimeProfile();
-  const { session, realSessionId } = await startRpcSession(`__new__${randomUUID()}`, "", cwd, {
+  const { session, realSessionId } = await startRpcSession(input.reservation?.sessionId ?? `__new__${randomUUID()}`, "", cwd, {
+    ...(input.reservation ? { preparedSessionFile: input.reservation.sessionFile } : {}),
     ...(input.toolNames ? { toolNames: input.toolNames } : {}),
     ...(input.remotePolicy ? { remotePolicy: input.remotePolicy } : {}),
     ...(input.capabilitySelection ? { capabilitySelection: input.capabilitySelection } : {}),
