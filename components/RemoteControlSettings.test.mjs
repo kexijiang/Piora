@@ -31,6 +31,15 @@ test("remote settings provide guarded submission and truthful clipboard feedback
   assert.match(source, /aria-busy=\{isLoading\}/);
 });
 
+test("creation restrictions are explicit and current-session access is opt-in",()=>{
+  assert.match(source,/\[grantCurrent, setGrantCurrent\] = useState\(false\)/);
+  assert.match(source,/creationPolicy:/);assert.match(source,/allowedSessionIds: sessionId && grantCurrent \? \[sessionId\] : \[\]/);
+  assert.match(source,/remote\.creationRoots/);assert.match(source,/remote\.legacyCreation/);
+});
+test("remote settings show a stable service identity for manual comparison",()=>{
+  assert.match(source,/remote\.serverId/);assert.match(source,/setServerId\(status\.serverId/);
+});
+
 test("remote settings adapt to panel width and preserve keyboard focus", () => {
   assert.match(css, /container-type: inline-size/);
   assert.match(css, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);

@@ -15,6 +15,7 @@ type Token = {
   lastUsedAt?: number;
   active: boolean;
   revokedAt?: number;
+  creationPolicy?: { allowedPolicies: string[]; cwdRoots: string[] };
 };
 
 const SCOPE_GROUPS = [
@@ -50,6 +51,9 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
   const [copied, setCopied] = useState<"base" | "token" | null>(null);
   const [tokens, setTokens] = useState<Token[]>([]);
   const [name, setName] = useState("Remote client");
+  const [grantCurrent, setGrantCurrent] = useState(false);
+  const [creationMode, setCreationMode] = useState("notes");
+  const [creationRoots, setCreationRoots] = useState("");
   const [scopes, setScopes] = useState<string[]>([
     "capabilities.read",
     "session.create",
@@ -61,6 +65,7 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
   ]);
   const [newToken, setNewToken] = useState<string | null>(null);
   const [apiBase, setApiBase] = useState("/api/remote/v1");
+  const [serverId, setServerId] = useState("");
   const [connector, setConnector] = useState<{ state?: string; enabled?: boolean; lastError?: string }>({});
   const [queueLength, setQueueLength] = useState<number | null>(null);
   const [busyTokenId, setBusyTokenId] = useState<string | null>(null);
@@ -68,7 +73,8 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
   const activeTokens = tokens.filter((token) => token.active);
   const inactiveTokens = tokens.filter((token) => !token.active);
   const [error, setError] = useState<string | null>(null);
-  const canCreate = name.trim().length > 0 && scopes.length > 0 && Boolean(sessionId || scopes.includes("session.create"));
+  const roots = creationRoots.split(/\r?\n/).map((root) => root.trim()).filter(Boolean);
+  const canCreate = name.trim().length > 0 && scopes.length > 0 && (scopes.includes("session.create") ? roots.length > 0 : Boolean(sessionId && grantCurrent));
 
   const load = useCallback(async () => {
     try {
@@ -79,7 +85,8 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
       if (!tokenResponse.ok) throw new Error(`HTTP ${tokenResponse.status}`);
       if (tokenResponse.ok) setTokens((await tokenResponse.json() as { tokens?: Token[] }).tokens ?? []);
       if (statusResponse.ok) {
-        const status = await statusResponse.json() as { connector?: typeof connector; state?: { queueLength?: number } };
+        const status = await statusResponse.json() as { serverId?: string; connector?: typeof connector; state?: { queueLength?: number } };
+        setServerId(status.serverId ?? "");
         setConnector(status.connector ?? {});
         setQueueLength(status.state?.queueLength ?? null);
       }
@@ -110,7 +117,9 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
       const response = await fetch("/api/remote/tokens", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, scopes, allowedSessionIds: sessionId ? [sessionId] : [] }),
+        body: JSON.stringify({ name, scopes, allowedSessionIds: sessionId && grantCurrent ? [sessionId] : [],
+          ...(scopes.includes("session.create") ? { creationPolicy: { allowedPolicies: creationMode === "agent" ? ["notes", "agent"] : ["notes"], cwdRoots: roots } } : {}),
+        }),
       });
       const data = await response.json() as { token?: string; error?: string };
       if (!response.ok || !data.token) throw new Error(data.error ?? `HTTP ${response.status}`);
@@ -174,6 +183,7 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
             <span>{token.lastUsedAt ? t("remote.lastUsedAt", { date: date.format(token.lastUsedAt) }) : t("remote.neverUsed")}</span>
             <span>{t("remote.scopeCount", { count: token.scopes.length })}</span>
           </div>
+          {token.scopes.includes("session.create") ? <p className={styles.hint}>{token.creationPolicy ? token.creationPolicy.allowedPolicies.join(", ") + " · " + (token.creationPolicy.cwdRoots.join("; ") || t("remote.noCreationRoots")) : t("remote.legacyCreation")}</p> : null}
         </div>
         {token.active ? (
           <button type="button" className="ui-button" data-variant="danger" disabled={busyTokenId !== null} onClick={() => void revoke(token.id)}>{t("remote.revoke")}</button>
@@ -216,6 +226,7 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
             <button type="button" className="ui-button" onClick={() => void copy(apiBase, "base")}><AliIcon name={copied === "base" ? "check" : "copy"} />{t(copied === "base" ? "remote.copied" : "remote.copyBase")}</button>
           </div>
           <p className={styles.hint}>{t("remote.endpointHelp")}</p>
+          <p className={styles.hint}>{t("remote.serverId")}: <code>{serverId || "—"}</code></p>
         </section>
 
         <form className={styles.card} onSubmit={(event) => { event.preventDefault(); void create(); }} aria-labelledby={formId + "-create"}>
@@ -248,6 +259,24 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
                 </fieldset>
               ))}
             </div>
+            {scopes.includes("session.create") ? <>
+              <label className={styles.nameField}>
+                <span>{t("remote.creationMode")}</span>
+                <select className="ui-input" value={creationMode} disabled={isCreating} onChange={(event) => setCreationMode(event.target.value)}>
+                  <option value="notes">{t("remote.notesOnly")}</option>
+                  <option value="agent">{t("remote.allowAgent")}</option>
+                </select>
+              </label>
+              <label className={styles.nameField}>
+                <span>{t("remote.creationRoots")}</span>
+                <textarea className="ui-input" rows={3} value={creationRoots} required disabled={isCreating} onChange={(event) => setCreationRoots(event.target.value)} />
+              </label>
+              <p className={styles.hint}>{t("remote.creationHelp")}</p>
+            </> : null}
+            {sessionId ? <label className={styles.scopeOption}>
+              <input type="checkbox" checked={grantCurrent} disabled={isCreating} onChange={(event) => setGrantCurrent(event.target.checked)} />
+              <span>{t("remote.grantCurrent")}</span>
+            </label> : null}
             <div className={styles.warning}>
               <AliIcon name="lock" size={17} />
               <p>{t("remote.warning")}</p>
@@ -255,7 +284,7 @@ export function RemoteControlSettings({ sessionId }: { sessionId?: string | null
           </div>
           <div className={styles.formFooter}>
             <p className={styles.hint}>
-              {t(!name.trim() ? "remote.nameRequired" : scopes.length === 0 ? "remote.scopesRequired" : !sessionId ? "remote.noSession" : "remote.sessionBound")}
+              {t(!name.trim() ? "remote.nameRequired" : scopes.length === 0 ? "remote.scopesRequired" : scopes.includes("session.create") && roots.length === 0 ? "remote.noCreationRoots" : sessionId && grantCurrent ? "remote.sessionBound" : "remote.noSession")}
             </p>
             <button type="submit" className="ui-button" data-variant="accent" disabled={!canCreate || isCreating}><AliIcon name="plus" />{t(isCreating ? "remote.creating" : "remote.create")}</button>
           </div>

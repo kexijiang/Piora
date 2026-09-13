@@ -13,10 +13,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { session } = await resolveOrStartRpcSession(id);
     const stream = createRemoteContentStream({
       signal: request.signal,
+      alive: () => session.isAlive(),
       authorize: () => {
         assertRemotePrincipalCurrent(principal, "session.history.read", id);
         assertRemotePrincipalCurrent(principal, "session.events.read", id);
-        if (!session.isAlive()) throw new Error("Session closed");
       },
       snapshot: () => session.getRemoteContentSnapshot(),
     });

@@ -15,6 +15,7 @@ export async function POST(request: Request) {
     const result = await createRemoteCapabilityToken({
       name: typeof body.name === "string" ? body.name : "Remote client",
       scopes,
+      creationPolicy: body.creationPolicy,
       allowedSessionIds: Array.isArray(body.allowedSessionIds) ? body.allowedSessionIds.filter((id): id is string => typeof id === "string") : [],
       allowedRoomIds: Array.isArray(body.allowedRoomIds) ? body.allowedRoomIds.filter((id): id is string => typeof id === "string") : [],
       expiresAt: body.expiresAt === undefined ? undefined : Number(body.expiresAt),

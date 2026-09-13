@@ -1,3 +1,4 @@
+import type {RemoteCreationPolicy} from "./remote-creation-policy";
 export const REMOTE_CONTROL_SCOPES = [
   "capabilities.read",
   "session.create",
@@ -24,6 +25,7 @@ export interface RemoteCapabilityTokenRecord {
   expiresAt?: number;
   revokedAt?: number;
   lastUsedAt?: number;
+  creationPolicy?: RemoteCreationPolicy;
 }
 export interface PublicRemoteCapabilityToken extends Omit<RemoteCapabilityTokenRecord, "tokenHash"> {
   active: boolean;
@@ -31,7 +33,9 @@ export interface PublicRemoteCapabilityToken extends Omit<RemoteCapabilityTokenR
 
 export interface RemoteCapabilityPrincipal {
   tokenId: string;
+  expectedServerId?: string;
   scopes: ReadonlySet<RemoteControlScope>;
   allowedSessionIds: ReadonlySet<string>;
   allowedRoomIds: ReadonlySet<string>;
+  creationPolicy?: RemoteCreationPolicy;
 }
