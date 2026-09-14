@@ -1993,6 +1993,9 @@ export function ModelsConfig({
   const [savedOk, setSavedOk] = useState(false);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [draggingProvider, setDraggingProvider] = useState<string | null>(null);
+  const [dropTargetProvider, setDropTargetProvider] = useState<string | null>(null);
+  const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set());
+  const providerTreeRef = useRef<HTMLDivElement>(null);
   const [detailTab, setDetailTab] = useState<"connection" | "models">("connection");
   useEffect(() => setDetailTab("connection"), [selection]);
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
@@ -2831,7 +2834,7 @@ export function ModelsConfig({
             display: "flex", flexDirection: "column", flexShrink: 0, background: "var(--bg-panel)",
           }}>
             <div className={styles.sidebarHeading}><span>{t("models.ui.providers")}</span><button className={styles.addChannel} onClick={() => setPickerOpen(true)}><AliIcon name="plus" size={13} />{t("models.ui.addProvider")}</button></div>
-            <div className={styles.tree} style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
+            <div ref={providerTreeRef} className={styles.tree} style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
               <div
                 onClick={() => setSelection({ type: "vision-agent" })}
                 style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 8px", marginBottom: 6, borderRadius: "var(--radius-control)", cursor: "pointer", background: selection?.type === "vision-agent" ? "var(--bg-selected)" : "none" }}
@@ -2930,6 +2933,14 @@ export function ModelsConfig({
                         if (draggingProvider && draggingProvider !== pName) {
                           event.preventDefault();
                           event.dataTransfer.dropEffect = "move";
+                          setDropTargetProvider(pName);
+                          const tree = providerTreeRef.current;
+                          if (tree) {
+                            const rect = tree.getBoundingClientRect();
+                            const edge = 42;
+                            const distance = event.clientY < rect.top + edge ? event.clientY - (rect.top + edge) : event.clientY > rect.bottom - edge ? event.clientY - (rect.bottom - edge) : 0;
+                            if (distance) tree.scrollTop += Math.sign(distance) * Math.max(2, Math.min(14, Math.abs(distance) / 3));
+                          }
                         }
                       }}
                       onDrop={(event) => {
@@ -2937,9 +2948,10 @@ export function ModelsConfig({
                         const source = draggingProvider ?? event.dataTransfer.getData("text/plain");
                         if (source) reorderProviders(source, pName);
                         setDraggingProvider(null);
+                        setDropTargetProvider(null);
                       }}
-                      onDragEnd={() => setDraggingProvider(null)}
-                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 8px", borderRadius: "var(--radius-control)", cursor: saving ? "default" : draggingProvider === pName ? "grabbing" : "grab", opacity: draggingProvider === pName ? 0.55 : 1, background: isProviderSelected ? "var(--bg-selected)" : "none" }}
+                      onDragEnd={() => { setDraggingProvider(null); setDropTargetProvider(null); }}
+                      style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 8px", borderRadius: "var(--radius-control)", cursor: saving ? "default" : draggingProvider === pName ? "grabbing" : "grab", opacity: draggingProvider === pName ? 0.55 : 1, background: dropTargetProvider === pName ? "var(--accent-subtle)" : isProviderSelected ? "var(--bg-selected)" : "none", transform: dropTargetProvider === pName ? "translateY(2px)" : "none", transition: "background .15s, transform .15s, opacity .15s" }}
                       onMouseEnter={(e) => { if (!isProviderSelected) e.currentTarget.style.background = "var(--bg-hover)"; }}
                       onMouseLeave={(e) => { if (!isProviderSelected) e.currentTarget.style.background = "none"; }}
                     >
@@ -2947,6 +2959,9 @@ export function ModelsConfig({
                       <span style={{ fontSize: "var(--text-sm)", fontWeight: isProviderSelected ? 600 : 400, color: "var(--text)", fontFamily: "var(--font-mono)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {pName}
                       </span>
+                      <button type="button" aria-label={collapsedProviders.has(pName) ? "展开模型" : "折叠模型"} title={collapsedProviders.has(pName) ? "展开模型" : "折叠模型"} onClick={(e) => { e.stopPropagation(); setCollapsedProviders((current) => { const next = new Set(current); if (next.has(pName)) next.delete(pName); else next.add(pName); return next; }); }} style={{ flexShrink: 0, border: 0, background: "transparent", color: "var(--text-dim)", cursor: "pointer", padding: 2, lineHeight: 1 }}>
+                        <AliIcon name="chevron-right" size={14} strokeWidth={1.8} aria-hidden="true" style={{ color: "var(--text-dim)", transform: collapsedProviders.has(pName) ? "none" : "rotate(90deg)", transition: "transform 0.15s" }} />
+                      </button>
                       <button
                         type="button"
                         onClick={async (e) => {
@@ -2977,7 +2992,7 @@ export function ModelsConfig({
                     </div>
 
                     {/* Model rows */}
-                    {models.map((m, i) => {
+                    {!collapsedProviders.has(pName) && models.map((m, i) => {
                       const isModelSelected = selection?.type === "model" && selection.providerName === pName && selection.index === i;
                       return (
                         <div
@@ -3028,14 +3043,14 @@ export function ModelsConfig({
                     })}
 
                     {/* Add model button */}
-                    <div
+                    {!collapsedProviders.has(pName) && <div
                       onClick={(e) => { e.stopPropagation(); addModel(pName); }}
                       style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 8px 4px 26px", borderRadius: "var(--radius-control)", cursor: "pointer", color: "var(--text-dim)" }}
                       onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--bg-hover)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-dim)"; e.currentTarget.style.background = "none"; }}
                     >
                        <span style={{ fontSize: "var(--text-xs)" }}>+ {t("i18n.model")}</span>
-                    </div>
+                    </div>}
                   </div>
                 );
               })}

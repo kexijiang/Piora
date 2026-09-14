@@ -654,7 +654,11 @@ export function DesktopCompanionWindow() {
             </div>
           ))}
         </div>
-        <div className={styles.petStage} data-moving={motionDirection ?? undefined}>
+        <div
+          className={styles.petStage}
+          data-moving={motionDirection ?? undefined}
+          data-dragging={dragging ? "true" : undefined}
+        >
           <div className={styles.petVisual} data-testid="companion-pet-visual" aria-hidden="true">
             {activePet
               ? <PetRenderer
@@ -675,6 +679,7 @@ export function DesktopCompanionWindow() {
             style={hitRegionStyle}
             type="button"
             data-testid="companion-pet-viewport"
+            data-dragging={dragging ? "true" : undefined}
             aria-label={`${petLabel} · ${statusLabel} · ${t("companion.pokeHint")}`}
             onPointerEnter={handlePetPointerEnter}
             onPointerLeave={handlePetPointerLeave}

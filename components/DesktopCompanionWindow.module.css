@@ -148,6 +148,8 @@
   display: grid;
   place-items: center;
   pointer-events: none;
+  transform-origin: 50% 82%;
+  transition: transform 180ms cubic-bezier(.2, .8, .2, 1), filter 180ms ease;
 }
 
 .pet {
@@ -192,6 +194,25 @@
   transform: none !important;
 }
 
+.petStage[data-dragging="true"] .petVisual {
+  transform: translateY(-5px) scale(1.035) rotate(-1.5deg);
+  filter: drop-shadow(0 10px 12px rgb(15 23 42 / 18%));
+}
+
+.petStage[data-dragging="true"] .pet {
+  cursor: grabbing;
+}
+
+.petStage:not([data-dragging="true"]) .petVisual {
+  animation: pet-drag-settle 220ms cubic-bezier(.2, .8, .2, 1);
+}
+
+@keyframes pet-drag-settle {
+  0% { transform: translateY(-5px) scale(1.035) rotate(-1.5deg); }
+  65% { transform: translateY(1px) scale(.985) rotate(.4deg); }
+  100% { transform: translateY(0) scale(1) rotate(0); }
+}
+
 .bubbleToggle {
   position: absolute;
   right: 14px;
@@ -229,4 +250,5 @@
 @media (prefers-reduced-motion: reduce) {
   .activityBubble { transition: none; }
   .bubbleToggle { transition: none; }
+  .petVisual { transition: none; animation: none !important; }
 }
