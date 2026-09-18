@@ -48,11 +48,11 @@
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: var(--radius-surface);
-  background: var(--floating-background);
-  border-color: var(--floating-border);
-  -webkit-backdrop-filter: var(--floating-filter);
-  backdrop-filter: var(--floating-filter);
-  box-shadow: var(--floating-shadow);
+  background: var(--selection-background);
+  border-color: var(--selection-border);
+  -webkit-backdrop-filter: var(--selection-filter);
+  backdrop-filter: var(--selection-filter);
+  box-shadow: var(--selection-shadow);
 }
 
 .projectBackdrop {

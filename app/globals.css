@@ -99,6 +99,12 @@
   --floating-section: color-mix(in srgb, var(--bg-panel) 10%, transparent);
   --floating-border: color-mix(in srgb, var(--text-muted) 14%, transparent);
   --floating-filter: blur(16px) saturate(1.18);
+  /* Selection menus prioritize legibility over decorative glass. Global
+     transparency adds only a subtle tint-through (at most 8%). */
+  --selection-background: color-mix(in srgb, var(--bg) clamp(92%, calc(100% - var(--interface-transparency) * 0.08%), 100%), transparent);
+  --selection-border: var(--border-soft);
+  --selection-filter: blur(8px);
+  --selection-shadow: var(--shadow-popover);
   --floating-shadow: inset 0 1px 0 var(--glass-edge-light), inset 0 -1px 0 rgb(255 255 255 / 4%), 0 16px 40px rgb(0 0 0 / 10%), 0 3px 10px rgb(0 0 0 / 4%);
   --composer-background: linear-gradient(125deg, color-mix(in srgb, var(--bg) clamp(0%, calc(100% - var(--interface-transparency) * 0.975%), 100%), transparent), color-mix(in srgb, var(--bg) clamp(0%, calc(100% - var(--interface-transparency) * 1.075%), 100%), transparent));
   --composer-border: color-mix(in srgb, var(--text-muted) 14%, transparent);
@@ -1570,10 +1576,22 @@ select:focus-visible,
   position: relative;
   z-index: 1;
   border-color: var(--composer-border) !important;
-  background: var(--composer-background) !important;
+  background: transparent !important;
+  box-shadow: var(--shadow-composer) !important;
+}
+
+/* Keep the glass behind the controls without making it a backdrop root for
+   child popovers, which need to blur page content outside the composer. */
+.chat-composer-surface::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--composer-background);
   -webkit-backdrop-filter: var(--composer-filter);
   backdrop-filter: var(--composer-filter);
-  box-shadow: var(--shadow-composer) !important;
 }
 
 .extension-status-control {
@@ -5525,8 +5543,6 @@ span.linenumber {
 .file-mention-empty { padding: 10px; color: var(--text-dim); font-size: var(--text-sm); }
 
 /* Shared floating surfaces. Keep blur on the opened layer, not its trigger or page. */
-.model-settings-popover,
-.model-settings-submenu,
 .composer-add-menu,
 .streaming-action-menu,
 .slash-command-menu,
@@ -5542,8 +5558,18 @@ span.linenumber {
   box-shadow: var(--floating-shadow);
 }
 
+.model-settings-popover,
+.model-settings-submenu {
+  background: var(--selection-background);
+  border-color: var(--selection-border);
+  -webkit-backdrop-filter: var(--selection-filter);
+  backdrop-filter: var(--selection-filter);
+  box-shadow: var(--selection-shadow);
+}
+
 @supports not (backdrop-filter: blur(1px)) {
   :root {
+    --selection-background: var(--bg);
     --floating-background: var(--bg);
     --composer-background: var(--bg);
   }
@@ -5551,6 +5577,8 @@ span.linenumber {
 
 @media (prefers-reduced-transparency: reduce) {
   :root:not([data-interface-transparency-override="true"]) {
+    --selection-background: var(--bg);
+    --selection-filter: none;
     --floating-background: var(--bg);
     --floating-section: var(--bg-panel);
     --floating-filter: none;

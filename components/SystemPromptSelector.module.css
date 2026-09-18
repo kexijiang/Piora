@@ -54,12 +54,12 @@
   grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
-  border-radius: var(--radius-panel);
-  background: var(--floating-background);
-  border-color: var(--floating-border);
-  -webkit-backdrop-filter: var(--floating-filter);
-  backdrop-filter: var(--floating-filter);
-  box-shadow: var(--floating-shadow);
+  border-radius: var(--radius-surface);
+  background: var(--selection-background);
+  border-color: var(--selection-border);
+  -webkit-backdrop-filter: var(--selection-filter);
+  backdrop-filter: var(--selection-filter);
+  box-shadow: var(--selection-shadow);
   color: var(--text);
   animation: popupIn 120ms ease-out;
 }
@@ -71,7 +71,7 @@
   gap: 12px;
   padding: 12px 12px 10px 13px;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
-  background: color-mix(in srgb, var(--bg-panel) 92%, var(--bg));
+  background: transparent;
 }
 
 .popupHeader > span {
