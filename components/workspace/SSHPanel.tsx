@@ -18,6 +18,9 @@ export function SSHPanel({ agentSessionId }: { agentSessionId?: string | null })
   const [selected, setSelected] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const closingIds = useRef(new Set<string>());
+  const [closing, setClosing] = useState<string[]>([]);
+  const [closeError, setCloseError] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
     const refresh = async () => {
@@ -47,13 +50,40 @@ export function SSHPanel({ agentSessionId }: { agentSessionId?: string | null })
     setSelected(id);
     try { if (id) sessionStorage.setItem("piora:ssh:v1:" + scope, id); else sessionStorage.removeItem("piora:ssh:v1:" + scope); } catch { /* storage unavailable */ }
   };
+  const closeTab = async (id: string) => {
+    if (closingIds.current.has(id)) return;
+    closingIds.current.add(id);
+    setClosing([...closingIds.current]);
+    setCloseError(null);
+    try {
+      try {
+        await sshRequest(`/api/ssh/sessions/${encodeURIComponent(id)}`, { method: "DELETE" });
+      } catch (cause) {
+        if (!(cause instanceof SSHRequestError && cause.status === 404)) throw cause;
+      }
+      setSessions(current => current.filter(item => item.id !== id));
+      setSelected(current => current === id ? null : current);
+      try {
+        if (sessionStorage.getItem("piora:ssh:v1:" + scope) === id) sessionStorage.removeItem("piora:ssh:v1:" + scope);
+      } catch { /* storage unavailable */ }
+    } catch (cause) {
+      setCloseError(sshErrorText(cause, t));
+    } finally {
+      closingIds.current.delete(id);
+      setClosing([...closingIds.current]);
+    }
+  };
   return <section className={styles.multiRoot + " " + styles.root} aria-label="SSH">
     <nav className={styles.hostTabs} aria-label={t("ssh.hostTabs")}>
-      {sessions.map(item => <button key={item.id} type="button" className={styles.hostTab} aria-current={selected === item.id ? "page" : undefined} onClick={() => select(item.id)} title={(item.hostName || item.host) + " · " + item.username + "@" + item.host}>
+      {sessions.map(item => <div key={item.id} className={styles.hostTab} data-selected={selected === item.id}>
+        <button type="button" className={styles.hostTabSelect} aria-current={selected === item.id ? "page" : undefined} onClick={() => select(item.id)} title={(item.hostName || item.host) + " · " + item.username + "@" + item.host}>
         <i data-connected={item.connected} /><span>{item.hostName || item.host + ":" + item.port}</span>{item.busy ? <span className={styles.tabBusy}>●</span> : null}
-      </button>)}
+        </button>
+        <button type="button" className={styles.hostTabClose} disabled={closing.includes(item.id)} onClick={() => void closeTab(item.id)} aria-label={t("ssh.closeTab") + " · " + (item.hostName || item.host + ":" + item.port)} title={t("ssh.closeTab")}><AliIcon name="close" size={14} /></button>
+      </div>)}
       <button type="button" className={styles.addHost} onClick={() => select(null)} aria-label={t("ssh.addHost")} title={t("ssh.addHost")}><AliIcon name="plus" size={16} /><span>{t("ssh.addHost")}</span></button>
     </nav>
+    {closeError ? <div className={styles.panelError} role="alert">{closeError}</div> : null}
     <div className={styles.hostContent}>{!loaded ? <div className={styles.centerState}>{t("ssh.restoring")}</div> : selected ? <SSHWorkspace key={selected} agentSessionId={agentSessionId} sessionId={selected} onClosed={() => select(null)} /> : <SSHConnectionDialog agentSessionId={agentSessionId} onConnected={snapshot => { setSessions(current => current.some(item => item.id === snapshot.id) ? current : [...current, snapshot]); select(snapshot.id); }} />}</div>
   </section>;
 }

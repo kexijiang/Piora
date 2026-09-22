@@ -12,9 +12,13 @@
 }
 .multiRoot { display: flex; flex-direction: column; min-width: 0; }
 .hostTabs { display: flex; align-items: stretch; gap: 4px; min-height: 45px; padding: 6px 12px 0; overflow-x: auto; border-bottom: 1px solid var(--border); scrollbar-width: thin; flex-shrink: 0; }
-.hostTab { flex: 0 1 174px; min-width: 78px; max-width: 220px; padding: 6px 10px; gap: 7px; border: 1px solid transparent !important; border-bottom: 0 !important; border-radius: var(--radius-control) var(--radius-control) 0 0 !important; color: var(--text-muted) !important; }
-.hostTab[aria-current="page"] { color: var(--text) !important; background: var(--bg-panel) !important; border-color: var(--border) !important; box-shadow: inset 0 2px var(--accent); }
-.hostTab > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hostTab { display: flex; align-items: center; flex: 0 1 174px; min-width: 110px; max-width: 220px; padding: 2px 4px; border: 1px solid transparent; border-bottom: 0; border-radius: var(--radius-control) var(--radius-control) 0 0; color: var(--text-muted); }
+.hostTab[data-selected="true"] { color: var(--text); background: var(--bg-panel); border-color: var(--border); box-shadow: inset 0 2px var(--accent); }
+.hostTabSelect { display: flex; flex: 1; min-width: 0; padding: 6px; gap: 7px; color: inherit !important; }
+.hostTabSelect > span:first-of-type { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hostTabClose { display: flex; align-items: center; justify-content: center; flex: 0 0 26px; width: 26px; height: 26px; color: var(--text-muted) !important; }
+.hostTabClose:hover:not(:disabled) { color: var(--text) !important; background: var(--bg-hover) !important; }
+.hostTabClose:focus-visible, .hostTabSelect:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .hostTab i { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
 .hostTab i[data-connected="true"] { background: var(--status-ready); }
 .tabBusy { margin-left: auto; color: var(--accent); font-size: var(--text-xs, 12px); }

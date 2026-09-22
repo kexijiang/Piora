@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### SSH 工作台
+
+- SSH 主机/端口标签新增关闭按钮，直接断开连接并移除标签；关闭后台标签保留当前选择，关闭最后一个标签后显示连接表单，关闭失败时保留标签并提示原因（#117）。
+
 ## [0.5.2-beta.6] - 2026-09-21
 
 ### 测试验证

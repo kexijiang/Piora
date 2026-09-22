@@ -1,4 +1,5 @@
 export const sshZh = {
+  "ssh.closeTab": "关闭标签并断开连接",
   "ssh.hostTabs": "SSH 主机", "ssh.addHost": "添加主机", "ssh.savedHosts": "已保存主机", "ssh.hostName": "主机名称", "ssh.hostNamePlaceholder": "例如：生产服务器",
   "ssh.saveHost": "保存主机", "ssh.updateHost": "保存修改", "ssh.saved": "主机已保存", "ssh.editHost": "编辑", "ssh.deleteHost": "删除", "ssh.cancelEdit": "取消编辑",
   "ssh.deleteHostConfirm": "删除这台已保存主机及其凭据？相关连接也会关闭。", "ssh.editCredentialHint": "凭据留空会保留已保存的密码或私钥。", "ssh.saveNeedsDetails": "请填写主机名称和登录凭据。",
@@ -28,6 +29,7 @@ export const sshZh = {
 };
 
 export const sshEn: Record<keyof typeof sshZh, string> = {
+  "ssh.closeTab": "Close tab and disconnect",
   "ssh.hostTabs": "SSH hosts", "ssh.addHost": "Add host", "ssh.savedHosts": "Saved hosts", "ssh.hostName": "Host name", "ssh.hostNamePlaceholder": "e.g. Production server",
   "ssh.saveHost": "Save host", "ssh.updateHost": "Save changes", "ssh.saved": "Host saved", "ssh.editHost": "Edit", "ssh.deleteHost": "Delete", "ssh.cancelEdit": "Cancel edit",
   "ssh.deleteHostConfirm": "Delete this saved host and its credential? Related connections will close.", "ssh.editCredentialHint": "Leave credentials blank to keep the saved password or key.", "ssh.saveNeedsDetails": "Enter a host name and login credential.",
