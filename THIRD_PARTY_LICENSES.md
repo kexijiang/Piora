@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `2e9228ba57bc44551383fedb7475c370bb807b15b2e38661642dcfb8ee5d336b`
+Lockfile SHA-256: `71df8d92e9e8c5440b9f98313158ef629d38e9c2acf2e13ed95497494ef20868`
 
-Unique locked packages: **1368**. Runtime packages: **927**. Build/development-only packages: **441**.
+Unique locked packages: **1369**. Runtime packages: **929**. Build/development-only packages: **440**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -887,6 +887,7 @@ Every locked package declares a license.
 | `type-fest` | `0.20.2` | (MIT OR CC0-1.0) | No |
 | `type-is` | `2.1.0` | MIT | No |
 | `typebox` | `1.3.7` | MIT | No |
+| `typescript` | `5.9.3` | Apache-2.0 | No |
 | `ufo` | `1.6.4` | MIT | No |
 | `underscore` | `1.13.8` | MIT | No |
 | `undici` | `8.9.0` | MIT | No |
@@ -911,6 +912,7 @@ Every locked package declares a license.
 | `vfile` | `6.0.3` | MIT | No |
 | `vfile-location` | `5.0.3` | MIT | No |
 | `vfile-message` | `4.0.3` | MIT | No |
+| `vscode-jsonrpc` | `9.0.2` | MIT | No |
 | `w3c-keyname` | `2.2.8` | MIT | No |
 | `web-namespaces` | `2.0.1` | MIT | No |
 | `web-streams-polyfill` | `3.3.3` | MIT | No |
@@ -1367,7 +1369,6 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `typed-array-byte-length` | `1.0.3` | MIT | No |
 | `typed-array-byte-offset` | `1.0.4` | MIT | No |
 | `typed-array-length` | `1.0.7` | MIT | No |
-| `typescript` | `5.9.3` | Apache-2.0 | No |
 | `typescript-eslint` | `8.57.1` | MIT | No |
 | `unbox-primitive` | `1.1.0` | MIT | No |
 | `undici` | `6.28.0` | MIT | No |

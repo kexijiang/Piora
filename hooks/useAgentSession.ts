@@ -17,6 +17,7 @@ import { normalizeToolCalls } from "@/lib/normalize";
 import { AgentCommandError, createAgentSessionRequest, sendAgentCommand } from "@/lib/agent-client";
 import { getDraft, setDraft, type ChatDraft } from "@/lib/draft-store";
 import { reduceAgentPhase, type AgentPhase } from "@/lib/agent-phase";
+import { isRunProgressEvent, type RunStatusClock } from "@/lib/run-progress";
 import { useI18n } from "@/hooks/useI18n";
 import { useExtensionDialog } from "@/hooks/useExtensionDialog";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
@@ -40,14 +41,6 @@ import type {
 } from "@/lib/system-prompt-types";
 
 export type { AgentPhase } from "@/lib/agent-phase";
-
-/** Events that prove the run is making progress; gaps between them drive the stall hint. */
-const PROGRESS_EVENT_TYPES = new Set([
-  "message_start", "message_update", "message_end",
-  "tool_execution_start", "tool_execution_update", "tool_execution_end",
-  "bash_output",
-  "compaction_start", "compaction_end", "auto_compaction_start", "auto_compaction_end",
-]);
 
 export interface SessionData {
   persistedPromptIds?: string[];
@@ -116,6 +109,10 @@ type AgentStateResponse = {
   isCompacting?: boolean;
   compactionStartedAt?: number | null;
   runtime?: string;
+  runStartedAt?: number | null;
+  statusPhaseKind?: RunStatusClock["phaseKind"];
+  statusPhaseStartedAt?: number | null;
+  lastProgressAt?: number | null;
   activeTools?: { id: string; name: string }[];
   extensionStatuses?: ExtensionStatusItem[];
   extensionWidgets?: ExtensionWidgetItem[];
@@ -477,6 +474,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [compactError, setCompactError] = useState<string | null>(null);
   const [compactResult, setCompactResult] = useState<CompactResultInfo | null>(null);
   const [agentPhase, setAgentPhase] = useState<AgentPhase>(null);
+  const [statusClock, setStatusClock] = useState<RunStatusClock | null>(null);
   const [slashCommands, setSlashCommands] = useState<SlashCommandInfo[]>([]);
   const [slashCommandsLoading, setSlashCommandsLoading] = useState(false);
   const [noticeState, dispatchNotice] = useReducer(noticeReducer, { visible: [], pending: [] });
@@ -532,6 +530,15 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const phaseEventRevisionRef = useRef(0);
   /** Last time the active run produced visible progress (stream, tool output, results). */
   const activityClockRef = useRef<number>(Date.now());
+  const restoreStatusClock = useCallback((state: AgentStateResponse) => {
+    setStatusClock({
+      runStartedAt: state.runStartedAt ?? null,
+      phaseKind: state.statusPhaseKind ?? null,
+      phaseStartedAt: state.statusPhaseStartedAt ?? null,
+      lastProgressAt: state.lastProgressAt ?? null,
+    });
+    if (typeof state.lastProgressAt === "number") activityClockRef.current = state.lastProgressAt;
+  }, []);
   const promptSettlementByRunRef = useRef(new Map<number, Promise<void>>());
   const promptSettlementPollByRunRef = useRef(new Map<number, Promise<void>>());
   const sessionLoadAbortRef = useRef<AbortController | null>(null);
@@ -1133,7 +1140,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         const res = await fetch(`/api/agent/${encodeURIComponent(sid)}`);
         if (!res.ok) continue;
         const data = await res.json() as { state?: AgentStateResponse };
-        if (data.state?.isBashRunning) continue;
+        if (data.state?.isBashRunning) {
+          restoreStatusClock(data.state);
+          continue;
+        }
 
         await loadSession(sid);
         if (bashRecoveryIdRef.current !== recoveryId || sessionIdRef.current !== sid) return;
@@ -1145,7 +1155,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // Keep polling while the page is mounted; network recovery is transparent.
       }
     }
-  }, [loadSession]);
+  }, [loadSession, restoreStatusClock]);
 
   const refreshContextUsage = useCallback(async (sid: string) => {
     try {
@@ -1187,6 +1197,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         const compacting = cancelledPromptRunIdRef.current !== runId && (state?.isCompacting ?? false);
         setIsCompacting(compacting);
         setCompactionStartedAt(compacting ? state?.compactionStartedAt ?? null : null);
+        if (state && data.running) restoreStatusClock(state);
       }
       setQueuedMessages(normalizeQueuedMessages(state?.queuedMessages));
       if (state?.capabilities !== undefined) setCapabilities(state.capabilities);
@@ -1199,7 +1210,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (state?.runtime === "stopping") setAgentPhase({ kind: "stopping" });
       else if (state?.activeTools && phaseEventRevisionRef.current === phaseRevision && cancelledPromptRunIdRef.current !== runId) {
         const tools = state.activeTools;
-        setAgentPhase((phase) => tools.length
+        if (state.statusPhaseKind === "agent") setAgentPhase(null);
+        else if (state.statusPhaseKind === "waiting_model") setAgentPhase({ kind: "waiting_model" });
+        else if (state.statusPhaseKind === "running_command") setAgentPhase({ kind: "running_command" });
+        else setAgentPhase((phase) => tools.length
           ? { kind: "running_tools", tools }
           : phase?.kind === "running_tools" || phase?.kind === "stopping" ? { kind: "waiting_model" } : phase);
       }
@@ -1223,7 +1237,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } catch {
       // Network still down — the next poll / visibility / online tick retries.
     }
-  }, [finishPromptWithoutStream]);
+  }, [finishPromptWithoutStream, restoreStatusClock]);
 
   // Recovery net for missed SSE events: while the agent is running, verify
   // against the server periodically and whenever the tab returns to the
@@ -1299,7 +1313,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // while the abort HTTP request or server cleanup is still pending.
     if (cancelledPromptRunIdRef.current === promptRunIdRef.current) return;
     phaseEventRevisionRef.current += 1;
-    if (PROGRESS_EVENT_TYPES.has(event.type)) activityClockRef.current = Date.now();
+    if (isRunProgressEvent(event.type)) activityClockRef.current = Date.now();
+    if (["agent_start", "agent_end", "message_start", "message_update", "message_end", "tool_execution_start", "tool_execution_end"].includes(event.type)) {
+      setStatusClock(null);
+    }
     switch (event.type) {
       case "agent_start":
         liveOutputFollowRef.current = true;
@@ -1576,6 +1593,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     setReplyHistorySettling(false);
     suppressCompletionNotificationRef.current = false;
     agentRunningRef.current = true;
+    setStatusClock(null);
+    activityClockRef.current = Date.now();
     setAgentRunning(true);
     setAgentPhase(isSlashCommandPrompt ? { kind: "running_command" } : { kind: "waiting_model" });
     dispatch({ type: "start" });
@@ -1687,6 +1706,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (agentRunningRef.current || bashRunningRef.current) return;
     const inputText = `${excludeFromContext ? "!!" : "!"}${command}`;
     bashRunningRef.current = true;
+    setStatusClock(null);
+    activityClockRef.current = Date.now();
     setPendingBash({ command, excludeFromContext });
     setBashRunning(true);
     try {
@@ -2338,6 +2359,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       sessionIdRef.current = session.id;
       loadSession(session.id, initialSessionData === null, true, takePrefetchedSession(session)).then((agentState) => {
         if (agentState?.running) {
+          if (agentState.state && agentState.state.runtime !== "idle") restoreStatusClock(agentState.state);
           invalidatePrefetchedSession(session.id);
           if (agentState.state?.isCompacting) void connectEvents(session.id);
           if (agentState.state?.isStreaming || agentState.state?.isPromptRunning || agentState.state?.runtime === "stopping") {
@@ -2345,7 +2367,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             setAgentRunning(true);
             setAgentPhase(agentState.state.runtime === "stopping" ? { kind: "stopping" }
               : agentState.state.activeTools?.length ? { kind: "running_tools", tools: agentState.state.activeTools }
-                : agentState.state.isStreaming ? { kind: "waiting_model" } : { kind: "running_command" });
+                : agentState.state.statusPhaseKind === "agent" ? null
+                  : agentState.state.isStreaming ? { kind: "waiting_model" } : { kind: "running_command" });
             dispatch({ type: "start" });
             if (!agentState.state.isCompacting) void connectEvents(session.id);
             if (!agentState.state.isStreaming && agentState.state.isPromptRunning) {
@@ -2595,7 +2618,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentPhase,
     isNew,
     // Refs
-    sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef, activityClockRef,
+    sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef, activityClockRef, statusClock,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleDeleteMessage, deletingMessage,

@@ -53,8 +53,11 @@ const LANGUAGE_LOADERS: Record<string, LanguageLoader> = {
 };
 
 const LANGUAGE_ALIASES: Record<string, string> = {
+  arkts: "typescript",
   cs: "csharp",
   dockerfile: "docker",
+  ets: "typescript",
+  hml: "markup",
   htm: "markup",
   html: "markup",
   js: "javascript",

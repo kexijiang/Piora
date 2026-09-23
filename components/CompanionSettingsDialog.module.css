@@ -492,3 +492,26 @@ a.primaryButton {
   .petChoice { transition: none; }
   .petChoice:hover { transform: none; }
 }
+
+.embedded { background: var(--bg); backdrop-filter: none; }
+.embedded .header { padding: 28px 32px 18px; border-bottom: 0; }
+.embedded .title { font-size: calc(var(--text-lg) * 1.28); font-weight: 650; letter-spacing: -0.02em; }
+.embedded .subtitle { margin-top: 8px; font-size: var(--text-sm); }
+.embedded .body { min-height: 0; padding: 0 32px 40px; }
+.embedded .body > * { max-width: 860px; }
+.embedded .displayCard,
+.embedded .modeCard,
+.embedded .modelCard,
+.embedded .importCard,
+.embedded .petStage,
+.embedded .petChoice,
+.embedded .petDropZone {
+  border-color: color-mix(in srgb, var(--border) 65%, transparent);
+  background: var(--surface-muted);
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .embedded .header { padding: 22px 18px 16px; }
+  .embedded .body { padding: 0 18px 32px; }
+}

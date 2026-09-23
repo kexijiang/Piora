@@ -41,7 +41,7 @@ interface Props {
   onCloseFileTabsToRight: (id: string) => void;
   onMoveFileTab: (id: string, targetIndex: number) => void;
   onReopenClosedFileTab: () => void;
-  onOpenFile: (path: string, name: string, options?: { sourceSessionId?: string | null; modeHint?: "diff"; line?: number }) => void;
+  onOpenFile: (path: string, name: string, options?: { sourceSessionId?: string | null; modeHint?: "diff"; line?: number; column?: number }) => void;
   onDirtyChange: (id: string, dirty: boolean) => void;
   onRefresh: () => void;
   onMention: (relativePath: string, isDir: boolean) => void;
@@ -98,6 +98,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [addMenuPosition, setAddMenuPosition] = useState({ left: 8, top: 48, width: 278 });
   const [openTools, setOpenTools] = useState<ToolTab[]>(() => activeTab === "home" ? [] : [activeTab]);
+  const [filesHasOpened, setFilesHasOpened] = useState(activeTab === "files");
   const [draggedTool, setDraggedTool] = useState<ToolTab | null>(null);
   const [dropTargetTool, setDropTargetTool] = useState<ToolTab | null>(null);
   const compactFiles = filesWidth > 0 && filesWidth < 600;
@@ -221,6 +222,10 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
   }, [addMenuOpen]);
 
   useEffect(() => {
+    if (activeTab === "files") setFilesHasOpened(true);
+  }, [activeTab]);
+
+  useEffect(() => {
     if (activeTab === "home") return;
     setOpenTools((current) => current.includes(activeTab) ? current : [...current, activeTab]);
   }, [activeTab]);
@@ -338,7 +343,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
       {activeTab === "review" ? <RenderErrorBoundary resetKey={`review:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><ReviewPanel cwd={cwd} refreshKey={refreshKey} onRefresh={props.onRefresh} onOpenFile={(path) => { props.onOpenFile(path, path.replace(/\\/g, "/").split("/").pop() ?? path); onActiveTabChange("files"); }} /></RenderErrorBoundary> : null}
     </section>
     <section id="workspace-files" role="tabpanel" aria-labelledby="workspace-files-tab" hidden={activeTab !== "files"} className={styles.panel} style={{ flex: 1, minHeight: 0, overflow: "hidden" }}>
-      {activeTab === "files" ? <RenderErrorBoundary resetKey={`files:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}>
+      {filesHasOpened ? <RenderErrorBoundary resetKey={`files:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}>
       <div ref={filesRootRef} className={styles.filesRoot} data-compact={compactFiles ? "true" : undefined} data-tree-open={treeDrawerOpen ? "true" : undefined} data-resizing={resizingTree ? "true" : undefined} style={{ position: "relative", display: "grid", height: "100%", minHeight: 0, minWidth: 0, gridTemplateColumns: compactFiles ? "40px minmax(0, 1fr)" : `${treeWidth}px ${TREE_HANDLE_WIDTH}px minmax(0, 1fr)` }}>
         {compactFiles ? <button className={styles.fileTreeRail} type="button" aria-label={t("files.explorer")} aria-expanded={treeDrawerOpen} onClick={() => setTreeDrawerOpen((open) => !open)}><AliIcon name="folder-open" size={16} /></button> : null}
         {compactFiles && treeDrawerOpen ? <button className={styles.fileTreeBackdrop} type="button" aria-label={t("i18n.close")} onClick={() => setTreeDrawerOpen(false)} /> : null}
@@ -383,7 +388,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
           /></div>
           <div className={styles.fileBody} style={{ position: "relative", flex: 1, minHeight: 0, overflow: "hidden" }}>{fileTabs.length ? fileTabs.map((tab) => {
             const selected = tab.id === activeFileTabId;
-            return <div key={tab.id} aria-hidden={!selected} style={{ position: "absolute", inset: 0, display: selected ? "block" : "none", overflow: "hidden" }}><FileViewer filePath={tab.filePath} cwd={tab.cwd ?? cwd ?? undefined} sourceSessionId={tab.sourceSessionId} gitRefreshKey={refreshKey} initialDisplayMode={tab.initialDisplayMode} revealLine={tab.revealLine} revealKey={tab.revealKey} active={active && activeTab === "files" && selected} onDirtyChange={(dirty) => props.onDirtyChange(tab.id, dirty)} onSaved={props.onRefresh} onMentionLines={active && selected ? props.onMentionLines : undefined} onOpenFile={(path) => props.onOpenFile(path, path.replace(/\\/g, "/").split("/").pop() ?? path)} /></div>;
+            return <div key={tab.id} aria-hidden={!selected} style={{ position: "absolute", inset: 0, display: selected ? "block" : "none", overflow: "hidden" }}><FileViewer filePath={tab.filePath} cwd={tab.cwd ?? cwd ?? undefined} sourceSessionId={tab.sourceSessionId} gitRefreshKey={refreshKey} initialDisplayMode={tab.initialDisplayMode} revealLine={tab.revealLine} revealColumn={tab.revealColumn} revealKey={tab.revealKey} active={active && activeTab === "files" && selected} onDirtyChange={(dirty) => props.onDirtyChange(tab.id, dirty)} onSaved={props.onRefresh} onMentionLines={active && selected ? props.onMentionLines : undefined} onOpenFile={(path, options) => props.onOpenFile(path, path.replace(/\\/g, "/").split("/").pop() ?? path, options)} /></div>;
           }) : <div className={styles.empty}>{t("files.noneOpen")}</div>}</div>
         </div>
       </div>

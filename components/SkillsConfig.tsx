@@ -912,14 +912,14 @@ export function SkillsConfig({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "12px 18px",
-            borderBottom: "1px solid var(--border)",
+            padding: embedded ? "28px 32px 18px" : "12px 18px",
+            borderBottom: embedded ? "none" : "1px solid var(--border)",
             flexShrink: 0,
           }}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <span
-              style={{ fontSize: "var(--text-md)", fontWeight: 700, color: "var(--text)" }}
+              style={{ fontSize: embedded ? "calc(var(--text-lg) * 1.28)" : "var(--text-md)", fontWeight: embedded ? 650 : 700, color: "var(--text)" }}
             >
                {t("common.skills")}
             </span>
@@ -964,14 +964,14 @@ export function SkillsConfig({
           {/* Left: skill list */}
           <div
             style={{
-              width: isMobile ? "100%" : 210,
+              width: isMobile ? "100%" : embedded ? 258 : 210,
               maxHeight: isMobile ? "40vh" : undefined,
               borderRight: isMobile ? "none" : "1px solid var(--border)",
               borderBottom: isMobile ? "1px solid var(--border)" : "none",
               display: "flex",
               flexDirection: "column",
               flexShrink: 0,
-              background: "var(--bg-panel)",
+              background: embedded ? "color-mix(in srgb, var(--bg-panel) 60%, var(--bg))" : "var(--bg-panel)",
             }}
           >
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
@@ -1185,8 +1185,8 @@ export function SkillsConfig({
           </div>
 
           {/* Right: detail or add panel */}
-          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-            <CapabilityPrimer current="skill" />
+          <div style={{ flex: 1, overflowY: "auto", padding: embedded ? "20px 32px 36px" : 20 }}>
+            {!embedded ? <CapabilityPrimer current="skill" /> : null}
             {addMode ? (
               <AddSkillPanel
                 cwd={cwd}
@@ -1207,28 +1207,37 @@ export function SkillsConfig({
                 }}
               />
             ) : loading ? null : selectedSkill ? (
-              <SkillDetail
-                key={selectedSkill.filePath}
-                skill={selectedSkill}
-                cwd={cwd}
-                onToggle={toggle}
-                toggling={toggling.has(selectedSkill.filePath)}
-                saveError={saveError}
-                updateStatus={
-                  updateKey(selectedSkill)
-                    ? updateStatuses[updateKey(selectedSkill)!]
-                    : undefined
-                }
-                checkingUpdate={
-                  updateKey(selectedSkill)
-                    ? checkingUpdates.has(updateKey(selectedSkill)!)
-                    : false
-                }
-                updating={updatingSkill === updateKey(selectedSkill)}
-                updateError={updateError}
-                onCheckUpdate={() => void checkForUpdates(selectedSkill)}
-                onUpdate={() => void updateInstalledSkill(selectedSkill)}
-              />
+              <div style={embedded ? {
+                maxWidth: 860,
+                padding: 20,
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-surface)",
+                background: "var(--surface-muted)",
+                boxShadow: "var(--shadow-surface)",
+              } : undefined}>
+                <SkillDetail
+                  key={selectedSkill.filePath}
+                  skill={selectedSkill}
+                  cwd={cwd}
+                  onToggle={toggle}
+                  toggling={toggling.has(selectedSkill.filePath)}
+                  saveError={saveError}
+                  updateStatus={
+                    updateKey(selectedSkill)
+                      ? updateStatuses[updateKey(selectedSkill)!]
+                      : undefined
+                  }
+                  checkingUpdate={
+                    updateKey(selectedSkill)
+                      ? checkingUpdates.has(updateKey(selectedSkill)!)
+                      : false
+                  }
+                  updating={updatingSkill === updateKey(selectedSkill)}
+                  updateError={updateError}
+                  onCheckUpdate={() => void checkForUpdates(selectedSkill)}
+                  onUpdate={() => void updateInstalledSkill(selectedSkill)}
+                />
+              </div>
             ) : (
               <div
                 style={{
@@ -1252,7 +1261,7 @@ export function SkillsConfig({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "10px 18px",
+            padding: embedded ? "12px 32px" : "10px 18px",
             borderTop: "1px solid var(--border)",
             flexShrink: 0,
           }}

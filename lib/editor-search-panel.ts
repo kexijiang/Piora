@@ -4,13 +4,13 @@ import type { EditorView, Panel, ViewUpdate } from "@codemirror/view";
 export const editorSearchChinese = {
   "Find": "查找", "Replace": "替换", "Find and replace": "查找与替换", "Match case": "区分大小写", "Whole word": "全词匹配", "Regular expression": "正则表达式",
   "Previous match": "上一个匹配", "Next match": "下一个匹配", "Close search": "关闭查找", "Replace next": "替换当前", "Replace all": "全部替换",
-  "No results": "无匹配", "Invalid regular expression": "正则表达式无效", "Type to search": "输入查找内容", "matches": "处匹配",
+  "No results": "无匹配", "Invalid regular expression": "正则表达式无效", "Type to search": "输入查找内容", "matches": "处匹配", "Toggle replace": "展开或收起替换",
 };
 
 /** Shared inline panel: search state belongs to the editor and replacements retain undo history. */
-export function createEditorSearchPanel(view: EditorView): Panel {
+export function createEditorSearchPanel(view: EditorView, options?: { floating?: boolean }): Panel {
   const dom = document.createElement("div");
-  dom.className = "piora-search";
+  dom.className = options?.floating ? "piora-search piora-search--floating" : "piora-search";
   dom.setAttribute("role", "search");
   const phrase = (value: string) => view.state.phrase(value);
   const labels: Array<{ element: HTMLElement; key: string; text: boolean }> = [];
@@ -37,12 +37,24 @@ export function createEditorSearchPanel(view: EditorView): Panel {
   const previous = button("Previous match", "↑", () => { findPrevious(view); });
   const next = button("Next match", "↓", () => { findNext(view); });
   const close = button("Close search", "×", () => { closeSearchPanel(view); view.focus(); });
+  const replaceToggle = options?.floating ? button("Toggle replace", "⌄", () => {
+    replaceRow.hidden = !replaceRow.hidden;
+    replaceToggle?.setAttribute("aria-expanded", String(!replaceRow.hidden));
+    if (!replaceRow.hidden) replacement.focus();
+  }) : null;
+  if (replaceToggle) { replaceToggle.className = "piora-search-replace-toggle"; replaceToggle.setAttribute("aria-expanded", "false"); replaceRow.hidden = true; }
   const replaceOne = button("Replace next", "Replace next", () => { replaceNext(view); field.focus(); });
   const replaceEvery = button("Replace all", "Replace all", () => { replaceAll(view); field.focus(); });
   opts.append(cases, words, regex);
-  row.append(field, opts, previous, next, close);
+  if (options?.floating) {
+    const icon = document.createElement("span"); icon.className = "piora-search-icon"; icon.textContent = "⌕"; icon.setAttribute("aria-hidden", "true");
+    row.append(icon, field, count, previous, next, opts);
+    if (replaceToggle) row.append(replaceToggle);
+    row.append(close);
+  } else row.append(field, opts, previous, next, close);
   replaceRow.append(replacement, replaceOne, replaceEvery);
-  dom.append(row, replaceRow, count);
+  if (options?.floating) dom.append(row, replaceRow);
+  else dom.append(row, replaceRow, count);
   function toggle(element: HTMLButtonElement) { element.setAttribute("aria-pressed", String(element.getAttribute("aria-pressed") !== "true")); commit(); }
   function commit() {
     const query = new SearchQuery({ search: field.value, replace: replacement.value, caseSensitive: cases.getAttribute("aria-pressed") === "true", wholeWord: words.getAttribute("aria-pressed") === "true", regexp: regex.getAttribute("aria-pressed") === "true", literal: true });

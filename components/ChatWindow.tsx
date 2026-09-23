@@ -204,7 +204,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     isAutoModelSelection,
     agentPhase,
     isNew,
-    sessionIdRef, messagesEndRef, scrollContainerRef, activityClockRef,
+    sessionIdRef, messagesEndRef, scrollContainerRef, activityClockRef, statusClock,
     lastUserMsgRef,
     pendingScrollToUserRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleScrollToBottom, pauseHistoryFollow, handleDeleteMessage, deletingMessage,
@@ -225,7 +225,8 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
   const [statusTick, setStatusTick] = useState(() => Date.now());
   useEffect(() => {
     if (sessionBusy) {
-      if (busySinceRef.current === null) busySinceRef.current = Date.now();
+      if (statusClock?.runStartedAt != null) busySinceRef.current = statusClock.runStartedAt;
+      else if (busySinceRef.current === null) busySinceRef.current = Date.now();
     } else {
       busySinceRef.current = null;
     }
@@ -234,11 +235,15 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     const statusPhase = sessionBusy
       ? agentRunning ? (agentPhase?.kind ?? "agent") : "bash"
       : null;
+    const authoritativePhaseStart = statusClock?.phaseKind === statusPhase
+      ? statusClock.phaseStartedAt : null;
     if (statusPhase !== statusPhaseRef.current) {
       statusPhaseRef.current = statusPhase;
-      statusPhaseSinceRef.current = statusPhase ? Date.now() : null;
+      statusPhaseSinceRef.current = statusPhase ? authoritativePhaseStart ?? Date.now() : null;
+    } else if (authoritativePhaseStart !== null) {
+      statusPhaseSinceRef.current = authoritativePhaseStart;
     }
-  }, [agentPhase?.kind, agentRunning, bashRunning, sessionBusy]);
+  }, [agentPhase?.kind, agentRunning, bashRunning, sessionBusy, statusClock]);
   useEffect(() => {
     if (!sessionBusy) return;
     setStatusTick(Date.now());

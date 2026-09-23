@@ -964,11 +964,6 @@
 
 .dialog { box-shadow: var(--shadow-popover); }
 
-.capabilityTask { margin-top: 28px; }
-.capabilityTask h3 { font-size: var(--text-base); margin: 0 0 6px; }
-.capabilityTask > p { color: var(--text-muted); font-size: var(--text-sm); margin: 0 0 12px; }
-.capabilityTask button:disabled { opacity: 0.55; cursor: default; }
-
 .contentCanvas [data-settings-highlighted="true"] {
   border-radius: var(--radius-control);
   outline: 2px solid var(--focus-ring);
@@ -994,4 +989,24 @@
 .promptEditor:focus-visible {
   border-color: transparent;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+.navSearch {
+  flex: 0 0 38px;
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: var(--radius-control);
+  background: var(--bg-hover);
+}
+
+.navSearch input { font-size: var(--text-sm); }
+
+@media (max-width: 760px) {
+  .navSearch {
+    width: 200px;
+    flex: 0 0 200px;
+    min-height: 38px;
+    margin: 0 4px 0 0;
+  }
 }

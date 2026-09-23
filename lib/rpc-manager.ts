@@ -1,5 +1,7 @@
 import { recordAgentTerminalEvent } from "./agent-terminal-registry";
 import { StreamingMetricsTracker } from "./streaming-metrics";
+import { reduceAgentPhase, type AgentPhase } from "./agent-phase";
+import { isRunProgressEvent } from "./run-progress";
 import { assertRemotePolicyCommand, readRemoteSessionPolicy, remotePolicyResources, type RemoteSessionPolicy } from "./remote-session-policy";
 import { RemoteContentProjection } from "./remote-content";
 import { readPendingSessionModel, clearPendingSessionModel } from "./session-model-selection";
@@ -199,6 +201,10 @@ export class AgentSessionWrapper {
   private pendingClientPromptId: string | undefined;
   private lastPromptErrorSummary: string | undefined;
   private runStartedAt: number | null = null;
+  private statusAgentPhase: AgentPhase = null;
+  private statusPhaseKind: NonNullable<AgentPhase>["kind"] | "agent" | "bash" | null = null;
+  private statusPhaseStartedAt: number | null = null;
+  private lastProgressAt: number | null = null;
   private compactionStartedAt: number | null = null;
   private taskActivity: TaskRuntimeActivity | null = null;
   private cachedSessionTitle: string | null = null;
@@ -557,10 +563,27 @@ export class AgentSessionWrapper {
     if (streaming) this.lastStreamActivityAt = now;
   }
 
-  private beginRun(kind: TaskRuntimeActivityKind, message: unknown): void {
+  private beginRun(kind: TaskRuntimeActivityKind, message: unknown, phaseKind?: "running_command" | "waiting_model"): void {
     this.runStartedAt = Date.now();
+    this.statusAgentPhase = null;
+    this.statusPhaseKind = kind === "command" ? "bash" : phaseKind ?? "waiting_model";
+    this.statusPhaseStartedAt = this.runStartedAt;
+    this.lastProgressAt = this.runStartedAt;
     this.lastStreamActivityAt = 0;
     this.setTaskActivity(kind, message);
+  }
+
+  private updateStatusPhase(event: AgentEvent): void {
+    if (this.inner.isBashRunning || this.stopping) return;
+    const phase = reduceAgentPhase(this.statusAgentPhase, event);
+    const phaseKind = phase?.kind ?? (event.type === "agent_end" && this.promptRunning
+      ? "running_command"
+      : this.inner.isStreaming ? "agent" : null);
+    if (phaseKind !== this.statusPhaseKind) {
+      this.statusPhaseKind = phaseKind;
+      this.statusPhaseStartedAt = phaseKind ? Date.now() : null;
+    }
+    this.statusAgentPhase = phase;
   }
 
   private updateActivityFromEvent(event: AgentEvent): void {
@@ -620,6 +643,7 @@ export class AgentSessionWrapper {
       }
       this.resetIdleTimer();
       this.updateActivityFromEvent(event);
+      this.updateStatusPhase(event);
       if (event.type === "message_end" && (event.message as { role?: string } | undefined)?.role === "assistant") {
         this.lastAssistantResponse = event.message;
       }
@@ -825,6 +849,7 @@ export class AgentSessionWrapper {
   }
 
   private emit(event: AgentEvent): void {
+    if (isRunProgressEvent(event.type)) this.lastProgressAt = Date.now();
     if (event.type === "compaction_start" || event.type === "auto_compaction_start") {
       event = { ...event, compactionStartedAt: this.compactionStartedAt };
     }
@@ -945,7 +970,10 @@ export class AgentSessionWrapper {
         if (!streamingBehavior) this.promptAdmissionBusy = true;
         const promptText = compactTaskActivityText(originalPromptMessage);
         this.fallbackTaskTitle = compactTaskActivityText(originalPromptMessage, 80) || this.fallbackTaskTitle;
-        this.beginRun("prompt", promptText || "Processing request");
+        const isSlashCommand = !promptImages?.length && !promptMaterials?.length && originalPromptMessage.trimStart().startsWith("/");
+        if (!streamingBehavior || this.getRuntime() === "idle") {
+          this.beginRun("prompt", promptText || "Processing request", isSlashCommand ? "running_command" : "waiting_model");
+        }
         this.lastPromptFailed = false;
         this.lastPromptErrorSummary = undefined;
         const ownsPromptRun = !streamingBehavior || !this.activePromptRun;
@@ -1093,6 +1121,8 @@ export class AgentSessionWrapper {
         const promptRun = this.activePromptRun;
         this.abortGeneration += 1;
         this.stopping = true;
+        this.statusPhaseKind = "stopping";
+        this.statusPhaseStartedAt = Date.now();
         notifyRunningChange();
 
         // AgentSession.abort() signals its AbortController synchronously, then
@@ -1137,6 +1167,7 @@ export class AgentSessionWrapper {
 
       case "get_state": {
         const model = this.inner.model;
+        const runtime = this.getRuntime();
         const contextUsage = this.inner.getContextUsage();
         const agentState = this.inner.agent.state;
         const contextBreakdown = contextUsage ? estimateContextUsageBreakdown({
@@ -1153,9 +1184,13 @@ export class AgentSessionWrapper {
           isStreaming: this.inner.isStreaming,
           isPromptRunning: this.promptRunning,
           isBashRunning: this.inner.isBashRunning,
+          runStartedAt: runtime === "idle" ? null : this.runStartedAt,
+          statusPhaseKind: runtime === "idle" ? null : this.statusPhaseKind,
+          statusPhaseStartedAt: runtime === "idle" ? null : this.statusPhaseStartedAt,
+          lastProgressAt: runtime === "idle" ? null : this.lastProgressAt,
           isCompacting: this.inner.isCompacting,
           compactionStartedAt: this.inner.isCompacting ? this.compactionStartedAt : null,
-          runtime: this.getRuntime(),
+          runtime,
           activeTools: Array.from(this.runtimeToolCalls, ([id, tool]) => ({ id, name: tool.toolName })),
           pendingApproval: this.pendingUiResponses.size > 0 || this.activeCustomUis.size > 0,
           lastPromptFailed: this.lastPromptFailed,

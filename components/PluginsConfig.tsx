@@ -755,13 +755,13 @@ export function PluginsConfig({
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            padding: "12px 18px",
-            borderBottom: "1px solid var(--border)",
+            padding: embedded ? "28px 32px 18px" : "12px 18px",
+            borderBottom: embedded ? "none" : "1px solid var(--border)",
             flexShrink: 0,
           }}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, minWidth: 0 }}>
-            <span style={{ fontSize: "var(--text-md)", fontWeight: 700, color: "var(--text)" }}>
+            <span style={{ fontSize: embedded ? "calc(var(--text-lg) * 1.28)" : "var(--text-md)", fontWeight: embedded ? 650 : 700, color: "var(--text)" }}>
               {t("common.plugins")}
             </span>
             <code
@@ -802,14 +802,14 @@ export function PluginsConfig({
         <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", overflow: "hidden" }}>
           <div
             style={{
-              width: isMobile ? "100%" : 245,
+              width: isMobile ? "100%" : embedded ? 258 : 245,
               maxHeight: isMobile ? "40vh" : undefined,
               borderRight: isMobile ? "none" : "1px solid var(--border)",
               borderBottom: isMobile ? "1px solid var(--border)" : "none",
               display: "flex",
               flexDirection: "column",
               flexShrink: 0,
-              background: "var(--bg-panel)",
+              background: embedded ? "color-mix(in srgb, var(--bg-panel) 60%, var(--bg))" : "var(--bg-panel)",
             }}
           >
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
@@ -952,8 +952,8 @@ export function PluginsConfig({
             </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
-            <CapabilityPrimer current="plugin" />
+          <div style={{ flex: 1, overflowY: "auto", padding: embedded ? "20px 32px 36px" : 20 }}>
+            {!embedded ? <CapabilityPrimer current="plugin" /> : null}
             {addMode ? (
               <AddPluginPanel
                 cwd={cwd}
@@ -1000,7 +1000,7 @@ export function PluginsConfig({
             alignItems: "center",
             justifyContent: "space-between",
             gap: 12,
-            padding: "10px 18px",
+            padding: embedded ? "12px 32px" : "10px 18px",
             borderTop: "1px solid var(--border)",
             flexShrink: 0,
           }}

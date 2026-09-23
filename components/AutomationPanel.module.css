@@ -63,3 +63,30 @@
 .chatCard button { flex: 0 0 auto; border-radius: var(--radius-control); background: transparent; }
 .chatCard button:disabled { cursor: default; opacity: .5; }
 @media (max-width: 700px) { .embedded .header { padding: 18px 16px 14px; } .embedded .editor, .embedded .list { padding-left: 16px; padding-right: 16px; } }
+
+.embedded .header { min-height: auto; padding: 28px 32px 20px; border-bottom: 0; }
+.embedded .header h2 { font-size: calc(var(--text-lg) * 1.28); font-weight: 650; letter-spacing: -0.02em; }
+.embedded .header p { max-width: 640px; margin-top: 8px; line-height: 1.55; }
+.embedded .header p + p { margin-top: 2px; }
+.embedded .list { width: 100%; padding: 4px 32px 40px; }
+.embedded .empty { flex: 0 0 auto; width: calc(100% - 64px); max-width: 860px; height: 220px; margin: 4px 32px 40px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--surface-muted); box-shadow: var(--shadow-surface); }
+.embedded .listItem { max-width: 860px; min-height: 72px; border-color: color-mix(in srgb, var(--border) 65%, transparent); background: var(--surface-muted); box-shadow: var(--shadow-surface); }
+.embedded .clock { background: var(--bg); }
+.embedded .editor { padding: 4px 32px 48px; }
+.embedded .editor > * { max-width: 820px; }
+.embedded .group h3 { margin-bottom: 10px; font-size: var(--text-sm); font-weight: 650; }
+.embedded .row,
+.embedded .runSummary,
+.embedded .ruleField,
+.embedded .run,
+.embedded .noRuns { border-color: color-mix(in srgb, var(--border) 65%, transparent); background: var(--surface-muted); }
+.embedded .promptField > span { font-size: var(--text-sm); font-weight: 600; color: var(--text); }
+.embedded .promptField input,
+.embedded .promptField textarea { background: var(--surface-muted); }
+
+@media (max-width: 760px) {
+  .embedded .header { padding: 22px 18px 16px; }
+  .embedded .list { padding: 4px 18px 32px; }
+  .embedded .empty { width: calc(100% - 36px); margin: 4px 18px 32px; }
+  .embedded .editor { padding: 4px 18px 36px; }
+}

@@ -92,12 +92,6 @@ function entryInGroup(entry: SettingsEntry, group: typeof SETTINGS_GROUPS[number
   return group.pages.some((page) => page.key === entry.key);
 }
 
-const CAPABILITY_TASKS: Array<{ id: "install" | "configure" | "connect"; keys: SettingsKey[] }> = [
-  { id: "install", keys: ["plugins", "skills"] },
-  { id: "configure", keys: ["extensions", "tools", "capabilityBundles"] },
-  { id: "connect", keys: ["harmony", "remote"] },
-];
-
 export function SettingsDialog({
   open,
   onClose,
@@ -192,7 +186,7 @@ export function SettingsDialog({
   }))), []);
 
   const availableEntries = useMemo(() => detailEntries.filter((entry) => (
-    ["general", "data", "network", "conversation", "prompts", "modelRuntime", "capabilities"].includes(entry.key)
+    ["general", "data", "network", "conversation", "prompts", "modelRuntime"].includes(entry.key)
     || sections[entry.key] !== undefined
   )), [detailEntries, sections]);
 
@@ -463,28 +457,7 @@ export function SettingsDialog({
                 </section> : <div className={styles.searchEmpty} role="status">{t("settings.searchEmpty")}</div>}
               </>
             ) : <>
-              {activeKey === "capabilities" ? (
-                <>
-                  <div className={styles.contentHeading}><h2>{t("settings.capabilities.title")}</h2><p>{t("settings.capabilities.description")}</p></div>
-                  <p className={styles.localNote}>{modelCwd ? t("settings.capabilities.project", { cwd: modelCwd ?? "" }) : t("settings.capabilities.noProject")}</p>
-                  {CAPABILITY_TASKS.map((task) => <section className={styles.capabilityTask} key={task.id}>
-                    <h3>{t(`settings.capabilities.${task.id}`)}</h3>
-                    <p>{t(`settings.capabilities.${task.id}Description`)}</p>
-                    <div className={styles.searchResults}>
-                      {task.keys.map((key) => {
-                        const entry = detailEntries.find((candidate) => candidate.key === key)!;
-                        const available = availableEntries.some((candidate) => candidate.key === key);
-                        const labelKey = entry.labelKey;
-                        return <button className={styles.settingRow} type="button" key={key} disabled={!available} onClick={() => { setTargetItem(null); onActiveKeyChange(key); }}>
-                          <span className={styles.rowIcon}>{entry.icon}</span>
-                          <span className={styles.rowCopy}><span className={styles.rowTitle}>{t(labelKey)}</span><span className={styles.rowDescription}>{t(`settings.capabilities.${key}Hint`)}</span></span>
-                          <AliIcon name="chevron-right" size={15} />
-                        </button>;
-                      })}
-                    </div>
-                  </section>)}
-                </>
-              ) : activeEntry.key === "general" ? (
+              {activeEntry.key === "general" ? (
               <>
                 <div className={styles.contentHeading}>
                   <h2>{t("settings.general")}</h2>

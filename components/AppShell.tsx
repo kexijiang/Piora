@@ -274,6 +274,7 @@ export function AppShell() {
   const historyReturnFocus = useRef<HTMLElement | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [rightPanelHasOpened, setRightPanelHasOpened] = useState(false);
   const [rightPanelMaximized, setRightPanelMaximized] = useState(false);
   // Keep the server and first client render identical. The persisted tab is
   // restored after hydration so React never has to replace this subtree.
@@ -392,6 +393,10 @@ export function AppShell() {
 
   useEffect(() => {
     if (!rightPanelOpen) setRightPanelMaximized(false);
+  }, [rightPanelOpen]);
+
+  useEffect(() => {
+    if (rightPanelOpen) setRightPanelHasOpened(true);
   }, [rightPanelOpen]);
 
   const {
@@ -1386,11 +1391,12 @@ export function AppShell() {
   const handleOpenFile = useCallback((
     filePath: string,
     fileName: string,
-    options?: { sourceSessionId?: string | null; modeHint?: "diff"; line?: number },
+    options?: { sourceSessionId?: string | null; modeHint?: "diff"; line?: number; column?: number },
   ) => {
     const sourceSessionId = options?.sourceSessionId;
     const modeHint = options?.modeHint;
     const revealLine = options?.line;
+    const revealColumn = options?.column;
     const tabId = `file:${filePath}`;
     setClosedFileTabs((current) => current.filter((tab) => tab.id !== tabId));
     setFileTabs((prev) => {
@@ -1403,7 +1409,7 @@ export function AppShell() {
           cwd: activeCwd ?? undefined,
           sourceSessionId,
           initialDisplayMode: modeHint,
-          ...(revealLine ? { revealLine, revealKey: Date.now() } : {}),
+          ...(revealLine ? { revealLine, revealColumn, revealKey: Date.now() } : {}),
         }];
       }
       const sourceUnchanged = !sourceSessionId || existing.sourceSessionId === sourceSessionId;
@@ -1414,7 +1420,7 @@ export function AppShell() {
         const next: Tab = { ...t };
         if (sourceSessionId) next.sourceSessionId = sourceSessionId;
         if (modeHint) next.initialDisplayMode = modeHint;
-        if (revealLine) { next.revealLine = revealLine; next.revealKey = Date.now(); }
+        if (revealLine) { next.revealLine = revealLine; next.revealColumn = revealColumn; next.revealKey = Date.now(); }
         return next;
       });
     });
@@ -2836,7 +2842,7 @@ export function AppShell() {
           background: "var(--bg)",
         } as React.CSSProperties}
       >
-        {rightPanelOpen ? <RightPanel
+        {rightPanelHasOpened ? <RightPanel
           ref={rightPanelRef}
           activeTab={rightPanelTab}
           onActiveTabChange={setRightPanelTab}

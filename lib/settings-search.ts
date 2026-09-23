@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "capabilities" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
+export type SettingsKey = "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
 
 export interface SettingsPage {
   key: SettingsKey;
@@ -25,7 +25,6 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
     { key: "shell", labelKey: "shell.title", descriptionKey: "shell.description", icon: "code" },
   ] },
   { labelKey: "settings.group.capabilities", pages: [
-    { key: "capabilities", labelKey: "settings.page.projectCapabilities", descriptionKey: "settings.capabilities.description", icon: "build" },
     { key: "tools", labelKey: "projectTools.title", descriptionKey: "projectTools.description", icon: "build" },
     { key: "capabilityBundles", labelKey: "capabilityBundles.title", descriptionKey: "capabilityBundles.description", icon: "package" },
     { key: "extensions", labelKey: "settings.extensions", descriptionKey: "settings.manageExtensionsDescription", icon: "package" },
@@ -66,7 +65,6 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "shell.history", section: "shell", labelKey: "shell.history", descriptionKey: "shell.nativeHistoryHint", keywords: ["history", "PowerShell", "PSReadLine", "历史", "提示", "补全"] },
   { id: "shortcuts.voice", section: "shortcuts", labelKey: "commands.voiceInput", descriptionKey: "shortcuts.voiceInputDescription", keywords: ["voice", "dictation", "microphone", "shortcut", "语音", "听写", "麦克风", "快捷键"] },
   { id: "general.updateSchedule", section: "general", requiresDesktop: true, labelKey: "settings.updateSchedule", descriptionKey: "settings.updateScheduleDescription", keywords: ["update", "schedule", "silent", "更新", "静默", "安装", "定时"] },
-  { id: "capabilities", section: "capabilities", labelKey: "settings.capabilities.title", descriptionKey: "settings.capabilities.description", keywords: ["install", "enable", "configure", "安装", "启用", "配置", "能力"] },
   { id: "general", section: "general", labelKey: "settings.general", descriptionKey: "settings.generalDescription", keywords: ["preferences", "偏好"] },
   { id: "data", section: "data", labelKey: "settings.page.data", descriptionKey: "settings.page.dataDescription", keywords: ["backup", "storage", "data", "备份", "存储", "数据"] },
   { id: "general.portability", section: "data", labelKey: "settings.portability.title", descriptionKey: "settings.portability.description", keywords: ["import", "export", "backup", "导入", "导出", "迁移"] },

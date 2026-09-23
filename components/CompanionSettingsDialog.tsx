@@ -154,7 +154,7 @@ export function CompanionSettingsDialog({
 
   const content = (
     <div
-      className="app-shell-dialog-backdrop"
+      className={embedded ? undefined : "app-shell-dialog-backdrop"}
       role={embedded ? undefined : "dialog"}
       aria-modal={embedded ? undefined : true}
       aria-label={t("companion.settingsTitle")}
@@ -168,7 +168,7 @@ export function CompanionSettingsDialog({
         background: embedded ? "var(--bg)" : "rgba(0,0,0,0.35)",
       }}
     >
-      <div ref={dialogRef} className={styles.dialog} style={embedded ? { width: "100%", maxWidth: "none", height: "100%", maxHeight: "none", border: 0, borderRadius: 0, boxShadow: "none" } : undefined}>
+      <div ref={dialogRef} className={`${styles.dialog}${embedded ? ` ${styles.embedded}` : ""}`} style={embedded ? { width: "100%", maxWidth: "none", height: "100%", maxHeight: "none", border: 0, borderRadius: 0, boxShadow: "none" } : undefined}>
         <input
           ref={archiveInputRef}
           type="file"

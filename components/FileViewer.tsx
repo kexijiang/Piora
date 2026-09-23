@@ -32,6 +32,7 @@ import editorStyles from "./FileEditor.module.css";
 import { AliIcon } from "./AliIcon";
 import { DiffView } from "./DiffView";
 import { FileCodeEditor, type FileCodeEditorHandle } from "./FileCodeEditor";
+import type { CodeIntelligenceMode } from "@/lib/code-intelligence-types";
 import { getDraftFileLineChanges, getFileLineSeparator, getGitFileLineChanges, normalizeFileLineEndings, preserveFileLineEndings } from "@/lib/file-editor-line-changes";
 import { LazySyntaxHighlighter as SyntaxHighlighter } from "./LazySyntaxHighlighter";
 
@@ -39,11 +40,12 @@ interface Props {
   filePath: string;
   cwd?: string;
   sourceSessionId?: string | null;
-  onOpenFile?: (filePath: string) => void;
+  onOpenFile?: (filePath: string, options?: { line?: number; column?: number }) => void;
   onMentionLines?: (relativePath: string, startLine: number, endLine: number) => void;
   gitRefreshKey?: number;
   initialDisplayMode?: DisplayMode;
   revealLine?: number;
+  revealColumn?: number;
   revealKey?: number;
   active?: boolean;
   onDirtyChange?: (dirty: boolean) => void;
@@ -665,6 +667,7 @@ export function FileViewer({
   gitRefreshKey,
   initialDisplayMode,
   revealLine,
+  revealColumn,
   revealKey,
   active = true,
   onDirtyChange,
@@ -690,6 +693,7 @@ export function FileViewer({
       gitRefreshKey={gitRefreshKey}
       initialDisplayMode={initialDisplayMode}
       revealLine={revealLine}
+      revealColumn={revealColumn}
       revealKey={revealKey}
       active={active}
       onDirtyChange={onDirtyChange}
@@ -707,6 +711,7 @@ function TextFileViewer({
   gitRefreshKey,
   initialDisplayMode,
   revealLine,
+  revealColumn,
   revealKey,
   active = true,
   onDirtyChange,
@@ -734,6 +739,7 @@ function TextFileViewer({
   const [externalChange, setExternalChange] = useState<FileConflictData | null>(null);
   const [conflictDecision, setConflictDecision] = useState<ConflictDecision | null>(null);
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
+  const [intelligence, setIntelligence] = useState<{ mode: CodeIntelligenceMode; message?: string } | null>(null);
   const [editorScrollTop, setEditorScrollTop] = useState(0);
   const esRef = useRef<EventSource | null>(null);
   const editorRef = useRef<FileCodeEditorHandle | null>(null);
@@ -764,7 +770,7 @@ function TextFileViewer({
     if (!active || !revealLine || loading || !data) return;
     const timer = window.setTimeout(() => {
       if (displayMode === "edit" && editorRef.current) {
-        editorRef.current.revealLine(revealLine);
+        editorRef.current.revealLine(revealLine, revealColumn);
       } else {
         const line = contentRef.current?.querySelector<HTMLElement>(`.file-source-line[data-line-number="${revealLine}"]`);
         line?.scrollIntoView({ block: "center" });
@@ -773,7 +779,7 @@ function TextFileViewer({
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [active, data, displayMode, loading, revealKey, revealLine]);
+  }, [active, data, displayMode, loading, revealColumn, revealKey, revealLine]);
   const [selectedLineRange, setSelectedLineRange] = useState<SelectedLineRange | null>(null);
 
   const dirty = preserveFileLineEndings(draftContent, savedContent) !== savedContent;
@@ -1208,6 +1214,7 @@ function TextFileViewer({
                 ref={editorRef}
                 value={preserveFileLineEndings(draftContent, savedContent)}
                 filePath={filePath}
+                cwd={cwd}
                 lineSeparator={getFileLineSeparator(savedContent)}
                 scrollTop={editorScrollTop}
                 ariaLabel={t("fileEditor.editFile", { file: getFileName(filePath) })}
@@ -1219,6 +1226,8 @@ function TextFileViewer({
                 onCursorChange={setCursorPosition}
                 onScrollChange={setEditorScrollTop}
                 onSave={() => void saveFile(false)}
+                onNavigate={(target) => onOpenFile?.(target.filePath, { line: target.line, column: target.column })}
+                onIntelligenceMode={(mode, message) => setIntelligence({ mode, message })}
                 lineChanges={editorLineChanges}
               />
             </div>
@@ -1228,6 +1237,9 @@ function TextFileViewer({
                 {dirty ? t("fileEditor.unsaved") : t("i18n.saved")}
               </span>
               <span>{t("fileEditor.cursorPosition", { line: cursorPosition.line, column: cursorPosition.column })}</span>
+              {intelligence ? <span title={intelligence.message} aria-label={intelligence.message}>
+                {intelligence.mode === "arkts-basic" ? t("fileEditor.arktsBasic") : intelligence.mode === "arkts-lsp" ? t("fileEditor.arktsSemantic") : t("fileEditor.tsIntelligence")}
+              </span> : null}
               <span>UTF-8</span>
               <span>{formatSize(utf8ByteLength(draftContent))}</span>
             </div>

@@ -57,13 +57,13 @@ const MAX_UPLOAD_TOTAL_BYTES = 100 * 1024 * 1024;
 const MAX_UPLOAD_REQUEST_BYTES = MAX_UPLOAD_TOTAL_BYTES + 1024 * 1024;
 
 const EXT_TO_LANGUAGE: Record<string, string> = {
-  ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
+  ts: "typescript", tsx: "typescript", ets: "arkts", js: "javascript", jsx: "javascript",
   mjs: "javascript", cjs: "javascript", py: "python", rb: "ruby",
   go: "go", rs: "rust", java: "java", kt: "kotlin", swift: "swift",
   c: "c", cpp: "cpp", h: "c", hpp: "cpp", cs: "csharp",
   html: "html", htm: "html", css: "css", scss: "css", less: "css",
-  json: "json", jsonl: "json", yaml: "yaml", yml: "yaml",
-  toml: "toml", xml: "xml", md: "markdown", mdx: "markdown",
+  json: "json", json5: "json5", jsonl: "json", yaml: "yaml", yml: "yaml",
+  toml: "toml", xml: "xml", hml: "hml", md: "markdown", mdx: "markdown",
   sh: "bash", bash: "bash", zsh: "bash", fish: "bash",
   sql: "sql", graphql: "graphql", gql: "graphql",
   dockerfile: "dockerfile", tf: "hcl", hcl: "hcl",
