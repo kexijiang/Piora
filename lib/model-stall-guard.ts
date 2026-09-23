@@ -213,7 +213,6 @@ export function guardAssistantStream(
     clear();
     if (settled || ms <= 0) return;
     timer = setTimeout(() => fire(kind), ms);
-    (timer as unknown as { unref?: () => void }).unref?.();
   };
 
   userSignal?.addEventListener("abort", onAbort, { once: true });
