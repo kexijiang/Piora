@@ -41,6 +41,14 @@ import type {
 
 export type { AgentPhase } from "@/lib/agent-phase";
 
+/** Events that prove the run is making progress; gaps between them drive the stall hint. */
+const PROGRESS_EVENT_TYPES = new Set([
+  "message_start", "message_update", "message_end",
+  "tool_execution_start", "tool_execution_update", "tool_execution_end",
+  "bash_output",
+  "compaction_start", "compaction_end", "auto_compaction_start", "auto_compaction_end",
+]);
+
 export interface SessionData {
   persistedPromptIds?: string[];
   sessionId: string;
@@ -522,6 +530,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const abortRequestRunIdRef = useRef<number | null>(null);
   const resumedAbortQueueIdRef = useRef<string | null>(null);
   const phaseEventRevisionRef = useRef(0);
+  /** Last time the active run produced visible progress (stream, tool output, results). */
+  const activityClockRef = useRef<number>(Date.now());
   const promptSettlementByRunRef = useRef(new Map<number, Promise<void>>());
   const promptSettlementPollByRunRef = useRef(new Map<number, Promise<void>>());
   const sessionLoadAbortRef = useRef<AbortController | null>(null);
@@ -1289,6 +1299,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // while the abort HTTP request or server cleanup is still pending.
     if (cancelledPromptRunIdRef.current === promptRunIdRef.current) return;
     phaseEventRevisionRef.current += 1;
+    if (PROGRESS_EVENT_TYPES.has(event.type)) activityClockRef.current = Date.now();
     switch (event.type) {
       case "agent_start":
         liveOutputFollowRef.current = true;
@@ -1899,15 +1910,29 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (!sid) return false;
     return runModelChange(
       async () => {
-        await sendAgentCommand(sid, { type: "set_model", provider, modelId });
-        setCurrentModelOverride({ provider, modelId });
+        await ensureEventsConnected(sid);
+        try {
+          let result: { compacted?: boolean } | undefined;
+          try {
+            result = await sendAgentCommand<{ compacted?: boolean }>(sid, { type: "set_model", provider, modelId });
+          } catch (error) {
+            // Compaction may already have changed the transcript even if the
+            // smaller model could not be selected.
+            await loadSession(sid, true).catch(() => undefined);
+            throw error;
+          }
+          setCurrentModelOverride({ provider, modelId });
+          if (result?.compacted) await loadSession(sid, true).catch(() => undefined);
+        } finally {
+          if (!agentRunningRef.current && !bashRunningRef.current) closeEvents();
+        }
       },
       (e) => {
         console.error("Failed to set model:", e);
-        addNotice({ type: "error", message: e instanceof Error ? e.message : String(e) });
+        addNotice({ type: "error", message: t("modelCompaction.switchFailed", { error: e instanceof Error ? e.message : String(e) }) });
       },
     );
-  }, [addNotice, isNew, newSessionDefaultModel, setNewSessionModel]);
+  }, [addNotice, closeEvents, ensureEventsConnected, isNew, loadSession, newSessionDefaultModel, setNewSessionModel, t]);
 
   const handleCompact = useCallback(async () => {
     const sid = sessionIdRef.current;
@@ -2570,7 +2595,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     agentPhase,
     isNew,
     // Refs
-    sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef,
+    sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef, activityClockRef,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleDeleteMessage, deletingMessage,

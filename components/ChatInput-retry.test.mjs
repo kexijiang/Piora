@@ -26,6 +26,11 @@ function composer(onSend) {
     speechInsertionRef: { current: null },
     modelChangeCoordinatorRef: { current: { waitForIdle: async () => true } },
     imageToDraftImage: ({ data, mimeType }) => ({ data, mimeType }),
+    attachedFileToDraftFile: (file) => ({ ...file }),
+    setDraft: (key, draft) => { env.drafts.set(key, structuredClone(draft)); },
+    getDraft: (key) => env.drafts.get(key) ?? null,
+    drafts: new Map(),
+    deferDraftPersistence: () => () => { env.persistenceReleased = true; },
     draftImagesToAttachedImages: (images) => images.map((image) => ({ ...image, previewUrl: "blob:restored" })),
     onSend,
     setAttachmentError: (error) => { throw new Error(error); },
@@ -41,11 +46,86 @@ function composer(onSend) {
   env.replyDraftRef = { current: { value: env.value, spans: [] } };
   env.resetReplyDraft = (draft) => { env.replyDraftRef.current = draft; env.setValue(draft.value); };
   env.clearInput = () => {
+    env.drafts.delete(env.draftKeyRef.current);
     env.retryOfPromptIdsRef.current = [];
     env.setValue(""); env.setAttachedImages([]); env.setAttachedFiles([]);
   };
   return { env, send: new Function("env", `with (env) { ${js}; return handleSend; }`)(env) };
 }
+
+test("clears text and attachments immediately while model selection and durable storage are pending", async () => {
+  const model = Promise.withResolvers();
+  const receipt = Promise.withResolvers();
+  const response = Promise.withResolvers();
+  let submitted = false;
+  const { env, send } = composer(async (text, images, files, durable) => {
+    submitted = true;
+    assert.equal(text, " original\nmessage ");
+    assert.equal(images[0].data, "YWJj");
+    assert.equal(files[0].text, "full attachment");
+    await receipt.promise;
+    durable("send-1");
+    return response.promise;
+  });
+  env.modelChangeCoordinatorRef.current.waitForIdle = () => model.promise;
+  const sending = send();
+  assert.equal(env.value, "", "clears before the first asynchronous wait");
+  assert.deepEqual(env.attachedImages, []);
+  assert.deepEqual(env.attachedFiles, []);
+  assert.equal(submitted, false);
+  assert.equal(env.persistenceReleased, undefined);
+  model.resolve(true);
+  await new Promise(setImmediate);
+  assert.equal(submitted, true);
+  assert.equal(env.persistenceReleased, undefined, "keeps disk draft until the recovery commit");
+  env.setValue("next draft");
+  receipt.resolve();
+  await new Promise(setImmediate);
+  assert.equal(env.persistenceReleased, true);
+  assert.equal(env.value, "next draft", "late storage receipt cannot clear newer input");
+  response.resolve(true);
+  await sending;
+  assert.equal(env.value, "next draft");
+});
+
+test("failed model selection restores the draft without sending", async () => {
+  let submitted = false;
+  const { env, send } = composer(() => { submitted = true; });
+  env.modelChangeCoordinatorRef.current.waitForIdle = async () => false;
+  await send();
+  assert.equal(submitted, false);
+  assert.equal(env.value, " original\nmessage ");
+  assert.equal(env.attachedImages[0].data, "YWJj");
+  assert.equal(env.drafts.get("session").files[0].text, "full attachment");
+  assert.equal(env.persistenceReleased, true);
+});
+
+test("a session switch during model selection restores only the originating saved draft", async () => {
+  const model = Promise.withResolvers();
+  let submitted = false;
+  const { env, send } = composer(() => { submitted = true; });
+  env.modelChangeCoordinatorRef.current.waitForIdle = () => model.promise;
+  const sending = send();
+  env.draftKeyRef.current = "other-session";
+  env.setValue("other draft");
+  model.resolve(true);
+  await sending;
+  assert.equal(submitted, false);
+  assert.equal(env.value, "other draft");
+  assert.equal(env.drafts.get("session").value, " original\nmessage ");
+});
+
+test("rejection before any durable receipt restores text, attachments and reply ownership", async () => {
+  const { env, send } = composer(async () => false);
+  env.replyDraftRef.current.spans = [{ start: 1, end: 9, id: "reply" }];
+  await send();
+  assert.equal(env.value, " original\nmessage ");
+  assert.equal(env.attachedImages[0].data, "YWJj");
+  assert.equal(env.attachedFiles[0].text, "full attachment");
+  assert.deepEqual(env.replyDraftRef.current.spans, [{ start: 1, end: 9, id: "reply" }]);
+  assert.deepEqual(env.retryOfPromptIdsRef.current, []);
+  assert.equal(env.persistenceReleased, true);
+});
 
 test("sending waits for the final dictation and preserves the draft when decoding fails", async () => {
   const sent = [];

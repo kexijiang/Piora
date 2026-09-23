@@ -45,6 +45,7 @@ import {
   RIGHT_PANEL_FALLBACK_WIDTH,
   RIGHT_PANEL_MAX_WIDTH,
   RIGHT_PANEL_MIN_WIDTH,
+  CHAT_MIN_WIDTH_WITH_RIGHT_PANEL,
   SIDEBAR_DEFAULT_WIDTH,
   SIDEBAR_MAX_WIDTH,
   SIDEBAR_MIN_WIDTH,
@@ -352,9 +353,9 @@ export function AppShell() {
   }, []);
   useEffect(() => {
     try {
-      if (window.sessionStorage.getItem(SETTINGS_REOPEN_STORAGE_KEY) !== "general") return;
+      if (!["general", "data"].includes(window.sessionStorage.getItem(SETTINGS_REOPEN_STORAGE_KEY) ?? "")) return;
       window.sessionStorage.removeItem(SETTINGS_REOPEN_STORAGE_KEY);
-      setSettingsKey("general");
+      setSettingsKey("data");
       setSettingsDialogOpen(true);
     } catch {
       // Import still applies when session storage is unavailable; only reopening is skipped.
@@ -1136,7 +1137,7 @@ export function AppShell() {
           openSettings("appearance");
           break;
         case "language":
-          openSettings("language");
+          openSettings("appearance", "language");
           break;
         case "toggle-companion":
           toggleCompanion();
@@ -1713,7 +1714,7 @@ export function AppShell() {
     "session.compact": () => chatInputRef.current?.insertText("/compact"),
     "session.stats": () => chatInputRef.current?.insertText("/session"),
     "model.select": () => openSettings("models"),
-    "model.thinking": () => openSettings("conversation"),
+    "model.thinking": () => openSettings("models"),
     "panel.review": () => { setRightPanelTab("review"); setRightPanelOpen(true); requestAnimationFrame(() => rightPanelRef.current?.focusActiveTab()); },
     "panel.files": () => { setRightPanelTab("files"); setRightPanelOpen(true); requestAnimationFrame(() => rightPanelRef.current?.focusActiveTab()); },
     "panel.commands": () => { setRightPanelTab("commands"); setRightPanelOpen(true); requestAnimationFrame(() => rightPanelRef.current?.focusActiveTab()); },
@@ -1892,7 +1893,7 @@ export function AppShell() {
             onAutomationChanged={() => setSessionKey((key) => key + 1)}
           />
         ),
-        shortcuts: <ShortcutSettings />,
+        shortcuts: <ShortcutSettings globalShortcutEnabled={globalShortcutEnabled} onGlobalShortcutToggle={desktopChrome ? toggleGlobalShortcut : undefined} />,
         extensions: settingsProjectCwd ? (
           <ExtensionsConfig
             cwd={settingsProjectCwd!}
@@ -1905,36 +1906,22 @@ export function AppShell() {
             embedded
             cwd={projectCwd ?? activeCwd ?? undefined}
             onModelsChanged={() => setModelsRefreshKey((key) => key + 1)}
-            onClose={() => setSettingsKey("general")}
+            onClose={() => setSettingsKey("models")}
           />
         ),
         skills: settingsProjectCwd ? (
-          <SkillsConfig embedded cwd={settingsProjectCwd!} onClose={() => setSettingsKey("general")} />
+          <SkillsConfig embedded cwd={settingsProjectCwd!} onClose={() => setSettingsKey("skills")} />
         ) : chooseSettingsProject,
         plugins: settingsProjectCwd ? (
           <PluginsConfig
             embedded
             cwd={settingsProjectCwd!}
             sessionId={selectedSession?.id ?? null}
-            onClose={() => setSettingsKey("general")}
+            onClose={() => setSettingsKey("extensions")}
             onReloaded={() => setSessionKey((key) => key + 1)}
           />
         ) : chooseSettingsProject,
         appearance: <AppearanceSettings />,
-        language: (
-          <div className="settings-embedded-surface" style={{ height: "100%", overflowY: "auto", padding: "26px 30px" }}>
-            <h2 style={{ margin: 0, color: "var(--text)", fontSize: "calc(var(--text-lg) * 1.22)", fontWeight: 680 }}>{translate("common.language")}</h2>
-            <p style={{ margin: "7px 0 22px", color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>{translate("settings.languageDescription")}</p>
-            <div role="radiogroup" aria-label={translate("common.language")} style={{ display: "grid", gap: 8, maxWidth: 520 }}>
-              {supportedLocales.map((plugin) => (
-                <button key={plugin.id} type="button" role="radio" aria-checked={locale === plugin.id} onClick={() => setLocale(plugin.id as typeof locale)} style={{ minHeight: 44, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: locale === plugin.id ? "var(--bg-selected)" : "var(--bg-panel)", color: "var(--text)", cursor: "pointer", font: "inherit" }}>
-                  <span>{plugin.label}</span>
-                  {locale === plugin.id ? <AliIcon name="check" size={14} style={{ color: "var(--accent)" }} /> : null}
-                </button>
-              ))}
-            </div>
-          </div>
-        ),
         remote: (
           <RemoteControlSettings sessionId={selectedSession?.id ?? null} />
         ),
@@ -1958,7 +1945,7 @@ export function AppShell() {
           <CompanionSettingsDialog
             embedded
             open
-            onClose={() => setSettingsKey("general")}
+            onClose={() => setSettingsKey("companion")}
             companionOpen={companionOpen}
             onCompanionOpenChange={setCompanionOpen}
             alwaysOnTop={companionAlwaysOnTop}
@@ -1997,8 +1984,6 @@ export function AppShell() {
       }}
       desktop={{
         available: desktopChrome,
-        globalShortcutEnabled,
-        onGlobalShortcutToggle: toggleGlobalShortcut,
       }}
     />
   ) : null;
@@ -2082,7 +2067,8 @@ export function AppShell() {
       data-app-hydrated={appHydrated ? "" : undefined}
       data-side-panel-mode={rightPanelOverlayMode ? "overlay" : "split"}
       style={{
-        "--workspace-min-width": `${WORKSPACE_MIN_WIDTH}px`,
+        "--workspace-min-width": `${rightPanelOpen && !rightPanelOverlayMode ? CHAT_MIN_WIDTH_WITH_RIGHT_PANEL : WORKSPACE_MIN_WIDTH}px`,
+        "--right-panel-width": `${rightPanelResizer.width}px`,
         display: "flex",
         height: "100dvh",
         overflow: "hidden",
@@ -2823,6 +2809,11 @@ export function AppShell() {
       {effectiveRightPanelOpen && !rightPanelMaximized && (
         <div
           {...rightPanelResizer.separatorProps}
+          onPointerMove={(event) => {
+            rightPanelResizer.separatorProps.onPointerMove(event);
+            const liveWidth = rightPanelResizer.panelRef.current?.style.getPropertyValue("--right-panel-width");
+            if (liveWidth) event.currentTarget.closest<HTMLElement>(".app-shell")?.style.setProperty("--right-panel-width", liveWidth);
+          }}
           aria-controls="file-panel"
           className={`panel-resize-handle right-panel-resize-handle${rightPanelResizer.isResizing ? " is-resizing" : ""}`}
           data-resize-handle="right-panel"

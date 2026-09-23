@@ -11,10 +11,11 @@ const settingsDialog = readFileSync(new URL("./SettingsDialog.tsx", import.meta.
 const settingsCss = readFileSync(new URL("./SettingsDialog.module.css", import.meta.url), "utf8");
 const archivedChats = readFileSync(new URL("./ArchivedChatsSettings.tsx", import.meta.url), "utf8");
 const projectTools = readFileSync(new URL("./ProjectToolsConfig.tsx", import.meta.url), "utf8");
+const settingsPages = readFileSync(new URL("../lib/settings-search.ts", import.meta.url), "utf8");
 
 test("keeps conversation metadata and notifications out of the composer", () => {
   assert.doesNotMatch(chatInput, /TOOL_PRESETS|toolDropdown|soundEnabled|onAudioUnlock/);
-  assert.match(settingsDialog, /key:\s*"conversation"/);
+  assert.match(settingsPages, /key:\s*"conversation"/);
   assert.match(settingsDialog, /settings\.sessionTitlePromptTitle/);
   assert.match(settingsDialog, /writeSessionTitlePrompt/);
   assert.match(settingsDialog, /conversation\.onNotificationToggle/);
@@ -41,7 +42,7 @@ test("opens settings as a viewport-wide page above the complete application shel
   assert.match(settingsDialog, /aria-modal="true"/);
   assert.match(settingsDialog, /document\.body/);
   assert.match(settingsCss, /\.backdrop\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;/s);
-  assert.match(settingsDialog, /sections\[activeEntry\.key\]/);
+  assert.match(settingsDialog, /sections\[activeKey\]/);
   assert.match(settingsDialog, /onActiveKeyChange\(entry\.key\)/);
   assert.match(appShell, /<ModelsConfig[\s\S]*?embedded/);
   assert.match(appShell, /<SkillsConfig embedded/);
@@ -62,9 +63,9 @@ test("settings exposes a Codex-style back button on the left", () => {
 });
 
 test("settings owns archived chats instead of rendering them in project lists", () => {
-  assert.match(settingsDialog, /key: "archived"/);
-  assert.match(settingsDialog, /settings\.group\.history/);
-  assert.match(settingsDialog, /name="archive"/);
+  assert.match(settingsPages, /key: "archived"/);
+  assert.match(settingsPages, /settings\.group\.appData/);
+  assert.match(settingsPages, /icon: "archive"/);
   assert.match(appShell, /archived:\s*\([\s\S]*?<ArchivedChatsSettings/);
   assert.match(archivedChats, /Promise\.all\(\[/);
   assert.match(archivedChats, /flags\[session\.id\]\?\.archived/);
@@ -100,7 +101,7 @@ test("exposes project-scoped capabilities without permission tiers", () => {
   assert.match(agentSession, /type: "set_capabilities"/);
   assert.doesNotMatch(chatInput, /SessionToolsControl/);
   assert.match(projectTools, /\/api\/project-tools/);
-  assert.match(settingsDialog, /key:\s*"tools"/);
+  assert.match(settingsPages, /key:\s*"tools"/);
   assert.doesNotMatch(agentSession, /toolPreset|permissionTier|PRESET_NONE/);
   assert.doesNotMatch(chatWindow, /onToolPresetChange|permissionPreset/);
 });

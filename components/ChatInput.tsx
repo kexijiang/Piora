@@ -11,7 +11,7 @@ import { useAnchoredMenuPosition } from "@/hooks/useAnchoredMenuPosition";
 import { readPromptOptimizerModel, readPromptOptimizerSystemPrompt } from "@/lib/prompt-optimizer-settings";
 import type { AttachedFile, BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
 import { storeBrowserFiles } from "@/lib/file-attachments";
-import { clearDraft, getDraft, setDraft, hydrateDraft, DRAFT_STORAGE_ERROR_EVENT, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
+import { clearDraft, getDraft, setDraft, hydrateDraft, deferDraftPersistence, DRAFT_STORAGE_ERROR_EVENT, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
 import {
   MAX_ATTACHED_IMAGE_BYTES,
   MAX_ATTACHED_IMAGE_TOTAL_BYTES,
@@ -813,14 +813,6 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       setAttachmentError(t("chat.attachmentMissingPath"));
       return;
     }
-    if (!await modelChangeCoordinatorRef.current!.waitForIdle()) return;
-    if (!attachedImages.length && !attachedFiles.length && msg.startsWith("/") && onBuiltinCommand) {
-      const result = await onBuiltinCommand(msg);
-      if (result.handled) {
-        if (!result.error) clearInput();
-        return;
-      }
-    }
     let messageToSend = value;
     let filesToSend = attachedFiles;
     if (msg && shouldMaterializeDirectPrompt(msg, contextUsage)) {
@@ -843,10 +835,20 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     const sentFiles = attachedFiles;
     const sentDraftKey = draftKeyRef.current;
     const sentRetryOfPromptIds = [...retryOfPromptIdsRef.current];
+    const sentDraft = {
+      value: sentValue,
+      replySpans: sentReplyDraft.spans,
+      images: sentImages.map(imageToDraftImage),
+      files: sentFiles.map(attachedFileToDraftFile),
+      retryOfPromptIds: sentRetryOfPromptIds,
+    };
+    // Clear the visible composer immediately, while retaining its disk copy
+    // until onSend confirms that recovery storage owns the submission.
+    if (sentDraftKey) setDraft(sentDraftKey, sentDraft);
+    const resumeDraftPersistence = sentDraftKey ? deferDraftPersistence(sentDraftKey) : () => {};
     let submittedPromptId: string | undefined;
     let cleared = false;
-    const clearSubmittedDraft = (clientPromptId?: string) => {
-      submittedPromptId ??= clientPromptId;
+    const clearSubmittedDraft = () => {
       if (cleared || draftKeyRef.current !== sentDraftKey || valueRef.current !== sentValue || attachedImagesRef.current !== sentImages || attachedFilesRef.current !== sentFiles) return;
       cleared = true;
       clearInput();
@@ -855,24 +857,45 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       attachedFilesRef.current = [];
     };
     const restoreSubmittedDraft = () => {
-      if (!cleared || draftKeyRef.current !== sentDraftKey || valueRef.current || attachedImagesRef.current.length || attachedFilesRef.current.length) return;
-      retryOfPromptIdsRef.current = [...new Set([...(submittedPromptId ? [submittedPromptId] : []), ...sentRetryOfPromptIds])];
+      if (!cleared) return;
+      const retryOfPromptIds = [...new Set([...(submittedPromptId ? [submittedPromptId] : []), ...sentRetryOfPromptIds])];
+      if (draftKeyRef.current !== sentDraftKey) {
+        if (sentDraftKey && !getDraft(sentDraftKey)) setDraft(sentDraftKey, { ...sentDraft, retryOfPromptIds });
+        return;
+      }
+      if (valueRef.current || attachedImagesRef.current.length || attachedFilesRef.current.length) return;
+      retryOfPromptIdsRef.current = retryOfPromptIds;
       resetReplyDraft(sentReplyDraft);
       setAttachedFiles(sentFiles);
       setAttachedImages(draftImagesToAttachedImages(sentImages.map(imageToDraftImage)));
+      if (sentDraftKey) setDraft(sentDraftKey, { ...sentDraft, retryOfPromptIds });
     };
     try {
+    clearSubmittedDraft();
+    if (!await modelChangeCoordinatorRef.current!.waitForIdle() || draftKeyRef.current !== sentDraftKey) {
+      restoreSubmittedDraft();
+      return;
+    }
+    if (!sentImages.length && !sentFiles.length && msg.startsWith("/") && onBuiltinCommand) {
+      const result = await onBuiltinCommand(msg);
+      if (result.handled) {
+        if (result.error) restoreSubmittedDraft();
+        return;
+      }
+    }
     const accepted = await onSend(
       messageToSend,
-      attachedImages.length ? attachedImages : undefined,
+      sentImages.length ? sentImages : undefined,
       filesToSend.length ? filesToSend : undefined,
-      clearSubmittedDraft,
+      (clientPromptId) => {
+        submittedPromptId ??= clientPromptId;
+        resumeDraftPersistence();
+      },
       sentRetryOfPromptIds.length ? sentRetryOfPromptIds : undefined,
     );
     if (accepted === false) { restoreSubmittedDraft(); return; }
-    // Legacy send handlers may not provide an early durable acknowledgement.
-    clearSubmittedDraft();
     } catch (error) { restoreSubmittedDraft(); throw error; }
+    finally { resumeDraftPersistence(); }
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
@@ -1231,6 +1254,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     if (sendingRef.current) return;
     const streamingBehavior = mode === "steer" ? "steer" : "followUp";
     const sentDraftKey = draftKeyRef.current;
+    let restoreSubmittedDraft = () => {};
+    let resumeDraftPersistence = () => {};
     sendingRef.current = true;
     try {
       if (localVoiceActiveRef.current) {
@@ -1241,27 +1266,41 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
       const value = valueRef.current;
       const msg = value.trim();
       if (!msg || attachedImages.length || attachedFiles.length) return;
-      let accepted: boolean | void;
-      if (msg.startsWith("/") && onPromptWithStreamingBehavior) {
-        accepted = await onPromptWithStreamingBehavior(msg, streamingBehavior);
-      } else if (mode === "steer" && onSteer) {
-        accepted = await onSteer(msg);
-      } else if (mode === "followup" && onFollowUp) {
-        accepted = await onFollowUp(msg);
-      } else return;
-      if (accepted === false) return;
-      // A late queue receipt must not erase later typing or another task's draft.
-      if (draftKeyRef.current === sentDraftKey && valueRef.current === value
-        && attachedImagesRef.current === attachedImages && attachedFilesRef.current === attachedFiles) {
-        clearInput();
-        valueRef.current = "";
+      const submit = msg.startsWith("/") && onPromptWithStreamingBehavior
+        ? () => onPromptWithStreamingBehavior(msg, streamingBehavior)
+        : mode === "steer" && onSteer ? () => onSteer(msg)
+        : mode === "followup" && onFollowUp ? () => onFollowUp(msg) : null;
+      if (!submit) return;
+      const sentReplyDraft = replyDraftRef.current;
+      const retryOfPromptIds = [...retryOfPromptIdsRef.current];
+      const sentDraft = { value, replySpans: sentReplyDraft.spans, images: [], files: [], retryOfPromptIds };
+      if (sentDraftKey) {
+        setDraft(sentDraftKey, sentDraft);
+        resumeDraftPersistence = deferDraftPersistence(sentDraftKey);
       }
+      restoreSubmittedDraft = () => {
+        if (draftKeyRef.current !== sentDraftKey) {
+          if (sentDraftKey && !getDraft(sentDraftKey)) setDraft(sentDraftKey, sentDraft);
+          return;
+        }
+        if (valueRef.current || attachedImagesRef.current.length || attachedFilesRef.current.length) return;
+        retryOfPromptIdsRef.current = retryOfPromptIds;
+        resetReplyDraft(sentReplyDraft);
+        if (sentDraftKey) setDraft(sentDraftKey, sentDraft);
+      };
+      clearInput();
+      valueRef.current = "";
+      attachedImagesRef.current = [];
+      attachedFilesRef.current = [];
+      if (await submit() === false) restoreSubmittedDraft();
     } catch (error) {
+      restoreSubmittedDraft();
       if (draftKeyRef.current === sentDraftKey) setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally {
+      resumeDraftPersistence();
       sendingRef.current = false;
     }
-  }, [attachedImages, attachedFiles, onPromptWithStreamingBehavior, onSteer, onFollowUp, clearInput]);
+  }, [attachedImages, attachedFiles, onPromptWithStreamingBehavior, onSteer, onFollowUp, clearInput, replyDraftRef, resetReplyDraft]);
 
   const submitStreamingMessage = useCallback(() => {
     if (!canQueueStreamingMessage) return;

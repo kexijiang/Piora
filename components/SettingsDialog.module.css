@@ -164,15 +164,10 @@
   min-height: 0;
   min-width: 0;
   display: grid;
-  grid-template-rows: 48px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   overflow-wrap: anywhere;
   background: var(--bg);
-}
-
-.contentToolbar {
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-  background: color-mix(in srgb, var(--bg) 96%, var(--bg-panel));
 }
 
 .contentBody {
@@ -199,6 +194,9 @@
 
 .contentCanvas[data-embedded="true"] { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
 .contentCanvas[data-embedded="true"] > :last-child { flex: 1; min-height: 0; }
+.tabPanel { min-height: 0; flex: 1; }
+.contentCanvas[data-embedded="true"] .tabPanel { display: flex; flex-direction: column; overflow: hidden; }
+.contentCanvas[data-embedded="true"] .tabPanel > :first-child { flex: 1; min-height: 0; }
 
 .embeddedSection {
   width: 100%;
@@ -883,30 +881,13 @@
     flex: 0 0 auto;
     margin: 0;
   }
-
-  .navGroup {
-    display: contents;
-  }
-
-  .navGroup + .navGroup {
-    margin: 0;
-  }
-
-  .navGroupLabel {
-    display: none;
-  }
-
-  .navItem {
-    width: auto;
-    flex: 0 0 auto;
-  }
+  .desktopGroups, .navGroup, .navGroupItems { display: contents; }
+  .navGroup + .navGroup { margin: 0; }
+  .navGroupLabel { display: none; }
+  .navItem { width: auto; flex: 0 0 auto; }
 
   .content {
     grid-template-rows: minmax(0, 1fr);
-  }
-
-  .contentToolbar {
-    display: none;
   }
 
   .contentBody {
@@ -968,7 +949,6 @@
 .dialog,
 .navigation,
 .navSearch,
-.contentToolbar,
 .embeddedSection,
 .featureCard,
 .searchResults,

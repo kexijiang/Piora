@@ -24,6 +24,7 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import { deriveCompanionActivityStatus, type CompanionActivity } from "@/lib/companion";
+import { formatStatusDuration } from "@/lib/status-duration";
 import { AliIcon } from "./AliIcon";
 import { shouldShowScrollToBottom } from "@/lib/chat-scroll";
 import { getProjectLabel } from "@/lib/session-project-groups";
@@ -88,6 +89,36 @@ function phaseLabel(phase: AgentPhase, t: (key: string, params?: Record<string, 
   if (phase?.kind === "waiting_model") return t("chat.waitingModel");
   if (phase?.kind === "running_command") return t("chat.runningCommand");
   return t("chat.thinking");
+}
+
+/** No output/tool/stream event for this long means the run is probably stuck. */
+const STATUS_STALL_AFTER_MS = 45_000;
+
+function StatusPulse({ label, elapsedMs, idleMs, retryInfo, t }: {
+  label: string;
+  elapsedMs: number;
+  idleMs: number;
+  retryInfo: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
+  t: (key: string, params?: Record<string, string | number>) => string;
+}) {
+  const stalled = idleMs >= STATUS_STALL_AFTER_MS;
+  return (
+    <div className="py-2 text-text-muted" style={{ fontSize: "var(--text-base)" }} role="status" aria-live="polite">
+      <span className={stalled ? undefined : "animate-[pulse_1.5s_infinite]"}>{label}</span>
+      {elapsedMs >= 1_000 ? (
+        <span style={{ marginLeft: 8, opacity: 0.75 }}>{t("chat.statusElapsed", { duration: formatStatusDuration(elapsedMs) })}</span>
+      ) : null}
+      {stalled ? (
+        <span style={{ marginLeft: 8, color: "var(--text)" }}>{t("chat.statusIdle", { duration: formatStatusDuration(idleMs) })}</span>
+      ) : null}
+      {retryInfo ? (
+        <span style={{ marginLeft: 8, opacity: 0.75 }}>
+          {t("chat.retrying", { attempt: retryInfo.attempt, max: retryInfo.maxAttempts })}
+          {retryInfo.errorMessage ? ` — ${retryInfo.errorMessage}` : ""}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 const CHAT_MINIMAP_WIDTH = 36;
@@ -173,7 +204,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     isAutoModelSelection,
     agentPhase,
     isNew,
-    sessionIdRef, messagesEndRef, scrollContainerRef,
+    sessionIdRef, messagesEndRef, scrollContainerRef, activityClockRef,
     lastUserMsgRef,
     pendingScrollToUserRef,
     handleSend, handleAbort, handleFork, handleNavigate, handleModelChange, handleScrollToBottom, pauseHistoryFollow, handleDeleteMessage, deletingMessage,
@@ -188,6 +219,36 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   });
   const sessionBusy = agentRunning || bashRunning;
+  const busySinceRef = useRef<number | null>(null);
+  const statusPhaseRef = useRef<string | null>(null);
+  const statusPhaseSinceRef = useRef<number | null>(null);
+  const [statusTick, setStatusTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (sessionBusy) {
+      if (busySinceRef.current === null) busySinceRef.current = Date.now();
+    } else {
+      busySinceRef.current = null;
+    }
+    // Per-phase timing answers "how long has it been waiting on the model" and
+    // "how long has this command been running" separately.
+    const statusPhase = sessionBusy
+      ? agentRunning ? (agentPhase?.kind ?? "agent") : "bash"
+      : null;
+    if (statusPhase !== statusPhaseRef.current) {
+      statusPhaseRef.current = statusPhase;
+      statusPhaseSinceRef.current = statusPhase ? Date.now() : null;
+    }
+  }, [agentPhase?.kind, agentRunning, bashRunning, sessionBusy]);
+  useEffect(() => {
+    if (!sessionBusy) return;
+    setStatusTick(Date.now());
+    const timer = window.setInterval(() => setStatusTick(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, [sessionBusy]);
+  const statusElapsedMs = statusPhaseSinceRef.current ? Math.max(0, statusTick - statusPhaseSinceRef.current) : 0;
+  const statusIdleMs = sessionBusy
+    ? Math.max(0, statusTick - Math.max(activityClockRef.current, busySinceRef.current ?? 0))
+    : 0;
   const locallyClaimedInitialPromptRef = useRef<string | null>(null);
   const handleComposerSend = useCallback(async (...args: Parameters<typeof handleSend>) => {
     const accepted = await handleSend(...args);
@@ -749,9 +810,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               visionStatus && agentPhase?.kind !== "stopping" ? (
                 <VisionAgentStatus status={visionStatus} t={t} />
               ) : (
-                <div className="py-2 text-text-muted" style={{ fontSize: "var(--text-base)" }} role="status" aria-live="polite">
-                  <span className="animate-[pulse_1.5s_infinite]">{phaseLabel(agentPhase, t)}</span>
-                </div>
+                <StatusPulse label={phaseLabel(agentPhase, t)} elapsedMs={statusElapsedMs} idleMs={statusIdleMs} retryInfo={retryInfo} t={t} />
               )
             )}
 
@@ -766,9 +825,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
             )}
 
             {bashRunning && !pendingBash && (
-              <div className="py-2 text-text-muted" style={{ fontSize: "var(--text-base)" }}>
-                 <span className="animate-[pulse_1.5s_infinite]">{t("chat.runningCommand")}</span>
-              </div>
+              <StatusPulse label={t("chat.runningCommand")} elapsedMs={statusElapsedMs} idleMs={statusIdleMs} retryInfo={null} t={t} />
             )}
 
             {pendingBash && (

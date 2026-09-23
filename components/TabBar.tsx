@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { getFileIcon } from "./FileIcons";
@@ -57,7 +57,58 @@ export function TabBar({
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const [scrollMetrics, setScrollMetrics] = useState({ viewport: 0, content: 0, left: 0 });
+
+  const syncScrollMetrics = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const next = { viewport: list.clientWidth, content: list.scrollWidth, left: list.scrollLeft };
+    setScrollMetrics((current) => current.viewport === next.viewport && current.content === next.content && current.left === next.left ? current : next);
+  }, []);
+
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list) return;
+    const observer = new ResizeObserver(syncScrollMetrics);
+    const handleWheel = (event: WheelEvent) => {
+      if (list.scrollWidth <= list.clientWidth || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
+      const delta = event.deltaY * (event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? list.clientWidth : 1);
+      const next = Math.max(0, Math.min(list.scrollWidth - list.clientWidth, list.scrollLeft + delta));
+      if (Math.abs(next - list.scrollLeft) < 1) return;
+      event.preventDefault();
+      list.scrollLeft = next;
+    };
+    observer.observe(list);
+    list.addEventListener("wheel", handleWheel, { passive: false });
+    syncScrollMetrics();
+    return () => { observer.disconnect(); list.removeEventListener("wheel", handleWheel); };
+  }, [syncScrollMetrics]);
+
+  useEffect(() => { syncScrollMetrics(); }, [tabs, syncScrollMetrics]);
+
+  const maxTabScroll = Math.max(0, scrollMetrics.content - scrollMetrics.viewport);
+  const tabsOverflow = maxTabScroll > 1;
+  const canScrollLeft = scrollMetrics.left > 1;
+  const canScrollRight = scrollMetrics.left < maxTabScroll - 1;
+
+  const scrollTabs = (direction: -1 | 1) => {
+    const list = listRef.current;
+    if (!list) return;
+    list.scrollBy({ left: direction * Math.max(120, list.clientWidth * 0.7), behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const list = listRef.current;
+    const selected = list?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (!list || !selected) return;
+    const listRect = list.getBoundingClientRect();
+    const tabRect = selected.getBoundingClientRect();
+    if (tabRect.left < listRect.left) list.scrollLeft -= listRect.left - tabRect.left;
+    else if (tabRect.right > listRect.right) list.scrollLeft += tabRect.right - listRect.right;
+    syncScrollMetrics();
+  }, [activeTabId, tabs.length, syncScrollMetrics]);
 
   const focusTab = (id: string) => {
     requestAnimationFrame(() => {
@@ -75,7 +126,7 @@ export function TabBar({
 
   const openMenu = (tabId: string | null, x: number, y: number, returnFocusId: string | null) => {
     const width = 220;
-    const estimatedHeight = 292;
+    const estimatedHeight = Math.min(window.innerHeight - 16, 190 + tabs.length * 32);
     setMenu({
       tabId,
       x: Math.max(8, Math.min(x, window.innerWidth - width - 8)),
@@ -151,7 +202,8 @@ export function TabBar({
 
   return (
     <div className={`file-tab-root ${styles.root}`}>
-      <div className={`file-tab-list ${styles.list}`} role="tablist" aria-label={t("files.openFiles")}>
+      <div className={styles.scrollRegion} data-can-scroll-left={canScrollLeft || undefined} data-can-scroll-right={canScrollRight || undefined}>
+      <div id="piora-file-tab-list" ref={listRef} className={`file-tab-list ${styles.list}`} role="tablist" aria-label={t("files.openFiles")} onScroll={syncScrollMetrics}>
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId;
           return (
@@ -249,6 +301,11 @@ export function TabBar({
           );
         })}
       </div>
+      </div>
+      {tabsOverflow && <div className={styles.scrollButtons}>
+        <button type="button" className={styles.scrollButton} disabled={!canScrollLeft} onClick={() => scrollTabs(-1)} aria-label={t("files.scrollTabsLeft")} title={t("files.scrollTabsLeft")}><span style={{ transform: "rotate(180deg)", display: "flex" }}><AliIcon name="chevron-right" size={13} /></span></button>
+        <button type="button" className={styles.scrollButton} disabled={!canScrollRight} onClick={() => scrollTabs(1)} aria-label={t("files.scrollTabsRight")} title={t("files.scrollTabsRight")}><AliIcon name="chevron-right" size={13} /></button>
+      </div>}
       <button
         ref={moreButtonRef}
         type="button"
@@ -278,6 +335,9 @@ export function TabBar({
           style={{ left: menu.x, top: menu.y }}
           onKeyDown={onMenuKeyDown}
         >
+          <div className={styles.menuHeading}>{t("files.openFiles")}</div>
+          <div className={styles.openTabList}>{tabs.map((tab) => <button key={tab.id} type="button" role="menuitem" aria-current={tab.id === activeTabId ? "true" : undefined} title={tab.filePath} onClick={() => runMenuAction(() => onSelectTab(tab.id))}><span>{tab.label}</span>{tab.isDirty ? <small aria-label={t("files.unsavedChanges")}>●</small> : null}</button>)}</div>
+          <div className={styles.separator} role="separator" />
           <button role="menuitem" disabled={!menuTab || menuTabIndex === 0} onClick={() => menuTab && runMenuAction(() => onMoveTab(menuTab.id, menuTabIndex - 1))}>{t("files.moveTabLeft")}</button>
           <button role="menuitem" disabled={!menuTab || menuTabIndex === tabs.length - 1} onClick={() => menuTab && runMenuAction(() => onMoveTab(menuTab.id, menuTabIndex + 1))}>{t("files.moveTabRight")}</button>
           <div className={styles.separator} role="separator" />

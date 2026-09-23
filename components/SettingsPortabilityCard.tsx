@@ -69,7 +69,7 @@ export function SettingsPortabilityCard() {
     if (!preview) return;
     try {
       applyPortableSettings(window.localStorage, preview.bundle);
-      window.sessionStorage.setItem(SETTINGS_REOPEN_STORAGE_KEY, "general");
+      window.sessionStorage.setItem(SETTINGS_REOPEN_STORAGE_KEY, "data");
       setAnnouncement(t("settings.portability.applying"));
       window.location.reload();
     } catch {

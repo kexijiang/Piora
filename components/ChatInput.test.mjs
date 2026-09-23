@@ -433,10 +433,10 @@ test("new conversations wait only until a default or explicit model resolves", (
   assert.doesNotMatch(agentSessionSource, /isAutoModelSelection: isNew && newSessionModel === null/);
 });
 
-test("a context gate can reject submission without clearing the real composer", () => {
+test("a rejected submission restores the optimistically cleared composer", () => {
   assert.match(chatInputSource, /const accepted = await onSend\(/);
   assert.match(chatInputSource, /if \(accepted === false\) \{ restoreSubmittedDraft\(\); return; \}/);
-  assert.match(chatInputSource, /clearSubmittedDraft,[\s\S]*?clearSubmittedDraft\(\)/);
+  assert.match(chatInputSource, /clearSubmittedDraft\(\);[\s\S]*?const accepted = await onSend\(/);
   assert.match(chatInputSource, /submit\(\) \{[\s\S]*?submitRef\.current\(\)/);
 });
 

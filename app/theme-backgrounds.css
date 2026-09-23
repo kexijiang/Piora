@@ -143,7 +143,6 @@ html[data-app-background-active="true"] .settings-dialog {
 }
 
 html[data-app-background-active="true"] .settings-content,
-html[data-app-background-active="true"] .settings-content-toolbar,
 html[data-app-background-active="true"] .settings-embedded-section {
   background: transparent !important;
 }

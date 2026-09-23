@@ -55,5 +55,20 @@ export function restoreAgentTerminal(messages: unknown): AgentTerminalCommand[] 
       commands.push({ id: `manual:${commands.length}:${message.timestamp}`, command: message.command, output: typeof message.output === "string" ? message.output.slice(-100_000) : "", status: message.cancelled ? "interrupted" : message.exitCode ? "failed" : "completed" });
     }
   }
-  return commands.slice(-60).map((item) => item.status === "running" ? { ...item, status: "interrupted" } : item);
+  // Entries without an end marker may genuinely still be running (for example
+  // after a page reload mid-command). Keep "running" here and let the live
+  // registry prove otherwise via downgradeUnconfirmedRunning.
+  return commands.slice(-60);
+}
+
+/**
+ * A restored "running" entry with no end marker is only interrupted once the
+ * live command registry — which tracks executions started in this server
+ * process — says it is not executing. Downgrading at restore time mislabels a
+ * silent long-running command as dead.
+ */
+export function downgradeUnconfirmedRunning(commands: AgentTerminalCommand[], liveIds: ReadonlySet<string>): AgentTerminalCommand[] {
+  return commands.map((item) => item.status === "running" && !liveIds.has(item.id)
+    ? { ...item, status: "interrupted" }
+    : item);
 }

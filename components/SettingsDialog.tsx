@@ -7,12 +7,15 @@ import { useI18n } from "@/hooks/useI18n";
 import { useSendShortcut } from "@/hooks/useSendShortcut";
 import { useStreamingSendPreference } from "@/hooks/useStreamingSendPreference";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
-import { AliIcon } from "./AliIcon";
+import { AliIcon, type AliIconName } from "./AliIcon";
 import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
 import { RuntimeLogSettings } from "./RuntimeLogSettings";
 import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
 import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
+import { ModelRetrySettings } from "./ModelRetrySettings";
+import { ModelCompactionSettings } from "./ModelCompactionSettings";
+import { ModelFallbackSetting } from "./ModelFallbackSetting";
 import { ReplySuggestionsSettings } from "./ReplySuggestionsSettings";
 import { SystemPromptEditor } from "./SystemPromptEditor";
 import { PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH, PROMPT_OPTIMIZER_SYSTEM_PROMPT } from "@/lib/prompt-optimizer";
@@ -24,7 +27,7 @@ import {
   writePromptOptimizerSystemPrompt,
 } from "@/lib/prompt-optimizer-settings";
 import { SESSION_TITLE_PROMPT_MAX_LENGTH } from "@/lib/session-title-prompt";
-import { filterSettingsSearchItems, type SettingsKey } from "@/lib/settings-search";
+import { filterSettingsSearchItems, SETTINGS_GROUPS, type SettingsKey } from "@/lib/settings-search";
 import {
   SESSION_TITLE_PROMPT,
   readSessionTitleModel,
@@ -55,8 +58,6 @@ interface Props {
   };
   desktop: {
     available: boolean;
-    globalShortcutEnabled: boolean;
-    onGlobalShortcutToggle: () => void | Promise<void>;
   };
 }
 
@@ -85,6 +86,10 @@ interface SettingsEntry {
   labelKey: string;
   descriptionKey: string;
   icon: ReactNode;
+}
+
+function entryInGroup(entry: SettingsEntry, group: typeof SETTINGS_GROUPS[number]): boolean {
+  return group.pages.some((page) => page.key === entry.key);
 }
 
 const CAPABILITY_TASKS: Array<{ id: "install" | "configure" | "connect"; keys: SettingsKey[] }> = [
@@ -159,7 +164,7 @@ export function SettingsDialog({
   const [optimizerModels, setOptimizerModels] = useState<Array<{ provider: string; id: string; name: string }>>([]);
   const [optimizerModelValue, setOptimizerModelValue] = useState("");
   useEffect(() => {
-    if (!open || activeKey !== "conversation") return;
+    if (!open || activeKey !== "prompts") return;
     const selected = readPromptOptimizerModel(window.localStorage);
     setOptimizerModelValue(selected ? JSON.stringify(selected) : "");
   }, [open, activeKey]);
@@ -179,133 +184,16 @@ export function SettingsDialog({
   const deferredSearchQuery = useDeferredValue(searchQuery);
   useFocusTrap(dialogRef, open, { onEscape: onClose });
 
-  const detailEntries = useMemo<SettingsEntry[]>(() => [
-    { key: "capabilities", labelKey: "settings.capabilities.title", descriptionKey: "settings.capabilities.description", icon: <AliIcon name="build" size={16} /> },
-    {
-      key: "general",
-      labelKey: "settings.general",
-      descriptionKey: "settings.generalDescription",
-      icon: <AliIcon name="layout" size={16} />,
-    },
-    {
-      key: "conversation",
-      labelKey: "settings.conversation",
-      descriptionKey: "settings.conversationDescription",
-      icon: <AliIcon name="message" size={16} />,
-    },
-    {
-      key: "shortcuts",
-      labelKey: "settings.shortcuts",
-      descriptionKey: "settings.shortcutsDescription",
-      icon: <AliIcon name="setting" size={16} />,
-    },
-    {
-      key: "speech",
-      labelKey: "speech.title",
-      descriptionKey: "speech.description",
-      icon: <AliIcon name="microphone" size={16} />,
-    },
-    {
-      key: "automations",
-      labelKey: "automations.title",
-      descriptionKey: "automations.description",
-      icon: <AliIcon name="calendar" size={16} />,
-    },
-    {
-      key: "shell",
-      labelKey: "shell.title",
-      descriptionKey: "shell.description",
-      icon: <AliIcon name="code" size={16} />,
-    },
-    {
-      key: "models",
-      labelKey: "common.models",
-      descriptionKey: "settings.modelsDescription",
-      icon: <AliIcon name="api" size={16} />,
-    },
-    {
-      key: "appearance",
-      labelKey: "appearance.title",
-      descriptionKey: "settings.appearanceDescription",
-      icon: <AliIcon name="skin" size={16} />,
-    },
-    {
-      key: "language",
-      labelKey: "common.language",
-      descriptionKey: "settings.languageDescription",
-      icon: <AliIcon name="translate" size={16} />,
-    },
-    {
-      key: "companion",
-      labelKey: "companion.settingsTitle",
-      descriptionKey: "settings.companionDescription",
-      icon: <AliIcon name="robot" size={16} />,
-    },
-    {
-      key: "capabilityBundles",
-      labelKey: "capabilityBundles.title",
-      descriptionKey: "capabilityBundles.description",
-      icon: <AliIcon name="export" size={16} />,
-    },
-    {
-      key: "tools",
-      labelKey: "projectTools.title",
-      descriptionKey: "projectTools.description",
-      icon: <AliIcon name="build" size={16} />,
-    },
-    {
-      key: "extensions",
-      labelKey: "settings.extensions",
-      descriptionKey: "settings.manageExtensionsDescription",
-      icon: <AliIcon name="setting" size={16} />,
-    },
-    {
-      key: "skills",
-      labelKey: "common.skills",
-      descriptionKey: "settings.skillsDescription",
-      icon: <AliIcon name="solution" size={16} />,
-    },
-    {
-      key: "plugins",
-      labelKey: "common.plugins",
-      descriptionKey: "settings.pluginsDescription",
-      icon: <AliIcon name="package" size={16} />,
-    },
-    {
-      key: "remote",
-      labelKey: "remote.title",
-      descriptionKey: "remote.description",
-      icon: <AliIcon name="external-link" size={16} />,
-    },
-    {
-      key: "harmony",
-      labelKey: "harmonyStorage.title",
-      descriptionKey: "harmonyStorage.description",
-      icon: <AliIcon name="mobile" size={16} />,
-    },
-    {
-      key: "usage",
-      labelKey: "usage.title",
-      descriptionKey: "usage.description",
-      icon: <AliIcon name="chart-no-axes-column" size={16} />,
-    },
-    { key: "trash", labelKey: "trash.title", descriptionKey: "trash.description", icon: <AliIcon name="delete" size={16} /> },
-    {
-      key: "archived",
-      labelKey: "archive.title",
-      descriptionKey: "archive.description",
-      icon: <AliIcon name="archive" size={16} />,
-    },
-  ], []);
-
-  const entryGroups = useMemo(() => [
-    { labelKey: "settings.group.personal", keys: ["general", "conversation", "shortcuts", "speech", "automations", "models", "shell", "appearance", "language", "companion"] as SettingsKey[] },
-    { labelKey: "settings.group.capabilities", keys: ["capabilities", "tools", "capabilityBundles", "extensions", "skills", "plugins", "harmony", "remote"] as SettingsKey[] },
-    { labelKey: "settings.group.history", keys: ["usage", "archived", "trash"] as SettingsKey[] },
-  ], []);
+  const detailEntries = useMemo<SettingsEntry[]>(() => SETTINGS_GROUPS.flatMap((group) => group.pages.map((page) => ({
+    key: page.key,
+    labelKey: page.labelKey,
+    descriptionKey: page.descriptionKey,
+    icon: <AliIcon name={page.icon as AliIconName} size={16} />,
+  }))), []);
 
   const availableEntries = useMemo(() => detailEntries.filter((entry) => (
-    entry.key === "general" || entry.key === "conversation" || entry.key === "capabilities" || sections[entry.key] !== undefined
+    ["general", "data", "network", "conversation", "prompts", "modelRuntime", "capabilities"].includes(entry.key)
+    || sections[entry.key] !== undefined
   )), [detailEntries, sections]);
 
   useEffect(() => {
@@ -332,7 +220,7 @@ export function SettingsDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!open || activeKey !== "conversation") return;
+    if (!open || activeKey !== "prompts") return;
     const controller = new AbortController();
     setTitleModelsLoading(true);
     setTitleModelsError(null);
@@ -354,7 +242,7 @@ export function SettingsDialog({
   }, [activeKey, modelCwd, open]);
 
   useEffect(() => {
-    if (!open || activeKey !== "general" || !desktop.available) return;
+    if (!open || activeKey !== "data" || !desktop.available) return;
     const bridge = window.piDesktop?.getAgentDataDirectory;
     if (!bridge) return;
     let cancelled = false;
@@ -496,7 +384,7 @@ export function SettingsDialog({
 
   const activeEntry = availableEntries.find((entry) => entry.key === activeKey) ?? availableEntries[0] ?? detailEntries[0]!;
   const searching = searchQuery.trim().length > 0;
-  const sectionContent = searching ? undefined : sections[activeEntry.key];
+  const sectionContent = searching ? undefined : sections[activeKey];
   const selectEntry = (entry: SettingsEntry) => {
     setTargetItem(null);
     setSearchQuery("");
@@ -527,12 +415,13 @@ export function SettingsDialog({
               <AliIcon name="search" size={14} />
               <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t("settings.searchPlaceholder")} aria-label={t("settings.searchPlaceholder")} />
             </label>
-            {entryGroups.map((group) => {
-              const entries = filteredEntries.filter((entry) => group.keys.includes(entry.key));
+            <div className={styles.desktopGroups}>
+            {SETTINGS_GROUPS.map((group) => {
+              const entries = filteredEntries.filter((entry) => entryInGroup(entry, group));
               if (entries.length === 0) return null;
               return <div className={styles.navGroup} key={group.labelKey}>
                 <div className={styles.navGroupLabel}>{t(group.labelKey)}</div>
-                {entries.map((entry) => (
+                <div className={styles.navGroupItems}>{entries.map((entry) => (
                   <button
                     className={styles.navItem}
                     type="button"
@@ -543,16 +432,17 @@ export function SettingsDialog({
                     <span className={styles.navIcon}>{entry.icon}</span>
                     <span>{t(entry.labelKey)}</span>
                   </button>
-                ))}
+                ))}</div>
               </div>;
             })}
+            </div>
             {filteredEntries.length === 0 ? <div className={styles.navEmpty} role="status">{t("settings.searchEmpty")}</div> : null}
           </nav>
 
           <main className={`${styles.content} settings-content`}>
-            <div className={`${styles.contentToolbar} settings-content-toolbar`} aria-hidden="true" />
             <div className={`${styles.contentBody}${sectionContent ? ` ${styles.contentBodyEmbedded}` : ""}`}>
             <div className={`${styles.contentCanvas} settings-embedded-section`} data-embedded={Boolean(sectionContent)}>
+            <div className={styles.tabPanel}>
             {searching ? (
               <>
                 <div className={styles.contentHeading}>
@@ -573,7 +463,7 @@ export function SettingsDialog({
                 </section> : <div className={styles.searchEmpty} role="status">{t("settings.searchEmpty")}</div>}
               </>
             ) : <>
-              {activeEntry.key === "capabilities" ? (
+              {activeKey === "capabilities" ? (
                 <>
                   <div className={styles.contentHeading}><h2>{t("settings.capabilities.title")}</h2><p>{t("settings.capabilities.description")}</p></div>
                   <p className={styles.localNote}>{modelCwd ? t("settings.capabilities.project", { cwd: modelCwd ?? "" }) : t("settings.capabilities.noProject")}</p>
@@ -584,9 +474,10 @@ export function SettingsDialog({
                       {task.keys.map((key) => {
                         const entry = detailEntries.find((candidate) => candidate.key === key)!;
                         const available = availableEntries.some((candidate) => candidate.key === key);
-                        return <button className={styles.settingRow} type="button" key={key} disabled={!available} onClick={() => selectEntry(entry)}>
+                        const labelKey = entry.labelKey;
+                        return <button className={styles.settingRow} type="button" key={key} disabled={!available} onClick={() => { setTargetItem(null); onActiveKeyChange(key); }}>
                           <span className={styles.rowIcon}>{entry.icon}</span>
-                          <span className={styles.rowCopy}><span className={styles.rowTitle}>{t(entry.labelKey)}</span><span className={styles.rowDescription}>{t(`settings.capabilities.${key}Hint`)}</span></span>
+                          <span className={styles.rowCopy}><span className={styles.rowTitle}>{t(labelKey)}</span><span className={styles.rowDescription}>{t(`settings.capabilities.${key}Hint`)}</span></span>
                           <AliIcon name="chevron-right" size={15} />
                         </button>;
                       })}
@@ -599,9 +490,6 @@ export function SettingsDialog({
                   <h2>{t("settings.general")}</h2>
                   <p>{t("settings.generalDescription")}</p>
                 </div>
-                <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>
-                <div data-settings-id="general.proxy"><NetworkProxySettings /></div>
-                {desktop.available ? <RuntimeLogSettings /> : null}
                 {onOpenOnboarding ? <section className={styles.conversationSection}>
                   <div className={styles.conversationRow}>
                     <span className={styles.featureIcon}><AliIcon name="rocket" size={19} /></span>
@@ -615,6 +503,19 @@ export function SettingsDialog({
                     </button>
                   </div>
                 </section> : null}
+                {desktop.available ? <section className={styles.conversationSection}>
+                  <div data-settings-id="general.autoLaunch"><DesktopAutoLaunchSetting /></div>
+                  <DesktopUpdateScheduleSetting />
+                </section> : null}
+                <div className={styles.localNote}>
+                  <AliIcon name="lock" size={14} />
+                  <span>{t("settings.localNote")}</span>
+                </div>
+              </>
+              ) : activeKey === "data" ? (
+              <>
+                <div className={styles.contentHeading}><h2>{t("settings.page.data")}</h2><p>{t("settings.page.dataDescription")}</p></div>
+                <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>
                 {desktop.available && window.piDesktop?.getAgentDataDirectory ? <section className={styles.conversationSection}>
                   <div className={styles.agentDataHeader}>
                     <div className={styles.conversationCopy}>
@@ -680,23 +581,21 @@ export function SettingsDialog({
                     </div> : null}
                   </div>
                 </section> : null}
-                {desktop.available ? <section className={styles.conversationSection}>
-                  <div data-settings-id="general.autoLaunch"><DesktopAutoLaunchSetting /></div>
-                  <DesktopUpdateScheduleSetting />
-                  <div className={styles.conversationRow}>
-                    <div className={styles.conversationCopy}>
-                      <div data-settings-id="general.globalShortcut" className={styles.rowTitle}>{t("settings.globalShortcut")}</div>
-                      <div className={styles.rowDescription}>{t("settings.globalShortcutDescription")}</div>
-                    </div>
-                    <button className={styles.switch} type="button" role="switch" aria-label={t("settings.globalShortcut")} aria-checked={desktop.globalShortcutEnabled} onClick={() => void desktop.onGlobalShortcutToggle()}><span /></button>
-                  </div>
-                </section> : null}
-                <div className={styles.localNote}>
-                  <AliIcon name="lock" size={14} />
-                  <span>{t("settings.localNote")}</span>
-                </div>
+                {desktop.available ? <RuntimeLogSettings /> : null}
               </>
-              ) : activeEntry.key === "conversation" ? (
+              ) : activeKey === "network" ? (
+              <>
+                <div className={styles.contentHeading}><h2>{t("networkProxy.title")}</h2><p>{t("networkProxy.description")}</p></div>
+                <div data-settings-id="general.proxy"><NetworkProxySettings /></div>
+              </>
+              ) : activeKey === "modelRuntime" ? (
+              <>
+                <div className={styles.contentHeading}><h2>{t("settings.tab.modelRuntime")}</h2><p>{t("settings.page.modelRuntimeDescription")}</p></div>
+                <ModelFallbackSetting />
+                  <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
+                <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
+              </>
+              ) : activeKey === "conversation" ? (
               <>
                 <div className={styles.contentHeading}>
                   <h2>{t("settings.conversation")}</h2>
@@ -812,7 +711,11 @@ export function SettingsDialog({
                   </div>
 
                 </section>
-
+                <ReplySuggestionsSettings cwd={modelCwd} />
+              </>
+              ) : activeKey === "prompts" ? (
+              <>
+                <div className={styles.contentHeading}><h2>{t("settings.page.prompts")}</h2><p>{t("settings.page.promptsDescription")}</p></div>
                 <section className={styles.promptCard} aria-labelledby="session-title-prompt-heading">
                   <header className={styles.promptCardHeader}>
                     <h3 id="session-title-prompt-heading">{t("settings.sessionTitlePromptTitle")}</h3>
@@ -937,8 +840,6 @@ export function SettingsDialog({
                   </div>
                 </section>
 
-                <ReplySuggestionsSettings cwd={modelCwd} />
-
                 <section className={styles.promptCard} aria-labelledby="system-prompt-heading">
                   <header className={styles.promptCardHeader}>
                     <h3 data-settings-id="conversation.systemPrompt" id="system-prompt-heading">{t("system.prompt")}</h3>
@@ -971,6 +872,7 @@ export function SettingsDialog({
               </>
               )}
             </>}
+            </div>
             </div>
             </div>
           </main>

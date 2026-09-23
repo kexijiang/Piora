@@ -6,8 +6,9 @@ const card = fs.readFileSync(new URL("./SettingsPortabilityCard.tsx", import.met
 const settings = fs.readFileSync(new URL("./SettingsDialog.tsx", import.meta.url), "utf8");
 const shell = fs.readFileSync(new URL("./AppShell.tsx", import.meta.url), "utf8");
 
-test("settings portability stays inside General settings with an accessible file flow", () => {
+test("settings portability stays inside Data & Diagnostics with an accessible file flow", () => {
   assert.match(settings, /<SettingsPortabilityCard\s*\/>/);
+  assert.match(settings, /activeKey === "data"/);
   assert.match(card, /type="file"/);
   assert.match(card, /accept="\.json,application\/json"/);
   assert.match(card, /aria-labelledby="settings-import-preview-title"/);
@@ -21,6 +22,7 @@ test("import previews before applying and reopens settings after the controlled 
   assert.match(card, /applyPortableSettings/);
   assert.ok(card.indexOf("setPreview({") < card.indexOf("applyPortableSettings(window.localStorage"));
   assert.match(card, /SETTINGS_REOPEN_STORAGE_KEY/);
+  assert.match(card, /SETTINGS_REOPEN_STORAGE_KEY, "data"/);
   assert.match(shell, /sessionStorage\.getItem\(SETTINGS_REOPEN_STORAGE_KEY\)/);
   assert.match(shell, /setSettingsDialogOpen\(true\)/);
 });

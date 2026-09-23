@@ -44,7 +44,7 @@ const SHORTCUT_GROUPS = [
   },
 ] as const;
 
-export function ShortcutSettings() {
+export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle }: { globalShortcutEnabled?: boolean; onGlobalShortcutToggle?: () => void | Promise<void> }) {
   const { t } = useI18n();
   const { bindings, overrides, setBinding, resetBinding, resetAll } = useApplicationShortcuts();
   const [recording, setRecording] = useState<ApplicationShortcutId | null>(null);
@@ -98,6 +98,10 @@ export function ShortcutSettings() {
           </button>
         </div>
       </header>
+      {onGlobalShortcutToggle ? <section className={styles.globalShortcut} data-settings-id="general.globalShortcut">
+        <div><strong>{t("settings.globalShortcut")}</strong><p>{t("settings.globalShortcutDescription")}</p></div>
+        <button type="button" role="switch" aria-label={t("settings.globalShortcut")} aria-checked={Boolean(globalShortcutEnabled)} onClick={() => void onGlobalShortcutToggle()} className={styles.globalSwitch}><span /></button>
+      </section> : null}
       <div className={styles.groups}>
         {SHORTCUT_GROUPS.map((group) => {
           const items = APPLICATION_SHORTCUTS.filter((item) => group.includes(item.id));

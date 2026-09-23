@@ -11,6 +11,8 @@ import { assertSessionNotMutating, drainSessionFileOperations, runSessionFileOpe
 import { resolve } from "node:path";
 import { validateAgentImages } from "./image-attachments";
 import { installImageContextPolicy } from "./image-context";
+import { installModelStallGuard } from "./model-stall-guard";
+import { reloadModelRetrySettings } from "./retry-settings";
 import { invalidateModelsCache } from "./models-cache";
 import { resolveVisibleModels, selectInitialModelScope } from "./model-scope";
 import { runPromptWithModelFallback } from "./model-fallback";
@@ -46,6 +48,7 @@ import {
   finishPromptRun,
   type PromptRunIdentity,
 } from "./prompt-run-registry";
+import { beginPromptFileChanges, finishPromptFileChanges } from "./prompt-file-changes";
 import { bindTeamPromptContext, validateTeamExecutionContext } from "./team-prompt-context";
 import type { TeamExecutionContext } from "./team-types";
 import type { SessionMessageSourceKind, SessionRoomContext } from "./session-message-types";
@@ -954,6 +957,7 @@ export class AgentSessionWrapper {
               ...(roomContext ? { roomContext } : {}),
             })
           : this.activePromptRun!;
+        const fileChangeCapture = ownsPromptRun ? beginPromptFileChanges(promptRun, this.cwd) : null;
         if (ownsPromptRun) {
           this.activePromptRun = promptRun;
           this.activeCommandId = commandId;
@@ -977,6 +981,7 @@ export class AgentSessionWrapper {
           }
         };
         const promptTask = Promise.resolve().then(async () => {
+          if (fileChangeCapture) await fileChangeCapture.initial.catch(() => {});
           if (!streamingBehavior) {
             const pendingModel = readPendingSessionModel(this.sessionId);
             if (pendingModel) {
@@ -1033,6 +1038,7 @@ export class AgentSessionWrapper {
         })
           .then(async () => {
           this.promptRunning = false;
+          if (fileChangeCapture) await finishPromptFileChanges(fileChangeCapture, abortGeneration !== this.abortGeneration ? "aborted" : "complete");
           if (ownsPromptRun) {
             await finishPromptRun(promptRun, "idle");
             if (this.activePromptRun?.runId === promptRun.runId) this.activePromptRun = undefined;
@@ -1046,13 +1052,14 @@ export class AgentSessionWrapper {
           notifyRunningChange();
         }).catch(async (error) => {
           this.promptRunning = false;
+          const cancelled = abortGeneration !== this.abortGeneration || !this._alive;
+          if (fileChangeCapture) await finishPromptFileChanges(fileChangeCapture, cancelled ? "aborted" : "error");
           if (ownsPromptRun) {
             await finishPromptRun(promptRun, "error");
             if (this.activePromptRun?.runId === promptRun.runId) this.activePromptRun = undefined;
             if (this.activeCommandId === commandId) this.activeCommandId = undefined;
           }
           if (!streamingBehavior) this.promptAdmissionBusy = false;
-          const cancelled = abortGeneration !== this.abortGeneration || !this._alive;
           this.lastPromptFailed = !cancelled;
           this.lastPromptErrorSummary = cancelled ? undefined : error instanceof Error ? error.message : String(error);
           invalidateSessionListCache();
@@ -1188,12 +1195,60 @@ export class AgentSessionWrapper {
           model = this.inner.modelRuntime.getModel(provider, modelId);
         }
         if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
+        const targetWindow = model.contextWindow;
+        let compacted = false;
+        if (Number.isFinite(targetWindow) && targetWindow > 0
+          && (this.inner.model?.provider !== provider || this.inner.model?.id !== modelId)) {
+          const state = this.inner.agent.state;
+          const estimate = estimateContextUsageBreakdown({
+            messages: state?.messages ?? [],
+            systemPrompt: state?.systemPrompt ?? "",
+            tools: state?.tools ?? [],
+            totalTokens: null,
+          });
+          const estimatedTokens = Object.values(estimate).reduce((sum, value) => sum + value, 0);
+          const usedTokens = Math.max(this.inner.getContextUsage()?.tokens ?? 0, estimatedTokens);
+          if (usedTokens > targetWindow) {
+            this.beginRun("compacting", "Compacting conversation before model change");
+            const settingsManager = this.inner.settingsManager;
+            const originalGetCompactionSettings = settingsManager.getCompactionSettings;
+            // Keep less recent history for a smaller target. This override belongs only
+            // to this session and this compaction; persisted preferences stay intact.
+            settingsManager.getCompactionSettings = () => {
+              const settings = originalGetCompactionSettings.call(settingsManager);
+              return {
+                ...settings,
+                keepRecentTokens: Math.min(settings.keepRecentTokens, Math.max(1024, Math.floor(targetWindow * 0.4))),
+              };
+            };
+            try {
+              const result = await this.withFinalRunningNotification(() => this.inner.compact()) as { estimatedTokensAfter?: number };
+              compacted = true;
+              const newState = this.inner.agent.state;
+              const after = estimateContextUsageBreakdown({
+                messages: newState?.messages ?? [],
+                systemPrompt: newState?.systemPrompt ?? "",
+                tools: newState?.tools ?? [],
+                totalTokens: null,
+              });
+              const afterTokens = Math.max(result.estimatedTokensAfter ?? 0, Object.values(after).reduce((sum, value) => sum + value, 0));
+              if (afterTokens > targetWindow) {
+                throw new Error(`Compacted context still needs about ${afterTokens} tokens, exceeding ${provider}/${modelId}'s ${targetWindow}-token window`);
+              }
+            } finally {
+              settingsManager.getCompactionSettings = originalGetCompactionSettings;
+              invalidateSessionListCache();
+              this.flushPendingProjectCapabilitySettings();
+            }
+            this.assertSessionIdle("change model");
+          }
+        }
         await this.inner.setModel(applyConfiguredImageInput(model));
         this.persistSessionFile();
         clearPendingSessionModel(this.sessionId);
         invalidateModelsCache();
         invalidateSessionListCache();
-        return { id: model.id, provider: model.provider };
+        return { id: model.id, provider: model.provider, compacted };
       }
 
       case "fork": {
@@ -1968,6 +2023,26 @@ export function invalidateServicesCache(): void {
   getServicesCache().clear();
 }
 
+/** Refresh settings only: running streams keep their captured timeout and tools. */
+export async function reloadLiveModelRetrySettings(): Promise<void> {
+  const managers = new Set([...getServicesCache().values()].map((services) => services.settingsManager));
+  for (const session of getRegistry().values()) {
+    if (session.isAlive()) {
+      managers.add(session.inner.settingsManager);
+      session.inner.agent.maxRetryDelayMs = undefined;
+    }
+  }
+  await reloadModelRetrySettings(managers);
+}
+
+export async function reloadLiveCompactionSettings(): Promise<void> {
+  const managers = new Set([...getServicesCache().values()].map((services) => services.settingsManager));
+  for (const session of getRegistry().values()) {
+    if (session.isAlive()) managers.add(session.inner.settingsManager);
+  }
+  await reloadModelRetrySettings(managers);
+}
+
 export function applyProjectToolSettingsToLiveSessions(
   projectRoot: string,
   record: ProjectToolSettingsRecord,
@@ -2399,6 +2474,12 @@ export async function startRpcSession(
       getServicesCache().set(sessionServicesKey, services);
     }
     if (runtimeProfile === "normal") ensureWindowsBashShellPath(services.settingsManager);
+    // Fail stalled model requests as retryable timeouts instead of hanging the
+    // session on a silently dead provider stream. Installed per services
+    // instance and idempotent across cached reuse.
+    // Also cover sessions that were being constructed when global settings changed.
+    await services.settingsManager.reload();
+    installModelStallGuard(services.modelRuntime, process.env, services.settingsManager);
     const scope = await resolveVisibleModels(
       services.modelRuntime,
       services.settingsManager.getEnabledModels(),
@@ -2428,6 +2509,9 @@ export async function startRpcSession(
       ...(initial.scopedModels.length > 0 ? { scopedModels: initial.scopedModels } : {}),
       ...(toolsOption !== undefined ? { tools: toolsOption } : {}),
     });
+    // The SDK stream function reads this from SettingsManager on every request.
+    // Leave the Agent override unset so its startup snapshot cannot mask updates.
+    inner.agent.maxRetryDelayMs = undefined;
     installImageContextPolicy(inner.agent);
     if (pendingModel && inner.model?.provider === pendingModel.provider && inner.model.id === pendingModel.modelId) {
       await inner.setModel(applyConfiguredImageInput(inner.model));

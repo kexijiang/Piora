@@ -5,7 +5,7 @@ import test from "node:test";
 const control = readFileSync(new URL("./SessionToolsControl.tsx", import.meta.url), "utf8");
 const input = readFileSync(new URL("./ChatInput.tsx", import.meta.url), "utf8");
 const projectTools = readFileSync(new URL("./ProjectToolsConfig.tsx", import.meta.url), "utf8");
-const settings = readFileSync(new URL("./SettingsDialog.tsx", import.meta.url), "utf8");
+const settings = readFileSync(new URL("../lib/settings-search.ts", import.meta.url), "utf8");
 const rightPanel = readFileSync(new URL("./workspace/RightPanel.tsx", import.meta.url), "utf8");
 
 test("tool selection lives in project settings instead of the composer", () => {

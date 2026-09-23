@@ -137,13 +137,22 @@ const GIT_STATUS_KEYS: Record<GitFileStatusKind, string> = {
 };
 
 const GIT_STATUS_COLORS: Record<GitFileStatusKind, string> = {
-  modified: "#d6a84b",
-  added: "#4ade80",
-  deleted: "#f87171",
-  renamed: "#60a5fa",
-  untracked: "#4ade80",
-  conflict: "#f87171",
+  modified: "var(--file-status-modified)",
+  added: "var(--file-status-added)",
+  deleted: "var(--file-status-deleted)",
+  renamed: "var(--file-status-renamed)",
+  untracked: "var(--file-status-added)",
+  conflict: "var(--file-status-deleted)",
 };
+
+type DirectoryChangeKind = "modified" | "added" | "deleted";
+const DIRECTORY_CHANGE_ORDER: DirectoryChangeKind[] = ["modified", "added", "deleted"];
+const DIRECTORY_CHANGE_CODE: Record<DirectoryChangeKind, string> = { modified: "M", added: "+", deleted: "−" };
+function directoryChangeKind(status: GitFileStatusKind): DirectoryChangeKind {
+  if (status === "deleted" || status === "conflict") return "deleted";
+  if (status === "added" || status === "untracked") return "added";
+  return "modified";
+}
 
 function GitStatusBadge({ status, t }: { status: GitFileStatus; t: Translate }) {
   return (
@@ -481,7 +490,7 @@ function TreeNode({
   refreshToken,
   highlightedPaths,
   gitStatusByPath,
-  changedDirectoryPaths,
+  directoryChanges,
   onOpenContextMenu,
   selectedFilePath,
   focusedPath,
@@ -500,7 +509,7 @@ function TreeNode({
   refreshToken: string;
   highlightedPaths: Set<string>;
   gitStatusByPath: Map<string, GitFileStatus>;
-  changedDirectoryPaths: Set<string>;
+  directoryChanges: Map<string, Set<DirectoryChangeKind>>;
   onOpenContextMenu: (target: FileContextTarget, x: number, y: number) => void;
   selectedFilePath?: string | null;
   focusedPath: string | null;
@@ -514,9 +523,9 @@ function TreeNode({
   const normalizedPath = normalizeFilePathSlashes(node.fullPath);
   const gitStatus = gitStatusByPath.get(normalizedPath);
   const selected = !node.isDir && normalizedPath === selectedFilePath;
-  const containsGitChanges = node.isDir && (
-    gitStatus !== undefined || changedDirectoryPaths.has(normalizedPath)
-  );
+  const folderChanges = node.isDir ? directoryChanges.get(normalizedPath) : undefined;
+  const folderChangeKinds = DIRECTORY_CHANGE_ORDER.filter((kind) => folderChanges?.has(kind));
+  const folderColor = folderChangeKinds.length === 1 ? GIT_STATUS_COLORS[folderChangeKinds[0]] : folderChangeKinds.length ? GIT_STATUS_COLORS.modified : undefined;
   const openHint = !node.isDir && getFileViewerKind(node.fullPath) === "text"
     ? t("files.openInEditor")
     : t("files.openPreview");
@@ -692,7 +701,7 @@ function TreeNode({
         <span
           style={{
             fontSize: "var(--text-sm)",
-            color: "var(--text)",
+            color: node.isDir ? folderColor ?? "var(--text)" : gitStatus ? GIT_STATUS_COLORS[gitStatus.status] : "var(--text)",
             overflow: "hidden",
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
@@ -714,22 +723,9 @@ function TreeNode({
         {!hovered && !node.isDir && gitStatus && (
           <GitStatusBadge status={gitStatus} t={t} />
         )}
-        {!hovered && containsGitChanges && (
-          <span
-            title={t("files.containsChangedFiles")}
-            aria-label={t("files.containsChangedFiles")}
-            style={{
-              width: 14,
-              height: 14,
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#d6a84b" }} />
-          </span>
-        )}
+        {node.isDir && folderChangeKinds.length > 0 && <span className={styles.directoryChanges} title={folderChangeKinds.map((kind) => t(GIT_STATUS_KEYS[kind])).join(" · ")}>
+          {folderChangeKinds.map((kind) => <span key={kind} className={styles.directoryChangeBadge} style={{ color: GIT_STATUS_COLORS[kind] }} aria-label={t(GIT_STATUS_KEYS[kind])}>{DIRECTORY_CHANGE_CODE[kind]}</span>)}
+        </span>}
         {loading && (
           <AliIcon name="reload" size={10} style={{ color: "var(--text-dim)", animation: "spin 0.8s linear infinite" }} />
         )}
@@ -822,7 +818,7 @@ function TreeNode({
               refreshToken={refreshToken}
               highlightedPaths={highlightedPaths}
               gitStatusByPath={gitStatusByPath}
-              changedDirectoryPaths={changedDirectoryPaths}
+              directoryChanges={directoryChanges}
               onOpenContextMenu={onOpenContextMenu}
               selectedFilePath={selectedFilePath}
               focusedPath={focusedPath}
@@ -907,7 +903,7 @@ function ChangeRow({
       <span
         style={{
           fontSize: "var(--text-sm)",
-          color: "var(--text)",
+          color: GIT_STATUS_COLORS[status.status],
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
@@ -971,13 +967,15 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(function FileE
     gitFiles.map((status) => [normalizeFilePathSlashes(status.filePath), status]),
   ), [gitFiles]);
 
-  const changedDirectoryPaths = useMemo(() => {
-    const directories = new Set<string>();
+  const directoryChanges = useMemo(() => {
+    const directories = new Map<string, Set<DirectoryChangeKind>>();
     const normalizedCwd = normalizeFilePathSlashes(cwd).replace(/\/$/, "");
     for (const status of gitFiles) {
       let directory = getFileDirectory(normalizeFilePathSlashes(status.filePath));
       while (directory === normalizedCwd || directory.startsWith(`${normalizedCwd}/`)) {
-        directories.add(directory);
+        const kinds = directories.get(directory) ?? new Set<DirectoryChangeKind>();
+        kinds.add(directoryChangeKind(status.status));
+        directories.set(directory, kinds);
         if (directory === normalizedCwd) break;
         const parent = getFileDirectory(directory);
         if (parent === directory) break;
@@ -1261,7 +1259,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(function FileE
   }, [cwd, onAtMentions, uploadSummary]);
 
   return (
-    <div style={{ minHeight: "100%" }}>
+    <div className={styles.explorer} style={{ minHeight: "100%" }}>
       <input ref={uploadInputRef} type="file" multiple hidden onChange={handleUploadInput} />
       <div className={styles.filterBar}>
         <div className={styles.filterShell}>
@@ -1478,7 +1476,7 @@ export const FileExplorer = forwardRef<FileExplorerHandle, Props>(function FileE
                 refreshToken={refreshToken}
                 highlightedPaths={highlightedPaths}
                 gitStatusByPath={gitStatusByPath}
-                changedDirectoryPaths={changedDirectoryPaths}
+                directoryChanges={directoryChanges}
                 onOpenContextMenu={handleOpenContextMenu}
                 selectedFilePath={normalizedSelectedFilePath}
                 focusedPath={treeFocusablePath}

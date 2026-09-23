@@ -76,6 +76,7 @@ app/api/
 
 lib/
   rpc-manager.ts             AgentSessionWrapper, lifecycle registry, and session startup
+  model-stall-guard.ts       model request stall watchdog wrapped around streamSimple
   extension-config.ts        extension inventory, stable ids, load plan, and preferences
   first-party-extensions.ts  bundled extension descriptors and profile membership
   prompt-run-registry.ts     active prompt identity and terminal cleanup
@@ -90,6 +91,8 @@ lib/
   companion-store.ts         companion persistence boundary
   companion.ts               active companion preferences/state helpers
   model-*.ts, provider-*.ts  model scope/policy/runtime/discovery and credential listing
+  retry-settings.ts          global model retry/timeout settings read/write (`/api/models-config/retry`)
+  status-duration.ts         compact clock formatting for running-status lines
   file-*.ts, path-security.ts allow-list, paths, editing, upload, indexing helpers
   git-*.ts, worktree.ts      git status/write helpers and project/worktree resolution
   api-types.ts, types.ts     API/shared UI types; pi-types.ts isolates SDK structural types
@@ -158,8 +161,14 @@ hooks/
 ### ToolCall field normalization
 Pi stores toolCall blocks as `{type:"toolCall", id, name, arguments}` but `ToolCallContent` uses `{toolCallId, toolName, input}`. `normalizeToolCalls()` in `lib/normalize.ts` handles this — called in both `session-reader.ts` (file load) and `ChatWindow.handleAgentEvent()` (streaming).
 
+### Shell guard and model stall watchdog
+- `extensions/piora-shell-guard.ts` intercepts mutable `tool_call` inputs for `bash`/`powershell`, preserving the original tools' shell path, command prefix, and metadata. An omitted `timeout` becomes 600s (env `PIORA_SHELL_TIMEOUT_SECONDS`). A conservative lexer checks actual executable/argument tokens for foreground server/watch and interactive commands; quoted search text and help/version queries are allowed. Explicit timeouts and background launches (`&`, `nohup`, `Start-Process`) are allowed; complex scripts still receive the default timeout.
+- `lib/model-stall-guard.ts` wraps `services.modelRuntime.streamSimple` in `startRpcSession`. Each request snapshots the effective SettingsManager deadlines: request `timeoutMs`, then provider timeout, then HTTP idle timeout for the first event; HTTP idle timeout for later gaps. Zero disables the corresponding deadline. Only runtimes without SettingsManager fall back to `PIORA_MODEL_STALL_FIRST_EVENT_TIMEOUT_MS` / `PIORA_MODEL_STALL_IDLE_TIMEOUT_MS` (3/2 minutes). Timeout errors must say "timed out" and never "abort"/"cancel", so auto-retry and model fallback recognize them. User cancellation immediately settles as "aborted", including silent providers and disabled timeouts, and discards late provider events.
+- The chat status line (`StatusPulse` in `ChatWindow`) shows per-phase elapsed time, `retryInfo`, and a no-progress hint driven by `activityClockRef` in `useAgentSession`; every message/tool/bash/compaction event refreshes that clock.
+- `lib/retry-settings.ts` plus `/api/models-config/retry` expose pi's `retry.*` and `httpIdleTimeoutMs` global settings in Settings > General. Fields without SDK setters use the SDK's `globalSettings` + `markModified` + `save` bookkeeping. After saving, reload cached/live SettingsManagers and update the HTTP dispatcher; startup also reloads to cover concurrent construction. Project overrides remain effective. Existing streams retain their captured deadlines; subsequent requests/retries read refreshed settings. Leave `agent.maxRetryDelayMs` unset so its startup snapshot cannot override the SDK's per-request settings lookup. `lib/http-dispatcher.ts` reads the saved global HTTP idle timeout at startup and when proxy settings change.
+
 ### Agent tools and permissions
-Piora does not expose tool permission tiers or Project Trust. New and existing sessions enable Pi's complete built-in coding tool set, while extension tools remain active. The bundled `extensions/piora-browser.ts` registers a private headless browser tool backed by Playwright and an installed Edge/Chrome executable.
+Piora does not expose tool permission tiers or Project Trust. New and existing sessions enable Pi's complete built-in coding tool set, while extension tools remain active. The bundled `extensions/piora-browser.ts` registers a private headless browser tool backed by Playwright and an installed Edge/Chrome executable. The bundled `extensions/piora-shell-guard.ts` checks shell calls and supplies default timeouts through a `tool_call` hook without replacing configured tools (see above).
 
 ### Model defaults for new sessions
 `GET /api/models` returns `defaultModel` read from `~/.pi/agent/settings.json`. `ChatWindow` pre-selects this on mount for new sessions.
@@ -177,8 +186,8 @@ The `enabledModels` setting uses pi's `--models` syntax: minimatch globs against
 On `ChatWindow` mount, `GET /api/agent/[id]` is called. If `state.isStreaming === true`, SSE is reconnected automatically. `thinkingLevel` and `isCompacting` are also synced from this response.
 
 ### User submissions must survive cancellation and reload
-- `useAgentSession` commits full original text and attachments to IndexedDB through `prompt-recovery` before network work. `ChatInput` awaits acceptance and clears only the unchanged originating draft; cancellation, ambiguous responses and storage failures must return `false`.
-- A prompt's optional `onDurable` callback acknowledges that IndexedDB commit before network setup. The composer can clear immediately on this local receipt; failed sends restore an empty originating composer without overwriting newer input or another session. The pending recovery record remains until a disk-backed receipt confirms delivery.
+- `useAgentSession` commits full original text and attachments to IndexedDB through `prompt-recovery` before network work. `ChatInput` clears the visible originating draft immediately, deferring its persisted replacement/deletion until recovery storage acknowledges the send; cancellation, ambiguous responses and storage failures must return `false`.
+- A prompt's optional `onDurable` callback acknowledges that IndexedDB commit before network setup and releases deferred draft persistence. Failed sends restore an empty originating composer or its saved draft without overwriting newer input or another session. The pending recovery record remains until a disk-backed receipt confirms delivery.
 - Every send carries a unique `clientPromptId`/idempotency key. History hydration merges unconfirmed recovery records. Never confirm by matching text, since identical messages can be distinct sends.
 - The SDK can buffer messages before its first assistant response. UI tracked prompts persist their session file before admission; only IDs read from a disk-backed SessionManager confirm deletion of a local recovery copy, never SSE or an in-memory history response.
 - UI command journals remain a durable send archive without automatic age/count deletion. `/api/sessions/[id]/submissions` exposes older sends that never reached model history, but the composer has no send-history button or archive popup. Automatic prompt recovery remains active. Recovery rows have no real entry ID and require distinct virtual row keys.

@@ -5311,7 +5311,7 @@ span.linenumber {
   }
   .right-panel-container.right-panel-open {
     width: var(--right-panel-width, clamp(360px, 42vw, 640px));
-    min-width: 300px;
+    min-width: 420px;
   }
   .right-panel-container.right-panel-closed {
     width: 0;
@@ -5323,7 +5323,7 @@ span.linenumber {
   /* keep inner content at fixed width so it doesn't reflow during animation */
   .right-panel-container > * {
     width: var(--right-panel-width, clamp(360px, 42vw, 640px));
-    min-width: 300px;
+    min-width: 420px;
   }
   .right-panel-container.right-panel-resizing,
   .right-panel-container.right-panel-resizing > * {
@@ -5334,7 +5334,11 @@ span.linenumber {
 /* Compact desktop file panel: overlay the chat instead of collapsing it. */
 @media (min-width: 641px) and (max-width: 1439px) {
   .right-panel-resize-handle {
-    display: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: calc(min(var(--right-panel-width, 560px), calc(100vw - 48px)) - 6px);
+    z-index: 251;
   }
   .right-panel-overlay-backdrop {
     position: absolute;
@@ -5356,8 +5360,8 @@ span.linenumber {
     right: 0;
     bottom: 0;
     z-index: 250;
-    width: min(560px, calc(100vw - 48px));
-    min-width: 300px;
+    width: min(var(--right-panel-width, 560px), calc(100vw - 48px));
+    min-width: 420px;
     overflow: hidden;
     box-shadow: -12px 0 32px rgba(0, 0, 0, 0.18);
     transition: transform 0.2s ease;

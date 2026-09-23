@@ -13,6 +13,13 @@
 .panel[hidden] { display: none; }
 .panel:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
 .background { padding: 0; border-top: 0; }
+.languageSection { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 0 0 24px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.languageSection h3 { margin: 0; font-size: var(--text-sm); }
+.languageSection p { margin: 5px 0 0; color: var(--text-dim); font-size: var(--text-xs); }
+.languageOptions { display: flex; gap: 7px; flex-wrap: wrap; }
+.languageOptions button { min-height: 34px; display: inline-flex; align-items: center; gap: 9px; padding: 6px 11px; border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text); background: var(--bg-panel); font: inherit; font-size: var(--text-sm); cursor: pointer; }
+.languageOptions button[aria-checked="true"] { border-color: var(--accent); background: var(--bg-selected); color: var(--accent); }
+.languageOptions button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .themeContent { display: grid; gap: 24px; }
 .themeSection { display: grid; gap: 10px; }
 .themeSection h3 { margin: 0; font-size: var(--text-sm); }
@@ -24,6 +31,7 @@
 .themeContent :global(.appearance-custom-details) > summary { padding: 14px 0; font-size: var(--text-sm); font-weight: 600; cursor: pointer; }
 @container (max-width: 560px) {
   .header { gap: 12px; flex-wrap: wrap; padding-bottom: 16px; }
+  .languageSection { align-items: flex-start; flex-direction: column; }
   .tabs { gap: 18px; }
   .panel { padding-top: 18px; }
 }

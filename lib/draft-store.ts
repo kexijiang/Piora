@@ -21,8 +21,15 @@ export interface ChatDraft {
 const drafts = new Map<string, ChatDraft>();
 const revisions = new Map<string, number>();
 const writes = new Map<string, Promise<void>>();
+const deferredPersistence = new Map<string, { count: number; changed: boolean; draft?: ChatDraft }>();
 export const DRAFT_STORAGE_ERROR_EVENT = "piora:draft-storage-error";
 function persist(key: string, draft?: ChatDraft) {
+  const deferred = deferredPersistence.get(key);
+  if (deferred) {
+    deferred.changed = true;
+    deferred.draft = draft;
+    return;
+  }
   if (typeof indexedDB === "undefined") return;
   const writing = (writes.get(key) ?? Promise.resolve()).then(() => writeComposerRecord("drafts", key, draft)).catch(() => {
     if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(DRAFT_STORAGE_ERROR_EVENT, { detail: key }));
@@ -30,10 +37,26 @@ function persist(key: string, draft?: ChatDraft) {
   writes.set(key, writing);
   void writing.finally(() => { if (writes.get(key) === writing) writes.delete(key); });
 }
+
+/** Keep the stored draft until the optimistic send has a durable recovery copy. */
+export function deferDraftPersistence(key: string): () => void {
+  const deferred = deferredPersistence.get(key) ?? { count: 0, changed: false };
+  deferred.count += 1;
+  deferredPersistence.set(key, deferred);
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    if (--deferred.count > 0) return;
+    deferredPersistence.delete(key);
+    if (deferred.changed) persist(key, deferred.draft);
+  };
+}
+
 export async function hydrateDraft(key: string): Promise<ChatDraft | null> {
   const revision = revisions.get(key) ?? 0;
   const memory = getDraft(key);
-  if (memory || typeof indexedDB === "undefined") return memory;
+  if (memory || deferredPersistence.has(key) || typeof indexedDB === "undefined") return memory;
   const stored = await readComposerRecord<ChatDraft>("drafts", key);
   if ((revisions.get(key) ?? 0) !== revision) return getDraft(key);
   if (stored && typeof stored.value === "string" && Array.isArray(stored.images) && Array.isArray(stored.files)) drafts.set(key, cloneDraft(stored));

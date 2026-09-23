@@ -8,9 +8,7 @@ import {
   useMemo,
   useId,
   type CSSProperties,
-  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent,
-  type UIEvent as ReactUIEvent,
 } from "react";
 import type { SyntaxHighlighterProps } from "react-syntax-highlighter";
 import renderSyntaxNode from "react-syntax-highlighter/dist/esm/create-element";
@@ -33,6 +31,8 @@ import { useI18n } from "@/hooks/useI18n";
 import editorStyles from "./FileEditor.module.css";
 import { AliIcon } from "./AliIcon";
 import { DiffView } from "./DiffView";
+import { FileCodeEditor, type FileCodeEditorHandle } from "./FileCodeEditor";
+import { getDraftFileLineChanges, getFileLineSeparator, getGitFileLineChanges, normalizeFileLineEndings, preserveFileLineEndings } from "@/lib/file-editor-line-changes";
 import { LazySyntaxHighlighter as SyntaxHighlighter } from "./LazySyntaxHighlighter";
 
 interface Props {
@@ -58,13 +58,14 @@ interface FileData {
   mtime: string;
 }
 
-export type DisplayMode = "source" | "preview" | "diff" | "edit";
+export type DisplayMode = "source" | "preview" | "diff" | "edit" | "split";
 
 const DISPLAY_MODE_LABEL_KEYS: Record<DisplayMode, string> = {
   source: "i18n.source",
   preview: "i18n.preview",
   diff: "i18n.diff",
   edit: "i18n.edit",
+  split: "files.splitPreview",
 };
 
 interface FileConflictData {
@@ -271,13 +272,6 @@ function ReadOnlyNotice() {
 
 function utf8ByteLength(value: string): number {
   return new TextEncoder().encode(value).byteLength;
-}
-
-function getEditorCursorPosition(value: string, selectionStart: number): { line: number; column: number } {
-  const beforeCursor = value.slice(0, selectionStart);
-  const line = beforeCursor.split("\n").length;
-  const lastNewline = beforeCursor.lastIndexOf("\n");
-  return { line, column: selectionStart - lastNewline };
 }
 
 function ImageViewer({ filePath, cwd, sourceSessionId, active = true }: Props) {
@@ -727,6 +721,9 @@ function TextFileViewer({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [displayMode, setDisplayMode] = useState<DisplayMode>("edit");
+  const [viewerWidth, setViewerWidth] = useState(0);
+  const [compactSplitSide, setCompactSplitSide] = useState<"edit" | "preview">("edit");
+  const [debouncedHtml, setDebouncedHtml] = useState("");
   const [wrapLines, setWrapLines] = useState(false);
   const [watching, setWatching] = useState(false);
   const [draftContent, setDraftContent] = useState("");
@@ -739,7 +736,7 @@ function TextFileViewer({
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [editorScrollTop, setEditorScrollTop] = useState(0);
   const esRef = useRef<EventSource | null>(null);
-  const editorRef = useRef<HTMLTextAreaElement | null>(null);
+  const editorRef = useRef<FileCodeEditorHandle | null>(null);
   const conflictConfirmRef = useRef<HTMLButtonElement | null>(null);
   const loadedRef = useRef(false);
   const dirtyRef = useRef(false);
@@ -748,19 +745,26 @@ function TextFileViewer({
   const expectedVersionRef = useRef("");
   const gitDiffRequestRef = useRef(0);
   const contentRef = useRef<HTMLDivElement | null>(null);
+  const viewerRootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root = viewerRootRef.current;
+    if (!root) return;
+    const observer = new ResizeObserver(([entry]) => setViewerWidth(entry.contentRect.width));
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [loading]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedHtml(draftContent), 300);
+    return () => window.clearTimeout(timer);
+  }, [draftContent]);
 
   useEffect(() => {
     if (!active || !revealLine || loading || !data) return;
     const timer = window.setTimeout(() => {
       if (displayMode === "edit" && editorRef.current) {
-        const lines = editorRef.current.value.split(/\r?\n/);
-        const target = Math.max(1, Math.min(revealLine, lines.length));
-        let offset = 0;
-        for (let index = 0; index < target - 1; index += 1) offset += lines[index].length + 1;
-        editorRef.current.focus();
-        editorRef.current.setSelectionRange(offset, offset + (lines[target - 1]?.length ?? 0));
-        const lineHeight = Number.parseFloat(getComputedStyle(editorRef.current).lineHeight) || 20;
-        editorRef.current.scrollTop = Math.max(0, (target - 3) * lineHeight);
+        editorRef.current.revealLine(revealLine);
       } else {
         const line = contentRef.current?.querySelector<HTMLElement>(`.file-source-line[data-line-number="${revealLine}"]`);
         line?.scrollIntoView({ block: "center" });
@@ -772,7 +776,7 @@ function TextFileViewer({
   }, [active, data, displayMode, loading, revealKey, revealLine]);
   const [selectedLineRange, setSelectedLineRange] = useState<SelectedLineRange | null>(null);
 
-  const dirty = draftContent !== savedContent;
+  const dirty = preserveFileLineEndings(draftContent, savedContent) !== savedContent;
   dirtyRef.current = dirty;
   savingRef.current = saving;
   draftContentRef.current = draftContent;
@@ -958,6 +962,15 @@ function TextFileViewer({
 
   const hasGitDiff = gitDiff?.supported === true && typeof gitDiff.patch === "string";
   const isDeletedDiff = hasGitDiff && gitDiff.status === "deleted";
+  const gitEditorLineChanges = useMemo(
+    () => getGitFileLineChanges(hasGitDiff ? gitDiff.patch ?? null : null, normalizeFileLineEndings(savedContent).split("\n").length),
+    [hasGitDiff, gitDiff?.patch, savedContent],
+  );
+  const computeDraftLineChanges = getDraftFileLineChanges;
+  const editorLineChanges = useMemo(
+    () => computeDraftLineChanges(gitEditorLineChanges, savedContent, draftContent),
+    [computeDraftLineChanges, gitEditorLineChanges, savedContent, draftContent],
+  );
 
   useEffect(() => {
     if (!hasGitDiff && displayMode === "diff") setDisplayMode("source");
@@ -986,32 +999,14 @@ function TextFileViewer({
     setDisplayMode(initialDisplayMode);
   }, [data?.language, initialDisplayMode, hasGitDiff]);
 
-  const updateCursorPosition = useCallback((textarea: HTMLTextAreaElement | null) => {
-    if (!textarea) return;
-    setCursorPosition(getEditorCursorPosition(textarea.value, textarea.selectionStart));
-  }, []);
-
-  const applyEditorValue = useCallback((
-    nextValue: string,
-    selectionStart: number,
-    selectionEnd = selectionStart,
-  ) => {
-    setDraftContent(nextValue);
-    draftContentRef.current = nextValue;
-    setSaveError(null);
-    requestAnimationFrame(() => {
-      const textarea = editorRef.current;
-      if (!textarea) return;
-      textarea.focus();
-      textarea.setSelectionRange(selectionStart, selectionEnd);
-      updateCursorPosition(textarea);
-    });
-  }, [updateCursorPosition]);
-
   const saveFile = useCallback(async (force = false) => {
     if (savingRef.current) return;
 
-    const contentToSave = draftContentRef.current;
+    const contentToSave = preserveFileLineEndings(draftContentRef.current, savedContent);
+    if (contentToSave !== draftContentRef.current) {
+      draftContentRef.current = contentToSave;
+      setDraftContent(contentToSave);
+    }
     if (!force && contentToSave === savedContent) return;
 
     setSaving(true);
@@ -1089,74 +1084,14 @@ function TextFileViewer({
     if (conflictDecision) conflictConfirmRef.current?.focus();
   }, [conflictDecision]);
 
-  const handleEditorKeyDown = useCallback((event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
-      event.preventDefault();
-      void saveFile(false);
-      return;
-    }
-    if (event.key !== "Tab" || event.ctrlKey || event.metaKey || event.altKey) return;
-
-    event.preventDefault();
-    const textarea = event.currentTarget;
-    const value = textarea.value;
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const indent = "  ";
-
-    if (start === end && !event.shiftKey) {
-      applyEditorValue(`${value.slice(0, start)}${indent}${value.slice(end)}`, start + indent.length);
-      return;
-    }
-
-    const blockStart = value.lastIndexOf("\n", Math.max(0, start - 1)) + 1;
-    const nextNewline = value.indexOf("\n", end);
-    const blockEnd = nextNewline === -1 ? value.length : nextNewline;
-    const block = value.slice(blockStart, blockEnd);
-    const blockLines = block.split("\n");
-
-    if (event.shiftKey) {
-      const removedWidths: number[] = [];
-      const updatedBlock = blockLines.map((line) => {
-        const match = line.match(/^(?: {1,2}|\t)/);
-        const removed = match?.[0].length ?? 0;
-        removedWidths.push(removed);
-        return line.slice(removed);
-      }).join("\n");
-      const removedBeforeStart = Math.min(removedWidths[0] ?? 0, start - blockStart);
-      const totalRemoved = removedWidths.reduce((total, width) => total + width, 0);
-      const nextStart = Math.max(blockStart, start - removedBeforeStart);
-      const nextEnd = Math.max(nextStart, end - totalRemoved);
-      applyEditorValue(
-        `${value.slice(0, blockStart)}${updatedBlock}${value.slice(blockEnd)}`,
-        nextStart,
-        nextEnd,
-      );
-      return;
-    }
-
-    const updatedBlock = blockLines.map((line) => `${indent}${line}`).join("\n");
-    const nextStart = start + indent.length;
-    const nextEnd = end + (indent.length * blockLines.length);
-    applyEditorValue(
-      `${value.slice(0, blockStart)}${updatedBlock}${value.slice(blockEnd)}`,
-      nextStart,
-      nextEnd,
-    );
-  }, [applyEditorValue, saveFile]);
-
-  const handleEditorScroll = useCallback((event: ReactUIEvent<HTMLTextAreaElement>) => {
-    setEditorScrollTop(event.currentTarget.scrollTop);
-  }, []);
-
   useEffect(() => {
-    if (!active || displayMode !== "edit") return;
+    if (!active || (displayMode !== "edit" && (displayMode !== "split" || (viewerWidth < 650 && compactSplitSide !== "edit")))) return;
     const focusFrame = requestAnimationFrame(() => editorRef.current?.focus());
     return () => cancelAnimationFrame(focusFrame);
-  }, [active, displayMode]);
+  }, [active, compactSplitSide, displayMode, viewerWidth]);
 
   useEffect(() => {
-    if (!active || displayMode !== "edit") return;
+    if (!active || (displayMode !== "edit" && displayMode !== "split")) return;
     const handleSaveShortcut = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.key.toLowerCase() !== "s" || (!event.ctrlKey && !event.metaKey)) return;
       event.preventDefault();
@@ -1255,6 +1190,7 @@ function TextFileViewer({
         "edit",
         "source",
         ...(hasPreview ? ["preview" as const] : []),
+        ...(hasPreview ? ["split" as const] : []),
         ...(hasGitDiff ? ["diff" as const] : []),
       ];
   const metadata = isDeletedDiff
@@ -1264,8 +1200,116 @@ function TextFileViewer({
     ? t("fileEditor.refreshFailed", { error: externalChange.error ?? t("i18n.unknown") })
     : t("fileEditor.externalChangeBody");
 
+  const renderEditor = () => (
+          <div className={`${editorStyles.editorShell} file-editor-shell`}>
+            <div className={editorStyles.editorBody}>
+              <FileCodeEditor
+                key={`${filePath}:${getFileLineSeparator(savedContent)}`}
+                ref={editorRef}
+                value={preserveFileLineEndings(draftContent, savedContent)}
+                filePath={filePath}
+                lineSeparator={getFileLineSeparator(savedContent)}
+                scrollTop={editorScrollTop}
+                ariaLabel={t("fileEditor.editFile", { file: getFileName(filePath) })}
+                onChange={(nextValue) => {
+                  setDraftContent(nextValue);
+                  draftContentRef.current = nextValue;
+                  setSaveError(null);
+                }}
+                onCursorChange={setCursorPosition}
+                onScrollChange={setEditorScrollTop}
+                onSave={() => void saveFile(false)}
+                lineChanges={editorLineChanges}
+              />
+            </div>
+            <div className={`${editorStyles.statusBar} file-editor-status`}>
+              <span className={dirty ? editorStyles.unsavedStatus : editorStyles.savedStatus}>
+                <span className={editorStyles.statusDot} aria-hidden="true" />
+                {dirty ? t("fileEditor.unsaved") : t("i18n.saved")}
+              </span>
+              <span>{t("fileEditor.cursorPosition", { line: cursorPosition.line, column: cursorPosition.column })}</span>
+              <span>UTF-8</span>
+              <span>{formatSize(utf8ByteLength(draftContent))}</span>
+            </div>
+          </div>
+  );
+
+  const renderPreview = (live = false) => isHtml ? (
+          <iframe
+            srcDoc={live ? debouncedHtml : content}
+            sandbox="allow-scripts"
+            style={{ width: "100%", height: "100%", border: "none", background: "var(--file-panel-surface, var(--bg))" }}
+             title={t("i18n.htmlPreview")}
+          />
+  ) : (
+          <div
+            className="markdown-body markdown-file-preview"
+            style={{ padding: "24px 32px" }}
+          >
+            <ReactMarkdown
+              remarkPlugins={markdownPreviewRemarkPlugins}
+              rehypePlugins={markdownPreviewRehypePluginsWithMath}
+              components={{
+                code({ className, children, ...props }) {
+                  const lang = className?.replace("language-", "").toLowerCase() ?? "";
+                  const raw = String(children);
+                  const isBlock = className?.includes("language-") || raw.includes("\n");
+                  if (isBlock) {
+                    if (lang === "mermaid") {
+                      return <MermaidBlock code={raw.replace(/\n$/, "")} defaultPreview />;
+                    }
+                    return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} />;
+                  }
+                  return (
+                    <code className={className} {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                pre({ children }) {
+                  // Render the code block directly — CodeBlock provides its own wrapping.
+                  // For non-mermaid blocks, pass through to default pre rendering.
+                  return <>{children}</>;
+                },
+                a({ href, children, ...props }) {
+                  delete props.node;
+                  const linkedFile = onOpenFile
+                    ? resolveLocalFileHref(href, markdownDirectory, cwd ?? markdownDirectory)
+                    : null;
+                  if (!linkedFile || !onOpenFile) {
+                    return <a href={href} {...props}>{children}</a>;
+                  }
+
+                  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
+                    if (event.defaultPrevented || event.button !== 0) return;
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+                    event.preventDefault();
+                    onOpenFile(linkedFile);
+                  };
+
+                  return <a href={href} {...props} onClick={handleClick}>{children}</a>;
+                },
+                img({ src, alt, ...props }) {
+                  delete props.node;
+                  const imagePath = typeof src === "string"
+                    ? resolveLocalFileHref(src, markdownDirectory, cwd ?? markdownDirectory)
+                    : null;
+                  const imageSrc = imagePath
+                    ? getFileApiUrl(imagePath, "read", sourceSessionId)
+                    : src;
+                  // Dynamic local paths are served directly by the file API.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  return <img src={imageSrc} alt={alt ?? ""} loading="lazy" {...props} />;
+                },
+              }}
+            >
+              {markdownPreview}
+            </ReactMarkdown>
+          </div>
+  );
+
   return (
-    <div className={`${editorStyles.container} file-viewer-shell`} style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div ref={viewerRootRef} className={`${editorStyles.container} file-viewer-shell`} style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
       <div
         className="file-viewer-toolbar"
         style={{
@@ -1326,6 +1370,7 @@ function TextFileViewer({
               })}
             </div>
           )}
+          {effectiveDisplayMode === "split" && viewerWidth < 650 ? <div className="file-viewer-mode-switch" aria-label={t("files.splitPreview")}><button type="button" aria-pressed={compactSplitSide === "edit"} onClick={() => setCompactSplitSide("edit")}>{t("i18n.edit")}</button><button type="button" aria-pressed={compactSplitSide === "preview"} onClick={() => setCompactSplitSide("preview")}>{t("i18n.preview")}</button></div> : null}
 
           <div className="file-viewer-actions">
             {effectiveDisplayMode === "source" && (
@@ -1466,128 +1511,20 @@ function TextFileViewer({
         className="file-viewer-content"
         style={{
           flex: 1,
-          overflow: effectiveDisplayMode === "edit" ? "hidden" : "auto",
+          overflow: effectiveDisplayMode === "edit" || (effectiveDisplayMode === "split" && (viewerWidth >= 650 || compactSplitSide === "edit")) ? "hidden" : "auto",
           background: "var(--file-panel-surface, var(--bg))",
         }}
       >
         {effectiveDisplayMode === "edit" ? (
-          <div className={`${editorStyles.editorShell} file-editor-shell`}>
-            <div className={editorStyles.editorBody}>
-              <div className={`${editorStyles.lineNumberViewport} file-editor-gutter`} aria-hidden="true">
-                <div
-                  className={editorStyles.lineNumbers}
-                  style={{ transform: `translateY(${-editorScrollTop}px)` }}
-                >
-                  {lines.map((_, index) => <span key={index}>{index + 1}</span>)}
-                </div>
-              </div>
-              <textarea
-                ref={editorRef}
-                className={`${editorStyles.textarea} file-editor-textarea`}
-                value={draftContent}
-                wrap="off"
-                spellCheck={false}
-                autoCapitalize="off"
-                autoCorrect="off"
-                aria-label={t("fileEditor.editFile", { file: getFileName(filePath) })}
-                onChange={(event) => {
-                  const nextValue = event.currentTarget.value;
-                  setDraftContent(nextValue);
-                  draftContentRef.current = nextValue;
-                  setSaveError(null);
-                  updateCursorPosition(event.currentTarget);
-                }}
-                onKeyDown={handleEditorKeyDown}
-                onKeyUp={(event) => updateCursorPosition(event.currentTarget)}
-                onClick={(event) => updateCursorPosition(event.currentTarget)}
-                onSelect={(event) => updateCursorPosition(event.currentTarget)}
-                onScroll={handleEditorScroll}
-              />
-            </div>
-            <div className={`${editorStyles.statusBar} file-editor-status`}>
-              <span className={dirty ? editorStyles.unsavedStatus : editorStyles.savedStatus}>
-                <span className={editorStyles.statusDot} aria-hidden="true" />
-                {dirty ? t("fileEditor.unsaved") : t("i18n.saved")}
-              </span>
-              <span>{t("fileEditor.cursorPosition", { line: cursorPosition.line, column: cursorPosition.column })}</span>
-              <span>UTF-8</span>
-              <span>{formatSize(utf8ByteLength(draftContent))}</span>
-            </div>
-          </div>
+          renderEditor()
+        ) : effectiveDisplayMode === "split" ? (
+          viewerWidth >= 650
+            ? <div className={editorStyles.splitPreviewLayout}><div className={editorStyles.splitEditorPane}>{renderEditor()}</div><div className={editorStyles.splitPreviewPane}>{renderPreview(true)}</div></div>
+            : compactSplitSide === "edit" ? renderEditor() : renderPreview(true)
         ) : effectiveDisplayMode === "diff" && hasGitDiff ? (
           <DiffView patch={gitDiff.patch!} />
-        ) : isHtml && effectiveDisplayMode === "preview" ? (
-          <iframe
-            srcDoc={content}
-            sandbox="allow-scripts"
-            style={{ width: "100%", height: "100%", border: "none", background: "var(--file-panel-surface, var(--bg))" }}
-             title={t("i18n.htmlPreview")}
-          />
-        ) : isMarkdown && effectiveDisplayMode === "preview" ? (
-          <div
-            className="markdown-body markdown-file-preview"
-            style={{ padding: "24px 32px" }}
-          >
-            <ReactMarkdown
-              remarkPlugins={markdownPreviewRemarkPlugins}
-              rehypePlugins={markdownPreviewRehypePluginsWithMath}
-              components={{
-                code({ className, children, ...props }) {
-                  const lang = className?.replace("language-", "").toLowerCase() ?? "";
-                  const raw = String(children);
-                  const isBlock = className?.includes("language-") || raw.includes("\n");
-                  if (isBlock) {
-                    if (lang === "mermaid") {
-                      return <MermaidBlock code={raw.replace(/\n$/, "")} defaultPreview />;
-                    }
-                    return <CodeBlock code={raw.replace(/\n$/, "")} lang={lang} />;
-                  }
-                  return (
-                    <code className={className} {...props}>
-                      {children}
-                    </code>
-                  );
-                },
-                pre({ children }) {
-                  // Render the code block directly — CodeBlock provides its own wrapping.
-                  // For non-mermaid blocks, pass through to default pre rendering.
-                  return <>{children}</>;
-                },
-                a({ href, children, ...props }) {
-                  delete props.node;
-                  const linkedFile = onOpenFile
-                    ? resolveLocalFileHref(href, markdownDirectory, cwd ?? markdownDirectory)
-                    : null;
-                  if (!linkedFile || !onOpenFile) {
-                    return <a href={href} {...props}>{children}</a>;
-                  }
-
-                  const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
-                    if (event.defaultPrevented || event.button !== 0) return;
-                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-                    event.preventDefault();
-                    onOpenFile(linkedFile);
-                  };
-
-                  return <a href={href} {...props} onClick={handleClick}>{children}</a>;
-                },
-                img({ src, alt, ...props }) {
-                  delete props.node;
-                  const imagePath = typeof src === "string"
-                    ? resolveLocalFileHref(src, markdownDirectory, cwd ?? markdownDirectory)
-                    : null;
-                  const imageSrc = imagePath
-                    ? getFileApiUrl(imagePath, "read", sourceSessionId)
-                    : src;
-                  // Dynamic local paths are served directly by the file API.
-                  // eslint-disable-next-line @next/next/no-img-element
-                  return <img src={imageSrc} alt={alt ?? ""} loading="lazy" {...props} />;
-                },
-              }}
-            >
-              {markdownPreview}
-            </ReactMarkdown>
-          </div>
+        ) : (isHtml || isMarkdown) && effectiveDisplayMode === "preview" ? (
+          renderPreview()
         ) : (
           <SyntaxHighlighter
             className={wrapLines ? "file-source-view is-wrapped" : "file-source-view"}

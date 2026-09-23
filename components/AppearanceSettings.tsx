@@ -13,7 +13,7 @@ const TABS = ["theme", "font", "background", "transparency"] as const;
 type AppearanceTab = typeof TABS[number];
 
 export function AppearanceSettings() {
-  const { t } = useI18n();
+  const { locale, setLocale, supportedLocales, t } = useI18n();
   const id = useId();
   const [activeTab, setActiveTab] = useState<AppearanceTab>("theme");
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -44,7 +44,15 @@ export function AppearanceSettings() {
       {/* Keep drafts mounted when switching tabs; settings search can reveal a hidden panel. */}
       {TABS.map(tab => <div key={tab} className={styles.panel} role="tabpanel" tabIndex={0}
         id={`${id}-panel-${tab}`} aria-labelledby={`${id}-tab-${tab}`} hidden={activeTab !== tab}>
-        {tab === "theme" && <AppearanceThemeSettings />}
+        {tab === "theme" && <>
+          <section className={styles.languageSection} data-settings-id="language" aria-labelledby={`${id}-language-heading`}>
+            <div><h3 id={`${id}-language-heading`}>{t("common.language")}</h3><p>{t("settings.languageDescription")}</p></div>
+            <div className={styles.languageOptions} role="radiogroup" aria-label={t("common.language")}>
+              {supportedLocales.map((option) => <button key={option.id} type="button" role="radio" aria-checked={locale === option.id} onClick={() => setLocale(option.id as typeof locale)}>{option.label}{locale === option.id ? <span aria-hidden="true">✓</span> : null}</button>)}
+            </div>
+          </section>
+          <AppearanceThemeSettings />
+        </>}
         {tab === "font" && <div data-settings-id="appearance.font"><FontSettings /></div>}
         {tab === "background" && <div data-settings-id="appearance.background"><BackgroundSettings className={styles.background} /></div>}
         {tab === "transparency" && <div data-settings-id="appearance.transparency"><InterfaceTransparencySettings /></div>}

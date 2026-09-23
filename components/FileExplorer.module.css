@@ -150,10 +150,27 @@
 }
 
 .contextSubmenuLeft { right: calc(100% + 5px); left: auto; }
+.explorer {
+  --file-status-modified: #b67a1a;
+  --file-status-added: #18834f;
+  --file-status-deleted: #cb4449;
+  --file-status-renamed: #376fbb;
+}
+
+:global(html.dark) .explorer {
+  --file-status-modified: #e1ad4c;
+  --file-status-added: #4ade80;
+  --file-status-deleted: #fb7777;
+  --file-status-renamed: #78adf7;
+}
+
 .treeItemRow {
   content-visibility: auto;
   contain-intrinsic-block-size: 24px;
 }
+
+.directoryChanges { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+.directoryChangeBadge { display: inline-grid; min-width: 14px; height: 16px; place-items: center; font: 700 var(--text-xs) var(--font-mono); }
 
 .treeLoadMore {
   display: block;

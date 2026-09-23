@@ -154,6 +154,7 @@ export interface AgentSessionLike {
   readonly sessionManager: SessionManager;
   readonly settingsManager: SettingsManager;
   readonly agent: {
+    maxRetryDelayMs?: number;
     state?: {
       messages?: unknown[];
       streamingMessage?: unknown;

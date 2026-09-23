@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const [sidebar, sidebarNavigation, settings, settingsCss, rightPanel, workspaceCss, shell, desktopMain, preload, commands] = await Promise.all([
+const [sidebar, sidebarNavigation, settings, settingsCss, rightPanel, workspaceCss, shell, desktopMain, preload, commands, settingsPages] = await Promise.all([
   readFile(new URL("./SessionSidebar.tsx", import.meta.url), "utf8"),
   readFile(new URL("./sidebar/SidebarNavigation.tsx", import.meta.url), "utf8"),
   readFile(new URL("./SettingsDialog.tsx", import.meta.url), "utf8"),
@@ -13,6 +13,7 @@ const [sidebar, sidebarNavigation, settings, settingsCss, rightPanel, workspaceC
   readFile(new URL("../desktop/src/main.ts", import.meta.url), "utf8"),
   readFile(new URL("../desktop/src/preload.ts", import.meta.url), "utf8"),
   readFile(new URL("../lib/commands.ts", import.meta.url), "utf8"),
+  readFile(new URL("../lib/settings-search.ts", import.meta.url), "utf8"),
 ]);
 
 test("the sidebar keeps task state in Projects without a duplicate Activity feed", () => {
@@ -21,16 +22,22 @@ test("the sidebar keeps task state in Projects without a duplicate Activity feed
   assert.match(sidebarNavigation, /onOpenSettings/);
 });
 
-test("settings expose every available feature directly in grouped navigation", () => {
-  assert.match(settings, /labelKey: "settings\.general"/);
-  assert.match(settings, /labelKey: "settings\.conversation"/);
-  assert.match(settings, /labelKey: "settings\.extensions"/);
-  assert.match(settings, /settings\.group\.personal/);
-  assert.match(settings, /settings\.group\.capabilities/);
-  assert.match(settings, /settings\.group\.history/);
+test("settings show every page in a permanently expanded navigation list", () => {
+  assert.match(settingsPages, /labelKey: "settings\.page\.app"/);
+  assert.match(settingsPages, /labelKey: "settings\.conversation"/);
+  assert.match(settingsPages, /labelKey: "settings\.extensions"/);
+  assert.match(settingsPages, /settings\.group\.experience/);
+  assert.match(settingsPages, /settings\.group\.modelWorkflow/);
+  assert.match(settingsPages, /settings\.group\.capabilities/);
+  assert.match(settingsPages, /settings\.group\.connections/);
+  assert.match(settingsPages, /settings\.group\.appData/);
+  assert.match(settings, /SETTINGS_GROUPS\.flatMap/);
   assert.match(settings, /sections\[entry\.key\] !== undefined/);
-  assert.doesNotMatch(settings, /getSettingsParentKey|styles\.subnavigation/);
+  assert.match(settings, /className=\{styles\.navGroupItems\}/);
+  assert.doesNotMatch(settings, /expandedGroup|aria-expanded=\{expanded\}|styles\.mobileCategories|styles\.mobilePages/);
+  assert.doesNotMatch(settings, /role="tablist"/);
   assert.match(settingsCss, /grid-template-columns:\s*258px minmax\(0, 1fr\)/);
+  assert.match(settingsCss, /\.desktopGroups, \.navGroup, \.navGroupItems \{ display: contents; \}/);
   assert.match(settingsCss, /\.contentCanvas/);
   assert.match(settingsCss, /@media \(max-width: 760px\)/);
   assert.match(settingsCss, /@media \(max-width: 520px\)/);

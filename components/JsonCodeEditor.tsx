@@ -61,6 +61,8 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const syncingRef = useRef(false);
+  const composingRef = useRef(false);
+  const publishedRef = useRef(value);
   const callbacksRef = useRef({ onChange, onPasteText, onShortcut, onLimitExceeded });
   const documentIdRef = useRef(documentId);
   const documentsRef = useRef(new Map<string, EditorState>());
@@ -100,6 +102,14 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
     const parent = containerRef.current;
     if (!parent) return;
 
+    const publish = (view: EditorView) => {
+      // React must not write partial IME text back into CodeMirror's active composition.
+      if (composingRef.current || syncingRef.current) return;
+      const next = view.state.doc.toString();
+      if (next === publishedRef.current) return;
+      publishedRef.current = next;
+      callbacksRef.current.onChange(next);
+    };
     const runShortcut = (shortcut: JsonEditorShortcut) => () => {
       callbacksRef.current.onShortcut(shortcut);
       return true;
@@ -141,9 +151,15 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
           syntaxHighlighting(pocketHighlighting),
           optionsCompartment.of(editorOptions(initialOptionsRef.current)),
           EditorView.updateListener.of((update) => {
-            if (update.docChanged && !syncingRef.current) callbacksRef.current.onChange(update.state.doc.toString());
+            if (update.docChanged) publish(update.view);
           }),
           EditorView.domEventHandlers({
+            compositionstart() { composingRef.current = true; return false; },
+            compositionend(_event, currentView) {
+              composingRef.current = false;
+              queueMicrotask(() => { if (viewRef.current === currentView) publish(currentView); });
+              return false;
+            },
             paste(event, currentView) {
               const text = event.clipboardData?.getData("text") ?? "";
               if (!text) return false;
@@ -179,8 +195,8 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
       if (documentsRef.current.size > 12) documentsRef.current.delete(documentsRef.current.keys().next().value!);
       view.setState(documentsRef.current.get(documentId) ?? createStateRef.current(value));
       documentIdRef.current = documentId;
+      publishedRef.current = value;
     }
-    view.dispatch({ effects: optionsCompartment.reconfigure(editorOptions({ ariaLabel, placeholder, wrap, locale })) });
     const current = view.state.doc.toString();
     if (current === value) return;
     const selection = view.state.selection.main;
@@ -188,7 +204,13 @@ export const JsonCodeEditor = forwardRef<JsonCodeEditorHandle, Props>(function J
     syncingRef.current = true;
     view.dispatch({ changes: { from: 0, to: current.length, insert: value }, selection: { anchor }, annotations: isolateHistory.of("full") });
     syncingRef.current = false;
-  }, [documentId, value, ariaLabel, placeholder, wrap, locale, optionsCompartment]);
+    publishedRef.current = value;
+  }, [documentId, value]);
+
+  useEffect(() => {
+    // Keep option reconfiguration independent of value changes during typing.
+    viewRef.current?.dispatch({ effects: optionsCompartment.reconfigure(editorOptions({ ariaLabel, placeholder, wrap, locale })) });
+  }, [documentId, ariaLabel, placeholder, wrap, locale, optionsCompartment]);
 
   return <div ref={containerRef} className={`piora-json-code-editor ${className ?? ""}`} data-wrap={wrap ? "true" : "false"} />;
 });

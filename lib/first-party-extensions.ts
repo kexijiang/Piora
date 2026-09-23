@@ -37,6 +37,14 @@ export const FIRST_PARTY_EXTENSIONS: readonly FirstPartyExtensionDescriptor[] = 
     required: true,
   },
   {
+    id: "piora:shell-guard",
+    fileName: "piora-shell-guard.ts",
+    name: `${APP_DISPLAY_NAME} Shell Guard`,
+    description: "Applies a default timeout to shell tool commands and blocks server, watch, and interactive commands that would hang the task.",
+    profiles: ["normal"],
+    required: true,
+  },
+  {
     id: "piora:ssh",
     fileName: "piora-ssh.ts",
     name: `${APP_DISPLAY_NAME} SSH`,

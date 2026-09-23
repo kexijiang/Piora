@@ -5,7 +5,7 @@ import test from "node:test";
 const panel = fs.readFileSync(new URL("./AutomationPanel.tsx", import.meta.url), "utf8");
 const messageView = fs.readFileSync(new URL("./MessageView.tsx", import.meta.url), "utf8");
 const rightPanel = fs.readFileSync(new URL("./workspace/RightPanel.tsx", import.meta.url), "utf8");
-const settings = fs.readFileSync(new URL("./SettingsDialog.tsx", import.meta.url), "utf8");
+const settingsNavigation = fs.readFileSync(new URL("../lib/settings-search.ts", import.meta.url), "utf8");
 
 test("scheduled tasks expose creation, editing, run history, and destructive confirmation", () => {
   assert.match(panel, /\/api\/automations/);
@@ -28,7 +28,7 @@ test("automation cards open the dedicated right panel and settings category", ()
   assert.match(messageView, /automationDetails/);
   assert.match(rightPanel, /AutomationPanel/);
   assert.match(rightPanel, /workspace-automation/);
-  assert.match(settings, /key: "automations"/);
+  assert.match(settingsNavigation, /key: "automations"/);
 });
 
 test("settings keeps scheduled-task management embedded for editing and deletion", () => {

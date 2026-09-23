@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { restoreAgentTerminal, type AgentTerminalCommand } from "@/lib/agent-terminal";
+import { restoreAgentTerminal, downgradeUnconfirmedRunning, type AgentTerminalCommand } from "@/lib/agent-terminal";
 
 export function useAgentTerminal(sessionId?: string | null) {
   const [state, setState] = useState<{ id: string; commands: AgentTerminalCommand[]; error: string | null }>({ id: "", commands: [], error: null });
@@ -20,9 +20,13 @@ export function useAgentTerminal(sessionId?: string | null) {
       try {
         const live = await fetchJson(`/api/agent/${encodeURIComponent(sessionId)}/commands`);
         if (controller.signal.aborted) return;
+        const liveCommands = (live.commands ?? []) as AgentTerminalCommand[];
+        const liveIds = new Set(liveCommands.map((item) => item.id));
         const merged = new Map(history.map((item) => [item.id, item]));
-        for (const item of live.commands ?? []) merged.set(item.id, item);
-        setState({ id: sessionId, commands: [...merged.values()].slice(-60), error: null });
+        for (const item of liveCommands) merged.set(item.id, item);
+        // Only a successful live read proves a restored running entry ended.
+        const commands = downgradeUnconfirmedRunning([...merged.values()], liveIds);
+        setState({ id: sessionId, commands: commands.slice(-60), error: null });
       } catch (error) {
         if (!controller.signal.aborted) setState((current) => ({ id: sessionId, commands: current.id === sessionId ? current.commands : history, error: String(error) }));
       } finally {

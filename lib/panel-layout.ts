@@ -2,14 +2,15 @@ export const MOBILE_MAX_WIDTH = 640;
 export const RIGHT_PANEL_OVERLAY_MAX_WIDTH = 1439;
 export const SPLIT_PANEL_MIN_WIDTH = RIGHT_PANEL_OVERLAY_MAX_WIDTH + 1;
 export const WORKSPACE_MIN_WIDTH = 640;
+export const CHAT_MIN_WIDTH_WITH_RIGHT_PANEL = 480;
 
 export const SIDEBAR_DEFAULT_WIDTH = 260;
 export const SIDEBAR_MIN_WIDTH = 180;
 export const SIDEBAR_MAX_WIDTH = 3200;
 
 export const RIGHT_PANEL_FALLBACK_WIDTH = 560;
-export const RIGHT_PANEL_MIN_WIDTH = 300;
-export const RIGHT_PANEL_MAX_WIDTH = 1200;
+export const RIGHT_PANEL_MIN_WIDTH = 420;
+export const RIGHT_PANEL_MAX_WIDTH = 2400;
 
 const DESKTOP_PANEL_GUTTER_RESERVE = 32;
 const SIDEBAR_MAX_VIEWPORT_RATIO = 0.66;
@@ -25,7 +26,7 @@ export function clampPanelWidth(width: number, minWidth: number, maxWidth: numbe
 }
 
 export function getDefaultRightPanelWidth(viewportWidth: number): number {
-  return clampPanelWidth(viewportWidth * 0.42, 360, 640);
+  return clampPanelWidth(viewportWidth * 0.5, 560, 960);
 }
 
 export function getSidebarMaxWidth(options: {
@@ -43,7 +44,7 @@ export function getSidebarMaxWidth(options: {
   return Math.min(
     SIDEBAR_MAX_WIDTH,
     proportionalMaxWidth,
-    viewportWidth - WORKSPACE_MIN_WIDTH - visibleRightPanelWidth - gutterReserve,
+    viewportWidth - (visibleRightPanelWidth ? CHAT_MIN_WIDTH_WITH_RIGHT_PANEL : WORKSPACE_MIN_WIDTH) - visibleRightPanelWidth - gutterReserve,
   );
 }
 
@@ -53,11 +54,11 @@ export function getRightPanelMaxWidth(options: {
   sidebarWidth: number;
 }): number {
   const { viewportWidth, sidebarOpen, sidebarWidth } = options;
-  if (isRightPanelOverlayViewport(viewportWidth)) return RIGHT_PANEL_MAX_WIDTH;
+  if (isRightPanelOverlayViewport(viewportWidth)) return Math.min(RIGHT_PANEL_MAX_WIDTH, viewportWidth - 48);
 
   const visibleSidebarWidth = sidebarOpen ? sidebarWidth : 0;
   return Math.min(
     RIGHT_PANEL_MAX_WIDTH,
-    viewportWidth - WORKSPACE_MIN_WIDTH - visibleSidebarWidth - DESKTOP_PANEL_GUTTER_RESERVE,
+    viewportWidth - CHAT_MIN_WIDTH_WITH_RIGHT_PANEL - visibleSidebarWidth - DESKTOP_PANEL_GUTTER_RESERVE,
   );
 }

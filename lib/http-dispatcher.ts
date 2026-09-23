@@ -1,5 +1,8 @@
 import { EventEmitter } from "node:events";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import * as undici from "undici";
+import { getRuntimeAgentDataDirectory } from "./runtime-home";
 import {
   networkProxyNoProxy,
   readNetworkProxySettings,
@@ -35,6 +38,16 @@ function parseHttpIdleTimeoutMs(value: unknown): number | undefined {
     return undefined;
   }
   return Math.floor(value);
+}
+
+/** Keep startup and later proxy changes aligned with the saved global timeout. */
+export function readConfiguredHttpIdleTimeoutMs(settingsPath = join(getRuntimeAgentDataDirectory(), "settings.json")): number {
+  try {
+    const settings = JSON.parse(readFileSync(settingsPath, "utf8").replace(/^\uFEFF/, "")) as { httpIdleTimeoutMs?: unknown };
+    return parseHttpIdleTimeoutMs(settings.httpIdleTimeoutMs) ?? DEFAULT_HTTP_IDLE_TIMEOUT_MS;
+  } catch {
+    return DEFAULT_HTTP_IDLE_TIMEOUT_MS;
+  }
 }
 
 // Undici can emit an internal Client error while terminating a response body.
@@ -114,9 +127,9 @@ function applyProxyEnvironment(settings: NetworkProxySettings): void {
 
 export function applyNetworkProxySettings(
   settings: NetworkProxySettings,
-  timeoutMs: number = DEFAULT_HTTP_IDLE_TIMEOUT_MS,
+  timeoutMs: number = readConfiguredHttpIdleTimeoutMs(),
 ): void {
-  const signature = JSON.stringify(settings);
+  const signature = JSON.stringify({ settings, timeoutMs });
   if (dispatcherGlobal.__piWebHttpProxySignature === signature && dispatcherGlobal.__piWebHttpDispatcherConfigured) return;
   applyProxyEnvironment(settings);
   const dispatcher = createHttpDispatcher(settings, timeoutMs);
@@ -138,7 +151,7 @@ export function applyNetworkProxySettings(
 }
 
 export function configureHttpDispatcher(
-  timeoutMs: number = DEFAULT_HTTP_IDLE_TIMEOUT_MS,
+  timeoutMs: number = readConfiguredHttpIdleTimeoutMs(),
 ): void {
   if (dispatcherGlobal.__piWebHttpDispatcherConfigured) return;
   applyNetworkProxySettings(readNetworkProxySettings(), timeoutMs);
