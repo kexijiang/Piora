@@ -82,12 +82,15 @@ import { ConfirmationHost, requestConfirmation } from "./ConfirmDialog";
 import { useCommands } from "@/hooks/useCommands";
 import {
   APPLICATION_SHORTCUTS,
+  KEYBOARD_SHORTCUT_STORAGE_KEY,
+  serializeShortcutOverrides,
   formatShortcutBinding,
   isMacPlatform,
   shortcutMatchesEvent,
   shouldPreserveApplicationShortcut,
 } from "@/lib/keyboard-shortcuts";
 import { filterGuiCommands, type Command, type CommandContext, type PiSlashCommand } from "@/lib/commands";
+import { appendCapturedImageToDraft } from "@/lib/draft-store";
 import { SETTINGS_REOPEN_STORAGE_KEY } from "@/lib/settings-portability";
 import {
   findReopenableFileTab,
@@ -155,6 +158,9 @@ export function AppShell() {
   useTheme();
   const { locale, setLocale, t: translate, supportedLocales } = useI18n();
   const { bindings: shortcutBindings } = useApplicationShortcuts();
+  const acceptedShortcutBindingsRef = useRef<typeof shortcutBindings | null>(null);
+  const shortcutApplyQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const shortcutApplyRevisionRef = useRef(0);
   const {
     notificationEnabled,
     notificationCapability,
@@ -1127,6 +1133,9 @@ export function AppShell() {
           setRightPanelTab("browser");
           setRightPanelOpen(true);
           break;
+        case "screenshot":
+          void window.piDesktop?.screenshot?.start();
+          break;
         case "search-chats":
           sessionSidebarRef.current?.openConversationSearch();
           break;
@@ -1166,6 +1175,28 @@ export function AppShell() {
     });
     return unsubscribe;
   }, [handleOpenDesktopUpdate, handleOpenProjectPicker, handleRequestNewSession, handleSidebarToggle, openSettings, setCompanionOpen, toggleCompanion]);
+
+  useEffect(() => {
+    const bridge = window.piDesktop?.screenshot;
+    if (!bridge) return;
+    let active = true;
+    const busy = new Set<string>();
+    const receive = async (attachment: import("@/desktop/src/screenshot-types").PendingScreenshotAttachment) => {
+      if (!active || busy.has(attachment.captureId)) return;
+      busy.add(attachment.captureId);
+      try {
+        await appendCapturedImageToDraft(attachment.targetDraftKey, attachment.captureId, attachment.data);
+        await bridge.ack(attachment.captureId, true);
+      } catch (error) {
+        await bridge.ack(attachment.captureId, false, error instanceof Error ? error.message : String(error)).catch(() => {});
+      } finally {
+        busy.delete(attachment.captureId);
+      }
+    };
+    const off = bridge.onAttachment((attachment) => { void receive(attachment); });
+    void bridge.pending().then((attachment) => { if (attachment) void receive(attachment); }).catch(() => {});
+    return () => { active = false; off(); };
+  }, []);
 
   // Electron's titleBarOverlay does not make the browser-only
   // `(display-mode: window-controls-overlay)` media query true. Use the
@@ -1733,6 +1764,7 @@ export function AppShell() {
     "composer.voiceInput": () => { chatInputRef.current?.focus(); chatInputRef.current?.toggleVoiceInput(); },
     "companion.togglePanel": () => { void window.piDesktop?.companionAction?.("open-panel"); },
     "companion.clipboard": () => { void window.piDesktop?.clipboard?.historyV2?.open("quick"); },
+    "capture.screenshot": () => { void window.piDesktop?.screenshot?.start(); },
     "panel.toggleSidebar": () => setSidebarOpen((open) => !open),
     "panel.close": () => setRightPanelOpen(false),
     "settings.general": () => openSettings("general"),
@@ -1765,6 +1797,7 @@ export function AppShell() {
       // The composer owns this shortcut so it remains available while its
       // textarea is focused and ignores editors, terminals, and other inputs.
       if (shortcut.id === "composer.voiceInput") return;
+      if (shortcut.id === "capture.screenshot" && window.piDesktop?.screenshot) return;
       if (historyDialogOpen && shortcut.id.startsWith("session.")) return;
       event.preventDefault();
       if (shortcut.id === "palette.open") setCommandPaletteOpen(true);
@@ -1775,7 +1808,24 @@ export function AppShell() {
   }, [commandActions, historyDialogOpen, shortcutBindings]);
 
   useEffect(() => {
-    void window.piDesktop?.setKeyboardShortcuts?.(shortcutBindings);
+    const apply = window.piDesktop?.setKeyboardShortcuts;
+    if (!apply) return;
+    const revision = ++shortcutApplyRevisionRef.current;
+    shortcutApplyQueueRef.current = shortcutApplyQueueRef.current.then(async () => {
+      let accepted = false;
+      try { accepted = await apply(shortcutBindings); } catch { /* The renderer keeps the last accepted settings. */ }
+      if (accepted) acceptedShortcutBindingsRef.current = shortcutBindings;
+      if (revision !== shortcutApplyRevisionRef.current || accepted) return;
+      const previous = acceptedShortcutBindingsRef.current;
+      if (previous) {
+        const overrides = Object.fromEntries(APPLICATION_SHORTCUTS
+          .filter((item) => previous[item.id] !== item.defaultBinding)
+          .map((item) => [item.id, previous[item.id]]));
+        window.localStorage.setItem(KEYBOARD_SHORTCUT_STORAGE_KEY, serializeShortcutOverrides(overrides));
+        window.dispatchEvent(new Event("piora:keyboard-shortcuts-changed"));
+      }
+      window.dispatchEvent(new Event("piora:keyboard-shortcut-registration-error"));
+    }).catch(() => { window.dispatchEvent(new Event("piora:keyboard-shortcut-registration-error")); });
   }, [shortcutBindings]);
 
   useEffect(() => {
@@ -1797,7 +1847,7 @@ export function AppShell() {
     enabled: () => selectedSession ? true : { reason: "commands.needsSession" },
     run: () => { chatInputRef.current?.insertText(`/${item.name} `); chatInputRef.current?.focus(); },
   })), [piSlashCommands, selectedSession]);
-  const paletteCommands = useMemo(() => [...guiCommands, ...piPaletteCommands], [guiCommands, piPaletteCommands]);
+  const paletteCommands = useMemo(() => [...guiCommands.filter((item) => item.id !== "capture.screenshot" || (typeof window !== "undefined" && Boolean(window.piDesktop?.screenshot))), ...piPaletteCommands], [guiCommands, piPaletteCommands]);
   const searchPaletteCommands = useCallback((query: string) => filterGuiCommands(paletteCommands, query, (item) => item.id.startsWith("pi:") ? item.title : translate(item.title)), [paletteCommands, translate]);
   const runPaletteCommand = useCallback(async (item: Command, argument?: string) => { if (item.id.startsWith("pi:")) await item.run(commandContext, argument); else await runGuiCommand(item, argument); }, [commandContext, runGuiCommand]);
 

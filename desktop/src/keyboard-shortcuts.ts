@@ -12,6 +12,7 @@ export const DESKTOP_SHORTCUT_IDS = [
   "composer.voiceInput",
   "companion.togglePanel",
   "companion.clipboard",
+  "capture.screenshot",
   "settings.general",
 ] as const;
 
@@ -32,6 +33,7 @@ export const DEFAULT_DESKTOP_SHORTCUT_BINDINGS: DesktopShortcutBindings = {
   "composer.voiceInput": "Mod+Shift+M",
   "companion.togglePanel": "Ctrl+Space",
   "companion.clipboard": "Mod+Alt+V",
+  "capture.screenshot": "Ctrl+Alt+A",
   "settings.general": "Mod+,",
 };
 
@@ -71,9 +73,11 @@ export function parseDesktopShortcutBindings(input: unknown): DesktopShortcutBin
   for (const id of DESKTOP_SHORTCUT_IDS) {
     if (!Object.prototype.hasOwnProperty.call(input, id)) return null;
     const binding = normalizeBinding((input as Record<string, unknown>)[id]);
-    if (binding === undefined || (binding !== null && used.has(binding))) return null;
+    if (binding === undefined) return null;
+    const accelerator = toElectronAccelerator(binding)?.replace(/^CmdOrCtrl/, "Ctrl");
+    if (accelerator !== undefined && used.has(accelerator)) return null;
     result[id] = binding;
-    if (binding) used.add(binding);
+    if (accelerator) used.add(accelerator);
   }
   return result;
 }

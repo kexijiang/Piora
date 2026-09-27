@@ -91,6 +91,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
 
   { id: "shortcuts", section: "shortcuts", labelKey: "settings.shortcuts", descriptionKey: "settings.shortcutsDescription", keywords: ["keyboard", "hotkey", "键盘", "快捷键"] },
   { id: "shortcuts.palette", section: "shortcuts", labelKey: "shortcuts.commandPalette", descriptionKey: "shortcuts.commandPaletteDescription", keywords: ["ctrl k", "command", "命令面板"] },
+  { id: "shortcuts.screenshot", section: "shortcuts", requiresDesktop: true, labelKey: "commands.screenshot", descriptionKey: "shortcuts.screenshotDescription", keywords: ["screenshot", "screen capture", "ctrl alt a", "截图", "截屏", "快捷键"] },
   { id: "shortcuts.search", section: "shortcuts", labelKey: "commands.searchChats", descriptionKey: "shortcuts.searchChatsDescription", keywords: ["find", "search", "搜索", "聊天记录"] },
 
   { id: "speech", section: "speech", labelKey: "speech.title", descriptionKey: "speech.description", keywords: ["voice", "dictation", "speech", "语音", "识别"] },

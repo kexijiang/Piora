@@ -944,6 +944,10 @@ Every locked package declares a license.
 | `zod-to-json-schema` | `3.25.2` | ISC | No |
 | `zwitch` | `2.0.4` | MIT | No |
 
+## Vendored screenshot editor
+
+react-screenshots from [nashaofu/screenshots](https://github.com/nashaofu/screenshots) is bundled in the desktop screenshot editor under the MIT license. The exact upstream revision, adaptation notes, and license are in [react-screenshots provenance](third_party/react-screenshots/SOURCE.md).
+
 ## Bundled Windows PowerShell runtime
 
 PowerShell 7.6.6 (Windows x64, MIT): [Microsoft release](https://github.com/PowerShell/PowerShell/releases/tag/v7.6.6). The complete self-contained ZIP includes .NET and module dependencies; their upstream license and third-party notices are preserved in resources/powershell. See [provenance](third_party/powershell/SOURCE.md).

@@ -1,10 +1,12 @@
 import { readComposerRecord, writeComposerRecord, readComposerDraftEntries, replaceComposerDraftEntries } from "./reply-storage";
 import type { ReplySpan } from "./reply-draft";
 import type { AttachedFile } from "./file-attachments";
+import { MAX_ATTACHED_IMAGES, MAX_ATTACHED_IMAGE_TOTAL_BYTES, getBase64DecodedByteLength, isBase64ImageWithinLimits } from "./image-attachments";
 
 export interface ChatDraftImage {
   data: string;
   mimeType: string;
+  captureId?: string;
 }
 
 export type ChatDraftFile = AttachedFile;
@@ -21,17 +23,19 @@ export interface ChatDraft {
 const drafts = new Map<string, ChatDraft>();
 const revisions = new Map<string, number>();
 const writes = new Map<string, Promise<void>>();
-const deferredPersistence = new Map<string, { count: number; changed: boolean; draft?: ChatDraft }>();
+const deferredPersistence = new Map<string, { count: number; changed: boolean }>();
 export const DRAFT_STORAGE_ERROR_EVENT = "piora:draft-storage-error";
-function persist(key: string, draft?: ChatDraft) {
+export const SCREENSHOT_DRAFT_UPDATED_EVENT = "piora:screenshot-draft-updated";
+function persist(key: string) {
   const deferred = deferredPersistence.get(key);
   if (deferred) {
     deferred.changed = true;
-    deferred.draft = draft;
     return;
   }
   if (typeof indexedDB === "undefined") return;
-  const writing = (writes.get(key) ?? Promise.resolve()).then(() => writeComposerRecord("drafts", key, draft)).catch(() => {
+  // Read the latest in-memory value when this queued write runs. An older
+  // composer render must never overwrite a screenshot committed ahead of it.
+  const writing = (writes.get(key) ?? Promise.resolve()).then(() => writeComposerRecord("drafts", key, drafts.get(key))).catch(() => {
     if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(DRAFT_STORAGE_ERROR_EVENT, { detail: key }));
   });
   writes.set(key, writing);
@@ -49,7 +53,7 @@ export function deferDraftPersistence(key: string): () => void {
     released = true;
     if (--deferred.count > 0) return;
     deferredPersistence.delete(key);
-    if (deferred.changed) persist(key, deferred.draft);
+    if (deferred.changed) persist(key);
   };
 }
 
@@ -106,7 +110,7 @@ export function setDraft(key: string, draft: ChatDraft): void {
     return;
   }
   drafts.set(key, cloneDraft(draft));
-  persist(key, cloneDraft(draft));
+  persist(key);
 }
 
 export function clearDraft(key: string): void {
@@ -114,4 +118,36 @@ export function clearDraft(key: string): void {
   removeImportedDraft(key);
   drafts.delete(key);
   persist(key);
+}
+
+/** A capture is acknowledged only after its complete draft reaches IndexedDB. */
+export async function appendCapturedImageToDraft(key: string, captureId: string, data: string): Promise<void> {
+  const image: ChatDraftImage = { data, mimeType: "image/png", captureId };
+  if (!isBase64ImageWithinLimits(image)) throw new Error("截图数据无效或超过附件大小限制");
+  if (typeof indexedDB === "undefined") throw new Error("草稿存储不可用");
+  const writing = (writes.get(key) ?? Promise.resolve()).then(async () => {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const current = await hydrateDraft(key) ?? { value: "", images: [], files: [] };
+      if (current.images.some((item) => item.captureId === captureId)) return;
+      const bytes = current.images.reduce((sum, item) => sum + (getBase64DecodedByteLength(item.data) ?? 0), 0)
+        + (getBase64DecodedByteLength(data) ?? 0);
+      if (current.images.length >= MAX_ATTACHED_IMAGES || bytes > MAX_ATTACHED_IMAGE_TOTAL_BYTES) {
+        throw new Error("聊天附件已达到图片数量或总大小限制");
+      }
+      const revision = revisions.get(key) ?? 0;
+      const next = { ...current, images: [...current.images, image] };
+      await writeComposerRecord("drafts", key, next, true);
+      if ((revisions.get(key) ?? 0) !== revision) continue;
+      revisions.set(key, revision + 1);
+      drafts.set(key, cloneDraft(next));
+      removeImportedDraft(key);
+      window.dispatchEvent(new CustomEvent(SCREENSHOT_DRAFT_UPDATED_EVENT, { detail: { key, captureId } }));
+      return;
+    }
+    throw new Error("草稿在截图保存期间持续变化，请重试添加");
+  });
+  const settled = writing.catch(() => {});
+  writes.set(key, settled);
+  try { await writing; }
+  finally { if (writes.get(key) === settled) writes.delete(key); }
 }

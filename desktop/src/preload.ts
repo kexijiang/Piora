@@ -233,6 +233,20 @@ const runtime = Object.freeze({
   setKeyboardShortcuts(bindings: Record<string, string | null>): Promise<boolean> {
     return ipcRenderer.invoke("pi:set-keyboard-shortcuts", bindings) as Promise<boolean>;
   },
+  screenshot: Object.freeze({
+    start: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke("pi:screenshot:start"),
+    setTarget: (target: { token: string; draftKey: string | null; available: boolean }): Promise<boolean> =>
+      ipcRenderer.invoke("pi:screenshot:target", target),
+    pending: (): Promise<{ captureId: string; targetDraftKey: string; mimeType: "image/png"; data: string } | null> =>
+      ipcRenderer.invoke("pi:screenshot:pending"),
+    ack: (captureId: string, success: boolean, message?: string): Promise<boolean> =>
+      ipcRenderer.invoke("pi:screenshot:ack", { captureId, success, message }),
+    onAttachment: (listener: (attachment: { captureId: string; targetDraftKey: string; mimeType: "image/png"; data: string }) => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, attachment: { captureId: string; targetDraftKey: string; mimeType: "image/png"; data: string }) => listener(attachment);
+      ipcRenderer.on("pi:screenshot:attachment", handler);
+      return () => ipcRenderer.removeListener("pi:screenshot:attachment", handler);
+    },
+  }),
 });
 
 // Keep the bridge intentionally small. Pi, filesystem, process execution, and

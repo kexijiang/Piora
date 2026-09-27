@@ -120,6 +120,7 @@ const requiredPaths = [
   "lib/team-tool-service.ts",
   ".next/server/app/desktop-pet/page_client-reference-manifest.js",
   ".next/server/app/desktop-clipboard/page_client-reference-manifest.js",
+  ".next/server/app/desktop-screenshot/page_client-reference-manifest.js",
   "node_modules/next/package.json",
   "node_modules/@modelcontextprotocol/sdk/package.json",
   "node_modules/@deveco/deveco-cli/package.json",
@@ -623,6 +624,13 @@ async function inspectElectronShell(webRoot, required) {
       throw new Error(`Packaged OpenPets attribution is stale or modified: ${fileName}`);
     }
   }
+  const screenshotAttributionRoot = join(projectRoot, "third_party", "react-screenshots");
+  const packagedScreenshotAttributionRoot = join(resourcesRoot, "licenses", "react-screenshots");
+  for (const fileName of ["LICENSE", "SOURCE.md"]) {
+    const sourceBytes = await readFile(join(screenshotAttributionRoot, fileName));
+    const packagedBytes = await readFile(join(packagedScreenshotAttributionRoot, fileName));
+    if (!sourceBytes.equals(packagedBytes)) throw new Error(`Packaged screenshot attribution is stale: ${fileName}`);
+  }
   for (const licensePath of [
     join(unpackedRoot, "LICENSE.electron.txt"),
     join(unpackedRoot, "LICENSES.chromium.html"),
@@ -958,6 +966,12 @@ async function main() {
     });
     if (!companionPageResponse.ok) {
       throw new Error(`Packaged companion page returned ${companionPageResponse.status}`);
+    }
+    const screenshotPageResponse = await fetch(`${origin}/desktop-screenshot`, {
+      headers: { "X-Pi-Desktop-Token": token },
+    });
+    if (!screenshotPageResponse.ok) {
+      throw new Error(`Packaged screenshot page returned ${screenshotPageResponse.status}`);
     }
     if (process.platform === "win32") {
       const headers = { "X-Pi-Desktop-Token": token };

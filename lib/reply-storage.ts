@@ -12,10 +12,10 @@ export async function readComposerRecord<T>(store: "drafts" | "replies", key: st
   const db = await database();
   return new Promise((resolve, reject) => { const req = db.transaction(store).objectStore(store).get(key); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); });
 }
-export async function writeComposerRecord(store: "drafts" | "replies", key: string, value: unknown): Promise<void> {
+export async function writeComposerRecord(store: "drafts" | "replies", key: string, value: unknown, strict = false): Promise<void> {
   const db = await database();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(store, "readwrite"), table = tx.objectStore(store);
+    const tx = db.transaction(store, "readwrite", strict ? { durability: "strict" } : undefined), table = tx.objectStore(store);
     if (value === undefined) table.delete(key);
     else if (store === "replies") table.put(value);
     else table.put(value, key);

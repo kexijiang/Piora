@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { restoreClientBackup, type ClientBackup } from "@/lib/app-backup-client";
 
 function remapClient(snapshot: ClientBackup, mappings: Array<{ from: string; to: string }>): ClientBackup {
@@ -29,9 +30,11 @@ async function restore() {
   window.location.reload(); return true;
 }
 export function ApplicationRestoreGate({ children }: { children: React.ReactNode }) {
+  const standaloneScreenshot = usePathname() === "/desktop-screenshot";
   const [ready, setReady] = useState(false), [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
-  useEffect(() => { let active = true; startup ??= restore(); void startup.then((reloading) => { if (active && !reloading) setReady(true); }).catch((error) => { startup = undefined; if (active) setError(String(error)); }); return () => { active = false; }; }, [retry]);
+  useEffect(() => { if (standaloneScreenshot) return; let active = true; startup ??= restore(); void startup.then((reloading) => { if (active && !reloading) setReady(true); }).catch((error) => { startup = undefined; if (active) setError(String(error)); }); return () => { active = false; }; }, [retry, standaloneScreenshot]);
+  if (standaloneScreenshot) return children;
   if (ready) return children;
   return <div role={error ? "alert" : "status"} style={{ margin: "auto", padding: 24, color: "var(--text)", fontSize: "var(--text-sm)" }}>{error ? <>恢复界面数据失败 / Could not restore interface data: {error}<p><button onClick={() => { setError(""); setRetry(retry + 1); }}>重试 / Retry</button></p></> : "正在准备应用数据… / Preparing application data…"}</div>;
 }

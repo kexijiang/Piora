@@ -4,6 +4,12 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### Windows 屏幕截图
+
+- 新增可在设置 > 快捷键中修改的全局截图快捷键（默认 Ctrl+Alt+A），并提供应用菜单、命令面板和聊天附件入口；快捷键被系统占用时恢复之前可用的设置。
+- 支持跨显示器框选、选区放大镜、单屏原位编辑，以及矩形、椭圆、箭头、画笔、文字、马赛克和撤销/重做；完成后可复制 PNG、另存为 PNG，或添加到当前聊天草稿而不发送。
+- 截图附件在草稿持久保存后才确认完成；保存对话框取消时保留选区和标注。截图编辑器使用保留 MIT 许可证与来源记录的开源组件。
+
 ### XiaoYiHarness 官网
 
 - 官网新增 Vercel 部署入口与 Tailwind CSS 构建配置，公开地址为 https://xiaoyiharness.vercel.app；保留现有 Sites 地址与构建方式，并补充两种托管方式的发布说明。

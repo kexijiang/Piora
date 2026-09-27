@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useApplicationShortcuts } from "@/hooks/useApplicationShortcuts";
 import { useI18n } from "@/hooks/useI18n";
 import {
@@ -40,7 +40,7 @@ const SHORTCUT_GROUPS = [
     titleKey: "shortcuts.group.system",
     descriptionKey: "shortcuts.group.systemDescription",
     icon: "sparkles",
-    includes: (id: ApplicationShortcutId) => id.startsWith("companion.") || id === "settings.general",
+    includes: (id: ApplicationShortcutId) => id.startsWith("companion.") || id === "settings.general" || id === "capture.screenshot",
   },
 ] as const;
 
@@ -48,8 +48,14 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
   const { t } = useI18n();
   const { bindings, overrides, setBinding, resetBinding, resetAll } = useApplicationShortcuts();
   const [recording, setRecording] = useState<ApplicationShortcutId | null>(null);
-  const [error, setError] = useState<{ type: "conflict"; conflict: ApplicationShortcutId } | { type: "reserved"; binding: string } | null>(null);
+  const [error, setError] = useState<{ type: "conflict"; conflict: ApplicationShortcutId } | { type: "reserved"; binding: string } | { type: "registration" } | null>(null);
+  useEffect(() => {
+    const failed = () => setError({ type: "registration" });
+    window.addEventListener("piora:keyboard-shortcut-registration-error", failed);
+    return () => window.removeEventListener("piora:keyboard-shortcut-registration-error", failed);
+  }, []);
   const mac = isMacPlatform(window.piDesktop?.platform);
+  const hasScreenshot = Boolean(window.piDesktop?.screenshot);
 
   const capture = (id: ApplicationShortcutId, event: ReactKeyboardEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -104,7 +110,7 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
       </section> : null}
       <div className={styles.groups}>
         {SHORTCUT_GROUPS.map((group) => {
-          const items = APPLICATION_SHORTCUTS.filter((item) => group.includes(item.id));
+          const items = APPLICATION_SHORTCUTS.filter((item) => group.includes(item.id) && (item.id !== "capture.screenshot" || hasScreenshot));
           return (
             <section className={styles.group} key={group.id} aria-labelledby={`shortcut-group-${group.id}`}>
               <div className={styles.groupHeading}>
@@ -122,7 +128,7 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
                   const formatted = formatShortcutBinding(bindings[item.id], mac);
                   const keys = formatted ? formatted.split("+") : [];
                   return (
-                    <div data-settings-id={item.titleKey === "shortcuts.commandPalette" ? "shortcuts.palette" : item.titleKey === "commands.searchChats" ? "shortcuts.search" : item.id === "composer.voiceInput" ? "shortcuts.voice" : undefined} className={styles.row} data-modified={isChanged || undefined} key={item.id}>
+                    <div data-settings-id={item.id === "capture.screenshot" ? "shortcuts.screenshot" : item.titleKey === "shortcuts.commandPalette" ? "shortcuts.palette" : item.titleKey === "commands.searchChats" ? "shortcuts.search" : item.id === "composer.voiceInput" ? "shortcuts.voice" : undefined} className={styles.row} data-modified={isChanged || undefined} key={item.id}>
                       <div className={styles.copy}>
                         <strong>{t(item.titleKey)}{isChanged ? <span className={styles.modifiedDot} aria-label={t("shortcuts.modified")} /> : null}</strong>
                         <span>{t(item.descriptionKey)}</span>
@@ -161,7 +167,9 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
       </div>
       <div className={`${styles.message} ${error ? styles.error : ""}`} role="status">
         <AliIcon name={error ? "alert" : "info"} size={15} />
-        {error?.type === "conflict"
+        {error?.type === "registration"
+          ? t("shortcuts.registrationFailed")
+          : error?.type === "conflict"
           ? t("shortcuts.conflict", { shortcut: formatShortcutBinding(bindings[error.conflict], mac), command: titleFor(error.conflict) })
           : error?.type === "reserved"
             ? t("shortcuts.reserved", { shortcut: formatShortcutBinding(error.binding, mac) })

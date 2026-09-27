@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { createSmokeSessionProbe } from "./smoke-session-probe.js";
 import { SystemLauncher } from "./system-launcher";
 import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
+import { ScreenshotController } from "./screenshot-controller.js";
 import { copyHarmonyMedia } from "./harmony-media-clipboard.js";
 import { pathToFileURL } from "node:url";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
@@ -174,6 +175,8 @@ let companionWindow: BrowserWindow | null = null;
 let companionBubbleWindow: BrowserWindow | null = null;
 let companionPanelWindow: BrowserWindow | null = null;
 let clipboardController: ClipboardController | undefined;
+let screenshotController: ScreenshotController | undefined;
+let screenshotShortcutAccelerator: string | undefined;
 let logger: FileLogger | undefined = new FileLogger(app.getPath("userData"));
 let startupStage = "initializing-desktop";
 const desktopStartedAt = Date.now();
@@ -479,6 +482,33 @@ function menuAcceleratorOption(id: DesktopShortcutId): { accelerator: string } |
   return accelerator ? { accelerator } : {};
 }
 
+async function startScreenshotFromDesktop(): Promise<void> {
+  const result = await screenshotController?.start();
+  if (!result || result.ok || result.error === "截图窗口已经打开") return;
+  logger?.warn("Screenshot could not start", result.error);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    await dialog.showMessageBox(mainWindow, {
+      type: "error", title: "Piora", message: result.error ?? "无法启动截图",
+      buttons: [app.getLocale().toLowerCase().startsWith("zh") ? "确定" : "OK"],
+    });
+  }
+}
+
+function syncScreenshotShortcut(binding: string | null): boolean {
+  const next = toElectronAccelerator(binding);
+  if (next === screenshotShortcutAccelerator && (!next || globalShortcut.isRegistered(next))) return true;
+  const previous = screenshotShortcutAccelerator;
+  if (previous) globalShortcut.unregister(previous);
+  const activate = () => { void startScreenshotFromDesktop().catch((error) => logger?.warn("Screenshot failed", error)); };
+  if (next && !globalShortcut.register(next, activate)) {
+    screenshotShortcutAccelerator = previous && globalShortcut.register(previous, activate) ? previous : undefined;
+    if (previous && !screenshotShortcutAccelerator) logger?.warn("Previous screenshot shortcut could not be restored", { previous });
+    return false;
+  }
+  screenshotShortcutAccelerator = next;
+  return true;
+}
+
 function registerKeyboardShortcutHandler(): void {
   ipcMain.removeHandler(KEYBOARD_SHORTCUTS_CHANNEL);
   ipcMain.handle(KEYBOARD_SHORTCUTS_CHANNEL, (event, requested: unknown): boolean => {
@@ -488,11 +518,20 @@ function registerKeyboardShortcutHandler(): void {
       logger?.warn("Rejected invalid keyboard shortcut settings from renderer");
       return false;
     }
+    const previous = keyboardShortcutBindings;
+    if (!syncScreenshotShortcut(parsed["capture.screenshot"])) return false;
     keyboardShortcutBindings = parsed;
     const companionShortcutRegistered = syncCompanionPanelShortcut();
     const clipboardShortcutRegistered = clipboardController?.setShortcut(toElectronAccelerator(parsed["companion.clipboard"])) ?? true;
+    if (!companionShortcutRegistered || !clipboardShortcutRegistered) {
+      keyboardShortcutBindings = previous;
+      syncScreenshotShortcut(previous["capture.screenshot"]);
+      syncCompanionPanelShortcut();
+      clipboardController?.setShortcut(toElectronAccelerator(previous["companion.clipboard"]));
+      return false;
+    }
     installApplicationMenu();
-    return companionShortcutRegistered && clipboardShortcutRegistered;
+    return true;
   });
 }
 
@@ -825,7 +864,7 @@ function installApplicationMenu(): void {
     newSession: "新聊天", openFolder: "打开文件夹", close: "关闭", quit: brandText("退出 Piora"),
     undo: "撤销", redo: "重做", cut: "剪切", copy: "复制", paste: "粘贴", delete: "删除", selectAll: "全选", settings: "设置",
     sidebar: "切换侧栏", files: "切换文件面板", commands: "打开命令面板", review: "打开审查面板", browser: "浏览器", companion: "显示/隐藏桌面宠物", find: "搜索聊天记录",
-    actualSize: "实际大小", zoomIn: "放大", zoomOut: "缩小", fullscreen: "切换全屏",
+    actualSize: "实际大小", zoomIn: "放大", zoomOut: "缩小", fullscreen: "切换全屏", screenshot: "截图",
     documentation: "文档", about: brandText("关于 Piora"), aboutDetail: "基于 Pi Agent 与 pi-web 的开源桌面应用。",
     checkUpdates: "检查更新…", checkingUpdates: "正在检查更新…", updateAvailable: "有更新",
     downloadingUpdate: "正在下载更新", restartToInstall: "安装并重启", retryUpdate: "检查更新失败，点击重试",
@@ -835,7 +874,7 @@ function installApplicationMenu(): void {
     newSession: "New chat", openFolder: "Open folder", close: "Close", quit: brandText("Quit Piora"),
     undo: "Undo", redo: "Redo", cut: "Cut", copy: "Copy", paste: "Paste", delete: "Delete", selectAll: "Select all", settings: "Settings",
     sidebar: "Toggle sidebar", files: "Toggle Files panel", commands: "Open Commands panel", review: "Open Review panel", browser: "Browser", companion: "Show/hide desktop pet", find: "Search conversations",
-    actualSize: "Actual size", zoomIn: "Zoom in", zoomOut: "Zoom out", fullscreen: "Toggle full screen",
+    actualSize: "Actual size", zoomIn: "Zoom in", zoomOut: "Zoom out", fullscreen: "Toggle full screen", screenshot: "Screenshot",
     documentation: "Documentation", about: brandText("About Piora"), aboutDetail: "An open-source desktop application built with Pi Agent and pi-web.",
     checkUpdates: "Check for updates…", checkingUpdates: "Checking for updates…", updateAvailable: "Update available",
     downloadingUpdate: "Downloading update", restartToInstall: "Install and restart", retryUpdate: "Update check failed — retry",
@@ -907,6 +946,7 @@ function installApplicationMenu(): void {
         { label: copy.review, ...menuAcceleratorOption("panel.review"), click: () => sendMenuAction("open-review") },
         { label: copy.browser, ...menuAcceleratorOption("panel.browser"), click: () => sendMenuAction("open-browser") },
         { label: copy.companion, click: () => sendMenuAction("toggle-companion") },
+        { label: copy.screenshot, click: () => { void startScreenshotFromDesktop(); } },
         { type: "separator" },
         { label: copy.find, ...menuAcceleratorOption("navigate.searchChats"), click: () => sendMenuAction("search-chats") },
         { type: "separator" },
@@ -2028,6 +2068,7 @@ function updateTrayMenu(): void {
     { label: isChinese ? brandText("显示 Piora") : brandText("Show Piora"), click: () => focusMainWindow() },
     { label: isChinese ? "新任务" : "New task", click: () => focusMainWindow("new-session") },
     { label: isChinese ? "打开随身舱" : "Open companion panel", click: () => showCompanionPanel() },
+    { label: isChinese ? "截图" : "Screenshot", click: () => { void startScreenshotFromDesktop(); } },
     {
       label: companionShouldBeVisible ? (isChinese ? "隐藏桌宠" : "Hide companion") : (isChinese ? "显示桌宠" : "Show companion"),
       click: () => mainWindow?.webContents.send("pi:menu-action", "toggle-companion"),
@@ -2790,6 +2831,12 @@ async function startApplication(): Promise<void> {
   // worker off the critical path to the main application window.
   void clipboardController.start().catch(error => logger?.warn("Clipboard startup failed; application remains available", error));
   clipboardController.setShortcut(toElectronAccelerator(keyboardShortcutBindings["companion.clipboard"]));
+  screenshotController = new ScreenshotController({
+    host: mainWindow, origin: serverUrl, partition: DESKTOP_PARTITION,
+    trustedMain: isTrustedMainWindowSender,
+    onError: error => logger?.warn("Screenshot failed", error),
+  });
+  if (!syncScreenshotShortcut(keyboardShortcutBindings["capture.screenshot"])) logger?.warn("Default screenshot shortcut is unavailable");
   registerFileShellHandlers();
   installDisplayReconciliation();
 
@@ -2808,6 +2855,10 @@ async function startApplication(): Promise<void> {
 }
 
 async function stopApplication(): Promise<void> {
+  screenshotController?.dispose();
+  screenshotController = undefined;
+  if (screenshotShortcutAccelerator) globalShortcut.unregister(screenshotShortcutAccelerator);
+  screenshotShortcutAccelerator = undefined;
   await clipboardController?.stop().catch(error => { if (error instanceof ClipboardDraftFlushError) throw error; logger?.warn("Clipboard shutdown failed", error); });
   if (scheduledUpdateTimer) clearInterval(scheduledUpdateTimer);
   scheduledUpdateTimer = undefined;

@@ -79,6 +79,11 @@ extraResources:
     filter:
       - "LICENSE"
       - "SOURCE.md"
+  - from: ../third_party/react-screenshots
+    to: licenses/react-screenshots
+    filter:
+      - "LICENSE"
+      - "SOURCE.md"
 
 win:
   icon: icon.ico

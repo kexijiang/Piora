@@ -84,6 +84,7 @@ export const GUI_COMMANDS: Command[] = [
   command("panel.design", "panel", "commands.openDesign", { needs: "project" }),
   command("composer.voiceInput", "navigate", "commands.voiceInput", { needs: "project" }),
   command("companion.togglePanel", "panel", "commands.openCompanionPanel"),
+  command("capture.screenshot", "panel", "commands.screenshot"),
   command("panel.toggleSidebar", "panel", "commands.toggleSidebar"),
   command("panel.close", "panel", "commands.closePanel"),
   command("settings.general", "settings", "commands.settings"),
