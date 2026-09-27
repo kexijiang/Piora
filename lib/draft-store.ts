@@ -23,19 +23,33 @@ export interface ChatDraft {
 const drafts = new Map<string, ChatDraft>();
 const revisions = new Map<string, number>();
 const writes = new Map<string, Promise<void>>();
-const deferredPersistence = new Map<string, { count: number; changed: boolean }>();
+const deferredPersistence = new Map<string, { count: number; changed: boolean; draft?: ChatDraft }>();
+const capturedImages = new Map<string, Map<string, ChatDraftImage>>();
+const announcedCaptures = new Set<string>();
 export const DRAFT_STORAGE_ERROR_EVENT = "piora:draft-storage-error";
 export const SCREENSHOT_DRAFT_UPDATED_EVENT = "piora:screenshot-draft-updated";
-function persist(key: string) {
+function announceCapture(key: string, captureId: string): void {
+  if (announcedCaptures.has(captureId)) return;
+  announcedCaptures.add(captureId);
+  window.dispatchEvent(new CustomEvent(SCREENSHOT_DRAFT_UPDATED_EVENT, { detail: { key, captureId } }));
+}
+function persist(key: string, draft?: ChatDraft) {
   const deferred = deferredPersistence.get(key);
   if (deferred) {
     deferred.changed = true;
+    deferred.draft = draft;
     return;
   }
   if (typeof indexedDB === "undefined") return;
-  // Read the latest in-memory value when this queued write runs. An older
-  // composer render must never overwrite a screenshot committed ahead of it.
-  const writing = (writes.get(key) ?? Promise.resolve()).then(() => writeComposerRecord("drafts", key, drafts.get(key))).catch(() => {
+  const writing = (writes.get(key) ?? Promise.resolve()).then(() => {
+    // Preserve the requested snapshot for prompt recovery. A screenshot may
+    // have committed ahead of this queued write, so include only captures
+    // that the composer has not explicitly removed.
+    const missing = draft ? [...(capturedImages.get(key)?.values() ?? [])]
+      .filter((image) => !draft.images.some((item) => item.captureId === image.captureId)) : [];
+    const value = draft && missing.length ? { ...draft, images: [...draft.images, ...missing] } : draft;
+    return writeComposerRecord("drafts", key, value);
+  }).catch(() => {
     if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(DRAFT_STORAGE_ERROR_EVENT, { detail: key }));
   });
   writes.set(key, writing);
@@ -53,7 +67,7 @@ export function deferDraftPersistence(key: string): () => void {
     released = true;
     if (--deferred.count > 0) return;
     deferredPersistence.delete(key);
-    if (deferred.changed) persist(key);
+    if (deferred.changed) persist(key, deferred.draft);
   };
 }
 
@@ -96,6 +110,11 @@ function isEmptyDraft(draft: ChatDraft): boolean {
   return !draft.value && draft.images.length === 0 && draft.files.length === 0;
 }
 
+function forgetAllCapturedImages(key: string): void {
+  for (const captureId of capturedImages.get(key)?.keys() ?? []) announcedCaptures.delete(captureId);
+  capturedImages.delete(key);
+}
+
 export function getDraft(key: string): ChatDraft | null {
   const draft = drafts.get(key) ?? importedDrafts().find(([id]) => id === key)?.[1];
   return draft ? cloneDraft(draft) : null;
@@ -106,18 +125,27 @@ export function setDraft(key: string, draft: ChatDraft): void {
   removeImportedDraft(key);
   if (isEmptyDraft(draft)) {
     drafts.delete(key);
+    forgetAllCapturedImages(key);
     persist(key);
     return;
   }
   drafts.set(key, cloneDraft(draft));
-  persist(key);
+  persist(key, cloneDraft(draft));
 }
 
 export function clearDraft(key: string): void {
   revisions.set(key, (revisions.get(key) ?? 0) + 1);
   removeImportedDraft(key);
   drafts.delete(key);
+  forgetAllCapturedImages(key);
   persist(key);
+}
+
+export function forgetCapturedImageFromDraft(key: string, captureId: string): void {
+  const captures = capturedImages.get(key);
+  captures?.delete(captureId);
+  announcedCaptures.delete(captureId);
+  if (captures?.size === 0) capturedImages.delete(key);
 }
 
 /** A capture is acknowledged only after its complete draft reaches IndexedDB. */
@@ -128,7 +156,14 @@ export async function appendCapturedImageToDraft(key: string, captureId: string,
   const writing = (writes.get(key) ?? Promise.resolve()).then(async () => {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const current = await hydrateDraft(key) ?? { value: "", images: [], files: [] };
-      if (current.images.some((item) => item.captureId === captureId)) return;
+      const existing = current.images.find((item) => item.captureId === captureId);
+      if (existing) {
+        const captures = capturedImages.get(key) ?? new Map<string, ChatDraftImage>();
+        captures.set(captureId, existing);
+        capturedImages.set(key, captures);
+        announceCapture(key, captureId);
+        return;
+      }
       const bytes = current.images.reduce((sum, item) => sum + (getBase64DecodedByteLength(item.data) ?? 0), 0)
         + (getBase64DecodedByteLength(data) ?? 0);
       if (current.images.length >= MAX_ATTACHED_IMAGES || bytes > MAX_ATTACHED_IMAGE_TOTAL_BYTES) {
@@ -140,8 +175,11 @@ export async function appendCapturedImageToDraft(key: string, captureId: string,
       if ((revisions.get(key) ?? 0) !== revision) continue;
       revisions.set(key, revision + 1);
       drafts.set(key, cloneDraft(next));
+      const captures = capturedImages.get(key) ?? new Map<string, ChatDraftImage>();
+      captures.set(captureId, image);
+      capturedImages.set(key, captures);
       removeImportedDraft(key);
-      window.dispatchEvent(new CustomEvent(SCREENSHOT_DRAFT_UPDATED_EVENT, { detail: { key, captureId } }));
+      announceCapture(key, captureId);
       return;
     }
     throw new Error("草稿在截图保存期间持续变化，请重试添加");

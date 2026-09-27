@@ -84,7 +84,7 @@
   height: 26px;
   line-height: 26px;
   color: #333;
-  font-size: 18px;
+  font-size: 1.125rem;
   text-align: center;
   margin: 0 3px;
   vertical-align: middle;
@@ -146,7 +146,7 @@
   transform: translateX(-50%);
   background-color: rgba(0, 0, 0, 0.8);
   color: #fff;
-  font-size: 12px;
+  font-size: .75rem;
   padding: 3px 4px;
   border-radius: 2px;
   white-space: nowrap;
@@ -365,7 +365,7 @@
 .screenshots-magnifier-footer {
   height: 40px;
   color: #fff;
-  font-size: 11px;
+  font-size: .6875rem;
   background-color: #5f5e5e;
   padding: 4px;
   white-space: nowrap;
@@ -485,6 +485,6 @@
 .screenshots-button .icon-attach::before {
   content: "+";
   font-family: Arial, sans-serif;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 600;
 }

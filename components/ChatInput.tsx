@@ -11,7 +11,7 @@ import { useAnchoredMenuPosition } from "@/hooks/useAnchoredMenuPosition";
 import { readPromptOptimizerModel, readPromptOptimizerSystemPrompt } from "@/lib/prompt-optimizer-settings";
 import type { AttachedFile, BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
 import { storeBrowserFiles } from "@/lib/file-attachments";
-import { clearDraft, getDraft, setDraft, hydrateDraft, deferDraftPersistence, DRAFT_STORAGE_ERROR_EVENT, SCREENSHOT_DRAFT_UPDATED_EVENT, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
+import { clearDraft, forgetCapturedImageFromDraft, getDraft, setDraft, hydrateDraft, deferDraftPersistence, DRAFT_STORAGE_ERROR_EVENT, SCREENSHOT_DRAFT_UPDATED_EVENT, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
 import {
   MAX_ATTACHED_IMAGE_BYTES,
   MAX_ATTACHED_IMAGE_TOTAL_BYTES,
@@ -533,6 +533,7 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
     setAttachedImages((prev) => {
       const next = [...prev];
       const [removed] = next.splice(index, 1);
+      if (removed?.captureId && draftKeyRef.current) forgetCapturedImageFromDraft(draftKeyRef.current, removed.captureId);
       if (removed) revokeImagePreview(removed);
       return next;
     });
@@ -710,6 +711,8 @@ export const ChatInput = forwardRef<ChatInputHandle, Props>(function ChatInput({
 
   const clearImages = useCallback(() => {
     setAttachedImages((prev) => {
+      const key = draftKeyRef.current;
+      if (key) prev.forEach((image) => { if (image.captureId) forgetCapturedImageFromDraft(key, image.captureId); });
       prev.forEach(revokeImagePreview);
       return [];
     });
