@@ -4,7 +4,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { Compartment, EditorState, RangeSet, RangeSetBuilder, StateEffect, StateField } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirror/commands";
 import { autocompletion, closeBrackets, closeBracketsKeymap, type CompletionSource } from "@codemirror/autocomplete";
-import { HighlightStyle, LanguageDescription, bracketMatching, codeFolding, defaultHighlightStyle, foldGutter, foldKeymap, indentOnInput, indentUnit, syntaxHighlighting } from "@codemirror/language";
+import { HighlightStyle, LanguageDescription, bracketMatching, codeFolding, defaultHighlightStyle, foldedRanges, foldGutter, foldKeymap, indentOnInput, indentUnit, syntaxHighlighting, unfoldEffect } from "@codemirror/language";
 import { languages } from "@codemirror/language-data";
 import { openSearchPanel, search, searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { EditorView, GutterMarker, drawSelection, gutter, highlightActiveLine, highlightActiveLineGutter, highlightSpecialChars, hoverTooltip, keymap, lineNumbers } from "@codemirror/view";
@@ -134,9 +134,13 @@ export const FileCodeEditor = forwardRef<FileCodeEditorHandle, Props>(function F
       const target = view.state.doc.line(Math.max(1, Math.min(line, view.state.doc.lines)));
       const position = column ? Math.min(target.to, target.from + Math.max(0, column - 1)) : target.from;
       const end = column ? Math.min(target.to, position + (view.state.doc.sliceString(position, target.to).match(/^[\w$]+/)?.[0].length ?? 0)) : target.to;
+      const effects: StateEffect<unknown>[] = [EditorView.scrollIntoView(position, { y: "center" })];
+      foldedRanges(view.state).between(target.from, target.to, (from, to) => {
+        effects.push(unfoldEffect.of({ from, to }));
+      });
       view.dispatch({
         selection: { anchor: position, head: end },
-        effects: EditorView.scrollIntoView(position, { y: "center" }),
+        effects,
       });
       view.focus();
     },

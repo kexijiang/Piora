@@ -50,6 +50,7 @@
 @keyframes diffContextSpin { to { transform: rotate(360deg); } }
 .line { display: grid; grid-template-columns: 46px 46px 20px minmax(max-content, 1fr); min-height: 23px; line-height: 23px; content-visibility: auto; contain-intrinsic-block-size: 23px; }
 .line:hover { background-image: linear-gradient(color-mix(in srgb, var(--text) 2.5%, transparent), color-mix(in srgb, var(--text) 2.5%, transparent)); }
+.root [data-revealed="true"] { box-shadow: inset 3px 0 var(--accent); outline: 1px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: -1px; }
 .lineNumber { padding: 0 7px; text-align: right; color: color-mix(in srgb, var(--text-dim) 78%, transparent); background: color-mix(in srgb, var(--surface-muted) 46%, transparent); user-select: none; border-right: 1px solid color-mix(in srgb, var(--border) 54%, transparent); font-variant-numeric: tabular-nums; }
 .marker { color: var(--text-dim); text-align: center; user-select: none; }
 .code { padding: 0 12px 0 6px; white-space: pre; }

@@ -34,6 +34,7 @@ import { DiffView } from "./DiffView";
 import { FileCodeEditor, type FileCodeEditorHandle } from "./FileCodeEditor";
 import type { CodeIntelligenceMode } from "@/lib/code-intelligence-types";
 import { getDraftFileLineChanges, getFileLineSeparator, getGitFileLineChanges, normalizeFileLineEndings, preserveFileLineEndings } from "@/lib/file-editor-line-changes";
+import { getAdjacentChangeIndex, getCurrentChangeIndex, getDiffChangeRanges, getEditorChangeRanges } from "@/lib/file-change-navigation";
 import { LazySyntaxHighlighter as SyntaxHighlighter } from "./LazySyntaxHighlighter";
 
 interface Props {
@@ -741,6 +742,10 @@ function TextFileViewer({
   const [cursorPosition, setCursorPosition] = useState({ line: 1, column: 1 });
   const [intelligence, setIntelligence] = useState<{ mode: CodeIntelligenceMode; message?: string } | null>(null);
   const [editorScrollTop, setEditorScrollTop] = useState(0);
+  const [changeLine, setChangeLine] = useState<number | null>(null);
+  const [diffChange, setDiffChange] = useState<{ patch: string; line: number; key: number } | null>(null);
+  const [changeReveal, setChangeReveal] = useState<{ line: number } | null>(null);
+  const appliedChangeRevealRef = useRef<typeof changeReveal>(null);
   const esRef = useRef<EventSource | null>(null);
   const editorRef = useRef<FileCodeEditorHandle | null>(null);
   const conflictConfirmRef = useRef<HTMLButtonElement | null>(null);
@@ -880,6 +885,9 @@ function TextFileViewer({
     setConflictDecision(null);
     setCursorPosition({ line: 1, column: 1 });
     setEditorScrollTop(0);
+    setChangeLine(null);
+    setDiffChange(null);
+    setChangeReveal(null);
     loadedRef.current = false;
     dirtyRef.current = false;
     savingRef.current = false;
@@ -977,6 +985,51 @@ function TextFileViewer({
     () => computeDraftLineChanges(gitEditorLineChanges, savedContent, draftContent),
     [computeDraftLineChanges, gitEditorLineChanges, savedContent, draftContent],
   );
+  const editorChangeRanges = useMemo(() => getEditorChangeRanges(editorLineChanges), [editorLineChanges]);
+  const diffChangeRanges = useMemo(() => getDiffChangeRanges(gitDiff?.patch ?? ""), [gitDiff?.patch]);
+  const navigatingDiff = isDeletedDiff || displayMode === "diff";
+  const diffReveal = diffChange?.patch === gitDiff?.patch ? diffChange : null;
+  const changeRanges = navigatingDiff ? diffChangeRanges : editorChangeRanges;
+  const changePosition = navigatingDiff ? diffReveal?.line ?? null : changeLine;
+  const currentChangeIndex = getCurrentChangeIndex(changeRanges, changePosition);
+  const changeCountLabel = !changeRanges.length ? t("fileEditor.noChanges")
+    : t(currentChangeIndex < 0 ? "fileEditor.changeTotal" : "fileEditor.changePosition", { current: currentChangeIndex + 1, total: changeRanges.length });
+
+  const navigateChange = (direction: -1 | 1) => {
+    const index = getAdjacentChangeIndex(changeRanges, changePosition, direction);
+    if (index < 0) return;
+    const line = changeRanges[index].from;
+    if (navigatingDiff) {
+      setDiffChange((previous) => ({ patch: gitDiff!.patch!, line, key: (previous?.key ?? 0) + 1 }));
+    } else {
+      setChangeLine(line);
+      setChangeReveal({ line });
+      if (displayMode === "preview") setDisplayMode("edit");
+      if (displayMode === "split") setCompactSplitSide("edit");
+    }
+  };
+
+  useEffect(() => {
+    if (!active || !changeReveal || appliedChangeRevealRef.current === changeReveal) return;
+    let highlighted: HTMLElement | null = null;
+    let highlightTimer: ReturnType<typeof setTimeout> | undefined;
+    const frame = requestAnimationFrame(() => {
+      if (editorRef.current) editorRef.current.revealLine(changeReveal.line);
+      else {
+        highlighted = contentRef.current?.querySelector<HTMLElement>(`.file-source-line[data-line-number="${changeReveal.line}"]`) ?? null;
+        if (!highlighted) return;
+        highlighted.scrollIntoView({ block: "center" });
+        highlighted.classList.add("search-reveal-line");
+        highlightTimer = setTimeout(() => highlighted?.classList.remove("search-reveal-line"), 1600);
+      }
+      appliedChangeRevealRef.current = changeReveal;
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(highlightTimer);
+      highlighted?.classList.remove("search-reveal-line");
+    };
+  }, [active, changeReveal, displayMode, compactSplitSide]);
 
   useEffect(() => {
     if (!hasGitDiff && displayMode === "diff") setDisplayMode("source");
@@ -1223,7 +1276,7 @@ function TextFileViewer({
                   draftContentRef.current = nextValue;
                   setSaveError(null);
                 }}
-                onCursorChange={setCursorPosition}
+                onCursorChange={(position) => { setCursorPosition(position); setChangeLine(position.line); }}
                 onScrollChange={setEditorScrollTop}
                 onSave={() => void saveFile(false)}
                 onNavigate={(target) => onOpenFile?.(target.filePath, { line: target.line, column: target.column })}
@@ -1385,6 +1438,17 @@ function TextFileViewer({
           {effectiveDisplayMode === "split" && viewerWidth < 650 ? <div className="file-viewer-mode-switch" aria-label={t("files.splitPreview")}><button type="button" aria-pressed={compactSplitSide === "edit"} onClick={() => setCompactSplitSide("edit")}>{t("i18n.edit")}</button><button type="button" aria-pressed={compactSplitSide === "preview"} onClick={() => setCompactSplitSide("preview")}>{t("i18n.preview")}</button></div> : null}
 
           <div className="file-viewer-actions">
+            <div className={editorStyles.changeNavigation} role="group" aria-label={t("fileEditor.changeNavigation")}>
+              <span className={editorStyles.changeCount} role="status" aria-live="polite" aria-atomic="true"
+                title={changeCountLabel}>
+                <span aria-hidden="true">{currentChangeIndex + 1}/{changeRanges.length}</span>
+                <span className="sr-only">{changeCountLabel}</span>
+              </span>
+              <button type="button" className="file-viewer-icon-button" onClick={() => navigateChange(-1)} disabled={!changeRanges.length}
+                title={t("fileEditor.previousChange")} aria-label={t("fileEditor.previousChange")}><AliIcon name="arrowup" size={14} /></button>
+              <button type="button" className="file-viewer-icon-button" onClick={() => navigateChange(1)} disabled={!changeRanges.length}
+                title={t("fileEditor.nextChange")} aria-label={t("fileEditor.nextChange")}><AliIcon name="arrowdown" size={14} /></button>
+            </div>
             {effectiveDisplayMode === "source" && (
               <>
                 <button
@@ -1534,7 +1598,7 @@ function TextFileViewer({
             ? <div className={editorStyles.splitPreviewLayout}><div className={editorStyles.splitEditorPane}>{renderEditor()}</div><div className={editorStyles.splitPreviewPane}>{renderPreview(true)}</div></div>
             : compactSplitSide === "edit" ? renderEditor() : renderPreview(true)
         ) : effectiveDisplayMode === "diff" && hasGitDiff ? (
-          <DiffView patch={gitDiff.patch!} />
+          <DiffView patch={gitDiff.patch!} revealDiffLine={diffReveal} />
         ) : (isHtml || isMarkdown) && effectiveDisplayMode === "preview" ? (
           renderPreview()
         ) : (

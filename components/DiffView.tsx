@@ -25,6 +25,8 @@ export interface DiffViewProps {
   onExpandContext?: () => void;
   contextLoading?: boolean;
   totalLines?: number;
+  /** One-based row in the parsed patch, including removed rows. */
+  revealDiffLine?: { line: number; key: number } | null;
 }
 
 const HIGHLIGHT_LIMIT = 600;
@@ -43,6 +45,7 @@ export function DiffView({
   onExpandContext,
   contextLoading = false,
   totalLines,
+  revealDiffLine,
 }: DiffViewProps) {
   const { t } = useI18n();
   const parsed = useMemo(() => parseUnifiedDiff(patch), [patch]);
@@ -51,9 +54,11 @@ export function DiffView({
   const requestedLines = parsed.lineCount <= DIFF_PROGRESSIVE_THRESHOLD
     ? parsed.lineCount
     : renderBudget.patch === patch ? renderBudget.lines : DIFF_RENDER_BATCH;
-  const renderWindow = getDiffRenderWindow(parsed.lineCount, requestedLines);
+  const renderWindow = getDiffRenderWindow(parsed.lineCount, Math.max(requestedLines, revealDiffLine?.line ?? 0));
   const limited = renderWindow.remaining > 0;
   const loadMoreRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const appliedRevealRef = useRef<typeof revealDiffLine>(null);
   let remaining = renderWindow.endIndex;
 
   const loadMore = useCallback(() => {
@@ -79,10 +84,44 @@ export function DiffView({
     setCollapsedHunks(new Set());
   }, [patch]);
 
+  useEffect(() => {
+    if (!revealDiffLine) return;
+    setRenderBudget((current) => ({ patch, lines: Math.max(current.patch === patch ? current.lines : DIFF_RENDER_BATCH, revealDiffLine.line) }));
+    let offset = 0;
+    for (const [fileIndex, file] of parsed.files.entries()) {
+      for (const [hunkIndex, hunk] of file.hunks.entries()) {
+        if (revealDiffLine.line > offset && revealDiffLine.line <= offset + hunk.lines.length) {
+          const key = `${fileIndex}:${hunkIndex}`;
+          setCollapsedHunks((current) => {
+            if (!current.has(key)) return current;
+            const next = new Set(current);
+            next.delete(key);
+            return next;
+          });
+          return;
+        }
+        offset += hunk.lines.length;
+      }
+    }
+  }, [parsed, patch, revealDiffLine]);
+
+  useEffect(() => {
+    if (!revealDiffLine || appliedRevealRef.current === revealDiffLine) return;
+    let target: HTMLElement | null = null;
+    const frame = requestAnimationFrame(() => {
+      target = rootRef.current?.querySelector<HTMLElement>(`[data-diff-line="${revealDiffLine.line}"]`) ?? null;
+      if (!target) return;
+      target.scrollIntoView({ block: "center" });
+      target.setAttribute("data-revealed", "true");
+      appliedRevealRef.current = revealDiffLine;
+    });
+    return () => { cancelAnimationFrame(frame); target?.removeAttribute("data-revealed"); };
+  }, [revealDiffLine, renderWindow.endIndex, collapsedHunks]);
+
   if (parsed.files.length === 0) return <div className={styles.notice}>{t("diff.empty")}</div>;
 
   return (
-    <div className={`${styles.root}${className ? ` ${className}` : ""}`} data-context-lines={contextLines}>
+    <div ref={rootRef} className={`${styles.root}${className ? ` ${className}` : ""}`} data-context-lines={contextLines}>
       {parsed.files.map((file, fileIndex) => {
         if (remaining <= 0) return null;
         const displayPath = filePath ?? bestPath(file);
@@ -117,6 +156,7 @@ export function DiffView({
                 : 0;
               const expandsContext = hiddenBefore > 0 && Boolean(onExpandContext);
               const lines = hunk.lines.slice(0, remaining);
+              const lineOffset = renderWindow.endIndex - remaining;
               remaining -= lines.length;
               return (
                 <div key={key}>
@@ -135,8 +175,8 @@ export function DiffView({
                     {hunkActions?.(hunk)}
                   </div>
                   {!isCollapsed && (mode === "split"
-                    ? <SplitLines lines={lines} language={language ?? languageFor(displayPath)} highlight={parsed.lineCount <= HIGHLIGHT_LIMIT} />
-                    : <UnifiedLines lines={lines} language={language ?? languageFor(displayPath)} highlight={parsed.lineCount <= HIGHLIGHT_LIMIT} />)}
+                    ? <SplitLines lines={lines} lineOffset={lineOffset} language={language ?? languageFor(displayPath)} highlight={parsed.lineCount <= HIGHLIGHT_LIMIT} />
+                    : <UnifiedLines lines={lines} lineOffset={lineOffset} language={language ?? languageFor(displayPath)} highlight={parsed.lineCount <= HIGHLIGHT_LIMIT} />)}
                   {hiddenAfter > 0 && onExpandContext ? <button type="button" className={styles.contextGap} disabled={contextLoading} onClick={onExpandContext} aria-label={t("diff.expandUnchangedLines", { count: hiddenAfter })}><AliIcon name={contextLoading ? "reload" : "chevron-right"} size={12} />{contextLoading ? t("diff.loadingContext") : t("diff.unchangedLines", { count: hiddenAfter })}</button> : null}
                 </div>
               );
@@ -149,14 +189,14 @@ export function DiffView({
   );
 }
 
-function UnifiedLines({ lines, language, highlight }: { lines: DiffLine[]; language: string; highlight: boolean }) {
-  return <>{lines.map((line, index) => <UnifiedLine key={index} line={line} language={language} highlight={highlight} />)}</>;
+function UnifiedLines({ lines, lineOffset, language, highlight }: { lines: DiffLine[]; lineOffset: number; language: string; highlight: boolean }) {
+  return <>{lines.map((line, index) => <UnifiedLine key={index} line={line} position={lineOffset + index + 1} language={language} highlight={highlight} />)}</>;
 }
 
-function UnifiedLine({ line, language, highlight }: { line: DiffLine; language: string; highlight: boolean }) {
+function UnifiedLine({ line, position, language, highlight }: { line: DiffLine; position: number; language: string; highlight: boolean }) {
   const marker = line.kind === "added" ? "+" : line.kind === "removed" ? "−" : line.kind === "meta" ? "\\" : " ";
   return (
-    <div className={`${styles.line} ${styles[line.kind]}`}>
+    <div className={`${styles.line} ${styles[line.kind]}`} data-diff-line={position}>
       <span className={styles.lineNumber}>{line.oldLine ?? ""}</span>
       <span className={styles.lineNumber}>{line.newLine ?? ""}</span>
       <span className={styles.marker}>{marker}</span>
@@ -165,19 +205,20 @@ function UnifiedLine({ line, language, highlight }: { line: DiffLine; language: 
   );
 }
 
-function SplitLines({ lines, language, highlight }: { lines: DiffLine[]; language: string; highlight: boolean }) {
+function SplitLines({ lines, lineOffset, language, highlight }: { lines: DiffLine[]; lineOffset: number; language: string; highlight: boolean }) {
   const rows = pairLines(lines);
+  const positions = new Map(lines.map((line, index) => [line, lineOffset + index + 1]));
   return <div className={styles.splitGrid}>{rows.flatMap((row, index) => [
-    <SplitCell key={`l-${index}`} line={row.left} side="left" language={language} highlight={highlight} />,
-    <SplitCell key={`r-${index}`} line={row.right} side="right" language={language} highlight={highlight} />,
+    <SplitCell key={`l-${index}`} line={row.left} position={row.left ? positions.get(row.left) : undefined} side="left" language={language} highlight={highlight} />,
+    <SplitCell key={`r-${index}`} line={row.right} position={row.right ? positions.get(row.right) : undefined} side="right" language={language} highlight={highlight} />,
   ])}</div>;
 }
 
-function SplitCell({ line, side, language, highlight }: { line: DiffLine | null; side: "left" | "right"; language: string; highlight: boolean }) {
+function SplitCell({ line, position, side, language, highlight }: { line: DiffLine | null; position?: number; side: "left" | "right"; language: string; highlight: boolean }) {
   if (!line) return <div className={`${styles.splitCell} ${styles.empty}`}><span className={styles.lineNumber} /><span /><span /></div>;
   const lineNumber = side === "left" ? line.oldLine : line.newLine;
   const marker = line.kind === "added" ? "+" : line.kind === "removed" ? "−" : " ";
-  return <div className={`${styles.splitCell} ${styles[line.kind]}`}><span className={styles.lineNumber}>{lineNumber ?? ""}</span><span className={styles.marker}>{marker}</span><Code text={line.text} language={language} highlight={highlight} className={styles.splitCode} /></div>;
+  return <div className={`${styles.splitCell} ${styles[line.kind]}`} data-diff-line={position}><span className={styles.lineNumber}>{lineNumber ?? ""}</span><span className={styles.marker}>{marker}</span><Code text={line.text} language={language} highlight={highlight} className={styles.splitCode} /></div>;
 }
 
 function Code({ text, language, highlight, className }: { text: string; language: string; highlight: boolean; className: string }) {

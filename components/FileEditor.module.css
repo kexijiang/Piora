@@ -40,6 +40,22 @@
   container-type: inline-size;
 }
 
+.changeNavigation {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.changeCount {
+  min-width: 3ch;
+  padding: 0 4px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: center;
+}
+
 .editModeButton {
   display: inline-flex;
   align-items: center;
@@ -292,6 +308,18 @@
 
 @keyframes file-editor-spin {
   to { transform: rotate(360deg); }
+}
+
+@container (max-width: 650px) {
+  .container :global(.file-viewer-toolbar) {
+    flex-wrap: wrap;
+  }
+
+  .container :global(.file-viewer-controls) {
+    flex: 1 0 100%;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
 }
 
 @container (max-width: 520px) {

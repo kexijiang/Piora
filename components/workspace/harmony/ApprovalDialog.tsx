@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ActionApproval } from "@/lib/harmony/policy/approval-store";
+import styles from "../HarmonyPanel.module.css";
 
 export function ApprovalDialog({ serial, active, chinese }: { serial: string; active: boolean; chinese: boolean }) {
   const [approvals, setApprovals] = useState<ActionApproval[]>([]);
@@ -49,7 +50,7 @@ export function ApprovalDialog({ serial, active, chinese }: { serial: string; ac
     test_control: chinese ? "授权此任务控制指定应用" : "Allow this task to control this app",
     system_control: chinese ? "执行一次系统按键操作" : "Execute one system key operation",
   };
-  return <section aria-label={chinese ? "设备操作授权" : "Device action approvals"} style={{ padding: 12, border: "1px solid var(--border)", borderRadius: 8, overflow: "auto", maxHeight: 230 }}>
+  return <section className={`${styles.workbench} ${styles.approvalPanel}`} aria-label={chinese ? "设备操作授权" : "Device action approvals"}>
     {error ? <p role="alert">{error}</p> : null}
     {approvals.map(item => <div key={item.id} style={{ marginBottom: 12 }}>
       <strong>{labels[item.action]} · {item.serial}</strong>

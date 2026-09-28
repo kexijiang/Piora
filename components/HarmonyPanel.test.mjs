@@ -18,19 +18,20 @@ test("device actions keep the existing Harmony video connection alive", () => {
 test("keeps a read-only observer surface available while an Agent is running", () => {
   assert.match(source, /sessionRunning/);
   assert.match(source, /agentHasControl/);
-  assert.match(source, /旁观模式 · Agent 正在操作/);
-  assert.match(source, /查看模式 · 截图和录屏可直接使用/);
+  assert.match(source, /AI 正在操作/);
+  assert.match(source, /可直接点击、滑动/);
   assert.match(source, /onGuideAgent/);
   assert.match(source, /frameMode === "frames"/);
 });
 
-test("keeps passive media controls independent and gives the screen resizable focus space", () => {
+test("keeps screenshots independent and tools in one optional drawer", () => {
   const mediaSource = source.slice(source.indexOf("  const mediaAction ="), source.indexOf("  const saveSettings ="));
   assert.match(source, /disabled=\{!canScreenshot \|\| busy\}/);
   assert.match(mediaSource, /if \(!selectedSerial\) return/);
   assert.doesNotMatch(mediaSource, /if \(!selectedSerial \|\| !lease\) return/);
-  assert.match(source, /piora-harmony-drawer-height-v1/);
-  assert.match(source, /role="separator"/);
+  assert.match(source, /hidden=\{!toolsOpen\}/);
+  assert.match(source, /await ensureControl\(\)/);
+  assert.doesNotMatch(source, /onClick=\{acquire\}/);
   assert.match(source, /frameZoom/);
   assert.match(source, /onMaximizedChange\(!maximized\)/);
 });
