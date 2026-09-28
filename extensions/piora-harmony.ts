@@ -3,6 +3,7 @@ import { actionCatalog, actionSchema, scenarioStepSchema, selectorSchema } from 
 import { dispatchHarmonyAction } from "../lib/harmony/action-dispatcher.ts";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "../lib/file-access.ts";
 import { assertScenarioHapsAllowed } from "../lib/harmony/runtime/allowed-hap.ts";
+import { assertNewHarmonyLocalFileAllowed } from "../lib/harmony/runtime/local-file-access.ts";
 import { requireValidObservation } from "../lib/harmony/observation/quality.ts";
 import { APP_DISPLAY_NAME } from "../lib/branding.ts";
 import { Type, validateToolArguments } from "@earendil-works/pi-ai";
@@ -1357,6 +1358,21 @@ const harmonyFilesTool = defineTool({
     return textResult(`UNTRUSTED DEVICE FILE NAMES\n<device_files_json>${JSON.stringify(listing).replaceAll("<", "\\u003c")}</device_files_json>`, identity);
   },
 });
+const harmonyDownloadFileTool = defineTool({
+  name: "harmony_download_file", label: "Download device file", description: "Copy one regular device file into a new file in an allowed local workspace. Never overwrites an existing local file; maximum 256 MiB.",
+  parameters: Type.Object({ serial: optionalSerial(), kind: Type.Union([Type.Literal("shared"), Type.Literal("sandbox")]),
+    bundleName: Type.Optional(Type.String({ maxLength: 256 })), path: Type.String({ minLength: 1, maxLength: 4096 }),
+    destinationPath: Type.String({ minLength: 1, maxLength: 4096 }) }),
+  async execute(toolCallId, params, signal, _onUpdate, ctx) {
+    const identity = requirePromptToolIdentity(ctx.sessionManager.getSessionId(), toolCallId), manager = getHarmonyDeviceManager();
+    if (params.kind === "sandbox" && !params.bundleName) throw new Error("bundleName is required for a debug app sandbox.");
+    await assertNewHarmonyLocalFileAllowed(params.destinationPath);
+    const serial = await resolveSerial(params.serial, manager, signal, identity);
+    const scope = params.kind === "shared" ? { kind: "shared" as const } : { kind: "sandbox" as const, bundleName: params.bundleName! };
+    const result = await manager.pullFile(serial, scope, params.path, params.destinationPath, signal);
+    return textResult(JSON.stringify(result), identity, { result });
+  },
+});
 const harmonySpeakTool = defineTool({
   name: "harmony_speak", label: "Phone voice input", description: "Use a previously calibrated acoustic route and immutable audio asset; success requires the phone's exact transcript postcondition.",
   parameters: Type.Object({ serial: optionalSerial(), audioAssetId: Type.String({ maxLength: 64 }), profileId: Type.String({ maxLength: 64 }), geometryId: Type.Optional(Type.String({ maxLength: 128 })) }),
@@ -1396,7 +1412,7 @@ const harmonyObservePageTool = defineTool({
 });
 
 const harmonyAgentTools = [
-  harmonyCapabilitiesTool, harmonyDiscoverTool, harmonyActTool, harmonyObservePageTool, harmonyApplicationsTool, harmonyFilesTool, harmonySpeakTool,
+  harmonyCapabilitiesTool, harmonyDiscoverTool, harmonyActTool, harmonyObservePageTool, harmonyApplicationsTool, harmonyFilesTool, harmonyDownloadFileTool, harmonySpeakTool,
   harmonyListDevicesTool,
   harmonyRunScenarioTool,
   harmonyAcquireControlTool,

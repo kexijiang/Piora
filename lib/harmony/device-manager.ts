@@ -576,6 +576,16 @@ export class HarmonyDeviceManager {
     }, signal, undefined, serial);
   }
 
+  async pullFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    return await this.enqueue("pull_device_file", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.pullFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file download is unavailable");
+      return await backend.pullFile(serial, scope, path, destinationPath, queuedSignal);
+    }, signal, undefined, serial);
+  }
+
   async readLogs(options: HarmonyLogOptions): Promise<HarmonyLogEntry[]> {
     validateSerial(options.serial);
     return await this.enqueue("read_logs", async (queuedSignal) => {

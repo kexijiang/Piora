@@ -1,5 +1,5 @@
-import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { constants, existsSync } from "node:fs";
+import { copyFile, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname } from "node:path";
@@ -18,7 +18,7 @@ import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
 import { runBoundedHold } from "./input/bounded-hold";
 import { focusedWindowId, windowBundle } from "./observation/window-scope";
 import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
-import { deviceFileListScript, parseDeviceFileListing, validateDeviceFilePath, type HarmonyFileScope } from "./device-files";
+import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, type HarmonyFileScope } from "./device-files";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -365,6 +365,35 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), deviceFileListScript(normalized)];
     const output = (await this.run(args, "list_device_files", signal, 20_000)).stdout;
     return parseDeviceFileListing(output, normalized);
+  }
+
+  async pullFile(serial: string, scope: HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    const remote = validateDeviceFilePath(scope, path);
+    if (remote === "/" || remote === "." || !isAbsolute(destinationPath)) throw new HarmonyError("INVALID_ARGUMENT", "Choose a device file and absolute local destination");
+    const scopeArgs = scope.kind === "sandbox" ? ["-b", scope.bundleName] : [];
+    const source = quoteDeviceShell(remote);
+    const preflight = (await this.run(["-t", serial, "shell", ...scopeArgs,
+      `f=${source}; if [ ! -f "$f" ] || [ -L "$f" ]; then printf '__PIORA_FILE_ERROR__'; else stat -c '%s' "$f"; fi`], "device_file_preflight", signal)).stdout.toString("utf8").trim();
+    const size = Number(preflight);
+    if (!/^\d+$/.test(preflight) || !Number.isSafeInteger(size) || size > 256 * 1024 * 1024) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device file is unavailable or exceeds the 256 MiB download limit");
+    }
+    const target = resolve(destinationPath);
+    const parent = await stat(dirname(target)).catch(() => undefined);
+    if (!parent?.isDirectory()) throw new HarmonyError("INVALID_ARGUMENT", "The local destination directory does not exist");
+    const temporaryDirectory = await mkdtemp(join(tmpdir(), "piora-harmony-download-"));
+    const temporaryFile = join(temporaryDirectory, "download");
+    try {
+      await this.run(["-t", serial, "file", "recv", ...scopeArgs, remote, temporaryFile], "device_file_download", signal, 120_000);
+      const downloaded = await stat(temporaryFile).catch(() => undefined);
+      if (!downloaded?.isFile() || downloaded.size !== size) throw new HarmonyError("INVALID_RESPONSE", "Downloaded device file size differs from the preflight result");
+      if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device file download was cancelled");
+      await copyFile(temporaryFile, target, constants.COPYFILE_EXCL);
+      return { destinationPath: target, size };
+    } finally {
+      await rm(temporaryDirectory, { recursive: true, force: true });
+    }
   }
 
   async appTestAudio(serial: string, packet: string, signal?: AbortSignal): Promise<void> {
