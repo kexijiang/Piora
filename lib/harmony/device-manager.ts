@@ -1585,6 +1585,14 @@ export class HarmonyDeviceManager {
       });
   }
 
+  async setAppEnabled(options: { serial: string; leaseToken: string; bundleName: string; enabled: boolean; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action(options.enabled ? "enable_app" : "disable_app", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.setAppEnabled) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Application enable/disable is unavailable");
+        await backend.setAppEnabled(options.serial, options.bundleName, options.enabled, signal);
+      });
+  }
+
   getConfig(): HarmonyConfig {
     return {
       ...this.config,

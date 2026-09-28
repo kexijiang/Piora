@@ -492,6 +492,7 @@ export interface HarmonyAutomationBackend {
   stopApp?(serial: string, bundleName: string, signal?: AbortSignal): Promise<void>;
   clearAppData?(serial: string, bundleName: string, signal?: AbortSignal): Promise<void>;
   uninstallPackage?(serial: string, bundleName: string, signal?: AbortSignal): Promise<void>;
+  setAppEnabled?(serial: string, bundleName: string, enabled: boolean, signal?: AbortSignal): Promise<void>;
   waitForIdle?(serial: string, idleMs: number, timeoutMs: number, signal?: AbortSignal): Promise<void | { strategy: "driver_idle" | "bounded_delay" }>;
   semanticAction?(
     serial: string,

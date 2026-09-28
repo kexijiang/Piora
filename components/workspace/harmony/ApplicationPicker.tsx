@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { HarmonyApplication } from "@/lib/harmony/observation/applications";
 import type { HarmonyReceipt } from "@/lib/harmony/contracts/receipts";
-type AppAction = "launch_app" | "stop_app" | "clear_app_data" | "uninstall_app" | "install_app";
+type AppAction = "launch_app" | "stop_app" | "clear_app_data" | "uninstall_app" | "install_app" | "enable_app" | "disable_app";
 export function ApplicationPicker({ serial, canControl, ensureControl, chinese, cwd }: { serial: string; canControl: boolean; ensureControl: () => Promise<string>; chinese: boolean; cwd?: string | null }) {
   const [query, setQuery] = useState(""), [applications, setApplications] = useState<HarmonyApplication[]>([]);
   const [selected, setSelected] = useState<HarmonyApplication>(), [ability, setAbility] = useState("");
@@ -23,6 +23,7 @@ export function ApplicationPicker({ serial, canControl, ensureControl, chinese, 
     if (!selected) return;
     if (action === "clear_app_data" && !window.confirm(copy(`清除 ${selected.bundleName} 的全部应用数据？`, `Clear all app data for ${selected.bundleName}?`))) return;
     if (action === "uninstall_app" && !window.confirm(copy(`从设备卸载 ${selected.bundleName}？`, `Uninstall ${selected.bundleName} from the device?`))) return;
+    if (action === "disable_app" && !window.confirm(copy(`禁用当前用户的 ${selected.bundleName}？`, `Disable ${selected.bundleName} for the active user?`))) return;
     void run(async signal => {
       report(await dispatch(action, { bundleName: selected.bundleName, ...(action === "launch_app" ? { abilityName: ability } : {}) }, signal));
       if (action === "launch_app") { const next = [selected.bundleName, ...recent.filter(value => value !== selected.bundleName)].slice(0, 5); setRecent(next); try { localStorage.setItem(`harmony-recent-apps:${serial}`, JSON.stringify(next)); } catch { /* Optional history. */ } }
@@ -44,6 +45,11 @@ export function ApplicationPicker({ serial, canControl, ensureControl, chinese, 
       <button disabled={busy || !canControl} onClick={() => actOnSelected("stop_app")}>{copy("停止", "Stop")}</button>
       <button disabled={busy || !canControl} onClick={() => actOnSelected("clear_app_data")}>{copy("清除数据", "Clear data")}</button>
       <button disabled={busy || !canControl} onClick={() => actOnSelected("uninstall_app")}>{copy("卸载", "Uninstall")}</button></fieldset> : null}
+    {selected ? <details><summary>{copy("高级：应用使能状态", "Advanced: app enabled state")}</summary>
+      <p>{copy("仅 root 设备构建支持 bm enable/disable。操作只针对当前活跃用户；user 构建会报告设备不支持。", "bm enable/disable requires a root device build and targets the active user only. User builds report that the capability is unavailable.")}</p>
+      <button disabled={busy || !canControl} onClick={() => actOnSelected("enable_app")}>{copy("使能应用", "Enable app")}</button>
+      <button disabled={busy || !canControl} onClick={() => actOnSelected("disable_app")}>{copy("禁用应用", "Disable app")}</button>
+    </details> : null}
     <fieldset><legend>{copy("安装 HAP", "Install HAP")}</legend>
       <p>{copy("输入已获准工作区内的本地 HAP 完整路径。安装前会冻结并校验文件。", "Enter the full path of a local HAP in an allowed workspace. The file is frozen and checked before installation.")}</p>
       <label>{copy("HAP 完整路径", "Full HAP path")}<input value={hapPath} onChange={event => setHapPath(event.target.value)} placeholder={cwd ? `${cwd}\\app.hap` : undefined} /></label>

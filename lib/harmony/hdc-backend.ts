@@ -1210,6 +1210,21 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
     await this.run(["-t", serial, "uninstall", bundleName], "uninstall_package", signal, 120_000);
   }
+
+  async setAppEnabled(serial: string, bundleName: string, enabled: boolean, signal?: AbortSignal): Promise<void> {
+    if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
+    const operation = enabled ? "enable_app" : "disable_app";
+    let result;
+    try { result = await this.shell(serial, ["bm", enabled ? "enable" : "disable", "-n", bundleName], operation, signal); }
+    catch (error) {
+      if (!isHarmonyError(error) || error.code !== "COMMAND_FAILED") throw error;
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "bm enable/disable was refused; this operation requires a root device build", { cause: error, details: { dispatchState: "sent" } });
+    }
+    const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
+    if (!new RegExp(`${enabled ? "enable" : "disable"} bundle successfully`, "i").test(output)) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "This device did not confirm the app state change; bm enable/disable requires a root build", { details: { dispatchState: "sent" } });
+    }
+  }
 }
 
 export function createHdcBackend(options: HdcBackendOptions = {}): HdcBackend {

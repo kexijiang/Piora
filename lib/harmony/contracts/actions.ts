@@ -51,6 +51,8 @@ export const actionCatalog = {
   stop_app: { description: "Stop the selected application", risk: "control", scenario: app, direct: app },
   clear_app_data: { description: "Clear data of the selected application", risk: "control", scenario: app, direct: app },
   uninstall_app: { description: "Uninstall the selected application", risk: "control", scenario: app, direct: app },
+  enable_app: { description: "Enable an app for the active user on a root device build", risk: "control", direct: app },
+  disable_app: { description: "Disable an app for the active user on a root device build", risk: "control", direct: app },
   install_app: { description: "Install an integrity-checked immutable HAP", risk: "control", scenario: { hapPath: string(4096), replace: optional(Type.Boolean()) }, direct: { hapPath: string(4096), replace: optional(Type.Boolean()) } },
   upload_file: { description: "Upload an immutable local file into a writable device path", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), sourcePath: string(4096), path: string(4096), overwrite: optional(Type.Boolean()) } },
   create_directory: { description: "Create one device directory without creating parents", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096) } },

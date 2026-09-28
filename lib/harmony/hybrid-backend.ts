@@ -224,6 +224,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.uninstallPackage(serial, bundleName, signal);
   }
 
+  async setAppEnabled(serial: string, bundleName: string, enabled: boolean, signal?: AbortSignal): Promise<void> {
+    await this.hdc.setAppEnabled(serial, bundleName, enabled, signal);
+  }
+
   async waitForIdle(serial: string, idleMs: number, timeoutMs: number, signal?: AbortSignal): Promise<{ strategy: "driver_idle" | "bounded_delay" }> {
     if (await this.hypium.waitForIdle(serial, idleMs, timeoutMs, signal)) return { strategy: "driver_idle" };
     await abortedDelay(idleMs, signal);
