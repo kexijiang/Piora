@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 开发验证
+
+- 附件浏览器测试分别核验 Electron 原始文件路径与合成剪贴板文件的字节回退，避免将测试构造的文件误判为原始磁盘文件。
+
 ### 鸿蒙设备操作
 
 - 调整鸿蒙面板静态验收断言以覆盖重构后的应用启动按钮，避免旧代码形状导致误报。
