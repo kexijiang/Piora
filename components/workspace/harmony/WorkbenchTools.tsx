@@ -40,7 +40,7 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
   return <section className={styles.workbench} aria-label={copy("设备工具内容", "Device workbench")}>
       {error ? <p role="alert">{error}</p> : null}{message ? <p role="status">{message}</p> : null}
       {busy ? <button type="button" onClick={() => { controller.current?.abort(); setMessage(copy("已请求取消；请查看设备释放状态。", "Cancellation requested; check release state.")); }}>{copy("取消本次操作", "Cancel this operation")}</button> : null}
-      <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} canControl={canControl} ensureControl={ensureControl} chinese={chinese}/></div>
+      <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} canControl={canControl} ensureControl={ensureControl} chinese={chinese} cwd={cwd}/></div>
       <div hidden={tab !== "scenarios"}><ScenarioWorkbench active={tab === "scenarios"} serial={serial} canControl={canControl} ensureControl={ensureControl} cwd={cwd} chinese={chinese}/></div>
       {tab === "diagnostics" ? <>
         <ol><li>{copy("连接 USB 并在手机确认调试授权。", "Connect USB and allow debugging on the phone.")}</li><li>{copy("检查设备、画面及 UI 树；锁屏时请手动解锁。", "Check the device, frame and UI tree; unlock manually when needed.")}</li><li>{copy("在测试应用校准点击或保持操作。", "Calibrate input in a test app.")}</li><li>{copy("搜索测试应用，再预览和执行场景。已连接设备可直接操作。", "Find the test app, then preview and run a scenario. Connected devices are ready for control.")}</li></ol>

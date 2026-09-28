@@ -1462,6 +1462,30 @@ export class HarmonyDeviceManager {
       });
   }
 
+  async stopApp(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("stop_app", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.stopApp) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Stopping applications is unavailable");
+        await backend.stopApp(options.serial, options.bundleName, signal);
+      });
+  }
+
+  async clearAppData(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("clear_app_data", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.clearAppData) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Clearing application data is unavailable");
+        await backend.clearAppData(options.serial, options.bundleName, signal);
+      });
+  }
+
+  async uninstallApp(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("uninstall_app", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.uninstallPackage) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Uninstalling applications is unavailable");
+        await backend.uninstallPackage(options.serial, options.bundleName, signal);
+      });
+  }
+
   getConfig(): HarmonyConfig {
     return {
       ...this.config,

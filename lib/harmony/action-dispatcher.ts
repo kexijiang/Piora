@@ -113,6 +113,18 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
         result = await manager.launchApp({ ...common, bundleName, abilityName });
         break;
       }
+      case "stop_app":
+      case "clear_app_data":
+      case "uninstall_app": {
+        const bundleName = requiredString(body, "bundleName", 255);
+        if (body.action === "stop_app") result = await manager.stopApp({ ...common, bundleName });
+        else if (body.action === "clear_app_data") result = await manager.clearAppData({ ...common, bundleName });
+        else result = await manager.uninstallApp({ ...common, bundleName });
+        break;
+      }
+      case "install_app":
+        result = await manager.installPackage({ ...common, hapPath: requiredString(body, "hapPath", 4096), replace: body.replace === undefined ? true : body.replace as boolean });
+        break;
       default:
         throw new HarmonyError("INVALID_ARGUMENT", "Unsupported device action");
     }

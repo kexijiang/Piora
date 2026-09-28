@@ -1,6 +1,7 @@
 import { observationPage } from "../lib/harmony/observation/page.ts";
 import { actionCatalog, actionSchema, scenarioStepSchema, selectorSchema } from "../lib/harmony/contracts/actions.ts";
 import { dispatchHarmonyAction } from "../lib/harmony/action-dispatcher.ts";
+import { getAllowedFileRoots, isExistingFilePathAllowed } from "../lib/file-access.ts";
 import { requireValidObservation } from "../lib/harmony/observation/quality.ts";
 import { APP_DISPLAY_NAME } from "../lib/branding.ts";
 import { Type, validateToolArguments } from "@earendil-works/pi-ai";
@@ -1350,12 +1351,15 @@ const harmonySpeakTool = defineTool({
   },
 });
 const harmonyActTool = defineTool({
-  name: "harmony_act", label: "Device action", description: "Execute one shared action. Discover its schema first. Holds and voice require calibrated profiles. Connected devices allow control without additional desktop approval.",
+  name: "harmony_act", label: "Device action", description: "Execute one shared action, including application install, stop, clear data and uninstall. Discover its schema first. Install accepts only a HAP in an allowed workspace root. Holds and voice require calibrated profiles. Connected devices allow control without additional desktop approval.",
   parameters: Type.Object({ serial: optionalSerial(), action: Type.String({ maxLength: 64 }), input: Type.Optional(Type.Record(Type.String(), Type.Unknown())) }),
   async execute(toolCallId, params, signal, _onUpdate, ctx) {
     const identity = requirePromptToolIdentity(ctx.sessionManager.getSessionId(), toolCallId), manager = getHarmonyDeviceManager();
     if (params.action === "emergency_stop") return { ...textResult("Global emergency stop is a desktop control; stop only this task's device here.", identity), isError: true };
     try {
+      if (params.action === "install_app" && (typeof params.input?.hapPath !== "string" || !isExistingFilePathAllowed(params.input.hapPath, await getAllowedFileRoots()))) {
+        throw new Error("Select a HAP within an allowed workspace root.");
+      }
       const serial = await resolveSerial(params.serial, manager, signal, identity), lease = await ensureAgentLease(identity, serial, signal);
       const result = await dispatchHarmonyAction(manager, { ...params.input, action: params.action, serial, leaseToken: lease.token }, signal);
       return textResult(JSON.stringify(result), identity, { result });
