@@ -144,9 +144,14 @@ test("file change arrows navigate real editors, drafts, folds, independent tabs,
     await page.waitForFunction(() => document.querySelectorAll('[data-file="large.txt"] [data-diff-line]').length > 400);
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.ok(await large.locator('.file-viewer-content').evaluate(element => element.scrollTop > 1000), "loading further rows must not snap back to the last navigated change");
+    assert.equal(await large.locator('[data-diff-line="3"]').getAttribute("data-revealed"), "true", "the target highlight survives progressive rendering");
     await prev(large).click();
     await large.locator('[data-diff-line="1201"][data-revealed="true"]').waitFor();
     assert.match(await large.locator('[data-revealed="true"]').textContent(), /old 1200/);
+    await page.waitForFunction(() => {
+      const bounds = document.querySelector('[data-file="large.txt"] [data-revealed="true"]')?.getBoundingClientRect();
+      return bounds && bounds.top > 0 && bounds.bottom < innerHeight;
+    });
     const target = await large.locator('[data-revealed="true"]').boundingBox();
     assert.ok(target.y > 0 && target.y + target.height < 760);
     await large.locator('button[title^="@@"]').click();

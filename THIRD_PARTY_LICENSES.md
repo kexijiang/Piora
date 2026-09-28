@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `c377fbc1c5a3011d647fa2c9f19b668a99a8dee5a39a38d51e2641f5f28f7f82`
+Lockfile SHA-256: `279988d0d872169f137fe18f5fd7184d36476bcdb7ba752aeb80146a41226fe3`
 
 Unique locked packages: **1373**. Runtime packages: **933**. Build/development-only packages: **440**.
 
@@ -543,7 +543,7 @@ Every locked package declares a license.
 | `gopd` | `1.2.0` | MIT | No |
 | `graceful-fs` | `4.2.11` | ISC | No |
 | `grok-mermaid` | `0.2.2` | Apache-2.0 | No |
-| `hachure-fill` | `0.5.2` | MIT | No |
+| `hachure-fill` | `0.5.3` | MIT | No |
 | `has-property-descriptors` | `1.0.2` | MIT | No |
 | `has-symbols` | `1.1.0` | MIT | No |
 | `has-tostringtag` | `1.0.2` | MIT | No |

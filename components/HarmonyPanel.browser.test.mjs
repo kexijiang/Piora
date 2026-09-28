@@ -46,7 +46,7 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
     await page.route("https://harmony-panel.test/**", async route => {
       const request = route.request(), url = new URL(request.url());
       if (url.pathname === "/bundle.js") return route.fulfill({ contentType: "text/javascript", body: bundle });
-      if (!url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "text/html", body: `<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#f7f7f8;--bg-hover:#f0f0f1;--border:#e4e4e7;--border-soft:#ececef;--text:#18181b;--text-muted:#52525b;--text-dim:#71717a;--accent:#2563eb;--surface-raised:#fafafa;--surface-muted:#f4f4f5;--btn-primary-bg:#18181b;--btn-primary-fg:#fff;--status-ready:#16a34a;--status-attention:#d97706;--status-failed:#dc2626;--control-height:34px;--control-height-compact:30px;--radius-control:8px;--radius-surface:12px;--focus-ring:#93b4ff;--shadow-popover:0 8px 24px rgba(0,0,0,.1);--text-xs:11.5px;--text-sm:12.5px;--font-mono:Consolas,monospace}html,body,#root{height:100%;margin:0}body{font:14px system-ui,sans-serif}${css}</style><div id="root"></div><script src="/bundle.js"></script>` });
+      if (!url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "text/html", body: `<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#f7f7f8;--bg-hover:#f0f0f1;--border:#e4e4e7;--border-soft:#ececef;--text:#18181b;--text-muted:#52525b;--text-dim:#71717a;--accent:#2563eb;--surface-raised:#fafafa;--surface-muted:#f4f4f5;--btn-primary-bg:#18181b;--btn-primary-fg:#fff;--status-ready:#16a34a;--status-attention:#d97706;--status-failed:#dc2626;--control-height:34px;--control-height-compact:30px;--radius-control:8px;--radius-surface:12px;--focus-ring:#93b4ff;--shadow-popover:0 8px 24px rgba(0,0,0,.1);--text-xs:11.5px;--text-sm:12.5px;--text-base:14px;--font-mono:Consolas,monospace}html,body,#root{height:100%;margin:0}body{font:14px system-ui,sans-serif}${css}</style><div id="root"></div><script src="/bundle.js"></script>` });
       let data = {};
       const input = request.postDataJSON();
       if (input) requests.push({ ...input, endpoint: url.pathname });
@@ -77,6 +77,11 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
     });
     await page.goto("https://harmony-panel.test/");
     await page.getByText("可直接点击、滑动", { exact: true }).waitFor();
+    const fontBefore = await page.locator(".deviceIdentity select").evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+    await page.evaluate(() => document.documentElement.style.setProperty("--text-base", "20px"));
+    const fontAfter = await page.locator(".deviceIdentity select").evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+    assert.ok(fontAfter > fontBefore * 1.4, "device text follows the configured font scale");
+    await page.evaluate(() => document.documentElement.style.removeProperty("--text-base"));
     assert.equal(await page.locator(".toolDrawer").isVisible(), false, "tools start closed");
     assert.equal(requests.filter(r => r.endpoint === "/api/harmony/manual").length, 0, "mounting a mirror does not acquire control");
     assert.equal(await page.getByRole("button", { name: /^(手动控制|控制设备|结束控制)$/ }).count(), 0);
