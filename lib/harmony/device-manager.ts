@@ -654,6 +654,17 @@ export class HarmonyDeviceManager {
     return result;
   }
 
+  async runShellCommand(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; command: string; signal?: AbortSignal }) {
+    let output: { stdout: string; stderr: string; exitCode: number; durationMs: number } | undefined;
+    const receipt = await this.action("manual_device_command", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.runShellCommand) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Manual device commands are unavailable");
+        output = await backend.runShellCommand(options.serial, options.scope, options.command, signal);
+      });
+    if (!output) throw new HarmonyError("INVALID_RESPONSE", "Device command produced no result");
+    return { ...output, receipt };
+  }
+
   async readLogs(options: HarmonyLogOptions): Promise<HarmonyLogEntry[]> {
     validateSerial(options.serial);
     return await this.enqueue("read_logs", async (queuedSignal) => {

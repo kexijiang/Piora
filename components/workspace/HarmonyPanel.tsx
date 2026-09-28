@@ -196,7 +196,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const [visionModelKey, setVisionModelKey] = useState("");
   const [shareScreenshot, setShareScreenshot] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toolTab, setToolTab] = useState<"apps" | "files" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs" | "check">("scenarios");
+  const [toolTab, setToolTab] = useState<"apps" | "files" | "commands" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs" | "check">("scenarios");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [toolsVisited, setToolsVisited] = useState(false);
   const [textOpen, setTextOpen] = useState(false);
@@ -754,11 +754,11 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       <section id={drawerId} className={styles.toolDrawer} hidden={!toolsOpen} aria-label={copy("设备工具", "Device tools")} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closeTools(); } }}>
         <div className={styles.drawerHeading}><strong>{copy("工具", "Tools")}</strong><button className={styles.iconButton} type="button" onClick={closeTools} aria-label={copy("关闭工具", "Close tools")}><AliIcon name="close" size={15} /></button></div>
         <div className={styles.drawerTabs} role="tablist" aria-label={copy("设备工具分类", "Device tool categories")}>
-          {(["apps", "files", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs", "check"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => setToolTab(tab)} onKeyDown={event => {
-            const tabs = ["apps", "files", "scenarios", "voice", "logs", "history"] as const;
+          {(["apps", "files", "commands", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs", "check"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => setToolTab(tab)} onKeyDown={event => {
+            const tabs = ["apps", "files", "commands", "scenarios", "voice", "logs", "history"] as const;
             const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
             if (next >= 0) { event.preventDefault(); setToolTab(tabs[next]); document.getElementById(`${drawerId}-${tabs[next]}`)?.focus(); }
-          }}>{(chinese ? ["应用", "文件", "测试", "语音", "日志", "记录"] : ["Apps", "Files", "Tests", "Voice", "Logs", "History"])[index]}</button>)}
+          }}>{(chinese ? ["应用", "文件", "命令", "测试", "语音", "日志", "记录"] : ["Apps", "Files", "Commands", "Tests", "Voice", "Logs", "History"])[index]}</button>)}
         </div>
         <div className={styles.drawerBody} id={`${drawerId}-content`} role="tabpanel" aria-label={copy("工具内容", "Tool content")}>
           {["diagnostics", "inputs", "check"].includes(toolTab) ? <div className={styles.toolTitle}><strong>{toolTab === "diagnostics" ? copy("连接诊断", "Diagnostics") : toolTab === "inputs" ? copy("按键与触摸校准", "Input calibration") : copy("代码检查", "Code checks")}</strong><button type="button" onClick={() => setToolTab("scenarios")}>{copy("返回测试", "Back to tests")}</button></div> : null}

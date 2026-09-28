@@ -423,6 +423,25 @@ export class HdcBackend implements HarmonyAutomationBackend {
     return (await this.run(["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script], operation, signal)).stdout.toString("utf8").trim();
   }
 
+  async runShellCommand(serial: string, scope: HarmonyFileScope, command: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    validateDeviceFilePath(scope, scope.kind === "sandbox" ? "data/storage/el2/base" : "/data/local/tmp");
+    if (typeof command !== "string" || !command.trim() || command.length > 8192 || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(command)) {
+      throw new HarmonyError("INVALID_ARGUMENT", "Enter a command of at most 8192 characters");
+    }
+    const marker = `__PIORA_COMMAND_${randomUUID().replaceAll("-", "")}__`;
+    const script = `sh -c ${quoteDeviceShell(command)}; code=$?; printf '\\n${marker}%s\\n' "$code"`;
+    const result = await this.execute({ executable: this.hdcPath,
+      args: ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script],
+      operation: "manual_device_command", signal, timeoutMs: 15_000, maxOutputBytes: 128 * 1024 });
+    const stdout = result.stdout.toString("utf8");
+    const at = stdout.lastIndexOf(marker);
+    if (at < 0) throw new HarmonyError("INVALID_RESPONSE", "Device command completion could not be verified", { details: { dispatchState: "sent" } });
+    const status = stdout.slice(at + marker.length).trim();
+    if (!/^\d{1,3}$/.test(status)) throw new HarmonyError("INVALID_RESPONSE", "Device command exit status is invalid", { details: { dispatchState: "sent" } });
+    return { stdout: stdout.slice(0, at).replace(/\n$/, ""), stderr: result.stderr.toString("utf8"), exitCode: Number(status), durationMs: result.durationMs };
+  }
+
   private async fileKind(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<"file" | "directory" | "symlink" | "missing"> {
     const quoted = quoteDeviceShell(path);
     const result = await this.fileShell(serial, scope, `p=${quoted}; if [ -L "$p" ]; then printf '__PIORA_SYMLINK__'; elif [ -d "$p" ]; then printf '__PIORA_DIRECTORY__'; elif [ -f "$p" ]; then printf '__PIORA_FILE__'; elif [ -e "$p" ]; then printf '__PIORA_OTHER__'; else printf '__PIORA_MISSING__'; fi`, "device_file_kind", signal);

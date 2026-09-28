@@ -424,6 +424,7 @@ export interface HarmonyAutomationBackend {
   renamePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void>;
   readTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<{ text: string; hash: string; size: number }>;
   saveTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal): Promise<void>;
+  runShellCommand?(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal): Promise<{ stdout: string; stderr: string; exitCode: number; durationMs: number }>;
   appTestAudio?(serial: string, packet: string, signal?: AbortSignal): Promise<void>;
   doctorProbes?(serial: string, signal?: AbortSignal): Promise<{ hdcVersion?: string; checks: import("./contracts/capabilities").HarmonyDoctorReport["checks"] }>;
   probeCapabilities?(serial: string, signal?: AbortSignal): Promise<import("./contracts/capabilities").HarmonyActionCapability[]>;

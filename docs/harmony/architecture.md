@@ -18,6 +18,8 @@ HDC 在线状态作为已完成设备授权的边界，不添加应用范围 gra
 
 SQLite 查看器只接受工作区内已下载的普通本地文件，限制为 64 MiB，拒绝伴有 `-wal` 的文件。服务端先复制到私有临时目录，再由独立 worker 用 `DatabaseSync({ readOnly: true, allowExtension: false })` 打开。只列普通表，并从清单选表、分页读取；不接受任意 SQL，最多返回 50 行、100 列，文本和 BLOB 单元格截断显示，worker 超过 3 秒即终止。它不提供正在写入的设备数据库的一致性保证：主文件可能遗漏 WAL 中的事务，用户应先通过应用导出一致快照。依据 [SQLite 备份说明](https://www.sqlite.org/backup.html)和[WAL 说明](https://www.sqlite.org/wal.html)。
 
+命令抽屉只供用户手动运行，不加入 AI 动作目录。命令仍需设备 lease，经过与其他写操作相同的 dispatch fence 和设备 lane；每条命令使用单独的 HDC `shell` 调用，最多 15 秒、128 KiB 输出。退出码通过每次随机生成的结束标记解析；缺失标记时结果不确认。多标签只保留当前网页中的输出记录，不是交互式 PTY，工作目录和环境变量不跨命令保持。
+
 命令兼容性依据：[OpenHarmony HDC 文档](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/dfx/hdc.md)与[Bundle Manager 文档](https://github.com/openharmony/docs/blob/master/en/application-dev/tools/bm-tool.md)。
 
 现有 `check-runtime/check-config/check-types` 继续提供 DevEco CLI 检查。开发验证链引用 report ID、工程源指纹、用户选中 HAP hash、场景执行 ID 与按进程过滤日志；不声称读取 IDE Problems 或证明用户选中的 HAP 一定来自该源码构建。

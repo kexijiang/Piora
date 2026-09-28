@@ -208,6 +208,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.saveTextFile(serial, scope, path, text, expectedHash, signal);
   }
 
+  async runShellCommand(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal) {
+    return await this.hdc.runShellCommand(serial, scope, command, signal);
+  }
+
   async stopApp(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.stopApp(serial, bundleName, signal);
   }
