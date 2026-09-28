@@ -566,6 +566,16 @@ export class HarmonyDeviceManager {
     }, signal, undefined, serial);
   }
 
+  async listFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    return await this.enqueue("list_device_files", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.listFiles) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file browsing is unavailable");
+      return await backend.listFiles(serial, scope, path, queuedSignal);
+    }, signal, undefined, serial);
+  }
+
   async readLogs(options: HarmonyLogOptions): Promise<HarmonyLogEntry[]> {
     validateSerial(options.serial);
     return await this.enqueue("read_logs", async (queuedSignal) => {

@@ -1,6 +1,7 @@
 import { InvalidJsonBodyError, JsonBodyTooLargeError, parseJsonWithinLimit } from "@/lib/bounded-json";
 import { getHarmonyDeviceManager } from "@/lib/harmony";
 import { HarmonyError } from "@/lib/harmony/errors";
+import { assertScenarioHapsAllowed } from "@/lib/harmony/runtime/allowed-hap";
 import type { HarmonyScenarioPolicy, HarmonyScenarioStep, HarmonySnapshot } from "@/lib/harmony/types";
 import { hasJsonContentType } from "@/lib/request-security";
 import { harmonyErrorResponse, noStoreJson, requireHarmonyAccess } from "../_shared";
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
       return noStoreJson({ result: { ...summary, ...(finalSnapshot ? { finalSnapshot: publicSnapshot(finalSnapshot) } : {}) } });
     }
     if (!Array.isArray(body.steps)) throw new HarmonyError("INVALID_ARGUMENT", "steps must be an array");
+    await assertScenarioHapsAllowed(body.steps);
     if (body.policy !== undefined && (!body.policy || typeof body.policy !== "object" || Array.isArray(body.policy))) {
       throw new HarmonyError("INVALID_ARGUMENT", "policy must be a JSON object when provided");
     }

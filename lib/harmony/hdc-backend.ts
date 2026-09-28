@@ -18,6 +18,7 @@ import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
 import { runBoundedHold } from "./input/bounded-hold";
 import { focusedWindowId, windowBundle } from "./observation/window-scope";
 import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
+import { deviceFileListScript, parseDeviceFileListing, validateDeviceFilePath, type HarmonyFileScope } from "./device-files";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -356,6 +357,14 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
     const term = query.toLocaleLowerCase();
     return apps.filter(app => `${app.bundleName}\n${app.label ?? ""}`.toLocaleLowerCase().includes(term)).slice(0, 200);
+  }
+
+  async listFiles(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    const normalized = validateDeviceFilePath(scope, path);
+    const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), deviceFileListScript(normalized)];
+    const output = (await this.run(args, "list_device_files", signal, 20_000)).stdout;
+    return parseDeviceFileListing(output, normalized);
   }
 
   async appTestAudio(serial: string, packet: string, signal?: AbortSignal): Promise<void> {
