@@ -47,7 +47,7 @@ Browser                Next.js Server              AgentSession (in-process)
 Additional server-side subsystems share the same Next.js process but have separate state boundaries:
 
 - **Rooms** coordinate multiple agent sessions through `room-store`, `room-coordinator`, and room SSE routes.
-- **Harmony** uses the ordinary session and a desktop-authenticated gateway. Shared action contracts feed direct/scenario dispatch, task/app-scoped grants and one-use action approvals. The manager owns leases/epochs and per-device queues; observation quality/geometry gate writes. Hypium runs in a packaged child worker; HDC retains discovery/media boundaries. Passive mirroring never installs, wakes or unlocks a phone. See `docs/harmony/architecture.md`.
+- **Harmony** uses the ordinary session and a desktop-authenticated gateway. Shared action contracts feed direct/scenario dispatch. HDC-connected devices allow control without app grants or one-use approvals; immutable HAP imports retain integrity checks. The manager owns leases/epochs and per-device queues; observation quality/geometry gate writes. Hypium runs in a packaged child worker; HDC retains discovery/media boundaries. Passive mirroring never installs, wakes or unlocks a phone. See `docs/harmony/architecture.md`.
 - **Companion pets** keep imported sprite metadata in the companion store and serve runtime spritesheets through dedicated routes; desktop companion windows are separate renderer entry points.
 - **Optional workflow extensions** provide goal tracking and structured plans through ordinary extension tools and slash commands. They are disabled by default, have no special composer mode, and do not alter the core prompt protocol or session runtime.
 
@@ -60,7 +60,7 @@ app/api/
   agent/                  session creation, commands, per-session SSE, running snapshots
   sessions/               list/read/mutate, context branches, export, duplicate/restore, flags
   rooms/                  room CRUD, coordinator input, and room event streams
-  harmony/                device/config/state/action/approval/frame/tree/vision APIs
+  harmony/                device/config/state/action/frame/tree/vision APIs
   companion-pets/         pet catalog/import plus spritesheet serving
   git/                    status/diff/branches and stage/commit/push/revert mutations
   browser/                private headless browser state and screenshots
@@ -86,7 +86,7 @@ lib/
   session-reader.ts          read-only session loading, context building, and caches
   session-{path,flags,trash}.ts session lookup, metadata flags, and recoverable deletion
   room-{store,coordinator,chat-routing,chat,types}.ts multi-agent room subsystem
-  harmony/                   runtime, device manager, HDC, approvals/errors, UI tree, vision
+  harmony/                   runtime, device manager, HDC, artifact integrity/errors, UI tree, vision
   companion-pets.ts          pet validation/import and sprite processing
   companion-store.ts         companion persistence boundary
   companion.ts               active companion preferences/state helpers

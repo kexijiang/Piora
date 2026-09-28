@@ -5,12 +5,15 @@
 | HDC_NOT_FOUND / HDC_INVALID | 在诊断中选择真实 SDK 内的 HDC 绝对路径，重新检测 |
 | unauthorized | 在手机上允许 USB 调试 |
 | SCREEN_LOCKED | 手动解锁；未知锁状态也不会自动唤醒或滑动解锁 |
-| APPROVAL_REQUIRED | 工作台核对任务、应用、参数与制品 hash，批准后重试原操作 |
 | OBSERVATION_UNAVAILABLE | 检查 UiTest 权限/前台窗口，再刷新；不可把空树当控件消失 |
-| STALE_SNAPSHOT | 获取新的 UI 引用或实时几何，不重复旧坐标 |
+| STALE_SNAPSHOT | 画面坐标会自动刷新；Agent 获取新的 UI 引用后再操作，不重复旧坐标 |
+| 正在自动校准点击位置 | 等待尺寸与旋转信息校准；自动重试，成功后立即可点击，无需断开重连 |
 | needs-calibration | 在当前设备与系统重新校准精确保持时长或声学配置 |
 | LEASE_CONFLICT / DEVICE_BUSY | 查看控制者；先结束持有任务或显式接管，不停止其他手机 |
-| recovering / cleanup uncertain | 查看手机实际释放状态及工作台诊断，不宣称动作已撤销 |
+| stopping | 等待正在进行的清理；已确认成功的延迟清理会自动恢复操作 |
+| recovering / cleanup uncertain | 实体输入释放仍不确定时，在设备设置 → 连接诊断中检查手机，再使用“已检查手机并确认释放”；不能只根据等待时间确认 |
 | COMMAND_TIMEOUT | 保存操作收据，先观察实际效果，再决定是否安全重试 |
 
 USB 拔出时可导出默认支持包，它不等待新的读屏。需要带截图/树的支持包会真实请求设备，超时会失败。CLI 检查显示 incomplete 时先配置 DevEco Studio；不要通过忽略检查安装。
+
+普通投屏与录屏的恢复由应用自动处理：已退出进程留下的本地录屏记录、只读视频连接的端口清理失败，以及录屏已停止后的文件保存失败，不应被当成按键或触摸尚未释放而锁住设备。保存失败仍显示失败，端口清理证据保留在诊断中；这些恢复不会自动唤醒或解锁手机。

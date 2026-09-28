@@ -110,7 +110,7 @@ export function ScenarioWorkbench({ serial, active, canControl, ensureControl, c
       const leaseToken = await ensureControl();
       const data = await request("/api/harmony/scenario", { serial, leaseToken, steps: compiled }); setResult(data.result);
     })}>{busy ? copy("测试进行中…", "Running…") : copy("运行测试", "Run test")}</button>
-    <p className={styles.inlineHint}>{copy("需要额外授权时，会在执行前请你确认。", "Any additional approval is requested before execution.")}</p>
+    <p className={styles.inlineHint}>{copy("连接设备后可直接执行所选场景。", "Run the selected scenario directly on the connected device.")}</p>
     {busy ? <button onClick={() => controller.current?.abort()}>{copy("停止测试", "Stop test")}</button> : null}
     {error ? <p role="alert">{error}</p> : null}
     {result ? <div className={styles.testResult} role="status" data-status={resultStatus}><strong>{statusLabels[resultStatus] ?? copy("验证结果", "Validation result")}</strong><details><summary>{copy("查看详细结果", "View result details")}</summary><pre>{JSON.stringify(result, null, 2)}</pre></details></div> : null}
@@ -119,7 +119,7 @@ export function ScenarioWorkbench({ serial, active, canControl, ensureControl, c
       {steps.length ? <pre>{JSON.stringify(steps, null, 2)}</pre> : null}
       <p>{copy("当前工程", "Current project")}: {cwd || copy("请先选择工程", "Select a project first")}</p>
       <label>{copy("该工程的 HAP 完整路径", "Full HAP path from this project")}<input value={hap} onChange={event => setHap(event.target.value)} /></label>
-      <p>{copy("先检查 ArkTS 与 lint；安装前需批准所选 HAP，完成后执行场景并收集日志。", "Checks ArkTS and lint, requests HAP approval, then runs the scenario and collects logs.")}</p>
+      <p>{copy("先检查 ArkTS 与 lint，再安装所选 HAP，执行场景并收集日志。", "Checks ArkTS and lint, installs the selected HAP, then runs the scenario and collects logs.")}</p>
       <button disabled={busy || !cwd || !canControl || !ready || !hap} onClick={() => void run(async () => {
         const compiled = await compile(); const leaseToken = await ensureControl();
         const data = await request("/api/harmony/validate", { projectRoot: cwd, hapPath: hap, bundleName: bundle, serial, leaseToken, steps: compiled }); setResult(data.result);

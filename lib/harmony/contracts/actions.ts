@@ -27,7 +27,7 @@ const coordinates = { coordinateSpace: optional(values(["native", "frame"])), ge
 const gesture = { fromX: point.x, fromY: point.y, toX: point.x, toY: point.y, durationMs: optional(number(50, 10_000)), ...coordinates };
 const app = { bundleName: Type.String({ pattern: "^[A-Za-z][A-Za-z0-9_.]{0,255}$" }) };
 type Fields = Parameters<typeof Type.Object>[0];
-type Definition = { description: string; risk: "read" | "control" | "approval"; scenario?: Fields; direct?: Fields };
+type Definition = { description: string; risk: "read" | "control"; scenario?: Fields; direct?: Fields };
 
 /** One action inventory for discovery, HTTP admission, scenario validation and docs. */
 export const actionCatalog = {
@@ -48,11 +48,11 @@ export const actionCatalog = {
   voice_input: { description: "Play an immutable asset over a calibrated acoustic route and verify the phone transcript", risk: "control", direct: { audioAssetId: string(64), profileId: string(64), requiredMode: optional(Type.Union([Type.Literal("tap"), Type.Literal("push-to-talk")])), timeoutMs: optional(Type.Integer({ minimum: 1000, maximum: 60_000 })), geometryId: optional(string(128)) }, scenario: { audioAssetId: string(64), profileId: string(64), requiredMode: optional(Type.Union([Type.Literal("tap"), Type.Literal("push-to-talk")])), timeoutMs: optional(Type.Integer({ minimum: 1000, maximum: 60_000 })), geometryId: optional(string(128)) } },
   geometry_assert: { description: "Verify native display rotation against a newly captured screenshot", risk: "read", scenario: { rotation: Type.Union([Type.Literal(0), Type.Literal(90), Type.Literal(180), Type.Literal(270)]) } },
   launch_app: { description: "Launch a bundle and optional ability", risk: "control", scenario: { ...app, abilityName: optional(string(256)), ...wait }, direct: { ...app, abilityName: optional(string(256)) } },
-  stop_app: { description: "Stop the authorized application", risk: "control", scenario: app },
-  clear_app_data: { description: "Clear application data with one-use approval", risk: "approval", scenario: app },
-  uninstall_app: { description: "Uninstall the exact approved application", risk: "approval", scenario: app },
-  install_app: { description: "Install an immutable hash-approved HAP", risk: "approval", scenario: { hapPath: string(4096), replace: optional(Type.Boolean()) } },
-  initialize_mirror: { description: "Explicitly initialize the approved capture component; never unlock", risk: "approval", direct: {} },
+  stop_app: { description: "Stop the selected application", risk: "control", scenario: app },
+  clear_app_data: { description: "Clear data of the selected application", risk: "control", scenario: app },
+  uninstall_app: { description: "Uninstall the selected application", risk: "control", scenario: app },
+  install_app: { description: "Install an integrity-checked immutable HAP", risk: "control", scenario: { hapPath: string(4096), replace: optional(Type.Boolean()) } },
+  initialize_mirror: { description: "Initialize the capture component on request; never unlock", risk: "control", direct: {} },
   wait_for: { description: "Wait for a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },
   assert: { description: "Assert a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },
   wait_idle: { description: "Report driver idle or explicitly bounded delay", risk: "read", scenario: { idleMs: optional(number(50, 10_000)), timeoutMs: optional(number(50, 60_000)) } },

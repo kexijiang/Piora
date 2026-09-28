@@ -10,7 +10,7 @@ const WRITES = new Set<keyof HarmonyAutomationBackend>([
 
 /** Recheck at every physical dispatch, including the second call of a compound step. */
 export function fencedBackend(backend: HarmonyAutomationBackend, signal: AbortSignal, check: () => void,
-  authorize?: (method: keyof HarmonyAutomationBackend, args: unknown[]) => Promise<unknown[]>,
+  prepare?: (method: keyof HarmonyAutomationBackend, args: unknown[]) => Promise<unknown[]>,
   failed?: (method: string, args: unknown[], error: unknown) => void): HarmonyAutomationBackend {
   return new Proxy(backend, {
     get(target, key, receiver) {
@@ -20,7 +20,7 @@ export function fencedBackend(backend: HarmonyAutomationBackend, signal: AbortSi
         if (WRITES.has(key as keyof HarmonyAutomationBackend)) {
           if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device dispatch was cancelled", { details: { dispatchState: "not-sent" } });
           check();
-          if (authorize) args = await authorize(key as keyof HarmonyAutomationBackend, args);
+          if (prepare) args = await prepare(key as keyof HarmonyAutomationBackend, args);
           if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device dispatch was cancelled");
           check();
         }

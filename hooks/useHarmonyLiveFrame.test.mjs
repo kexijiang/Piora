@@ -6,7 +6,7 @@ import { runInNewContext } from "node:vm";
 
 const source = await readFile(new URL("./useHarmonyLiveFrame.ts", import.meta.url), "utf8");
 
-async function mountLiveFrame(videoResponse, decoderClass) {
+async function mountLiveFrame(videoResponse, decoderClass, geometryResponse) {
   const timers = new Map();
   const states = [];
   const calls = [];
@@ -30,7 +30,7 @@ async function mountLiveFrame(videoResponse, decoderClass) {
     async fetch(url, options) {
       calls.push(url);
       if (url.includes("/video?")) return await videoResponse(options);
-      if (url.includes("/geometry?")) return { ok: true, async json() { return { geometry: { geometryId: "geometry", frameWidth: 100, frameHeight: 200 } }; } };
+      if (url.includes("/geometry?")) return geometryResponse ? geometryResponse(options) : { ok: true, async json() { return { geometry: { geometryId: "geometry", frameWidth: 100, frameHeight: 200 } }; } };
       return { ok: true, headers: new Headers({ "X-Harmony-Generation": "1", "X-Harmony-Revision": "1" }), async blob() { return new Blob(["frame"]); } };
     },
     async createImageBitmap() { return { width: 100, height: 200, close() {} }; },
@@ -43,6 +43,76 @@ async function mountLiveFrame(videoResponse, decoderClass) {
   await flush();
   return { timers, states, calls, cleanup, flush };
 }
+
+function jpegFrame(width = 100, height = 200) {
+  const packet = (type, payload) => {
+    const bytes = Buffer.alloc(8 + payload.length);
+    bytes.writeUInt32BE(type, 0); bytes.writeUInt32BE(payload.length, 4); payload.copy(bytes, 8);
+    return bytes;
+  };
+  const config = Buffer.alloc(13);
+  config[0] = 2; config.writeUInt32BE(width, 1); config.writeUInt32BE(height, 5); config.writeUInt32BE(30, 9);
+  return Buffer.concat([packet(2, config), packet(3, Buffer.alloc(10))]);
+}
+
+test("late geometry enables a static frame immediately and failed probes revoke it automatically", async () => {
+  let resolveGeometry;
+  const hook = await mountLiveFrame(async () => new Response(new ReadableStream({
+    start(controller) { controller.enqueue(jpegFrame()); },
+  })), undefined, () => new Promise(resolve => { resolveGeometry = resolve; }));
+  try {
+    assert.equal(hook.states[1], "live", "geometry probing must not block display of the first frame");
+    assert.equal(hook.states[4].geometryId, undefined);
+    resolveGeometry({ ok: true, json: async () => ({ geometry: { geometryId: "ready", frameWidth: 100, frameHeight: 200 } }) });
+    await hook.flush();
+    assert.equal(hook.states[4].geometryId, "ready", "no extra video frame should be needed");
+    [...hook.timers.values()].find(timer => timer.ms === 1500).fn();
+    resolveGeometry({ ok: false });
+    await hook.flush();
+    assert.equal(hook.states[4].geometryId, undefined, "failed automatic probes revoke stale coordinates");
+    [...hook.timers.values()].filter(timer => timer.ms === 1500).at(-1).fn();
+    resolveGeometry({ ok: true, json: async () => ({ geometry: { geometryId: "recovered", frameWidth: 100, frameHeight: 200 } }) });
+    await hook.flush();
+    assert.equal(hook.states[4].geometryId, "recovered");
+  } finally { hook.cleanup(); }
+});
+
+test("late geometry cannot revive input after resize or teardown", async () => {
+  const pending = [];
+  let stream;
+  const hook = await mountLiveFrame(async () => new Response(new ReadableStream({
+    start(controller) { stream = controller; controller.enqueue(jpegFrame()); },
+  })), undefined, () => new Promise(resolve => { pending.push(resolve); }));
+  try {
+    stream.enqueue(jpegFrame(200, 100));
+    await hook.flush();
+    pending[0]({ ok: true, json: async () => ({ geometry: { geometryId: "old", frameWidth: 100, frameHeight: 200 } }) });
+    await hook.flush();
+    assert.equal(hook.states[4].width, 200);
+    assert.equal(hook.states[4].geometryId, undefined);
+    hook.cleanup();
+    pending[1]({ ok: true, json: async () => ({ geometry: { geometryId: "late", frameWidth: 200, frameHeight: 100 } }) });
+    await hook.flush();
+    assert.equal(hook.states[4].geometryId, undefined);
+    assert.equal([...hook.timers.values()].some(timer => timer.ms === 1500), false);
+  } finally { hook.cleanup(); }
+});
+
+test("fallback displays pixels before calibration and ignores a probe finishing after teardown", async () => {
+  let resolveGeometry;
+  const hook = await mountLiveFrame(async () => ({ ok: false, status: 503, json: async () => ({ error: "video unavailable" }) }),
+    undefined, () => new Promise(resolve => { resolveGeometry = resolve; }));
+  try {
+    assert.equal(hook.states[1], "live");
+    assert.equal(hook.states[2], "frames");
+    assert.equal(hook.states[4].width, 100);
+    assert.equal(hook.states[4].geometryId, undefined);
+    hook.cleanup();
+    resolveGeometry({ ok: true, json: async () => ({ geometry: { geometryId: "old-phone", frameWidth: 100, frameHeight: 200 } }) });
+    await hook.flush();
+    assert.equal(hook.states[4].geometryId, undefined);
+  } finally { hook.cleanup(); }
+});
 
 test("a connected but silent stream times out into working frame fallback", async () => {
   let cancelled = false;

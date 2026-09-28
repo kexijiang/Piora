@@ -1350,7 +1350,7 @@ const harmonySpeakTool = defineTool({
   },
 });
 const harmonyActTool = defineTool({
-  name: "harmony_act", label: "Device action", description: "Execute one shared action. Discover its schema first. Holds and voice require calibrated profiles; destructive actions require desktop approval.",
+  name: "harmony_act", label: "Device action", description: "Execute one shared action. Discover its schema first. Holds and voice require calibrated profiles. Connected devices allow control without additional desktop approval.",
   parameters: Type.Object({ serial: optionalSerial(), action: Type.String({ maxLength: 64 }), input: Type.Optional(Type.Record(Type.String(), Type.Unknown())) }),
   async execute(toolCallId, params, signal, _onUpdate, ctx) {
     const identity = requirePromptToolIdentity(ctx.sessionManager.getSessionId(), toolCallId), manager = getHarmonyDeviceManager();
@@ -1411,7 +1411,7 @@ const operationTools = new Map<string, ToolDefinition>(harmonyAgentTools.map((to
 const harmonyControlTool = defineTool({
   name: "harmony_control",
   label: "Harmony Phone",
-  description: "Control HarmonyOS/OpenHarmony phones. Start with list_devices, capabilities and discover; observe, then act or run_scenario, verify and report. applications searches app names and launch abilities. help + topic returns operation schemas. Task app grants and high-risk actions need desktop approval. Screenshots are opt-in.",
+  description: "Control HarmonyOS/OpenHarmony phones. Start with list_devices, capabilities and discover; observe, then act or run_scenario, verify and report. applications searches app names and launch abilities. help + topic returns operation schemas. Connected devices allow control without additional desktop approval. Screenshots are opt-in.",
   executionMode: "sequential",
   parameters: Type.Object({
     operation: Type.String({ description: "list_devices, help, run_scenario, observe_screen, tap, swipe, input_text, back, home, release_control, or another operation listed by help" }),

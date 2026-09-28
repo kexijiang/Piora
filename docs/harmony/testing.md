@@ -1,6 +1,6 @@
 # 验证和发布
 
-软件门禁：`npm test`、`npm run lint`、`npm run typecheck`、`npm run harmony:docs:check`、`npm run verify:hygiene`、`npm run licenses:check`、`npm run perf:check`。Harmony 测试包含无效观察、失效引用、租约撤销、几何、一次性授权、worker/跨进程互斥、文本和语音后置条件、debug token 与共享 JSON 模板。浏览器回归保留 `components/HarmonyPanel.browser.test.mjs`。
+软件门禁：`npm test`、`npm run lint`、`npm run typecheck`、`npm run harmony:docs:check`、`npm run verify:hygiene`、`npm run licenses:check`、`npm run perf:check`。Harmony 测试包含无效观察、失效引用、租约撤销、几何、连接后直接操作、worker/跨进程互斥、文本和语音后置条件、debug token 与共享 JSON 模板。浏览器回归保留 `components/HarmonyPanel.browser.test.mjs`。
 
 本地只编译 TypeScript worker 与测试 fixture。禁止在开发环境运行 Next release build，禁止在本地打发布安装包。GitHub Actions 保留现有 Windows/Linux 分片、性能、许可证、hygiene 与打包隔离运行验证。
 

@@ -53,12 +53,15 @@ export function parseDisplayGeometry(output: string): NativeDisplayGeometry | un
   const lines = output.split(/\r?\n/);
   const start = lines.findIndex(line => /DisplayId\s+.*Rotation.*\[/.test(line));
   if (start < 0) {
-    // Modern ScreenSessionDumper sections. Require exactly one display and bounds.
-    const ids = [...output.matchAll(/^\s*DisplayId:\s*(\d+)\s*$/gm)];
-    const properties = output.split("[SCREEN PROPERTY]");
-    if (ids.length !== 1 || properties.length !== 2) return undefined;
-    const section = properties[1].split(/\n\s*\[/)[0];
-    const bounds = section.match(/^\s*Bounds<L,T,W,H>:\s*0,\s*0,\s*(\d+),\s*(\d+),?\s*$/m);
+    // ScreenSessionDumper also prints DisplayId in user/display relation sections.
+    // Scope identity to SCREEN SESSION, never count those unrelated repeated IDs.
+    const sessions = [...output.matchAll(/^\s*\[SCREEN SESSION\]\s*$\n([\s\S]*?)(?=^\s*\[|$(?![\s\S]))/gm)];
+    const properties = [...output.matchAll(/^\s*\[SCREEN PROPERTY\]\s*$\n([\s\S]*?)(?=^\s*\[|$(?![\s\S]))/gm)];
+    if (sessions.length !== 1 || properties.length !== 1 || properties[0].index! < sessions[0].index!) return undefined;
+    const ids = [...sessions[0][1].matchAll(/^\s*DisplayId:\s*(\d+)\s*$/gm)];
+    if (ids.length !== 1) return undefined;
+    const section = properties[0][1];
+    const bounds = section.match(/^\s*Bounds<L,T,W,H>:\s*0(?:\.0+)?,\s*0(?:\.0+)?,\s*(\d+)(?:\.0+)?,\s*(\d+)(?:\.0+)?,?\s*$/m);
     const rotation = section.match(/^\s*ScreenRotation:\s*([0-3])\s*$/m);
     if (!bounds || !rotation) return undefined;
     const nativeWidth = Number(bounds[1]), nativeHeight = Number(bounds[2]);

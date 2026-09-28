@@ -7097,7 +7097,7 @@
     {
       "protocolVersion": 1,
       "action": "stop_app",
-      "description": "Stop the authorized application",
+      "description": "Stop the selected application",
       "risk": "control",
       "capability": "stop_app",
       "retry": "only-before-dispatch",
@@ -7135,8 +7135,8 @@
     {
       "protocolVersion": 1,
       "action": "clear_app_data",
-      "description": "Clear application data with one-use approval",
-      "risk": "approval",
+      "description": "Clear data of the selected application",
+      "risk": "control",
       "capability": "clear_app_data",
       "retry": "only-before-dispatch",
       "cleanup": "owned-resources",
@@ -7173,8 +7173,8 @@
     {
       "protocolVersion": 1,
       "action": "uninstall_app",
-      "description": "Uninstall the exact approved application",
-      "risk": "approval",
+      "description": "Uninstall the selected application",
+      "risk": "control",
       "capability": "uninstall_app",
       "retry": "only-before-dispatch",
       "cleanup": "owned-resources",
@@ -7211,8 +7211,8 @@
     {
       "protocolVersion": 1,
       "action": "install_app",
-      "description": "Install an immutable hash-approved HAP",
-      "risk": "approval",
+      "description": "Install an integrity-checked immutable HAP",
+      "risk": "control",
       "capability": "install_app",
       "retry": "only-before-dispatch",
       "cleanup": "owned-resources",
@@ -7253,8 +7253,8 @@
     {
       "protocolVersion": 1,
       "action": "initialize_mirror",
-      "description": "Explicitly initialize the approved capture component; never unlock",
-      "risk": "approval",
+      "description": "Initialize the capture component on request; never unlock",
+      "risk": "control",
       "capability": "initialize_mirror",
       "retry": "only-before-dispatch",
       "cleanup": "owned-resources",

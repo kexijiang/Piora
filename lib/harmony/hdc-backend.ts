@@ -445,7 +445,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     return { hdcVersion: version.trim().split(/\r?\n/)[0]?.slice(0, 160), checks: [
       check("video-component", mirror.includes(MIRROR_BUNDLE) && !/not found|not exist|failed/i.test(mirror), "Package presence only; video connection and initialization are separate"),
       check("screen-unlocked", /screenLocked\s*[:=]\s*false/i.test(lock) && !/screenLocked\s*[:=]\s*true/i.test(lock), "Read-only lock inspection; unlock manually if required"),
-      check("package-install-command", /\binstall\b/.test(install), "Help availability only; installation still needs one-use approval and may be denied by the device"),
+      check("package-install-command", /\binstall\b/.test(install), "Help availability only; installation may still be denied by the device"),
       check("bounded-uinput-protocol", ["--down", "--up", "--interval"].every(token => uinput.includes(token)), "Help evidence only; physical key/touch behavior requires calibration"),
     ] };
   }
@@ -684,7 +684,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const result = await this.shell(serial, ["bm", "dump", "-n", MIRROR_BUNDLE], "mirror_server_check", signal, 8_000);
     const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "");
     if (!output.includes(MIRROR_BUNDLE) || /(?:not\s+exist|not\s+found|failed)/i.test(output)) {
-      throw new HarmonyError("APPROVAL_REQUIRED", "Initialize the phone video component explicitly in the Harmony workbench; passive viewing never installs it");
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Initialize the phone video component in the Harmony workbench; passive viewing never installs it");
     }
     await this.requireUnlockedScreen(serial, signal);
   }

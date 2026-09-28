@@ -16,7 +16,7 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
   try {
     await writeFile(path.join(root, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root, "css.cjs"), 'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
-    await writeFile(path.join(root, "stubs.tsx"), `import {useEffect,useMemo} from "react";export const useI18n=()=>({locale:"zh-CN"});export const useHarmonyLiveFrame=options=>{useEffect(()=>{if(!options.enabled)return;const canvas=options.canvasRef.current;if(!canvas)return;canvas.width=1080;canvas.height=2400;const context=canvas.getContext("2d");context.fillStyle="#f7f8fa";context.fillRect(0,0,1080,2400);context.fillStyle="#15181d";context.font="600 92px sans-serif";context.fillText("设置",80,230);context.fillStyle="#e8ebef";for(let y=340;y<2100;y+=250)context.fillRect(65,y,950,180);context.fillStyle="#333942";context.font="48px sans-serif";["无线网络","蓝牙","移动网络","显示和亮度","声音和振动","通知和状态栏","应用和服务"].forEach((text,index)=>context.fillText(text,105,445+index*250));},[options.canvasRef,options.enabled,options.serial]);return useMemo(()=>({status:"live",mode:"video",frame:{width:1080,height:2400,serial:options.serial,generation:options.generation,geometryId:"geometry"},refresh:()=>{}}),[options.serial,options.generation])};export const AliIcon=({name})=><span aria-hidden="true" style={{display:"inline-block",fontSize:10,lineHeight:1}}>{name==="mobile"?"▯":"◆"}</span>;export const HarmonyLogViewer=()=>null;export const HarmonyCheckPanel=()=>null;`);
+    await writeFile(path.join(root, "stubs.tsx"), `import {useEffect,useMemo,useState} from "react";export const useI18n=()=>({locale:"zh-CN"});export const useHarmonyLiveFrame=options=>{const[geometryId,setGeometryId]=useState("geometry");window.setFixtureGeometry=setGeometryId;useEffect(()=>{if(!options.enabled)return;const canvas=options.canvasRef.current;if(!canvas)return;canvas.width=1080;canvas.height=2400;const context=canvas.getContext("2d");context.fillStyle="#f7f8fa";context.fillRect(0,0,1080,2400);context.fillStyle="#15181d";context.font="600 92px sans-serif";context.fillText("设置",80,230);context.fillStyle="#e8ebef";for(let y=340;y<2100;y+=250)context.fillRect(65,y,950,180);context.fillStyle="#333942";context.font="48px sans-serif";["无线网络","蓝牙","移动网络","显示和亮度","声音和振动","通知和状态栏","应用和服务"].forEach((text,index)=>context.fillText(text,105,445+index*250));},[options.canvasRef,options.enabled,options.serial]);return useMemo(()=>({status:"live",mode:"video",frame:{width:1080,height:2400,serial:options.serial,generation:options.generation,geometryId},refresh:()=>{}}),[options.serial,options.generation,geometryId])};export const AliIcon=({name})=><span aria-hidden="true" style={{display:"inline-block",fontSize:10,lineHeight:1}}>{name==="mobile"?"▯":"◆"}</span>;export const HarmonyLogViewer=()=>null;export const HarmonyCheckPanel=()=>null;`);
     await writeFile(path.join(root, "entry.tsx"), `import React,{useState} from "react";import {createRoot} from "react-dom/client";import {SafeHarmonyPanel as HarmonyPanel} from "@/components/workspace/HarmonyPanel";function Fixture(){const[maximized,setMaximized]=useState(false);const[active,setActive]=useState(true);window.setFixtureActive=setActive;window.maximized=maximized;return <HarmonyPanel active={active} maximized={maximized} onMaximizedChange={setMaximized}/>};createRoot(document.getElementById("root")).render(<Fixture/>);`);
     const aliases = Object.fromEntries(["@/hooks/useI18n", "@/hooks/useHarmonyLiveFrame", "./HarmonyLogViewer", "./HarmonyCheckPanel"].map(name => [name, path.join(root, "stubs.tsx")]));
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
@@ -38,6 +38,7 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
       window.EventSource = class { close() {} };
     });
     let recording = null, holder = null, delayAcquire = null, rejectAcquire = false, delayTemplate = null;
+    let controls = [], rejectedControlStatus = null;
     let phoneName = "HUAWEI Mate 70 Pro";
     const templates = await Promise.all(["launch-and-verify", "chinese-input", "push-to-talk", "long-list", "orientation", "safe-recovery"].map(async id => JSON.parse(await readFile(path.join(repo, "lib/harmony/scenario/templates", `${id}.json`), "utf8"))));
     const screenshot = { kind: "screenshot", path: "C:\\保存目录\\手机截图.png", filename: "手机截图.png", size: 123 };
@@ -52,14 +53,17 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
       const input = request.postDataJSON();
       if (input) requests.push({ ...input, endpoint: url.pathname });
       if (url.pathname.endsWith("/profile")) data = { profile: "normal" };
-      if (url.pathname.endsWith("/devices")) data = { devices: ["phone", "phone2"].map(serial => ({ serial, name: serial === "phone" ? phoneName : "Second phone", state: "online", generation: 1, capabilities: { screenshot: true, tap: true, swipe: true, keys: true, inputText: true, launchApp: true } })), state: { runtime: { status: "ready" }, leases: holder ? [holder] : [] } };
-      if (url.pathname.endsWith("/approval")) data = { approvals: [] };
+      if (url.pathname.endsWith("/devices")) data = { devices: ["phone", "phone2"].map(serial => ({ serial, name: serial === "phone" ? phoneName : "Second phone", state: "online", generation: 1, capabilities: { screenshot: true, tap: true, swipe: true, keys: true, inputText: true, launchApp: true } })), state: { runtime: { status: "ready" }, leases: holder ? [holder] : [], controls } };
       if (url.pathname.endsWith("/templates") && input && delayTemplate) await delayTemplate;
       if (url.pathname.endsWith("/templates")) data = input ? { steps: [{ action: "launch_app", bundleName: input.parameters.bundleName, abilityName: "EntryAbility" }, { action: "checkpoint", name: "launched" }] } : { templates };
       if (url.pathname.endsWith("/apps")) data = { applications: [{ bundleName: "dev.piora.audio.fixture", label: "Harmony 测试 App", abilities: ["EntryAbility"], source: "bm-label" }] };
       if (url.pathname.endsWith("/scenario")) data = input ? { result: { status: "passed", steps: [{ action: "launch_app", status: "passed" }] } } : { executions: [] };
       if (url.pathname.endsWith("/audio")) data = { outputs: [] };
       if (url.pathname.endsWith("/manual")) {
+        if (input?.action === "acquire" && rejectedControlStatus) {
+          controls = [{ serial: input.serial, status: rejectedControlStatus }];
+          return route.fulfill({ status: 409, json: { error: { code: "DEVICE_BUSY", message: "Device dispatch is blocked while stopping or awaiting cleanup confirmation", details: { state: rejectedControlStatus } } } });
+        }
         if (input?.action === "acquire" && rejectAcquire) return route.fulfill({ status: 409, json: { error: { message: "设备忙，请稍后重试" } } });
         if (input?.action === "acquire" && delayAcquire) await delayAcquire;
         if (["acquire", "takeover"].includes(input?.action)) {
@@ -68,6 +72,7 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
         } else if (input?.action === "release") holder = null;
       }
       if (input?.action === "stop_device") holder = null;
+      if (input?.action === "confirm_cleanup") { controls = []; data = { cleanup: "manual-confirmed" }; }
       if (url.pathname.endsWith("/media")) {
         if (input?.action === "capture_screenshot") data = { artifact: screenshot };
         else if (input?.action === "start_recording") { recording = { recordingId: "rec", serial: "phone", ownerId: input.ownerId, startedAt: new Date().toISOString() }; data = { recording }; }
@@ -86,6 +91,13 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
     assert.equal(await page.locator(".toolDrawer").isVisible(), false, "tools start closed");
     assert.equal(requests.filter(r => r.endpoint === "/api/harmony/manual").length, 0, "mounting a mirror does not acquire control");
     assert.equal(await page.getByRole("button", { name: /^(手动控制|控制设备|结束控制)$/ }).count(), 0);
+    await page.evaluate(() => window.setFixtureGeometry(undefined));
+    await page.getByText("正在自动校准点击位置", { exact: true }).waitFor();
+    await page.locator("canvas").click();
+    assert.equal(requests.some(request => request.action === "tap" || request.action === "acquire"), false, "calibration does not dispatch guessed coordinates or acquire control");
+    await page.evaluate(() => window.setFixtureGeometry("geometry"));
+    await page.getByText("可直接点击、滑动", { exact: true }).waitFor();
+    assert.equal(requests.some(request => request.endpoint === "/api/harmony/approval"), false, "connected phones never poll for Piora approval");
     const beforeTools = await page.locator("canvas").boundingBox();
     assert.ok(beforeTools.height > 600, "the default screen uses the available vertical space");
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR, { recursive: true }); await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "default.png") }); }
@@ -207,6 +219,34 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "workspace-narrow.png") });
     await page.getByRole("button", { name: "关闭工具" }).click();
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
+    // Cleanup state belongs to the selected phone; normal completion restores controls automatically.
+    controls = [{ serial: "phone2", status: "recovering" }];
+    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
+    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), true);
+    controls = [{ serial: "phone", status: "stopping" }];
+    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
+    await page.getByText("正在停止设备操作，请稍候…", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), false);
+    assert.equal(await page.locator(".frame").getAttribute("data-enabled"), "false");
+    controls = [];
+    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
+    await page.getByText("可直接点击、滑动", { exact: true }).waitFor();
+    assert.equal(requests.some(r => r.action === "confirm_cleanup"), false, "completed cleanup needs no human confirmation");
+    // A server-side state change between polls receives a readable error and refreshes admission.
+    rejectedControlStatus = "recovering";
+    await page.getByRole("button", { name: "开始录屏", exact: true }).click();
+    await page.getByRole("alert").filter({ hasText: "上次设备操作的清理尚未确认" }).waitFor();
+    await page.getByText("设备清理尚未确认，暂不能操作或开始录屏", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), false);
+    rejectedControlStatus = null;
+    await page.getByRole("button", { name: "检查并恢复", exact: true }).click();
+    await page.getByText("恢复清理不确定的设备", { exact: true }).click();
+    assert.equal(requests.some(r => r.action === "confirm_cleanup"), false, "opening diagnostics never confirms physical release");
+    await page.getByRole("button", { name: "已检查手机并确认释放", exact: true }).click();
+    await page.getByText("设备已恢复，可重新操作或录屏。", { exact: true }).waitFor();
+    await page.getByText("可直接点击、滑动", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), true);
+    await page.getByRole("button", { name: "关闭工具" }).click();
     // An Agent holder requires deliberate takeover, never a side effect of displaying the screen.
     holder = { serial: "phone", owner: { id: "agent:one", kind: "agent" }, expiresAt: "2099-01-01T00:00:00Z" };
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();

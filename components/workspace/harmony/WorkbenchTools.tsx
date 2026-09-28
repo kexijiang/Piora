@@ -8,8 +8,8 @@ import { ScenarioWorkbench } from "./ScenarioWorkbench";
 import styles from "../HarmonyPanel.module.css";
 import type { AudioOutput } from "@/lib/harmony/audio/acoustic-provider";
 
-interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string }
-export function WorkbenchTools({ serial, canControl, ensureControl, tab, active, chinese, geometryId, cwd, ownerId }: Props) {
+interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string; onCleanupConfirmed?: () => Promise<void> }
+export function WorkbenchTools({ serial, canControl, ensureControl, tab, active, chinese, geometryId, cwd, ownerId, onCleanupConfirmed }: Props) {
   const [busy, setBusy] = useState(false), [error, setError] = useState<string>();
   const [report, setReport] = useState<HarmonyDoctorReport>(), [history, setHistory] = useState<ScenarioExecution[]>([]);
   const [key, setKey] = useState("volume_down"), [duration, setDuration] = useState(800), [calibration, setCalibration] = useState<string>();
@@ -28,7 +28,7 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
     const response = await fetch(path, { cache: "no-store", signal: controller.current?.signal,
       ...(body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) });
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error?.message ?? data.error ?? copy("操作失败，请查看设备授权和诊断", "Operation failed; check approvals and diagnostics"));
+    if (!response.ok) throw new Error(data.error?.message ?? data.error ?? copy("操作失败，请查看设备连接和诊断", "Operation failed; check the connection and diagnostics"));
     return data;
   };
   const run = async (operation: () => Promise<void>) => {
@@ -43,9 +43,9 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
       <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} canControl={canControl} ensureControl={ensureControl} chinese={chinese}/></div>
       <div hidden={tab !== "scenarios"}><ScenarioWorkbench active={tab === "scenarios"} serial={serial} canControl={canControl} ensureControl={ensureControl} cwd={cwd} chinese={chinese}/></div>
       {tab === "diagnostics" ? <>
-        <ol><li>{copy("连接 USB 并在手机确认调试授权。", "Connect USB and allow debugging on the phone.")}</li><li>{copy("检查设备、画面及 UI 树；锁屏时请手动解锁。", "Check the device, frame and UI tree; unlock manually when needed.")}</li><li>{copy("在测试应用校准点击或保持操作。", "Calibrate input in a test app.")}</li><li>{copy("搜索测试应用，再预览和执行场景。Agent 授权仅限批准的任务与应用。", "Find the test app, then preview and run a scenario. Agent grants are scoped to the approved task and app.")}</li></ol>
+        <ol><li>{copy("连接 USB 并在手机确认调试授权。", "Connect USB and allow debugging on the phone.")}</li><li>{copy("检查设备、画面及 UI 树；锁屏时请手动解锁。", "Check the device, frame and UI tree; unlock manually when needed.")}</li><li>{copy("在测试应用校准点击或保持操作。", "Calibrate input in a test app.")}</li><li>{copy("搜索测试应用，再预览和执行场景。已连接设备可直接操作。", "Find the test app, then preview and run a scenario. Connected devices are ready for control.")}</li></ol>
         <p>{copy("只读检查连接、命令和坐标能力，不自动解锁。已探测不代表真机动作已验证。", "Read-only connection, command and geometry checks. Never unlocks automatically. Probed commands are not verified physical effects.")}</p>
-        <details><summary>{copy("恢复清理不确定的设备", "Recover a device with uncertain cleanup")}</summary><p>{copy("先在手机确认所有按键和触摸已松开，录屏已停止。此操作会重新读取现场，记录人工确认，再允许重新取得控制。", "First physically confirm all keys and touch are released and recording is stopped. This rereads the device, records manual confirmation, then allows control to be reacquired.")}</p><button disabled={busy} onClick={() => void run(async () => { const result = await request("/api/harmony/calibration", { action: "confirm_cleanup", serial, released: true, recordingStopped: true }); setMessage(result.cleanup); })}>{copy("已检查手机并确认释放", "I checked the phone and confirm release")}</button></details>
+        <details><summary>{copy("恢复清理不确定的设备", "Recover a device with uncertain cleanup")}</summary><p>{copy("先在手机确认所有按键和触摸已松开，录屏已停止。此操作会重新读取现场，记录人工确认，再允许重新取得控制。", "First physically confirm all keys and touch are released and recording is stopped. This rereads the device, records manual confirmation, then allows control to be reacquired.")}</p><button disabled={busy} onClick={() => void run(async () => { await request("/api/harmony/calibration", { action: "confirm_cleanup", serial, released: true, recordingStopped: true }); if (controller.current?.signal.aborted) return; setMessage(copy("设备已恢复，可重新操作或录屏。", "Device recovered. You can control it or start recording.")); await onCleanupConfirmed?.(); })}>{copy("已检查手机并确认释放", "I checked the phone and confirm release")}</button></details>
         <button disabled={busy} onClick={() => void run(async () => setReport((await request(`/api/harmony/capabilities?reprobe=1&serial=${encodeURIComponent(serial)}`)).report))}>{copy("检查设备", "Check device")}</button>
         {report ? <ul>{report.checks.map(check => <li key={check.name}>{check.name}: {check.status}{check.reason ? ` · ${check.reason}` : ""}</li>)}{report.capabilities.map(capability => <li key={capability.action}><strong>{capability.action}</strong>: {capability.status} · {capability.evidence}<br/><small>{capability.reason}</small></li>)}</ul> : null}
       </> : null}
@@ -55,7 +55,7 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
         <button disabled={busy} onClick={() => void run(async () => { const data = await request("/api/harmony/support", { serial, includeTree, includeScreenshot }); setMessage(JSON.stringify(data)); })}>{copy("保存到本机", "Save locally")}</button>
       </details> : null}
       {tab === "inputs" ? <>
-        <p>{copy("选择精确时长并允许一次校准，观察手机达到预期状态且按键已松开后再确认。不会自动开屏或解锁。", "Approve one calibration, then confirm only after observing expected behavior and release. No automatic wake or unlock.")}</p>
+        <p>{copy("选择精确时长并开始校准，观察手机达到预期状态且按键已松开后再保存。不会自动开屏或解锁。", "Choose the duration and start calibration, then save after observing expected behavior and release. No automatic wake or unlock.")}</p>
         <label>{copy("按键", "Key")}<select value={key} onChange={event => { setKey(event.target.value); setCalibration(undefined); }} style={fieldStyle}><option value="volume_down">{copy("音量减", "Volume down")}</option><option value="volume_up">{copy("音量加", "Volume up")}</option><option value="power">{copy("电源", "Power")}</option><option value="touch">{copy("触摸保持", "Touch hold")}</option></select></label>
         <label>{copy("保持时长（毫秒）", "Hold duration (ms)")}<input type="number" min={50} max={key === "touch" ? 15000 : key === "power" ? 3000 : 5000} value={duration} onChange={event => { setDuration(Number(event.target.value)); setCalibration(undefined); }} style={fieldStyle}/></label>
         {key === "touch" ? <><label>X <input type="number" value={x} onChange={event => setX(Number(event.target.value))}/></label><label>Y <input type="number" value={y} onChange={event => setY(Number(event.target.value))}/></label><p>{copy("使用原生屏幕坐标，并保持当前画面实时连接。", "Use native display coordinates and keep the current frame live.")}</p></> : null}

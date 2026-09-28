@@ -7,12 +7,12 @@ import { useI18n } from "@/hooks/useI18n";
 import { useHarmonyManualControl } from "@/hooks/useHarmonyManualControl";
 import { useHarmonyLiveFrame } from "@/hooks/useHarmonyLiveFrame";
 import { formatHarmonyDeviceLabel } from "@/lib/harmony/device-label";
+import { HarmonyRequestError } from "@/lib/harmony/request-error";
 import { framePointFromClient } from "@/lib/harmony/observation/geometry";
 import { copyText } from "@/lib/clipboard";
 import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
 import { HarmonyCheckPanel } from "./HarmonyCheckPanel";
-import { ApprovalDialog } from "./harmony/ApprovalDialog";
 import { WorkbenchTools } from "./harmony/WorkbenchTools";
 import styles from "./HarmonyPanel.module.css";
 
@@ -32,6 +32,7 @@ type HarmonyState = {
   runtime: { status: string; hdcPath?: string; error?: { code?: string; message?: string } };
   devices: HarmonyDevice[];
   leases: PublicLease[];
+  controls: Array<{ serial: string; status: "stopping" | "recovering" }>;
   snapshots: Array<{ serial: string; generation: number; revision: number; capturedAt: string; hasTree: boolean; hasScreenshot: boolean }>;
 };
 type RecordingState = { serial: string; recordingId: string; startedAt: string; ownerId: string };
@@ -118,6 +119,12 @@ function normalizeHarmonyState(value: unknown, fallbackDevices: HarmonyDevice[] 
     },
     devices: Array.isArray(source?.devices) ? normalizeDevices(source.devices) : fallbackDevices,
     leases,
+    controls: Array.isArray(source?.controls) ? source.controls.flatMap(item => {
+      const control = recordOf(item);
+      const serial = optionalString(control?.serial);
+      const status = control?.status;
+      return serial && (status === "stopping" || status === "recovering") ? [{ serial, status }] : [];
+    }) : [],
     snapshots,
   };
 }
@@ -148,16 +155,15 @@ function normalizeVisionModels(value: unknown): VisionModel[] {
   });
 }
 
-function messageOf(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+function messageOf(error: unknown, fallback: string, chinese: boolean): string {
+  return error instanceof HarmonyRequestError ? error.messageFor(chinese) : error instanceof Error ? error.message : fallback;
 }
 
 async function jsonRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init });
   const payload = await response.json().catch(() => ({})) as { error?: { message?: string } | string } & T;
   if (!response.ok) {
-    const detail = typeof payload.error === "string" ? payload.error : payload.error?.message;
-    throw new Error(detail || `Request failed (${response.status})`);
+    throw new HarmonyRequestError(payload.error, response.status);
   }
   return payload;
 }
@@ -230,9 +236,10 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const canScreenshot = Boolean(selectedOnline && selected?.capabilities.screenshot);
 
   const holder = managerState?.leases.find((item) => item.serial === selectedSerial);
+  const controlStatus = managerState?.controls.find(item => item.serial === selectedSerial)?.status;
   const { lease, ownerId, clearControl, ensureControl, canControl, blocked } = useHarmonyManualControl({
     active: active && desktopAvailable, serial: selectedSerial, generation: selectedGeneration,
-    online: Boolean(selectedOnline), holder, chinese,
+    online: Boolean(selectedOnline), holder, chinese, controlStatus,
   });
   const openTools = (tab = toolTab) => { setToolTab(tab); setToolsVisited(true); setToolsOpen(true); setSettingsOpen(false); };
   const closeTools = () => { setToolsOpen(false); toolsButtonRef.current?.focus(); };
@@ -289,9 +296,9 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       setDeviceError(null);
     } catch (refreshError) {
       if (signal?.aborted) return;
-      setDeviceError(messageOf(refreshError, copy("无法读取设备状态", "Unable to read device state")));
+      setDeviceError(messageOf(refreshError, copy("无法读取设备状态", "Unable to read device state"), chinese));
     }
-  }, [copy, desktopAvailable]);
+  }, [copy, desktopAvailable, chinese]);
 
   const loadConfig = useCallback(async () => {
     if (!desktopAvailable) return;
@@ -316,9 +323,9 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       setShareScreenshot(vision?.shareScreenshotWithActionModel === true);
       setDiagnostics(payload?.diagnostics ?? null);
     } catch (configError) {
-      setError(messageOf(configError, copy("无法读取 SDK 配置", "Unable to read SDK configuration")));
+      setError(messageOf(configError, copy("无法读取 SDK 配置", "Unable to read SDK configuration"), chinese));
     }
-  }, [copy, desktopAvailable]);
+  }, [copy, desktopAvailable, chinese]);
 
   useEffect(() => {
     if (!active || !desktopAvailable) return;
@@ -400,12 +407,13 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       setError(null);
       return value;
     } catch (operationError) {
-      setError(messageOf(operationError, copy("设备操作失败", "Device operation failed")));
+      setError(messageOf(operationError, copy("设备操作失败", "Device operation failed"), chinese));
+      if (operationError instanceof HarmonyRequestError && operationError.controlStatus) void refresh();
       return undefined;
     } finally {
       setBusy(false);
     }
-  }, [copy]);
+  }, [copy, chinese, refresh]);
 
   const chooseRuntimePath = useCallback(async (kind: "sdk" | "hdc") => {
     const selectedPath = await window.piDesktop?.selectHarmonyRuntimePath?.(kind);
@@ -544,7 +552,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const frameMatchesDevice = Boolean(liveFrame && selected && liveFrame.serial === selected.serial && liveFrame.generation === selected.generation);
   const frameError = frameInteractionError ?? frameLoadError;
   const agentHasControl = holder?.owner.kind === "agent";
-  const canPointControl = Boolean(!busy && canControl && frameStatus === "live" && frameMatchesDevice && selected?.capabilities.tap);
+  const canPointControl = Boolean(!busy && canControl && frameStatus === "live" && frameMatchesDevice && liveFrame?.geometryId && selected?.capabilities.tap);
   const runtimeReady = managerState?.runtime.status === "ready";
   const deviceStateLabel = selected?.state === "online"
     ? copy("已连接", "Connected")
@@ -645,7 +653,10 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
 
     <main className={styles.workspace}>
       <div className={styles.screenPane}>
-        {blocked ? <div className={styles.activityBar} data-agent-control={agentHasControl}>
+        {controlStatus ? <div className={styles.activityBar} role="status">
+          <span>{controlStatus === "stopping" ? copy("正在停止设备操作，请稍候…", "Stopping device operations…") : copy("设备清理尚未确认，暂不能操作或开始录屏", "Device cleanup is unconfirmed. Input and new recordings are paused.")}</span>
+          {controlStatus === "recovering" ? <button type="button" onClick={() => openTools("diagnostics")}>{copy("检查并恢复", "Check and recover")}</button> : null}
+        </div> : blocked ? <div className={styles.activityBar} data-agent-control={agentHasControl}>
           <span><AliIcon name={agentHasControl ? "robot" : "mobile"} size={13} />{agentHasControl ? copy("AI 正在操作", "AI is operating") : copy("其他窗口正在操作", "Another window is operating")}</span>
           {agentHasControl && onGuideAgent ? <button type="button" onClick={() => onGuideAgent()}>{copy("指导 AI", "Guide AI")}</button> : null}
           <button type="button" disabled={busy} onClick={() => void run(() => ensureControl(true), () => { void refresh(); })}>{copy("停止并接管", "Stop and take over")}</button>
@@ -699,7 +710,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
             pointerStartRef.current = null;
             if (!from || from.pointerId !== event.pointerId || !to || !canPointControl || !liveFrame || !frameMatchesDevice || from.serial !== selectedSerial || from.generation !== liveFrame.generation || from.geometryId !== liveFrame.geometryId) return;
             if (!liveFrame.geometryId) {
-              setFrameInteractionError(copy("无法确认原生坐标，请重新连接或使用界面控件定位。", "Native coordinates are unavailable. Reconnect or use semantic controls."));
+              setFrameInteractionError(copy("正在自动校准点击位置，请稍候。", "Calibrating touch coordinates automatically. Please wait."));
               return;
             }
             const distance = Math.hypot(to.x - from.x, to.y - from.y);
@@ -770,11 +781,11 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
           </div> : <div className={styles.mediaEmpty}>{copy("截图和录屏保存后会显示在这里。", "Saved screenshots and recordings appear here.")}</div>}
 
           </div> : null}
-          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} /> : null}
+          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
           {toolTab === "logs" ? <HarmonyLogViewer active={active && toolsOpen} serial={selectedSerial} online={Boolean(selectedOnline)} copy={copy} /> : null}
           {toolTab === "check" ? <HarmonyCheckPanel active={active && toolsOpen} cwd={cwd} onOpenFile={onOpenFile} onGuideAgent={onGuideAgent} /> : null}
           {toolTab === "diagnostics" ? <div className={styles.moreBody}>
-            <button type="button" disabled={!canControl || busy} onClick={() => void action({ action: "initialize_mirror" }).then(result => { if (result !== undefined) requestFrame(); })}>{copy("初始化投屏服务（需授权）", "Initialize video service (approval required)")}</button>
+            <button type="button" disabled={!canControl || busy} onClick={() => void action({ action: "initialize_mirror" }).then(result => { if (result !== undefined) requestFrame(); })}>{copy("初始化投屏服务", "Initialize video service")}</button>
             <button type="button" disabled={!selectedOnline || busy} onClick={requestFrame}>{copy("重连视频流", "Reconnect video")}</button>
             <button type="button" disabled={!selectedOnline || busy || !selected?.capabilities.uiTree} onClick={() => void run(() => jsonRequest<{ snapshot: unknown }>(`/api/harmony/tree?serial=${encodeURIComponent(selectedSerial)}`), payload => setTree(payload.snapshot))}>{copy("读取界面结构", "Read interface structure")}</button>
             <details className={styles.diagnostics}><summary>{copy("开发者信息", "Developer details")}</summary><pre>{JSON.stringify({ selected, holder, snapshot, diagnostics, tree }, null, 2)}</pre></details>
@@ -784,13 +795,12 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       </section>
     </main>
     <footer className={styles.statusBar}>
-      <span title={copy("锁屏时请手动解锁，投屏不会自动唤醒或解锁。", "Unlock manually. Mirroring never wakes or unlocks your phone.")}>{blocked ? copy("正在旁观", "Observing") : selectedOnline && frameStatus === "live" && frameMatchesDevice ? selected?.capabilities.tap ? copy("可直接点击、滑动", "Touch and swipe ready") : copy("投屏已连接", "Mirror connected") : selectedOnline ? copy("等待实时画面", "Waiting for live view") : sessionRunning ? copy("等待设备连接", "Waiting for a device") : copy("请连接设备", "Connect a device")}</span>
+      <span title={copy("锁屏时请手动解锁，投屏不会自动唤醒或解锁。", "Unlock manually. Mirroring never wakes or unlocks your phone.")}>{controlStatus ? controlStatus === "stopping" ? copy("正在停止", "Stopping") : copy("等待恢复", "Recovery required") : blocked ? copy("正在旁观", "Observing") : selectedOnline && frameStatus === "live" && frameMatchesDevice ? selected?.capabilities.tap ? liveFrame?.geometryId ? copy("可直接点击、滑动", "Touch and swipe ready") : copy("正在自动校准点击位置", "Calibrating touch coordinates") : copy("投屏已连接", "Mirror connected") : selectedOnline ? copy("等待实时画面", "Waiting for live view") : sessionRunning ? copy("等待设备连接", "Waiting for a device") : copy("请连接设备", "Connect a device")}</span>
       <div className={styles.footerActions}>
       {lease || holder || busy ? <button className={styles.stopButton} type="button" onClick={stopDevice} aria-label={copy("停止设备任务", "Stop device task")} title={copy("停止设备任务", "Stop device task")}><AliIcon name="stop" size={13} /></button> : null}
       <button ref={toolsButtonRef} type="button" aria-expanded={toolsOpen} aria-controls={drawerId} onClick={() => toolsOpen ? closeTools() : openTools()}>{copy("工具", "Tools")}<AliIcon name={toolsOpen ? "arrowdown" : "arrowup"} size={13} /></button>
       </div>
     </footer>
-    <ApprovalDialog serial={selectedSerial} active={active} chinese={chinese} />
     {visibleError ? <div className={styles.error} role="alert">{visibleError}<button className={styles.iconButton} type="button" onClick={() => { setError(null); setDeviceError(null); }} aria-label={copy("关闭提示", "Dismiss message")}><AliIcon name="close" size={12} /></button></div> : null}
   </div>;
 }

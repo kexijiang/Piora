@@ -21,11 +21,11 @@
 | `voice_input` | direct, scenario | control | Play an immutable asset over a calibrated acoustic route and verify the phone transcript |
 | `geometry_assert` | scenario | read | Verify native display rotation against a newly captured screenshot |
 | `launch_app` | direct, scenario | control | Launch a bundle and optional ability |
-| `stop_app` | scenario | control | Stop the authorized application |
-| `clear_app_data` | scenario | approval | Clear application data with one-use approval |
-| `uninstall_app` | scenario | approval | Uninstall the exact approved application |
-| `install_app` | scenario | approval | Install an immutable hash-approved HAP |
-| `initialize_mirror` | direct | approval | Explicitly initialize the approved capture component; never unlock |
+| `stop_app` | scenario | control | Stop the selected application |
+| `clear_app_data` | scenario | control | Clear data of the selected application |
+| `uninstall_app` | scenario | control | Uninstall the selected application |
+| `install_app` | scenario | control | Install an integrity-checked immutable HAP |
+| `initialize_mirror` | direct | control | Initialize the capture component on request; never unlock |
 | `wait_for` | scenario | read | Wait for a valid semantic observation |
 | `assert` | scenario | read | Assert a valid semantic observation |
 | `wait_idle` | scenario | read | Report driver idle or explicitly bounded delay |

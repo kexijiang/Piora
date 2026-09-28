@@ -49,7 +49,7 @@ export async function validateDevelopmentOnDevice(options: DevelopmentValidation
     await fresh();
     return { id: randomUUID(), status: scenario.status, projectRoot: options.projectRoot, artifactHash, artifactSourceBinding: "user-selected" as const, sourceFingerprint: initialSource, stages };
   } catch (error) {
-    const failure = asHarmonyError(error); record(stage, failure.code === "APPROVAL_REQUIRED" ? "needs-approval" : "failed", failure.toJSON());
+    const failure = asHarmonyError(error); record(stage, "failed", failure.toJSON());
     return { id: randomUUID(), status: "incomplete" as const, projectRoot: options.projectRoot, artifactHash, sourceFingerprint: initialSource, stages };
   }
 }

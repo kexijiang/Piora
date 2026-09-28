@@ -198,5 +198,4 @@
 
 .footerActions { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
 
-.approvalPanel { flex: 0 0 auto; max-height: 230px; overflow: auto; margin: 0 10px 10px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); }
 .logViewer .error { position: static; box-shadow: none; }

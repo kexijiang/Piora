@@ -44,7 +44,8 @@ type StreamConfig = {
 };
 
 type StreamAttempt = {
-  geometryCheckedAt?: number;
+  geometryTimer?: number;
+  geometryConfig?: StreamConfig;
   geometryRefreshing?: boolean;
   geometryId?: string;
   controller: AbortController;
@@ -185,14 +186,34 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     const initialCanvas = options.canvasRef.current;
     initialCanvas?.getContext("2d")?.clearRect(0, 0, initialCanvas.width, initialCanvas.height);
 
+    const refreshGeometry = async (attempt: StreamAttempt, expected: StreamConfig) => {
+      const isCurrent = () => !disposed && !attempt.controller.signal.aborted && activeAttempt === attempt && attempt.geometryConfig === expected;
+      if (!isCurrent() || attempt.geometryRefreshing) return;
+      attempt.geometryRefreshing = true;
+      let geometryId: string | undefined;
+      try {
+        const response = await fetch(`/api/harmony/geometry?serial=${encodeURIComponent(options.serial)}&space=video`, { cache: "no-store", signal: attempt.controller.signal });
+        if (response.ok) {
+          const { geometry } = await response.json();
+          if (geometry?.frameWidth === expected.width && geometry?.frameHeight === expected.height && typeof geometry.geometryId === "string") geometryId = geometry.geometryId;
+        }
+      } catch { /* A later automatic probe can recover without reconnecting. */ }
+      if (!isCurrent()) return;
+      attempt.geometryId = geometryId;
+      attempt.geometryRefreshing = false;
+      // A static phone may not send another frame after the asynchronous probe.
+      // Publish readiness (and failures) immediately, without waiting for pixels.
+      setFrame(current => current && current.width === expected.width && current.height === expected.height
+        && current.geometryId !== geometryId ? { ...current, geometryId } : current);
+      attempt.geometryTimer = window.setTimeout(() => {
+        attempt.geometryTimer = undefined;
+        void refreshGeometry(attempt, expected);
+      }, 1500);
+    };
+
     const publishFrame = (width: number, height: number, attempt: StreamAttempt) => {
-      if (disposed) return;
-      if (!attempt.geometryRefreshing && performance.now() - (attempt.geometryCheckedAt ?? 0) > 1500) {
-        attempt.geometryRefreshing = true; attempt.geometryCheckedAt = performance.now();
-        void fetch(`/api/harmony/geometry?serial=${encodeURIComponent(options.serial)}&space=video`, { cache: "no-store", signal: attempt.controller.signal })
-          .then(async response => { if (!response.ok) throw new Error("Geometry unavailable"); const { geometry } = await response.json(); if (activeAttempt === attempt) attempt.geometryId = geometry?.frameWidth === width && geometry?.frameHeight === height ? geometry.geometryId : undefined; })
-          .catch(() => { attempt.geometryId = undefined; }).finally(() => { attempt.geometryRefreshing = false; });
-      }
+      if (disposed || activeAttempt !== attempt || attempt.controller.signal.aborted) return;
+      if (attempt.geometryConfig && !attempt.geometryRefreshing && attempt.geometryTimer === undefined) void refreshGeometry(attempt, attempt.geometryConfig);
       revision += 1;
       attempt.decodedFrames += 1;
       armWatchdog(attempt);
@@ -292,12 +313,12 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     const processPacket = async (type: number, payload: Uint8Array, attempt: StreamAttempt) => {
       if (type === VIDEO_CONFIG) {
         config = parseConfig(payload);
+        window.clearTimeout(attempt.geometryTimer);
+        attempt.geometryTimer = undefined;
+        attempt.geometryConfig = config;
+        attempt.geometryRefreshing = false;
         attempt.geometryId = undefined;
-        const geometryResponse = await fetch(`/api/harmony/geometry?serial=${encodeURIComponent(options.serial)}&space=video`, { cache: "no-store", signal: attempt.controller.signal }).catch(() => null);
-        if (geometryResponse?.ok) {
-          const { geometry } = await geometryResponse.json();
-          if (geometry?.frameWidth === config.width && geometry?.frameHeight === config.height) attempt.geometryId = geometry.geometryId;
-        }
+        setFrame(previous => previous ? { ...previous, geometryId: undefined } : previous);
         await configureDecoder(config, attempt);
         return;
       }
@@ -400,6 +421,9 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
             hasFrame = true;
             if (fallbackGeometry?.width !== bitmap.width || fallbackGeometry?.height !== bitmap.height || performance.now() - fallbackGeometryCheckedAt > 1500) {
               fallbackGeometry = undefined; fallbackGeometryCheckedAt = performance.now();
+              setFrame({ serial: options.serial, generation, revision: frameRevision, width: bitmap.width, height: bitmap.height });
+              setStatus("live");
+              setError(null);
               const response = await fetch(`/api/harmony/geometry?serial=${encodeURIComponent(options.serial)}&space=screenshot`, { cache: "no-store", signal: lifecycle.signal }).catch(() => null);
               if (response?.ok) {
                 const { geometry } = await response.json();
@@ -408,6 +432,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
                 }
               }
             }
+            if (disposed || lifecycle.signal.aborted) return;
             setFrame({
               geometryId: fallbackGeometry?.geometryId,
               serial: options.serial,
@@ -467,6 +492,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
           await consume(response.body, attempt);
         } catch (streamError) {
           window.clearTimeout(attempt.watchdog);
+          window.clearTimeout(attempt.geometryTimer);
           attempt.controller.abort();
           if (lifecycle.signal.aborted || disposed) return;
           failures += 1;
@@ -490,6 +516,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
           await delay(reconnectDelay(failures), lifecycle.signal);
         } finally {
           window.clearTimeout(attempt.watchdog);
+          window.clearTimeout(attempt.geometryTimer);
           lifecycle.signal.removeEventListener("abort", abortAttempt);
           if (activeAttempt === attempt) activeAttempt = undefined;
         }
@@ -501,6 +528,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
       disposed = true;
       lifecycle.abort();
       window.clearTimeout(activeAttempt?.watchdog);
+      window.clearTimeout(activeAttempt?.geometryTimer);
       closeDecoder();
       void activeAttempt?.reader?.cancel().catch(() => undefined);
       void activeAttempt?.jpegChain.catch(() => undefined);

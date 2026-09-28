@@ -1,6 +1,6 @@
 export interface HarmonyActionCapability {
   action: string;
-  status: "supported" | "unsupported" | "unknown" | "needs-approval" | "needs-calibration" | "unavailable";
+  status: "supported" | "unsupported" | "unknown" | "needs-calibration" | "unavailable";
   provider: string;
   evidence: "declared" | "probed" | "verified";
   reason: string;

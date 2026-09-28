@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { HarmonyRequestError } from "@/lib/harmony/request-error";
 
 type ManualLease = { token: string; serial: string; expiresAt: string };
 type Holder = { owner: { kind: "agent" | "manual"; id: string } };
@@ -11,7 +12,7 @@ async function manualRequest(action: string, input: Record<string, unknown>) {
     body: JSON.stringify({ action, ...input }), keepalive: action === "release",
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error?.message ?? data.error ?? `HTTP ${response.status}`);
+  if (!response.ok) throw new HarmonyRequestError(data.error, response.status);
   return data as { lease: ManualLease };
 }
 
@@ -20,8 +21,9 @@ function releaseToken(token: string) {
 }
 
 /** Acquire only for an intentional input; simply displaying a phone never claims it. */
-export function useHarmonyManualControl({ active, serial, generation, online, holder, chinese }: {
+export function useHarmonyManualControl({ active, serial, generation, online, holder, chinese, controlStatus }: {
   active: boolean; serial: string; generation?: number; online: boolean; holder?: Holder; chinese: boolean;
+  controlStatus?: "stopping" | "recovering";
 }) {
   const [ownerId, setOwnerId] = useState("");
   const [lease, setLease] = useState<ManualLease | null>(null);
@@ -30,7 +32,7 @@ export function useHarmonyManualControl({ active, serial, generation, online, ho
   const epoch = useRef(0);
   const pending = useRef<Promise<string> | null>(null);
   const context = useRef<string | null>(null);
-  const contextKey = `${active}:${online}:${serial}:${generation}`;
+  const contextKey = `${active}:${online}:${serial}:${generation}:${controlStatus ?? "ready"}`;
 
   useEffect(() => {
     const key = "piora-harmony-manual-owner-v1";
@@ -87,6 +89,7 @@ export function useHarmonyManualControl({ active, serial, generation, online, ho
   const obtain = useCallback(async (takeover = false) => {
     if (context.current !== contextKey || epoch.current !== revision) throw new Error(chinese ? "设备状态已改变，请重新操作" : "Device state changed; try again");
     if (!active || !online || !serial || !ownerId) throw new Error(chinese ? "请先连接设备" : "Connect a device first");
+    if (controlStatus) throw new HarmonyRequestError({ code: "DEVICE_BUSY", details: { state: controlStatus } }, 409);
     if (blocked && !takeover) throw new Error(chinese ? "设备正在由其他控制者操作，请先接管" : "Another controller is active; take over first");
     const current = currentLease.current;
     if (!takeover && current?.serial === serial && Date.parse(current.expiresAt) > Date.now()) return current.token;
@@ -104,8 +107,8 @@ export function useHarmonyManualControl({ active, serial, generation, online, ho
       });
     pending.current = request;
     try { return await request; } finally { if (pending.current === request) pending.current = null; }
-  }, [contextKey, revision, active, online, serial, ownerId, blocked, chinese]);
+  }, [contextKey, revision, active, online, serial, ownerId, blocked, chinese, controlStatus]);
 
   return { lease, ownerId, clearControl, ensureControl: obtain,
-    canControl: Boolean(active && online && ownerId && !blocked), blocked };
+    canControl: Boolean(active && online && ownerId && !blocked && !controlStatus), blocked };
 }
