@@ -16,7 +16,7 @@ export function ApplicationPicker({ serial, canControl, ensureControl, chinese, 
   const dispatch = async (action: AppAction, fields: Record<string, unknown>, signal: AbortSignal): Promise<HarmonyReceipt> => {
     const response = await fetch("/api/harmony/action", { method: "POST", headers: { "Content-Type": "application/json" }, signal, body: JSON.stringify({ action, serial, leaseToken: await ensureControl(), ...fields }) });
     const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
-    return data.result as HarmonyReceipt;
+    return data.result.receipt as HarmonyReceipt;
   };
   const report = (receipt: HarmonyReceipt) => setMessage(receipt.verification === "passed" ? copy("设备已验证操作结果。", "The device verified the result.") : copy("设备已接收命令；效果尚未独立验证，请刷新应用列表核对。", "Command sent; effect is not independently verified. Refresh the app list to check."));
   const actOnSelected = (action: Exclude<AppAction, "install_app">) => {

@@ -3,7 +3,7 @@ import type { HarmonyAutomationBackend } from "../types";
 
 const WRITES = new Set<keyof HarmonyAutomationBackend>([
   "tap", "doubleTap", "longPress", "swipe", "drag", "fling", "inputText", "pressKey",
-  "launchApp", "installPackage", "stopApp", "clearAppData", "uninstallPackage", "semanticAction", "startRecording",
+  "launchApp", "installPackage", "stopApp", "clearAppData", "uninstallPackage", "pushFile", "semanticAction", "startRecording",
   "keyHold", "touchHold",
   "appTestAudio",
 ]);

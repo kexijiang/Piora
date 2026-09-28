@@ -3,7 +3,7 @@ import { actionCatalog, actionSchema, scenarioStepSchema, selectorSchema } from 
 import { dispatchHarmonyAction } from "../lib/harmony/action-dispatcher.ts";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "../lib/file-access.ts";
 import { assertScenarioHapsAllowed } from "../lib/harmony/runtime/allowed-hap.ts";
-import { assertNewHarmonyLocalFileAllowed } from "../lib/harmony/runtime/local-file-access.ts";
+import { assertHarmonyLocalSourceAllowed, assertNewHarmonyLocalFileAllowed } from "../lib/harmony/runtime/local-file-access.ts";
 import { requireValidObservation } from "../lib/harmony/observation/quality.ts";
 import { APP_DISPLAY_NAME } from "../lib/branding.ts";
 import { Type, validateToolArguments } from "@earendil-works/pi-ai";
@@ -1390,6 +1390,10 @@ const harmonyActTool = defineTool({
     try {
       if (params.action === "install_app" && (typeof params.input?.hapPath !== "string" || !isExistingFilePathAllowed(params.input.hapPath, await getAllowedFileRoots()))) {
         throw new Error("Select a HAP within an allowed workspace root.");
+      }
+      if (params.action === "upload_file") {
+        if (typeof params.input?.sourcePath !== "string") throw new Error("sourcePath is required for file upload.");
+        await assertHarmonyLocalSourceAllowed(params.input.sourcePath);
       }
       const serial = await resolveSerial(params.serial, manager, signal, identity), lease = await ensureAgentLease(identity, serial, signal);
       const result = await dispatchHarmonyAction(manager, { ...params.input, action: params.action, serial, leaseToken: lease.token }, signal);

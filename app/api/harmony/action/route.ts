@@ -3,6 +3,7 @@ import { getHarmonyDeviceManager } from "@/lib/harmony";
 import { dispatchHarmonyAction } from "@/lib/harmony/action-dispatcher";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
 import { HarmonyError } from "@/lib/harmony/errors";
+import { assertHarmonyLocalSourceAllowed } from "@/lib/harmony/runtime/local-file-access";
 import { hasJsonContentType } from "@/lib/request-security";
 import { harmonyErrorResponse, noStoreJson, requireHarmonyAccess } from "../_shared";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,10 @@ export async function POST(request: Request) {
     const body = await parseJsonWithinLimit(request, 16 * 1024) as Record<string, unknown>;
     if (body?.action === "install_app" && (typeof body.hapPath !== "string" || !isExistingFilePathAllowed(body.hapPath, await getAllowedFileRoots()))) {
       throw new HarmonyError("INVALID_ARGUMENT", "Select a HAP within an allowed workspace root");
+    }
+    if (body?.action === "upload_file") {
+      if (typeof body.sourcePath !== "string") throw new HarmonyError("INVALID_ARGUMENT", "Choose a local upload file");
+      await assertHarmonyLocalSourceAllowed(body.sourcePath);
     }
     return noStoreJson({ result: await dispatchHarmonyAction(getHarmonyDeviceManager(), body, request.signal) });
   } catch (error) {

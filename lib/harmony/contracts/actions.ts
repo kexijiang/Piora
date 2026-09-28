@@ -52,6 +52,7 @@ export const actionCatalog = {
   clear_app_data: { description: "Clear data of the selected application", risk: "control", scenario: app, direct: app },
   uninstall_app: { description: "Uninstall the selected application", risk: "control", scenario: app, direct: app },
   install_app: { description: "Install an integrity-checked immutable HAP", risk: "control", scenario: { hapPath: string(4096), replace: optional(Type.Boolean()) }, direct: { hapPath: string(4096), replace: optional(Type.Boolean()) } },
+  upload_file: { description: "Upload an immutable local file into a writable device path", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), sourcePath: string(4096), path: string(4096), overwrite: optional(Type.Boolean()) } },
   initialize_mirror: { description: "Initialize the capture component on request; never unlock", risk: "control", direct: {} },
   wait_for: { description: "Wait for a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },
   assert: { description: "Assert a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },

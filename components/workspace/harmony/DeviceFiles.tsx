@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
 
-export function DeviceFiles({ serial, chinese, cwd }: { serial: string; chinese: boolean; cwd?: string | null }) {
+export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }: { serial: string; chinese: boolean; cwd?: string | null; canControl: boolean; ensureControl: () => Promise<string> }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
   const [kind, setKind] = useState<HarmonyFileScope["kind"]>("shared");
   const [bundleName, setBundleName] = useState("");
@@ -11,6 +11,7 @@ export function DeviceFiles({ serial, chinese, cwd }: { serial: string; chinese:
   const [files, setFiles] = useState<HarmonyDeviceFile[]>([]);
   const [truncated, setTruncated] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [selected, setSelected] = useState<HarmonyDeviceFile>(), [destinationPath, setDestinationPath] = useState(""), [notice, setNotice] = useState("");
+  const [sourcePath, setSourcePath] = useState(""), [remotePath, setRemotePath] = useState(""), [overwrite, setOverwrite] = useState(false);
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { setFiles([]); setSelected(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
@@ -34,6 +35,18 @@ export function DeviceFiles({ serial, chinese, cwd }: { serial: string; chinese:
         body: JSON.stringify({ action: "download", serial, kind, ...(kind === "sandbox" ? { bundleName } : {}), path: selected.path, destinationPath }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
       setNotice(copy(`已保存 ${data.result.size} 字节到 ${data.result.destinationPath}`, `Saved ${data.result.size} bytes to ${data.result.destinationPath}`));
+    } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
+    finally { if (controller.current === current) setBusy(false); }
+  };
+  const upload = async () => {
+    if (busy) return;
+    const current = new AbortController(); controller.current = current; setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/harmony/action", { method: "POST", headers: { "Content-Type": "application/json" }, signal: current.signal,
+        body: JSON.stringify({ action: "upload_file", serial, leaseToken: await ensureControl(), kind,
+          ...(kind === "sandbox" ? { bundleName } : {}), sourcePath, path: remotePath, overwrite }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
+      setNotice(copy("上传命令已完成；请刷新目录并核对设备文件。", "Upload command completed; refresh the directory to inspect the device file."));
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -61,5 +74,12 @@ export function DeviceFiles({ serial, chinese, cwd }: { serial: string; chinese:
       <label>{copy("本地完整路径", "Full local path")}<input value={destinationPath} onChange={event => setDestinationPath(event.target.value)} /></label>
       <button disabled={busy || !destinationPath.trim()} onClick={() => void download()}>{copy("下载到本机", "Download to computer")}</button>
     </fieldset> : null}
+    <fieldset><legend>{copy("上传文件", "Upload file")}</legend>
+      <p>{copy("只能从已获准工作区上传 256 MiB 内的本地文件；设备目标仅限共享存储或调试应用沙箱。", "Upload a local file of at most 256 MiB from an allowed workspace to shared storage or a debug app sandbox.")}</p>
+      <label>{copy("本地完整路径", "Full local path")}<input value={sourcePath} onChange={event => { const value = event.target.value; setSourcePath(value); const name = value.split(/[\\/]/).at(-1); if (name) setRemotePath(`${path.replace(/\/$/, "")}/${name}`); }} /></label>
+      <label>{copy("设备目标路径", "Device target path")}<input value={remotePath} onChange={event => setRemotePath(event.target.value)} /></label>
+      <label><input type="checkbox" checked={overwrite} onChange={event => setOverwrite(event.target.checked)} />{copy("覆盖设备上的同名文件", "Overwrite an existing device file")}</label>
+      <button disabled={busy || !canControl || !sourcePath.trim() || !remotePath.trim()} onClick={() => void upload()}>{copy("上传到设备", "Upload to device")}</button>
+    </fieldset>
   </section>;
 }

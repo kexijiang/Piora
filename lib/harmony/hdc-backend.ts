@@ -1,5 +1,5 @@
 import { constants, existsSync } from "node:fs";
-import { copyFile, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname } from "node:path";
@@ -18,7 +18,7 @@ import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
 import { runBoundedHold } from "./input/bounded-hold";
 import { focusedWindowId, windowBundle } from "./observation/window-scope";
 import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
-import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, type HarmonyFileScope } from "./device-files";
+import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, validateWritableDeviceFilePath, type HarmonyFileScope } from "./device-files";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -393,6 +393,28 @@ export class HdcBackend implements HarmonyAutomationBackend {
       return { destinationPath: target, size };
     } finally {
       await rm(temporaryDirectory, { recursive: true, force: true });
+    }
+  }
+
+  async pushFile(serial: string, scope: HarmonyFileScope, sourcePath: string, path: string, overwrite: boolean, signal?: AbortSignal): Promise<void> {
+    validateSerial(serial);
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (!isAbsolute(sourcePath)) throw new HarmonyError("INVALID_ARGUMENT", "Choose an absolute local upload file");
+    const source = await lstat(sourcePath).catch(() => undefined);
+    if (!source?.isFile() || source.isSymbolicLink() || source.size > 256 * 1024 * 1024) throw new HarmonyError("INVALID_ARGUMENT", "Upload file is missing or too large");
+    const scopeArgs = scope.kind === "sandbox" ? ["-b", scope.bundleName] : [];
+    const quoted = quoteDeviceShell(remote);
+    const existing = (await this.run(["-t", serial, "shell", ...scopeArgs,
+      `f=${quoted}; if [ -L "$f" ]; then printf '__PIORA_SYMLINK__'; elif [ -e "$f" ]; then printf '__PIORA_EXISTS__'; else printf '__PIORA_MISSING__'; fi`], "device_upload_preflight", signal)).stdout.toString("utf8").trim();
+    if (existing === "__PIORA_SYMLINK__") throw new HarmonyError("INVALID_ARGUMENT", "Upload target is a symbolic link");
+    if (existing !== "__PIORA_EXISTS__" && existing !== "__PIORA_MISSING__") throw new HarmonyError("OBSERVATION_UNAVAILABLE", "Could not determine whether the device file exists");
+    if (existing === "__PIORA_EXISTS__" && !overwrite) throw new HarmonyError("INVALID_ARGUMENT", "The device file already exists; enable overwrite explicitly");
+    const transfer = await this.run(["-t", serial, "file", "send", ...scopeArgs, sourcePath, remote], "device_file_upload", signal, 120_000);
+    const output = Buffer.concat([transfer.stdout, transfer.stderr]).toString("utf8");
+    if (!/FileTransfer finish/i.test(output)) throw new HarmonyError("INVALID_RESPONSE", "HDC did not confirm that the file transfer finished", { details: { dispatchState: "sent" } });
+    const actualText = (await this.run(["-t", serial, "shell", ...scopeArgs, `stat -c '%s' ${quoted}`], "device_upload_verify", signal)).stdout.toString("utf8").trim();
+    if (!/^\d+$/.test(actualText) || Number(actualText) !== source.size) {
+      throw new HarmonyError("INVALID_RESPONSE", "Device upload size could not be verified", { details: { dispatchState: "sent" } });
     }
   }
 

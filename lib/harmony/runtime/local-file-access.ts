@@ -15,3 +15,13 @@ export async function assertNewHarmonyLocalFileAllowed(destinationPath: string):
   });
   if (existing) throw new HarmonyError("INVALID_ARGUMENT", "The local destination already exists; choose a new name");
 }
+
+export async function assertHarmonyLocalSourceAllowed(sourcePath: string): Promise<void> {
+  if (!isAbsolute(sourcePath) || !isExistingFilePathAllowed(sourcePath, await getAllowedFileRoots())) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Choose an existing file within an allowed workspace root");
+  }
+  const info = await lstat(sourcePath);
+  if (!info.isFile() || info.isSymbolicLink() || info.size > 256 * 1024 * 1024) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Upload must be a regular file no larger than 256 MiB");
+  }
+}

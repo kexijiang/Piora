@@ -32,6 +32,20 @@ export function validateDeviceFilePath(scope: HarmonyFileScope, value: string): 
   return normalized;
 }
 
+export function validateWritableDeviceFilePath(scope: HarmonyFileScope, value: string): string {
+  const normalized = validateDeviceFilePath(scope, value);
+  if (scope.kind === "sandbox") {
+    if (!normalized.startsWith("data/storage/") || normalized.endsWith("/")) {
+      throw new HarmonyError("INVALID_ARGUMENT", "Choose a file within the debug app storage");
+    }
+  } else if (!normalized.startsWith("/data/local/tmp/") && !normalized.startsWith("/sdcard/")
+    && !normalized.startsWith("/storage/") && !/^\/mnt\/data\/\d+\/media_fuse\//.test(normalized)) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Device writes are limited to temporary or shared media paths");
+  }
+  if (normalized.endsWith("/")) throw new HarmonyError("INVALID_ARGUMENT", "Choose a file, not a directory");
+  return normalized;
+}
+
 export function quoteDeviceShell(value: string): string {
   if (/[\0-\x1f\x7f]/.test(value)) throw new HarmonyError("INVALID_ARGUMENT", "Control characters are unavailable in shell paths");
   return `'${value.replaceAll("'", "'\\''")}'`;

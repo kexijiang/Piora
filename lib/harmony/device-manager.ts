@@ -22,6 +22,7 @@ import { createSupportBundle, saveSupportBundle } from "./diagnostics/support-bu
 import { HarmonyRecoveryStore } from "./runtime/recovery-store";
 import { boundedCleanup } from "./runtime/resource-scope";
 import { importHapArtifact } from "./runtime/hap-artifact";
+import { importDeviceFileArtifact } from "./runtime/file-artifact";
 import { transformFramePoint, type HarmonyGeometry } from "./observation/geometry";
 import { videoMetadataTransform } from "./media/video-metadata";
 import { createHybridHarmonyBackend } from "./hybrid-backend";
@@ -451,6 +452,9 @@ export class HarmonyDeviceManager {
       if (method === "installPackage") {
         args[1] = await importHapArtifact(String(args[1]), join(dirname(this.configPath), "harmony-artifacts"));
       }
+      if (method === "pushFile") {
+        args[2] = await importDeviceFileArtifact(String(args[2]), join(dirname(this.configPath), "harmony-file-artifacts"));
+      }
       return args;
     }, (method, args, error) => {
       const failure = asHarmonyError(error);
@@ -584,6 +588,14 @@ export class HarmonyDeviceManager {
       if (!backend.pullFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file download is unavailable");
       return await backend.pullFile(serial, scope, path, destinationPath, queuedSignal);
     }, signal, undefined, serial);
+  }
+
+  async uploadFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; sourcePath: string; path: string; overwrite?: boolean; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("upload_file", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.pushFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file upload is unavailable");
+        await backend.pushFile(options.serial, options.scope, options.sourcePath, options.path, options.overwrite ?? false, signal);
+      });
   }
 
   async readLogs(options: HarmonyLogOptions): Promise<HarmonyLogEntry[]> {

@@ -26,7 +26,7 @@ export async function readBoundedRegularFile(path: string, maximum: number): Pro
 }
 
 /** Only generated hash filenames in a private store are eligible for expiry. */
-export async function enforceArtifactQuota(directory: string, extension: "wav" | "hap", incomingBytes: number, now = Date.now()) {
+export async function enforceArtifactQuota(directory: string, extension: "wav" | "hap" | "bin", incomingBytes: number, now = Date.now()) {
   const directoryInfo = await lstat(directory);
   if (!directoryInfo.isDirectory() || directoryInfo.isSymbolicLink()) throw new HarmonyError("INVALID_ARGUMENT", "Private artifact storage cannot contain redirected paths");
   await assertUnredirectedPath(directory);

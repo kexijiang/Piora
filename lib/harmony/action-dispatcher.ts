@@ -125,6 +125,12 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
       case "install_app":
         result = await manager.installPackage({ ...common, hapPath: requiredString(body, "hapPath", 4096), replace: body.replace === undefined ? true : body.replace as boolean });
         break;
+      case "upload_file": {
+        const kind = body.kind as "shared" | "sandbox";
+        const scope = kind === "shared" ? { kind: "shared" as const } : { kind: "sandbox" as const, bundleName: requiredString(body, "bundleName", 256) };
+        result = await manager.uploadFile({ ...common, scope, sourcePath: requiredString(body, "sourcePath", 4096), path: requiredString(body, "path", 4096), overwrite: body.overwrite === true });
+        break;
+      }
       default:
         throw new HarmonyError("INVALID_ARGUMENT", "Unsupported device action");
     }

@@ -184,6 +184,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.pullFile(serial, scope, path, destinationPath, signal);
   }
 
+  async pushFile(serial: string, scope: import("./device-files").HarmonyFileScope, sourcePath: string, path: string, overwrite: boolean, signal?: AbortSignal) {
+    await this.hdc.pushFile(serial, scope, sourcePath, path, overwrite, signal);
+  }
+
   async stopApp(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.stopApp(serial, bundleName, signal);
   }
