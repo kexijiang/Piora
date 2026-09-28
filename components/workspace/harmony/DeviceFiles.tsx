@@ -14,6 +14,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [selected, setSelected] = useState<HarmonyDeviceFile>(), [destinationPath, setDestinationPath] = useState(""), [notice, setNotice] = useState("");
   const [sourcePath, setSourcePath] = useState(""), [remotePath, setRemotePath] = useState(""), [overwrite, setOverwrite] = useState(false);
   const [directoryPath, setDirectoryPath] = useState(""), [newName, setNewName] = useState("");
+  const [newMode, setNewMode] = useState("");
   const [preview, setPreview] = useState<{ text: string; hash: string; size: number }>();
   const [editedText, setEditedText] = useState("");
   const [databasePath, setDatabasePath] = useState("");
@@ -27,7 +28,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   useEffect(() => { try { const value = JSON.parse(localStorage.getItem(bookmarkKey) ?? "[]"); setBookmarks(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : []); } catch { setBookmarks([]); } }, [bookmarkKey]);
   const saveBookmarks = (next: string[]) => { setBookmarks(next); try { localStorage.setItem(bookmarkKey, JSON.stringify(next)); } catch { /* Private browsing may disable storage. */ } };
   const chooseFile = (file: HarmonyDeviceFile) => {
-    setSelected(file); setPreview(undefined); setNewName(file.name);
+    setSelected(file); setPreview(undefined); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? "");
     setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : "");
   };
   const open = async (nextPath: string) => {
@@ -102,7 +103,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
-  const mutate = async (action: "create_directory" | "delete_path" | "rename_path", fields: Record<string, unknown>) => {
+  const mutate = async (action: "create_directory" | "delete_path" | "rename_path" | "chmod_path", fields: Record<string, unknown>) => {
     if (busy) return;
     const current = new AbortController(); controller.current = current; setBusy(true); setError(""); setNotice("");
     try {
@@ -110,7 +111,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
         body: JSON.stringify({ action, serial, leaseToken: await ensureControl(), kind, ...(kind === "sandbox" ? { bundleName } : {}), ...fields }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
       setNotice(copy("设备路径复查完成；请刷新目录查看结果。", "Device path rechecked; refresh the directory to view the result."));
-      if (action !== "create_directory") setSelected(undefined);
+      if (action === "delete_path" || action === "rename_path") setSelected(undefined);
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -134,7 +135,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     {notice ? <p role="status">{notice}</p> : null}
     {truncated ? <p role="status">{copy("只显示前 500 项，请进入子目录。", "Showing the first 500 entries; open a subdirectory.")}</p> : null}
     <ul>{files.map(file => <li key={file.path}>
-      {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); }}>{copy("选择", "Select")}</button></>
+      {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? ""); }}>{copy("选择", "Select")}</button></>
         : file.kind === "file" ? <button disabled={busy} onClick={() => chooseFile(file)}>{file.name}</button>
           : <span>{file.name}</span>}
       <small> · {file.kind}{file.size === undefined ? "" : ` · ${file.size} B`}{file.modifiedAt ? ` · ${new Date(file.modifiedAt).toLocaleString()}` : ""}{file.mode ? ` · ${file.mode}` : ""}</small>
@@ -150,6 +151,8 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     {selected && (selected.kind === "file" || selected.kind === "directory") ? <fieldset><legend>{copy("管理选中路径", "Manage selected path")}: {selected.name}</legend>
       <label>{copy("新名称", "New name")}<input value={newName} onChange={event => setNewName(event.target.value)} /></label>
       <button disabled={busy || !canControl || !newName.trim() || newName === selected.name || newName.includes("/")} onClick={() => void mutate("rename_path", { path: selected.path, newPath: `${selected.path.slice(0, selected.path.lastIndexOf("/"))}/${newName}` })}>{copy("重命名", "Rename")}</button>
+      <label>{copy("权限（八进制三位）", "Permissions (three octal digits)")}<input value={newMode} maxLength={3} onChange={event => setNewMode(event.target.value)} placeholder="644" /></label>
+      <button disabled={busy || !canControl || !/^[0-7]{3}$/.test(newMode) || newMode === selected.mode} onClick={() => void mutate("chmod_path", { path: selected.path, mode: newMode })}>{copy("修改权限", "Change permissions")}</button>
       <button disabled={busy || !canControl} onClick={() => { if (window.confirm(copy(`删除 ${selected.path}？目录必须为空。`, `Delete ${selected.path}? Directories must be empty.`))) void mutate("delete_path", { path: selected.path }); }}>{copy("删除", "Delete")}</button>
     </fieldset> : null}
     <fieldset><legend>{copy("新建目录", "New directory")}</legend>

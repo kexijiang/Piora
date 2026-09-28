@@ -634,6 +634,16 @@ export class HarmonyDeviceManager {
       });
   }
 
+  async chmodPath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; mode: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    const result = await this.action("chmod_path", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.chmodPath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file permissions cannot be changed");
+        await backend.chmodPath(options.serial, options.scope, options.path, options.mode, signal);
+      });
+    if (result.receipt) { result.receipt.effect = "applied"; result.receipt.verification = "passed"; }
+    return result;
+  }
+
   async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
     validateSerial(serial);
     return await this.enqueue("read_device_text", async queuedSignal => {

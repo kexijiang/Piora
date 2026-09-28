@@ -136,12 +136,14 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
       }
       case "create_directory":
       case "delete_path":
-      case "rename_path": {
+      case "rename_path":
+      case "chmod_path": {
         const scope = body.kind === "shared" ? { kind: "shared" as const } : { kind: "sandbox" as const, bundleName: requiredString(body, "bundleName", 256) };
         const path = requiredString(body, "path", 4096);
         if (body.action === "create_directory") result = await manager.createDirectory({ ...common, scope, path });
         else if (body.action === "delete_path") result = await manager.deletePath({ ...common, scope, path });
-        else result = await manager.renamePath({ ...common, scope, path, newPath: requiredString(body, "newPath", 4096) });
+        else if (body.action === "rename_path") result = await manager.renamePath({ ...common, scope, path, newPath: requiredString(body, "newPath", 4096) });
+        else result = await manager.chmodPath({ ...common, scope, path, mode: requiredString(body, "mode", 3) });
         break;
       }
       default:

@@ -58,6 +58,7 @@ export const actionCatalog = {
   create_directory: { description: "Create one device directory without creating parents", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096) } },
   delete_path: { description: "Delete one regular device file or empty directory", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096) } },
   rename_path: { description: "Rename one device file or directory without overwriting", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096), newPath: string(4096) } },
+  chmod_path: { description: "Set three-digit octal permissions on one regular device file or directory", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096), mode: Type.String({ pattern: "^[0-7]{3}$" }) } },
   initialize_mirror: { description: "Initialize the capture component on request; never unlock", risk: "control", direct: {} },
   wait_for: { description: "Wait for a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },
   assert: { description: "Assert a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },

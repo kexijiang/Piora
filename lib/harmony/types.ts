@@ -422,6 +422,7 @@ export interface HarmonyAutomationBackend {
   createDirectory?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
   deletePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
   renamePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void>;
+  chmodPath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, mode: string, signal?: AbortSignal): Promise<void>;
   readTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<{ text: string; hash: string; size: number }>;
   saveTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal): Promise<void>;
   runShellCommand?(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal): Promise<{ stdout: string; stderr: string; exitCode: number; durationMs: number }>;

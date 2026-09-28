@@ -481,6 +481,20 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
+  async chmodPath(serial: string, scope: HarmonyFileScope, path: string, mode: string, signal?: AbortSignal): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (typeof mode !== "string" || !/^[0-7]{3}$/.test(mode)) throw new HarmonyError("INVALID_ARGUMENT", "Permissions must use three octal digits");
+    const kind = await this.fileKind(serial, scope, remote, signal);
+    if (kind !== "file" && kind !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "Only regular files and directories can change permissions");
+    const quoted = quoteDeviceShell(remote);
+    const result = await this.fileShell(serial, scope,
+      `p=${quoted}; if [ -L "$p" ] || { [ ! -f "$p" ] && [ ! -d "$p" ]; }; then printf '__PIORA_FILE_ERROR__'; else chmod ${mode} "$p" && stat -c '%a' "$p"; fi`,
+      "device_chmod", signal);
+    if (!/^[0-7]{3,4}$/.test(result) || Number.parseInt(result, 8) !== Number.parseInt(mode, 8)) {
+      throw new HarmonyError("INVALID_RESPONSE", "Device file permissions could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
   async readTextFile(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal) {
     const remote = validateDeviceFilePath(scope, path);
     if (await this.fileKind(serial, scope, remote, signal) !== "file") throw new HarmonyError("INVALID_ARGUMENT", "Choose a regular device text file");
