@@ -203,6 +203,8 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deviceError, setDeviceError] = useState<string | null>(null);
+  const visibleError = error ?? deviceError;
   const [frameInteractionError, setFrameInteractionError] = useState<string | null>(null);
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
   const [recording, setRecording] = useState<RecordingState | null>(null);
@@ -284,10 +286,10 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       setSelectedSerial((current) => current && nextDevices.some((device) => device.serial === current)
         ? current
         : nextDevices.find((device) => device.state === "online")?.serial ?? nextDevices[0]?.serial ?? "");
-      setError(null);
+      setDeviceError(null);
     } catch (refreshError) {
       if (signal?.aborted) return;
-      setError(messageOf(refreshError, copy("无法读取设备状态", "Unable to read device state")));
+      setDeviceError(messageOf(refreshError, copy("无法读取设备状态", "Unable to read device state")));
     }
   }, [copy, desktopAvailable]);
 
@@ -534,7 +536,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       <AliIcon name="mobile" size={34} />
       <h2>{copy("鸿蒙设备控制", "Harmony device control")}</h2>
       <p>{brandText(copy("该能力仅在 Piora 桌面应用中提供。", "This capability is available only in the Piora desktop app."))}</p>
-      {error ? <div className={styles.error} role="alert">{error}</div> : null}
+      {visibleError ? <div className={styles.error} role="alert">{visibleError}</div> : null}
     </div>;
   }
 
@@ -789,7 +791,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       </div>
     </footer>
     <ApprovalDialog serial={selectedSerial} active={active} chinese={chinese} />
-    {error ? <div className={styles.error} role="alert">{error}<button className={styles.iconButton} type="button" onClick={() => setError(null)} aria-label={copy("关闭提示", "Dismiss message")}><AliIcon name="close" size={12} /></button></div> : null}
+    {visibleError ? <div className={styles.error} role="alert">{visibleError}<button className={styles.iconButton} type="button" onClick={() => { setError(null); setDeviceError(null); }} aria-label={copy("关闭提示", "Dismiss message")}><AliIcon name="close" size={12} /></button></div> : null}
   </div>;
 }
 

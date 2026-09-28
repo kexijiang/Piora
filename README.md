@@ -20,7 +20,7 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 
 项目由 [pi-web](https://github.com/agegr/pi-web) 演进而来，沿用 Pi 的 AgentSession、JSONL 会话、模型接入和扩展机制，由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-本文对应源码版本 `0.5.3`（正式版）。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
+本文对应源码版本 `0.5.4`（正式版）。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
 桌面端可在“设置 > 数据与诊断 > 运行日志”查看实际日志文件路径、复制路径或打开所在文件夹。本正式版仅提供 Piora 品牌的 Windows 安装版、便携版、ZIP 和 Linux AppImage。图标与托盘素材仍可通过构建配置自定义，详见 [图标与构建配置](docs/brand-builds.md)。
 

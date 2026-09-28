@@ -38,6 +38,7 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
       window.EventSource = class { close() {} };
     });
     let recording = null, holder = null, delayAcquire = null, rejectAcquire = false, delayTemplate = null;
+    let phoneName = "HUAWEI Mate 70 Pro";
     const templates = await Promise.all(["launch-and-verify", "chinese-input", "push-to-talk", "long-list", "orientation", "safe-recovery"].map(async id => JSON.parse(await readFile(path.join(repo, "lib/harmony/scenario/templates", `${id}.json`), "utf8"))));
     const screenshot = { kind: "screenshot", path: "C:\\保存目录\\手机截图.png", filename: "手机截图.png", size: 123 };
     const video = { kind: "recording", path: "C:\\保存目录\\手机录屏.mp4", filename: "手机录屏.mp4", size: 456 };
@@ -51,7 +52,7 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
       const input = request.postDataJSON();
       if (input) requests.push({ ...input, endpoint: url.pathname });
       if (url.pathname.endsWith("/profile")) data = { profile: "normal" };
-      if (url.pathname.endsWith("/devices")) data = { devices: ["phone", "phone2"].map(serial => ({ serial, name: serial === "phone" ? "HUAWEI Mate 70 Pro" : "Second phone", state: "online", generation: 1, capabilities: { screenshot: true, tap: true, swipe: true, keys: true, inputText: true, launchApp: true } })), state: { runtime: { status: "ready" }, leases: holder ? [holder] : [] } };
+      if (url.pathname.endsWith("/devices")) data = { devices: ["phone", "phone2"].map(serial => ({ serial, name: serial === "phone" ? phoneName : "Second phone", state: "online", generation: 1, capabilities: { screenshot: true, tap: true, swipe: true, keys: true, inputText: true, launchApp: true } })), state: { runtime: { status: "ready" }, leases: holder ? [holder] : [] } };
       if (url.pathname.endsWith("/approval")) data = { approvals: [] };
       if (url.pathname.endsWith("/templates") && input && delayTemplate) await delayTemplate;
       if (url.pathname.endsWith("/templates")) data = input ? { steps: [{ action: "launch_app", bundleName: input.parameters.bundleName, abilityName: "EntryAbility" }, { action: "checkpoint", name: "launched" }] } : { templates };
@@ -129,6 +130,10 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
     await page.locator("canvas").click();
     await page.getByRole("alert").filter({ hasText: "设备忙" }).waitFor();
     assert.equal(requests.some(request => request.action === "tap"), false, "a failed acquisition never dispatches input");
+    phoneName = "HUAWEI Mate 70 Pro 已刷新";
+    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.deviceIdentity select').selectedOptions[0].textContent.includes("已刷新"));
+    assert.match(await page.getByRole("alert").textContent(), /设备忙/, "a successful device refresh must preserve the operation error until it is dismissed or retried");
     rejectAcquire = false;
     await page.getByRole("button", { name: "关闭提示" }).click();
     const inputCanvas = await page.locator("canvas").boundingBox();
@@ -136,6 +141,8 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
     const tap = tapRequest.postDataJSON();
     assert.ok(tap); assert.equal(tap.geometryId, "geometry"); assert.equal(tap.coordinateSpace, "frame");
     assert.ok(Math.abs(tap.x - 540) < 2 && Math.abs(tap.y - 1200) < 2);
+    await (await tapRequest.response()).finished();
+    await page.locator('.frame[data-enabled="true"]').waitFor();
     const swipeRequest = page.waitForRequest(request => request.url().endsWith("/action") && request.postDataJSON()?.action === "swipe");
     await page.mouse.move(inputCanvas.x + inputCanvas.width / 2, inputCanvas.y + inputCanvas.height * .7);
     await page.mouse.down(); await page.mouse.move(inputCanvas.x + inputCanvas.width / 2, inputCanvas.y + inputCanvas.height * .3, { steps: 6 }); await page.mouse.up();
