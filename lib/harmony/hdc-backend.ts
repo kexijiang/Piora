@@ -17,7 +17,7 @@ import { capabilitiesFromHelp } from "./capabilities/probes";
 import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
 import { runBoundedHold } from "./input/bounded-hold";
 import { focusedWindowId, windowBundle } from "./observation/window-scope";
-import { parseApplicationLabels, parseBundleList, parseApplicationAbilities, type HarmonyApplication } from "./observation/applications";
+import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -346,7 +346,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (query.length > 256 || (bundleName && !APP_IDENTIFIER_PATTERN.test(bundleName))) throw new HarmonyError("INVALID_ARGUMENT", "Invalid application search");
     if (bundleName) {
       const output = (await this.shell(serial, ["bm", "dump", "-n", bundleName], "application_abilities", signal)).stdout.toString("utf8");
-      return [{ bundleName, abilities: parseApplicationAbilities(output, bundleName), source: "bm-bundle" }];
+      return [parseApplicationDetails(output, bundleName)];
     }
     let apps: HarmonyApplication[];
     try { apps = parseApplicationLabels((await this.shell(serial, ["bm", "dump", "-a", "-l"], "application_labels", signal)).stdout.toString("utf8")); }

@@ -35,7 +35,11 @@ export function ApplicationPicker({ serial, canControl, ensureControl, chinese, 
     <button disabled={busy} onClick={() => void run(async signal => setApplications(await read(`query=${encodeURIComponent(query)}`, signal)))}>{copy("搜索或刷新应用", "Search or refresh apps")}</button>
     {recent.length ? <p>{copy("最近测试", "Recently tested")}: {recent.map(bundle => <button key={bundle} disabled={busy} onClick={() => select(bundle)}>{bundle}</button>)}</p> : null}
     <ul aria-label={copy("搜索结果", "Search results")}>{applications.map(app => <li key={app.bundleName}><button disabled={busy} onClick={() => select(app.bundleName)}>{app.label ?? app.bundleName}</button><small> {app.bundleName}</small></li>)}</ul>
-    {selected ? <fieldset><legend>{selected.bundleName}</legend><label>{copy("启动入口", "Launch ability")}<select value={ability} onChange={event => setAbility(event.target.value)}><option value="">{copy("选择已发现入口", "Choose a discovered ability")}</option>{selected.abilities?.map(name => <option key={name}>{name}</option>)}</select></label>
+    {selected ? <fieldset><legend>{selected.bundleName}</legend>
+      <p>{copy("版本", "Version")}: {selected.versionName ?? copy("设备未提供", "Not reported")}{selected.versionCode === undefined ? "" : ` (${selected.versionCode})`}</p>
+      {selected.installTime ? <p>{copy("安装时间", "Installed")}: {new Date(selected.installTime).toLocaleString()}</p> : null}
+      {selected.requestedPermissions?.length ? <details><summary>{copy("申请的权限", "Requested permissions")} ({selected.requestedPermissions.length})</summary><ul>{selected.requestedPermissions.map(permission => <li key={permission}><code>{permission}</code></li>)}</ul></details> : null}
+      <label>{copy("启动入口", "Launch ability")}<select value={ability} onChange={event => setAbility(event.target.value)}><option value="">{copy("选择已发现入口", "Choose a discovered ability")}</option>{selected.abilities?.map(name => <option key={name}>{name}</option>)}</select></label>
       <button disabled={busy || !canControl || !ability} onClick={() => actOnSelected("launch_app")}>{copy("启动", "Launch")}</button>
       <button disabled={busy || !canControl} onClick={() => actOnSelected("stop_app")}>{copy("停止", "Stop")}</button>
       <button disabled={busy || !canControl} onClick={() => actOnSelected("clear_app_data")}>{copy("清除数据", "Clear data")}</button>
