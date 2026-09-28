@@ -580,6 +580,18 @@ export class HarmonyDeviceManager {
     }, signal, undefined, serial);
   }
 
+  async searchFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, query: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    return await this.enqueue("search_device_files", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.listFiles) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file browsing is unavailable");
+      const { searchHarmonyFiles } = await import("./file-search");
+      const deadline = AbortSignal.any([queuedSignal, AbortSignal.timeout(30_000)]);
+      return await searchHarmonyFiles(scope, path, query, nextPath => backend.listFiles!(serial, scope, nextPath, deadline), deadline);
+    }, signal, undefined, serial);
+  }
+
   async pullFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
     validateSerial(serial);
     return await this.enqueue("pull_device_file", async queuedSignal => {

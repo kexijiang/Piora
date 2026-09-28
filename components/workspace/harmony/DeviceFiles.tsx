@@ -17,9 +17,19 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [preview, setPreview] = useState<{ text: string; hash: string; size: number }>();
   const [editedText, setEditedText] = useState("");
   const [databasePath, setDatabasePath] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResult, setSearchResult] = useState<{ files: HarmonyDeviceFile[]; scannedDirectories: number; skippedDirectories: number; truncated: boolean }>();
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const bookmarkKey = `piora-harmony-bookmarks:${serial}:${kind}:${kind === "sandbox" ? bundleName : ""}`;
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { setFiles([]); setSelected(undefined); setPreview(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
+  useEffect(() => { try { const value = JSON.parse(localStorage.getItem(bookmarkKey) ?? "[]"); setBookmarks(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : []); } catch { setBookmarks([]); } }, [bookmarkKey]);
+  const saveBookmarks = (next: string[]) => { setBookmarks(next); try { localStorage.setItem(bookmarkKey, JSON.stringify(next)); } catch { /* Private browsing may disable storage. */ } };
+  const chooseFile = (file: HarmonyDeviceFile) => {
+    setSelected(file); setPreview(undefined); setNewName(file.name);
+    setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : "");
+  };
   const open = async (nextPath: string) => {
     controller.current?.abort();
     const current = new AbortController(); controller.current = current; setBusy(true); setError("");
@@ -41,6 +51,18 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
       setNotice(copy(`已保存 ${data.result.size} 字节到 ${data.result.destinationPath}`, `Saved ${data.result.size} bytes to ${data.result.destinationPath}`));
       if (/\.(?:db|sqlite|sqlite3)$/i.test(data.result.destinationPath)) setDatabasePath(data.result.destinationPath);
+    } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
+    finally { if (controller.current === current) setBusy(false); }
+  };
+  const search = async () => {
+    if (busy || !searchQuery.trim()) return;
+    controller.current?.abort();
+    const current = new AbortController(); controller.current = current; setBusy(true); setError(""); setSearchResult(undefined);
+    try {
+      const params = new URLSearchParams({ serial, kind, path, query: searchQuery, ...(kind === "sandbox" ? { bundleName } : {}) });
+      const response = await fetch(`/api/harmony/files/search?${params}`, { signal: current.signal, cache: "no-store" });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
+      setSearchResult(data.result);
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -101,13 +123,19 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     <label>{copy("路径", "Path")}<input value={path} onChange={event => setPath(event.target.value)} /></label>
     <button disabled={busy || (kind === "sandbox" && !bundleName.trim())} onClick={() => void open(path)}>{copy("打开目录", "Open directory")}</button>
     {parent ? <button disabled={busy} onClick={() => void open(parent)}>{copy("上一级", "Parent")}</button> : null}
+    <button disabled={busy || bookmarks.includes(path) || bookmarks.length >= 20} onClick={() => saveBookmarks([...bookmarks, path])}>{copy("收藏此路径", "Bookmark this path")}</button>
+    {bookmarks.length ? <div>{bookmarks.map(item => <span key={item}><button disabled={busy} onClick={() => void open(item)}>{item}</button><button disabled={busy} aria-label={copy(`移除收藏 ${item}`, `Remove bookmark ${item}`)} onClick={() => saveBookmarks(bookmarks.filter(value => value !== item))}>×</button></span>)}</div> : null}
+    <label>{copy("递归查找名称", "Search names recursively")}<input value={searchQuery} maxLength={120} onChange={event => setSearchQuery(event.target.value)} /></label>
+    <button disabled={busy || !searchQuery.trim()} onClick={() => void search()}>{copy("查找", "Search")}</button>
+    {searchResult ? <div><p role="status">{copy(`已扫描 ${searchResult.scannedDirectories} 个目录，跳过 ${searchResult.skippedDirectories} 个`, `Scanned ${searchResult.scannedDirectories} directories, skipped ${searchResult.skippedDirectories}`)}{searchResult.truncated ? copy("；结果已截断", "; results truncated") : ""}</p>
+      <ul>{searchResult.files.map(file => <li key={file.path}><button disabled={busy} onClick={() => file.kind === "directory" ? void open(file.path) : chooseFile(file)}>{file.path}</button></li>)}</ul></div> : null}
     {busy ? <button onClick={() => controller.current?.abort()}>{copy("取消", "Cancel")}</button> : null}
     {error ? <p role="alert">{error}</p> : null}
     {notice ? <p role="status">{notice}</p> : null}
     {truncated ? <p role="status">{copy("只显示前 500 项，请进入子目录。", "Showing the first 500 entries; open a subdirectory.")}</p> : null}
     <ul>{files.map(file => <li key={file.path}>
       {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); }}>{copy("选择", "Select")}</button></>
-        : file.kind === "file" ? <button disabled={busy} onClick={() => { setSelected(file); setPreview(undefined); setNewName(file.name); setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : ""); }}>{file.name}</button>
+        : file.kind === "file" ? <button disabled={busy} onClick={() => chooseFile(file)}>{file.name}</button>
           : <span>{file.name}</span>}
       <small> · {file.kind}{file.size === undefined ? "" : ` · ${file.size} B`}{file.modifiedAt ? ` · ${new Date(file.modifiedAt).toLocaleString()}` : ""}{file.mode ? ` · ${file.mode}` : ""}</small>
     </li>)}</ul>
@@ -121,7 +149,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     </fieldset> : null}
     {selected && (selected.kind === "file" || selected.kind === "directory") ? <fieldset><legend>{copy("管理选中路径", "Manage selected path")}: {selected.name}</legend>
       <label>{copy("新名称", "New name")}<input value={newName} onChange={event => setNewName(event.target.value)} /></label>
-      <button disabled={busy || !canControl || !newName.trim() || newName === selected.name || newName.includes("/")} onClick={() => void mutate("rename_path", { path: selected.path, newPath: `${path.replace(/\/$/, "")}/${newName}` })}>{copy("重命名", "Rename")}</button>
+      <button disabled={busy || !canControl || !newName.trim() || newName === selected.name || newName.includes("/")} onClick={() => void mutate("rename_path", { path: selected.path, newPath: `${selected.path.slice(0, selected.path.lastIndexOf("/"))}/${newName}` })}>{copy("重命名", "Rename")}</button>
       <button disabled={busy || !canControl} onClick={() => { if (window.confirm(copy(`删除 ${selected.path}？目录必须为空。`, `Delete ${selected.path}? Directories must be empty.`))) void mutate("delete_path", { path: selected.path }); }}>{copy("删除", "Delete")}</button>
     </fieldset> : null}
     <fieldset><legend>{copy("新建目录", "New directory")}</legend>
