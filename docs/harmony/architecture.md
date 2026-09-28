@@ -24,6 +24,8 @@ SQLite 查看器只接受工作区内已下载的普通本地文件，限制为 
 
 命令抽屉只供用户手动运行，不加入 AI 动作目录。命令仍需设备 lease，经过与其他写操作相同的 dispatch fence 和设备 lane；每条命令使用单独的 HDC `shell` 调用，最多 15 秒、128 KiB 输出。退出码通过每次随机生成的结束标记解析；缺失标记时结果不确认。多标签只保留当前网页中的输出记录，不是交互式 PTY，工作目录和环境变量不跨命令保持。
 
+用户定义的快捷命令仅按设备保存在浏览器存储，最多 20 条；点击后填入命令输入框，不自动发往设备。面板提供本机终端入口，切换到 Piora 已有的多标签 PTY，而不把本机命令伪装为设备 Shell。
+
 命令兼容性依据：[OpenHarmony HDC 文档](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/dfx/hdc.md)与[Bundle Manager 文档](https://github.com/openharmony/docs/blob/master/en/application-dev/tools/bm-tool.md)。
 
 现有 `check-runtime/check-config/check-types` 继续提供 DevEco CLI 检查。开发验证链引用 report ID、工程源指纹、用户选中 HAP hash、场景执行 ID 与按进程过滤日志；不声称读取 IDE Problems 或证明用户选中的 HAP 一定来自该源码构建。

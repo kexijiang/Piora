@@ -10,8 +10,8 @@ import { ScenarioWorkbench } from "./ScenarioWorkbench";
 import styles from "../HarmonyPanel.module.css";
 import type { AudioOutput } from "@/lib/harmony/audio/acoustic-provider";
 
-interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string; onCleanupConfirmed?: () => Promise<void> }
-export function WorkbenchTools({ serial, canControl, ensureControl, tab, active, chinese, geometryId, cwd, ownerId, onCleanupConfirmed }: Props) {
+interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string; onCleanupConfirmed?: () => Promise<void>; onOpenLocalTerminal?: () => void }
+export function WorkbenchTools({ serial, canControl, ensureControl, tab, active, chinese, geometryId, cwd, ownerId, onCleanupConfirmed, onOpenLocalTerminal }: Props) {
   const [busy, setBusy] = useState(false), [error, setError] = useState<string>();
   const [report, setReport] = useState<HarmonyDoctorReport>(), [history, setHistory] = useState<ScenarioExecution[]>([]);
   const [key, setKey] = useState("volume_down"), [duration, setDuration] = useState(800), [calibration, setCalibration] = useState<string>();
@@ -44,7 +44,7 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
       {busy ? <button type="button" onClick={() => { controller.current?.abort(); setMessage(copy("已请求取消；请查看设备释放状态。", "Cancellation requested; check release state.")); }}>{copy("取消本次操作", "Cancel this operation")}</button> : null}
       <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} canControl={canControl} ensureControl={ensureControl} chinese={chinese} cwd={cwd}/></div>
       {tab === "files" ? <DeviceFiles serial={serial} chinese={chinese} cwd={cwd} canControl={canControl} ensureControl={ensureControl} /> : null}
-      {tab === "commands" ? <DeviceConsole serial={serial} chinese={chinese} canControl={canControl} ensureControl={ensureControl} /> : null}
+      <div hidden={tab !== "commands"}><DeviceConsole serial={serial} chinese={chinese} canControl={canControl} ensureControl={ensureControl} onOpenLocalTerminal={onOpenLocalTerminal} /></div>
       <div hidden={tab !== "scenarios"}><ScenarioWorkbench active={tab === "scenarios"} serial={serial} canControl={canControl} ensureControl={ensureControl} cwd={cwd} chinese={chinese}/></div>
       {tab === "diagnostics" ? <>
         <ol><li>{copy("连接 USB 并在手机确认调试授权。", "Connect USB and allow debugging on the phone.")}</li><li>{copy("检查设备、画面及 UI 树；锁屏时请手动解锁。", "Check the device, frame and UI tree; unlock manually when needed.")}</li><li>{copy("在测试应用校准点击或保持操作。", "Calibrate input in a test app.")}</li><li>{copy("搜索测试应用，再预览和执行场景。已连接设备可直接操作。", "Find the test app, then preview and run a scenario. Connected devices are ready for control.")}</li></ol>

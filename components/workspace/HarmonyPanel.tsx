@@ -175,13 +175,14 @@ type HarmonyPanelProps = {
   sessionRunning?: boolean;
   cwd?: string | null;
   onOpenFile?: (path: string, line: number) => void;
+  onOpenLocalTerminal?: () => void;
   onGuideAgent?: ((prompt?: string) => void) | undefined;
   onSnapshot?: (fingerprint: number) => void;
 };
 
 type FrameZoom = "fit" | "100" | "150" | "200";
 
-export function HarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenFile, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
+export function HarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenFile, onOpenLocalTerminal, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
   const { locale } = useI18n();
   const chinese = locale === "zh-CN";
   const copy = useCallback((zh: string, en: string) => chinese ? zh : en, [chinese]);
@@ -781,7 +782,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
           </div> : <div className={styles.mediaEmpty}>{copy("截图和录屏保存后会显示在这里。", "Saved screenshots and recordings appear here.")}</div>}
 
           </div> : null}
-          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
+          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} onOpenLocalTerminal={onOpenLocalTerminal} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
           {toolTab === "logs" ? <HarmonyLogViewer active={active && toolsOpen} serial={selectedSerial} online={Boolean(selectedOnline)} copy={copy} /> : null}
           {toolTab === "check" ? <HarmonyCheckPanel active={active && toolsOpen} cwd={cwd} onOpenFile={onOpenFile} onGuideAgent={onGuideAgent} /> : null}
           {toolTab === "diagnostics" ? <div className={styles.moreBody}>
