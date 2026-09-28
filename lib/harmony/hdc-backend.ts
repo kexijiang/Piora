@@ -404,17 +404,37 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (!source?.isFile() || source.isSymbolicLink() || source.size > 256 * 1024 * 1024) throw new HarmonyError("INVALID_ARGUMENT", "Upload file is missing or too large");
     const scopeArgs = scope.kind === "sandbox" ? ["-b", scope.bundleName] : [];
     const quoted = quoteDeviceShell(remote);
+    const staged = validateWritableDeviceFilePath(scope, `${remote}.piora-upload-${randomUUID()}.tmp`);
+    const stagedQuoted = quoteDeviceShell(staged);
     const existing = (await this.run(["-t", serial, "shell", ...scopeArgs,
-      `f=${quoted}; if [ -L "$f" ]; then printf '__PIORA_SYMLINK__'; elif [ -e "$f" ]; then printf '__PIORA_EXISTS__'; else printf '__PIORA_MISSING__'; fi`], "device_upload_preflight", signal)).stdout.toString("utf8").trim();
+      `f=${quoted}; if [ -L "$f" ]; then printf '__PIORA_SYMLINK__'; elif [ -d "$f" ]; then printf '__PIORA_DIRECTORY__'; elif [ -e "$f" ]; then printf '__PIORA_EXISTS__'; else printf '__PIORA_MISSING__'; fi`], "device_upload_preflight", signal)).stdout.toString("utf8").trim();
     if (existing === "__PIORA_SYMLINK__") throw new HarmonyError("INVALID_ARGUMENT", "Upload target is a symbolic link");
+    if (existing === "__PIORA_DIRECTORY__") throw new HarmonyError("INVALID_ARGUMENT", "Upload target is a directory");
     if (existing !== "__PIORA_EXISTS__" && existing !== "__PIORA_MISSING__") throw new HarmonyError("OBSERVATION_UNAVAILABLE", "Could not determine whether the device file exists");
     if (existing === "__PIORA_EXISTS__" && !overwrite) throw new HarmonyError("INVALID_ARGUMENT", "The device file already exists; enable overwrite explicitly");
-    const transfer = await this.run(["-t", serial, "file", "send", ...scopeArgs, sourcePath, remote], "device_file_upload", signal, 120_000);
-    const output = Buffer.concat([transfer.stdout, transfer.stderr]).toString("utf8");
-    if (!/FileTransfer finish/i.test(output)) throw new HarmonyError("INVALID_RESPONSE", "HDC did not confirm that the file transfer finished", { details: { dispatchState: "sent" } });
-    const actualText = (await this.run(["-t", serial, "shell", ...scopeArgs, `stat -c '%s' ${quoted}`], "device_upload_verify", signal)).stdout.toString("utf8").trim();
-    if (!/^\d+$/.test(actualText) || Number(actualText) !== source.size) {
-      throw new HarmonyError("INVALID_RESPONSE", "Device upload size could not be verified", { details: { dispatchState: "sent" } });
+    let stagedMayExist = false;
+    try {
+      stagedMayExist = true;
+      const transfer = await this.run(["-t", serial, "file", "send", ...scopeArgs, sourcePath, staged], "device_file_upload", signal, 120_000);
+      const output = Buffer.concat([transfer.stdout, transfer.stderr]).toString("utf8");
+      if (!/FileTransfer finish/i.test(output)) throw new HarmonyError("INVALID_RESPONSE", "HDC did not confirm that the file transfer finished", { details: { dispatchState: "sent" } });
+      const stagedSize = (await this.run(["-t", serial, "shell", ...scopeArgs,
+        `t=${stagedQuoted}; if [ -L "$t" ] || [ ! -f "$t" ]; then printf '__PIORA_STAGE_ERROR__'; else stat -c '%s' "$t"; fi`], "device_upload_stage_verify", signal)).stdout.toString("utf8").trim();
+      if (!/^\d+$/.test(stagedSize) || Number(stagedSize) !== source.size) {
+        throw new HarmonyError("INVALID_RESPONSE", "Staged device upload size could not be verified", { details: { dispatchState: "sent" } });
+      }
+      const finalize = `f=${quoted}; t=${stagedQuoted}; if [ -L "$f" ] || [ -d "$f" ] || [ -L "$t" ] || [ ! -f "$t" ]; then printf '__PIORA_PATH_ERROR__'; `
+        + `${overwrite ? "else" : "elif [ -e \"$f\" ]; then printf '__PIORA_EXISTS__'; else"} mv ${overwrite ? "-f" : "-n"} "$t" "$f"; `
+        + `if [ -e "$t" ] || [ -L "$t" ] || [ ! -f "$f" ] || [ -L "$f" ]; then printf '__PIORA_MOVE_ERROR__'; else stat -c '%s' "$f"; fi; fi`;
+      const actualText = (await this.run(["-t", serial, "shell", ...scopeArgs, finalize], "device_upload_finalize", signal)).stdout.toString("utf8").trim();
+      if (actualText === "__PIORA_EXISTS__") throw new HarmonyError("STALE_SNAPSHOT", "Upload target appeared during transfer; nothing was overwritten", { details: { dispatchState: "sent" } });
+      if (!/^\d+$/.test(actualText) || Number(actualText) !== source.size) {
+        throw new HarmonyError("INVALID_RESPONSE", "Device upload could not be verified after staging", { details: { dispatchState: "sent" } });
+      }
+      stagedMayExist = false;
+    } finally {
+      if (stagedMayExist && !signal?.aborted) await this.run(["-t", serial, "shell", ...scopeArgs,
+        `t=${stagedQuoted}; if [ -f "$t" ] && [ ! -L "$t" ]; then rm "$t"; fi`], "device_upload_cleanup", undefined, 5_000).catch(() => undefined);
     }
   }
 
