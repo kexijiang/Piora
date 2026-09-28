@@ -7,7 +7,7 @@ async function hashFile(file) {
 }
 
 export async function brandBuildFingerprint(root) {
-  const files = [".branding/runtime.json", ".branding/builder.json", ".branding/builder-preview.json", ".branding/app-update-xiaoyi.yml",
+  const files = [".branding/runtime.json", ".branding/builder.json", ".branding/builder-preview.json",
     "lib/generated/brand.ts", "desktop/src/generated/brand.ts", "app/favicon.ico", "public/offline.html",
     "public/icons/icon-192.png", "public/icons/icon-512.png", "public/icons/apple-touch-icon.png"];
   async function visit(directory) {

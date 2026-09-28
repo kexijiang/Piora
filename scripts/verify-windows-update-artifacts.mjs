@@ -57,7 +57,7 @@ export async function verifyWindowsUpdateArtifacts(releaseRoot, requestedVersion
   const blockmapPath = `${installerPath}.blockmap`;
   const metadataName = `${channel}.yml`;
   const metadataPath = join(root, metadataName);
-  const runtimeConfigPath = join(root, "win-unpacked", "resources", brand?.id === "xiaoyi-harness" ? "app-update-xiaoyi.yml" : "app-update.yml");
+  const runtimeConfigPath = join(root, "win-unpacked", "resources", "app-update.yml");
   const applicationAsarPath = join(root, "win-unpacked", "resources", "app.asar");
 
   const [installerStat, blockmapStat, metadataText, runtimeConfigText] = await Promise.all([

@@ -104,3 +104,6 @@ desktop/build/speech/
 
 # Compiled isolated Harmony driver; staged by release CI
 .harmony-worker/
+
+# Generated caches left by the retired website (source removed)
+/website-xiaoyi/

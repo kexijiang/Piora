@@ -4,6 +4,11 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 品牌与发行
+
+- 停止 XiaoYiHarness 品牌发行，移除专属打包矩阵、更新渠道、首次启动行为和官网部署源码；后续仅发布 Piora。
+- 保留 Piora 主图标、独立托盘图标及启动素材配置，以及 Web/PWA 和桌面多尺寸图标生成、资源校验能力。
+
 ## [0.5.2-beta.11] - 2026-09-28
 
 ### Windows 屏幕截图

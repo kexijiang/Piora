@@ -4,7 +4,6 @@ import { fileURLToPath } from "node:url";
 import { APP_BRAND, APP_DISPLAY_NAME } from "./branding.js";
 
 export const STARTUP_CINEMATIC_MS = 8_000;
-export const XIAOYI_FIRST_STARTUP_MS = 5_000;
 // Allow media initialization without cutting the eight-second film's closing title.
 export const STARTUP_MEDIA_TIMEOUT_MS = STARTUP_CINEMATIC_MS + 2_000;
 export const STARTUP_CONTINUE_CHANNEL = "pi:startup-continue";
@@ -35,7 +34,7 @@ export function loadStartupMedia(directory: string): { video?: string; poster?: 
   };
   const video = APP_BRAND.startup.video ? asset(APP_BRAND.startup.video, "video/mp4", 12_000_000) : undefined;
   const poster = APP_BRAND.startup.poster ? asset(APP_BRAND.startup.poster, "image/jpeg", 1_000_000) : undefined;
-  const icon = APP_BRAND.id === "xiaoyi-harness" ? asset("icon.png", "image/png", 2_000_000) : undefined;
+  const icon = asset("icon.png", "image/png", 2_000_000);
   return { ...(video ? { video } : {}), ...(poster ? { poster } : {}), ...(icon ? { icon } : {}) };
 }
 

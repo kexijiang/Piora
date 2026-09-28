@@ -51,14 +51,14 @@
     },
     {
       "path": "branding/",
-      "purpose": "Piora 和 XiaoYiHarness 具有独立身份及发布渠道",
+      "purpose": "保留 Piora 可配置图标、托盘和启动素材的生成与校验能力",
       "decision": "retain",
       "replacement": null,
       "references": [
         "scripts/build-branded-target.mjs",
         ".github/workflows/harmony-preview.yml"
       ],
-      "reason": "Piora 和 XiaoYiHarness 具有独立身份及发布渠道",
+      "reason": "保留 Piora 可配置图标、托盘和启动素材的生成与校验能力",
       "validation": [
         "npm test",
         "npm run verify:hygiene"
@@ -81,12 +81,10 @@
     {
       "path": "website-xiaoyi/",
       "purpose": "XiaoYiHarness 独立官网与部署",
-      "decision": "retain",
+      "decision": "remove",
       "replacement": null,
-      "references": [
-        "README.md"
-      ],
-      "reason": "XiaoYiHarness 独立官网与部署",
+      "references": [],
+      "reason": "用户要求停止该品牌，移除官网部署源码并关闭公开访问",
       "validation": [
         "npm test",
         "npm run verify:hygiene"

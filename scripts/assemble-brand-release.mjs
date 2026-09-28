@@ -8,9 +8,9 @@ export function brandReleaseGroups(tag) {
   if (!/^v\d+\.\d+\.\d+(?:-beta\.\d+)?$/.test(tag)) throw new Error("Invalid release tag");
   const version = tag.slice(1);
   const preview = version.includes("-beta.");
-  return ["piora", "xiaoyi-harness"].flatMap(id => {
-    const prefix = id === "piora" ? "Piora" : "XiaoYiHarness";
-    const channel = `${id === "piora" ? "" : "xiaoyi-"}${preview ? "beta" : "latest"}.yml`;
+  return ["piora"].flatMap(id => {
+    const prefix = "Piora";
+    const channel = `${preview ? "beta" : "latest"}.yml`;
     const groups = [{
       directory: `${id}-windows-${tag}`,
       checksum: "SHA256SUMS.txt",

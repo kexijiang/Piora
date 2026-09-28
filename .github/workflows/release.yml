@@ -91,9 +91,6 @@ jobs:
           - brand: piora
             prefix: Piora
             channel: latest
-          - brand: xiaoyi-harness
-            prefix: XiaoYiHarness
-            channel: xiaoyi-latest
     env:
       PIORA_BRAND: ${{ matrix.brand }}
       BRAND_PREFIX: ${{ matrix.prefix }}
@@ -239,9 +236,6 @@ jobs:
           - brand: piora
             prefix: Piora
             channel: latest
-          - brand: xiaoyi-harness
-            prefix: XiaoYiHarness
-            channel: xiaoyi-latest
     env:
       PIORA_BRAND: ${{ matrix.brand }}
       BRAND_PREFIX: ${{ matrix.prefix }}
@@ -327,7 +321,7 @@ jobs:
           path: downloaded-brands
           merge-multiple: false
 
-      - name: Verify and assemble both brands
+      - name: Verify and assemble Piora artifacts
         shell: pwsh
         run: |
           $notes = "downloaded-brands/piora-release-notes-$env:GITHUB_REF_NAME/release-notes.md"
@@ -347,13 +341,7 @@ jobs:
             (Resolve-Path -LiteralPath (Join-Path $root "latest.yml")).Path,
             (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64-portable.exe")).Path,
             (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64.zip")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-linux-x64-portable.AppImage")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "XiaoYiHarness-$version-win-x64-setup.exe")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "XiaoYiHarness-$version-win-x64-setup.exe.blockmap")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "xiaoyi-latest.yml")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "XiaoYiHarness-$version-win-x64-portable.exe")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "XiaoYiHarness-$version-win-x64.zip")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "XiaoYiHarness-$version-linux-x64-portable.AppImage")).Path
+            (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-linux-x64-portable.AppImage")).Path
           )
           $assets += (Resolve-Path -LiteralPath (Join-Path $root 'SHA256SUMS.txt')).Path
           # Stable desktop release notes were generated from the tagged CHANGELOG

@@ -1,8 +1,0 @@
-<!-- Small-size optical variant of the selected interwoven H. Source for tray.png. -->
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 16 16">
-  <title>XiaoYiHarness tray</title>
-  <rect x="0.5" y="0.5" width="15" height="15" rx="3.5" fill="#141f25"/>
-  <path d="M3 8.1L6 9.6V12.25Q6 13 5.25 13H3.75Q3 13 3 12.25Z" fill="#f5faf9"/>
-  <path d="M10.75 3H12.25Q13 3 13 3.75V7.9L10 6.4V3.75Q10 3 10.75 3Z" fill="#f5faf9"/>
-  <path d="M3.75 3H5.25Q6 3 6 3.75V5.75L12.15 8.8Q13 9.2 13 10.2V12.25Q13 13 12.25 13H10.75Q10 13 10 12.25V10.25L3.85 7.2Q3 6.8 3 5.8V3.75Q3 3 3.75 3Z" fill="#20bd96"/>
-</svg>

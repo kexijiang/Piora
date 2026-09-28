@@ -4,21 +4,12 @@ import type { Logger } from "./logger.js";
 import { parseUpdateSchedule, type UpdateSchedule } from "./update-schedule.js";
 
 interface DesktopState {
-  xiaoyiStartupShown?: boolean;
   lastLaunchedVersion?: string;
   updateSchedule?: UpdateSchedule;
   serverPort?: number;
   companionWindowPosition?: CompanionWindowPosition;
   mainWindowState?: MainWindowState;
   piAgentDirectory?: string | null;
-}
-
-export function hasShownXiaoyiStartup(directory: string, logger: Logger): boolean {
-  return readDesktopState(directory, logger).xiaoyiStartupShown === true;
-}
-
-export function markXiaoyiStartupShown(directory: string, logger: Logger): boolean {
-  return writeDesktopState(directory, { xiaoyiStartupShown: true }, logger);
 }
 
 export function readLastLaunchedVersion(directory: string, logger: Logger): string | undefined {

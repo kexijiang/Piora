@@ -24,11 +24,7 @@ const eslintConfig = [
       "website/.wrangler/**",
       "website/dist/**",
       "website/node_modules/**",
-      "website-xiaoyi/.next/**",
-      "website-xiaoyi/.vinext/**",
-      "website-xiaoyi/.wrangler/**",
-      "website-xiaoyi/dist/**",
-      "website-xiaoyi/node_modules/**",
+      "website-xiaoyi/**", // Ignored local caches from the retired website.
     ],
   },
   ...coreWebVitals,

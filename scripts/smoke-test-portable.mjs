@@ -96,9 +96,9 @@ export function validatePortableSmokeMarker(markerText, expectedVersion) {
 
 export function validateBrandSmokeMarker(marker, expectedBrand, paths, agentDirectory) {
   if (!expectedBrand) return;
-  if (!["piora", "xiaoyi-harness"].includes(expectedBrand)) throw new Error("Unknown expected smoke-test brand");
-  const prefix = expectedBrand === "piora" ? "Piora" : "XiaoYiHarness";
-  const channelPrefix = expectedBrand === "piora" ? "" : "xiaoyi-";
+  if (!["piora"].includes(expectedBrand)) throw new Error("Unknown expected smoke-test brand");
+  const prefix = "Piora";
+  const channelPrefix = "";
   if (marker.brand?.id !== expectedBrand || marker.brand?.artifactPrefix !== prefix
     || marker.brand?.updateChannels?.stable !== `${channelPrefix}latest`
     || marker.brand?.updateChannels?.preview !== `${channelPrefix}beta`) throw new Error("Packaged runtime brand mismatch");
@@ -415,7 +415,7 @@ async function main() {
       index += 1;
     } else if (argument === "--expected-brand") {
       expectedBrand = arguments_[index + 1];
-      if (!["piora", "xiaoyi-harness"].includes(expectedBrand)) throw new Error("--expected-brand requires piora or xiaoyi-harness");
+      if (!["piora"].includes(expectedBrand)) throw new Error("--expected-brand requires piora");
       index += 1;
     } else if (argument === "--packaged-runtime") {
       packagedRuntime = true;

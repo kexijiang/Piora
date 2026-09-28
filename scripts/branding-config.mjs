@@ -4,7 +4,6 @@ import { resolve, relative, isAbsolute, extname } from "node:path";
 export const RELEASE_REPOSITORY = Object.freeze({ owner: "kexijiang", repo: "Piora" });
 const profiles = {
   piora: { artifactPrefix: "Piora", stable: "latest", preview: "beta" },
-  "xiaoyi-harness": { artifactPrefix: "XiaoYiHarness", stable: "xiaoyi-latest", preview: "xiaoyi-beta" },
 };
 const assetTypes = {
   icon: [".svg", 1024 * 1024],
@@ -63,12 +62,12 @@ export async function loadBranding(projectRoot, requestedBrand = process.env.PIO
     assets.startupVideo ??= resolve(projectRoot, "desktop/build/startup/polaris-rover.mp4");
     assets.startupPoster ??= resolve(projectRoot, "desktop/build/startup/polaris-rover.jpg");
     assets.portableSplash ??= resolve(projectRoot, "desktop/build/portable-splash.bmp");
-  } else if (!assets.icon) throw new Error("XiaoYiHarness requires its own SVG icon");
+  }
   return {
     id: input.id, displayName: input.displayName, artifactPrefix: input.artifactPrefix,
     updateChannels: input.updateChannels, repository: RELEASE_REPOSITORY,
-    audienceFile: requestedBrand === "piora" ? "release-audience.json" : "release-audience-xiaoyi-harness.json",
-    updaterCacheDirName: requestedBrand === "piora" ? "@pioradesktop-updater" : "xiaoyi-harness-updater",
+    audienceFile: "release-audience.json",
+    updaterCacheDirName: "@pioradesktop-updater",
     assets,
   };
 }

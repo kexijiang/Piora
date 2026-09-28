@@ -22,7 +22,7 @@ Piora 是基于 [Pi](https://github.com/earendil-works/pi) 构建的开源 AI �
 
 本文对应源码版本 `0.5.2-beta.11`（beta）。可下载版本以 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 为准。
 
-桌面端可在“设置 > 数据与诊断 > 运行日志”查看实际日志文件路径、复制路径或打开所在文件夹。本次 beta 构建提供 Piora 与 XiaoYiHarness 品牌的 Windows 安装版和便携版；ZIP 与 Linux AppImage 请使用稳定版发布，XiaoYiHarness 使用新的名称与“交织 H”图标。
+桌面端可在“设置 > 数据与诊断 > 运行日志”查看实际日志文件路径、复制路径或打开所在文件夹。后续仅提供 Piora 品牌的 Windows 安装版和便携版；ZIP 与 Linux AppImage 请使用稳定版发布。图标与托盘素材仍可通过构建配置自定义，详见 [图标与构建配置](docs/brand-builds.md)。
 
 ## 能做什么
 
