@@ -419,6 +419,9 @@ export interface HarmonyAutomationBackend {
   listFiles?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<{ files: import("./device-files").HarmonyDeviceFile[]; truncated: boolean }>;
   pullFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal): Promise<{ destinationPath: string; size: number }>;
   pushFile?(serial: string, scope: import("./device-files").HarmonyFileScope, sourcePath: string, path: string, overwrite: boolean, signal?: AbortSignal): Promise<void>;
+  createDirectory?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
+  deletePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
+  renamePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void>;
   appTestAudio?(serial: string, packet: string, signal?: AbortSignal): Promise<void>;
   doctorProbes?(serial: string, signal?: AbortSignal): Promise<{ hdcVersion?: string; checks: import("./contracts/capabilities").HarmonyDoctorReport["checks"] }>;
   probeCapabilities?(serial: string, signal?: AbortSignal): Promise<import("./contracts/capabilities").HarmonyActionCapability[]>;

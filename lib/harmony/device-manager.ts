@@ -598,6 +598,30 @@ export class HarmonyDeviceManager {
       });
   }
 
+  async createDirectory(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("create_directory", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.createDirectory) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device directory creation is unavailable");
+        await backend.createDirectory(options.serial, options.scope, options.path, signal);
+      });
+  }
+
+  async deletePath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("delete_path", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.deletePath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file deletion is unavailable");
+        await backend.deletePath(options.serial, options.scope, options.path, signal);
+      });
+  }
+
+  async renamePath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; newPath: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("rename_path", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.renamePath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file rename is unavailable");
+        await backend.renamePath(options.serial, options.scope, options.path, options.newPath, signal);
+      });
+  }
+
   async readLogs(options: HarmonyLogOptions): Promise<HarmonyLogEntry[]> {
     validateSerial(options.serial);
     return await this.enqueue("read_logs", async (queuedSignal) => {

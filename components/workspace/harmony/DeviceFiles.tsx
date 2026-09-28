@@ -12,6 +12,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [truncated, setTruncated] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [selected, setSelected] = useState<HarmonyDeviceFile>(), [destinationPath, setDestinationPath] = useState(""), [notice, setNotice] = useState("");
   const [sourcePath, setSourcePath] = useState(""), [remotePath, setRemotePath] = useState(""), [overwrite, setOverwrite] = useState(false);
+  const [directoryPath, setDirectoryPath] = useState(""), [newName, setNewName] = useState("");
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { setFiles([]); setSelected(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
@@ -50,6 +51,18 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
+  const mutate = async (action: "create_directory" | "delete_path" | "rename_path", fields: Record<string, unknown>) => {
+    if (busy) return;
+    const current = new AbortController(); controller.current = current; setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/harmony/action", { method: "POST", headers: { "Content-Type": "application/json" }, signal: current.signal,
+        body: JSON.stringify({ action, serial, leaseToken: await ensureControl(), kind, ...(kind === "sandbox" ? { bundleName } : {}), ...fields }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
+      setNotice(copy("设备路径复查完成；请刷新目录查看结果。", "Device path rechecked; refresh the directory to view the result."));
+      if (action !== "create_directory") setSelected(undefined);
+    } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
+    finally { if (controller.current === current) setBusy(false); }
+  };
   const parent = path === "/" || path === "." ? null : path.slice(0, path.lastIndexOf("/")) || (kind === "shared" ? "/" : ".");
   return <section aria-label={copy("设备文件", "Device files")}>
     <h3>{copy("设备文件", "Device files")}</h3>
@@ -64,16 +77,25 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     {notice ? <p role="status">{notice}</p> : null}
     {truncated ? <p role="status">{copy("只显示前 500 项，请进入子目录。", "Showing the first 500 entries; open a subdirectory.")}</p> : null}
     <ul>{files.map(file => <li key={file.path}>
-      {file.kind === "directory" ? <button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button>
-        : file.kind === "file" ? <button disabled={busy} onClick={() => { setSelected(file); setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : ""); }}>{file.name}</button>
+      {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); }}>{copy("选择", "Select")}</button></>
+        : file.kind === "file" ? <button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : ""); }}>{file.name}</button>
           : <span>{file.name}</span>}
       <small> · {file.kind}{file.size === undefined ? "" : ` · ${file.size} B`}{file.modifiedAt ? ` · ${new Date(file.modifiedAt).toLocaleString()}` : ""}{file.mode ? ` · ${file.mode}` : ""}</small>
     </li>)}</ul>
-    {selected ? <fieldset><legend>{copy("下载文件", "Download file")}: {selected.name}</legend>
+    {selected?.kind === "file" ? <fieldset><legend>{copy("下载文件", "Download file")}: {selected.name}</legend>
       <p>{copy("保存到已获准工作区中的新文件名；不会覆盖现有文件。", "Save to a new file within an allowed workspace; existing files are never overwritten.")}</p>
       <label>{copy("本地完整路径", "Full local path")}<input value={destinationPath} onChange={event => setDestinationPath(event.target.value)} /></label>
       <button disabled={busy || !destinationPath.trim()} onClick={() => void download()}>{copy("下载到本机", "Download to computer")}</button>
     </fieldset> : null}
+    {selected && (selected.kind === "file" || selected.kind === "directory") ? <fieldset><legend>{copy("管理选中路径", "Manage selected path")}: {selected.name}</legend>
+      <label>{copy("新名称", "New name")}<input value={newName} onChange={event => setNewName(event.target.value)} /></label>
+      <button disabled={busy || !canControl || !newName.trim() || newName === selected.name || newName.includes("/")} onClick={() => void mutate("rename_path", { path: selected.path, newPath: `${path.replace(/\/$/, "")}/${newName}` })}>{copy("重命名", "Rename")}</button>
+      <button disabled={busy || !canControl} onClick={() => { if (window.confirm(copy(`删除 ${selected.path}？目录必须为空。`, `Delete ${selected.path}? Directories must be empty.`))) void mutate("delete_path", { path: selected.path }); }}>{copy("删除", "Delete")}</button>
+    </fieldset> : null}
+    <fieldset><legend>{copy("新建目录", "New directory")}</legend>
+      <label>{copy("设备完整路径", "Full device path")}<input value={directoryPath} onChange={event => setDirectoryPath(event.target.value)} placeholder={`${path.replace(/\/$/, "")}/new-folder`} /></label>
+      <button disabled={busy || !canControl || !directoryPath.trim()} onClick={() => void mutate("create_directory", { path: directoryPath.trim() })}>{copy("创建目录", "Create directory")}</button>
+    </fieldset>
     <fieldset><legend>{copy("上传文件", "Upload file")}</legend>
       <p>{copy("只能从已获准工作区上传 256 MiB 内的本地文件；设备目标仅限共享存储或调试应用沙箱。", "Upload a local file of at most 256 MiB from an allowed workspace to shared storage or a debug app sandbox.")}</p>
       <label>{copy("本地完整路径", "Full local path")}<input value={sourcePath} onChange={event => { const value = event.target.value; setSourcePath(value); const name = value.split(/[\\/]/).at(-1); if (name) setRemotePath(`${path.replace(/\/$/, "")}/${name}`); }} /></label>

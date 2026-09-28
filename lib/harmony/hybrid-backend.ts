@@ -188,6 +188,18 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.pushFile(serial, scope, sourcePath, path, overwrite, signal);
   }
 
+  async createDirectory(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    await this.hdc.createDirectory(serial, scope, path, signal);
+  }
+
+  async deletePath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    await this.hdc.deletePath(serial, scope, path, signal);
+  }
+
+  async renamePath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal) {
+    await this.hdc.renamePath(serial, scope, path, newPath, signal);
+  }
+
   async stopApp(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.stopApp(serial, bundleName, signal);
   }

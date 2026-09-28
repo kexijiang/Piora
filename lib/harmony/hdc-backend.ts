@@ -2,7 +2,7 @@ import { constants, existsSync } from "node:fs";
 import { copyFile, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
-import { extname, isAbsolute, join, resolve, dirname } from "node:path";
+import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { type CommandExecutor, runCommand } from "./command-runner";
@@ -415,6 +415,50 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const actualText = (await this.run(["-t", serial, "shell", ...scopeArgs, `stat -c '%s' ${quoted}`], "device_upload_verify", signal)).stdout.toString("utf8").trim();
     if (!/^\d+$/.test(actualText) || Number(actualText) !== source.size) {
       throw new HarmonyError("INVALID_RESPONSE", "Device upload size could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  private async fileShell(serial: string, scope: HarmonyFileScope, script: string, operation: string, signal?: AbortSignal): Promise<string> {
+    validateSerial(serial);
+    return (await this.run(["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script], operation, signal)).stdout.toString("utf8").trim();
+  }
+
+  private async fileKind(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<"file" | "directory" | "symlink" | "missing"> {
+    const quoted = quoteDeviceShell(path);
+    const result = await this.fileShell(serial, scope, `p=${quoted}; if [ -L "$p" ]; then printf '__PIORA_SYMLINK__'; elif [ -d "$p" ]; then printf '__PIORA_DIRECTORY__'; elif [ -f "$p" ]; then printf '__PIORA_FILE__'; elif [ -e "$p" ]; then printf '__PIORA_OTHER__'; else printf '__PIORA_MISSING__'; fi`, "device_file_kind", signal);
+    const known = { __PIORA_FILE__: "file", __PIORA_DIRECTORY__: "directory", __PIORA_SYMLINK__: "symlink", __PIORA_MISSING__: "missing" } as const;
+    if (!Object.hasOwn(known, result)) throw new HarmonyError("OBSERVATION_UNAVAILABLE", "Could not verify the device file type");
+    return known[result as keyof typeof known];
+  }
+
+  async createDirectory(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (await this.fileKind(serial, scope, remote, signal) !== "missing") throw new HarmonyError("INVALID_ARGUMENT", "Device path already exists");
+    await this.fileShell(serial, scope, `mkdir ${quoteDeviceShell(remote)}`, "device_mkdir", signal);
+    if (await this.fileKind(serial, scope, remote, signal) !== "directory") {
+      throw new HarmonyError("INVALID_RESPONSE", "Device directory creation could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async deletePath(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    const kind = await this.fileKind(serial, scope, remote, signal);
+    if (kind !== "file" && kind !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "Only a regular file or empty directory can be deleted");
+    await this.fileShell(serial, scope, `${kind === "directory" ? "rmdir" : "rm"} ${quoteDeviceShell(remote)}`, "device_delete_path", signal);
+    if (await this.fileKind(serial, scope, remote, signal) !== "missing") {
+      throw new HarmonyError("INVALID_RESPONSE", "Device deletion could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async renamePath(serial: string, scope: HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void> {
+    const source = validateWritableDeviceFilePath(scope, path), target = validateWritableDeviceFilePath(scope, newPath);
+    if (source === target || posix.dirname(source) !== posix.dirname(target)) throw new HarmonyError("INVALID_ARGUMENT", "Rename must use a new name in the same directory");
+    const kind = await this.fileKind(serial, scope, source, signal);
+    if (kind !== "file" && kind !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "Only a regular file or directory can be renamed");
+    if (await this.fileKind(serial, scope, target, signal) !== "missing") throw new HarmonyError("INVALID_ARGUMENT", "The target name already exists");
+    await this.fileShell(serial, scope, `mv -n ${quoteDeviceShell(source)} ${quoteDeviceShell(target)}`, "device_rename_path", signal);
+    if (await this.fileKind(serial, scope, source, signal) !== "missing" || await this.fileKind(serial, scope, target, signal) !== kind) {
+      throw new HarmonyError("INVALID_RESPONSE", "Device rename could not be verified", { details: { dispatchState: "sent" } });
     }
   }
 
