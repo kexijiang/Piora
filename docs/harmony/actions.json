@@ -7104,9 +7104,38 @@
       "cleanup": "owned-resources",
       "result": "dispatch-receipt-with-separate-verification",
       "modes": [
+        "direct",
         "scenario"
       ],
       "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "bundleName"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "stop_app"
+            },
+            "bundleName": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.]{0,255}$"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        },
         "scenario": {
           "type": "object",
           "required": [
@@ -7142,9 +7171,38 @@
       "cleanup": "owned-resources",
       "result": "dispatch-receipt-with-separate-verification",
       "modes": [
+        "direct",
         "scenario"
       ],
       "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "bundleName"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "clear_app_data"
+            },
+            "bundleName": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.]{0,255}$"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        },
         "scenario": {
           "type": "object",
           "required": [
@@ -7180,9 +7238,38 @@
       "cleanup": "owned-resources",
       "result": "dispatch-receipt-with-separate-verification",
       "modes": [
+        "direct",
         "scenario"
       ],
       "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "bundleName"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "uninstall_app"
+            },
+            "bundleName": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.]{0,255}$"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        },
         "scenario": {
           "type": "object",
           "required": [
@@ -7210,6 +7297,92 @@
     },
     {
       "protocolVersion": 1,
+      "action": "enable_app",
+      "description": "Enable an app for the active user on a root device build",
+      "risk": "control",
+      "capability": "enable_app",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "bundleName"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "enable_app"
+            },
+            "bundleName": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.]{0,255}$"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "disable_app",
+      "description": "Disable an app for the active user on a root device build",
+      "risk": "control",
+      "capability": "disable_app",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "bundleName"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "disable_app"
+            },
+            "bundleName": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.]{0,255}$"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
       "action": "install_app",
       "description": "Install an integrity-checked immutable HAP",
       "risk": "control",
@@ -7218,9 +7391,42 @@
       "cleanup": "owned-resources",
       "result": "dispatch-receipt-with-separate-verification",
       "modes": [
+        "direct",
         "scenario"
       ],
       "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "hapPath"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "install_app"
+            },
+            "hapPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "replace": {
+              "type": "boolean"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        },
         "scenario": {
           "type": "object",
           "required": [
@@ -7244,6 +7450,336 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 120
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "upload_file",
+      "description": "Upload an immutable local file into a writable device path",
+      "risk": "control",
+      "capability": "upload_file",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "kind",
+            "sourcePath",
+            "path"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "upload_file"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "shared"
+                },
+                {
+                  "type": "string",
+                  "const": "sandbox"
+                }
+              ]
+            },
+            "bundleName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "sourcePath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "overwrite": {
+              "type": "boolean"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "create_directory",
+      "description": "Create one device directory without creating parents",
+      "risk": "control",
+      "capability": "create_directory",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "kind",
+            "path"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "create_directory"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "shared"
+                },
+                {
+                  "type": "string",
+                  "const": "sandbox"
+                }
+              ]
+            },
+            "bundleName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "delete_path",
+      "description": "Delete one regular device file or empty directory",
+      "risk": "control",
+      "capability": "delete_path",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "kind",
+            "path"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "delete_path"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "shared"
+                },
+                {
+                  "type": "string",
+                  "const": "sandbox"
+                }
+              ]
+            },
+            "bundleName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "rename_path",
+      "description": "Rename one device file or directory without overwriting",
+      "risk": "control",
+      "capability": "rename_path",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "kind",
+            "path",
+            "newPath"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "rename_path"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "shared"
+                },
+                {
+                  "type": "string",
+                  "const": "sandbox"
+                }
+              ]
+            },
+            "bundleName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "newPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "chmod_path",
+      "description": "Set three-digit octal permissions on one regular device file or directory",
+      "risk": "control",
+      "capability": "chmod_path",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "kind",
+            "path",
+            "mode"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "chmod_path"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "shared"
+                },
+                {
+                  "type": "string",
+                  "const": "sandbox"
+                }
+              ]
+            },
+            "bundleName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "mode": {
+              "type": "string",
+              "pattern": "^[0-7]{3}$"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
             }
           },
           "additionalProperties": false

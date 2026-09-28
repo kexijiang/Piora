@@ -6,6 +6,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### 开发验证
 
+- 同步自动生成的鸿蒙动作目录与参数 JSON，确保新增的应用和文件直接动作出现在开发文档中，并通过 CI 的文档一致性检查。
 - 附件浏览器测试分别核验 Electron 原始文件路径与合成剪贴板文件的字节回退，避免将测试构造的文件误判为原始磁盘文件。
 
 ### 鸿蒙设备操作
