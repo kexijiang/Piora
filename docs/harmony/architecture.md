@@ -12,6 +12,8 @@ HDC 在线状态作为已完成设备授权的边界，不添加应用范围 gra
 
 设备文件变更仅允许可写共享路径或调试沙箱的 `data/storage` 内。新建目录不自动创建父目录；删除仅针对普通文件和空目录，重命名保持在同一目录且使用 `mv -n`，每次变更后重新查询设备路径类型。符号链接不作为可变更目标；无法可靠确认结果时报错，不宣称成功。
 
+设备文本预览在传输前限制为 1 MiB 普通文件，完整下载后核对长度，以严格 UTF-8 解码并拒绝 NUL 字节。AI 结果最多携带 12,000 个字符，标注设备内容不可信；面板显示完整文本。保存时要求打开时的 SHA-256 与设备当前内容匹配，新内容先经 `file send` 写入同目录独立暂存文件，再在设备 shell 中检查原文件哈希并替换，最后回读新哈希。缺少 `sha256sum` 时禁用保存；取消或无法确认时不把未知效果报为成功。
+
 命令兼容性依据：[OpenHarmony HDC 文档](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/dfx/hdc.md)与[Bundle Manager 文档](https://github.com/openharmony/docs/blob/master/en/application-dev/tools/bm-tool.md)。
 
 现有 `check-runtime/check-config/check-types` 继续提供 DevEco CLI 检查。开发验证链引用 report ID、工程源指纹、用户选中 HAP hash、场景执行 ID 与按进程过滤日志；不声称读取 IDE Problems 或证明用户选中的 HAP 一定来自该源码构建。

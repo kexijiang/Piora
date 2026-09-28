@@ -622,6 +622,26 @@ export class HarmonyDeviceManager {
       });
   }
 
+  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    return await this.enqueue("read_device_text", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.readTextFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device text preview is unavailable");
+      return await backend.readTextFile(serial, scope, path, queuedSignal);
+    }, signal, undefined, serial);
+  }
+
+  async saveTextFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; text: string; expectedHash: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    const result = await this.action("save_text_file", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.saveTextFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device text editing is unavailable");
+        await backend.saveTextFile(options.serial, options.scope, options.path, options.text, options.expectedHash, signal);
+      });
+    if (result.receipt) { result.receipt.effect = "applied"; result.receipt.verification = "passed"; }
+    return result;
+  }
+
   async readLogs(options: HarmonyLogOptions): Promise<HarmonyLogEntry[]> {
     validateSerial(options.serial);
     return await this.enqueue("read_logs", async (queuedSignal) => {

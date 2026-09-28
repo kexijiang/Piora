@@ -3,7 +3,7 @@ import { copyFile, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs
 import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { type CommandExecutor, runCommand } from "./command-runner";
 import { HarmonyError, isHarmonyError } from "./errors";
@@ -459,6 +459,61 @@ export class HdcBackend implements HarmonyAutomationBackend {
     await this.fileShell(serial, scope, `mv -n ${quoteDeviceShell(source)} ${quoteDeviceShell(target)}`, "device_rename_path", signal);
     if (await this.fileKind(serial, scope, source, signal) !== "missing" || await this.fileKind(serial, scope, target, signal) !== kind) {
       throw new HarmonyError("INVALID_RESPONSE", "Device rename could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async readTextFile(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal) {
+    const remote = validateDeviceFilePath(scope, path);
+    if (await this.fileKind(serial, scope, remote, signal) !== "file") throw new HarmonyError("INVALID_ARGUMENT", "Choose a regular device text file");
+    const sizeText = await this.fileShell(serial, scope, `stat -c '%s' ${quoteDeviceShell(remote)}`, "device_text_size", signal);
+    const size = Number(sizeText);
+    if (!/^\d+$/.test(sizeText) || !Number.isSafeInteger(size) || size > 1024 * 1024) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Text preview is limited to 1 MiB UTF-8 files");
+    }
+    const directory = await mkdtemp(join(tmpdir(), "piora-harmony-text-"));
+    const local = join(directory, "preview.txt");
+    try {
+      await this.pullFile(serial, scope, remote, local, signal);
+      const bytes = await readFile(local);
+      if (bytes.length !== size || bytes.includes(0)) throw new HarmonyError("INVALID_RESPONSE", "Device file is incomplete or contains binary data");
+      let text: string;
+      try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
+      catch { throw new HarmonyError("INVALID_ARGUMENT", "Device file is not UTF-8 text"); }
+      return { text, hash: createHash("sha256").update(bytes).digest("hex"), size };
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }
+
+  async saveTextFile(serial: string, scope: HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (typeof text !== "string" || text.includes("\0") || !/^[a-f0-9]{64}$/.test(expectedHash)) {
+      throw new HarmonyError("INVALID_ARGUMENT", "Text and the expected SHA-256 are required");
+    }
+    const bytes = Buffer.from(text, "utf8");
+    if (bytes.length > 1024 * 1024) throw new HarmonyError("INVALID_ARGUMENT", "Device text editing is limited to 1 MiB");
+    const current = await this.readTextFile(serial, scope, remote, signal);
+    if (current.hash !== expectedHash) throw new HarmonyError("STALE_SNAPSHOT", "The device file changed since it was opened; reload before saving");
+    const directory = await mkdtemp(join(tmpdir(), "piora-harmony-edit-"));
+    const local = join(directory, "edit.txt");
+    const staged = validateWritableDeviceFilePath(scope, `${remote}.piora-${randomUUID()}.tmp`);
+    const newHash = createHash("sha256").update(bytes).digest("hex");
+    let uploaded = false;
+    try {
+      await writeFile(local, bytes, { mode: 0o600 });
+      await this.pushFile(serial, scope, local, staged, false, signal);
+      uploaded = true;
+      const target = quoteDeviceShell(remote), temporary = quoteDeviceShell(staged);
+      const script = `p=${target}; t=${temporary}; if ! command -v sha256sum >/dev/null 2>&1; then printf '__PIORA_NO_HASH__'; elif [ -L "$p" ] || [ ! -f "$p" ] || [ ! -f "$t" ]; then printf '__PIORA_FILE_ERROR__'; else sum=$(sha256sum "$p" 2>/dev/null); case "$sum" in ${expectedHash}' '*) mv -f "$t" "$p" && printf '__PIORA_APPLIED__';; *) printf '__PIORA_STALE__';; esac; fi`;
+      const result = await this.fileShell(serial, scope, script, "device_text_replace", signal);
+      if (result === "__PIORA_STALE__") throw new HarmonyError("STALE_SNAPSHOT", "The device file changed during save; reload before retrying", { details: { dispatchState: "sent" } });
+      if (result === "__PIORA_NO_HASH__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device sha256sum is required for safe text editing");
+      if (result !== "__PIORA_APPLIED__") throw new HarmonyError("INVALID_RESPONSE", "Device text replacement could not be confirmed", { details: { dispatchState: "unknown" } });
+      uploaded = false;
+      if ((await this.readTextFile(serial, scope, remote, signal)).hash !== newHash) {
+        throw new HarmonyError("INVALID_RESPONSE", "Saved device text failed content verification", { details: { dispatchState: "sent" } });
+      }
+    } finally {
+      if (uploaded && !signal?.aborted) await this.fileShell(serial, scope, `rm ${quoteDeviceShell(staged)}`, "device_edit_cleanup", signal).catch(() => undefined);
+      await rm(directory, { recursive: true, force: true });
     }
   }
 

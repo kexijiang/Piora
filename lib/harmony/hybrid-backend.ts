@@ -200,6 +200,14 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.renamePath(serial, scope, path, newPath, signal);
   }
 
+  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    return await this.hdc.readTextFile(serial, scope, path, signal);
+  }
+
+  async saveTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal) {
+    await this.hdc.saveTextFile(serial, scope, path, text, expectedHash, signal);
+  }
+
   async stopApp(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.stopApp(serial, bundleName, signal);
   }

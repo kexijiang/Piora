@@ -13,9 +13,11 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [selected, setSelected] = useState<HarmonyDeviceFile>(), [destinationPath, setDestinationPath] = useState(""), [notice, setNotice] = useState("");
   const [sourcePath, setSourcePath] = useState(""), [remotePath, setRemotePath] = useState(""), [overwrite, setOverwrite] = useState(false);
   const [directoryPath, setDirectoryPath] = useState(""), [newName, setNewName] = useState("");
+  const [preview, setPreview] = useState<{ text: string; hash: string; size: number }>();
+  const [editedText, setEditedText] = useState("");
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  useEffect(() => { setFiles([]); setSelected(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
+  useEffect(() => { setFiles([]); setSelected(undefined); setPreview(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
   const open = async (nextPath: string) => {
     controller.current?.abort();
     const current = new AbortController(); controller.current = current; setBusy(true); setError("");
@@ -24,7 +26,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       const response = await fetch(`/api/harmony/files?${params}`, { signal: current.signal, cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message ?? data.error);
-      setFiles(data.files); setTruncated(Boolean(data.truncated)); setPath(nextPath); setSelected(undefined); setNotice("");
+      setFiles(data.files); setTruncated(Boolean(data.truncated)); setPath(nextPath); setSelected(undefined); setPreview(undefined); setNotice("");
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -36,6 +38,30 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
         body: JSON.stringify({ action: "download", serial, kind, ...(kind === "sandbox" ? { bundleName } : {}), path: selected.path, destinationPath }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
       setNotice(copy(`已保存 ${data.result.size} 字节到 ${data.result.destinationPath}`, `Saved ${data.result.size} bytes to ${data.result.destinationPath}`));
+    } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
+    finally { if (controller.current === current) setBusy(false); }
+  };
+  const loadPreview = async () => {
+    if (!selected || busy) return;
+    const current = new AbortController(); controller.current = current; setBusy(true); setError("");
+    try {
+      const params = new URLSearchParams({ serial, kind, path: selected.path, ...(kind === "sandbox" ? { bundleName } : {}) });
+      const response = await fetch(`/api/harmony/files/text?${params}`, { signal: current.signal, cache: "no-store" });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
+      setPreview(data.result); setEditedText(data.result.text);
+    } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
+    finally { if (controller.current === current) setBusy(false); }
+  };
+  const saveText = async () => {
+    if (!selected || !preview || busy) return;
+    const current = new AbortController(); controller.current = current; setBusy(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/harmony/files/text", { method: "POST", headers: { "Content-Type": "application/json" }, signal: current.signal,
+        body: JSON.stringify({ serial, leaseToken: await ensureControl(), kind, ...(kind === "sandbox" ? { bundleName } : {}), path: selected.path,
+          text: editedText, expectedHash: preview.hash }) });
+      const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
+      setPreview(undefined);
+      setNotice(copy("设备已核对新文本哈希；重新打开可查看最新内容。", "The device verified the new text hash; reopen to inspect the saved content."));
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -78,11 +104,14 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     {truncated ? <p role="status">{copy("只显示前 500 项，请进入子目录。", "Showing the first 500 entries; open a subdirectory.")}</p> : null}
     <ul>{files.map(file => <li key={file.path}>
       {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); }}>{copy("选择", "Select")}</button></>
-        : file.kind === "file" ? <button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : ""); }}>{file.name}</button>
+        : file.kind === "file" ? <button disabled={busy} onClick={() => { setSelected(file); setPreview(undefined); setNewName(file.name); setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : ""); }}>{file.name}</button>
           : <span>{file.name}</span>}
       <small> · {file.kind}{file.size === undefined ? "" : ` · ${file.size} B`}{file.modifiedAt ? ` · ${new Date(file.modifiedAt).toLocaleString()}` : ""}{file.mode ? ` · ${file.mode}` : ""}</small>
     </li>)}</ul>
     {selected?.kind === "file" ? <fieldset><legend>{copy("下载文件", "Download file")}: {selected.name}</legend>
+      <button disabled={busy} onClick={() => void loadPreview()}>{copy("预览 UTF-8 文本", "Preview UTF-8 text")}</button>
+      {preview ? <><small>{preview.size} B · SHA-256 {preview.hash}</small><textarea value={editedText} onChange={event => setEditedText(event.target.value)} rows={16} style={{ width: "100%" }} />
+        <button disabled={busy || !canControl || editedText === preview.text} onClick={() => void saveText()}>{copy("核对原内容并保存", "Verify original and save")}</button></> : null}
       <p>{copy("保存到已获准工作区中的新文件名；不会覆盖现有文件。", "Save to a new file within an allowed workspace; existing files are never overwritten.")}</p>
       <label>{copy("本地完整路径", "Full local path")}<input value={destinationPath} onChange={event => setDestinationPath(event.target.value)} /></label>
       <button disabled={busy || !destinationPath.trim()} onClick={() => void download()}>{copy("下载到本机", "Download to computer")}</button>
