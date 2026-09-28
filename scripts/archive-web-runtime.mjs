@@ -11,5 +11,5 @@ export async function createWebRuntimeArchive(source, destination) {
   // Electron's ASAR-aware filesystem.
   // Harmony children, PowerShell audio helpers and HDC-pushed driver resources
   // require real sidecar files, with ordinary Node resolution inside the child.
-  await createPackageWithOptions(source, destination, { unpackDir: "**/{node-pty,@img,@deveco,shell/runtime,hypium-driver,harmony/audio,.harmony-worker}" });
+  await createPackageWithOptions(source, destination, { unpackDir: "**/{node-pty,@img,@deveco,shell/runtime,hypium-driver,harmony/audio,harmony/runtime,.harmony-worker}" });
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
+import { SqliteViewer } from "./SqliteViewer";
 
 export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }: { serial: string; chinese: boolean; cwd?: string | null; canControl: boolean; ensureControl: () => Promise<string> }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
@@ -15,6 +16,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [directoryPath, setDirectoryPath] = useState(""), [newName, setNewName] = useState("");
   const [preview, setPreview] = useState<{ text: string; hash: string; size: number }>();
   const [editedText, setEditedText] = useState("");
+  const [databasePath, setDatabasePath] = useState("");
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { setFiles([]); setSelected(undefined); setPreview(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
@@ -38,6 +40,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
         body: JSON.stringify({ action: "download", serial, kind, ...(kind === "sandbox" ? { bundleName } : {}), path: selected.path, destinationPath }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
       setNotice(copy(`已保存 ${data.result.size} 字节到 ${data.result.destinationPath}`, `Saved ${data.result.size} bytes to ${data.result.destinationPath}`));
+      if (/\.(?:db|sqlite|sqlite3)$/i.test(data.result.destinationPath)) setDatabasePath(data.result.destinationPath);
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -132,5 +135,6 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       <label><input type="checkbox" checked={overwrite} onChange={event => setOverwrite(event.target.checked)} />{copy("覆盖设备上的同名文件", "Overwrite an existing device file")}</label>
       <button disabled={busy || !canControl || !sourcePath.trim() || !remotePath.trim()} onClick={() => void upload()}>{copy("上传到设备", "Upload to device")}</button>
     </fieldset>
+    <SqliteViewer initialPath={databasePath} chinese={chinese} />
   </section>;
 }

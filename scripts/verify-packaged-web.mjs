@@ -809,6 +809,7 @@ async function main() {
   for (const name of ["store-worker.cjs", "history-import.cjs", "integration.ps1", "integration.bash", "integration.zsh"]) {
     await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "shell", "runtime", name));
   }
+  await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "harmony", "runtime", "sqlite-inspector.cjs"));
   const launcherSource = await readFile(join(packagedWebRoot, "server.js"), "utf8");
   if (
     !launcherSource.includes("const dir = path.join(__dirname, 'runtime.asar')")
