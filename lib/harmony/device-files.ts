@@ -51,18 +51,23 @@ export function quoteDeviceShell(value: string): string {
   return `'${value.replaceAll("'", "'\\''")}'`;
 }
 
-/** NUL records keep whitespace and Unicode file names intact. */
+/** HDC drops NUL output bytes; record/unit separators survive its transport. */
 export function parseDeviceFileListing(output: Buffer, parent: string): { files: HarmonyDeviceFile[]; truncated: boolean } {
-  const fields = output.toString("utf8").split("\0");
-  const marker = fields.findIndex(value => ["__PIORA_DIR_OK__", "__PIORA_DIR_ERROR__", "__PIORA_STAT_ERROR__"].includes(value));
+  const records = output.toString("utf8").split("\x1e").map(record => record.replace(/^[\r\n]+/, ""));
+  const marker = records.findIndex(value => ["__PIORA_DIR_OK__", "__PIORA_DIR_ERROR__", "__PIORA_STAT_ERROR__"].includes(value));
   if (marker < 0) throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The device did not return a file listing");
-  if (fields[marker] === "__PIORA_DIR_ERROR__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device directory is missing or inaccessible");
-  if (fields[marker] === "__PIORA_STAT_ERROR__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device stat is unavailable for file browsing");
+  if (records[marker] === "__PIORA_DIR_ERROR__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device directory is missing or inaccessible");
+  if (records[marker] === "__PIORA_STAT_ERROR__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device stat is unavailable for file browsing");
   const files: HarmonyDeviceFile[] = [];
   let truncated = false;
-  for (let index = marker + 1; index + 4 < fields.length; index += 5) {
-    if (fields[index] === "__PIORA_TRUNCATED__") { truncated = true; break; }
-    const [path, kindText, sizeText, modifiedText, mode] = fields.slice(index, index + 5);
+  for (let index = marker + 1; index < records.length; index++) {
+    if (records[index] === "__PIORA_TRUNCATED__") { truncated = true; break; }
+    const fields = records[index].split("\x1f");
+    if (fields.length !== 2) continue;
+    const [path, metadataText] = fields;
+    const metadata = metadataText.split("|");
+    if (metadata.length !== 4) continue;
+    const [kindText, sizeText, modifiedText, mode] = metadata;
     if (!path || !path.startsWith(parent === "." ? "" : parent === "/" ? "/" : `${parent}/`)) continue;
     const name = posix.basename(path);
     if (!name || name === "." || name === ".." || /[\0-\x1f\x7f]/.test(name)) continue;
@@ -78,5 +83,5 @@ export function parseDeviceFileListing(output: Buffer, parent: string): { files:
 
 export function deviceFileListScript(path: string): string {
   const quoted = quoteDeviceShell(path);
-  return `d=${quoted}; if [ ! -d "$d" ] || [ ! -r "$d" ] || [ ! -x "$d" ]; then printf '__PIORA_DIR_ERROR__\\0'; exit 0; fi; if ! stat -c '%F' "$d" >/dev/null 2>&1; then printf '__PIORA_STAT_ERROR__\\0'; exit 0; fi; printf '__PIORA_DIR_OK__\\0'; n=0; for f in "$d"/* "$d"/.[!.]* "$d"/..?*; do [ -e "$f" ] || [ -L "$f" ] || continue; if [ "$n" -ge 500 ]; then printf '__PIORA_TRUNCATED__\\0\\0\\0\\0\\0'; break; fi; k=$(stat -c '%F' "$f" 2>/dev/null) || continue; s=$(stat -c '%s' "$f" 2>/dev/null) || continue; t=$(stat -c '%Y' "$f" 2>/dev/null) || continue; m=$(stat -c '%a' "$f" 2>/dev/null) || continue; printf '%s\\0%s\\0%s\\0%s\\0%s\\0' "$f" "$k" "$s" "$t" "$m"; n=$((n+1)); done`;
+  return `d=${quoted}; if [ ! -d "$d" ] || [ ! -r "$d" ] || [ ! -x "$d" ]; then printf '__PIORA_DIR_ERROR__\\036'; exit 0; fi; if ! stat -c '%F' "$d" >/dev/null 2>&1; then printf '__PIORA_STAT_ERROR__\\036'; exit 0; fi; printf '__PIORA_DIR_OK__\\036'; rs=$(printf '\\036'); us=$(printf '\\037'); nl=$(printf '\\n_'); nl=\${nl%_}; fmt="%n\${us}%F|%s|%Y|%a\${rs}"; n=0; batch=0; truncated=0; set --; for f in "$d"/* "$d"/.[!.]* "$d"/..?*; do [ -e "$f" ] || [ -L "$f" ] || continue; case "$f" in *"$rs"*|*"$us"*|*"$nl"*) continue;; esac; if [ "$n" -ge 500 ]; then truncated=1; break; fi; set -- "$@" "$f"; n=$((n+1)); batch=$((batch+1)); if [ "$batch" -ge 50 ]; then stat -c "$fmt" "$@" 2>/dev/null; set --; batch=0; fi; done; if [ "$#" -gt 0 ]; then stat -c "$fmt" "$@" 2>/dev/null; fi; if [ "$truncated" -eq 1 ]; then printf '__PIORA_TRUNCATED__\\036'; fi`;
 }
