@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useSmartShell } from "@/hooks/useSmartShell";
 import { useNativeShellConfig } from "@/hooks/useNativeShellConfig";
@@ -16,14 +16,19 @@ export interface SmartShellPanelProps {
   onOpenFile?: (file: string) => void;
   onOpenUrl?: (url: string) => void;
   onSettings?: () => void;
+  searchTarget?: { sessionId: string; query: string; revision: number };
 }
 
-export function SmartShellPanel({ cwd, onClose, onSettings }: SmartShellPanelProps) {
+export function SmartShellPanel({ cwd, onClose, onSettings, searchTarget }: SmartShellPanelProps) {
   const { t } = useI18n();
   const shell = useSmartShell(cwd, true);
   const { config, error: profileError } = useNativeShellConfig();
   const terminal = useRef<TerminalSurfaceHandle>(null);
   const state = shell.snapshot?.session;
+  const { sessions, activeId, select } = shell;
+  useEffect(() => {
+    if (searchTarget && sessions.some(session => session.id === searchTarget.sessionId) && activeId !== searchTarget.sessionId) select(searchTarget.sessionId);
+  }, [searchTarget, sessions, activeId, select]);
   const act = (action: string) => { void shell.action({ action }).then(() => terminal.current?.focus()).catch(() => {}); };
 
   return <section className={styles.root} aria-label={t("shell.title")}>
@@ -51,7 +56,8 @@ export function SmartShellPanel({ cwd, onClose, onSettings }: SmartShellPanelPro
     {shell.connectionError ? <div className={styles.error} role="alert">{shell.connectionError}<button onClick={shell.reconnect}>{t("shell.retry")}</button></div> : null}
     <div className={styles.body}>
       {state ? <div className={styles.native}>
-        <TerminalSurface key={state.id} ref={terminal} cwd={state.initialCwd} terminalId={state.id} subscribeToShell={shell.subscribe} onError={shell.setError} autoFocus />
+        <TerminalSurface key={state.id} ref={terminal} cwd={state.initialCwd} terminalId={state.id} subscribeToShell={shell.subscribe} onError={shell.setError} autoFocus
+          searchRequest={searchTarget?.sessionId === state.id ? searchTarget : undefined} />
       </div> : <div className={styles.empty}><button onClick={() => void shell.create()}>{t("shell.new")}</button></div>}
     </div>
     <footer className={styles.controlBar}>

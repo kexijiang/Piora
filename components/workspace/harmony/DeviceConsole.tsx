@@ -5,9 +5,13 @@ import type { HarmonyFileScope } from "@/lib/harmony/device-files";
 import { InteractiveDeviceShell } from "./InteractiveDeviceShell";
 import { CommandShortcuts } from "./CommandShortcuts";
 import { SmartShellPanel } from "../SmartShellPanel";
+import { terminalSearchMatch } from "@/lib/harmony/terminal-search";
 
 type Entry = { command: string; stdout: string; stderr: string; exitCode?: number; durationMs?: number; error?: string };
 type ConsoleTab = { id: number; label: string; draft: string; entries: Entry[] };
+type SearchMatch = { kind: "command"; tabId: number; tabLabel: string; entryIndex: number; command: string; excerpt: string }
+  | { kind: "device"; excerpt: string }
+  | { kind: "local"; sessionId: string; label: string; excerpt: string };
 
 export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOpenLocalTerminal, visible, cwd }: { serial: string; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onOpenLocalTerminal?: () => void; visible: boolean; cwd?: string | null }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
@@ -16,31 +20,73 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
   const [kind, setKind] = useState<HarmonyFileScope["kind"]>("shared"), [bundleName, setBundleName] = useState("");
   const [splitLocal, setSplitLocal] = useState(false);
   const [searchText, setSearchText] = useState(""), [searchTerm, setSearchTerm] = useState("");
+  const [deviceOutput, setDeviceOutput] = useState("");
+  const [localOutputs, setLocalOutputs] = useState<{ id: string; label: string; output: string }[]>([]);
+  const [localSearchError, setLocalSearchError] = useState(""), [searchingLocal, setSearchingLocal] = useState(false);
+  const [searchRevision, setSearchRevision] = useState(0);
+  const [deviceSearchTarget, setDeviceSearchTarget] = useState<{ query: string; revision: number }>();
+  const [localSearchTarget, setLocalSearchTarget] = useState<{ sessionId: string; query: string; revision: number }>();
   const [clipboardMessage, setClipboardMessage] = useState("");
   const [selectedMatch, setSelectedMatch] = useState<{ tabId: number; entryIndex: number }>();
   const logId = useId();
-  const nextId = useRef(1), controller = useRef<AbortController | null>(null);
+  const nextId = useRef(1), searchTargetSequence = useRef(0), controller = useRef<AbortController | null>(null);
   const active = tabs.find(tab => tab.id === activeId) ?? tabs[0];
-  const matches = useMemo(() => {
+  const matches = useMemo<SearchMatch[]>(() => {
     const query = searchTerm.trim().toLocaleLowerCase();
     if (!query) return [];
-    const found: { tabId: number; tabLabel: string; entryIndex: number; command: string; excerpt: string }[] = [];
+    const found: SearchMatch[] = [];
+    const deviceMatch = terminalSearchMatch(deviceOutput, query);
+    if (deviceMatch) found.push({ kind: "device", excerpt: deviceMatch.excerpt });
+    for (const session of localOutputs) {
+      const match = terminalSearchMatch(session.output, query);
+      if (match) found.push({ kind: "local", sessionId: session.id, label: session.label, excerpt: match.excerpt });
+      if (found.length >= 100) return found;
+    }
     for (const tab of tabs) for (let entryIndex = 0; entryIndex < tab.entries.length; entryIndex++) {
       const entry = tab.entries[entryIndex];
       for (const content of [entry.command, entry.stdout, entry.stderr, entry.error ?? ""]) {
         const match = content.toLocaleLowerCase().indexOf(query);
         if (match < 0) continue;
         const start = Math.max(0, match - 36), end = Math.min(content.length, match + query.length + 64);
-        found.push({ tabId: tab.id, tabLabel: tab.label, entryIndex, command: entry.command,
+        found.push({ kind: "command", tabId: tab.id, tabLabel: tab.label, entryIndex, command: entry.command,
           excerpt: `${start ? "…" : ""}${content.slice(start, end).replaceAll(/\s+/g, " ")}${end < content.length ? "…" : ""}` });
         break;
       }
       if (found.length >= 100) return found;
     }
     return found;
-  }, [searchTerm, tabs]);
+  }, [searchTerm, tabs, deviceOutput, localOutputs]);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { const timer = window.setTimeout(() => setSearchTerm(searchText), 150); return () => window.clearTimeout(timer); }, [searchText]);
+  useEffect(() => {
+    const query = searchTerm.trim();
+    if (!query || !cwd) { setLocalOutputs([]); setLocalSearchError(""); setSearchingLocal(false); return; }
+    const controller = new AbortController();
+    const load = async () => {
+      setSearchingLocal(true); setLocalSearchError(""); setLocalOutputs([]);
+      try {
+        const response = await fetch(`/api/shell/sessions?cwd=${encodeURIComponent(cwd)}&native=true`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const inventory = await response.json() as { sessions: { id: string; profile: { label: string } }[] };
+        const found: { id: string; label: string; output: string }[] = [];
+        for (let index = 0; index < inventory.sessions.length; index += 4) {
+          const batch = inventory.sessions.slice(index, index + 4);
+          const outputs = await Promise.all(batch.map(async session => {
+            const item = await fetch(`/api/shell/sessions/${encodeURIComponent(session.id)}`, { signal: controller.signal });
+            if (!item.ok) throw new Error(`HTTP ${item.status}`);
+            const snapshot = await item.json() as { output: string };
+            return { id: session.id, label: session.profile.label, output: snapshot.output };
+          }));
+          found.push(...outputs);
+        }
+        if (!controller.signal.aborted) setLocalOutputs(found);
+      } catch (cause) {
+        if (!controller.signal.aborted) setLocalSearchError(cause instanceof Error ? cause.message : String(cause));
+      } finally { if (!controller.signal.aborted) setSearchingLocal(false); }
+    };
+    void load();
+    return () => controller.abort();
+  }, [cwd, searchTerm, searchRevision]);
   useEffect(() => {
     if (!selectedMatch || selectedMatch.tabId !== activeId) return;
     document.getElementById(`${logId}-${selectedMatch.tabId}-${selectedMatch.entryIndex}`)?.scrollIntoView({ block: "nearest" });
@@ -89,11 +135,18 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
       <button role="tab" aria-selected={activeId === tab.id} onClick={() => setActiveId(tab.id)}>{tab.label}</button>
       {tabs.length > 1 ? <button disabled={busy} aria-label={copy(`关闭标签 ${tab.label}`, `Close tab ${tab.label}`)} onClick={() => { setTabs(current => current.filter(item => item.id !== tab.id)); if (activeId === tab.id) setActiveId(tabs.find(item => item.id !== tab.id)!.id); }}>×</button> : null}
     </span>)}<button disabled={busy || tabs.length >= 8} onClick={() => { const id = ++nextId.current; setTabs(current => [...current, { id, label: String(id), draft: "", entries: [] }]); setActiveId(id); }}>+</button></div>
-    <label>{copy("搜索所有命令标签", "Search all command tabs")}<input value={searchText} maxLength={120} onChange={event => setSearchText(event.target.value)} /></label>
-    {searchText.trim() ? <div role="group" aria-label={copy("跨标签搜索结果", "Cross-tab search results")}>
+    <label>{copy("搜索命令、设备与本机终端", "Search commands, device and local terminals")}<input value={searchText} maxLength={120} onChange={event => setSearchText(event.target.value)} /></label>
+    {searchText.trim() ? <div role="group" aria-label={copy("统一终端搜索结果", "Unified terminal search results")}>
+      {cwd ? <button onClick={() => setSearchRevision(value => value + 1)}>{copy("刷新本机终端结果", "Refresh local terminal results")}</button> : null}
+      {searchingLocal ? <span role="status">{copy("正在搜索本机终端…", "Searching local terminals…")}</span> : null}
+      {localSearchError ? <p role="alert">{copy("本机终端搜索失败：", "Local terminal search failed: ")}{localSearchError}</p> : null}
       <p role="status">{copy(`找到 ${matches.length} 条${matches.length === 100 ? "（最多显示 100 条）" : ""}`, `${matches.length} matches${matches.length === 100 ? " (showing up to 100)" : ""}`)}</p>
-      <ul>{matches.map(match => <li key={`${match.tabId}-${match.entryIndex}`}><button onClick={() => { setActiveId(match.tabId); setSelectedMatch({ tabId: match.tabId, entryIndex: match.entryIndex }); }}>
-        {copy("标签", "Tab")} {match.tabLabel} · {match.command.slice(0, 80)} · {match.excerpt}
+      <ul>{matches.map(match => <li key={match.kind === "command" ? `command-${match.tabId}-${match.entryIndex}` : match.kind === "local" ? `local-${match.sessionId}` : "device"}><button onClick={() => {
+        if (match.kind === "command") { setActiveId(match.tabId); setSelectedMatch({ tabId: match.tabId, entryIndex: match.entryIndex }); }
+        else if (match.kind === "device") setDeviceSearchTarget({ query: searchTerm.trim(), revision: ++searchTargetSequence.current });
+        else { setSplitLocal(true); setLocalSearchTarget({ sessionId: match.sessionId, query: searchTerm.trim(), revision: ++searchTargetSequence.current }); }
+      }}>
+        {match.kind === "command" ? `${copy("标签", "Tab")} ${match.tabLabel} · ${match.command.slice(0, 80)}` : match.kind === "device" ? copy("交互式设备 Shell", "Interactive device shell") : `${copy("本机终端", "Local terminal")} ${match.label}`} · {match.excerpt}
       </button></li>)}</ul>
     </div> : null}
     <label>{copy("范围", "Scope")}<select value={kind} onChange={event => setKind(event.target.value as HarmonyFileScope["kind"])}><option value="shared">{copy("设备 Shell", "Device shell")}</option><option value="sandbox">{copy("调试应用沙箱", "Debug app sandbox")}</option></select></label>
@@ -119,8 +172,8 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
     </article>)}</div>
     {visible ? <div style={{ display: "grid", gridTemplateColumns: splitLocal && cwd ? "repeat(auto-fit, minmax(min(100%, 370px), 1fr))" : "minmax(0, 1fr)", gap: 12 }}>
       <InteractiveDeviceShell key={`${serial}:${kind}:${bundleName}`} serial={serial} scope={kind === "sandbox" ? { kind, bundleName } : { kind }}
-        chinese={chinese} canControl={canControl} ensureControl={ensureControl} />
-      {splitLocal && cwd ? <div aria-label={copy("本机终端分屏", "Local terminal split")} style={{ height: 400, minWidth: 0, border: "1px solid var(--border)" }}><SmartShellPanel cwd={cwd} /></div> : null}
+        chinese={chinese} canControl={canControl} ensureControl={ensureControl} onOutputChange={searchText.trim() ? setDeviceOutput : undefined} searchTarget={deviceSearchTarget} />
+      {splitLocal && cwd ? <div aria-label={copy("本机终端分屏", "Local terminal split")} style={{ height: 400, minWidth: 0, border: "1px solid var(--border)" }}><SmartShellPanel cwd={cwd} searchTarget={localSearchTarget} /></div> : null}
     </div> : null}
   </section>;
 }

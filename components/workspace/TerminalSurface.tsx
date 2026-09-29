@@ -27,12 +27,15 @@ interface Props {
   autoFocus?: boolean;
   onStatus?: (connected: boolean, shell: string) => void;
   onError?: (error: string) => void;
+  searchRequest?: { query: string; revision: number };
 }
 
-export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function TerminalSurface({ cwd, terminalId, transport = "shell", subscribeToShell, subscribeToSSH, inputEnabled = true, output = "", readOnly = false, autoFocus = false, onStatus, onError }, ref) {
+export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function TerminalSurface({ cwd, terminalId, transport = "shell", subscribeToShell, subscribeToSSH, inputEnabled = true, output = "", readOnly = false, autoFocus = false, onStatus, onError, searchRequest }, ref) {
   const host = useRef<HTMLDivElement>(null);
   const terminal = useRef<Terminal | null>(null);
   const search = useRef<SearchAddon | null>(null);
+  const requestedSearch = useRef(searchRequest); requestedSearch.current = searchRequest;
+  const appliedSearch = useRef<string | null>(null);
   const previousOutput = useRef("");
   const outputWriter = useRef<((value: string, snapshot?: boolean) => void) | null>(null);
   const latest = useRef({ output, onStatus, onError, inputEnabled });
@@ -46,6 +49,12 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
     },
     clear: () => { terminal.current?.clear(); },
   }), []);
+  useEffect(() => {
+    const request = searchRequest;
+    if (!request?.query) return;
+    const key = `${request.revision}:${request.query}`;
+    if (search.current && appliedSearch.current !== key && search.current.findNext(request.query)) appliedSearch.current = key;
+  }, [searchRequest]);
 
   useEffect(() => {
     let disposed = false;
@@ -75,6 +84,13 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
       if (autoFocus && host.current.clientWidth && host.current.clientHeight) term.focus();
       terminal.current = term;
       search.current = finder;
+      appliedSearch.current = null;
+      const applyRequestedSearch = () => {
+        const request = requestedSearch.current;
+        if (!request?.query) return;
+        const key = `${request.revision}:${request.query}`;
+        if (appliedSearch.current !== key && finder.findNext(request.query)) appliedSearch.current = key;
+      };
       let chain = Promise.resolve();
       let rendering = Promise.resolve();
       let replaying = false;
@@ -102,7 +118,7 @@ export const TerminalSurface = forwardRef<TerminalSurfaceHandle, Props>(function
           if (disposed || epoch !== renderEpoch) { resolve(); return; }
           replaying = snapshot;
           if (snapshot) term.reset();
-          term.write(output, () => { replaying = false; resolve(); });
+          term.write(output, () => { replaying = false; applyRequestedSearch(); resolve(); });
         }));
       };
       const writeOutput = (output: string, snapshot = false) => {

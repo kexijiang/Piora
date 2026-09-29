@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import type { HarmonyFileScope } from "@/lib/harmony/device-files";
 import "@xterm/xterm/css/xterm.css";
 
-interface Props { serial: string; scope: HarmonyFileScope; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string> }
+interface Props { serial: string; scope: HarmonyFileScope; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>;
+  onOutputChange?: (output: string) => void; searchTarget?: { query: string; revision: number } }
 
-export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ensureControl }: Props) {
+export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ensureControl, onOutputChange, searchTarget }: Props) {
   const [id, setId] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -15,9 +16,13 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
   const host = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<import("@xterm/xterm").Terminal | null>(null);
   const searchRef = useRef<import("@xterm/addon-search").SearchAddon | null>(null);
+  const outputRef = useRef("");
+  const outputListener = useRef(onOutputChange); outputListener.current = onOutputChange;
+  const requestedSearch = useRef(searchTarget); requestedSearch.current = searchTarget;
   const leaseToken = useRef("");
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { onOutputChange?.(outputRef.current); }, [onOutputChange]);
   const copy = (zh: string, en: string) => chinese ? zh : en;
   const post = async (body: Record<string, unknown>) => {
     const response = await fetch("/api/harmony/device-terminal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -45,9 +50,10 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
   const stop = () => {
     if (!id) return;
     const current = id;
-    setId(null); setConnected(false);
+    setId(null); setConnected(false); outputRef.current = ""; outputListener.current?.("");
     void post({ action: "stop", id: current, leaseToken: leaseToken.current }).catch(() => undefined);
   };
+  useEffect(() => { if (id && searchTarget?.query) searchRef.current?.findNext(searchTarget.query); }, [id, searchTarget?.revision, searchTarget?.query]);
 
   useEffect(() => {
     if (!id || !host.current) return;
@@ -55,6 +61,11 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
     let terminal: import("@xterm/xterm").Terminal | undefined;
     let events: EventSource | undefined;
     let observer: ResizeObserver | undefined;
+    let outputTimer: ReturnType<typeof setTimeout> | undefined;
+    const publishOutput = (next: string) => {
+      outputRef.current = next.slice(-200_000);
+      if (outputListener.current && !outputTimer) outputTimer = setTimeout(() => { outputTimer = undefined; if (!disposed) outputListener.current?.(outputRef.current); }, 150);
+    };
     const keepalive = setInterval(() => {
       void post({ action: "keepalive", id, leaseToken: leaseToken.current }).catch(cause => {
         if (!disposed) setError(cause instanceof Error ? cause.message : String(cause));
@@ -88,16 +99,17 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
         if (disposed || !terminal) return;
         try {
           const message = JSON.parse(event.data);
-          if (message.type === "snapshot") { terminal.reset(); terminal.write(message.output); setConnected(message.connected); }
-          else if (message.type === "output") terminal.write(message.data);
+          if (message.type === "snapshot") { terminal.reset(); publishOutput(message.output); terminal.write(message.output, () => { if (requestedSearch.current?.query) searchRef.current?.findNext(requestedSearch.current.query); }); setConnected(message.connected); }
+          else if (message.type === "output") { publishOutput(outputRef.current + message.data); terminal.write(message.data); }
           else if (message.type === "status") setConnected(message.connected);
         } catch { /* Ignore malformed frame. */ }
       };
       events.onerror = () => { if (!disposed) setError("设备 Shell 流中断 / Device shell stream interrupted"); };
     })().catch(cause => { if (!disposed) setError(cause instanceof Error ? cause.message : String(cause)); });
     return () => {
-      disposed = true; clearInterval(keepalive); observer?.disconnect(); events?.close(); terminal?.dispose();
+      disposed = true; clearInterval(keepalive); clearTimeout(outputTimer); observer?.disconnect(); events?.close(); terminal?.dispose();
       terminalRef.current = null; searchRef.current = null;
+      outputRef.current = ""; outputListener.current?.("");
       void fetch("/api/harmony/device-terminal", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "stop", id, leaseToken: token }), keepalive: true }).catch(() => undefined);
     };
