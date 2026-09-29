@@ -14,6 +14,7 @@ import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
 import { HarmonyCheckPanel } from "./HarmonyCheckPanel";
 import { WorkbenchTools } from "./harmony/WorkbenchTools";
+import { TcpDeviceConnection } from "./harmony/TcpDeviceConnection";
 import styles from "./HarmonyPanel.module.css";
 
 type RuntimeProfile = "normal" | "device-control";
@@ -618,6 +619,11 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
           <button className={styles.iconButton} type="button" disabled={busy} onClick={() => void chooseRuntimePath("hdc")} title={copy("选择 hdc.exe", "Choose hdc.exe")} aria-label={copy("选择 hdc.exe", "Choose hdc.exe")}><AliIcon name="file" size={14} /></button>
         </div>
         {!runtimeCandidates.length ? <p className={styles.inlineHint}>{copy("没有自动找到，请手动选择。", "Nothing detected. Choose it manually.")}</p> : null}
+      </div>
+
+      <div className={styles.settingGroup}>
+        <div className={styles.settingCopy}><strong>{copy("手动 Wi-Fi 连接", "Manual Wi-Fi connection")}</strong><small>{copy("通过 HDC 连接或断开局域网设备", "Connect or disconnect a LAN device through HDC")}</small></div>
+        <TcpDeviceConnection chinese={chinese} onRefresh={() => refresh()} />
       </div>
 
       <div className={styles.settingGroup}>

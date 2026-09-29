@@ -22,6 +22,8 @@ HDC 在线状态作为已完成设备授权的边界，不添加应用范围 gra
 
 设备文本预览在传输前限制为 2 MiB 普通文件，完整下载后核对长度，以严格 UTF-8 解码并拒绝 NUL 字节。保存时保留 UTF-8 BOM 和原有单一换行格式；混合换行须由用户明确选定统一格式。AI 结果最多携带 12,000 个字符，标注设备内容不可信；面板显示完整文本。保存时要求打开时的 SHA-256 与设备当前内容匹配，新内容先经 `file send` 写入同目录独立暂存文件，再在设备 shell 中检查原文件哈希并替换，最后回读新哈希。缺少 `sha256sum` 时禁用保存；取消或无法确认时不把未知效果报为成功。
 
+手动 Wi-Fi 调试入口要求用户在设备上先启用无线调试，再输入局域网 IPv4:端口。服务端调用 HDC `tconn` 或 `tconn ... -remove` 后读取目标列表核对；正在持有 lease 的同一设备不允许切换连接。显式断开完成后清除普通轮询的暂时缺席宽限，避免 UI 继续把已断开的设备显示在线。真实 USB/Wi-Fi 切换及版本兼容性仍需设备验证。官方命令语义参见 [OpenHarmony HDC 指南](https://gitee.com/openharmony/docs/blob/master/zh-cn/device-dev/subsystems/subsys-toolchain-hdc-guide.md)。
+
 SQLite 查看器只接受工作区内已下载的普通本地文件，限制为 64 MiB，拒绝伴有 `-wal` 的文件。打开时复制到私有临时目录，后续表浏览、查询和导出均绑定该快照 ID；关闭或十分钟后清理，最多同时打开八个。独立 worker 用 `DatabaseSync({ readOnly: true, allowExtension: false })` 与 `query_only` 打开，列出普通表和视图、字段及索引。表和查询每页最多 200 行、100 列；单条 SELECT/WITH 查询最多查看前 1000 行，拒绝分号和其他语句，文本和 BLOB 单元格截断显示，浏览超时为 5 秒。CSV/JSON 导出在 worker 内逐行写入私有临时文件，限制 10 万行、64 MiB 和 30 秒，HTTP 以流返回并在完成或取消后清理。浏览器优先使用文件流写入接口，不支持时以有界 Blob 下载；CSV 文字中会触发表格公式的前缀加单引号，JSON 中大整数以字符串、BLOB 以 Base64 对象表示。设备侧数据库快照自动获取仍待实现。它不提供正在写入的设备数据库的一致性保证：主文件可能遗漏 WAL 中的事务，用户应先通过应用导出一致快照。依据 [SQLite 备份说明](https://www.sqlite.org/backup.html)和[WAL 说明](https://www.sqlite.org/wal.html)。
 
 AI 的 `harmony_control` 中 `database` 操作复用相同快照服务；每个 AI 快照绑定当前 prompt run，任务结束即关闭。读取结果仅返回前 10 行、20 列的有限预览，数据库内容明确标为不可信；导出只能新建已获准工作区文件，失败清理未完成文件。

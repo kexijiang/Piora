@@ -23,6 +23,7 @@ import { HarmonyRecoveryStore } from "./runtime/recovery-store";
 import { boundedCleanup } from "./runtime/resource-scope";
 import { importHapArtifact } from "./runtime/hap-artifact";
 import { importDeviceFileArtifact } from "./runtime/file-artifact";
+import { validateTcpDeviceAddress } from "./tcp-device";
 import { transformFramePoint, type HarmonyGeometry } from "./observation/geometry";
 import { videoMetadataTransform } from "./media/video-metadata";
 import { createHybridHarmonyBackend } from "./hybrid-backend";
@@ -548,6 +549,22 @@ export class HarmonyDeviceManager {
 
   async listDevices(signal?: AbortSignal): Promise<HarmonyDevice[]> {
     return await this.enqueue("list_devices", async (queuedSignal) => await this.refreshDevices(queuedSignal), signal);
+  }
+
+  async connectTcpDevice(address: string, remove: boolean, signal?: AbortSignal): Promise<HarmonyDevice[]> {
+    const endpoint = validateTcpDeviceAddress(address);
+    if (typeof remove !== "boolean") throw new HarmonyError("INVALID_ARGUMENT", "Choose whether to connect or disconnect");
+    return await this.enqueue(remove ? "tcp_disconnect" : "tcp_connect", async queuedSignal => {
+      if (this.leasesBySerial.has(endpoint)) throw new HarmonyError("DEVICE_BUSY", "Release device control before changing its TCP connection");
+      const backend = this.requireBackend();
+      if (!backend.connectTcpDevice) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "This HDC backend cannot manage TCP devices");
+      await backend.connectTcpDevice(endpoint, remove, queuedSignal);
+      let devices = await this.refreshDevices(queuedSignal);
+      // Ordinary polling retains a missing device for two refreshes. An explicit,
+      // verified disconnect should clear that grace period before responding.
+      if (remove) for (let attempt = 0; attempt < DEVICE_MISSING_GRACE_REFRESHES; attempt += 1) devices = await this.refreshDevices(queuedSignal);
+      return devices;
+    }, signal, undefined, endpoint);
   }
 
   async listProcesses(serial: string, signal?: AbortSignal): Promise<HarmonyProcess[]> {

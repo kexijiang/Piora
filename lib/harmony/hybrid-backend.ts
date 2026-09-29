@@ -59,6 +59,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return { provider: "hypium", sessions: this.automationStatus() };
   }
 
+  async connectTcpDevice(address: string, remove: boolean, signal?: AbortSignal): Promise<void> {
+    await this.hdc.connectTcpDevice(address, remove, signal);
+  }
+
   async listDevices(signal?: AbortSignal): Promise<BackendDevice[]> {
     const devices = await this.hdc.listDevices(signal);
     await Promise.all(devices.filter((device) => device.state !== "online").map(async (device) => await this.hypium.invalidate(device.serial)));

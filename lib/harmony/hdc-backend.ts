@@ -20,6 +20,7 @@ import { focusedWindowId, windowBundle } from "./observation/window-scope";
 import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
 import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, validateWritableDeviceFilePath, type HarmonyFileScope } from "./device-files";
 import { decodeDeviceText, encodeDeviceText, MAX_DEVICE_TEXT_BYTES, type WritableDeviceNewline } from "./device-text";
+import { validateTcpDeviceAddress } from "./tcp-device";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -571,6 +572,19 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (!/^[A-Za-z0-9+/=]{1,20000}$/.test(packet)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid debug PCM packet");
     await this.requireUnlockedScreen(serial, signal);
     await this.shell(serial, ["aa", "start", "-b", "dev.piora.audio.fixture", "-a", "EntryAbility", "--ps", "pioraPcmPacket", packet], "app_test_audio", signal);
+  }
+
+  async connectTcpDevice(address: string, remove: boolean, signal?: AbortSignal): Promise<void> {
+    const endpoint = validateTcpDeviceAddress(address);
+    const result = await this.run(remove ? ["tconn", endpoint, "-remove"] : ["tconn", endpoint], remove ? "tcp_disconnect" : "tcp_connect", signal, 15_000);
+    const output = `${result.stdout.toString("utf8")}\n${result.stderr.toString("utf8")}`;
+    if (/\[fail\]|connect failed|disconnect failed/i.test(output)) throw new HarmonyError("COMMAND_FAILED", `HDC TCP ${remove ? "disconnect" : "connect"} failed: ${output.trim().slice(0, 300)}`);
+    const listing = await this.run(["list", "targets"], "tcp_verify", signal, 8_000);
+    const connected = listing.stdout.toString("utf8").split(/\r?\n/).some(line => {
+      const device = parseDeviceLine(line);
+      return device?.serial === endpoint && device.state === "online";
+    });
+    if (connected === remove) throw new HarmonyError("INVALID_RESPONSE", `HDC TCP ${remove ? "disconnect" : "connect"} could not be verified in the device list`);
   }
 
   async listDevices(signal?: AbortSignal): Promise<BackendDevice[]> {
