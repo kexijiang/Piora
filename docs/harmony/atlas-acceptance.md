@@ -26,6 +26,8 @@
 
 专用测试工程可用 `node scripts/prepare-harmony-fixture.mjs debug <全新目录>` 从 `tests/harmony-fixture/base` 生成，再用 DevEco Studio 构建并配置与测试 bundle 匹配的调试签名。[华为真机调试文档](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V14/ide-debug-device-V14)要求真机安装前为 HAP 签名；编译成功的 `*-unsigned.hap` 不算安装验收。
 
+调试页面的 **Export SQLite acceptance sample** 按钮调用系统 `RdbStore.backup()`，把合成数据的一致副本复制到应用 `filesDir`，并显示路径。该副本包含中文、64 位整数及 BLOB；签名 HAP 安装并启动后，才可在文件面板下载并验证。备份 API 和路径可由 [ArkData 官方接口](https://developer.huawei.com/consumer/cn/doc/doccenter-capabilities/api/arkts-apis-data-relationalstore)及设备回执核对。
+
 ## 已完成的首台真机验证（2026-09-29）
 
 Windows 主机通过 USB 连接 `BRA-AL00`（系统 `7.0.0.107`、API 26、普通 `uid=2000(shell)`），选用 DevEco Studio 的 HDC `3.2.0e`。以下检查在该设备上实际执行；序列号和屏幕、应用内容不写入验收记录。
