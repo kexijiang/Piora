@@ -13,6 +13,7 @@ class DeviceTerminal {
   readonly listeners = new Set<Listener>();
   readonly serial: string;
   readonly leaseToken: string;
+  readonly scopeKey: string;
   private child: IPty | null = null;
   private output = "";
   private connected = false;
@@ -21,6 +22,7 @@ class DeviceTerminal {
   constructor(serial: string, leaseToken: string, scope: HarmonyFileScope, executable: string) {
     this.serial = serial;
     this.leaseToken = leaseToken;
+    this.scopeKey = JSON.stringify(scope);
     const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : [])];
     try {
       const child = loadTerminalPty().spawn(executable, args, { cols: 100, rows: 30, cwd: process.cwd(), env: process.env,
@@ -35,10 +37,7 @@ class DeviceTerminal {
       });
       child.onExit(() => {
         if (this.child !== child) return;
-        if (process.platform === "win32") { try { child.kill(); } catch { /* ConPTY handle already closed. */ } }
-        this.child = null;
-        this.connected = false;
-        this.emit({ type: "status", connected: false });
+        this.stop(process.platform === "win32");
       });
       this.watchdog = setInterval(() => {
         try {
@@ -53,6 +52,7 @@ class DeviceTerminal {
   }
 
   private emit(event: Event) { for (const listener of this.listeners) { try { listener(event); } catch { /* Subscriber detached. */ } } }
+  isConnected() { return this.connected && this.child !== null; }
   subscribe(listener: Listener): () => void {
     listener({ type: "snapshot", output: this.output, connected: this.connected });
     this.listeners.add(listener);
@@ -69,22 +69,26 @@ class DeviceTerminal {
     }
     this.child?.resize(cols, rows);
   }
-  stop() {
+  stop(killChild = true) {
     if (this.watchdog) clearInterval(this.watchdog);
     this.watchdog = null;
     const child = this.child;
     this.child = null;
     this.connected = false;
-    try { child?.kill(); } catch { /* Already exited. */ }
+    if (killChild) { try { child?.kill(); } catch { /* Already exited. */ } }
     this.emit({ type: "status", connected: false });
     terminals.delete(this.id);
   }
 }
 
-declare global { var __pioraHarmonyDeviceTerminals: Map<string, DeviceTerminal> | undefined; }
+declare global {
+  var __pioraHarmonyDeviceTerminals: Map<string, DeviceTerminal> | undefined;
+  var __pioraHarmonyDeviceTerminalStarts: Map<string, Promise<string>> | undefined;
+}
 const terminals = globalThis.__pioraHarmonyDeviceTerminals ??= new Map<string, DeviceTerminal>();
+const starts = globalThis.__pioraHarmonyDeviceTerminalStarts ??= new Map<string, Promise<string>>();
 
-export async function startDeviceTerminal(serial: string, leaseToken: string, scope: HarmonyFileScope) {
+async function startDeviceTerminalUnlocked(serial: string, leaseToken: string, scope: HarmonyFileScope) {
   validateDeviceFilePath(scope, scope.kind === "sandbox" ? "data/storage/el2/base" : "/data/local/tmp");
   const manager = getHarmonyDeviceManager();
   const lease = manager.renewLease(leaseToken);
@@ -95,13 +99,22 @@ export async function startDeviceTerminal(serial: string, leaseToken: string, sc
   const existing = [...terminals.values()].find(item => item.serial === serial);
   if (existing) {
     if (existing.leaseToken !== leaseToken) throw new HarmonyError("LEASE_CONFLICT", "Another device terminal is active");
-    return existing.id;
+    if (existing.isConnected() && existing.scopeKey === JSON.stringify(scope)) return existing.id;
+    existing.stop();
   }
   const hdcPath = manager.getState(serial).runtime.hdcPath;
   if (!hdcPath) throw new HarmonyError("HDC_NOT_FOUND", "HDC is unavailable");
   const terminal = new DeviceTerminal(serial, leaseToken, scope, hdcPath);
   terminals.set(terminal.id, terminal);
   return terminal.id;
+}
+
+export async function startDeviceTerminal(serial: string, leaseToken: string, scope: HarmonyFileScope) {
+  const previous = starts.get(serial);
+  const start = (previous ? previous.catch(() => "") : Promise.resolve("")).then(() => startDeviceTerminalUnlocked(serial, leaseToken, scope));
+  starts.set(serial, start);
+  try { return await start; }
+  finally { if (starts.get(serial) === start) starts.delete(serial); }
 }
 
 export function getDeviceTerminal(id: string): DeviceTerminal {
