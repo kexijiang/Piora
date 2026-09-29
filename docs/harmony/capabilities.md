@@ -21,10 +21,18 @@
 | `voice_input` | direct, scenario | control | Play an immutable asset over a calibrated acoustic route and verify the phone transcript |
 | `geometry_assert` | scenario | read | Verify native display rotation against a newly captured screenshot |
 | `launch_app` | direct, scenario | control | Launch a bundle and optional ability |
-| `stop_app` | scenario | control | Stop the selected application |
-| `clear_app_data` | scenario | control | Clear data of the selected application |
-| `uninstall_app` | scenario | control | Uninstall the selected application |
-| `install_app` | scenario | control | Install an integrity-checked immutable HAP |
+| `stop_app` | direct, scenario | control | Stop the selected application |
+| `clear_app_data` | direct, scenario | control | Clear data of the selected application |
+| `clear_app_cache` | direct | control | Clear cache of the selected application for the active user |
+| `uninstall_app` | direct, scenario | control | Uninstall the selected application |
+| `enable_app` | direct | control | Enable an app for the active user on a root device build |
+| `disable_app` | direct | control | Disable an app for the active user on a root device build |
+| `install_app` | direct, scenario | control | Install an integrity-checked immutable HAP |
+| `upload_file` | direct | control | Upload an immutable local file into a writable device path |
+| `create_directory` | direct | control | Create one device directory without creating parents |
+| `delete_path` | direct | control | Delete one regular device file or empty directory |
+| `rename_path` | direct | control | Rename one device file or directory without overwriting |
+| `chmod_path` | direct | control | Set three-digit octal permissions on one regular device file or directory |
 | `initialize_mirror` | direct | control | Initialize the capture component on request; never unlock |
 | `wait_for` | scenario | read | Wait for a valid semantic observation |
 | `assert` | scenario | read | Assert a valid semantic observation |

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { statSync, readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { asHarmonyError, HarmonyError } from "./errors";
@@ -22,6 +22,8 @@ import { createSupportBundle, saveSupportBundle } from "./diagnostics/support-bu
 import { HarmonyRecoveryStore } from "./runtime/recovery-store";
 import { boundedCleanup } from "./runtime/resource-scope";
 import { importHapArtifact } from "./runtime/hap-artifact";
+import { importDeviceFileArtifact } from "./runtime/file-artifact";
+import { validateTcpDeviceAddress } from "./tcp-device";
 import { transformFramePoint, type HarmonyGeometry } from "./observation/geometry";
 import { videoMetadataTransform } from "./media/video-metadata";
 import { createHybridHarmonyBackend } from "./hybrid-backend";
@@ -451,6 +453,12 @@ export class HarmonyDeviceManager {
       if (method === "installPackage") {
         args[1] = await importHapArtifact(String(args[1]), join(dirname(this.configPath), "harmony-artifacts"));
       }
+      if (method === "pushFile") {
+        const directory = join(dirname(this.configPath), "harmony-file-artifacts", randomBytes(16).toString("hex"));
+        try { args[2] = await importDeviceFileArtifact(String(args[2]), directory, signal); }
+        catch (error) { await rm(directory, { recursive: true, force: true }); throw error; }
+        return { args, cleanup: async () => { await rm(directory, { recursive: true, force: true }); } };
+      }
       return args;
     }, (method, args, error) => {
       const failure = asHarmonyError(error);
@@ -546,6 +554,22 @@ export class HarmonyDeviceManager {
     return await this.enqueue("list_devices", async (queuedSignal) => await this.refreshDevices(queuedSignal), signal);
   }
 
+  async connectTcpDevice(address: string, remove: boolean, signal?: AbortSignal): Promise<HarmonyDevice[]> {
+    const endpoint = validateTcpDeviceAddress(address);
+    if (typeof remove !== "boolean") throw new HarmonyError("INVALID_ARGUMENT", "Choose whether to connect or disconnect");
+    return await this.enqueue(remove ? "tcp_disconnect" : "tcp_connect", async queuedSignal => {
+      if (this.leasesBySerial.has(endpoint)) throw new HarmonyError("DEVICE_BUSY", "Release device control before changing its TCP connection");
+      const backend = this.requireBackend();
+      if (!backend.connectTcpDevice) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "This HDC backend cannot manage TCP devices");
+      await backend.connectTcpDevice(endpoint, remove, queuedSignal);
+      let devices = await this.refreshDevices(queuedSignal);
+      // Ordinary polling retains a missing device for two refreshes. An explicit,
+      // verified disconnect should clear that grace period before responding.
+      if (remove) for (let attempt = 0; attempt < DEVICE_MISSING_GRACE_REFRESHES; attempt += 1) devices = await this.refreshDevices(queuedSignal);
+      return devices;
+    }, signal, undefined, endpoint);
+  }
+
   async listProcesses(serial: string, signal?: AbortSignal): Promise<HarmonyProcess[]> {
     validateSerial(serial);
     return await this.enqueue("list_processes", async (queuedSignal) => {
@@ -564,6 +588,111 @@ export class HarmonyDeviceManager {
       if (!backend.applications) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Application discovery is unavailable");
       return backend.applications(serial, query, bundleName, queuedSignal);
     }, signal, undefined, serial);
+  }
+
+  async listFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, offset = 0) {
+    validateSerial(serial);
+    return await this.enqueue("list_device_files", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.listFiles) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file browsing is unavailable");
+      return await backend.listFiles(serial, scope, path, queuedSignal, offset);
+    }, signal, undefined, serial);
+  }
+
+  async searchFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, query: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    return await this.enqueue("search_device_files", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.listFiles) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file browsing is unavailable");
+      const { searchHarmonyFiles } = await import("./file-search");
+      const deadline = AbortSignal.any([queuedSignal, AbortSignal.timeout(30_000)]);
+      return await searchHarmonyFiles(scope, path, query, nextPath => backend.listFiles!(serial, scope, nextPath, deadline), deadline);
+    }, signal, undefined, serial);
+  }
+
+  async pullFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    return await this.enqueue("pull_device_file", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.pullFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file download is unavailable");
+      return await backend.pullFile(serial, scope, path, destinationPath, queuedSignal);
+    }, signal, undefined, serial);
+  }
+
+  async uploadFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; sourcePath: string; path: string; overwrite?: boolean; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("upload_file", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.pushFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file upload is unavailable");
+        await backend.pushFile(options.serial, options.scope, options.sourcePath, options.path, options.overwrite ?? false, signal);
+      });
+  }
+
+  async createDirectory(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("create_directory", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.createDirectory) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device directory creation is unavailable");
+        await backend.createDirectory(options.serial, options.scope, options.path, signal);
+      });
+  }
+
+  async deletePath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("delete_path", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.deletePath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file deletion is unavailable");
+        await backend.deletePath(options.serial, options.scope, options.path, signal);
+      });
+  }
+
+  async renamePath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; newPath: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("rename_path", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.renamePath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file rename is unavailable");
+        await backend.renamePath(options.serial, options.scope, options.path, options.newPath, signal);
+      });
+  }
+
+  async chmodPath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; mode: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    const result = await this.action("chmod_path", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.chmodPath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file permissions cannot be changed");
+        await backend.chmodPath(options.serial, options.scope, options.path, options.mode, signal);
+      });
+    if (result.receipt) { result.receipt.effect = "applied"; result.receipt.verification = "passed"; }
+    return result;
+  }
+
+  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, encoding?: import("./device-text").DeviceTextReadEncoding) {
+    validateSerial(serial);
+    return await this.enqueue("read_device_text", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.readTextFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device text preview is unavailable");
+      return await backend.readTextFile(serial, scope, path, queuedSignal, encoding);
+    }, signal, undefined, serial);
+  }
+
+  async saveTextFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; text: string; expectedHash: string; newlineMode?: import("./device-text").WritableDeviceNewline; encoding?: import("./device-text").DeviceTextEncoding; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    const result = await this.action("save_text_file", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.saveTextFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device text editing is unavailable");
+        await backend.saveTextFile(options.serial, options.scope, options.path, options.text, options.expectedHash, signal, options.newlineMode, options.encoding);
+      });
+    if (result.receipt) { result.receipt.effect = "applied"; result.receipt.verification = "passed"; }
+    return result;
+  }
+
+  async runShellCommand(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; command: string; signal?: AbortSignal }) {
+    let output: { stdout: string; stderr: string; exitCode: number; durationMs: number } | undefined;
+    const receipt = await this.action("manual_device_command", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.runShellCommand) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Manual device commands are unavailable");
+        output = await backend.runShellCommand(options.serial, options.scope, options.command, signal);
+      });
+    if (!output) throw new HarmonyError("INVALID_RESPONSE", "Device command produced no result");
+    return { ...output, receipt };
   }
 
   async readLogs(options: HarmonyLogOptions): Promise<HarmonyLogEntry[]> {
@@ -723,6 +852,28 @@ export class HarmonyDeviceManager {
     this.leasesBySerial.set(lease.serial, renewed);
     this.scheduleLeaseExpiry(renewed);
     return renewed;
+  }
+
+  /** Move explicit manual control to one background transfer without dropping the physical lock. */
+  handoffTransferLease(serial: string, manualToken: string, jobId: string): HarmonyLease {
+    if (!/^[a-f0-9-]{36}$/.test(jobId)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid transfer job identity");
+    const previous = this.requireLease(serial, manualToken);
+    if (previous.owner.kind !== "manual" || (this.controllersByLease.get(manualToken)?.size ?? 0) > 0) {
+      throw new HarmonyError("DEVICE_BUSY", "Manual control is busy; finish active input before queuing a transfer");
+    }
+    clearTimeout(this.leaseTimers.get(manualToken));
+    this.leaseTimers.delete(manualToken);
+    this.leasesByToken.delete(manualToken);
+    this.forgetDeviceSnapshots(serial);
+    const acquiredAt = iso(this.now());
+    const lease: HarmonyLease = { ...previous, token: this.token(), leaseEpoch: ++this.leaseEpoch,
+      owner: { kind: "agent", id: `transfer:${jobId}` }, acquiredAt, expiresAt: iso(this.now() + MAX_LEASE_TTL_MS) };
+    this.leasesByToken.set(lease.token, lease);
+    this.leasesBySerial.set(serial, lease);
+    this.scheduleLeaseExpiry(lease);
+    this.emit({ type: "lease_released", timestamp: acquiredAt, serial, ownerId: previous.owner.id, reason: "transfer_handoff" });
+    this.emit({ type: "lease_acquired", timestamp: acquiredAt, lease });
+    return lease;
   }
 
   releaseLease(token: string): boolean {
@@ -1462,6 +1613,46 @@ export class HarmonyDeviceManager {
       });
   }
 
+  async stopApp(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("stop_app", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.stopApp) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Stopping applications is unavailable");
+        await backend.stopApp(options.serial, options.bundleName, signal);
+      });
+  }
+
+  async clearAppData(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("clear_app_data", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.clearAppData) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Clearing application data is unavailable");
+        await backend.clearAppData(options.serial, options.bundleName, signal);
+      });
+  }
+
+  async clearAppCache(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("clear_app_cache", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.clearAppCache) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Clearing application cache is unavailable");
+        await backend.clearAppCache(options.serial, options.bundleName, signal);
+      });
+  }
+
+  async uninstallApp(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("uninstall_app", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.uninstallPackage) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Uninstalling applications is unavailable");
+        await backend.uninstallPackage(options.serial, options.bundleName, signal);
+      });
+  }
+
+  async setAppEnabled(options: { serial: string; leaseToken: string; bundleName: string; enabled: boolean; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action(options.enabled ? "enable_app" : "disable_app", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.setAppEnabled) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Application enable/disable is unavailable");
+        await backend.setAppEnabled(options.serial, options.bundleName, options.enabled, signal);
+      });
+  }
+
   getConfig(): HarmonyConfig {
     return {
       ...this.config,
@@ -1482,19 +1673,21 @@ export class HarmonyDeviceManager {
   }
 
   async updateConfig(
-    patch: { hdcPath?: string | null; storage?: HarmonyConfig["storage"] | null; vision?: HarmonyConfig["vision"] | null },
+    patch: { hdcPath?: string | null; video?: HarmonyConfig["video"] | null; storage?: HarmonyConfig["storage"] | null; vision?: HarmonyConfig["vision"] | null },
     signal?: AbortSignal,
   ): Promise<HarmonyConfig> {
     if (this.injectedBackend) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Injected Harmony backends cannot be reconfigured");
     const next: HarmonyConfig = { ...this.config };
     if (patch.hdcPath === null || patch.hdcPath === "") delete next.hdcPath;
     else if (patch.hdcPath !== undefined) next.hdcPath = patch.hdcPath;
+    if (patch.video === null) delete next.video;
+    else if (patch.video !== undefined) next.video = { ...patch.video };
     if (patch.storage === null) delete next.storage;
     else if (patch.storage !== undefined) next.storage = { ...patch.storage };
     if (patch.vision === null) delete next.vision;
     else if (patch.vision !== undefined) next.vision = patch.vision;
     const previousConfig = this.config;
-    const runtimeChanged = next.hdcPath !== previousConfig.hdcPath;
+    const runtimeChanged = next.hdcPath !== previousConfig.hdcPath || JSON.stringify(next.video) !== JSON.stringify(previousConfig.video);
     let candidateBackend: HarmonyAutomationBackend | undefined;
     if (runtimeChanged) {
       // Validate the candidate before persisting it or disturbing the working

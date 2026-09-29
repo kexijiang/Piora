@@ -14,12 +14,15 @@ import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
 import { HarmonyCheckPanel } from "./HarmonyCheckPanel";
 import { WorkbenchTools } from "./harmony/WorkbenchTools";
+import { TcpDeviceConnection } from "./harmony/TcpDeviceConnection";
 import styles from "./HarmonyPanel.module.css";
 
 type RuntimeProfile = "normal" | "device-control";
 type HarmonyDevice = {
   serial: string;
   state: "online" | "unauthorized" | "offline" | "unknown";
+  transport?: "usb" | "tcp" | "unknown";
+  transportEvidence?: "hdc" | "endpoint" | "unavailable";
   name?: string;
   model?: string;
   product?: string;
@@ -72,6 +75,8 @@ function normalizeDevices(value: unknown): HarmonyDevice[] {
     return [{
       serial,
       state,
+      transport: source.transport === "usb" || source.transport === "tcp" ? source.transport : "unknown",
+      transportEvidence: source.transportEvidence === "hdc" || source.transportEvidence === "endpoint" ? source.transportEvidence : "unavailable",
       ...(optionalString(source.name) ? { name: optionalString(source.name) } : {}),
       ...(optionalString(source.model) ? { model: optionalString(source.model) } : {}),
       ...(optionalString(source.product) ? { product: optionalString(source.product) } : {}),
@@ -175,13 +180,14 @@ type HarmonyPanelProps = {
   sessionRunning?: boolean;
   cwd?: string | null;
   onOpenFile?: (path: string, line: number) => void;
+  onOpenLocalTerminal?: () => void;
   onGuideAgent?: ((prompt?: string) => void) | undefined;
   onSnapshot?: (fingerprint: number) => void;
 };
 
 type FrameZoom = "fit" | "100" | "150" | "200";
 
-export function HarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenFile, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
+export function HarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenFile, onOpenLocalTerminal, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
   const { locale } = useI18n();
   const chinese = locale === "zh-CN";
   const copy = useCallback((zh: string, en: string) => chinese ? zh : en, [chinese]);
@@ -190,13 +196,16 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const [managerState, setManagerState] = useState<HarmonyState | null>(null);
   const [selectedSerial, setSelectedSerial] = useState("");
   const [sdkPath, setSdkPath] = useState("");
+  const [videoProvider, setVideoProvider] = useState<"bundled" | "hos-scrcpy">("bundled");
+  const [hosPackageDirectory, setHosPackageDirectory] = useState("");
+  const [javaPath, setJavaPath] = useState("");
   const [runtimeCandidates, setRuntimeCandidates] = useState<RuntimeCandidate[]>([]);
   const [visionModels, setVisionModels] = useState<VisionModel[]>([]);
   const [visionEnabled, setVisionEnabled] = useState(false);
   const [visionModelKey, setVisionModelKey] = useState("");
   const [shareScreenshot, setShareScreenshot] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toolTab, setToolTab] = useState<"apps" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs" | "check">("scenarios");
+  const [toolTab, setToolTab] = useState<"apps" | "files" | "commands" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs" | "check">("scenarios");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [toolsVisited, setToolsVisited] = useState(false);
   const [textOpen, setTextOpen] = useState(false);
@@ -314,6 +323,10 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       const candidates = normalizeRuntimeCandidates(payload?.candidates);
       setRuntimeCandidates(candidates);
       setSdkPath(optionalString(config?.hdcPath) ?? diagnostics.runtime.hdcPath ?? candidates[0]?.hdcPath ?? "");
+      const video = recordOf(config?.video);
+      setVideoProvider(video?.provider === "hos-scrcpy" ? "hos-scrcpy" : "bundled");
+      setHosPackageDirectory(optionalString(video?.packageDirectory) ?? "");
+      setJavaPath(optionalString(video?.javaPath) ?? "");
       setVisionModels(normalizeVisionModels(modelPayload?.models));
       const vision = recordOf(config?.vision);
       const provider = optionalString(vision?.provider);
@@ -509,6 +522,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         hdcPath: sdkPath.trim() || null,
+        video: { provider: videoProvider, ...(videoProvider === "hos-scrcpy" ? { packageDirectory: hosPackageDirectory.trim(), ...(javaPath.trim() ? { javaPath: javaPath.trim() } : {}) } : {}) },
         vision: visionEnabled ? { enabled: true, provider, modelId, shareScreenshotWithActionModel: shareScreenshot } : null,
       }),
     });
@@ -620,6 +634,27 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       </div>
 
       <div className={styles.settingGroup}>
+        <div className={styles.settingCopy}><strong>{copy("手动 Wi-Fi 连接", "Manual Wi-Fi connection")}</strong><small>{copy("通过 HDC 连接或断开局域网设备", "Connect or disconnect a LAN device through HDC")}</small></div>
+        <TcpDeviceConnection chinese={chinese} onRefresh={() => refresh()} />
+        {selected ? <p className={styles.inlineHint}>{selected.transport === "usb" ? copy("当前设备：USB（HDC 已标注）", "Current device: USB (reported by HDC)")
+          : selected.transport === "tcp" ? selected.transportEvidence === "hdc" ? copy("当前设备：TCP/Wi-Fi（HDC 已标注）", "Current device: TCP/Wi-Fi (reported by HDC)")
+            : copy("当前设备：TCP/Wi-Fi（根据 IP:端口序列号推断）", "Current device: TCP/Wi-Fi (inferred from IP:port serial)")
+            : copy("当前设备的连接方式未知；HDC 未给出可核实的标记", "Connection type unknown; HDC did not provide a verifiable marker")}</p> : null}
+      </div>
+
+      <div className={styles.settingGroup}>
+        <div className={styles.settingCopy}><strong>{copy("投屏来源", "Video provider")}</strong><small>{copy("可选 HOScrcpy；失败后暂时回退内置 HDC 投屏", "Optional HOScrcpy; falls back to bundled HDC video after failure")}</small></div>
+        <select aria-label={copy("投屏来源", "Video provider")} value={videoProvider} onChange={event => setVideoProvider(event.target.value as "bundled" | "hos-scrcpy")}>
+          <option value="bundled">{copy("内置 HDC 投屏", "Bundled HDC video")}</option><option value="hos-scrcpy">HOScrcpy</option>
+        </select>
+        {videoProvider === "hos-scrcpy" ? <>
+          <label>{copy("本地 dsh-hos-scrcpy 包目录", "Local dsh-hos-scrcpy package directory")}<input value={hosPackageDirectory} onChange={event => setHosPackageDirectory(event.target.value)} /></label>
+          <label>{copy("Java 可执行文件完整路径（留空使用 PATH）", "Full Java executable path (blank uses PATH)")}<input value={javaPath} onChange={event => setJavaPath(event.target.value)} /></label>
+          <p className={styles.inlineHint}>{copy("需自行提供含 HOScrcpy SDK jar 和 Java sidecar 的本地包。Piora 只经已认证的设备视频接口转发画面，不向网页暴露 sidecar 地址；首次开流可能部署其设备组件。", "Supply a local package containing the HOScrcpy SDK jar and Java sidecar. Piora proxies video only through its authenticated device endpoint and does not expose the sidecar address to the browser; first capture may deploy its device component.")}</p>
+        </> : null}
+      </div>
+
+      <div className={styles.settingGroup}>
         <label className={styles.settingToggle}>
           <span className={styles.settingCopy}><strong>{copy("视觉模型", "Vision model")}</strong><small>{copy("只负责看手机屏幕", "Only reads the phone screen")}</small></span>
           <input type="checkbox" checked={visionEnabled} onChange={(event) => setVisionEnabled(event.target.checked)} />
@@ -647,7 +682,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       </div>
       <div className={styles.settingsFooter}>
         <button type="button" onClick={() => setSettingsOpen(false)}>{copy("取消", "Cancel")}</button>
-        <button className={styles.primaryButton} type="button" disabled={busy || (visionEnabled && !visionModelKey)} onClick={saveSettings}>{copy("保存", "Save")}</button>
+        <button className={styles.primaryButton} type="button" disabled={busy || (visionEnabled && !visionModelKey) || (videoProvider === "hos-scrcpy" && !hosPackageDirectory.trim())} onClick={saveSettings}>{copy("保存", "Save")}</button>
       </div>
     </section> : null}
 
@@ -754,11 +789,11 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       <section id={drawerId} className={styles.toolDrawer} hidden={!toolsOpen} aria-label={copy("设备工具", "Device tools")} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closeTools(); } }}>
         <div className={styles.drawerHeading}><strong>{copy("工具", "Tools")}</strong><button className={styles.iconButton} type="button" onClick={closeTools} aria-label={copy("关闭工具", "Close tools")}><AliIcon name="close" size={15} /></button></div>
         <div className={styles.drawerTabs} role="tablist" aria-label={copy("设备工具分类", "Device tool categories")}>
-          {(["apps", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs", "check"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => setToolTab(tab)} onKeyDown={event => {
-            const tabs = ["apps", "scenarios", "voice", "logs", "history"] as const;
+          {(["apps", "files", "commands", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs", "check"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => setToolTab(tab)} onKeyDown={event => {
+            const tabs = ["apps", "files", "commands", "scenarios", "voice", "logs", "history"] as const;
             const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
             if (next >= 0) { event.preventDefault(); setToolTab(tabs[next]); document.getElementById(`${drawerId}-${tabs[next]}`)?.focus(); }
-          }}>{(chinese ? ["应用", "测试", "语音", "日志", "记录"] : ["Apps", "Tests", "Voice", "Logs", "History"])[index]}</button>)}
+          }}>{(chinese ? ["应用", "文件", "命令", "测试", "语音", "日志", "任务"] : ["Apps", "Files", "Commands", "Tests", "Voice", "Logs", "Tasks"])[index]}</button>)}
         </div>
         <div className={styles.drawerBody} id={`${drawerId}-content`} role="tabpanel" aria-label={copy("工具内容", "Tool content")}>
           {["diagnostics", "inputs", "check"].includes(toolTab) ? <div className={styles.toolTitle}><strong>{toolTab === "diagnostics" ? copy("连接诊断", "Diagnostics") : toolTab === "inputs" ? copy("按键与触摸校准", "Input calibration") : copy("代码检查", "Code checks")}</strong><button type="button" onClick={() => setToolTab("scenarios")}>{copy("返回测试", "Back to tests")}</button></div> : null}
@@ -781,7 +816,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
           </div> : <div className={styles.mediaEmpty}>{copy("截图和录屏保存后会显示在这里。", "Saved screenshots and recordings appear here.")}</div>}
 
           </div> : null}
-          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
+          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} onOpenLocalTerminal={onOpenLocalTerminal} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
           {toolTab === "logs" ? <HarmonyLogViewer active={active && toolsOpen} serial={selectedSerial} online={Boolean(selectedOnline)} copy={copy} /> : null}
           {toolTab === "check" ? <HarmonyCheckPanel active={active && toolsOpen} cwd={cwd} onOpenFile={onOpenFile} onGuideAgent={onGuideAgent} /> : null}
           {toolTab === "diagnostics" ? <div className={styles.moreBody}>

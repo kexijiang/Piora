@@ -59,6 +59,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return { provider: "hypium", sessions: this.automationStatus() };
   }
 
+  async connectTcpDevice(address: string, remove: boolean, signal?: AbortSignal): Promise<void> {
+    await this.hdc.connectTcpDevice(address, remove, signal);
+  }
+
   async listDevices(signal?: AbortSignal): Promise<BackendDevice[]> {
     const devices = await this.hdc.listDevices(signal);
     await Promise.all(devices.filter((device) => device.state !== "online").map(async (device) => await this.hypium.invalidate(device.serial)));
@@ -176,6 +180,46 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.installPackage(serial, hapPath, replace, signal);
   }
 
+  async listFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, offset = 0) {
+    return await this.hdc.listFiles(serial, scope, path, signal, offset);
+  }
+
+  async pullFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
+    return await this.hdc.pullFile(serial, scope, path, destinationPath, signal);
+  }
+
+  async pushFile(serial: string, scope: import("./device-files").HarmonyFileScope, sourcePath: string, path: string, overwrite: boolean, signal?: AbortSignal) {
+    await this.hdc.pushFile(serial, scope, sourcePath, path, overwrite, signal);
+  }
+
+  async createDirectory(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    await this.hdc.createDirectory(serial, scope, path, signal);
+  }
+
+  async deletePath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    await this.hdc.deletePath(serial, scope, path, signal);
+  }
+
+  async renamePath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal) {
+    await this.hdc.renamePath(serial, scope, path, newPath, signal);
+  }
+
+  async chmodPath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, mode: string, signal?: AbortSignal) {
+    await this.hdc.chmodPath(serial, scope, path, mode, signal);
+  }
+
+  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, encoding?: import("./device-text").DeviceTextReadEncoding) {
+    return await this.hdc.readTextFile(serial, scope, path, signal, encoding);
+  }
+
+  async saveTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline, encoding?: import("./device-text").DeviceTextEncoding) {
+    await this.hdc.saveTextFile(serial, scope, path, text, expectedHash, signal, newlineMode, encoding);
+  }
+
+  async runShellCommand(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal) {
+    return await this.hdc.runShellCommand(serial, scope, command, signal);
+  }
+
   async stopApp(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.stopApp(serial, bundleName, signal);
   }
@@ -184,8 +228,16 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.clearAppData(serial, bundleName, signal);
   }
 
+  async clearAppCache(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
+    await this.hdc.clearAppCache(serial, bundleName, signal);
+  }
+
   async uninstallPackage(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.uninstallPackage(serial, bundleName, signal);
+  }
+
+  async setAppEnabled(serial: string, bundleName: string, enabled: boolean, signal?: AbortSignal): Promise<void> {
+    await this.hdc.setAppEnabled(serial, bundleName, enabled, signal);
   }
 
   async waitForIdle(serial: string, idleMs: number, timeoutMs: number, signal?: AbortSignal): Promise<{ strategy: "driver_idle" | "bounded_delay" }> {

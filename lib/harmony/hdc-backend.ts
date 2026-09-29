@@ -1,9 +1,9 @@
 import { existsSync } from "node:fs";
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { link, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
-import { extname, isAbsolute, join, resolve, dirname } from "node:path";
-import { randomUUID } from "node:crypto";
+import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
+import { createHash, randomUUID } from "node:crypto";
 
 import { type CommandExecutor, runCommand } from "./command-runner";
 import { HarmonyError, isHarmonyError } from "./errors";
@@ -17,7 +17,13 @@ import { capabilitiesFromHelp } from "./capabilities/probes";
 import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
 import { runBoundedHold } from "./input/bounded-hold";
 import { focusedWindowId, windowBundle } from "./observation/window-scope";
-import { parseApplicationLabels, parseBundleList, parseApplicationAbilities, type HarmonyApplication } from "./observation/applications";
+import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
+import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, validateWritableDeviceFilePath, type HarmonyFileScope } from "./device-files";
+import { decodeDeviceText, encodeDeviceText, MAX_DEVICE_TEXT_BYTES, type DeviceTextEncoding, type DeviceTextReadEncoding, type WritableDeviceNewline } from "./device-text";
+import { MAX_DEVICE_TRANSFER_BYTES, deviceTransferTimeoutMs } from "./device-transfer-limits";
+import { assertUnredirectedPath } from "./runtime/path-safety";
+import { validateTcpDeviceAddress } from "./tcp-device";
+import { openHosScrcpyVideo } from "./hos-scrcpy";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -87,7 +93,7 @@ function validateCoordinate(value: number, label: string): number {
   return value;
 }
 
-function parseDeviceLine(line: string): { serial: string; state: HarmonyDeviceConnectionState } | undefined {
+function parseDeviceLine(line: string): { serial: string; state: HarmonyDeviceConnectionState; transport: "usb" | "tcp" | "unknown"; transportEvidence: "hdc" | "endpoint" | "unavailable" } | undefined {
   const trimmed = line.trim();
   if (!trimmed || /^\[?empty\]?(?:\s|$)/i.test(trimmed) || /no targets/i.test(trimmed)) return undefined;
   if (/^\[(?:fail|error|e\d+)/i.test(trimmed)) return undefined;
@@ -100,7 +106,12 @@ function parseDeviceLine(line: string): { serial: string; state: HarmonyDeviceCo
     : /offline|disconnect/.test(status)
       ? "offline"
       : "online";
-  return { serial, state };
+  const transport = /(?:^|\s)usb(?:\s|$)/i.test(status) ? "usb"
+    : /(?:^|\s)(?:tcp|wifi|wi-fi)(?:\s|$)/i.test(status) ? "tcp"
+      : /^(?:\d{1,3}\.){3}\d{1,3}:\d{1,5}$/.test(serial) ? "tcp" : "unknown";
+  const transportEvidence = transport === "unknown" ? "unavailable"
+    : /(?:^|\s)(?:usb|tcp|wifi|wi-fi)(?:\s|$)/i.test(status) ? "hdc" : "endpoint";
+  return { serial, state, transport, transportEvidence };
 }
 
 function cleanOutput(output: Buffer): string | undefined {
@@ -284,12 +295,15 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private readonly forwardStore?: ForwardOwnershipStore;
   private readonly forwards = new Map<number, ReturnType<ForwardOwnershipStore["create"]>>();
   private readonly videoClosers = new Set<() => Promise<void>>();
+  private readonly videoPreference: import("./types").HarmonyConfig["video"];
+  private hosRetryAt = 0;
 
   interruptedForwards(serial: string) { return this.forwardStore?.interrupted(serial) ?? []; }
 
   constructor(options: HdcBackendOptions = {}) {
     if (!options.execute || options.forwardJournalDirectory) this.forwardStore = new ForwardOwnershipStore(options.forwardJournalDirectory ?? join(dirname(defaultHarmonyConfigPath()), "harmony-forwards"));
     const config = readHarmonyConfig();
+    this.videoPreference = options.resolve?.config?.video ?? config.video;
     const resolution = resolveHdcPath({
       ...options.resolve,
       explicitPath: options.hdcPath ?? options.resolve?.explicitPath,
@@ -346,7 +360,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (query.length > 256 || (bundleName && !APP_IDENTIFIER_PATTERN.test(bundleName))) throw new HarmonyError("INVALID_ARGUMENT", "Invalid application search");
     if (bundleName) {
       const output = (await this.shell(serial, ["bm", "dump", "-n", bundleName], "application_abilities", signal)).stdout.toString("utf8");
-      return [{ bundleName, abilities: parseApplicationAbilities(output, bundleName), source: "bm-bundle" }];
+      return [parseApplicationDetails(output, bundleName)];
     }
     let apps: HarmonyApplication[];
     try { apps = parseApplicationLabels((await this.shell(serial, ["bm", "dump", "-a", "-l"], "application_labels", signal)).stdout.toString("utf8")); }
@@ -358,10 +372,240 @@ export class HdcBackend implements HarmonyAutomationBackend {
     return apps.filter(app => `${app.bundleName}\n${app.label ?? ""}`.toLocaleLowerCase().includes(term)).slice(0, 200);
   }
 
+  async listFiles(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal, offset = 0) {
+    validateSerial(serial);
+    const normalized = validateDeviceFilePath(scope, path);
+    const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), deviceFileListScript(normalized, offset)];
+    const output = (await this.run(args, "list_device_files", signal, 20_000)).stdout;
+    return parseDeviceFileListing(output, normalized);
+  }
+
+  async pullFile(serial: string, scope: HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    const remote = validateDeviceFilePath(scope, path);
+    if (remote === "/" || remote === "." || !isAbsolute(destinationPath)) throw new HarmonyError("INVALID_ARGUMENT", "Choose a device file and absolute local destination");
+    const scopeArgs = scope.kind === "sandbox" ? ["-b", scope.bundleName] : [];
+    const source = quoteDeviceShell(remote);
+    const preflight = (await this.run(["-t", serial, "shell", ...scopeArgs,
+      `f=${source}; if [ ! -f "$f" ] || [ -L "$f" ]; then printf '__PIORA_FILE_ERROR__'; else stat -c '%s' "$f"; fi`], "device_file_preflight", signal)).stdout.toString("utf8").trim();
+    const size = Number(preflight);
+    if (!/^\d+$/.test(preflight) || !Number.isSafeInteger(size) || size > MAX_DEVICE_TRANSFER_BYTES) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device file is unavailable or exceeds the 1 GiB download limit");
+    }
+    const target = resolve(destinationPath);
+    const parent = await stat(dirname(target)).catch(() => undefined);
+    if (!parent?.isDirectory()) throw new HarmonyError("INVALID_ARGUMENT", "The local destination directory does not exist");
+    await assertUnredirectedPath(dirname(target));
+    const temporaryDirectory = await mkdtemp(join(dirname(target), ".piora-harmony-download-"));
+    const temporaryFile = join(temporaryDirectory, "download");
+    try {
+      await this.run(["-t", serial, "file", "recv", ...scopeArgs, remote, temporaryFile], "device_file_download", signal, deviceTransferTimeoutMs(size));
+      const downloaded = await stat(temporaryFile).catch(() => undefined);
+      if (!downloaded?.isFile() || downloaded.size !== size) throw new HarmonyError("INVALID_RESPONSE", "Downloaded device file size differs from the preflight result");
+      if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device file download was cancelled");
+      await assertUnredirectedPath(dirname(target));
+      // Staging and destination share a volume, so hard-linking exposes only a complete file and never replaces a rival target.
+      try { await link(temporaryFile, target); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new HarmonyError("INVALID_ARGUMENT", "The local destination already exists");
+        throw error;
+      }
+      return { destinationPath: target, size };
+    } finally {
+      await rm(temporaryDirectory, { recursive: true, force: true });
+    }
+  }
+
+  async pushFile(serial: string, scope: HarmonyFileScope, sourcePath: string, path: string, overwrite: boolean, signal?: AbortSignal): Promise<void> {
+    validateSerial(serial);
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (!isAbsolute(sourcePath)) throw new HarmonyError("INVALID_ARGUMENT", "Choose an absolute local upload file");
+    const source = await lstat(sourcePath).catch(() => undefined);
+    if (!source?.isFile() || source.isSymbolicLink() || source.size > MAX_DEVICE_TRANSFER_BYTES) throw new HarmonyError("INVALID_ARGUMENT", "Upload file is missing or exceeds 1 GiB");
+    const scopeArgs = scope.kind === "sandbox" ? ["-b", scope.bundleName] : [];
+    const quoted = quoteDeviceShell(remote);
+    const staged = validateWritableDeviceFilePath(scope, `${remote}.piora-upload-${randomUUID()}.tmp`);
+    const stagedQuoted = quoteDeviceShell(staged);
+    const existing = (await this.run(["-t", serial, "shell", ...scopeArgs,
+      `f=${quoted}; if [ -L "$f" ]; then printf '__PIORA_SYMLINK__'; elif [ -d "$f" ]; then printf '__PIORA_DIRECTORY__'; elif [ -e "$f" ]; then printf '__PIORA_EXISTS__'; else printf '__PIORA_MISSING__'; fi`], "device_upload_preflight", signal)).stdout.toString("utf8").trim();
+    if (existing === "__PIORA_SYMLINK__") throw new HarmonyError("INVALID_ARGUMENT", "Upload target is a symbolic link");
+    if (existing === "__PIORA_DIRECTORY__") throw new HarmonyError("INVALID_ARGUMENT", "Upload target is a directory");
+    if (existing !== "__PIORA_EXISTS__" && existing !== "__PIORA_MISSING__") throw new HarmonyError("OBSERVATION_UNAVAILABLE", "Could not determine whether the device file exists");
+    if (existing === "__PIORA_EXISTS__" && !overwrite) throw new HarmonyError("INVALID_ARGUMENT", "The device file already exists; enable overwrite explicitly");
+    let stagedMayExist = false;
+    try {
+      stagedMayExist = true;
+      const transfer = await this.run(["-t", serial, "file", "send", ...scopeArgs, sourcePath, staged], "device_file_upload", signal, deviceTransferTimeoutMs(source.size));
+      const output = Buffer.concat([transfer.stdout, transfer.stderr]).toString("utf8");
+      if (!/FileTransfer finish/i.test(output)) throw new HarmonyError("INVALID_RESPONSE", "HDC did not confirm that the file transfer finished", { details: { dispatchState: "sent" } });
+      const stagedSize = (await this.run(["-t", serial, "shell", ...scopeArgs,
+        `t=${stagedQuoted}; if [ -L "$t" ] || [ ! -f "$t" ]; then printf '__PIORA_STAGE_ERROR__'; else stat -c '%s' "$t"; fi`], "device_upload_stage_verify", signal)).stdout.toString("utf8").trim();
+      if (!/^\d+$/.test(stagedSize) || Number(stagedSize) !== source.size) {
+        throw new HarmonyError("INVALID_RESPONSE", "Staged device upload size could not be verified", { details: { dispatchState: "sent" } });
+      }
+      const finalize = `f=${quoted}; t=${stagedQuoted}; if [ -L "$f" ] || [ -d "$f" ] || [ -L "$t" ] || [ ! -f "$t" ]; then printf '__PIORA_PATH_ERROR__'; `
+        + `${overwrite ? "else" : "elif [ -e \"$f\" ]; then printf '__PIORA_EXISTS__'; else"} mv ${overwrite ? "-f" : "-n"} "$t" "$f"; `
+        + `if [ -e "$t" ] || [ -L "$t" ] || [ ! -f "$f" ] || [ -L "$f" ]; then printf '__PIORA_MOVE_ERROR__'; else stat -c '%s' "$f"; fi; fi`;
+      const actualText = (await this.run(["-t", serial, "shell", ...scopeArgs, finalize], "device_upload_finalize", signal)).stdout.toString("utf8").trim();
+      if (actualText === "__PIORA_EXISTS__") throw new HarmonyError("STALE_SNAPSHOT", "Upload target appeared during transfer; nothing was overwritten", { details: { dispatchState: "sent" } });
+      if (!/^\d+$/.test(actualText) || Number(actualText) !== source.size) {
+        throw new HarmonyError("INVALID_RESPONSE", "Device upload could not be verified after staging", { details: { dispatchState: "sent" } });
+      }
+      stagedMayExist = false;
+    } finally {
+      if (stagedMayExist) await this.run(["-t", serial, "shell", ...scopeArgs,
+        `t=${stagedQuoted}; if [ -f "$t" ] && [ ! -L "$t" ]; then rm "$t"; fi`], "device_upload_cleanup", undefined, 5_000).catch(() => undefined);
+    }
+  }
+
+  private async fileShell(serial: string, scope: HarmonyFileScope, script: string, operation: string, signal?: AbortSignal): Promise<string> {
+    validateSerial(serial);
+    return (await this.run(["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script], operation, signal)).stdout.toString("utf8").trim();
+  }
+
+  async runShellCommand(serial: string, scope: HarmonyFileScope, command: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    validateDeviceFilePath(scope, scope.kind === "sandbox" ? "data/storage/el2/base" : "/data/local/tmp");
+    if (typeof command !== "string" || !command.trim() || command.length > 8192 || /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/.test(command)) {
+      throw new HarmonyError("INVALID_ARGUMENT", "Enter a command of at most 8192 characters");
+    }
+    const marker = `__PIORA_COMMAND_${randomUUID().replaceAll("-", "")}__`;
+    const script = `sh -c ${quoteDeviceShell(command)}; code=$?; printf '\\n${marker}%s\\n' "$code"`;
+    const result = await this.execute({ executable: this.hdcPath,
+      args: ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script],
+      operation: "manual_device_command", signal, timeoutMs: 15_000, maxOutputBytes: 128 * 1024 });
+    const stdout = result.stdout.toString("utf8");
+    const at = stdout.lastIndexOf(marker);
+    if (at < 0) throw new HarmonyError("INVALID_RESPONSE", "Device command completion could not be verified", { details: { dispatchState: "sent" } });
+    const status = stdout.slice(at + marker.length).trim();
+    if (!/^\d{1,3}$/.test(status)) throw new HarmonyError("INVALID_RESPONSE", "Device command exit status is invalid", { details: { dispatchState: "sent" } });
+    return { stdout: stdout.slice(0, at).replace(/\n$/, ""), stderr: result.stderr.toString("utf8"), exitCode: Number(status), durationMs: result.durationMs };
+  }
+
+  private async fileKind(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<"file" | "directory" | "symlink" | "missing"> {
+    const quoted = quoteDeviceShell(path);
+    const result = await this.fileShell(serial, scope, `p=${quoted}; if [ -L "$p" ]; then printf '__PIORA_SYMLINK__'; elif [ -d "$p" ]; then printf '__PIORA_DIRECTORY__'; elif [ -f "$p" ]; then printf '__PIORA_FILE__'; elif [ -e "$p" ]; then printf '__PIORA_OTHER__'; else printf '__PIORA_MISSING__'; fi`, "device_file_kind", signal);
+    const known = { __PIORA_FILE__: "file", __PIORA_DIRECTORY__: "directory", __PIORA_SYMLINK__: "symlink", __PIORA_MISSING__: "missing" } as const;
+    if (!Object.hasOwn(known, result)) throw new HarmonyError("OBSERVATION_UNAVAILABLE", "Could not verify the device file type");
+    return known[result as keyof typeof known];
+  }
+
+  async createDirectory(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (await this.fileKind(serial, scope, remote, signal) !== "missing") throw new HarmonyError("INVALID_ARGUMENT", "Device path already exists");
+    await this.fileShell(serial, scope, `mkdir ${quoteDeviceShell(remote)}`, "device_mkdir", signal);
+    if (await this.fileKind(serial, scope, remote, signal) !== "directory") {
+      throw new HarmonyError("INVALID_RESPONSE", "Device directory creation could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async deletePath(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    const kind = await this.fileKind(serial, scope, remote, signal);
+    if (kind !== "file" && kind !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "Only a regular file or empty directory can be deleted");
+    await this.fileShell(serial, scope, `${kind === "directory" ? "rmdir" : "rm"} ${quoteDeviceShell(remote)}`, "device_delete_path", signal);
+    if (await this.fileKind(serial, scope, remote, signal) !== "missing") {
+      throw new HarmonyError("INVALID_RESPONSE", "Device deletion could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async renamePath(serial: string, scope: HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void> {
+    const source = validateWritableDeviceFilePath(scope, path), target = validateWritableDeviceFilePath(scope, newPath);
+    if (source === target || posix.dirname(source) !== posix.dirname(target)) throw new HarmonyError("INVALID_ARGUMENT", "Rename must use a new name in the same directory");
+    const kind = await this.fileKind(serial, scope, source, signal);
+    if (kind !== "file" && kind !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "Only a regular file or directory can be renamed");
+    if (await this.fileKind(serial, scope, target, signal) !== "missing") throw new HarmonyError("INVALID_ARGUMENT", "The target name already exists");
+    await this.fileShell(serial, scope, `mv -n ${quoteDeviceShell(source)} ${quoteDeviceShell(target)}`, "device_rename_path", signal);
+    if (await this.fileKind(serial, scope, source, signal) !== "missing" || await this.fileKind(serial, scope, target, signal) !== kind) {
+      throw new HarmonyError("INVALID_RESPONSE", "Device rename could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async chmodPath(serial: string, scope: HarmonyFileScope, path: string, mode: string, signal?: AbortSignal): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (typeof mode !== "string" || !/^[0-7]{3}$/.test(mode)) throw new HarmonyError("INVALID_ARGUMENT", "Permissions must use three octal digits");
+    const kind = await this.fileKind(serial, scope, remote, signal);
+    if (kind !== "file" && kind !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "Only regular files and directories can change permissions");
+    const quoted = quoteDeviceShell(remote);
+    const result = await this.fileShell(serial, scope,
+      `p=${quoted}; if [ -L "$p" ] || { [ ! -f "$p" ] && [ ! -d "$p" ]; }; then printf '__PIORA_FILE_ERROR__'; else chmod ${mode} "$p" && stat -c '%a' "$p"; fi`,
+      "device_chmod", signal);
+    if (!/^[0-7]{3,4}$/.test(result) || Number.parseInt(result, 8) !== Number.parseInt(mode, 8)) {
+      throw new HarmonyError("INVALID_RESPONSE", "Device file permissions could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async readTextFile(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal, encoding: DeviceTextReadEncoding = "auto") {
+    const remote = validateDeviceFilePath(scope, path);
+    if (await this.fileKind(serial, scope, remote, signal) !== "file") throw new HarmonyError("INVALID_ARGUMENT", "Choose a regular device text file");
+    const sizeText = await this.fileShell(serial, scope, `stat -c '%s' ${quoteDeviceShell(remote)}`, "device_text_size", signal);
+    const size = Number(sizeText);
+    if (!/^\d+$/.test(sizeText) || !Number.isSafeInteger(size) || size > MAX_DEVICE_TEXT_BYTES) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Text preview is limited to 2 MiB files");
+    }
+    const directory = await mkdtemp(join(tmpdir(), "piora-harmony-text-"));
+    const local = join(directory, "preview.txt");
+    try {
+      await this.pullFile(serial, scope, remote, local, signal);
+      const bytes = await readFile(local);
+      if (bytes.length !== size) throw new HarmonyError("INVALID_RESPONSE", "Device file is incomplete");
+      return { ...decodeDeviceText(bytes, encoding), hash: createHash("sha256").update(bytes).digest("hex"), size };
+    } finally { await rm(directory, { recursive: true, force: true }); }
+  }
+
+  async saveTextFile(serial: string, scope: HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: WritableDeviceNewline, encoding?: DeviceTextEncoding): Promise<void> {
+    const remote = validateWritableDeviceFilePath(scope, path);
+    if (typeof text !== "string" || text.includes("\0") || !/^[a-f0-9]{64}$/.test(expectedHash)) {
+      throw new HarmonyError("INVALID_ARGUMENT", "Text and the expected SHA-256 are required");
+    }
+    const requestedEncoding = encoding?.replace("-bom", "") as DeviceTextReadEncoding | undefined;
+    const current = await this.readTextFile(serial, scope, remote, signal, requestedEncoding);
+    if (current.hash !== expectedHash) throw new HarmonyError("STALE_SNAPSHOT", "The device file changed since it was opened; reload before saving");
+    if (encoding && encoding !== current.encoding) throw new HarmonyError("STALE_SNAPSHOT", "Device text encoding changed; reload before saving");
+    const bytes = encodeDeviceText(text, current.encoding ?? "utf-8", current.newline ?? "lf", newlineMode);
+    const directory = await mkdtemp(join(tmpdir(), "piora-harmony-edit-"));
+    const local = join(directory, "edit.txt");
+    const staged = validateWritableDeviceFilePath(scope, `${remote}.piora-${randomUUID()}.tmp`);
+    const newHash = createHash("sha256").update(bytes).digest("hex");
+    let uploaded = false;
+    try {
+      await writeFile(local, bytes, { mode: 0o600 });
+      await this.pushFile(serial, scope, local, staged, false, signal);
+      uploaded = true;
+      const target = quoteDeviceShell(remote), temporary = quoteDeviceShell(staged);
+      const script = `p=${target}; t=${temporary}; if ! command -v sha256sum >/dev/null 2>&1; then printf '__PIORA_NO_HASH__'; elif [ -L "$p" ] || [ ! -f "$p" ] || [ ! -f "$t" ]; then printf '__PIORA_FILE_ERROR__'; else sum=$(sha256sum "$p" 2>/dev/null); case "$sum" in ${expectedHash}' '*) mv -f "$t" "$p" && printf '__PIORA_APPLIED__';; *) printf '__PIORA_STALE__';; esac; fi`;
+      const result = await this.fileShell(serial, scope, script, "device_text_replace", signal);
+      if (result === "__PIORA_STALE__") throw new HarmonyError("STALE_SNAPSHOT", "The device file changed during save; reload before retrying", { details: { dispatchState: "sent" } });
+      if (result === "__PIORA_NO_HASH__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device sha256sum is required for safe text editing");
+      if (result !== "__PIORA_APPLIED__") throw new HarmonyError("INVALID_RESPONSE", "Device text replacement could not be confirmed", { details: { dispatchState: "unknown" } });
+      uploaded = false;
+      if ((await this.readTextFile(serial, scope, remote, signal, requestedEncoding)).hash !== newHash) {
+        throw new HarmonyError("INVALID_RESPONSE", "Saved device text failed content verification", { details: { dispatchState: "sent" } });
+      }
+    } finally {
+      if (uploaded) await this.run(["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []),
+        `t=${quoteDeviceShell(staged)}; if [ -f "$t" ] && [ ! -L "$t" ]; then rm "$t"; fi`], "device_edit_cleanup", undefined, 5_000).catch(() => undefined);
+      await rm(directory, { recursive: true, force: true });
+    }
+  }
+
   async appTestAudio(serial: string, packet: string, signal?: AbortSignal): Promise<void> {
     if (!/^[A-Za-z0-9+/=]{1,20000}$/.test(packet)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid debug PCM packet");
     await this.requireUnlockedScreen(serial, signal);
     await this.shell(serial, ["aa", "start", "-b", "dev.piora.audio.fixture", "-a", "EntryAbility", "--ps", "pioraPcmPacket", packet], "app_test_audio", signal);
+  }
+
+  async connectTcpDevice(address: string, remove: boolean, signal?: AbortSignal): Promise<void> {
+    const endpoint = validateTcpDeviceAddress(address);
+    const result = await this.run(remove ? ["tconn", endpoint, "-remove"] : ["tconn", endpoint], remove ? "tcp_disconnect" : "tcp_connect", signal, 15_000);
+    const output = `${result.stdout.toString("utf8")}\n${result.stderr.toString("utf8")}`;
+    if (/\[fail\]|connect failed|disconnect failed/i.test(output)) throw new HarmonyError("COMMAND_FAILED", `HDC TCP ${remove ? "disconnect" : "connect"} failed: ${output.trim().slice(0, 300)}`);
+    const listing = await this.run(["list", "targets"], "tcp_verify", signal, 8_000);
+    const connected = listing.stdout.toString("utf8").split(/\r?\n/).some(line => {
+      const device = parseDeviceLine(line);
+      return device?.serial === endpoint && device.state === "online";
+    });
+    if (connected === remove) throw new HarmonyError("INVALID_RESPONSE", `HDC TCP ${remove ? "disconnect" : "connect"} could not be verified in the device list`);
   }
 
   async listDevices(signal?: AbortSignal): Promise<BackendDevice[]> {
@@ -376,6 +620,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const parsed = result.stdout.toString("utf8").split(/\r?\n/).map(parseDeviceLine).filter(Boolean) as Array<{
       serial: string;
       state: HarmonyDeviceConnectionState;
+      transport: "usb" | "tcp" | "unknown";
+      transportEvidence: "hdc" | "endpoint" | "unavailable";
     }>;
     const unique = [...new Map(parsed.map((device) => [device.serial, device])).values()];
     const online = new Set(unique.filter((device) => device.state === "online").map((device) => device.serial));
@@ -386,12 +632,12 @@ export class HdcBackend implements HarmonyAutomationBackend {
       }
     }
 
-    return await Promise.all(unique.map(async ({ serial, state }): Promise<BackendDevice> => {
+    return await Promise.all(unique.map(async ({ serial, state, transport, transportEvidence }): Promise<BackendDevice> => {
       if (state !== "online") {
-        return { serial, state, capabilities: { ...NO_UITEST_CAPABILITIES, launchApp: false } };
+        return { serial, state, transport, transportEvidence, capabilities: { ...NO_UITEST_CAPABILITIES, launchApp: false } };
       }
       const cached = this.deviceInfoBySerial.get(serial);
-      if (cached && cached.expiresAt > Date.now()) return { ...cached.device, state };
+      if (cached && cached.expiresAt > Date.now()) return { ...cached.device, state, transport, transportEvidence };
       const [model, product, userName, persistedName, deviceName, osVersion, apiVersion, uitestVersion] = await Promise.all([
         this.safeInfo(serial, ["param", "get", "const.product.model"], signal),
         this.safeInfo(serial, ["param", "get", "const.product.name"], signal),
@@ -406,6 +652,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
       this.capabilitiesBySerial.set(serial, capabilities);
       const deviceInfo: Omit<BackendDevice, "state"> = {
         serial,
+        transport,
+        transportEvidence,
         model,
         product,
         name: preferredDeviceName([userName, persistedName, deviceName], model, product),
@@ -722,6 +970,23 @@ export class HdcBackend implements HarmonyAutomationBackend {
   }
 
   async openVideoStream(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection> {
+    if (this.videoPreference?.provider === "hos-scrcpy" && this.videoPreference.packageDirectory && Date.now() >= this.hosRetryAt) {
+      try {
+        await this.requireUnlockedScreen(serial, signal);
+        const connection = await openHosScrcpyVideo({ serial, hdcPath: this.hdcPath,
+          packageDirectory: this.videoPreference.packageDirectory, javaPath: this.videoPreference.javaPath, signal,
+          onFailure: () => { this.hosRetryAt = Date.now() + 60_000; } });
+        this.videoClosers.add(connection.close);
+        return { stream: connection.stream, close: async () => { try { await connection.close(); } finally { this.videoClosers.delete(connection.close); } } };
+      } catch (error) {
+        if (signal?.aborted) throw error;
+        this.hosRetryAt = Date.now() + 60_000;
+      }
+    }
+    return this.openBundledVideoStream(serial, signal);
+  }
+
+  private async openBundledVideoStream(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection> {
     validateSerial(serial);
     await this.ensureMirrorServer(serial, signal);
     const localPort = await this.createMirrorForward(serial, signal);
@@ -1028,9 +1293,33 @@ export class HdcBackend implements HarmonyAutomationBackend {
     await this.shell(serial, ["bm", "clean", "-d", "-n", bundleName], "clear_app_data", signal, 30_000);
   }
 
+  async clearAppCache(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
+    if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
+    const result = await this.shell(serial, ["bm", "clean", "-c", "-n", bundleName], "clear_app_cache", signal, 30_000);
+    const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
+    if (!/clean bundle data files successfully/i.test(output)) {
+      throw new HarmonyError("INVALID_RESPONSE", "The device did not confirm clearing the app cache", { details: { dispatchState: "sent" } });
+    }
+  }
+
   async uninstallPackage(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
     await this.run(["-t", serial, "uninstall", bundleName], "uninstall_package", signal, 120_000);
+  }
+
+  async setAppEnabled(serial: string, bundleName: string, enabled: boolean, signal?: AbortSignal): Promise<void> {
+    if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
+    const operation = enabled ? "enable_app" : "disable_app";
+    let result;
+    try { result = await this.shell(serial, ["bm", enabled ? "enable" : "disable", "-n", bundleName], operation, signal); }
+    catch (error) {
+      if (!isHarmonyError(error) || error.code !== "COMMAND_FAILED") throw error;
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "bm enable/disable was refused; this operation requires a root device build", { cause: error, details: { dispatchState: "sent" } });
+    }
+    const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
+    if (!new RegExp(`${enabled ? "enable" : "disable"} bundle successfully`, "i").test(output)) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "This device did not confirm the app state change; bm enable/disable requires a root build", { details: { dispatchState: "sent" } });
+    }
   }
 }
 

@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import type { HarmonyDoctorReport } from "@/lib/harmony/contracts/capabilities";
 import type { ScenarioExecution } from "@/lib/harmony/scenario/execution-store";
 import { ApplicationPicker } from "./ApplicationPicker";
+import { DeviceFiles } from "./DeviceFiles";
+import { DeviceConsole } from "./DeviceConsole";
+import { TransferJobs } from "./TransferJobs";
 import { ScenarioWorkbench } from "./ScenarioWorkbench";
 import styles from "../HarmonyPanel.module.css";
 import type { AudioOutput } from "@/lib/harmony/audio/acoustic-provider";
 
-interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string; onCleanupConfirmed?: () => Promise<void> }
-export function WorkbenchTools({ serial, canControl, ensureControl, tab, active, chinese, geometryId, cwd, ownerId, onCleanupConfirmed }: Props) {
+interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string; onCleanupConfirmed?: () => Promise<void>; onOpenLocalTerminal?: () => void }
+export function WorkbenchTools({ serial, canControl, ensureControl, tab, active, chinese, geometryId, cwd, ownerId, onCleanupConfirmed, onOpenLocalTerminal }: Props) {
   const [busy, setBusy] = useState(false), [error, setError] = useState<string>();
   const [report, setReport] = useState<HarmonyDoctorReport>(), [history, setHistory] = useState<ScenarioExecution[]>([]);
   const [key, setKey] = useState("volume_down"), [duration, setDuration] = useState(800), [calibration, setCalibration] = useState<string>();
@@ -40,7 +43,9 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
   return <section className={styles.workbench} aria-label={copy("设备工具内容", "Device workbench")}>
       {error ? <p role="alert">{error}</p> : null}{message ? <p role="status">{message}</p> : null}
       {busy ? <button type="button" onClick={() => { controller.current?.abort(); setMessage(copy("已请求取消；请查看设备释放状态。", "Cancellation requested; check release state.")); }}>{copy("取消本次操作", "Cancel this operation")}</button> : null}
-      <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} canControl={canControl} ensureControl={ensureControl} chinese={chinese}/></div>
+      <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} canControl={canControl} ensureControl={ensureControl} chinese={chinese} cwd={cwd}/></div>
+      {tab === "files" ? <DeviceFiles serial={serial} chinese={chinese} cwd={cwd} canControl={canControl} ensureControl={ensureControl} /> : null}
+      <div hidden={tab !== "commands"}><DeviceConsole serial={serial} chinese={chinese} canControl={canControl} ensureControl={ensureControl} onOpenLocalTerminal={onOpenLocalTerminal} visible={active && tab === "commands"} cwd={cwd} /></div>
       <div hidden={tab !== "scenarios"}><ScenarioWorkbench active={tab === "scenarios"} serial={serial} canControl={canControl} ensureControl={ensureControl} cwd={cwd} chinese={chinese}/></div>
       {tab === "diagnostics" ? <>
         <ol><li>{copy("连接 USB 并在手机确认调试授权。", "Connect USB and allow debugging on the phone.")}</li><li>{copy("检查设备、画面及 UI 树；锁屏时请手动解锁。", "Check the device, frame and UI tree; unlock manually when needed.")}</li><li>{copy("在测试应用校准点击或保持操作。", "Calibrate input in a test app.")}</li><li>{copy("搜索测试应用，再预览和执行场景。已连接设备可直接操作。", "Find the test app, then preview and run a scenario. Connected devices are ready for control.")}</li></ol>
@@ -95,6 +100,8 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
         {profileId ? <p>{copy("语音配置 ID", "Voice profile ID")}: <code style={{ overflowWrap: "anywhere" }}>{profileId}</code></p> : null}
       </> : null}
       {tab === "history" ? <>
+        <TransferJobs serial={serial} scope={{ kind: "shared" }} deviceDirectory="/data/local/tmp" cwd={cwd} selectedFiles={[]} chinese={chinese} canControl={canControl} ensureControl={ensureControl} onDownloadsQueued={() => undefined} historyOnly />
+        <h3>{copy("测试执行记录", "Scenario executions")}</h3>
         <button disabled={busy} onClick={() => void run(async () => setHistory((await request(`/api/harmony/scenario?serial=${encodeURIComponent(serial)}`)).executions))}>{copy("刷新执行记录", "Refresh executions")}</button>
         <ol>{history.slice(0,20).map(record => <li key={record.id}><strong>{record.status}</strong> · {record.startedAt}<br/>{record.steps.filter(step => step.status === "passed").length}/{record.steps.length} · {record.checkpoint?.name ?? copy("无检查点", "No checkpoint")}
           {record.status !== "running" && record.checkpoint ? <button disabled={busy || !canControl} onClick={() => void run(async () => { const data = await request("/api/harmony/scenario", { serial, leaseToken: await ensureControl(), resumeExecutionId: record.id }); setMessage(JSON.stringify(data.result)); })}>{copy("重新核对现场并恢复安全步骤", "Recheck state and resume safe steps")}</button> : null}

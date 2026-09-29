@@ -113,6 +113,41 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
         result = await manager.launchApp({ ...common, bundleName, abilityName });
         break;
       }
+      case "stop_app":
+      case "clear_app_data":
+      case "clear_app_cache":
+      case "uninstall_app":
+      case "enable_app":
+      case "disable_app": {
+        const bundleName = requiredString(body, "bundleName", 255);
+        if (body.action === "stop_app") result = await manager.stopApp({ ...common, bundleName });
+        else if (body.action === "clear_app_data") result = await manager.clearAppData({ ...common, bundleName });
+        else if (body.action === "clear_app_cache") result = await manager.clearAppCache({ ...common, bundleName });
+        else if (body.action === "enable_app" || body.action === "disable_app") result = await manager.setAppEnabled({ ...common, bundleName, enabled: body.action === "enable_app" });
+        else result = await manager.uninstallApp({ ...common, bundleName });
+        break;
+      }
+      case "install_app":
+        result = await manager.installPackage({ ...common, hapPath: requiredString(body, "hapPath", 4096), replace: body.replace === undefined ? true : body.replace as boolean });
+        break;
+      case "upload_file": {
+        const kind = body.kind as "shared" | "sandbox";
+        const scope = kind === "shared" ? { kind: "shared" as const } : { kind: "sandbox" as const, bundleName: requiredString(body, "bundleName", 256) };
+        result = await manager.uploadFile({ ...common, scope, sourcePath: requiredString(body, "sourcePath", 4096), path: requiredString(body, "path", 4096), overwrite: body.overwrite === true });
+        break;
+      }
+      case "create_directory":
+      case "delete_path":
+      case "rename_path":
+      case "chmod_path": {
+        const scope = body.kind === "shared" ? { kind: "shared" as const } : { kind: "sandbox" as const, bundleName: requiredString(body, "bundleName", 256) };
+        const path = requiredString(body, "path", 4096);
+        if (body.action === "create_directory") result = await manager.createDirectory({ ...common, scope, path });
+        else if (body.action === "delete_path") result = await manager.deletePath({ ...common, scope, path });
+        else if (body.action === "rename_path") result = await manager.renamePath({ ...common, scope, path, newPath: requiredString(body, "newPath", 4096) });
+        else result = await manager.chmodPath({ ...common, scope, path, mode: requiredString(body, "mode", 3) });
+        break;
+      }
       default:
         throw new HarmonyError("INVALID_ARGUMENT", "Unsupported device action");
     }

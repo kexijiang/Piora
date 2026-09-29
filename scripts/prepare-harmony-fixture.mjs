@@ -12,6 +12,8 @@ export async function prepareHarmonyFixture(mode, destination) {
     for (const file of ['BridgeSession.ts', 'PcmTestInputSource.ets', 'TestBridge.ets']) await cp(join(root, 'test-only', file), join(ets, 'bridge', file.replace(/\.ts$/, '.ets')));
     await cp(join(root, 'test-only/EntryAbility.ets'), join(ets, 'entryability/EntryAbility.ets'));
     await cp(join(root, 'test-only/TestIndex.ets'), join(ets, 'pages/TestIndex.ets'));
+    await mkdir(join(ets, 'atlas'));
+    await cp(join(root, 'test-only/AtlasFixture.ets'), join(ets, 'atlas/AtlasFixture.ets'));
     await writeFile(join(destination, 'entry/src/main/resources/base/profile/main_pages.json'), JSON.stringify({ src: ['pages/TestIndex', 'pages/Index'] }));
     const config = join(destination, 'build-profile.json5');
     const content = JSON.parse(await readFile(config, 'utf8')); content.app.buildModeSet = [{ name: 'debug' }];
