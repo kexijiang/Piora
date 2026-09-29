@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
 import { SqliteViewer } from "./SqliteViewer";
+import { visibleDeviceFiles, type FileSortKey } from "./file-list-view";
 
 export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }: { serial: string; chinese: boolean; cwd?: string | null; canControl: boolean; ensureControl: () => Promise<string> }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
@@ -21,6 +22,9 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState<{ files: HarmonyDeviceFile[]; scannedDirectories: number; skippedDirectories: number; truncated: boolean }>();
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [showHidden, setShowHidden] = useState(true);
+  const [sortKey, setSortKey] = useState<FileSortKey>("name");
+  const [descending, setDescending] = useState(false);
   const bookmarkKey = `piora-harmony-bookmarks:${serial}:${kind}:${kind === "sandbox" ? bundleName : ""}`;
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
@@ -116,6 +120,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     finally { if (controller.current === current) setBusy(false); }
   };
   const parent = path === "/" || path === "." ? null : path.slice(0, path.lastIndexOf("/")) || (kind === "shared" ? "/" : ".");
+  const visibleFiles = visibleDeviceFiles(files, showHidden, sortKey, descending);
   return <section aria-label={copy("设备文件", "Device files")}>
     <h3>{copy("设备文件", "Device files")}</h3>
     <p>{copy("浏览 HDC 可读取的位置。应用沙箱需要调试签名且应用已启动；设备权限不足会显示错误。", "Browse locations readable through HDC. App sandboxes require a running debug-signed app; unavailable device access is reported.")}</p>
@@ -133,8 +138,17 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     {busy ? <button onClick={() => controller.current?.abort()}>{copy("取消", "Cancel")}</button> : null}
     {error ? <p role="alert">{error}</p> : null}
     {notice ? <p role="status">{notice}</p> : null}
-    {truncated ? <p role="status">{copy("只显示前 500 项，请进入子目录。", "Showing the first 500 entries; open a subdirectory.")}</p> : null}
-    <ul>{files.map(file => <li key={file.path}>
+    <div>
+      <label>{copy("排序", "Sort by")}<select value={sortKey} onChange={event => setSortKey(event.target.value as FileSortKey)}>
+        <option value="name">{copy("名称", "Name")}</option><option value="kind">{copy("类型", "Type")}</option>
+        <option value="size">{copy("大小", "Size")}</option><option value="modifiedAt">{copy("修改时间", "Modified")}</option>
+      </select></label>
+      <label><input type="checkbox" checked={descending} onChange={event => setDescending(event.target.checked)} />{copy("降序", "Descending")}</label>
+      <label><input type="checkbox" checked={showHidden} onChange={event => setShowHidden(event.target.checked)} />{copy("显示隐藏文件", "Show hidden files")}</label>
+      <small>{copy(`显示 ${visibleFiles.length}/${files.length} 项`, `Showing ${visibleFiles.length}/${files.length} entries`)}</small>
+    </div>
+    {truncated ? <p role="status">{copy("只加载前 500 项；排序仅作用于已加载的条目，请进入子目录查看其余文件。", "Only the first 500 entries are loaded; sorting applies to loaded entries. Open a subdirectory for other files.")}</p> : null}
+    <ul>{visibleFiles.map(file => <li key={file.path}>
       {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? ""); }}>{copy("选择", "Select")}</button></>
         : file.kind === "file" ? <button disabled={busy} onClick={() => chooseFile(file)}>{file.name}</button>
           : <span>{file.name}</span>}
