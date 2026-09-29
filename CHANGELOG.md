@@ -4,6 +4,12 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.5.5-beta.1] - 2026-09-29
+
+### 发布说明
+
+- 准备 Windows x64 内测包，集中交付鸿蒙设备的应用、文件、SQLite、交互式终端与统一搜索工作台。软件回归已覆盖这些入口；签名 HAP、投屏与多设备等真机验收仍按设备矩阵待完成。
+
 ### 开发验证
 
 - 本机终端列表固定按创建顺序呈现，避免后台输出改变数据库更新时间后重排标签，导致关闭第 2 个终端时误关另一会话；这也稳定鸿蒙设备与本机分屏中的标签位置。
