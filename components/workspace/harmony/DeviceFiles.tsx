@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
+import { DEVICE_FILE_PAGE_SIZE, type HarmonyDeviceFile, type HarmonyFileScope } from "@/lib/harmony/device-files";
 import type { DeviceNewline, WritableDeviceNewline } from "@/lib/harmony/device-text";
 import { SqliteViewer } from "./SqliteViewer";
 import { visibleDeviceFiles, type FileSortKey } from "./file-list-view";
@@ -11,7 +11,9 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [kind, setKind] = useState<HarmonyFileScope["kind"]>("shared");
   const [bundleName, setBundleName] = useState("");
   const [path, setPath] = useState("/data/local/tmp");
+  const [listedPath, setListedPath] = useState("");
   const [files, setFiles] = useState<HarmonyDeviceFile[]>([]);
+  const [offset, setOffset] = useState(0);
   const [truncated, setTruncated] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [selected, setSelected] = useState<HarmonyDeviceFile>(), [destinationPath, setDestinationPath] = useState(""), [notice, setNotice] = useState("");
   const [sourcePath, setSourcePath] = useState(""), [remotePath, setRemotePath] = useState(""), [overwrite, setOverwrite] = useState(false);
@@ -30,22 +32,22 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const bookmarkKey = `piora-harmony-bookmarks:${serial}:${kind}:${kind === "sandbox" ? bundleName : ""}`;
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  useEffect(() => { setFiles([]); setSelected(undefined); setPreview(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
+  useEffect(() => { setFiles([]); setListedPath(""); setOffset(0); setTruncated(false); setSelected(undefined); setPreview(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
   useEffect(() => { try { const value = JSON.parse(localStorage.getItem(bookmarkKey) ?? "[]"); setBookmarks(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : []); } catch { setBookmarks([]); } }, [bookmarkKey]);
   const saveBookmarks = (next: string[]) => { setBookmarks(next); try { localStorage.setItem(bookmarkKey, JSON.stringify(next)); } catch { /* Private browsing may disable storage. */ } };
   const chooseFile = (file: HarmonyDeviceFile) => {
     setSelected(file); setPreview(undefined); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? "");
     setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : "");
   };
-  const open = async (nextPath: string) => {
+  const open = async (nextPath: string, nextOffset = 0) => {
     controller.current?.abort();
     const current = new AbortController(); controller.current = current; setBusy(true); setError("");
     try {
-      const params = new URLSearchParams({ serial, kind, path: nextPath, ...(kind === "sandbox" ? { bundleName } : {}) });
+      const params = new URLSearchParams({ serial, kind, path: nextPath, offset: String(nextOffset), ...(kind === "sandbox" ? { bundleName } : {}) });
       const response = await fetch(`/api/harmony/files?${params}`, { signal: current.signal, cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message ?? data.error);
-      setFiles(data.files); setTruncated(Boolean(data.truncated)); setPath(nextPath); setSelected(undefined); setPreview(undefined); setNotice("");
+      setFiles(data.files); setTruncated(Boolean(data.truncated)); setPath(nextPath); setListedPath(nextPath); setOffset(nextOffset); setSelected(undefined); setPreview(undefined); setNotice("");
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -147,9 +149,13 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       </select></label>
       <label><input type="checkbox" checked={descending} onChange={event => setDescending(event.target.checked)} />{copy("降序", "Descending")}</label>
       <label><input type="checkbox" checked={showHidden} onChange={event => setShowHidden(event.target.checked)} />{copy("显示隐藏文件", "Show hidden files")}</label>
-      <small>{copy(`显示 ${visibleFiles.length}/${files.length} 项`, `Showing ${visibleFiles.length}/${files.length} entries`)}</small>
+      <small>{copy(`本页显示 ${visibleFiles.length}/${files.length} 项`, `Showing ${visibleFiles.length}/${files.length} entries on this page`)}</small>
     </div>
-    {truncated ? <p role="status">{copy("只加载前 500 项；排序仅作用于已加载的条目，请进入子目录查看其余文件。", "Only the first 500 entries are loaded; sorting applies to loaded entries. Open a subdirectory for other files.")}</p> : null}
+    {listedPath ? <div>
+      <small>{copy(`目录第 ${offset + 1}–${offset + files.length} 项；排序仅作用于本页，目录变化时分页位置可能移动。`, `Directory entries ${offset + 1}–${offset + files.length}; sorting applies to this page. Changes to the directory may shift page boundaries.`)}</small>
+      <button disabled={busy || offset === 0} onClick={() => void open(listedPath, Math.max(0, offset - DEVICE_FILE_PAGE_SIZE))}>{copy("上一页", "Previous page")}</button>
+      <button disabled={busy || !truncated || offset >= 50_000} onClick={() => void open(listedPath, offset + DEVICE_FILE_PAGE_SIZE)}>{copy("下一页", "Next page")}</button>
+    </div> : null}
     <ul>{visibleFiles.map(file => <li key={file.path}>
       {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? ""); }}>{copy("选择", "Select")}</button></>
         : file.kind === "file" ? <button disabled={busy} onClick={() => chooseFile(file)}>{file.name}</button>

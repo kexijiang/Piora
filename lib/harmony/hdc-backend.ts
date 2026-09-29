@@ -361,10 +361,10 @@ export class HdcBackend implements HarmonyAutomationBackend {
     return apps.filter(app => `${app.bundleName}\n${app.label ?? ""}`.toLocaleLowerCase().includes(term)).slice(0, 200);
   }
 
-  async listFiles(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal) {
+  async listFiles(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal, offset = 0) {
     validateSerial(serial);
     const normalized = validateDeviceFilePath(scope, path);
-    const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), deviceFileListScript(normalized)];
+    const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), deviceFileListScript(normalized, offset)];
     const output = (await this.run(args, "list_device_files", signal, 20_000)).stdout;
     return parseDeviceFileListing(output, normalized);
   }

@@ -180,8 +180,8 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.installPackage(serial, hapPath, replace, signal);
   }
 
-  async listFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
-    return await this.hdc.listFiles(serial, scope, path, signal);
+  async listFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, offset = 0) {
+    return await this.hdc.listFiles(serial, scope, path, signal, offset);
   }
 
   async pullFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {

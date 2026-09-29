@@ -11,6 +11,15 @@ export interface HarmonyDeviceFile {
   mode?: string;
 }
 
+export const DEVICE_FILE_PAGE_SIZE = 500;
+
+export function validateDeviceFileOffset(value: number): number {
+  if (!Number.isSafeInteger(value) || value < 0 || value > 50_000 || value % DEVICE_FILE_PAGE_SIZE !== 0) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Device file page offset must be a multiple of 500 between 0 and 50000");
+  }
+  return value;
+}
+
 const bundlePattern = /^[A-Za-z][A-Za-z0-9_.]{0,255}$/;
 
 export function validateDeviceFilePath(scope: HarmonyFileScope, value: string): string {
@@ -81,7 +90,8 @@ export function parseDeviceFileListing(output: Buffer, parent: string): { files:
   return { files: files.sort((a, b) => a.kind === b.kind ? a.name.localeCompare(b.name) : a.kind === "directory" ? -1 : 1).slice(0, 500), truncated };
 }
 
-export function deviceFileListScript(path: string): string {
+export function deviceFileListScript(path: string, offset = 0): string {
+  validateDeviceFileOffset(offset);
   const quoted = quoteDeviceShell(path);
-  return `d=${quoted}; if [ ! -d "$d" ] || [ ! -r "$d" ] || [ ! -x "$d" ]; then printf '__PIORA_DIR_ERROR__\\036'; exit 0; fi; if ! stat -c '%F' "$d" >/dev/null 2>&1; then printf '__PIORA_STAT_ERROR__\\036'; exit 0; fi; printf '__PIORA_DIR_OK__\\036'; rs=$(printf '\\036'); us=$(printf '\\037'); nl=$(printf '\\n_'); nl=\${nl%_}; fmt="%n\${us}%F|%s|%Y|%a\${rs}"; n=0; batch=0; truncated=0; set --; for f in "$d"/* "$d"/.[!.]* "$d"/..?*; do [ -e "$f" ] || [ -L "$f" ] || continue; case "$f" in *"$rs"*|*"$us"*|*"$nl"*) continue;; esac; if [ "$n" -ge 500 ]; then truncated=1; break; fi; set -- "$@" "$f"; n=$((n+1)); batch=$((batch+1)); if [ "$batch" -ge 50 ]; then stat -c "$fmt" "$@" 2>/dev/null; set --; batch=0; fi; done; if [ "$#" -gt 0 ]; then stat -c "$fmt" "$@" 2>/dev/null; fi; if [ "$truncated" -eq 1 ]; then printf '__PIORA_TRUNCATED__\\036'; fi`;
+  return `d=${quoted}; if [ ! -d "$d" ] || [ ! -r "$d" ] || [ ! -x "$d" ]; then printf '__PIORA_DIR_ERROR__\\036'; exit 0; fi; if ! stat -c '%F' "$d" >/dev/null 2>&1; then printf '__PIORA_STAT_ERROR__\\036'; exit 0; fi; printf '__PIORA_DIR_OK__\\036'; rs=$(printf '\\036'); us=$(printf '\\037'); nl=$(printf '\\n_'); nl=\${nl%_}; fmt="%n\${us}%F|%s|%Y|%a\${rs}"; n=0; batch=0; more=0; offset=${offset}; end=$((offset+${DEVICE_FILE_PAGE_SIZE})); set --; for f in "$d"/* "$d"/.[!.]* "$d"/..?*; do [ -e "$f" ] || [ -L "$f" ] || continue; case "$f" in *"$rs"*|*"$us"*|*"$nl"*) continue;; esac; if [ "$n" -lt "$offset" ]; then n=$((n+1)); continue; fi; if [ "$n" -ge "$end" ]; then more=1; break; fi; set -- "$@" "$f"; n=$((n+1)); batch=$((batch+1)); if [ "$batch" -ge 50 ]; then stat -c "$fmt" "$@" 2>/dev/null; set --; batch=0; fi; done; if [ "$#" -gt 0 ]; then stat -c "$fmt" "$@" 2>/dev/null; fi; if [ "$more" -eq 1 ]; then printf '__PIORA_TRUNCATED__\\036'; fi`;
 }

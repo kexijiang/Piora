@@ -417,7 +417,7 @@ export interface HarmonyAutomationBackend {
   listDevices(signal?: AbortSignal): Promise<BackendDevice[]>;
   connectTcpDevice?(address: string, remove: boolean, signal?: AbortSignal): Promise<void>;
   applications?(serial: string, query?: string, bundleName?: string, signal?: AbortSignal): Promise<import("./observation/applications").HarmonyApplication[]>;
-  listFiles?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<{ files: import("./device-files").HarmonyDeviceFile[]; truncated: boolean }>;
+  listFiles?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, offset?: number): Promise<{ files: import("./device-files").HarmonyDeviceFile[]; truncated: boolean }>;
   pullFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal): Promise<{ destinationPath: string; size: number }>;
   pushFile?(serial: string, scope: import("./device-files").HarmonyFileScope, sourcePath: string, path: string, overwrite: boolean, signal?: AbortSignal): Promise<void>;
   createDirectory?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;

@@ -587,13 +587,13 @@ export class HarmonyDeviceManager {
     }, signal, undefined, serial);
   }
 
-  async listFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+  async listFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, offset = 0) {
     validateSerial(serial);
     return await this.enqueue("list_device_files", async queuedSignal => {
       await this.onlineDevice(serial, queuedSignal);
       const backend = this.requireBackend();
       if (!backend.listFiles) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file browsing is unavailable");
-      return await backend.listFiles(serial, scope, path, queuedSignal);
+      return await backend.listFiles(serial, scope, path, queuedSignal, offset);
     }, signal, undefined, serial);
   }
 
