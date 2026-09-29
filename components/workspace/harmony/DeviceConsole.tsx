@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { HarmonyFileScope } from "@/lib/harmony/device-files";
 import { InteractiveDeviceShell } from "./InteractiveDeviceShell";
 import { CommandShortcuts } from "./CommandShortcuts";
@@ -15,9 +15,47 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
   const [activeId, setActiveId] = useState(1), [busy, setBusy] = useState(false);
   const [kind, setKind] = useState<HarmonyFileScope["kind"]>("shared"), [bundleName, setBundleName] = useState("");
   const [splitLocal, setSplitLocal] = useState(false);
+  const [searchText, setSearchText] = useState(""), [searchTerm, setSearchTerm] = useState("");
+  const [clipboardMessage, setClipboardMessage] = useState("");
+  const [selectedMatch, setSelectedMatch] = useState<{ tabId: number; entryIndex: number }>();
+  const logId = useId();
   const nextId = useRef(1), controller = useRef<AbortController | null>(null);
   const active = tabs.find(tab => tab.id === activeId) ?? tabs[0];
+  const matches = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase();
+    if (!query) return [];
+    const found: { tabId: number; tabLabel: string; entryIndex: number; command: string; excerpt: string }[] = [];
+    for (const tab of tabs) for (let entryIndex = 0; entryIndex < tab.entries.length; entryIndex++) {
+      const entry = tab.entries[entryIndex];
+      for (const content of [entry.command, entry.stdout, entry.stderr, entry.error ?? ""]) {
+        const match = content.toLocaleLowerCase().indexOf(query);
+        if (match < 0) continue;
+        const start = Math.max(0, match - 36), end = Math.min(content.length, match + query.length + 64);
+        found.push({ tabId: tab.id, tabLabel: tab.label, entryIndex, command: entry.command,
+          excerpt: `${start ? "…" : ""}${content.slice(start, end).replaceAll(/\s+/g, " ")}${end < content.length ? "…" : ""}` });
+        break;
+      }
+      if (found.length >= 100) return found;
+    }
+    return found;
+  }, [searchTerm, tabs]);
   useEffect(() => () => controller.current?.abort(), []);
+  useEffect(() => { const timer = window.setTimeout(() => setSearchTerm(searchText), 150); return () => window.clearTimeout(timer); }, [searchText]);
+  useEffect(() => {
+    if (!selectedMatch || selectedMatch.tabId !== activeId) return;
+    document.getElementById(`${logId}-${selectedMatch.tabId}-${selectedMatch.entryIndex}`)?.scrollIntoView({ block: "nearest" });
+  }, [activeId, logId, selectedMatch]);
+  const copyToClipboard = async (value: string) => {
+    try { await navigator.clipboard.writeText(value); setClipboardMessage(copy("已复制到剪贴板", "Copied to clipboard")); }
+    catch (cause) { setClipboardMessage(cause instanceof Error ? cause.message : String(cause)); }
+  };
+  const pasteIntoDraft = async () => {
+    try {
+      const value = await navigator.clipboard.readText();
+      updateTab(activeId, tab => ({ ...tab, draft: `${tab.draft}${value}`.slice(0, 8192) }));
+      setClipboardMessage(copy("已粘贴到命令草稿，请检查后手动执行", "Pasted into the draft. Review before running."));
+    } catch (cause) { setClipboardMessage(cause instanceof Error ? cause.message : String(cause)); }
+  };
   const updateTab = (id: number, patch: (tab: ConsoleTab) => ConsoleTab) => setTabs(current => current.map(tab => tab.id === id ? patch(tab) : tab));
   const execute = async () => {
     if (busy || !canControl || !active?.draft.trim() || (kind === "sandbox" && !bundleName.trim())) return;
@@ -51,17 +89,30 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
       <button role="tab" aria-selected={activeId === tab.id} onClick={() => setActiveId(tab.id)}>{tab.label}</button>
       {tabs.length > 1 ? <button disabled={busy} aria-label={copy(`关闭标签 ${tab.label}`, `Close tab ${tab.label}`)} onClick={() => { setTabs(current => current.filter(item => item.id !== tab.id)); if (activeId === tab.id) setActiveId(tabs.find(item => item.id !== tab.id)!.id); }}>×</button> : null}
     </span>)}<button disabled={busy || tabs.length >= 8} onClick={() => { const id = ++nextId.current; setTabs(current => [...current, { id, label: String(id), draft: "", entries: [] }]); setActiveId(id); }}>+</button></div>
+    <label>{copy("搜索所有命令标签", "Search all command tabs")}<input value={searchText} maxLength={120} onChange={event => setSearchText(event.target.value)} /></label>
+    {searchText.trim() ? <div role="group" aria-label={copy("跨标签搜索结果", "Cross-tab search results")}>
+      <p role="status">{copy(`找到 ${matches.length} 条${matches.length === 100 ? "（最多显示 100 条）" : ""}`, `${matches.length} matches${matches.length === 100 ? " (showing up to 100)" : ""}`)}</p>
+      <ul>{matches.map(match => <li key={`${match.tabId}-${match.entryIndex}`}><button onClick={() => { setActiveId(match.tabId); setSelectedMatch({ tabId: match.tabId, entryIndex: match.entryIndex }); }}>
+        {copy("标签", "Tab")} {match.tabLabel} · {match.command.slice(0, 80)} · {match.excerpt}
+      </button></li>)}</ul>
+    </div> : null}
     <label>{copy("范围", "Scope")}<select value={kind} onChange={event => setKind(event.target.value as HarmonyFileScope["kind"])}><option value="shared">{copy("设备 Shell", "Device shell")}</option><option value="sandbox">{copy("调试应用沙箱", "Debug app sandbox")}</option></select></label>
     {kind === "sandbox" ? <label>{copy("应用包名", "App bundle")}<input value={bundleName} onChange={event => setBundleName(event.target.value)} /></label> : null}
     <label>{copy("命令（Ctrl+Enter 执行）", "Command (Ctrl+Enter to run)")}<textarea rows={3} maxLength={8192} style={{ width: "100%" }} value={active?.draft ?? ""} onChange={event => updateTab(activeId, tab => ({ ...tab, draft: event.target.value }))} onKeyDown={event => { if (event.ctrlKey && event.key === "Enter") { event.preventDefault(); void execute(); } }} /></label>
+    <button onClick={() => void pasteIntoDraft()}>{copy("从剪贴板粘贴到草稿", "Paste clipboard into draft")}</button>
+    {clipboardMessage ? <p role="status">{clipboardMessage}</p> : null}
     <CommandShortcuts key={serial} serial={serial} chinese={chinese} busy={busy} currentCommand={active?.draft ?? ""} currentKind={kind} currentBundleName={bundleName}
       onFillDevice={(command, nextKind, nextBundleName) => { updateTab(activeId, tab => ({ ...tab, draft: command })); setKind(nextKind); setBundleName(nextBundleName); }}
       onOpenLocalTerminal={onOpenLocalTerminal} />
     <button disabled={busy || !canControl || !active?.draft.trim() || (kind === "sandbox" && !bundleName.trim())} onClick={() => void execute()}>{copy("执行", "Run")}</button>
     {busy ? <button onClick={() => controller.current?.abort()}>{copy("取消", "Cancel")}</button> : null}
     <button disabled={busy || !active?.entries.length} onClick={() => updateTab(activeId, tab => ({ ...tab, entries: [] }))}>{copy("清空当前记录", "Clear tab history")}</button>
-    <div role="log" aria-live="polite">{active?.entries.map((entry, index) => <article key={index}>
+    <div role="log" aria-live="polite">{active?.entries.map((entry, index) => <article id={`${logId}-${active.id}-${index}`} key={index}>
       <strong>$ {entry.command}</strong><span> · {entry.exitCode === undefined ? copy("未确认完成", "Unconfirmed") : `exit ${entry.exitCode} · ${entry.durationMs} ms`}</span>
+      <button onClick={() => void copyToClipboard(entry.command)}>{copy("复制命令", "Copy command")}</button>
+      {entry.stdout ? <button onClick={() => void copyToClipboard(entry.stdout)}>{copy("复制标准输出", "Copy standard output")}</button> : null}
+      {entry.stderr ? <button onClick={() => void copyToClipboard(entry.stderr)}>{copy("复制错误输出", "Copy error output")}</button> : null}
+      {entry.error ? <button onClick={() => void copyToClipboard(entry.error!)}>{copy("复制失败原因", "Copy failure reason")}</button> : null}
       {entry.stdout ? <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 300, overflow: "auto" }}>{entry.stdout}</pre> : null}
       {entry.stderr ? <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 200, overflow: "auto" }}>{entry.stderr}</pre> : null}
       {entry.error ? <p role="alert">{entry.error}</p> : null}
