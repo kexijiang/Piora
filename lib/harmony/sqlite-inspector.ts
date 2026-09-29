@@ -1,9 +1,11 @@
 import { Worker } from "node:worker_threads";
+import { createReadStream } from "node:fs";
 import { copyFile, lstat, mkdtemp, open, rm, stat } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
 import { existsSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "../file-access";
 import { HarmonyError } from "./errors";
 
@@ -35,21 +37,31 @@ function workerPath(): string {
   return found;
 }
 
-async function inspectCopy(path: string, table: string | undefined, offset: number, sql?: string): Promise<HarmonySqliteResult> {
+async function runSqliteWorker<T>(data: Record<string, unknown>, timeoutMs: number, signal?: AbortSignal): Promise<T> {
+  if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "SQLite operation cancelled");
   return await new Promise((resolvePromise, rejectPromise) => {
-    const worker = new Worker(workerPath(), { workerData: { path, table, offset, sql }, resourceLimits: { maxOldGenerationSizeMb: 96 } });
+    const worker = new Worker(workerPath(), { workerData: data, resourceLimits: { maxOldGenerationSizeMb: 96 } });
     let settled = false;
-    const finish = (error?: Error, result?: HarmonySqliteResult) => {
+    const finish = async (error?: Error, result?: T) => {
       if (settled) return;
-      settled = true; clearTimeout(timer); void worker.terminate();
+      settled = true; clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      await worker.terminate().catch(() => undefined);
       if (error) rejectPromise(error); else resolvePromise(result!);
     };
-    const timer = setTimeout(() => finish(new HarmonyError("COMMAND_TIMEOUT", "SQLite inspection exceeded 5 seconds")), 5_000);
-    worker.once("message", (message: HarmonySqliteResult & { error?: string }) => message.error
-      ? finish(new HarmonyError("INVALID_RESPONSE", `SQLite inspection failed: ${message.error}`)) : finish(undefined, message));
-    worker.once("error", error => finish(new HarmonyError("INVALID_RESPONSE", "SQLite inspection worker failed", { cause: error })));
-    worker.once("exit", code => { if (code !== 0) finish(new HarmonyError("INVALID_RESPONSE", "SQLite inspection worker exited")); });
+    const timer = setTimeout(() => { void finish(new HarmonyError("COMMAND_TIMEOUT", `SQLite operation exceeded ${timeoutMs / 1000} seconds`)); }, timeoutMs);
+    const onAbort = () => { void finish(new HarmonyError("COMMAND_ABORTED", "SQLite operation cancelled")); };
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+    worker.once("message", (message: T & { error?: string }) => { void (message.error
+      ? finish(new HarmonyError("INVALID_RESPONSE", `SQLite operation failed: ${message.error}`)) : finish(undefined, message)); });
+    worker.once("error", error => { void finish(new HarmonyError("INVALID_RESPONSE", "SQLite worker failed", { cause: error })); });
+    worker.once("exit", code => { if (code !== 0) void finish(new HarmonyError("INVALID_RESPONSE", "SQLite worker exited")); });
   });
+}
+
+async function inspectCopy(path: string, table: string | undefined, offset: number, sql?: string, signal?: AbortSignal): Promise<HarmonySqliteResult> {
+  return runSqliteWorker<HarmonySqliteResult>({ path, table, offset, sql }, 5_000, signal);
 }
 
 async function privateCopy(path: string): Promise<{ directory: string; snapshot: string }> {
@@ -113,7 +125,7 @@ export async function openHarmonySqliteSnapshot(path: string): Promise<{ id: str
   } catch (error) { await cleanupSnapshot(id, item); throw error; }
 }
 
-export async function readHarmonySqliteSnapshot(id: string, table?: string, offset = 0, sql?: string): Promise<HarmonySqliteResult> {
+export async function readHarmonySqliteSnapshot(id: string, table?: string, offset = 0, sql?: string, signal?: AbortSignal): Promise<HarmonySqliteResult> {
   validateRead(table, offset, sql);
   const item = snapshots.get(id);
   if (!item || item.closed || item.expiresAt <= Date.now()) {
@@ -121,7 +133,7 @@ export async function readHarmonySqliteSnapshot(id: string, table?: string, offs
     throw new HarmonyError("STALE_SNAPSHOT", "Database snapshot expired; open it again");
   }
   item.inFlight++;
-  try { return await inspectCopy(item.path, table, offset, sql); }
+  try { return await inspectCopy(item.path, table, offset, sql, signal); }
   finally {
     item.inFlight--;
     if (item.closed && !item.inFlight) await rm(item.directory, { recursive: true, force: true });
@@ -133,10 +145,42 @@ export async function closeHarmonySqliteSnapshot(id: string): Promise<void> {
   if (item) await cleanupSnapshot(id, item);
 }
 
+/** Produce a bounded file in the private snapshot directory and stream it to the authenticated caller. */
+export async function exportHarmonySqliteSnapshot(id: string, table: string | undefined, sql: string | undefined, format: "csv" | "json", signal?: AbortSignal): Promise<{ stream: Readable; filename: string; size: number }> {
+  validateRead(table, 0, sql);
+  if (!table && !sql) throw new HarmonyError("INVALID_ARGUMENT", "Choose a table or read-only query to export");
+  if (format !== "csv" && format !== "json") throw new HarmonyError("INVALID_ARGUMENT", "Choose CSV or JSON export");
+  const item = snapshots.get(id);
+  if (!item || item.closed || item.expiresAt <= Date.now()) {
+    if (item) await cleanupSnapshot(id, item);
+    throw new HarmonyError("STALE_SNAPSHOT", "Database snapshot expired; open it again");
+  }
+  const outputPath = join(item.directory, `${randomUUID()}.${format}`);
+  item.inFlight++;
+  let handedOff = false;
+  const release = async () => {
+    try { await rm(outputPath, { force: true, maxRetries: 5, retryDelay: 100 }); }
+    finally {
+      item.inFlight--;
+      if (item.closed && !item.inFlight) await rm(item.directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    }
+  };
+  try {
+    const output = await runSqliteWorker<{ bytes: number; rows: number }>({ path: item.path, table, sql, mode: "export", format, outputPath }, 30_000, signal);
+    if (output.bytes < 1 || output.bytes > 64 * 1024 * 1024 || (await stat(outputPath)).size !== output.bytes) {
+      throw new HarmonyError("INVALID_RESPONSE", "Database export size could not be verified");
+    }
+    const stream = createReadStream(outputPath);
+    stream.once("close", () => { void release().catch(() => undefined); });
+    handedOff = true;
+    return { stream, filename: `harmony-database-${id.slice(0, 8)}.${format}`, size: output.bytes };
+  } finally { if (!handedOff) await release(); }
+}
+
 /** Compatibility helper for existing callers: a private copy is still removed after each read. */
-export async function inspectHarmonySqlite(path: string, table?: string, offset = 0, sql?: string): Promise<HarmonySqliteResult> {
+export async function inspectHarmonySqlite(path: string, table?: string, offset = 0, sql?: string, signal?: AbortSignal): Promise<HarmonySqliteResult> {
   validateRead(table, offset, sql);
   const { directory, snapshot } = await privateCopy(path);
-  try { return await inspectCopy(snapshot, table, offset, sql); }
+  try { return await inspectCopy(snapshot, table, offset, sql, signal); }
   finally { await rm(directory, { recursive: true, force: true }); }
 }
