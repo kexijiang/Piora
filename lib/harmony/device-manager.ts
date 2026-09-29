@@ -664,21 +664,21 @@ export class HarmonyDeviceManager {
     return result;
   }
 
-  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, encoding?: import("./device-text").DeviceTextReadEncoding) {
     validateSerial(serial);
     return await this.enqueue("read_device_text", async queuedSignal => {
       await this.onlineDevice(serial, queuedSignal);
       const backend = this.requireBackend();
       if (!backend.readTextFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device text preview is unavailable");
-      return await backend.readTextFile(serial, scope, path, queuedSignal);
+      return await backend.readTextFile(serial, scope, path, queuedSignal, encoding);
     }, signal, undefined, serial);
   }
 
-  async saveTextFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; text: string; expectedHash: string; newlineMode?: import("./device-text").WritableDeviceNewline; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+  async saveTextFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; text: string; expectedHash: string; newlineMode?: import("./device-text").WritableDeviceNewline; encoding?: import("./device-text").DeviceTextEncoding; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
     const result = await this.action("save_text_file", options.serial, options.leaseToken, undefined, options.signal,
       async (backend, signal) => {
         if (!backend.saveTextFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device text editing is unavailable");
-        await backend.saveTextFile(options.serial, options.scope, options.path, options.text, options.expectedHash, signal, options.newlineMode);
+        await backend.saveTextFile(options.serial, options.scope, options.path, options.text, options.expectedHash, signal, options.newlineMode, options.encoding);
       });
     if (result.receipt) { result.receipt.effect = "applied"; result.receipt.verification = "passed"; }
     return result;
@@ -1629,6 +1629,14 @@ export class HarmonyDeviceManager {
       });
   }
 
+  async clearAppCache(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    return await this.action("clear_app_cache", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.clearAppCache) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Clearing application cache is unavailable");
+        await backend.clearAppCache(options.serial, options.bundleName, signal);
+      });
+  }
+
   async uninstallApp(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
     return await this.action("uninstall_app", options.serial, options.leaseToken, undefined, options.signal,
       async (backend, signal) => {
@@ -1665,19 +1673,21 @@ export class HarmonyDeviceManager {
   }
 
   async updateConfig(
-    patch: { hdcPath?: string | null; storage?: HarmonyConfig["storage"] | null; vision?: HarmonyConfig["vision"] | null },
+    patch: { hdcPath?: string | null; video?: HarmonyConfig["video"] | null; storage?: HarmonyConfig["storage"] | null; vision?: HarmonyConfig["vision"] | null },
     signal?: AbortSignal,
   ): Promise<HarmonyConfig> {
     if (this.injectedBackend) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Injected Harmony backends cannot be reconfigured");
     const next: HarmonyConfig = { ...this.config };
     if (patch.hdcPath === null || patch.hdcPath === "") delete next.hdcPath;
     else if (patch.hdcPath !== undefined) next.hdcPath = patch.hdcPath;
+    if (patch.video === null) delete next.video;
+    else if (patch.video !== undefined) next.video = { ...patch.video };
     if (patch.storage === null) delete next.storage;
     else if (patch.storage !== undefined) next.storage = { ...patch.storage };
     if (patch.vision === null) delete next.vision;
     else if (patch.vision !== undefined) next.vision = patch.vision;
     const previousConfig = this.config;
-    const runtimeChanged = next.hdcPath !== previousConfig.hdcPath;
+    const runtimeChanged = next.hdcPath !== previousConfig.hdcPath || JSON.stringify(next.video) !== JSON.stringify(previousConfig.video);
     let candidateBackend: HarmonyAutomationBackend | undefined;
     if (runtimeChanged) {
       // Validate the candidate before persisting it or disturbing the working

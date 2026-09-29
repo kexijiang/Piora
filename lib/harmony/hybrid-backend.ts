@@ -208,12 +208,12 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     await this.hdc.chmodPath(serial, scope, path, mode, signal);
   }
 
-  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
-    return await this.hdc.readTextFile(serial, scope, path, signal);
+  async readTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, encoding?: import("./device-text").DeviceTextReadEncoding) {
+    return await this.hdc.readTextFile(serial, scope, path, signal, encoding);
   }
 
-  async saveTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline) {
-    await this.hdc.saveTextFile(serial, scope, path, text, expectedHash, signal, newlineMode);
+  async saveTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline, encoding?: import("./device-text").DeviceTextEncoding) {
+    await this.hdc.saveTextFile(serial, scope, path, text, expectedHash, signal, newlineMode, encoding);
   }
 
   async runShellCommand(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal) {
@@ -226,6 +226,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
 
   async clearAppData(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.clearAppData(serial, bundleName, signal);
+  }
+
+  async clearAppCache(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
+    await this.hdc.clearAppCache(serial, bundleName, signal);
   }
 
   async uninstallPackage(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {

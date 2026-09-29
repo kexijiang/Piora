@@ -50,6 +50,7 @@ export const actionCatalog = {
   launch_app: { description: "Launch a bundle and optional ability", risk: "control", scenario: { ...app, abilityName: optional(string(256)), ...wait }, direct: { ...app, abilityName: optional(string(256)) } },
   stop_app: { description: "Stop the selected application", risk: "control", scenario: app, direct: app },
   clear_app_data: { description: "Clear data of the selected application", risk: "control", scenario: app, direct: app },
+  clear_app_cache: { description: "Clear cache of the selected application for the active user", risk: "control", direct: app },
   uninstall_app: { description: "Uninstall the selected application", risk: "control", scenario: app, direct: app },
   enable_app: { description: "Enable an app for the active user on a root device build", risk: "control", direct: app },
   disable_app: { description: "Disable an app for the active user on a root device build", risk: "control", direct: app },

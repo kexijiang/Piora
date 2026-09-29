@@ -115,12 +115,14 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
       }
       case "stop_app":
       case "clear_app_data":
+      case "clear_app_cache":
       case "uninstall_app":
       case "enable_app":
       case "disable_app": {
         const bundleName = requiredString(body, "bundleName", 255);
         if (body.action === "stop_app") result = await manager.stopApp({ ...common, bundleName });
         else if (body.action === "clear_app_data") result = await manager.clearAppData({ ...common, bundleName });
+        else if (body.action === "clear_app_cache") result = await manager.clearAppCache({ ...common, bundleName });
         else if (body.action === "enable_app" || body.action === "disable_app") result = await manager.setAppEnabled({ ...common, bundleName, enabled: body.action === "enable_app" });
         else result = await manager.uninstallApp({ ...common, bundleName });
         break;

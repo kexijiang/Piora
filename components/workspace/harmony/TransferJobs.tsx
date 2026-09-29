@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
 import type { HarmonyTransferInput, HarmonyTransferJob } from "@/lib/harmony/transfer-jobs";
 
-export function TransferJobs({ serial, scope, deviceDirectory, cwd, selectedFiles, chinese, canControl, ensureControl, onDownloadsQueued }: {
+export function TransferJobs({ serial, scope, deviceDirectory, cwd, selectedFiles, chinese, canControl, ensureControl, onDownloadsQueued, onOpenDatabase, historyOnly = false }: {
   serial: string; scope: HarmonyFileScope; deviceDirectory: string; cwd?: string | null; selectedFiles: HarmonyDeviceFile[];
-  chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onDownloadsQueued: () => void;
+  chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onDownloadsQueued: () => void; onOpenDatabase?: (path: string) => void; historyOnly?: boolean;
 }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
   const [jobs, setJobs] = useState<HarmonyTransferJob[]>([]);
@@ -67,6 +67,7 @@ export function TransferJobs({ serial, scope, deviceDirectory, cwd, selectedFile
   };
   return <fieldset aria-label={copy("后台传输任务", "Background transfer jobs")}>
     <legend>{copy("后台传输任务", "Background transfer jobs")}</legend>
+    {!historyOnly ? <>
     <p>{copy("每批最多 20 个文件。离开面板后任务继续执行；运行中的文件没有可信逐字节百分比，下面显示已确认完成的文件数与字节数。", "Up to 20 files per batch. Jobs continue after leaving this panel. HDC does not provide a reliable live byte percentage; confirmed files and bytes are shown below.")}</p>
     <label>{copy("下载到本地目录", "Download to local directory")}<input value={downloadDirectory} onChange={event => setDownloadDirectory(event.target.value)} /></label>
     <button disabled={busy || !selectedFiles.length} onClick={queueDownloads}>{copy(`下载选中的 ${selectedFiles.length} 个文件`, `Download ${selectedFiles.length} selected files`)}</button>
@@ -74,6 +75,7 @@ export function TransferJobs({ serial, scope, deviceDirectory, cwd, selectedFile
     <label>{copy("设备目标目录", "Device destination directory")}<input value={remoteDirectory} onChange={event => setRemoteDirectory(event.target.value)} /></label>
     <label><input type="checkbox" checked={overwrite} onChange={event => setOverwrite(event.target.checked)} />{copy("允许覆盖同名设备文件", "Allow overwriting device files")}</label>
     <button disabled={busy || !canControl || !uploadPaths.trim()} onClick={queueUploads}>{copy("上传这一批", "Upload this batch")}</button>
+    </> : null}
     {notice ? <p role="status">{notice}</p> : null}
     {error ? <p role="alert">{error}</p> : null}
     <h4>{copy("任务历史", "Job history")}</h4>
@@ -85,6 +87,8 @@ export function TransferJobs({ serial, scope, deviceDirectory, cwd, selectedFile
       <details><summary>{copy("查看文件", "View files")}</summary><ul>{job.items.map((item, index) => <li key={`${job.id}-${index}`}>
         {item.direction === "upload" ? "↑" : "↓"} {item.path} · {item.status}{item.size === undefined ? "" : ` · ${item.size} B`}
         {item.effect === "unknown" ? copy(" · 设备效果未确认", " · device effect unknown") : ""}{item.error ? ` · ${item.error}` : ""}
+        {item.direction === "download" && item.status === "completed" && /\.(?:db|sqlite|sqlite3)$/i.test(item.destinationPath) && onOpenDatabase
+          ? <button onClick={() => onOpenDatabase(item.destinationPath)}>{copy("用只读 SQLite 查看器打开", "Open in read-only SQLite viewer")}</button> : null}
       </li>)}</ul></details>
       {job.status === "queued" || job.status === "running" ? <button onClick={() => void changeJob(job.id, false)}>{copy("取消", "Cancel")}</button>
         : <button onClick={() => void changeJob(job.id, true)}>{copy("移除记录", "Remove record")}</button>}

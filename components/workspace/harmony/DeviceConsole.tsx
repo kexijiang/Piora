@@ -4,15 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import type { HarmonyFileScope } from "@/lib/harmony/device-files";
 import { InteractiveDeviceShell } from "./InteractiveDeviceShell";
 import { CommandShortcuts } from "./CommandShortcuts";
+import { SmartShellPanel } from "../SmartShellPanel";
 
 type Entry = { command: string; stdout: string; stderr: string; exitCode?: number; durationMs?: number; error?: string };
 type ConsoleTab = { id: number; label: string; draft: string; entries: Entry[] };
 
-export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOpenLocalTerminal, visible }: { serial: string; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onOpenLocalTerminal?: () => void; visible: boolean }) {
+export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOpenLocalTerminal, visible, cwd }: { serial: string; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onOpenLocalTerminal?: () => void; visible: boolean; cwd?: string | null }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
   const [tabs, setTabs] = useState<ConsoleTab[]>([{ id: 1, label: "1", draft: "", entries: [] }]);
   const [activeId, setActiveId] = useState(1), [busy, setBusy] = useState(false);
   const [kind, setKind] = useState<HarmonyFileScope["kind"]>("shared"), [bundleName, setBundleName] = useState("");
+  const [splitLocal, setSplitLocal] = useState(false);
   const nextId = useRef(1), controller = useRef<AbortController | null>(null);
   const active = tabs.find(tab => tab.id === activeId) ?? tabs[0];
   useEffect(() => () => controller.current?.abort(), []);
@@ -43,6 +45,7 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
   return <section aria-label={copy("设备命令", "Device commands")}>
     <h3>{copy("设备命令", "Device commands")}</h3>
     {onOpenLocalTerminal ? <button onClick={onOpenLocalTerminal}>{copy("打开本机终端", "Open local terminal")}</button> : null}
+    {cwd ? <button aria-pressed={splitLocal} onClick={() => setSplitLocal(value => !value)}>{splitLocal ? copy("收起本机分屏", "Close local split") : copy("设备与本机分屏", "Split device and local terminals")}</button> : null}
     <p>{copy("可使用下方交互式设备 Shell，或执行单次 HDC 命令（最多 15 秒、128 KiB 输出）。单次命令不保留 cd 和环境变量；取消后设备端副作用可能仍需核对。", "Use the interactive device shell below, or run one HDC command (15 seconds, 128 KiB output). One-shot commands do not preserve cd or environment changes; verify device effects after cancellation.")}</p>
     <div role="tablist" aria-label={copy("命令标签", "Command tabs")}>{tabs.map(tab => <span key={tab.id}>
       <button role="tab" aria-selected={activeId === tab.id} onClick={() => setActiveId(tab.id)}>{tab.label}</button>
@@ -63,7 +66,10 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
       {entry.stderr ? <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 200, overflow: "auto" }}>{entry.stderr}</pre> : null}
       {entry.error ? <p role="alert">{entry.error}</p> : null}
     </article>)}</div>
-    {visible ? <InteractiveDeviceShell key={`${serial}:${kind}:${bundleName}`} serial={serial} scope={kind === "sandbox" ? { kind, bundleName } : { kind }}
-      chinese={chinese} canControl={canControl} ensureControl={ensureControl} /> : null}
+    {visible ? <div style={{ display: "grid", gridTemplateColumns: splitLocal && cwd ? "repeat(auto-fit, minmax(min(100%, 370px), 1fr))" : "minmax(0, 1fr)", gap: 12 }}>
+      <InteractiveDeviceShell key={`${serial}:${kind}:${bundleName}`} serial={serial} scope={kind === "sandbox" ? { kind, bundleName } : { kind }}
+        chinese={chinese} canControl={canControl} ensureControl={ensureControl} />
+      {splitLocal && cwd ? <div aria-label={copy("本机终端分屏", "Local terminal split")} style={{ height: 400, minWidth: 0, border: "1px solid var(--border)" }}><SmartShellPanel cwd={cwd} /></div> : null}
+    </div> : null}
   </section>;
 }

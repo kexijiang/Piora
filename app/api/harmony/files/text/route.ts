@@ -3,6 +3,7 @@ import { HarmonyError } from "@/lib/harmony/errors";
 import { InvalidJsonBodyError, JsonBodyTooLargeError, parseJsonWithinLimit } from "@/lib/bounded-json";
 import { hasJsonContentType } from "@/lib/request-security";
 import type { HarmonyFileScope } from "@/lib/harmony/device-files";
+import type { DeviceTextEncoding, DeviceTextReadEncoding } from "@/lib/harmony/device-text";
 import { harmonyErrorResponse, noStoreJson, requireHarmonyAccess } from "../../_shared";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,9 @@ export async function GET(request: Request) {
       throw new HarmonyError("INVALID_ARGUMENT", "Choose a device text file and scope");
     }
     const scope: HarmonyFileScope = kind === "shared" ? { kind: "shared" } : { kind: "sandbox", bundleName: bundleName! };
-    return noStoreJson({ result: await getHarmonyDeviceManager().readTextFile(serial, scope, path, request.signal) });
+    const encoding = params.get("encoding") ?? "auto";
+    if (!["auto", "utf-8", "utf-16le", "utf-16be", "gb18030"].includes(encoding)) throw new HarmonyError("INVALID_ARGUMENT", "Unsupported device text encoding");
+    return noStoreJson({ result: await getHarmonyDeviceManager().readTextFile(serial, scope, path, request.signal, encoding as DeviceTextReadEncoding) });
   } catch (error) { return harmonyErrorResponse(error); }
 }
 
@@ -30,10 +33,14 @@ export async function POST(request: Request) {
       || (body.kind !== "shared" && body.kind !== "sandbox") || (body.kind === "sandbox" && typeof body.bundleName !== "string")) {
       throw new HarmonyError("INVALID_ARGUMENT", "Choose a device text file and expected content hash");
     }
+    if (body.encoding !== undefined && (typeof body.encoding !== "string" || !["utf-8", "utf-8-bom", "utf-16le", "utf-16le-bom", "utf-16be", "utf-16be-bom", "gb18030"].includes(body.encoding))) {
+      throw new HarmonyError("INVALID_ARGUMENT", "Unsupported device text encoding");
+    }
     const scope: HarmonyFileScope = body.kind === "shared" ? { kind: "shared" } : { kind: "sandbox", bundleName: body.bundleName as string };
     const result = await getHarmonyDeviceManager().saveTextFile({ serial: body.serial, leaseToken: body.leaseToken,
       scope, path: body.path, text: body.text, expectedHash: body.expectedHash,
-      newlineMode: body.newlineMode === undefined ? undefined : body.newlineMode as "lf" | "crlf" | "cr", signal: request.signal });
+      newlineMode: body.newlineMode === undefined ? undefined : body.newlineMode as "lf" | "crlf" | "cr",
+      encoding: body.encoding === undefined ? undefined : body.encoding as DeviceTextEncoding, signal: request.signal });
     return noStoreJson({ result });
   } catch (error) {
     if (error instanceof JsonBodyTooLargeError) return noStoreJson({ error: "Request body is too large" }, { status: 413 });

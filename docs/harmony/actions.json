@@ -7230,6 +7230,49 @@
     },
     {
       "protocolVersion": 1,
+      "action": "clear_app_cache",
+      "description": "Clear cache of the selected application for the active user",
+      "risk": "control",
+      "capability": "clear_app_cache",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "bundleName"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "clear_app_cache"
+            },
+            "bundleName": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.]{0,255}$"
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
       "action": "uninstall_app",
       "description": "Uninstall the selected application",
       "risk": "control",

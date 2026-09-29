@@ -137,7 +137,9 @@
     "@xterm/xterm": "^6.0.0",
     "brace-expansion": "5.0.9",
     "codemirror": "^6.0.2",
+    "diff": "^8.0.4",
     "hypium-driver": "6.1.210",
+    "iconv-lite": "^0.6.3",
     "json-bigint": "^1.0.0",
     "json5": "^2.2.3",
     "jszip": "^3.10.1",
@@ -172,7 +174,8 @@
     "typescript": "^5.9.3",
     "undici": "8.9.0",
     "unified": "^11.0.5",
-    "vscode-jsonrpc": "^9.0.2"
+    "vscode-jsonrpc": "^9.0.2",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@electron/asar": "3.4.1",
@@ -184,6 +187,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/three": "^0.185.4",
     "@types/turndown": "^5.0.6",
+    "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.3",
     "eslint-plugin-react-hooks": "^7.1.1",

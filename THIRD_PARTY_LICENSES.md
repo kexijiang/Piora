@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `8a6bd867f1762338a5e5a8882407fe77fd371984c6490862b26f0b5439f7395d`
+Lockfile SHA-256: `f56d669770727ec8c44079d1433c1a64a583fa4a1fa6b7489eb75a8ad9b63615`
 
-Unique locked packages: **1373**. Runtime packages: **933**. Build/development-only packages: **440**.
+Unique locked packages: **1374**. Runtime packages: **933**. Build/development-only packages: **441**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -1051,6 +1051,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@types/three` | `0.185.4` | MIT | No |
 | `@types/turndown` | `5.0.6` | MIT | No |
 | `@types/webxr` | `0.5.24` | MIT | No |
+| `@types/ws` | `8.18.1` | MIT | No |
 | `@typescript-eslint/eslint-plugin` | `8.57.1` | MIT | No |
 | `@typescript-eslint/parser` | `8.57.1` | MIT | No |
 | `@typescript-eslint/project-service` | `8.57.1` | MIT | No |

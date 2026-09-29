@@ -17,6 +17,8 @@ export interface HarmonyCapabilities {
 export interface HarmonyDevice {
   serial: string;
   state: HarmonyDeviceConnectionState;
+  transport?: "usb" | "tcp" | "unknown";
+  transportEvidence?: "hdc" | "endpoint" | "unavailable";
   name?: string;
   model?: string;
   product?: string;
@@ -137,6 +139,7 @@ export interface HarmonyManagerState {
 
 export interface HarmonyConfig {
   hdcPath?: string;
+  video?: { provider: "bundled" | "hos-scrcpy"; packageDirectory?: string; javaPath?: string };
   storage?: {
     screenshotDirectory?: string;
     recordingDirectory?: string;
@@ -395,6 +398,8 @@ export type HarmonyManagerEvent =
 export interface BackendDevice {
   serial: string;
   state: HarmonyDeviceConnectionState;
+  transport?: "usb" | "tcp" | "unknown";
+  transportEvidence?: "hdc" | "endpoint" | "unavailable";
   name?: string;
   model?: string;
   product?: string;
@@ -424,8 +429,8 @@ export interface HarmonyAutomationBackend {
   deletePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
   renamePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void>;
   chmodPath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, mode: string, signal?: AbortSignal): Promise<void>;
-  readTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<{ text: string; hash: string; size: number; encoding?: "utf-8" | "utf-8-bom"; newline?: import("./device-text").DeviceNewline }>;
-  saveTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline): Promise<void>;
+  readTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, encoding?: import("./device-text").DeviceTextReadEncoding): Promise<{ text: string; hash: string; size: number; encoding?: import("./device-text").DeviceTextEncoding; newline?: import("./device-text").DeviceNewline }>;
+  saveTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline, encoding?: import("./device-text").DeviceTextEncoding): Promise<void>;
   runShellCommand?(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal): Promise<{ stdout: string; stderr: string; exitCode: number; durationMs: number }>;
   appTestAudio?(serial: string, packet: string, signal?: AbortSignal): Promise<void>;
   doctorProbes?(serial: string, signal?: AbortSignal): Promise<{ hdcVersion?: string; checks: import("./contracts/capabilities").HarmonyDoctorReport["checks"] }>;
@@ -493,6 +498,7 @@ export interface HarmonyAutomationBackend {
   installPackage?(serial: string, hapPath: string, replace?: boolean, signal?: AbortSignal): Promise<void>;
   stopApp?(serial: string, bundleName: string, signal?: AbortSignal): Promise<void>;
   clearAppData?(serial: string, bundleName: string, signal?: AbortSignal): Promise<void>;
+  clearAppCache?(serial: string, bundleName: string, signal?: AbortSignal): Promise<void>;
   uninstallPackage?(serial: string, bundleName: string, signal?: AbortSignal): Promise<void>;
   setAppEnabled?(serial: string, bundleName: string, enabled: boolean, signal?: AbortSignal): Promise<void>;
   waitForIdle?(serial: string, idleMs: number, timeoutMs: number, signal?: AbortSignal): Promise<void | { strategy: "driver_idle" | "bounded_delay" }>;

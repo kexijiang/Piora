@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
-import type { DeviceNewline, WritableDeviceNewline } from "@/lib/harmony/device-text";
+import type { DeviceNewline, DeviceTextEncoding, DeviceTextReadEncoding, WritableDeviceNewline } from "@/lib/harmony/device-text";
 import { SqliteViewer } from "./SqliteViewer";
 import { visibleDeviceFiles, type FileSortKey } from "./file-list-view";
 import { TransferJobs } from "./TransferJobs";
+import { TextDiff } from "./TextDiff";
 
 const DEVICE_FILE_PAGE_SIZE = 500;
 
@@ -22,8 +23,10 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [sourcePath, setSourcePath] = useState(""), [remotePath, setRemotePath] = useState(""), [overwrite, setOverwrite] = useState(false);
   const [directoryPath, setDirectoryPath] = useState(""), [newName, setNewName] = useState("");
   const [newMode, setNewMode] = useState("");
-  const [preview, setPreview] = useState<{ text: string; hash: string; size: number; encoding?: "utf-8" | "utf-8-bom"; newline?: DeviceNewline }>();
+  const [preview, setPreview] = useState<{ text: string; hash: string; size: number; encoding?: DeviceTextEncoding; newline?: DeviceNewline }>();
   const [editedText, setEditedText] = useState("");
+  const [readEncoding, setReadEncoding] = useState<DeviceTextReadEncoding>("auto");
+  const [diffPreview, setDiffPreview] = useState<{ original: string; edited: string }>();
   const [newlineMode, setNewlineMode] = useState<WritableDeviceNewline>();
   const [databasePath, setDatabasePath] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,7 +43,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   useEffect(() => { try { const value = JSON.parse(localStorage.getItem(bookmarkKey) ?? "[]"); setBookmarks(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : []); } catch { setBookmarks([]); } }, [bookmarkKey]);
   const saveBookmarks = (next: string[]) => { setBookmarks(next); try { localStorage.setItem(bookmarkKey, JSON.stringify(next)); } catch { /* Private browsing may disable storage. */ } };
   const chooseFile = (file: HarmonyDeviceFile) => {
-    setSelected(file); setPreview(undefined); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? "");
+    setSelected(file); setPreview(undefined); setDiffPreview(undefined); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? "");
     setDestinationPath(cwd ? `${cwd}${cwd.includes("\\") ? "\\" : "/"}${file.name}` : "");
   };
   const open = async (nextPath: string, nextOffset = 0) => {
@@ -83,10 +86,10 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     if (!selected || busy) return;
     const current = new AbortController(); controller.current = current; setBusy(true); setError("");
     try {
-      const params = new URLSearchParams({ serial, kind, path: selected.path, ...(kind === "sandbox" ? { bundleName } : {}) });
+      const params = new URLSearchParams({ serial, kind, path: selected.path, encoding: readEncoding, ...(kind === "sandbox" ? { bundleName } : {}) });
       const response = await fetch(`/api/harmony/files/text?${params}`, { signal: current.signal, cache: "no-store" });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
-      setPreview(data.result); setEditedText(data.result.text); setNewlineMode(undefined);
+      setPreview(data.result); setEditedText(data.result.text); setNewlineMode(undefined); setDiffPreview(undefined);
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -96,9 +99,9 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     try {
       const response = await fetch("/api/harmony/files/text", { method: "POST", headers: { "Content-Type": "application/json" }, signal: current.signal,
         body: JSON.stringify({ serial, leaseToken: await ensureControl(), kind, ...(kind === "sandbox" ? { bundleName } : {}), path: selected.path,
-          text: editedText, expectedHash: preview.hash, ...(newlineMode ? { newlineMode } : {}) }) });
+          text: editedText, expectedHash: preview.hash, encoding: preview.encoding, ...(newlineMode ? { newlineMode } : {}) }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
-      setPreview(undefined);
+      setPreview(undefined); setDiffPreview(undefined);
       setNotice(copy("设备已核对新文本哈希；重新打开可查看最新内容。", "The device verified the new text hash; reopen to inspect the saved content."));
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
@@ -168,13 +171,19 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       <small> · {file.kind}{file.size === undefined ? "" : ` · ${file.size} B`}{file.modifiedAt ? ` · ${new Date(file.modifiedAt).toLocaleString()}` : ""}{file.mode ? ` · ${file.mode}` : ""}</small>
     </li>)}</ul>
     {selected?.kind === "file" ? <fieldset><legend>{copy("下载文件", "Download file")}: {selected.name}</legend>
-      <button disabled={busy} onClick={() => void loadPreview()}>{copy("预览 UTF-8 文本（最多 2 MiB）", "Preview UTF-8 text (up to 2 MiB)")}</button>
+      <label>{copy("文本编码", "Text encoding")}<select value={readEncoding} onChange={event => setReadEncoding(event.target.value as DeviceTextReadEncoding)}>
+        <option value="auto">{copy("自动识别 BOM / UTF-8", "Auto-detect BOM / UTF-8")}</option><option value="utf-8">UTF-8</option>
+        <option value="utf-16le">UTF-16 LE</option><option value="utf-16be">UTF-16 BE</option><option value="gb18030">GB18030</option>
+      </select></label>
+      <button disabled={busy} onClick={() => void loadPreview()}>{copy("预览文本（最多 2 MiB）", "Preview text (up to 2 MiB)")}</button>
       {preview ? <><small>{preview.size} B · SHA-256 {preview.hash} · {preview.encoding ?? "utf-8"} · {preview.newline ?? "lf"}</small>
         {preview.newline === "mixed" ? <label>{copy("原文件混用换行符；保存时统一为", "Mixed line endings; normalize on save to")}
           <select value={newlineMode ?? ""} onChange={event => setNewlineMode(event.target.value ? event.target.value as WritableDeviceNewline : undefined)}>
             <option value="">{copy("选择换行符", "Choose line endings")}</option><option value="lf">LF</option><option value="crlf">CRLF</option><option value="cr">CR</option>
           </select></label> : null}
         <textarea value={editedText} onChange={event => setEditedText(event.target.value)} rows={16} style={{ width: "100%" }} />
+        <button disabled={busy || editedText === preview.text} onClick={() => setDiffPreview({ original: preview.text, edited: editedText })}>{copy("预览差异", "Preview diff")}</button>
+        {diffPreview ? <TextDiff original={diffPreview.original} edited={diffPreview.edited} chinese={chinese} /> : null}
         <button disabled={busy || !canControl || (preview.newline === "mixed" && !newlineMode) || (editedText === preview.text && !newlineMode)} onClick={() => void saveText()}>{copy("核对原内容并保存", "Verify original and save")}</button></> : null}
       <p>{copy("保存到已获准工作区中的新文件名；不会覆盖现有文件。", "Save to a new file within an allowed workspace; existing files are never overwritten.")}</p>
       <label>{copy("本地完整路径", "Full local path")}<input value={destinationPath} onChange={event => setDestinationPath(event.target.value)} /></label>
@@ -192,7 +201,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       <button disabled={busy || !canControl || !directoryPath.trim()} onClick={() => void mutate("create_directory", { path: directoryPath.trim() })}>{copy("创建目录", "Create directory")}</button>
     </fieldset>
     <fieldset><legend>{copy("上传文件", "Upload file")}</legend>
-      <p>{copy("只能从已获准工作区上传 256 MiB 内的本地文件；设备目标仅限共享存储或调试应用沙箱。", "Upload a local file of at most 256 MiB from an allowed workspace to shared storage or a debug app sandbox.")}</p>
+      <p>{copy("只能从已获准工作区上传 1 GiB 内的本地文件；设备目标仅限共享存储或调试应用沙箱。", "Upload a local file of at most 1 GiB from an allowed workspace to shared storage or a debug app sandbox.")}</p>
       <label>{copy("本地完整路径", "Full local path")}<input value={sourcePath} onChange={event => { const value = event.target.value; setSourcePath(value); const name = value.split(/[\\/]/).at(-1); if (name) setRemotePath(`${path.replace(/\/$/, "")}/${name}`); }} /></label>
       <label>{copy("设备目标路径", "Device target path")}<input value={remotePath} onChange={event => setRemotePath(event.target.value)} /></label>
       <label><input type="checkbox" checked={overwrite} onChange={event => setOverwrite(event.target.checked)} />{copy("覆盖设备上的同名文件", "Overwrite an existing device file")}</label>
@@ -200,7 +209,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     </fieldset>
     <TransferJobs serial={serial} scope={kind === "shared" ? { kind: "shared" } : { kind: "sandbox", bundleName }} deviceDirectory={listedPath || path} cwd={cwd}
       selectedFiles={files.filter(file => batchPaths.includes(file.path) && file.kind === "file")} chinese={chinese} canControl={canControl}
-      ensureControl={ensureControl} onDownloadsQueued={() => setBatchPaths([])} />
+      ensureControl={ensureControl} onDownloadsQueued={() => setBatchPaths([])} onOpenDatabase={setDatabasePath} />
     <SqliteViewer initialPath={databasePath} chinese={chinese} />
   </section>;
 }

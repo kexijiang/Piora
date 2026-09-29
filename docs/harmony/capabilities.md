@@ -23,6 +23,7 @@
 | `launch_app` | direct, scenario | control | Launch a bundle and optional ability |
 | `stop_app` | direct, scenario | control | Stop the selected application |
 | `clear_app_data` | direct, scenario | control | Clear data of the selected application |
+| `clear_app_cache` | direct | control | Clear cache of the selected application for the active user |
 | `uninstall_app` | direct, scenario | control | Uninstall the selected application |
 | `enable_app` | direct | control | Enable an app for the active user on a root device build |
 | `disable_app` | direct | control | Disable an app for the active user on a root device build |

@@ -11,7 +11,10 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
   const [connected, setConnected] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchText, setSearchText] = useState("");
   const host = useRef<HTMLDivElement>(null);
+  const terminalRef = useRef<import("@xterm/xterm").Terminal | null>(null);
+  const searchRef = useRef<import("@xterm/addon-search").SearchAddon | null>(null);
   const leaseToken = useRef("");
   const mounted = useRef(false);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -60,12 +63,15 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
     let inputQueue = Promise.resolve();
     const token = leaseToken.current;
     void (async () => {
-      const [{ Terminal }, { FitAddon }] = await Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit")]);
+      const [{ Terminal }, { FitAddon }, { SearchAddon }] = await Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit"), import("@xterm/addon-search")]);
       if (disposed || !host.current) return;
       const configuredFontSize = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui-font-size")) || 14;
       terminal = new Terminal({ cursorBlink: true, scrollback: 5000, fontSize: configuredFontSize * 13 / 14,
         fontFamily: '"Cascadia Code", Consolas, monospace', theme: { background: "#111820", foreground: "#e6edf3" } });
-      const fit = new FitAddon(); terminal.loadAddon(fit); terminal.open(host.current);
+      const fit = new FitAddon(); terminal.loadAddon(fit);
+      const search = new SearchAddon(); terminal.loadAddon(search);
+      terminalRef.current = terminal; searchRef.current = search;
+      terminal.open(host.current);
       terminal.focus();
       const resize = () => {
         if (!host.current?.clientWidth || !host.current.clientHeight || !terminal) return;
@@ -91,6 +97,7 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
     })().catch(cause => { if (!disposed) setError(cause instanceof Error ? cause.message : String(cause)); });
     return () => {
       disposed = true; clearInterval(keepalive); observer?.disconnect(); events?.close(); terminal?.dispose();
+      terminalRef.current = null; searchRef.current = null;
       void fetch("/api/harmony/device-terminal", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "stop", id, leaseToken: token }), keepalive: true }).catch(() => undefined);
     };
@@ -105,6 +112,13 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
         {busy ? copy("正在连接…", "Connecting…") : copy("打开设备 Shell", "Open device shell")}</button>}
     {id ? <span aria-live="polite"> {connected ? copy("已连接", "Connected") : copy("已断开", "Disconnected")}</span> : null}
     {error ? <p role="alert">{error}</p> : null}
+    {id ? <div>
+      <label>{copy("搜索终端输出", "Search terminal output")}<input value={searchText} onChange={event => { setSearchText(event.target.value); if (!event.target.value) searchRef.current?.clearDecorations(); }} onKeyDown={event => { if (event.key === "Enter" && searchText) { event.preventDefault(); searchRef.current?.findNext(searchText); } }} /></label>
+      <button disabled={!searchText} onClick={() => searchRef.current?.findPrevious(searchText)}>{copy("上一个", "Previous")}</button>
+      <button disabled={!searchText} onClick={() => searchRef.current?.findNext(searchText)}>{copy("下一个", "Next")}</button>
+      <button onClick={() => { const selection = terminalRef.current?.getSelection(); if (selection) void navigator.clipboard.writeText(selection).catch(cause => setError(cause instanceof Error ? cause.message : String(cause))); }}>{copy("复制选中", "Copy selection")}</button>
+      <button onClick={() => void navigator.clipboard.readText().then(text => terminalRef.current?.paste(text)).catch(cause => setError(cause instanceof Error ? cause.message : String(cause)))}>{copy("粘贴", "Paste")}</button>
+    </div> : null}
     {id ? <div ref={host} style={{ height: 300, minWidth: 0, width: "100%", overflow: "hidden", background: "#111820" }} /> : null}
   </section>;
 }

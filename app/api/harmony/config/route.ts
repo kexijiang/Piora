@@ -28,6 +28,15 @@ export async function PUT(request: Request) {
     if (body.hdcPath !== undefined && body.hdcPath !== null && typeof body.hdcPath !== "string") {
       throw new HarmonyError("INVALID_ARGUMENT", "hdcPath must be an absolute path or null");
     }
+    if (body.video !== undefined && body.video !== null) {
+      if (!body.video || typeof body.video !== "object" || Array.isArray(body.video)) throw new HarmonyError("INVALID_ARGUMENT", "video must be an object or null");
+      const video = body.video as Record<string, unknown>;
+      if ((video.provider !== "bundled" && video.provider !== "hos-scrcpy")
+        || (video.packageDirectory !== undefined && typeof video.packageDirectory !== "string")
+        || (video.javaPath !== undefined && typeof video.javaPath !== "string")) {
+        throw new HarmonyError("INVALID_ARGUMENT", "video requires a known provider and optional paths");
+      }
+    }
     if (body.vision !== undefined && body.vision !== null) {
       if (!body.vision || typeof body.vision !== "object" || Array.isArray(body.vision)) {
         throw new HarmonyError("INVALID_ARGUMENT", "vision must be an object or null");
@@ -54,6 +63,7 @@ export async function PUT(request: Request) {
     const manager = getHarmonyDeviceManager();
     const config = await manager.updateConfig({
       ...(body.hdcPath !== undefined ? { hdcPath: body.hdcPath as string | null } : {}),
+      ...(body.video !== undefined ? { video: body.video as import("@/lib/harmony").HarmonyConfig["video"] | null } : {}),
       ...(body.storage !== undefined ? { storage: body.storage as import("@/lib/harmony").HarmonyConfig["storage"] | null } : {}),
       ...(body.vision !== undefined ? { vision: body.vision as import("@/lib/harmony").HarmonyConfig["vision"] | null } : {}),
     }, request.signal);
