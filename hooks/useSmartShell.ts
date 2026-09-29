@@ -38,9 +38,9 @@ export function useSmartShell(cwd: string, native = false) {
     return () => { subscribers.current.delete(listener); };
   }, []);
   const inventoryFlight = useRef<{ cwd: string; controller: AbortController; promise: Promise<ShellSession[]> } | null>(null);
-  const refreshSessions = useCallback(async () => {
+  const refreshSessions = useCallback(async (force = false) => {
     const previous = inventoryFlight.current;
-    if (previous?.cwd === cwd && !previous.controller.signal.aborted) return previous.promise;
+    if (!force && previous?.cwd === cwd && !previous.controller.signal.aborted) return previous.promise;
     previous?.controller.abort();
     const controller = new AbortController();
     const request = ++inventoryRequest.current;
@@ -224,9 +224,18 @@ export function useSmartShell(cwd: string, native = false) {
   }, [activeId]);
   const close = useCallback(async (id: string) => {
     const signal = operations.current?.signal;
-    try { await shellRequest(`sessions/${id}`, undefined, { method: "DELETE", signal }); if (signal?.aborted) return; const list = await refreshSessions(); if (!signal?.aborted && scope.current === cwd && active.current === id) setSelection({ cwd, id: list[0]?.id || null }); }
+    try {
+      await shellRequest(`sessions/${id}`, undefined, { method: "DELETE", signal });
+      if (signal?.aborted) return;
+      // A poll started before DELETE may still contain the removed session.
+      const list = await refreshSessions(true);
+      if (!signal?.aborted && scope.current === cwd && active.current === id) {
+        if (list[0]) select(list[0].id);
+        else { active.current = null; setSelection({ cwd, id: null }); }
+      }
+    }
     catch (cause) { if (!signal?.aborted) setError(String(cause)); }
-  }, [cwd, refreshSessions]);
+  }, [cwd, refreshSessions, select]);
   const loadArchive = useCallback(async (initial = false) => {
     if (!activeId || native) return;
     const previous = !initial && archived.current?.terminalId === activeId ? archived.current : null;
