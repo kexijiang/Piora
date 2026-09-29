@@ -454,7 +454,7 @@ export class HarmonyDeviceManager {
         args[1] = await importHapArtifact(String(args[1]), join(dirname(this.configPath), "harmony-artifacts"));
       }
       if (method === "pushFile") {
-        args[2] = await importDeviceFileArtifact(String(args[2]), join(dirname(this.configPath), "harmony-file-artifacts"));
+        args[2] = await importDeviceFileArtifact(String(args[2]), join(dirname(this.configPath), "harmony-file-artifacts"), signal);
       }
       return args;
     }, (method, args, error) => {
