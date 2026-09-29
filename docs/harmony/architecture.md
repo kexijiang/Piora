@@ -22,7 +22,7 @@ HDC 在线状态作为已完成设备授权的边界，不添加应用范围 gra
 
 设备文本预览在传输前限制为 1 MiB 普通文件，完整下载后核对长度，以严格 UTF-8 解码并拒绝 NUL 字节。AI 结果最多携带 12,000 个字符，标注设备内容不可信；面板显示完整文本。保存时要求打开时的 SHA-256 与设备当前内容匹配，新内容先经 `file send` 写入同目录独立暂存文件，再在设备 shell 中检查原文件哈希并替换，最后回读新哈希。缺少 `sha256sum` 时禁用保存；取消或无法确认时不把未知效果报为成功。
 
-SQLite 查看器只接受工作区内已下载的普通本地文件，限制为 64 MiB，拒绝伴有 `-wal` 的文件。服务端先复制到私有临时目录，再由独立 worker 用 `DatabaseSync({ readOnly: true, allowExtension: false })` 打开。只列普通表，并从清单选表、分页读取；不接受任意 SQL，最多返回 50 行、100 列，文本和 BLOB 单元格截断显示，worker 超过 3 秒即终止。它不提供正在写入的设备数据库的一致性保证：主文件可能遗漏 WAL 中的事务，用户应先通过应用导出一致快照。依据 [SQLite 备份说明](https://www.sqlite.org/backup.html)和[WAL 说明](https://www.sqlite.org/wal.html)。
+SQLite 查看器只接受工作区内已下载的普通本地文件，限制为 64 MiB，拒绝伴有 `-wal` 的文件。打开时复制到私有临时目录，后续表浏览和查询均绑定该快照 ID；关闭或十分钟后清理，最多同时打开八个。独立 worker 用 `DatabaseSync({ readOnly: true, allowExtension: false })` 与 `query_only` 打开，列出普通表和视图、字段及索引。表和查询每页最多 200 行、100 列；单条 SELECT/WITH 查询最多查看前 1000 行，拒绝分号和其他语句，文本和 BLOB 单元格截断显示，worker 超过 5 秒即终止。CSV/JSON 导出及数据库快照自动获取仍待实现。它不提供正在写入的设备数据库的一致性保证：主文件可能遗漏 WAL 中的事务，用户应先通过应用导出一致快照。依据 [SQLite 备份说明](https://www.sqlite.org/backup.html)和[WAL 说明](https://www.sqlite.org/wal.html)。
 
 单次命令抽屉只供用户手动运行，不加入 AI 动作目录。命令仍需设备 lease，经过与其他写操作相同的 dispatch fence 和设备 lane；每条命令使用单独的 HDC `shell` 调用，最多 15 秒、128 KiB 输出。退出码通过每次随机生成的结束标记解析；缺失标记时结果不确认。单次命令的多标签只保留当前网页中的输出记录，工作目录和环境变量不跨命令保持；同页的交互式 PTY 则保留 Shell 状态。
 

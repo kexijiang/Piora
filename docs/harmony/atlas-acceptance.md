@@ -10,10 +10,26 @@
 | 指定非活跃用户安装/卸载 | **不提供**会静默作用于错误用户的 `-u` 控件 | 官方 `bm` 文档说明非活跃 user ID 可能仍作用于当前活跃用户；跨用户能力需要设备厂商或系统 API 与真机证据 |
 | `singleton`、`allowAppUsePrivilegeExtension` 等特权 | **不把系统镜像配置伪装为运行时开关** | 官方文档要求签名/配置 `install_list_capability.json`，部分流程还需 root、系统分区挂载和重启；应在专门的系统镜像工作流中处理 |
 | 文件浏览、文本、上传/下载、新建、删除、重命名、权限、收藏、查找 | 限定共享可写路径与调试沙箱；只读浏览；文件传输；1 MiB UTF-8 哈希编辑；单项 `chmod`；本机收藏和限量递归搜索 | 沙箱要求调试签名且应用已启动；不同设备的 `stat`、`sha256sum`、文件传输及权限行为需要验证；不支持递归删除与系统路径改写 |
-| SQLite 数据库 | 下载后在本机只读查看普通表，限制 64 MiB、行列与时间，不允许任意 SQL | 运行中数据库的主文件可能遗漏 WAL；需应用导出一致快照，不宣称在线数据库一致性 |
+| SQLite 数据库 | 下载后在本机固定私有快照；只读查看表、视图、字段、索引、分页数据和单条 SELECT/WITH，限制 64 MiB、行列与时间 | CSV/JSON 导出尚未实现；运行中数据库的主文件可能遗漏 WAL，需应用导出一致快照，不宣称在线数据库一致性 |
 | 设备终端、本机终端、快捷命令 | 设备页有绑定手动 lease 的交互式 HDC PTY、单次命令、多标签单次命令记录与自定义快捷项；可转到 Piora 已有的本机多标签 PTY | 交互式设备 Shell 的 `cd`/环境变量可保留；单次命令不保留。快捷项只填充，需手动执行。交互式调试沙箱仍需在专用调试 HAP 上验证 |
 
 官方依据：[HDC 版本和沙箱命令说明](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/dfx/hdc.md)、[bm 工具及用户范围说明](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/tools/bm-tool.md)、[应用特权配置](https://github.com/openharmony/docs/blob/master/en/device-dev/subsystems/subsys-app-privilege-config-guide.md)、[SQLite WAL](https://www.sqlite.org/wal.html)。
+
+## 原计划尚未交付的软件范围
+
+原计划书要求的范围比上方公开功能对照更广。下列项目目前缺少完整实现或验证，不能只因现有 CI 通过就视为已交付：
+
+| 计划项目 | 当前缺口 |
+| --- | --- |
+| 手动 Wi-Fi 连接/断开与连接方式诊断 | 尚无完整工作台入口和跨 USB/Wi-Fi 的真实切换验收 |
+| 可选 HOScrcpy 投屏适配 | 尚无独立 Java 进程、认证视频桥接及 SDK 缺失/崩溃降级流程 |
+| 应用管理及开发板特权 | 清缓存、按可证实范围指定用户、`singleton`/`allowAppUsePrivilegeExtension` 配置差异预览、备份恢复和生效验证尚未交付 |
+| 文件工作台 | 批量任务、后台传输进度与取消、排序/隐藏文件、编码与换行保留、文本差异和 2 MiB 编辑上限尚未交付；当前文本上限为 1 MiB |
+| 数据库 | CSV/JSON 导出、设备侧快照获取和可持久管理的快照任务尚未交付 |
+| 设备终端与快捷命令 | 双分屏、跨标签搜索/复制粘贴、快捷命令参数/分组/导入导出和统一任务栏尚未交付 |
+| 交付验收 | 第二手机、平板/折叠设备、开发板、双设备与 Wi-Fi 切换、1 GiB 传输、万项目录及持续 30 分钟的视频性能记录缺失 |
+
+这些缺口按原计划继续实施；无法从当前普通权限手机或自动化测试推断开发板特权的可用性。
 
 ## 真机验收步骤
 
