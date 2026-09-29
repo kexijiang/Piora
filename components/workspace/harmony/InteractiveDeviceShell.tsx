@@ -62,7 +62,8 @@ export function InteractiveDeviceShell({ serial, scope, chinese, canControl, ens
     void (async () => {
       const [{ Terminal }, { FitAddon }] = await Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit")]);
       if (disposed || !host.current) return;
-      terminal = new Terminal({ cursorBlink: true, scrollback: 5000, fontSize: 13,
+      const configuredFontSize = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--ui-font-size")) || 14;
+      terminal = new Terminal({ cursorBlink: true, scrollback: 5000, fontSize: configuredFontSize * 13 / 14,
         fontFamily: '"Cascadia Code", Consolas, monospace', theme: { background: "#111820", foreground: "#e6edf3" } });
       const fit = new FitAddon(); terminal.loadAddon(fit); terminal.open(host.current);
       terminal.focus();

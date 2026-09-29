@@ -24,6 +24,8 @@
 5. 从测试应用导出一致的 SQLite 数据库，下载后分页查看含中文、大整数与 BLOB 的表；提供 WAL 旁文件时应拒绝。活跃数据库主文件不能作为一致快照验收。
 6. 运行成功、非零退出、超时、大输出和取消的设备命令；切换标签、设备及本机终端，核对 lease 归属与结果文案。调试沙箱命令在不同 HDC 版本分别测试。
 
+专用测试工程可用 `node scripts/prepare-harmony-fixture.mjs debug <全新目录>` 从 `tests/harmony-fixture/base` 生成，再用 DevEco Studio 构建并配置与测试 bundle 匹配的调试签名。[华为真机调试文档](https://developer.huawei.com/consumer/cn/doc/harmonyos-guides-V14/ide-debug-device-V14)要求真机安装前为 HAP 签名；编译成功的 `*-unsigned.hap` 不算安装验收。
+
 ## 已完成的首台真机验证（2026-09-29）
 
 Windows 主机通过 USB 连接 `BRA-AL00`（系统 `7.0.0.107`、API 26、普通 `uid=2000(shell)`），选用 DevEco Studio 的 HDC `3.2.0e`。以下检查在该设备上实际执行；序列号和屏幕、应用内容不写入验收记录。
