@@ -21,6 +21,7 @@ export function TransferJobs({ serial, scope, deviceDirectory, cwd, selectedFile
     const response = await fetch(`/api/harmony/transfers?serial=${encodeURIComponent(serial)}`, { signal, cache: "no-store" });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message ?? data.error ?? "Unable to load transfers");
+    if (!Array.isArray(data.jobs)) throw new Error("Invalid transfer job response");
     setJobs(data.jobs);
   }, [serial]);
   useEffect(() => {

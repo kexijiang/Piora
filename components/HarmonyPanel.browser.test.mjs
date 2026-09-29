@@ -59,6 +59,7 @@ test("Harmony workspace supports direct input, a unified responsive drawer and f
       if (url.pathname.endsWith("/apps")) data = { applications: [{ bundleName: "dev.piora.audio.fixture", label: "Harmony 测试 App", abilities: ["EntryAbility"], source: "bm-label" }] };
       if (url.pathname.endsWith("/scenario")) data = input ? { result: { status: "passed", steps: [{ action: "launch_app", status: "passed" }] } } : { executions: [] };
       if (url.pathname.endsWith("/audio")) data = { outputs: [] };
+      if (url.pathname.endsWith("/transfers")) data = { jobs: [] };
       if (url.pathname.endsWith("/manual")) {
         if (input?.action === "acquire" && rejectedControlStatus) {
           controls = [{ serial: input.serial, status: rejectedControlStatus }];
