@@ -1,5 +1,5 @@
-import { constants, existsSync } from "node:fs";
-import { copyFile, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { link, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { createConnection, createServer, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
@@ -20,6 +20,8 @@ import { focusedWindowId, windowBundle } from "./observation/window-scope";
 import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
 import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, validateWritableDeviceFilePath, type HarmonyFileScope } from "./device-files";
 import { decodeDeviceText, encodeDeviceText, MAX_DEVICE_TEXT_BYTES, type WritableDeviceNewline } from "./device-text";
+import { MAX_DEVICE_TRANSFER_BYTES, deviceTransferTimeoutMs } from "./device-transfer-limits";
+import { assertUnredirectedPath } from "./runtime/path-safety";
 import { validateTcpDeviceAddress } from "./tcp-device";
 import type {
   BackendDevice,
@@ -378,20 +380,27 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const preflight = (await this.run(["-t", serial, "shell", ...scopeArgs,
       `f=${source}; if [ ! -f "$f" ] || [ -L "$f" ]; then printf '__PIORA_FILE_ERROR__'; else stat -c '%s' "$f"; fi`], "device_file_preflight", signal)).stdout.toString("utf8").trim();
     const size = Number(preflight);
-    if (!/^\d+$/.test(preflight) || !Number.isSafeInteger(size) || size > 256 * 1024 * 1024) {
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device file is unavailable or exceeds the 256 MiB download limit");
+    if (!/^\d+$/.test(preflight) || !Number.isSafeInteger(size) || size > MAX_DEVICE_TRANSFER_BYTES) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device file is unavailable or exceeds the 1 GiB download limit");
     }
     const target = resolve(destinationPath);
     const parent = await stat(dirname(target)).catch(() => undefined);
     if (!parent?.isDirectory()) throw new HarmonyError("INVALID_ARGUMENT", "The local destination directory does not exist");
-    const temporaryDirectory = await mkdtemp(join(tmpdir(), "piora-harmony-download-"));
+    await assertUnredirectedPath(dirname(target));
+    const temporaryDirectory = await mkdtemp(join(dirname(target), ".piora-harmony-download-"));
     const temporaryFile = join(temporaryDirectory, "download");
     try {
-      await this.run(["-t", serial, "file", "recv", ...scopeArgs, remote, temporaryFile], "device_file_download", signal, 120_000);
+      await this.run(["-t", serial, "file", "recv", ...scopeArgs, remote, temporaryFile], "device_file_download", signal, deviceTransferTimeoutMs(size));
       const downloaded = await stat(temporaryFile).catch(() => undefined);
       if (!downloaded?.isFile() || downloaded.size !== size) throw new HarmonyError("INVALID_RESPONSE", "Downloaded device file size differs from the preflight result");
       if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device file download was cancelled");
-      await copyFile(temporaryFile, target, constants.COPYFILE_EXCL);
+      await assertUnredirectedPath(dirname(target));
+      // Staging and destination share a volume, so hard-linking exposes only a complete file and never replaces a rival target.
+      try { await link(temporaryFile, target); }
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new HarmonyError("INVALID_ARGUMENT", "The local destination already exists");
+        throw error;
+      }
       return { destinationPath: target, size };
     } finally {
       await rm(temporaryDirectory, { recursive: true, force: true });
@@ -403,7 +412,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const remote = validateWritableDeviceFilePath(scope, path);
     if (!isAbsolute(sourcePath)) throw new HarmonyError("INVALID_ARGUMENT", "Choose an absolute local upload file");
     const source = await lstat(sourcePath).catch(() => undefined);
-    if (!source?.isFile() || source.isSymbolicLink() || source.size > 256 * 1024 * 1024) throw new HarmonyError("INVALID_ARGUMENT", "Upload file is missing or too large");
+    if (!source?.isFile() || source.isSymbolicLink() || source.size > MAX_DEVICE_TRANSFER_BYTES) throw new HarmonyError("INVALID_ARGUMENT", "Upload file is missing or exceeds 1 GiB");
     const scopeArgs = scope.kind === "sandbox" ? ["-b", scope.bundleName] : [];
     const quoted = quoteDeviceShell(remote);
     const staged = validateWritableDeviceFilePath(scope, `${remote}.piora-upload-${randomUUID()}.tmp`);
@@ -417,7 +426,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     let stagedMayExist = false;
     try {
       stagedMayExist = true;
-      const transfer = await this.run(["-t", serial, "file", "send", ...scopeArgs, sourcePath, staged], "device_file_upload", signal, 120_000);
+      const transfer = await this.run(["-t", serial, "file", "send", ...scopeArgs, sourcePath, staged], "device_file_upload", signal, deviceTransferTimeoutMs(source.size));
       const output = Buffer.concat([transfer.stdout, transfer.stderr]).toString("utf8");
       if (!/FileTransfer finish/i.test(output)) throw new HarmonyError("INVALID_RESPONSE", "HDC did not confirm that the file transfer finished", { details: { dispatchState: "sent" } });
       const stagedSize = (await this.run(["-t", serial, "shell", ...scopeArgs,

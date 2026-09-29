@@ -2,6 +2,7 @@ import { lstat } from "node:fs/promises";
 import { dirname, isAbsolute } from "node:path";
 import { getAllowedFileRoots, isExistingFilePathAllowed, isFilePathAllowed } from "../../file-access";
 import { HarmonyError } from "../errors";
+import { MAX_DEVICE_TRANSFER_BYTES } from "../device-transfer-limits";
 
 export async function assertNewHarmonyLocalFileAllowed(destinationPath: string): Promise<void> {
   if (!isAbsolute(destinationPath)) throw new HarmonyError("INVALID_ARGUMENT", "Choose an absolute local file path");
@@ -21,7 +22,7 @@ export async function assertHarmonyLocalSourceAllowed(sourcePath: string): Promi
     throw new HarmonyError("INVALID_ARGUMENT", "Choose an existing file within an allowed workspace root");
   }
   const info = await lstat(sourcePath);
-  if (!info.isFile() || info.isSymbolicLink() || info.size > 256 * 1024 * 1024) {
-    throw new HarmonyError("INVALID_ARGUMENT", "Upload must be a regular file no larger than 256 MiB");
+  if (!info.isFile() || info.isSymbolicLink() || info.size > MAX_DEVICE_TRANSFER_BYTES) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Upload must be a regular file no larger than 1 GiB");
   }
 }

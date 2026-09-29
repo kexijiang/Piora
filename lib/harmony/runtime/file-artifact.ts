@@ -3,10 +3,10 @@ import { constants } from "node:fs";
 import { link, lstat, mkdir, open, rm } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { HarmonyError } from "../errors";
+import { MAX_DEVICE_TRANSFER_BYTES } from "../device-transfer-limits";
 import { enforceArtifactQuota } from "./bounded-file";
 import { assertUnredirectedPath } from "./path-safety";
 
-const MAX_UPLOAD_BYTES = 256 * 1024 * 1024;
 const CHUNK_BYTES = 1024 * 1024;
 
 async function digestStoredFile(path: string, expectedSize: number): Promise<string> {
@@ -34,8 +34,8 @@ async function digestStoredFile(path: string, expectedSize: number): Promise<str
 export async function importDeviceFileArtifact(path: string, directory: string, signal?: AbortSignal): Promise<string> {
   if (!isAbsolute(path)) throw new HarmonyError("INVALID_ARGUMENT", "Choose an absolute local upload path");
   const before = await lstat(path).catch(() => undefined);
-  if (!before?.isFile() || before.isSymbolicLink() || before.size > MAX_UPLOAD_BYTES) {
-    throw new HarmonyError("INVALID_ARGUMENT", "Upload must be a regular file no larger than 256 MiB");
+  if (!before?.isFile() || before.isSymbolicLink() || before.size > MAX_DEVICE_TRANSFER_BYTES) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Upload must be a regular file no larger than 1 GiB");
   }
   await assertUnredirectedPath(path);
   await mkdir(directory, { recursive: true, mode: 0o700 });
