@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DEVICE_FILE_PAGE_SIZE, type HarmonyDeviceFile, type HarmonyFileScope } from "@/lib/harmony/device-files";
+import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
 import type { DeviceNewline, WritableDeviceNewline } from "@/lib/harmony/device-text";
 import { SqliteViewer } from "./SqliteViewer";
 import { visibleDeviceFiles, type FileSortKey } from "./file-list-view";
+import { TransferJobs } from "./TransferJobs";
+
+const DEVICE_FILE_PAGE_SIZE = 500;
 
 export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }: { serial: string; chinese: boolean; cwd?: string | null; canControl: boolean; ensureControl: () => Promise<string> }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
@@ -26,13 +29,14 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState<{ files: HarmonyDeviceFile[]; scannedDirectories: number; skippedDirectories: number; truncated: boolean }>();
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [batchPaths, setBatchPaths] = useState<string[]>([]);
   const [showHidden, setShowHidden] = useState(true);
   const [sortKey, setSortKey] = useState<FileSortKey>("name");
   const [descending, setDescending] = useState(false);
   const bookmarkKey = `piora-harmony-bookmarks:${serial}:${kind}:${kind === "sandbox" ? bundleName : ""}`;
   const controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
-  useEffect(() => { setFiles([]); setListedPath(""); setOffset(0); setTruncated(false); setSelected(undefined); setPreview(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
+  useEffect(() => { setFiles([]); setBatchPaths([]); setListedPath(""); setOffset(0); setTruncated(false); setSelected(undefined); setPreview(undefined); setError(""); setNotice(""); }, [serial, kind, bundleName]);
   useEffect(() => { try { const value = JSON.parse(localStorage.getItem(bookmarkKey) ?? "[]"); setBookmarks(Array.isArray(value) ? value.filter((item): item is string => typeof item === "string").slice(0, 20) : []); } catch { setBookmarks([]); } }, [bookmarkKey]);
   const saveBookmarks = (next: string[]) => { setBookmarks(next); try { localStorage.setItem(bookmarkKey, JSON.stringify(next)); } catch { /* Private browsing may disable storage. */ } };
   const chooseFile = (file: HarmonyDeviceFile) => {
@@ -47,7 +51,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       const response = await fetch(`/api/harmony/files?${params}`, { signal: current.signal, cache: "no-store" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message ?? data.error);
-      setFiles(data.files); setTruncated(Boolean(data.truncated)); setPath(nextPath); setListedPath(nextPath); setOffset(nextOffset); setSelected(undefined); setPreview(undefined); setNotice("");
+      setFiles(data.files); setBatchPaths([]); setTruncated(Boolean(data.truncated)); setPath(nextPath); setListedPath(nextPath); setOffset(nextOffset); setSelected(undefined); setPreview(undefined); setNotice("");
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -157,6 +161,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       <button disabled={busy || !truncated || offset >= 50_000} onClick={() => void open(listedPath, offset + DEVICE_FILE_PAGE_SIZE)}>{copy("下一页", "Next page")}</button>
     </div> : null}
     <ul>{visibleFiles.map(file => <li key={file.path}>
+      {file.kind === "file" ? <input type="checkbox" aria-label={copy(`选择批量下载 ${file.name}`, `Select ${file.name} for batch download`)} checked={batchPaths.includes(file.path)} onChange={event => setBatchPaths(current => event.target.checked ? [...current, file.path] : current.filter(value => value !== file.path))} /> : null}
       {file.kind === "directory" ? <><button disabled={busy} onClick={() => void open(file.path)}>{file.name}/</button><button disabled={busy} onClick={() => { setSelected(file); setNewName(file.name); setNewMode(file.mode?.slice(-3) ?? ""); }}>{copy("选择", "Select")}</button></>
         : file.kind === "file" ? <button disabled={busy} onClick={() => chooseFile(file)}>{file.name}</button>
           : <span>{file.name}</span>}
@@ -193,6 +198,9 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       <label><input type="checkbox" checked={overwrite} onChange={event => setOverwrite(event.target.checked)} />{copy("覆盖设备上的同名文件", "Overwrite an existing device file")}</label>
       <button disabled={busy || !canControl || !sourcePath.trim() || !remotePath.trim()} onClick={() => void upload()}>{copy("上传到设备", "Upload to device")}</button>
     </fieldset>
+    <TransferJobs serial={serial} scope={kind === "shared" ? { kind: "shared" } : { kind: "sandbox", bundleName }} deviceDirectory={listedPath || path} cwd={cwd}
+      selectedFiles={files.filter(file => batchPaths.includes(file.path) && file.kind === "file")} chinese={chinese} canControl={canControl}
+      ensureControl={ensureControl} onDownloadsQueued={() => setBatchPaths([])} />
     <SqliteViewer initialPath={databasePath} chinese={chinese} />
   </section>;
 }

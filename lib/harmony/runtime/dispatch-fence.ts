@@ -10,22 +10,38 @@ const WRITES = new Set<keyof HarmonyAutomationBackend>([
 
 /** Recheck at every physical dispatch, including the second call of a compound step. */
 export function fencedBackend(backend: HarmonyAutomationBackend, signal: AbortSignal, check: () => void,
-  prepare?: (method: keyof HarmonyAutomationBackend, args: unknown[]) => Promise<unknown[]>,
+  prepare?: (method: keyof HarmonyAutomationBackend, args: unknown[]) => Promise<unknown[] | { args: unknown[]; cleanup: () => Promise<void> }>,
   failed?: (method: string, args: unknown[], error: unknown) => void): HarmonyAutomationBackend {
   return new Proxy(backend, {
     get(target, key, receiver) {
       const value = Reflect.get(target, key, receiver);
       if (typeof value !== "function") return value;
       return async (...args: unknown[]) => {
-        if (WRITES.has(key as keyof HarmonyAutomationBackend)) {
-          if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device dispatch was cancelled", { details: { dispatchState: "not-sent" } });
-          check();
-          if (prepare) args = await prepare(key as keyof HarmonyAutomationBackend, args);
-          if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device dispatch was cancelled");
-          check();
+        let cleanup: (() => Promise<void>) | undefined;
+        let dispatchFailed = false;
+        try {
+          if (WRITES.has(key as keyof HarmonyAutomationBackend)) {
+            if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device dispatch was cancelled", { details: { dispatchState: "not-sent" } });
+            check();
+            if (prepare) {
+              const prepared = await prepare(key as keyof HarmonyAutomationBackend, args);
+              if (Array.isArray(prepared)) args = prepared;
+              else { args = prepared.args; cleanup = prepared.cleanup; }
+            }
+            if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device dispatch was cancelled");
+            check();
+          }
+          try { return await Reflect.apply(value, target, args); }
+          catch (error) { if (WRITES.has(key as keyof HarmonyAutomationBackend)) failed?.(String(key), args, error); throw error; }
+        } catch (error) {
+          dispatchFailed = true;
+          throw error;
+        } finally {
+          if (cleanup) {
+            try { await cleanup(); }
+            catch (error) { if (!dispatchFailed) throw error; }
+          }
         }
-        try { return await Reflect.apply(value, target, args); }
-        catch (error) { if (WRITES.has(key as keyof HarmonyAutomationBackend)) failed?.(String(key), args, error); throw error; }
       };
     },
   });

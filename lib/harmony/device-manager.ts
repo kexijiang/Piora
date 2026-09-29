@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { statSync, readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { asHarmonyError, HarmonyError } from "./errors";
@@ -454,7 +454,10 @@ export class HarmonyDeviceManager {
         args[1] = await importHapArtifact(String(args[1]), join(dirname(this.configPath), "harmony-artifacts"));
       }
       if (method === "pushFile") {
-        args[2] = await importDeviceFileArtifact(String(args[2]), join(dirname(this.configPath), "harmony-file-artifacts"), signal);
+        const directory = join(dirname(this.configPath), "harmony-file-artifacts", randomBytes(16).toString("hex"));
+        try { args[2] = await importDeviceFileArtifact(String(args[2]), directory, signal); }
+        catch (error) { await rm(directory, { recursive: true, force: true }); throw error; }
+        return { args, cleanup: async () => { await rm(directory, { recursive: true, force: true }); } };
       }
       return args;
     }, (method, args, error) => {
@@ -849,6 +852,28 @@ export class HarmonyDeviceManager {
     this.leasesBySerial.set(lease.serial, renewed);
     this.scheduleLeaseExpiry(renewed);
     return renewed;
+  }
+
+  /** Move explicit manual control to one background transfer without dropping the physical lock. */
+  handoffTransferLease(serial: string, manualToken: string, jobId: string): HarmonyLease {
+    if (!/^[a-f0-9-]{36}$/.test(jobId)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid transfer job identity");
+    const previous = this.requireLease(serial, manualToken);
+    if (previous.owner.kind !== "manual" || (this.controllersByLease.get(manualToken)?.size ?? 0) > 0) {
+      throw new HarmonyError("DEVICE_BUSY", "Manual control is busy; finish active input before queuing a transfer");
+    }
+    clearTimeout(this.leaseTimers.get(manualToken));
+    this.leaseTimers.delete(manualToken);
+    this.leasesByToken.delete(manualToken);
+    this.forgetDeviceSnapshots(serial);
+    const acquiredAt = iso(this.now());
+    const lease: HarmonyLease = { ...previous, token: this.token(), leaseEpoch: ++this.leaseEpoch,
+      owner: { kind: "agent", id: `transfer:${jobId}` }, acquiredAt, expiresAt: iso(this.now() + MAX_LEASE_TTL_MS) };
+    this.leasesByToken.set(lease.token, lease);
+    this.leasesBySerial.set(serial, lease);
+    this.scheduleLeaseExpiry(lease);
+    this.emit({ type: "lease_released", timestamp: acquiredAt, serial, ownerId: previous.owner.id, reason: "transfer_handoff" });
+    this.emit({ type: "lease_acquired", timestamp: acquiredAt, lease });
+    return lease;
   }
 
   releaseLease(token: string): boolean {
