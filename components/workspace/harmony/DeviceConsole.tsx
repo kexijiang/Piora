@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { HarmonyFileScope } from "@/lib/harmony/device-files";
+import { InteractiveDeviceShell } from "./InteractiveDeviceShell";
 
 type Entry = { command: string; stdout: string; stderr: string; exitCode?: number; durationMs?: number; error?: string };
 type ConsoleTab = { id: number; label: string; draft: string; entries: Entry[] };
 type Shortcut = { id: string; name: string; command: string; kind: HarmonyFileScope["kind"]; bundleName?: string };
 
-export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOpenLocalTerminal }: { serial: string; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onOpenLocalTerminal?: () => void }) {
+export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOpenLocalTerminal, visible }: { serial: string; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onOpenLocalTerminal?: () => void; visible: boolean }) {
   const copy = (zh: string, en: string) => chinese ? zh : en;
   const [tabs, setTabs] = useState<ConsoleTab[]>([{ id: 1, label: "1", draft: "", entries: [] }]);
   const [activeId, setActiveId] = useState(1), [busy, setBusy] = useState(false);
@@ -50,7 +51,7 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
   return <section aria-label={copy("设备命令", "Device commands")}>
     <h3>{copy("设备命令", "Device commands")}</h3>
     {onOpenLocalTerminal ? <button onClick={onOpenLocalTerminal}>{copy("打开本机终端", "Open local terminal")}</button> : null}
-    <p>{copy("手动执行单次 HDC shell 命令，每次最多 15 秒、128 KiB 输出。标签保留本页记录，但每条命令都开启新 Shell；cd 和环境变量不会延续。取消后设备端副作用可能仍需手动核对。", "Run one HDC shell command at a time (15 seconds, 128 KiB output). Tabs retain page history, but each command starts a new shell; cd and environment changes do not persist. Check device effects after cancellation.")}</p>
+    <p>{copy("可使用下方交互式设备 Shell，或执行单次 HDC 命令（最多 15 秒、128 KiB 输出）。单次命令不保留 cd 和环境变量；取消后设备端副作用可能仍需核对。", "Use the interactive device shell below, or run one HDC command (15 seconds, 128 KiB output). One-shot commands do not preserve cd or environment changes; verify device effects after cancellation.")}</p>
     <div role="tablist" aria-label={copy("命令标签", "Command tabs")}>{tabs.map(tab => <span key={tab.id}>
       <button role="tab" aria-selected={activeId === tab.id} onClick={() => setActiveId(tab.id)}>{tab.label}</button>
       {tabs.length > 1 ? <button disabled={busy} aria-label={copy(`关闭标签 ${tab.label}`, `Close tab ${tab.label}`)} onClick={() => { setTabs(current => current.filter(item => item.id !== tab.id)); if (activeId === tab.id) setActiveId(tabs.find(item => item.id !== tab.id)!.id); }}>×</button> : null}
@@ -74,5 +75,7 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
       {entry.stderr ? <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", maxHeight: 200, overflow: "auto" }}>{entry.stderr}</pre> : null}
       {entry.error ? <p role="alert">{entry.error}</p> : null}
     </article>)}</div>
+    {visible ? <InteractiveDeviceShell key={`${serial}:${kind}:${bundleName}`} serial={serial} scope={kind === "sandbox" ? { kind, bundleName } : { kind }}
+      chinese={chinese} canControl={canControl} ensureControl={ensureControl} /> : null}
   </section>;
 }

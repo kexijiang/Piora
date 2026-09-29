@@ -11,7 +11,7 @@
 | `singleton`、`allowAppUsePrivilegeExtension` 等特权 | **不把系统镜像配置伪装为运行时开关** | 官方文档要求签名/配置 `install_list_capability.json`，部分流程还需 root、系统分区挂载和重启；应在专门的系统镜像工作流中处理 |
 | 文件浏览、文本、上传/下载、新建、删除、重命名、权限、收藏、查找 | 限定共享可写路径与调试沙箱；只读浏览；文件传输；1 MiB UTF-8 哈希编辑；单项 `chmod`；本机收藏和限量递归搜索 | 沙箱要求调试签名且应用已启动；不同设备的 `stat`、`sha256sum`、文件传输及权限行为需要验证；不支持递归删除与系统路径改写 |
 | SQLite 数据库 | 下载后在本机只读查看普通表，限制 64 MiB、行列与时间，不允许任意 SQL | 运行中数据库的主文件可能遗漏 WAL；需应用导出一致快照，不宣称在线数据库一致性 |
-| 设备终端、本机终端、快捷命令 | 设备页有手动 HDC 单次命令、多标签当前页记录与自定义快捷项；可转到 Piora 已有的本机多标签 PTY | 设备命令不是交互式 PTY，`cd`/环境变量不跨命令保留；快捷项只填充，需手动执行。交互式沙箱 Shell 需要 HDC/设备版本进一步验证 |
+| 设备终端、本机终端、快捷命令 | 设备页有绑定手动 lease 的交互式 HDC PTY、单次命令、多标签单次命令记录与自定义快捷项；可转到 Piora 已有的本机多标签 PTY | 交互式设备 Shell 的 `cd`/环境变量可保留；单次命令不保留。快捷项只填充，需手动执行。交互式调试沙箱仍需在专用调试 HAP 上验证 |
 
 官方依据：[HDC 版本和沙箱命令说明](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/dfx/hdc.md)、[bm 工具及用户范围说明](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/tools/bm-tool.md)、[应用特权配置](https://github.com/openharmony/docs/blob/master/en/device-dev/subsystems/subsys-app-privilege-config-guide.md)、[SQLite WAL](https://www.sqlite.org/wal.html)。
 
@@ -33,6 +33,6 @@ Windows 主机通过 USB 连接 `BRA-AL00`（系统 `7.0.0.107`、API 26、普�
 | 发现与截图 | 设备发现、doctor 的连接与几何检查通过；只读截图返回 1216 × 2688 PNG。未据此宣称镜像流、录屏、触控校准或旋转已经验收。 |
 | 应用发现 | 当前用户应用列表返回 200 条；按 `piora` 搜索正常返回空列表。未对现有应用执行安装、停止、清数据或卸载。 |
 | 共享文件 | 在独立 `/data/local/tmp/piora-atlas-<随机 ID>` 目录验证了新建、中文及空格文件名上传、列表、UTF-8 回读、带哈希保存、搜索、`chmod 600`、重命名、下载内容校验、文件与空目录删除。测试文件已清理。普通目录 266 项的列表在批量 `stat` 修复后耗时约 0.6 秒。 |
-| 手动设备命令 | 通过设备管理器执行 `printf`，得到退出码 0 和预期输出；`exit 7` 如实返回非零退出码。原生 HDC 交互式 `shell` 在该 HDC/设备组合上可启动，但 Piora 面板仍只提供单次命令。 |
+| 设备命令 | 通过设备管理器执行 `printf`，得到退出码 0 和预期输出；`exit 7` 如实返回非零退出码。新交互式会话在同一 PTY 中先 `cd /data/local/tmp` 再执行 `pwd`，真实返回 `/data/local/tmp`；结束时关闭 PTY。网页端展示仍待验证。 |
 
-这是一台普通权限手机上的局部验收。专用测试 HAP、调试沙箱、SQLite 一致快照、root 能力、交互式面板终端、镜像与输入、断连和多设备等项目仍按上方步骤待验收；不能把自动测试或单台设备结果扩展为跨设备通过。
+这是一台普通权限手机上的局部验收。专用测试 HAP、调试沙箱、SQLite 一致快照、root 能力、交互式终端的网页操作、镜像与输入、断连和多设备等项目仍按上方步骤待验收；不能把自动测试或单台设备结果扩展为跨设备通过。
