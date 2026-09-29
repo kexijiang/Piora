@@ -19,6 +19,7 @@ import { runBoundedHold } from "./input/bounded-hold";
 import { focusedWindowId, windowBundle } from "./observation/window-scope";
 import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
 import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, validateWritableDeviceFilePath, type HarmonyFileScope } from "./device-files";
+import { decodeDeviceText, encodeDeviceText, MAX_DEVICE_TEXT_BYTES, type WritableDeviceNewline } from "./device-text";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -520,31 +521,27 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (await this.fileKind(serial, scope, remote, signal) !== "file") throw new HarmonyError("INVALID_ARGUMENT", "Choose a regular device text file");
     const sizeText = await this.fileShell(serial, scope, `stat -c '%s' ${quoteDeviceShell(remote)}`, "device_text_size", signal);
     const size = Number(sizeText);
-    if (!/^\d+$/.test(sizeText) || !Number.isSafeInteger(size) || size > 1024 * 1024) {
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Text preview is limited to 1 MiB UTF-8 files");
+    if (!/^\d+$/.test(sizeText) || !Number.isSafeInteger(size) || size > MAX_DEVICE_TEXT_BYTES) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Text preview is limited to 2 MiB UTF-8 files");
     }
     const directory = await mkdtemp(join(tmpdir(), "piora-harmony-text-"));
     const local = join(directory, "preview.txt");
     try {
       await this.pullFile(serial, scope, remote, local, signal);
       const bytes = await readFile(local);
-      if (bytes.length !== size || bytes.includes(0)) throw new HarmonyError("INVALID_RESPONSE", "Device file is incomplete or contains binary data");
-      let text: string;
-      try { text = new TextDecoder("utf-8", { fatal: true }).decode(bytes); }
-      catch { throw new HarmonyError("INVALID_ARGUMENT", "Device file is not UTF-8 text"); }
-      return { text, hash: createHash("sha256").update(bytes).digest("hex"), size };
+      if (bytes.length !== size) throw new HarmonyError("INVALID_RESPONSE", "Device file is incomplete");
+      return { ...decodeDeviceText(bytes), hash: createHash("sha256").update(bytes).digest("hex"), size };
     } finally { await rm(directory, { recursive: true, force: true }); }
   }
 
-  async saveTextFile(serial: string, scope: HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal): Promise<void> {
+  async saveTextFile(serial: string, scope: HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: WritableDeviceNewline): Promise<void> {
     const remote = validateWritableDeviceFilePath(scope, path);
     if (typeof text !== "string" || text.includes("\0") || !/^[a-f0-9]{64}$/.test(expectedHash)) {
       throw new HarmonyError("INVALID_ARGUMENT", "Text and the expected SHA-256 are required");
     }
-    const bytes = Buffer.from(text, "utf8");
-    if (bytes.length > 1024 * 1024) throw new HarmonyError("INVALID_ARGUMENT", "Device text editing is limited to 1 MiB");
     const current = await this.readTextFile(serial, scope, remote, signal);
     if (current.hash !== expectedHash) throw new HarmonyError("STALE_SNAPSHOT", "The device file changed since it was opened; reload before saving");
+    const bytes = encodeDeviceText(text, current.encoding ?? "utf-8", current.newline ?? "lf", newlineMode);
     const directory = await mkdtemp(join(tmpdir(), "piora-harmony-edit-"));
     const local = join(directory, "edit.txt");
     const staged = validateWritableDeviceFilePath(scope, `${remote}.piora-${randomUUID()}.tmp`);

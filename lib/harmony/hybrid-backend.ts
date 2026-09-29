@@ -208,8 +208,8 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.readTextFile(serial, scope, path, signal);
   }
 
-  async saveTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal) {
-    await this.hdc.saveTextFile(serial, scope, path, text, expectedHash, signal);
+  async saveTextFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline) {
+    await this.hdc.saveTextFile(serial, scope, path, text, expectedHash, signal, newlineMode);
   }
 
   async runShellCommand(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal) {

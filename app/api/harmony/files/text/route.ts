@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const denied = requireHarmonyAccess(request); if (denied) return denied;
   if (!hasJsonContentType(request)) return noStoreJson({ error: "Content-Type must be application/json" }, { status: 415 });
   try {
-    const body = await parseJsonWithinLimit(request, 2 * 1024 * 1024) as Record<string, unknown>;
+    const body = await parseJsonWithinLimit(request, 16 * 1024 * 1024) as Record<string, unknown>;
     if (!body || typeof body.serial !== "string" || typeof body.leaseToken !== "string" || typeof body.path !== "string"
       || typeof body.text !== "string" || typeof body.expectedHash !== "string"
       || (body.kind !== "shared" && body.kind !== "sandbox") || (body.kind === "sandbox" && typeof body.bundleName !== "string")) {
@@ -32,7 +32,8 @@ export async function POST(request: Request) {
     }
     const scope: HarmonyFileScope = body.kind === "shared" ? { kind: "shared" } : { kind: "sandbox", bundleName: body.bundleName as string };
     const result = await getHarmonyDeviceManager().saveTextFile({ serial: body.serial, leaseToken: body.leaseToken,
-      scope, path: body.path, text: body.text, expectedHash: body.expectedHash, signal: request.signal });
+      scope, path: body.path, text: body.text, expectedHash: body.expectedHash,
+      newlineMode: body.newlineMode === undefined ? undefined : body.newlineMode as "lf" | "crlf" | "cr", signal: request.signal });
     return noStoreJson({ result });
   } catch (error) {
     if (error instanceof JsonBodyTooLargeError) return noStoreJson({ error: "Request body is too large" }, { status: 413 });

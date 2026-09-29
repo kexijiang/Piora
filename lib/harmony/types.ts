@@ -423,8 +423,8 @@ export interface HarmonyAutomationBackend {
   deletePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
   renamePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void>;
   chmodPath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, mode: string, signal?: AbortSignal): Promise<void>;
-  readTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<{ text: string; hash: string; size: number }>;
-  saveTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal): Promise<void>;
+  readTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<{ text: string; hash: string; size: number; encoding?: "utf-8" | "utf-8-bom"; newline?: import("./device-text").DeviceNewline }>;
+  saveTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline): Promise<void>;
   runShellCommand?(serial: string, scope: import("./device-files").HarmonyFileScope, command: string, signal?: AbortSignal): Promise<{ stdout: string; stderr: string; exitCode: number; durationMs: number }>;
   appTestAudio?(serial: string, packet: string, signal?: AbortSignal): Promise<void>;
   doctorProbes?(serial: string, signal?: AbortSignal): Promise<{ hdcVersion?: string; checks: import("./contracts/capabilities").HarmonyDoctorReport["checks"] }>;

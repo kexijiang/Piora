@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { HarmonyDeviceFile, HarmonyFileScope } from "@/lib/harmony/device-files";
+import type { DeviceNewline, WritableDeviceNewline } from "@/lib/harmony/device-text";
 import { SqliteViewer } from "./SqliteViewer";
 import { visibleDeviceFiles, type FileSortKey } from "./file-list-view";
 
@@ -16,8 +17,9 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
   const [sourcePath, setSourcePath] = useState(""), [remotePath, setRemotePath] = useState(""), [overwrite, setOverwrite] = useState(false);
   const [directoryPath, setDirectoryPath] = useState(""), [newName, setNewName] = useState("");
   const [newMode, setNewMode] = useState("");
-  const [preview, setPreview] = useState<{ text: string; hash: string; size: number }>();
+  const [preview, setPreview] = useState<{ text: string; hash: string; size: number; encoding?: "utf-8" | "utf-8-bom"; newline?: DeviceNewline }>();
   const [editedText, setEditedText] = useState("");
+  const [newlineMode, setNewlineMode] = useState<WritableDeviceNewline>();
   const [databasePath, setDatabasePath] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResult, setSearchResult] = useState<{ files: HarmonyDeviceFile[]; scannedDirectories: number; skippedDirectories: number; truncated: boolean }>();
@@ -78,7 +80,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       const params = new URLSearchParams({ serial, kind, path: selected.path, ...(kind === "sandbox" ? { bundleName } : {}) });
       const response = await fetch(`/api/harmony/files/text?${params}`, { signal: current.signal, cache: "no-store" });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
-      setPreview(data.result); setEditedText(data.result.text);
+      setPreview(data.result); setEditedText(data.result.text); setNewlineMode(undefined);
     } catch (failure) { if (!current.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); }
     finally { if (controller.current === current) setBusy(false); }
   };
@@ -88,7 +90,7 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
     try {
       const response = await fetch("/api/harmony/files/text", { method: "POST", headers: { "Content-Type": "application/json" }, signal: current.signal,
         body: JSON.stringify({ serial, leaseToken: await ensureControl(), kind, ...(kind === "sandbox" ? { bundleName } : {}), path: selected.path,
-          text: editedText, expectedHash: preview.hash }) });
+          text: editedText, expectedHash: preview.hash, ...(newlineMode ? { newlineMode } : {}) }) });
       const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error);
       setPreview(undefined);
       setNotice(copy("设备已核对新文本哈希；重新打开可查看最新内容。", "The device verified the new text hash; reopen to inspect the saved content."));
@@ -155,9 +157,14 @@ export function DeviceFiles({ serial, chinese, cwd, canControl, ensureControl }:
       <small> · {file.kind}{file.size === undefined ? "" : ` · ${file.size} B`}{file.modifiedAt ? ` · ${new Date(file.modifiedAt).toLocaleString()}` : ""}{file.mode ? ` · ${file.mode}` : ""}</small>
     </li>)}</ul>
     {selected?.kind === "file" ? <fieldset><legend>{copy("下载文件", "Download file")}: {selected.name}</legend>
-      <button disabled={busy} onClick={() => void loadPreview()}>{copy("预览 UTF-8 文本", "Preview UTF-8 text")}</button>
-      {preview ? <><small>{preview.size} B · SHA-256 {preview.hash}</small><textarea value={editedText} onChange={event => setEditedText(event.target.value)} rows={16} style={{ width: "100%" }} />
-        <button disabled={busy || !canControl || editedText === preview.text} onClick={() => void saveText()}>{copy("核对原内容并保存", "Verify original and save")}</button></> : null}
+      <button disabled={busy} onClick={() => void loadPreview()}>{copy("预览 UTF-8 文本（最多 2 MiB）", "Preview UTF-8 text (up to 2 MiB)")}</button>
+      {preview ? <><small>{preview.size} B · SHA-256 {preview.hash} · {preview.encoding ?? "utf-8"} · {preview.newline ?? "lf"}</small>
+        {preview.newline === "mixed" ? <label>{copy("原文件混用换行符；保存时统一为", "Mixed line endings; normalize on save to")}
+          <select value={newlineMode ?? ""} onChange={event => setNewlineMode(event.target.value ? event.target.value as WritableDeviceNewline : undefined)}>
+            <option value="">{copy("选择换行符", "Choose line endings")}</option><option value="lf">LF</option><option value="crlf">CRLF</option><option value="cr">CR</option>
+          </select></label> : null}
+        <textarea value={editedText} onChange={event => setEditedText(event.target.value)} rows={16} style={{ width: "100%" }} />
+        <button disabled={busy || !canControl || (preview.newline === "mixed" && !newlineMode) || (editedText === preview.text && !newlineMode)} onClick={() => void saveText()}>{copy("核对原内容并保存", "Verify original and save")}</button></> : null}
       <p>{copy("保存到已获准工作区中的新文件名；不会覆盖现有文件。", "Save to a new file within an allowed workspace; existing files are never overwritten.")}</p>
       <label>{copy("本地完整路径", "Full local path")}<input value={destinationPath} onChange={event => setDestinationPath(event.target.value)} /></label>
       <button disabled={busy || !destinationPath.trim()} onClick={() => void download()}>{copy("下载到本机", "Download to computer")}</button>

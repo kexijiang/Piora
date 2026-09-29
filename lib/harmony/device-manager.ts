@@ -654,11 +654,11 @@ export class HarmonyDeviceManager {
     }, signal, undefined, serial);
   }
 
-  async saveTextFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; text: string; expectedHash: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+  async saveTextFile(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; text: string; expectedHash: string; newlineMode?: import("./device-text").WritableDeviceNewline; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
     const result = await this.action("save_text_file", options.serial, options.leaseToken, undefined, options.signal,
       async (backend, signal) => {
         if (!backend.saveTextFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device text editing is unavailable");
-        await backend.saveTextFile(options.serial, options.scope, options.path, options.text, options.expectedHash, signal);
+        await backend.saveTextFile(options.serial, options.scope, options.path, options.text, options.expectedHash, signal, options.newlineMode);
       });
     if (result.receipt) { result.receipt.effect = "applied"; result.receipt.verification = "passed"; }
     return result;
