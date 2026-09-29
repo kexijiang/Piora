@@ -95,7 +95,7 @@ async function privateCopy(path: string): Promise<{ directory: string; snapshot:
 
 function validateRead(table: string | undefined, offset: number, sql?: string): void {
   if (table !== undefined && (typeof table !== "string" || !table || table.length > 256)) throw new HarmonyError("INVALID_ARGUMENT", "Choose a valid table");
-  if (!Number.isInteger(offset) || offset < 0 || offset > (sql ? 800 : 10_000)) throw new HarmonyError("INVALID_ARGUMENT", "Database offset is outside the allowed range");
+  if (!Number.isInteger(offset) || offset < 0 || offset > (sql ? 980 : 10_000)) throw new HarmonyError("INVALID_ARGUMENT", "Database offset is outside the allowed range");
   if (sql !== undefined && (typeof sql !== "string" || sql.length > 4096 || !/^\s*(?:SELECT|WITH)\b/i.test(sql) || /[;\0]/.test(sql))) {
     throw new HarmonyError("INVALID_ARGUMENT", "Enter one read-only SELECT or WITH query without a semicolon");
   }
