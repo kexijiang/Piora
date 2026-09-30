@@ -9,6 +9,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - Update Electron within the 43.x series and refresh Next.js, HTTP, URI, date, and archive dependencies with stable fixes. Keep the current Pi runtime while its session lifecycle migration receives separate acceptance testing.
 - Preserve strict bundled-dependency patch checks, verify the actual patched runtime before auditing it, and refresh third-party license records.
 - Synchronize packaged Pi dependency checks with the reviewed security versions and reject stale or mislabeled packaged copies in regression tests.
+- Keep crash-recovery acceptance checks synchronized with the worker's committed ready state and report child-process failures directly.
 - Fix the current DevEco CLI's Axios security issues while preserving its packaged entrypoint and Harmony integration.
 - Check the separately maintained website in CI, including its dependency audit and static build, after updating its Cloudflare toolchain.
 

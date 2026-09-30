@@ -36,6 +36,8 @@ Regression tests cover unreviewed versions, separate packaging source roots, ide
 
 Windows CI successfully built the upgraded Electron application, then exposed stale version assertions in the packaged Pi verifier. Those assertions now require brace-expansion 5.0.12 and Undici 8.11.2. Regression fixtures exercise the actual verifier, accepting reviewed packages and rejecting previous versions, incorrect identities and missing manifests; the packaging gate remains strict.
 
+A subsequent Windows crash-recovery test timed out while polling the ready journal. The child now reports its committed ready state from its own event loop, avoiding repeated parent reads during atomic replacement. After killing it, the parent independently asserts the durable ready journal and absence of an ownership grant before recovering the same identity. All waits check worker exit/errors directly; the original deadlines and recovery assertions remain unchanged. The original CI log did not capture child stderr at that wait, so its underlying exit/filesystem cause is not claimed as proven.
+
 ## Updates deliberately retained for separate work
 
 | Component | Current / available | Reason |
