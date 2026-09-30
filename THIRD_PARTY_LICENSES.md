@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `5f5147af6bf2cf899518011e45f37811cb595d3fe9a58edc94c3636b5516d784`
+Lockfile SHA-256: `97da502ea227256557ffdea44a70316199c0e397fbba76e1208d64ca7617ee3f`
 
-Unique locked packages: **1377**. Runtime packages: **935**. Build/development-only packages: **442**.
+Unique locked packages: **1376**. Runtime packages: **934**. Build/development-only packages: **442**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -344,7 +344,6 @@ Every locked package declares a license.
 | `async` | `3.2.6` | MIT | No |
 | `asyncbox` | `3.0.0` | Apache-2.0 | No |
 | `asynckit` | `0.4.0` | MIT | No |
-| `axios` | `1.19.0` | MIT | No |
 | `axios` | `1.20.0` | MIT | No |
 | `b4a` | `1.8.1` | Apache-2.0 | No |
 | `babel-plugin-macros` | `3.1.0` | MIT | No |

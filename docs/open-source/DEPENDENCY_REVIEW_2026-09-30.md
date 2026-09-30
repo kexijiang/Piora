@@ -19,6 +19,7 @@ Reviewed against main `0e6fc8e33dbfc08e1c43b345a931ade1f3ec17f3` in an independe
 | ip-address | 10.7.0 | 10.7.2 | Address parsing/diagnostic fixes within the current major. |
 | Moment | 2.30.1 | 2.31.0 | Locale input/path validation fix; existing API retained. |
 | fastq (transitive) | 1.20.1 | 1.20.3 | Refreshed within the existing filesystem-tool dependency range. |
+| Axios (DevEco CLI) | 1.19.0 | 1.20.0 | Scoped override fixes HTTP/2, prototype-pollution and parsing issues while preserving the existing CLI entrypoint/layout. |
 | Website @cloudflare/vite-plugin | 1.54.2 | 1.62.3 | Supported stable plugin update with Wrangler/worker types kept together. |
 | Website Wrangler | 4.127.1 | 4.145.0 | Stable 4.x fixes for the active website's Cloudflare toolchain. |
 | Website @cloudflare/workers-types | 5.20260830.1 | 5.20260930.2 | Required compatible peer of the updated toolchain. |
@@ -40,8 +41,9 @@ Regression tests cover unreviewed versions, separate packaging source roots, ide
 | Pi agent/AI/coding-agent | 0.84.3 / 0.99.1 (older PR #60 targets 0.87.1) | Even 0.87.1 changes `shouldStopAfterTurn` to `finishTurn`, makes SessionManager authoritative for provider context, and changes context-edit/turn-end/ProviderStreams contracts. Current shell code depends on the old callback to enforce 30 steps and three repeated failures. Session restore, compression, providers and extensions require migration and actual termination/queue/automatic-compaction acceptance requested in #60. CI alone cannot establish that compatibility. |
 | React / server-dom-webpack | 19.2.8 / 19.3.0 | Coordinate rendering/runtime migration with the separate Vinext beta website rather than mixing it into security patch maintenance. |
 | KaTeX / iconv-lite / Three | 0.16.47 / 0.18.9; 0.6.3 / 0.7.3; 0.185.1 / 0.186.1 | Minor changes before 1.0 can change API/behavior; math output, Harmony encoding and rendering require dedicated coverage. |
-| koffi / Deveco automation SDK | 3.2.1 / 3.3.2; 1.3.3 / 1.3.4 | Native clipboard/ABI and Harmony platform behavior need their own Windows/device acceptance. |
+| koffi / DevEco CLI | 3.2.1 / 3.3.2; 1.3.3 / 1.3.4 | Native clipboard/ABI needs Windows acceptance. CLI 1.3.4 replaces `dist/cli.js` with a root wrapper and optional implementation packages, breaking the application's direct entrypoint and package verifier. Retain 1.3.3 and scope its Axios security update separately. |
 | TypeScript / ESLint / @electron/asar | 5.9.3 / 7.0.2; 9.x / 10.x; 3.4.1 / 4.3.1 | Major compiler/lint/packaging migrations, not automatic lock refreshes. |
+| GitHub checkout / setup-node actions | v4.2.2 / v7.0.1; v4.4.0 / v7.0.0 | SHA-pinned actions still work on hosted runners, which report forced Node 24 execution. Major action/runner/cache changes require a separate review including the optional self-hosted Harmony runner. The deprecation warning is retained and disclosed. |
 | node-pty / electron-builder | 1.1.0 / 26.15.3 | Required local ConPTY shutdown and dependency-collector patches are version guarded. Preserve reviewed compatibility until a replacement is evaluated. |
 | Mediabunny | 1.60.0 / 1.61.0 | Used by Harmony recording; real media/device validation and source-license provenance need a separate update. |
 | sherpa-onnx | 1.13.6 / 1.13.8 | Active SenseVoice speech runtime; binary checksums, ONNX runtime and real voice-path acceptance are coupled. |
@@ -62,11 +64,15 @@ Local baseline: root installation, lint, typecheck, 17 security tests and 334 Ha
 
 Upgrade checks: clean root/website installation; root lint/typecheck; 40 security/license/audit regression tests (one symlink-permission skip); license inventory, repository hygiene, Harmony schema/docs, background hashes and performance budgets; website lint/typecheck and three tests all passed. Production runtime audit and website audit returned zero vulnerabilities. Full suite and CI results are recorded in the pull request so results correspond to its exact head SHA.
 
+Additional final checks: 330 upgraded Harmony/RPC/session/Shell integration tests passed with one permission skip, including the real Agent loop's 30-step guard. The first CI head passed all six OS/shards and Windows Shell resource checks, but Linux quality audit caught the DevEco/Axios vulnerability; the scoped Axios fix addresses it. CLI `--version`/`--help`, actual CLI-resolved Axios HTTP/cancellation, Harmony checking and release-hardening checks passed (14 passed, one permission skip). Final runtime and effective all-dependency audits both returned zero vulnerabilities. A local full-suite attempt did not finish after an Electron test; it is not recorded as a passing full run. Final CI is the full-suite/packaging authority.
+
 No local production build or release packaging was run, following AGENTS.md. CI performs the website static build and Windows unpacked packaging/isolated verification. No release is published. Harmony real voice path, signed test HAP, multiple devices/Wi-Fi and Pi's requested manual migration acceptance have not been verified here and are not claimed as passed.
 
 ## Official evidence
 
 - [Electron 43.7.7](https://github.com/electron/electron/releases/tag/v43.7.7), [Next.js 16.3.7](https://github.com/vercel/next.js/releases/tag/v16.3.7).
+- [Axios 1.20.0 security and compatibility notes](https://github.com/axios/axios/releases/tag/v1.20.0); DevEco CLI 1.3.4's official npm tarball was inspected without executing it.
+- [checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1), [setup-node v7.0.0](https://github.com/actions/setup-node/releases/tag/v7.0.0) were identified and retained for separate runner migration.
 - [Undici 8.11.2](https://github.com/nodejs/undici/releases/tag/v8.11.2), [7.30.0](https://github.com/nodejs/undici/releases/tag/v7.30.0), [6.29.0](https://github.com/nodejs/undici/releases/tag/v6.29.0), [brace-expansion security advisory](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-q2hr-2g5m-vwhr).
 - [humanfs node 0.16.8](https://github.com/humanwhocodes/humanfs/releases/tag/node-v0.16.8), [fast-uri 3.1.8](https://github.com/fastify/fast-uri/releases/tag/v3.1.8), [Moment 2.31.0](https://github.com/moment/moment/releases/tag/2.31.0), [ip-address releases](https://github.com/beaugunderson/ip-address/releases).
 - [Cloudflare Wrangler 4.145.0](https://github.com/cloudflare/workers-sdk/releases/tag/wrangler%404.145.0), [Vite plugin 1.62.3](https://github.com/cloudflare/workers-sdk/releases/tag/%40cloudflare%2Fvite-plugin%401.62.3).
