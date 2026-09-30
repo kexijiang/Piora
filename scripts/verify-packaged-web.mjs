@@ -798,6 +798,22 @@ async function stopChild(child) {
   }
 }
 
+export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
+  const patchedBundledDependencies = [
+    { name: "brace-expansion", version: "5.0.12" },
+    { name: "undici", version: "8.11.2" },
+  ];
+  for (const expected of patchedBundledDependencies) {
+    const manifestPath = join(runtimeWebRoot, "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", expected.name, "package.json");
+    await assertFile(manifestPath);
+    const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    if (manifest?.name !== expected.name || manifest?.version !== expected.version) {
+      throw new Error(`Packaged Pi runtime must contain the reviewed ${expected.name}@${expected.version}.`);
+    }
+  }
+  return patchedBundledDependencies;
+}
+
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
@@ -840,27 +856,7 @@ async function main() {
   }
   const packagedPiAiRuntime = await verifyPackagedPiAiRuntime(runtimeWebRoot);
   const packagedPiAiModules = await verifyPackagedPiAiModuleSurface(runtimeWebRoot);
-  const patchedBundledDependencies = [
-    { name: "brace-expansion", version: "5.0.9" },
-    { name: "undici", version: "8.9.0" },
-  ];
-  for (const expected of patchedBundledDependencies) {
-    const manifestPath = [
-      "node_modules",
-      "@earendil-works",
-      "pi-coding-agent",
-      "node_modules",
-      expected.name,
-      "package.json",
-    ].join("/");
-    await assertFile(join(runtimeWebRoot, ...manifestPath.split("/")));
-    const manifest = JSON.parse(await readFile(join(runtimeWebRoot, ...manifestPath.split("/")), "utf8"));
-    if (manifest?.name !== expected.name || manifest?.version !== expected.version) {
-      throw new Error(
-        `Packaged Pi runtime must contain the reviewed ${expected.name}@${expected.version}.`,
-      );
-    }
-  }
+  const patchedBundledDependencies = await verifyPackagedBundledDependencies(runtimeWebRoot);
   const looseNodeModules = await stat(join(packagedWebRoot, "node_modules")).catch(() => undefined);
   if (looseNodeModules) {
     throw new Error("Packaged web dependencies must be archived; loose node_modules would regress portable startup");

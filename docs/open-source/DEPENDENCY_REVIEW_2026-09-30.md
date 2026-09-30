@@ -34,6 +34,8 @@ The refreshed lock reflects the published Pi tarball's embedded brace-expansion 
 
 Regression tests cover unreviewed versions, separate packaging source roots, idempotence, removed old files, license provenance, unpatched runtime packages and same-version file tampering. Existing Electron-builder collector and node-pty patches retain their original strict version guards.
 
+Windows CI successfully built the upgraded Electron application, then exposed stale version assertions in the packaged Pi verifier. Those assertions now require brace-expansion 5.0.12 and Undici 8.11.2. Regression fixtures exercise the actual verifier, accepting reviewed packages and rejecting previous versions, incorrect identities and missing manifests; the packaging gate remains strict.
+
 ## Updates deliberately retained for separate work
 
 | Component | Current / available | Reason |
