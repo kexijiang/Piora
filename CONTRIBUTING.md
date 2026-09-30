@@ -37,6 +37,7 @@ Run all checks before submitting a pull request:
 
 ```powershell
 npm run licenses:check
+npm run audit:runtime
 npm run verify:hygiene
 npm run lint
 npm run typecheck
@@ -45,6 +46,13 @@ npm run verify:backgrounds
 ```
 
 CI is configured to run the source checks on Windows and Linux, including deterministic license-inventory freshness, then build and verify the unpacked application on Windows. Release changes should additionally complete the artifact, extension-fixture, license, secret, and clean-machine checks in the [public launch checklist](docs/open-source/LAUNCH_CHECKLIST.md). A workflow configuration is not evidence that a public run has passed.
+
+`audit:runtime` verifies that Pi's two reviewed postinstall dependency replacements
+have the expected locked identities and exactly match the installed source files,
+then asks npm to audit a temporary lock describing those final versions. The
+committed lock remains unchanged and no advisory is suppressed. The independent
+`website` lock is checked separately in CI with normal peer resolution, an audit,
+`npm run check`, and a Sites build.
 
 ## Making a change
 

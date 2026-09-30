@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `ef5cc143498fe8d65e7c35e9d8ea224531435f7130d6038477476afae23b034b`
+Lockfile SHA-256: `5f5147af6bf2cf899518011e45f37811cb595d3fe9a58edc94c3636b5516d784`
 
-Unique locked packages: **1374**. Runtime packages: **933**. Build/development-only packages: **441**.
+Unique locked packages: **1377**. Runtime packages: **935**. Build/development-only packages: **442**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -219,15 +219,15 @@ Every locked package declares a license.
 | `@microsoft/winappcli` | `0.7.0` | MIT | Yes |
 | `@mixmark-io/domino` | `2.2.0` | BSD-2-Clause | No |
 | `@modelcontextprotocol/sdk` | `1.30.0` | MIT | No |
-| `@next/env` | `16.3.3` | MIT | No |
-| `@next/swc-darwin-arm64` | `16.3.3` | MIT | Yes |
-| `@next/swc-darwin-x64` | `16.3.3` | MIT | Yes |
-| `@next/swc-linux-arm64-gnu` | `16.3.3` | MIT | Yes |
-| `@next/swc-linux-arm64-musl` | `16.3.3` | MIT | Yes |
-| `@next/swc-linux-x64-gnu` | `16.3.3` | MIT | Yes |
-| `@next/swc-linux-x64-musl` | `16.3.3` | MIT | Yes |
-| `@next/swc-win32-arm64-msvc` | `16.3.3` | MIT | Yes |
-| `@next/swc-win32-x64-msvc` | `16.3.3` | MIT | Yes |
+| `@next/env` | `16.3.7` | MIT | No |
+| `@next/swc-darwin-arm64` | `16.3.7` | MIT | Yes |
+| `@next/swc-darwin-x64` | `16.3.7` | MIT | Yes |
+| `@next/swc-linux-arm64-gnu` | `16.3.7` | MIT | Yes |
+| `@next/swc-linux-arm64-musl` | `16.3.7` | MIT | Yes |
+| `@next/swc-linux-x64-gnu` | `16.3.7` | MIT | Yes |
+| `@next/swc-linux-x64-musl` | `16.3.7` | MIT | Yes |
+| `@next/swc-win32-arm64-msvc` | `16.3.7` | MIT | Yes |
+| `@next/swc-win32-x64-msvc` | `16.3.7` | MIT | Yes |
 | `@nodable/entities` | `2.1.0` | MIT | No |
 | `@oozcitak/dom` | `1.15.10` | MIT | No |
 | `@oozcitak/infra` | `1.0.8` | MIT | No |
@@ -364,7 +364,8 @@ Every locked package declares a license.
 | `bluebird` | `3.7.2` | MIT | No |
 | `body-parser` | `2.3.0` | MIT | No |
 | `bowser` | `2.14.1` | MIT | No |
-| `brace-expansion` | `2.1.4` | MIT | No |
+| `brace-expansion` | `2.1.7` | MIT | No |
+| `brace-expansion` | `5.0.12` | MIT | No |
 | `brace-expansion` | `5.0.9` | MIT | No |
 | `buffer` | `6.0.3` | MIT | No |
 | `buffer-crc32` | `1.0.0` | MIT | No |
@@ -507,7 +508,7 @@ Every locked package declares a license.
 | `extend` | `3.0.2` | MIT | No |
 | `fast-deep-equal` | `3.1.3` | MIT | No |
 | `fast-fifo` | `1.3.2` | MIT | No |
-| `fast-uri` | `3.1.7` | BSD-3-Clause | No |
+| `fast-uri` | `3.1.8` | BSD-3-Clause | No |
 | `fast-xml-builder` | `1.2.0` | MIT | No |
 | `fast-xml-parser` | `5.7.3` | MIT | No |
 | `fault` | `1.0.4` | MIT | No |
@@ -587,7 +588,7 @@ Every locked package declares a license.
 | `inline-style-parser` | `0.2.7` | MIT | No |
 | `internmap` | `1.0.1` | ISC | No |
 | `internmap` | `2.0.3` | ISC | No |
-| `ip-address` | `10.7.0` | MIT | No |
+| `ip-address` | `10.7.2` | MIT | No |
 | `ipaddr.js` | `1.9.1` | MIT | No |
 | `is-alphabetical` | `2.0.1` | MIT | No |
 | `is-alphanumerical` | `2.0.1` | MIT | No |
@@ -711,12 +712,12 @@ Every locked package declares a license.
 | `minipass` | `7.1.3` | BlueOak-1.0.0 | No |
 | `minizlib` | `3.1.0` | MIT | No |
 | `mlly` | `1.8.2` | MIT | No |
-| `moment` | `2.30.1` | MIT | No |
+| `moment` | `2.31.0` | MIT | No |
 | `ms` | `2.1.3` | MIT | No |
 | `nan` | `2.28.0` | MIT | Yes |
 | `nanoid` | `3.3.18` | MIT | No |
 | `negotiator` | `1.1.0` | MIT | No |
-| `next` | `16.3.3` | MIT | No |
+| `next` | `16.3.7` | MIT | No |
 | `node-addon-api` | `7.1.1` | MIT | No |
 | `node-domexception` | `1.0.0` | MIT | No |
 | `node-fetch` | `3.3.2` | MIT | No |
@@ -765,7 +766,7 @@ Every locked package declares a license.
 | `points-on-path` | `0.2.1` | MIT | No |
 | `polished` | `4.3.1` | MIT | No |
 | `portfinder` | `1.0.38` | MIT | No |
-| `postcss` | `8.5.26` | MIT | No |
+| `postcss` | `8.5.28` | MIT | No |
 | `pretty-ms` | `9.3.1` | MIT | No |
 | `prismjs` | `1.30.0` | MIT | No |
 | `process` | `0.11.10` | MIT | No |
@@ -894,6 +895,7 @@ Every locked package declares a license.
 | `typescript` | `5.9.3` | Apache-2.0 | No |
 | `ufo` | `1.6.4` | MIT | No |
 | `underscore` | `1.13.8` | MIT | No |
+| `undici` | `8.11.2` | MIT | No |
 | `undici` | `8.9.0` | MIT | No |
 | `undici-types` | `5.26.5` | MIT | No |
 | `undici-types` | `6.21.0` | MIT | No |
@@ -993,8 +995,9 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@eslint/js` | `9.39.5` | MIT | No |
 | `@eslint/object-schema` | `2.1.7` | Apache-2.0 | No |
 | `@eslint/plugin-kit` | `0.4.1` | Apache-2.0 | No |
-| `@humanfs/core` | `0.19.1` | Apache-2.0 | No |
-| `@humanfs/node` | `0.16.7` | Apache-2.0 | No |
+| `@humanfs/core` | `0.19.2` | Apache-2.0 | No |
+| `@humanfs/node` | `0.16.8` | Apache-2.0 | No |
+| `@humanfs/types` | `0.15.0` | Apache-2.0 | No |
 | `@humanwhocodes/module-importer` | `1.0.1` | Apache-2.0 | No |
 | `@humanwhocodes/retry` | `0.4.3` | Apache-2.0 | No |
 | `@jridgewell/remapping` | `2.3.5` | MIT | No |
@@ -1002,7 +1005,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@malept/flatpak-bundler` | `0.4.0` | MIT | No |
 | `@napi-rs/wasm-runtime` | `0.2.12` | MIT | Yes |
 | `@napi-rs/wasm-runtime` | `1.1.4` | MIT | Yes |
-| `@next/eslint-plugin-next` | `16.3.3` | MIT | No |
+| `@next/eslint-plugin-next` | `16.3.7` | MIT | No |
 | `@noble/hashes` | `1.4.0` | MIT | No |
 | `@noble/hashes` | `2.2.0` | MIT | No |
 | `@nodelib/fs.scandir` | `2.1.5` | MIT | No |
@@ -1105,7 +1108,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `axe-core` | `4.11.1` | MPL-2.0 | No |
 | `axobject-query` | `4.1.0` | Apache-2.0 | No |
 | `boolean` | `3.2.0` | MIT | Yes |
-| `brace-expansion` | `1.1.18` | MIT | No |
+| `brace-expansion` | `1.1.21` | MIT | No |
 | `braces` | `3.0.3` | MIT | No |
 | `browserslist` | `4.28.7` | MIT | No |
 | `builder-util` | `26.15.3` | MIT | No |
@@ -1138,7 +1141,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `dotenv-expand` | `11.0.7` | BSD-2-Clause | No |
 | `duplexer2` | `0.1.4` | BSD-3-Clause | No |
 | `ejs` | `3.1.10` | Apache-2.0 | No |
-| `electron` | `43.4.0` | MIT | No |
+| `electron` | `43.7.7` | MIT | No |
 | `electron-builder` | `26.15.3` | MIT | No |
 | `electron-publish` | `26.15.3` | MIT | No |
 | `electron-to-chromium` | `1.5.399` | ISC | No |
@@ -1153,7 +1156,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `es-to-primitive` | `1.3.0` | MIT | No |
 | `es6-error` | `4.1.1` | MIT | Yes |
 | `eslint` | `9.39.5` | MIT | No |
-| `eslint-config-next` | `16.3.3` | MIT | No |
+| `eslint-config-next` | `16.3.7` | MIT | No |
 | `eslint-import-resolver-node` | `0.3.9` | MIT | No |
 | `eslint-import-resolver-typescript` | `3.10.1` | ISC | No |
 | `eslint-module-utils` | `2.12.1` | MIT | No |
@@ -1174,7 +1177,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `fast-glob` | `3.3.1` | MIT | No |
 | `fast-json-stable-stringify` | `2.1.0` | MIT | No |
 | `fast-levenshtein` | `2.0.6` | MIT | No |
-| `fastq` | `1.20.1` | ISC | No |
+| `fastq` | `1.20.3` | ISC | No |
 | `fdir` | `6.5.0` | MIT | No |
 | `fflate` | `0.8.3` | MIT | No |
 | `file-entry-cache` | `8.0.0` | MIT | No |
@@ -1380,8 +1383,8 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `typed-array-length` | `1.0.7` | MIT | No |
 | `typescript-eslint` | `8.57.1` | MIT | No |
 | `unbox-primitive` | `1.1.0` | MIT | No |
-| `undici` | `6.28.0` | MIT | No |
-| `undici` | `7.29.0` | MIT | Yes |
+| `undici` | `6.29.0` | MIT | No |
+| `undici` | `7.30.0` | MIT | Yes |
 | `undici-types` | `7.16.0` | MIT | No |
 | `undici-types` | `7.18.2` | MIT | No |
 | `universalify` | `0.1.2` | MIT | No |

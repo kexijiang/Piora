@@ -124,8 +124,10 @@ export async function patchBundledBraceExpansion(root = projectRoot, sourceRoot 
     root,
     sourceRoot,
     packageName: "brace-expansion",
-    patchedVersion: "5.0.9",
-    acceptedBundledVersions: new Set(["5.0.7", "5.0.9"]),
+    // Pi 0.84.3's shrinkwrap bypasses root overrides for its bundled copy.
+    // Retain the reviewed replacement until a separately verified Pi migration.
+    patchedVersion: "5.0.12",
+    acceptedBundledVersions: new Set(["5.0.7", "5.0.9", "5.0.12"]),
   });
 }
 
@@ -134,8 +136,8 @@ export async function patchBundledUndici(root = projectRoot, sourceRoot = root) 
     root,
     sourceRoot,
     packageName: "undici",
-    patchedVersion: "8.9.0",
-    acceptedBundledVersions: new Set(["8.5.0", "8.9.0"]),
+    patchedVersion: "8.11.2",
+    acceptedBundledVersions: new Set(["8.5.0", "8.9.0", "8.11.2"]),
   });
 }
 

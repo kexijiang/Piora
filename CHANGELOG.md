@@ -4,6 +4,12 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### Dependency maintenance
+
+- Update Electron within the 43.x series and refresh Next.js, HTTP, URI, date, and archive dependencies with stable fixes. Keep the current Pi runtime while its session lifecycle migration receives separate acceptance testing.
+- Preserve strict bundled-dependency patch checks, verify the actual patched runtime before auditing it, and refresh third-party license records.
+- Check the separately maintained website in CI, including its dependency audit and static build, after updating its Cloudflare toolchain.
+
 ## [0.5.5-beta.1] - 2026-09-29
 
 ### 发布说明
