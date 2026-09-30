@@ -49,17 +49,17 @@ const REVIEWED_RUNTIME_REPLACEMENTS = Object.freeze([
   Object.freeze({
     lockPath: "node_modules/@earendil-works/pi-coding-agent/node_modules/brace-expansion",
     lockedName: "brace-expansion",
-    lockedVersion: "5.0.7",
+    lockedVersion: "5.0.9",
     installedName: "brace-expansion",
-    installedVersion: "5.0.9",
+    installedVersion: "5.0.12",
     mechanism: "scripts/patch-bundled-dependencies.mjs",
   }),
   Object.freeze({
     lockPath: "node_modules/@earendil-works/pi-coding-agent/node_modules/undici",
     lockedName: "undici",
-    lockedVersion: "8.5.0",
+    lockedVersion: "8.9.0",
     installedName: "undici",
-    installedVersion: "8.9.0",
+    installedVersion: "8.11.2",
     mechanism: "scripts/patch-bundled-dependencies.mjs",
   }),
 ]);
