@@ -225,7 +225,9 @@ export function SessionHistoryWorkbench({ sessionId, sessionName, location, cont
     const response = await fetchExport(format === "html" ? `/api/sessions/${encodeURIComponent(sessionId)}/export` : exportUrl(format));
     const url = URL.createObjectURL(await response.blob());
     const link = document.createElement("a"); link.href = url; link.download = `piora-history-${sessionId}.${format === "markdown" ? "md" : format}`;
-    link.click(); setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    document.body.appendChild(link);
+    try { link.click(); } finally { link.remove(); }
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   });
   const fork = (id: string) => void perform("fork", async () => {
     if (!controls || controls.busy || !index) return;

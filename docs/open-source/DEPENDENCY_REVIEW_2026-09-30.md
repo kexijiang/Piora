@@ -72,10 +72,22 @@ Additional final checks: 330 upgraded Harmony/RPC/session/Shell integration test
 
 No local production build or release packaging was run, following AGENTS.md. CI performs the website static build and Windows unpacked packaging/isolated verification. No release is published. Harmony real voice path, signed test HAP, multiple devices/Wi-Fi and Pi's requested manual migration acceptance have not been verified here and are not claimed as passed.
 
+## Follow-up after the user's merge of PR #138
+
+The user merged #138 at main `2ab638e6f32e13314f1fbfa0c58df33e688e6462` before its last Windows checks passed. Remaining repairs are based on that main commit in a separate branch/PR; merge is not recorded as verification success.
+
+- Windows shard3's extra-composer-render assertion can be reproduced by delaying real draft hydration beyond the fixed 200ms sleep. The performance fixture now waits for the actual hydrated draft key, with a deliberate 650ms storage delay, while retaining zero extra composer/Markdown renders and streaming/typing assertions.
+- Windows Shell resource acceptance observed resize requests before the PTY had processed them. It now waits for successful completed resize responses and output forwarding before revealing the terminal; an injected 200ms transport delay covers that distinction. Hidden-mount width, wrapping, input, reconnect, cancellation and stale-generation checks remain.
+- Windows history acceptance timed out waiting for a download event. The production download anchor is now attached during activation and removed afterward; acceptance explicitly enables downloads and registers the listener with the export action, including a delayed export response and actual downloaded JSON verification. The old CI did not provide browser policy/transport diagnostics sufficient to prove its exact missing-event cause.
+- `@grpc/grpc-js` 1.14.4 is an active Hypium dependency (`hypium-driver -> @grpc/grpc-js`), not an abandoned provider tool. The compatible 1.14.5 security patch addresses [certificate authorization](https://github.com/grpc/grpc-node/security/advisories/GHSA-m9gg-hp2v-232j) and [server error-detail disclosure](https://github.com/grpc/grpc-node/security/advisories/GHSA-f596-whhp-79r4). Local loopback compatibility checks exercise the actual Hypium-resolved client/server metadata and in-flight cancellation. No new provider credentials or physical-device acceptance is implied.
+
 ## Official evidence
+
+The final audit also reported the pinned Mermaid sanitizer's DOMPurify 3.4.13 [detached-subtree hook advisory](https://github.com/cure53/DOMPurify/security/advisories/GHSA-p98j-92pf-mc4p). Its existing override is updated to the reviewed 3.4.16 patch. Real-browser regression checks preserve SVG content and verify event-handler neutralization for both affected afterSanitize hook types. No additional non-security version sweep is included.
 
 - [Electron 43.7.7](https://github.com/electron/electron/releases/tag/v43.7.7), [Next.js 16.3.7](https://github.com/vercel/next.js/releases/tag/v16.3.7).
 - [Axios 1.20.0 security and compatibility notes](https://github.com/axios/axios/releases/tag/v1.20.0); DevEco CLI 1.3.4's official npm tarball was inspected without executing it.
+- [gRPC-js 1.14.5](https://github.com/grpc/grpc-node/releases/tag/%40grpc%2Fgrpc-js%401.14.5).
 - [checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1), [setup-node v7.0.0](https://github.com/actions/setup-node/releases/tag/v7.0.0) were identified and retained for separate runner migration.
 - [Undici 8.11.2](https://github.com/nodejs/undici/releases/tag/v8.11.2), [7.30.0](https://github.com/nodejs/undici/releases/tag/v7.30.0), [6.29.0](https://github.com/nodejs/undici/releases/tag/v6.29.0), [brace-expansion security advisory](https://github.com/juliangruber/brace-expansion/security/advisories/GHSA-q2hr-2g5m-vwhr).
 - [humanfs node 0.16.8](https://github.com/humanwhocodes/humanfs/releases/tag/node-v0.16.8), [fast-uri 3.1.8](https://github.com/fastify/fast-uri/releases/tag/v3.1.8), [Moment 2.31.0](https://github.com/moment/moment/releases/tag/2.31.0), [ip-address releases](https://github.com/beaugunderson/ip-address/releases).

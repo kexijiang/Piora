@@ -12,6 +12,9 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - Keep crash-recovery acceptance checks synchronized with the worker's committed ready state and report child-process failures directly.
 - Fix the current DevEco CLI's Axios security issues while preserving its packaged entrypoint and Harmony integration.
 - Check the separately maintained website in CI, including its dependency audit and static build, after updating its Cloudflare toolchain.
+- Update Hypium's gRPC transport to the 1.14.5 security patch, with local metadata and cancellation compatibility checks.
+- Refresh the pinned DOMPurify override to 3.4.16 to cover the reported detached-subtree sanitization issue.
+- Wait for draft hydration and completed PTY resizes in Windows browser acceptance; keep asynchronous history downloads attached during activation and retain strict render/output/download assertions.
 
 ## [0.5.5-beta.1] - 2026-09-29
 

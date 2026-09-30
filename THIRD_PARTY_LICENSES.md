@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `97da502ea227256557ffdea44a70316199c0e397fbba76e1208d64ca7617ee3f`
+Lockfile SHA-256: `602cd1deecc043f9a41bf915b751e1aaaa009bb3139baad31fc27e61519019fc`
 
 Unique locked packages: **1376**. Runtime packages: **934**. Build/development-only packages: **442**.
 
@@ -128,7 +128,7 @@ Every locked package declares a license.
 | `@emotion/utils` | `1.4.2` | MIT | No |
 | `@emotion/weak-memoize` | `0.4.0` | MIT | No |
 | `@google/genai` | `1.52.0` | Apache-2.0 | No |
-| `@grpc/grpc-js` | `1.14.4` | Apache-2.0 | No |
+| `@grpc/grpc-js` | `1.14.5` | Apache-2.0 | No |
 | `@grpc/proto-loader` | `0.8.1` | Apache-2.0 | No |
 | `@hono/node-server` | `2.1.1` | MIT | No |
 | `@iconify/types` | `2.0.0` | MIT | No |
@@ -471,7 +471,7 @@ Every locked package declares a license.
 | `devlop` | `1.1.0` | MIT | No |
 | `diff` | `8.0.4` | BSD-3-Clause | No |
 | `dingbat-to-unicode` | `1.0.1` | BSD-2-Clause | No |
-| `dompurify` | `3.4.13` | (MPL-2.0 OR Apache-2.0) | No |
+| `dompurify` | `3.4.16` | (MPL-2.0 OR Apache-2.0) | No |
 | `duck` | `0.1.12` | BSD | No |
 | `dunder-proto` | `1.0.1` | MIT | No |
 | `eastasianwidth` | `0.2.0` | MIT | No |
