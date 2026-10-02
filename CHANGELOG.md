@@ -6,6 +6,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### Dependency maintenance
 
+- Upgrade all four Pi runtime packages from 0.84.3 to 1.0.0; adapt turn guards, prompt admission, structured system context, headless themes and JSON tool arguments. Preserve raw chat history while the SDK owns provider context edits, and include dynamically loaded Pi workers/WASM in packaged dependency staging.
 - Update Electron within the 43.x series and refresh Next.js, HTTP, URI, date, and archive dependencies with stable fixes. Keep the current Pi runtime while its session lifecycle migration receives separate acceptance testing.
 - Preserve strict bundled-dependency patch checks, verify the actual patched runtime before auditing it, and refresh third-party license records.
 - Synchronize packaged Pi dependency checks with the reviewed security versions and reject stale or mislabeled packaged copies in regression tests.

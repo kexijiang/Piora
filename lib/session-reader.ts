@@ -346,6 +346,9 @@ export function entryToUiMessage(
   // normalizeToolCalls is a secondary guard (returns non-assistant messages as-is).
   switch (entry.type) {
     case "message": {
+      // Pi 1.0 persists structured prompt/tool loadout messages in the raw
+      // transcript. They are provider context, not chat rows or fork targets.
+      if ((entry.message as { role: string }).role === "system") return null;
       let message = options.deferToolResultImages
         ? omitToolResultBase64Images(normalizeToolCalls(entry.message))
         : normalizeToolCalls(entry.message);

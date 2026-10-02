@@ -258,7 +258,11 @@ class ShellAgentRun {
           }
           return undefined;
         },
-        shouldStopAfterTurn: () => this.stopped || this.run.steps >= 30 || [...this.failures.values()].some(count => count >= 3),
+        finishTurn: ({ message }) => {
+          if (message.stopReason === "error" || message.stopReason === "aborted") return undefined;
+          return this.stopped || this.run.steps >= 30 || [...this.failures.values()].some(count => count >= 3)
+            ? { action: "end" } : undefined;
+        },
         transformContext: async messages => shellAgentContext(messages),
       });
       this.agent.subscribe(event => {

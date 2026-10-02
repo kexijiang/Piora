@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const reviewedReplacements = [
   { name: "brace-expansion", lockedVersion: "5.0.9", installedVersion: "5.0.12" },
-  { name: "undici", lockedVersion: "8.9.0", installedVersion: "8.11.2" },
+  { name: "undici", lockedVersion: "8.10.2", installedVersion: "8.11.2" },
 ];
 
 async function fingerprint(directory) {

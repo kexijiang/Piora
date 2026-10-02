@@ -57,7 +57,7 @@ const REVIEWED_RUNTIME_REPLACEMENTS = Object.freeze([
   Object.freeze({
     lockPath: "node_modules/@earendil-works/pi-coding-agent/node_modules/undici",
     lockedName: "undici",
-    lockedVersion: "8.9.0",
+    lockedVersion: "8.10.2",
     installedName: "undici",
     installedVersion: "8.11.2",
     mechanism: "scripts/patch-bundled-dependencies.mjs",

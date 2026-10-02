@@ -214,6 +214,7 @@ export class AgentSessionWrapper {
   private extensionBindingPromise: Promise<void> | null = null;
   private extensionBindingError: unknown = null;
   private forceEmptySystemPrompt = false;
+  private emptySystemPromptProjectionInstalled = false;
   private unsubscribe: (() => void) | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private systemPromptReloadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -802,9 +803,19 @@ export class AgentSessionWrapper {
   }
 
   private applyForcedEmptySystemPrompt(): void {
-    if (this.forceEmptySystemPrompt && this.inner.agent.state) {
-      this.inner.agent.state.systemPrompt = "";
-    }
+    if (this.emptySystemPromptProjectionInstalled) return;
+    this.emptySystemPromptProjectionInstalled = true;
+    const previous = this.inner.agent.transformContext?.bind(this.inner.agent);
+    this.inner.agent.transformContext = async (messages, signal) => {
+      const projected = previous ? await previous(messages, signal) : messages;
+      if (!this.forceEmptySystemPrompt) return projected;
+      // Pi 1.0 replays prompt state from system messages; the state getter is
+      // readonly and SessionManager remains authoritative for raw history.
+      return [
+        { role: "system", content: "", tools: [], timestamp: Date.now() },
+        ...projected.filter(message => message.role !== "system"),
+      ];
+    };
   }
 
   private scheduleSystemPromptReload(): void {
@@ -1043,7 +1054,14 @@ export class AgentSessionWrapper {
               source: "rpc",
               // SDK abort() only sees an active model run, not asynchronous auth,
               // input hooks or pre-prompt compaction. Fence that late model start.
-              preflightResult: (success) => { if (success) { assertNotAborted(); admitted(); } },
+              preflightResult: (disposition) => {
+                if (!this._alive || abortGeneration !== this.abortGeneration) this.inner.clearQueue();
+                assertNotAborted();
+                // Only a started model request can later need a continuation.
+                // Handled input belongs to its extension; queued input belongs
+                // to the already-running prompt, not this admission.
+                if (disposition === "started") admitted();
+              },
             });
           };
           // Queuing a message does not own the running model's result.
@@ -1212,7 +1230,7 @@ export class AgentSessionWrapper {
                 ...(contextBreakdown ? { breakdown: contextBreakdown } : {}),
               }
             : null,
-          systemPrompt: this.inner.agent.state?.systemPrompt ?? "",
+          systemPrompt: this.forceEmptySystemPrompt ? "" : this.inner.agent.state?.systemPrompt ?? "",
           systemPromptBinding: this.getSystemPromptBinding(),
           thinkingLevel: this.inner.agent.state?.thinkingLevel ?? "off",
           extensionStatuses: this.getExtensionStatuses(),
