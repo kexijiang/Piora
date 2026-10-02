@@ -635,6 +635,11 @@ export class AgentSessionWrapper {
 
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
+      // Pi 1.0 emits structured system/loadout messages as transcript events.
+      // They remain canonical SDK/provider history but are not chat rows or
+      // streaming assistant content, matching session-reader's projection.
+      if ((event.type === "message_start" || event.type === "message_update" || event.type === "message_end")
+        && (event.message as { role?: string } | undefined)?.role === "system") return;
       this.streamingMetrics.update(event);
       this.remoteContent.update(event);
       if (event.type === "message_end" && (event.message as { role?: string } | undefined)?.role === "user" && this.pendingClientPromptId) {
