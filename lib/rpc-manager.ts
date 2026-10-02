@@ -195,6 +195,7 @@ export class AgentSessionWrapper {
   private shutdownTask: Promise<void> = Promise.resolve();
   private abortGeneration = 0;
   private promptTasks = new Set<Promise<void>>();
+  private inputAdmissions = 0;
   private lastPromptFailed = false;
   private lastAssistantResponse: unknown;
   private readonly streamingMetrics = new StreamingMetricsTracker();
@@ -511,7 +512,7 @@ export class AgentSessionWrapper {
     if (!this._alive) return "idle";
     if (this.stopping) return "stopping";
     if (this.inner.isCompacting) return "compacting";
-    if (this.promptAdmissionBusy || this.promptRunning || this.inner.isStreaming || this.inner.isBashRunning) return "running";
+    if (this.inputAdmissions || this.promptAdmissionBusy || this.promptRunning || this.inner.isStreaming || this.inner.isBashRunning) return "running";
     return "idle";
   }
 
@@ -812,7 +813,7 @@ export class AgentSessionWrapper {
       // Pi 1.0 replays prompt state from system messages; the state getter is
       // readonly and SessionManager remains authoritative for raw history.
       return [
-        { role: "system", content: "", tools: [], timestamp: Date.now() },
+        { role: "system", content: "", toolsAdded: [], timestamp: Date.now() },
         ...projected.filter(message => message.role !== "system"),
       ];
     };
@@ -1190,7 +1191,7 @@ export class AgentSessionWrapper {
         const agentState = this.inner.agent.state;
         const contextBreakdown = contextUsage ? estimateContextUsageBreakdown({
           messages: agentState?.messages ?? [],
-          systemPrompt: agentState?.systemPrompt ?? "",
+          systemPrompt: this.forceEmptySystemPrompt ? "" : agentState?.systemPrompt ?? "",
           tools: agentState?.tools ?? [],
           totalTokens: contextUsage.tokens,
         }) : undefined;
@@ -1255,7 +1256,7 @@ export class AgentSessionWrapper {
           const state = this.inner.agent.state;
           const estimate = estimateContextUsageBreakdown({
             messages: state?.messages ?? [],
-            systemPrompt: state?.systemPrompt ?? "",
+            systemPrompt: this.forceEmptySystemPrompt ? "" : state?.systemPrompt ?? "",
             tools: state?.tools ?? [],
             totalTokens: null,
           });
@@ -1280,7 +1281,7 @@ export class AgentSessionWrapper {
               const newState = this.inner.agent.state;
               const after = estimateContextUsageBreakdown({
                 messages: newState?.messages ?? [],
-                systemPrompt: newState?.systemPrompt ?? "",
+                systemPrompt: this.forceEmptySystemPrompt ? "" : newState?.systemPrompt ?? "",
                 tools: newState?.tools ?? [],
                 totalTokens: null,
               });
@@ -1421,16 +1422,28 @@ export class AgentSessionWrapper {
         return this.inner.clearQueue();
       }
 
-      case "steer": {
-        const steerImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        await this.inner.steer(command.message as string, steerImages?.length ? steerImages : undefined);
-        return null;
-      }
-
+      case "steer":
       case "follow_up": {
-        const followImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        await this.inner.followUp(command.message as string, followImages?.length ? followImages : undefined);
-        return null;
+        const images = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
+        this.inputAdmissions++;
+        notifyRunningChange();
+        const admission = Promise.resolve().then(async () => {
+          const disposition = await (type === "steer"
+            ? this.inner.steer(command.message as string, images?.length ? images : undefined)
+            : this.inner.followUp(command.message as string, images?.length ? images : undefined));
+          // SDK input hooks can finish after abort() has cleared the queue.
+          // Stop waits for this writer before allowing the next prompt, so
+          // clearing a stale admission cannot discard a newer run's input.
+          if (!this._alive || abortGeneration !== this.abortGeneration) {
+            this.inner.clearQueue();
+            this.emit({ type: "queue_update", steering: [], followUp: [] });
+            throw new Error("Prompt cancelled");
+          }
+          return { disposition };
+        }).finally(() => { this.inputAdmissions--; notifyRunningChange(); });
+        const writer = admission.then(() => undefined, () => undefined).finally(() => this.promptTasks.delete(writer));
+        this.promptTasks.add(writer);
+        return admission;
       }
 
       case "get_tools": {
