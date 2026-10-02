@@ -1,5 +1,6 @@
 import { Type, validateToolArguments } from "@earendil-works/pi-ai";
 import { HarmonyError } from "../errors";
+import { assertToolJsonObject } from "../../tool-json";
 
 const string = (maxLength = 512) => Type.String({ minLength: 1, maxLength });
 const optional = Type.Optional;
@@ -92,8 +93,9 @@ export function validateAction(value: unknown, mode: "scenario" | "direct"): voi
   if (typeof action !== "string") throw new HarmonyError("INVALID_ARGUMENT", "Action name is required");
   const parameters = actionSchema(action, mode);
   try {
+    assertToolJsonObject(value);
     const parsed = validateToolArguments({ name: action, description: actionCatalog[action as HarmonyActionName].description, parameters },
-      { type: "toolCall", id: "harmony-admission", name: action, arguments: value as Record<string, unknown> });
+      { type: "toolCall", id: "harmony-admission", name: action, arguments: value });
     if (JSON.stringify(parsed) !== JSON.stringify(value)) throw new Error("Coercion is not allowed at the device boundary");
   }
   catch { throw new HarmonyError("INVALID_ARGUMENT", `Invalid parameters for ${action}`, { details: { action, dispatchState: "not-sent" } }); }

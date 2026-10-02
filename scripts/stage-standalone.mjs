@@ -386,6 +386,9 @@ async function main() {
   const hypiumRuntimeRoot = join(projectRoot, "node_modules", "hypium-driver");
   const devecoCliRuntimeRoot = join(projectRoot, "node_modules", "@deveco", "deveco-cli");
   const dependencyAssets = await collectRuntimeDependencyAssets([
+    // Pi 1.0 loads built-in extensions, QuickJS WASM and workers through
+    // computed paths even when the host keeps built-in extensions disabled.
+    join(projectRoot, "node_modules", "@earendil-works", "pi-coding-agent"),
     piAiProviderRuntimeRoot,
     hypiumRuntimeRoot,
     // Next traces the ESM entry while source-loaded extensions use Jiti's

@@ -71,6 +71,10 @@ export function shellAgentContext(messages: AgentMessage[], budget = 60_000): Ag
     }
   }
   const context: AgentMessage[] = [];
+  // Pi 1.0 carries instructions, named-section updates and tool loadout
+  // changes in system messages. Replay the prefix even when its user turns
+  // are pruned, so the retained turn keeps its effective prompt/tools.
+  context.push(...messages.slice(0, start).filter(message => message.role === "system"));
   const pending = new Map<string, string>();
   const settle = () => {
     for (const [toolCallId, toolName] of pending) context.push({ role: "toolResult", toolCallId, toolName, content: [{ type: "text", text: "The task was interrupted before a final tool result was recorded. Inspect the terminal state before retrying; execution may have occurred." }], isError: true, timestamp: Date.now() });
@@ -258,7 +262,11 @@ class ShellAgentRun {
           }
           return undefined;
         },
-        shouldStopAfterTurn: () => this.stopped || this.run.steps >= 30 || [...this.failures.values()].some(count => count >= 3),
+        finishTurn: ({ message }) => {
+          if (message.stopReason === "error" || message.stopReason === "aborted") return undefined;
+          return this.stopped || this.run.steps >= 30 || [...this.failures.values()].some(count => count >= 3)
+            ? { action: "end" } : undefined;
+        },
         transformContext: async messages => shellAgentContext(messages),
       });
       this.agent.subscribe(event => {

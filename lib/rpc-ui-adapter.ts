@@ -18,6 +18,7 @@ class PlainTextTheme extends Theme {
         // populated so SDK upgrades cannot feed `undefined` into its ANSI
         // color parser during server startup.
         text: "",
+        muted: "",
         thinkingXhigh: "",
       } as ConstructorParameters<typeof Theme>[0],
       {
@@ -34,6 +35,7 @@ class PlainTextTheme extends Theme {
 
   override fg(...[, text]: Parameters<Theme["fg"]>): string { return text; }
   override bg(...[, text]: Parameters<Theme["bg"]>): string { return text; }
+  override style(text: string): string { return text; }
   override bold(text: string): string { return text; }
   override italic(text: string): string { return text; }
   override underline(text: string): string { return text; }

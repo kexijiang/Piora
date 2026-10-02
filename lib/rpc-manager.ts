@@ -195,6 +195,7 @@ export class AgentSessionWrapper {
   private shutdownTask: Promise<void> = Promise.resolve();
   private abortGeneration = 0;
   private promptTasks = new Set<Promise<void>>();
+  private inputAdmissions = 0;
   private lastPromptFailed = false;
   private lastAssistantResponse: unknown;
   private readonly streamingMetrics = new StreamingMetricsTracker();
@@ -214,6 +215,7 @@ export class AgentSessionWrapper {
   private extensionBindingPromise: Promise<void> | null = null;
   private extensionBindingError: unknown = null;
   private forceEmptySystemPrompt = false;
+  private emptySystemPromptProjectionInstalled = false;
   private unsubscribe: (() => void) | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private systemPromptReloadTimer: ReturnType<typeof setTimeout> | null = null;
@@ -510,7 +512,7 @@ export class AgentSessionWrapper {
     if (!this._alive) return "idle";
     if (this.stopping) return "stopping";
     if (this.inner.isCompacting) return "compacting";
-    if (this.promptAdmissionBusy || this.promptRunning || this.inner.isStreaming || this.inner.isBashRunning) return "running";
+    if (this.inputAdmissions || this.promptAdmissionBusy || this.promptRunning || this.inner.isStreaming || this.inner.isBashRunning) return "running";
     return "idle";
   }
 
@@ -633,6 +635,11 @@ export class AgentSessionWrapper {
 
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
+      // Pi 1.0 emits structured system/loadout messages as transcript events.
+      // They remain canonical SDK/provider history but are not chat rows or
+      // streaming assistant content, matching session-reader's projection.
+      if ((event.type === "message_start" || event.type === "message_update" || event.type === "message_end")
+        && (event.message as { role?: string } | undefined)?.role === "system") return;
       this.streamingMetrics.update(event);
       this.remoteContent.update(event);
       if (event.type === "message_end" && (event.message as { role?: string } | undefined)?.role === "user" && this.pendingClientPromptId) {
@@ -802,9 +809,19 @@ export class AgentSessionWrapper {
   }
 
   private applyForcedEmptySystemPrompt(): void {
-    if (this.forceEmptySystemPrompt && this.inner.agent.state) {
-      this.inner.agent.state.systemPrompt = "";
-    }
+    if (this.emptySystemPromptProjectionInstalled) return;
+    this.emptySystemPromptProjectionInstalled = true;
+    const previous = this.inner.agent.transformContext?.bind(this.inner.agent);
+    this.inner.agent.transformContext = async (messages, signal) => {
+      const projected = previous ? await previous(messages, signal) : messages;
+      if (!this.forceEmptySystemPrompt) return projected;
+      // Pi 1.0 replays prompt state from system messages; the state getter is
+      // readonly and SessionManager remains authoritative for raw history.
+      return [
+        { role: "system", content: "", toolsAdded: [], timestamp: Date.now() },
+        ...projected.filter(message => message.role !== "system"),
+      ];
+    };
   }
 
   private scheduleSystemPromptReload(): void {
@@ -1043,7 +1060,14 @@ export class AgentSessionWrapper {
               source: "rpc",
               // SDK abort() only sees an active model run, not asynchronous auth,
               // input hooks or pre-prompt compaction. Fence that late model start.
-              preflightResult: (success) => { if (success) { assertNotAborted(); admitted(); } },
+              preflightResult: (disposition) => {
+                if (!this._alive || abortGeneration !== this.abortGeneration) this.inner.clearQueue();
+                assertNotAborted();
+                // Only a started model request can later need a continuation.
+                // Handled input belongs to its extension; queued input belongs
+                // to the already-running prompt, not this admission.
+                if (disposition === "started") admitted();
+              },
             });
           };
           // Queuing a message does not own the running model's result.
@@ -1172,7 +1196,7 @@ export class AgentSessionWrapper {
         const agentState = this.inner.agent.state;
         const contextBreakdown = contextUsage ? estimateContextUsageBreakdown({
           messages: agentState?.messages ?? [],
-          systemPrompt: agentState?.systemPrompt ?? "",
+          systemPrompt: this.forceEmptySystemPrompt ? "" : agentState?.systemPrompt ?? "",
           tools: agentState?.tools ?? [],
           totalTokens: contextUsage.tokens,
         }) : undefined;
@@ -1212,7 +1236,7 @@ export class AgentSessionWrapper {
                 ...(contextBreakdown ? { breakdown: contextBreakdown } : {}),
               }
             : null,
-          systemPrompt: this.inner.agent.state?.systemPrompt ?? "",
+          systemPrompt: this.forceEmptySystemPrompt ? "" : this.inner.agent.state?.systemPrompt ?? "",
           systemPromptBinding: this.getSystemPromptBinding(),
           thinkingLevel: this.inner.agent.state?.thinkingLevel ?? "off",
           extensionStatuses: this.getExtensionStatuses(),
@@ -1237,7 +1261,7 @@ export class AgentSessionWrapper {
           const state = this.inner.agent.state;
           const estimate = estimateContextUsageBreakdown({
             messages: state?.messages ?? [],
-            systemPrompt: state?.systemPrompt ?? "",
+            systemPrompt: this.forceEmptySystemPrompt ? "" : state?.systemPrompt ?? "",
             tools: state?.tools ?? [],
             totalTokens: null,
           });
@@ -1262,7 +1286,7 @@ export class AgentSessionWrapper {
               const newState = this.inner.agent.state;
               const after = estimateContextUsageBreakdown({
                 messages: newState?.messages ?? [],
-                systemPrompt: newState?.systemPrompt ?? "",
+                systemPrompt: this.forceEmptySystemPrompt ? "" : newState?.systemPrompt ?? "",
                 tools: newState?.tools ?? [],
                 totalTokens: null,
               });
@@ -1403,16 +1427,28 @@ export class AgentSessionWrapper {
         return this.inner.clearQueue();
       }
 
-      case "steer": {
-        const steerImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        await this.inner.steer(command.message as string, steerImages?.length ? steerImages : undefined);
-        return null;
-      }
-
+      case "steer":
       case "follow_up": {
-        const followImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
-        await this.inner.followUp(command.message as string, followImages?.length ? followImages : undefined);
-        return null;
+        const images = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
+        this.inputAdmissions++;
+        notifyRunningChange();
+        const admission = Promise.resolve().then(async () => {
+          const disposition = await (type === "steer"
+            ? this.inner.steer(command.message as string, images?.length ? images : undefined)
+            : this.inner.followUp(command.message as string, images?.length ? images : undefined));
+          // SDK input hooks can finish after abort() has cleared the queue.
+          // Stop waits for this writer before allowing the next prompt, so
+          // clearing a stale admission cannot discard a newer run's input.
+          if (!this._alive || abortGeneration !== this.abortGeneration) {
+            this.inner.clearQueue();
+            this.emit({ type: "queue_update", steering: [], followUp: [] });
+            throw new Error("Prompt cancelled");
+          }
+          return { disposition };
+        }).finally(() => { this.inputAdmissions--; notifyRunningChange(); });
+        const writer = admission.then(() => undefined, () => undefined).finally(() => this.promptTasks.delete(writer));
+        this.promptTasks.add(writer);
+        return admission;
       }
 
       case "get_tools": {

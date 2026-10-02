@@ -129,7 +129,12 @@ export function estimateContextUsageBreakdown(input: {
     return "";
   });
   return reconcileBreakdown({
-    conversationMessages: input.messages.reduce<number>((sum, message) => sum + estimateUnknownMessageTokens(message), 0),
+    // Structured Pi system entries are already counted through the effective
+    // systemPrompt/tools above, including section and loadout updates.
+    conversationMessages: input.messages.reduce<number>((sum, message) => sum + (
+      message && typeof message === "object" && "role" in message && message.role === "system"
+        ? 0 : estimateUnknownMessageTokens(message)
+    ), 0),
     projectInstructions: estimateTextTokens(projectContext),
     systemPrompt: estimateTextTokens(baseSystemPrompt),
     toolDefinitions: estimateToolDefinitionPromptTokens(input.tools as Array<Record<string, unknown>>),
