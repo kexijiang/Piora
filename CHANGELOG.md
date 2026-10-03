@@ -6,6 +6,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### Dependency maintenance
 
+- 将主应用与官网的 Next.js 升级至官方 16.3.8 安全补丁，同步 ESLint 工具、原生编译器、两份锁文件及第三方许可证清单，修复上游缓存隔离与信息泄露问题。
 - Update Electron within the 43.x series and refresh Next.js, HTTP, URI, date, and archive dependencies with stable fixes. Keep the current Pi runtime while its session lifecycle migration receives separate acceptance testing.
 - Preserve strict bundled-dependency patch checks, verify the actual patched runtime before auditing it, and refresh third-party license records.
 - Synchronize packaged Pi dependency checks with the reviewed security versions and reject stale or mislabeled packaged copies in regression tests.
