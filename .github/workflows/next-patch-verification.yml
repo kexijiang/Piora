@@ -1,0 +1,50 @@
+name: Next patch supplemental builds
+on:
+  push:
+    branches:
+      - validation/next-16.3.8-20261003
+permissions:
+  contents: read
+jobs:
+  website-builds:
+    name: Website builds (exact Next patch SHA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: f482d1df4bc5005cdf3595291893972e1932dacf
+          persist-credentials: false
+      - name: Confirm source SHA
+        run: test "$(git rev-parse HEAD)" = f482d1df4bc5005cdf3595291893972e1932dacf
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.19.0
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci --legacy-peer-deps=false
+      - run: npm run check
+      - run: npm run build:sites
+      - run: npm run build
+  linux-standalone:
+    name: Linux standalone build (exact Next patch SHA)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: f482d1df4bc5005cdf3595291893972e1932dacf
+          persist-credentials: false
+      - name: Confirm source SHA
+        run: test "$(git rev-parse HEAD)" = f482d1df4bc5005cdf3595291893972e1932dacf
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.19.0
+          cache: npm
+      - run: npm ci
+      - run: npm run build:web
+      - name: Confirm standalone Next version
+        run: node -e "const p=require('./.next/standalone/node_modules/next/package.json'); if(p.version!=='16.3.8')throw Error(p.version)"
