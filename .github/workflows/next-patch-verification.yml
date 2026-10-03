@@ -16,10 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: f482d1df4bc5005cdf3595291893972e1932dacf
+          ref: 627ebe7cd9149750ae2074b9b1fb555c5a03a494
           persist-credentials: false
       - name: Confirm source SHA
-        run: test "$(git rev-parse HEAD)" = f482d1df4bc5005cdf3595291893972e1932dacf
+        run: test "$(git rev-parse HEAD)" = 627ebe7cd9149750ae2074b9b1fb555c5a03a494
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22.19.0
@@ -36,10 +36,10 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: f482d1df4bc5005cdf3595291893972e1932dacf
+          ref: 627ebe7cd9149750ae2074b9b1fb555c5a03a494
           persist-credentials: false
       - name: Confirm source SHA
-        run: test "$(git rev-parse HEAD)" = f482d1df4bc5005cdf3595291893972e1932dacf
+        run: test "$(git rev-parse HEAD)" = 627ebe7cd9149750ae2074b9b1fb555c5a03a494
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22.19.0
