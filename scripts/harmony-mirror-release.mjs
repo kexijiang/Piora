@@ -17,6 +17,12 @@ export const MIRROR_SOURCE_FILE = 'SOURCE.md';
 export const MIRROR_BUNDLE = 'com.ohos.scrcpy.server';
 const OFFICIAL_SAMPLE_ALIAS = 'openharmony application release';
 const OFFICIAL_PROFILE_ALIAS = 'openharmony application profile release';
+const OFFICIAL_APP_CA_ALIAS = 'openharmony application ca';
+const OFFICIAL_ROOT_CA_CERT_ALIAS = 'rootcacert';
+const OFFICIAL_SUB_CA_CERT_ALIAS = 'cacert';
+const OFFICIAL_APP_CA_SUBJECT = 'C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN=OpenHarmony Application CA';
+const OFFICIAL_APP_SUBJECT = 'C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN=OpenHarmony Application Release';
+const APPLICATION_CERT_VALIDITY_DAYS = 3650;
 // This is the documented password for the public OpenHarmony SDK sample key.
 // It is not a project or user credential. The key itself is loaded from the
 // installed SDK and is never copied into the repository or workflow artifact.
@@ -90,6 +96,7 @@ export async function resolveHarmonyReleaseTools(environment = process.env) {
     sdkDefault,
     node: pathFromEnvironment(environment, 'HARMONY_NODE_PATH') ?? join(studioRoot, 'tools', 'node', 'node.exe'),
     java: pathFromEnvironment(environment, 'HARMONY_JAVA_PATH') ?? join(studioRoot, 'jbr', 'bin', 'java.exe'),
+    keytool: pathFromEnvironment(environment, 'HARMONY_KEYTOOL_PATH') ?? join(studioRoot, 'jbr', 'bin', 'keytool.exe'),
     hvigor: pathFromEnvironment(environment, 'HARMONY_HVIGOR_PATH') ?? join(studioRoot, 'tools', 'hvigor', 'bin', 'hvigorw.js'),
     ohpm: pathFromEnvironment(environment, 'HARMONY_OHPM_PATH') ?? join(studioRoot, 'tools', 'ohpm', 'bin', 'pm-cli.js'),
     hdc: pathFromEnvironment(environment, 'HARMONY_HDC_PATH') ?? join(toolchains, 'hdc.exe'),
@@ -126,6 +133,17 @@ function releaseEnvironment(tools, environment = process.env) {
   };
 }
 
+export function createApplicationCertificateArguments({ signTool, keyStore, rootCertificate, subCertificate, outputCertificate }) {
+  return ['-jar', signTool, 'generate-app-cert',
+    '-keyAlias', OFFICIAL_SAMPLE_ALIAS, '-keyPwd', OFFICIAL_SAMPLE_PASSWORD,
+    '-issuer', OFFICIAL_APP_CA_SUBJECT, '-issuerKeyAlias', OFFICIAL_APP_CA_ALIAS,
+    '-issuerKeyPwd', OFFICIAL_SAMPLE_PASSWORD, '-subject', OFFICIAL_APP_SUBJECT,
+    '-validity', String(APPLICATION_CERT_VALIDITY_DAYS), '-signAlg', 'SHA256withECDSA',
+    '-rootCaCertFile', rootCertificate, '-subCaCertFile', subCertificate,
+    '-keystoreFile', keyStore, '-keystorePwd', OFFICIAL_SAMPLE_PASSWORD,
+    '-outForm', 'certChain', '-outFile', outputCertificate, '-pwdInputMode', '0'];
+}
+
 export function createOrdinaryReleaseProfile({ distributionCertificate, now = Date.now(), uuid = randomUUID() }) {
   const notBefore = Math.floor(now / 1000) - 60 * 60;
   const notAfter = notBefore + 5 * 365 * 24 * 60 * 60;
@@ -149,9 +167,12 @@ export function createOrdinaryReleaseProfile({ distributionCertificate, now = Da
   };
 }
 
+function pemCertificateBlocks(bytes) {
+  return bytes.toString('utf8').match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? [];
+}
+
 function pemCertificates(bytes) {
-  const matches = bytes.toString('utf8').match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? [];
-  return matches.map(value => new X509Certificate(value));
+  return pemCertificateBlocks(bytes).map(value => new X509Certificate(value));
 }
 
 function validateVerifiedProfile(result, expectedCertificate, now = Date.now()) {
@@ -298,16 +319,60 @@ export async function buildHarmonyMirrorRelease({ projectRoot, workspace, output
   const signingDirectory = join(workspace, '.signing');
   await mkdir(signingDirectory, { recursive: false });
   const template = await jsonFile(tools.profileTemplate);
-  const distributionCertificate = template?.['bundle-info']?.['distribution-certificate'];
-  let expectedCertificate;
-  try { expectedCertificate = new X509Certificate(distributionCertificate); } catch { fail('SDK release template lacks a valid application certificate'); }
-  if (!expectedCertificate.subject.includes('CN=OpenHarmony Application Release')
-    || new Date(expectedCertificate.validFrom).getTime() > now || new Date(expectedCertificate.validTo).getTime() <= now) fail('SDK example application certificate is not currently valid');
+  const templateDistributionCertificate = template?.['bundle-info']?.['distribution-certificate'];
+  let templateCertificate;
+  try { templateCertificate = new X509Certificate(templateDistributionCertificate); } catch { fail('SDK release template lacks a valid application certificate'); }
+  if (!templateCertificate.subject.includes('CN=OpenHarmony Application Release')
+    || new Date(templateCertificate.validFrom).getTime() > now || new Date(templateCertificate.validTo).getTime() <= now) fail('SDK example application certificate is not currently valid');
   const applicationCertificate = join(signingDirectory, 'application-release.cer');
+  const rootCertificatePath = join(signingDirectory, 'application-root-ca.cer');
+  const subCertificatePath = join(signingDirectory, 'application-ca.cer');
   const unsignedProfile = join(signingDirectory, 'ordinary-release-profile.json');
   const signedProfile = join(signingDirectory, 'ordinary-release-profile.p7b');
-  await writeFile(applicationCertificate, distributionCertificate, { flag: 'wx', mode: 0o600 });
-  await writeFile(unsignedProfile, `${JSON.stringify(createOrdinaryReleaseProfile({ distributionCertificate, now }), null, 2)}\n`, { flag: 'wx', mode: 0o600 });
+
+  const certificateExport = alias => ['-exportcert', '-rfc', '-alias', alias, '-keystore', tools.keyStore,
+    '-storetype', 'PKCS12', '-storepass', OFFICIAL_SAMPLE_PASSWORD, '-noprompt'];
+  runTool('SDK application root certificate export', tools.keytool,
+    [...certificateExport(OFFICIAL_ROOT_CA_CERT_ALIAS), '-file', rootCertificatePath], { cwd: workspace, env });
+  runTool('SDK application CA certificate export', tools.keytool,
+    [...certificateExport(OFFICIAL_SUB_CA_CERT_ALIAS), '-file', subCertificatePath], { cwd: workspace, env });
+  const rootCertificates = pemCertificates(await regularFile(rootCertificatePath, 1024 * 1024));
+  const subCertificates = pemCertificates(await regularFile(subCertificatePath, 1024 * 1024));
+  const rootCertificate = rootCertificates[0];
+  const subCertificate = subCertificates[0];
+  const certificateNow = Date.now();
+  if (rootCertificates.length !== 1 || subCertificates.length !== 1
+    || !rootCertificate?.ca || !subCertificate?.ca
+    || !rootCertificate.subject.includes('CN=OpenHarmony Application Root CA')
+    || !subCertificate.subject.includes('CN=OpenHarmony Application CA')
+    || subCertificate.issuer !== rootCertificate.subject || rootCertificate.issuer !== rootCertificate.subject
+    || !subCertificate.verify(rootCertificate.publicKey) || !rootCertificate.verify(rootCertificate.publicKey)
+    || new Date(rootCertificate.validFrom).getTime() > certificateNow || new Date(rootCertificate.validTo).getTime() <= certificateNow
+    || new Date(subCertificate.validFrom).getTime() > certificateNow || new Date(subCertificate.validTo).getTime() <= certificateNow) {
+    fail('SDK application certificate authorities are missing, invalid or expired');
+  }
+  runTool('official application certificate chain generation', tools.java,
+    createApplicationCertificateArguments({ signTool: tools.signTool, keyStore: tools.keyStore,
+      rootCertificate: rootCertificatePath, subCertificate: subCertificatePath, outputCertificate: applicationCertificate }),
+    { cwd: workspace, env });
+  const applicationCertificateBytes = await regularFile(applicationCertificate, 1024 * 1024);
+  const applicationCertificateBlocks = pemCertificateBlocks(applicationCertificateBytes);
+  const applicationCertificates = applicationCertificateBlocks.map(value => new X509Certificate(value));
+  const [expectedCertificate, generatedSubCertificate, generatedRootCertificate] = applicationCertificates;
+  if (applicationCertificates.length !== 3 || !expectedCertificate || expectedCertificate.ca
+    || !expectedCertificate.subject.includes('CN=OpenHarmony Application Release')
+    || expectedCertificate.issuer !== subCertificate.subject
+    || !generatedSubCertificate?.raw.equals(subCertificate.raw) || !generatedRootCertificate?.raw.equals(rootCertificate.raw)
+    || !expectedCertificate.verify(subCertificate.publicKey)
+    || new Date(expectedCertificate.validFrom).getTime() > Date.now()
+    || new Date(expectedCertificate.validTo).getTime() <= Date.now()) {
+    fail('official application certificate generation did not return the expected three-certificate chain');
+  }
+  const ordinaryProfile = createOrdinaryReleaseProfile({ distributionCertificate: applicationCertificateBlocks[0], now });
+  if (ordinaryProfile.validity['not-after'] * 1000 > new Date(expectedCertificate.validTo).getTime()) {
+    fail('generated application certificate expires before the ordinary release profile');
+  }
+  await writeFile(unsignedProfile, `${JSON.stringify(ordinaryProfile, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
 
   const commonSigning = ['-keystoreFile', tools.keyStore, '-keystorePwd', OFFICIAL_SAMPLE_PASSWORD, '-keyPwd', OFFICIAL_SAMPLE_PASSWORD, '-pwdInputMode', '0'];
   runTool('official profile signing', tools.java, ['-jar', tools.signTool, 'sign-profile', '-mode', 'localSign',
