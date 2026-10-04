@@ -57,7 +57,7 @@ test("automations reopen after saving in settings and the controlled workspace p
       if (failDetail) return route.fulfill({ status: 503, json: { error: "读取失败" } });
       return route.fulfill({ json: { automation, runs: [] } });
     });
-    await page.goto("http://automation.test/");
+    await page.goto("http://automation.test/", { waitUntil: "domcontentloaded", timeout: 30000 });
     await page.waitForFunction(() => document.documentElement.lang === "en");
     for (const mode of ["settings", "workspace"]) {
       await page.evaluate(mode => window.showPanel(mode), mode);
