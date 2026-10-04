@@ -3,6 +3,7 @@
 import { cp, lstat, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { patchPiSourceProfile } from "./pi-source-profile.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -190,6 +191,7 @@ async function main() {
     patchElectronBuilderWorkspaceCollector().then((result) => ({ package: "app-builder-lib", ...result })),
     patchNodePtyShutdown().then((result) => ({ package: "node-pty", ...result })),
   ]);
+  patches.push({ package: "pi-source-profile", ...await patchPiSourceProfile(projectRoot) });
   console.log(JSON.stringify({ bundledDependencyPatches: patches }));
 }
 

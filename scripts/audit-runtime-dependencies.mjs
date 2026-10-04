@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { findUnverifiedPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
+import { verifyPiSourceProfile } from "./pi-source-profile.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const reviewedReplacements = [
@@ -83,6 +84,9 @@ async function main() {
   if (!npmCli) throw new Error("Run this check with npm run audit:runtime");
   const { lock, replacements } = await createVerifiedAuditLock();
   const embeddedDependencies = await findUnverifiedPiEmbeddedDependencies(projectRoot);
+  // Validate the byte-exact unbundled alternative as well as rejecting compiled
+  // copies. An empty scan alone is not sufficient evidence of a safe runtime.
+  const sourceProfile = embeddedDependencies.length ? undefined : await verifyPiSourceProfile(projectRoot);
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "piora-runtime-audit-"));
   try {
     const manifest = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
@@ -90,7 +94,7 @@ async function main() {
     delete lock.packages[""].workspaces;
     await writeFile(join(temporaryDirectory, "package.json"), JSON.stringify(manifest));
     await writeFile(join(temporaryDirectory, "package-lock.json"), JSON.stringify(lock));
-    console.log(JSON.stringify({ verifiedRuntimeReplacements: replacements, unverifiedEmbeddedDependencies: embeddedDependencies }));
+    console.log(JSON.stringify({ verifiedRuntimeReplacements: replacements, unverifiedEmbeddedDependencies: embeddedDependencies, sourceProfile }));
     const result = spawnSync(process.execPath, [npmCli, "audit", "--omit=dev", "--audit-level=high",
       "--registry=https://registry.npmjs.org/", "--workspaces=false"], {
       cwd: temporaryDirectory, stdio: "inherit", windowsHide: true,

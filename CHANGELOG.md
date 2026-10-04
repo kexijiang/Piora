@@ -8,6 +8,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 - 将四个 Pi 运行时包更新至 1.0.2，采用 1.0.1 的输出上限、Bedrock 与依赖发布修复；按移除 shrinkwrap 后的实际安装树调整工作器、WASM、提供商与许可证校验，保留原有会话迁移和停止队列防护。
 - 固定新 minimatch 10.2.6 的 brace-expansion 5.0.12，验证提升到顶层的 Undici 8.11.2；保留旧嵌套副本的严格版本与字节守卫，并增加预编译 Pi bundle 中未验证 Undici 的审计和打包阻断，避免把目录覆盖误报为完整修复。
+- 将 Pi 的重复预编译入口切换到同一官方发布包中的完整未打包代码，保持 CLI、RPC、SDK 与 worker 能力并统一解析 Undici 8.11.2；用发布包完整性和 985 个源码文件的字节承诺约束转换，拒绝未知版本、改动源码、额外编译依赖及伪造入口，保留其他审计阻碍。
 
 - Upgrade all four Pi runtime packages from 0.84.3 to 1.0.0; adapt turn guards, prompt admission, structured system context, headless themes and JSON tool arguments. Preserve raw chat history while the SDK owns provider context edits, and include dynamically loaded Pi workers/WASM in packaged dependency staging.
 - Retain Shell instructions/tool loadouts after context pruning, drain cancelled asynchronous steering/follow-up admissions before another prompt, avoid double-counting structured system context, and match Pi 1.0's session catalog discovery ordering.

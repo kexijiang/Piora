@@ -1,5 +1,6 @@
 import { lstat, readFile, readdir } from "node:fs/promises";
 import { join, relative } from "node:path";
+import { verifyPiSourceProfile } from "./pi-source-profile.mjs";
 
 // Directory replacement and npm overrides cannot change already compiled
 // dependency code. Until its provenance is independently verified, reject
@@ -34,5 +35,10 @@ export async function verifyPiEmbeddedDependencies(root) {
   if (findings.length) {
     throw new Error(`Unverified embedded Undici in Pi bundle: ${findings.map(finding => finding.path).join(", ")}. Root overrides and directory patches do not cover these compiled bytes.`);
   }
+  const manifest = join(root, "node_modules/@earendil-works/pi-coding-agent/package.json");
+  if (await lstat(manifest).catch(error => {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  })) await verifyPiSourceProfile(root);
   return findings;
 }
