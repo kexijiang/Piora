@@ -14,6 +14,7 @@ import { parseDisplayGeometry, type NativeDisplayGeometry } from "./observation/
 import { ForwardOwnershipStore } from "./runtime/forward-store";
 import { startOwnedRecording } from "./media/owned-recording";
 import { previewHapArtifact } from "./runtime/hap-preview";
+import { prepareLocalMirrorHap } from "./runtime/mirror-signing";
 import { streamHdcLines } from "./log-stream";
 import { capabilitiesFromHelp } from "./capabilities/probes";
 import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
@@ -62,6 +63,12 @@ function installedMirrorMatches(
     && installed.versionCode === preview.versionCode
     && installed.versionName === preview.versionName
     && installed.abilities?.includes("EntryAbility") === true;
+}
+
+function mayMeanBundleIsAbsent(output: string): boolean {
+  const normalized = output.replace(/\0/g, "").trim();
+  return normalized === ""
+    || /^error:\s*failed to get information and the parameters may be wrong\.?$/i.test(normalized);
 }
 
 /** The sandbox shell reparses its command and drops script quotes on some HDC versions.
@@ -120,6 +127,7 @@ export interface HdcBackendOptions {
   execute?: CommandExecutor;
   commandTimeoutMs?: number;
   forwardJournalDirectory?: string;
+  prepareMirrorHap?: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
 }
 
 function validateSerial(serial: string): void {
@@ -334,6 +342,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
   readonly hdcPath: string;
   private readonly execute: CommandExecutor;
   private readonly commandTimeoutMs: number;
+  private readonly prepareMirrorHap: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
   private readonly capabilitiesBySerial = new Map<string, HarmonyCapabilities>();
   private readonly deviceInfoBySerial = new Map<string, { device: Omit<BackendDevice, "state">; expiresAt: number }>();
   private readonly ownedRecordings = new Map<string, { name: string; recording: Awaited<ReturnType<typeof startOwnedRecording>> }>();
@@ -361,6 +370,23 @@ export class HdcBackend implements HarmonyAutomationBackend {
     this.hdcPath = resolution.hdcPath;
     this.execute = options.execute ?? runCommand;
     this.commandTimeoutMs = options.commandTimeoutMs ?? 15_000;
+    this.prepareMirrorHap = options.prepareMirrorHap ?? (async (serial, sourceHapPath, signal) => {
+      const result = await this.shell(serial, ["bm", "get", "--udid"], "mirror_device_identity", signal, 8_000);
+      const udids = [...new Set(Buffer.concat([result.stdout, result.stderr]).toString("utf8")
+        .match(/(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])/gi) ?? [])];
+      if (udids.length !== 1) {
+        throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The connected phone identity could not be verified for local DevEco signing", {
+          details: { reason: "mirror-device-identity-unavailable", dispatchState: "not-sent" },
+        });
+      }
+      return await prepareLocalMirrorHap({
+        sourceHapPath,
+        hdcPath: this.hdcPath,
+        deviceUdid: udids[0],
+        cacheDirectory: join(dirname(defaultHarmonyConfigPath()), "harmony-mirror-private"),
+        signal,
+      });
+    });
   }
 
   private async run(args: readonly string[], operation: string, signal?: AbortSignal, timeoutMs?: number) {
@@ -1149,6 +1175,65 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
+  private async observeMirrorInstallation(
+    serial: string,
+    signal?: AbortSignal,
+    reason = "mirror-installation-state-unavailable",
+    dispatchState: "not-sent" | "sent" = "not-sent",
+  ): Promise<HarmonyApplication | undefined> {
+    const unavailable = (cause: unknown) => new HarmonyError(
+      "OBSERVATION_UNAVAILABLE",
+      reason === "mirror-uninstallation-unverified"
+        ? "The previous capture component removal could not be verified"
+        : "The capture component installation state could not be verified",
+      { cause, details: { reason, dispatchState } },
+    );
+    let exactOutput: string;
+    try {
+      const result = await this.shell(serial, ["bm", "dump", "-n", MIRROR_BUNDLE], "mirror_installation_state", signal, 8_000);
+      exactOutput = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
+    } catch (cause) {
+      if (signal?.aborted || isHarmonyError(cause) && cause.code === "COMMAND_ABORTED") throw cause;
+      throw unavailable(cause);
+    }
+    try {
+      return parseApplicationDetails(exactOutput, MIRROR_BUNDLE);
+    } catch (cause) {
+      if (!mayMeanBundleIsAbsent(exactOutput)) throw unavailable(cause);
+    }
+
+    try {
+      const result = await this.shell(serial, ["bm", "dump", "-a"], "mirror_installation_absence", signal, 8_000);
+      const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "");
+      if (/(?:^|\r?\n)\s*(?:error\b|fail(?:ed|ure)?\b|permission denied)/i.test(output)) {
+        throw new Error("bundle list contains a failure response");
+      }
+      const applications = parseBundleList(output);
+      if (applications.some(application => application.bundleName === MIRROR_BUNDLE)) {
+        throw new Error("exact bundle lookup disagrees with the installed bundle list");
+      }
+      return undefined;
+    } catch (cause) {
+      if (signal?.aborted || isHarmonyError(cause) && cause.code === "COMMAND_ABORTED") throw cause;
+      throw unavailable(cause);
+    }
+  }
+
+  private async previewMirrorHap(path: string, signal?: AbortSignal) {
+    try {
+      return await previewHapArtifact(path, signal);
+    } catch (cause) {
+      if (signal?.aborted || cause instanceof DOMException && cause.name === "AbortError") {
+        throw new HarmonyError("COMMAND_ABORTED", "Harmony video component initialization was cancelled", {
+          cause,
+          retryable: true,
+          details: { reason: "mirror-initialization-cancelled", dispatchState: "not-sent" },
+        });
+      }
+      throw cause;
+    }
+  }
+
   private async ensureMirrorServer(serial: string, signal?: AbortSignal): Promise<void> {
     const result = await this.shell(serial, ["bm", "dump", "-n", MIRROR_BUNDLE], "mirror_server_check", signal, 8_000);
     const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "");
@@ -1161,32 +1246,45 @@ export class HdcBackend implements HarmonyAutomationBackend {
   async initializeMirror(serial: string, hapPath: string, signal?: AbortSignal): Promise<void> {
     validateSerial(serial);
     await this.requireUnlockedScreen(serial, signal);
-    const preview = await previewHapArtifact(hapPath, signal);
-    if (preview.bundleName !== MIRROR_BUNDLE || !preview.abilities.includes("EntryAbility")
-      || preview.versionCode === undefined || preview.versionName === undefined) {
+    const sourcePreview = await this.previewMirrorHap(hapPath, signal);
+    if (sourcePreview.bundleName !== MIRROR_BUNDLE || !sourcePreview.abilities.includes("EntryAbility")
+      || sourcePreview.versionCode === undefined || sourcePreview.versionName === undefined) {
       throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The capture package has no supported foreground entry", { details: { reason: "mirror-package-invalid", dispatchState: "not-sent" } });
     }
+    let installed = await this.observeMirrorInstallation(serial, signal);
 
-    let installed: HarmonyApplication | undefined;
-    try {
-      [installed] = await this.applications(serial, "", MIRROR_BUNDLE, signal);
-    } catch (error) {
-      if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
-      // A missing package is reported differently across HDC versions. Treat an
-      // unreadable pre-install dump as absent, then require an exact reread.
+    if (installedMirrorMatches(sourcePreview, installed)) {
+      await this.launchApp(serial, MIRROR_BUNDLE, "EntryAbility", signal);
+      return;
+    }
+
+    const privateHapPath = await this.prepareMirrorHap(serial, hapPath, signal);
+    const preview = await this.previewMirrorHap(privateHapPath, signal);
+    if (preview.bundleName !== sourcePreview.bundleName || preview.versionCode !== sourcePreview.versionCode
+      || preview.versionName !== sourcePreview.versionName || preview.moduleName !== sourcePreview.moduleName
+      || !preview.abilities.includes("EntryAbility")) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The private capture package differs from the bundled component", {
+        details: { reason: "mirror-private-package-invalid", dispatchState: "not-sent" },
+      });
     }
 
     if (!installedMirrorMatches(preview, installed)) {
-      await this.installPackage(serial, hapPath, true, signal);
-      try {
-        [installed] = await this.applications(serial, "", MIRROR_BUNDLE, signal);
-      } catch (cause) {
-        if (signal?.aborted || isHarmonyError(cause) && cause.code === "COMMAND_ABORTED") throw cause;
-        throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The installed capture component could not be verified", {
-          cause,
-          details: { reason: "mirror-installation-unverified", dispatchState: "sent" },
-        });
+      if (installed) {
+        await this.uninstallPackage(serial, MIRROR_BUNDLE, signal);
+        const remaining = await this.observeMirrorInstallation(
+          serial,
+          signal,
+          "mirror-uninstallation-unverified",
+          "sent",
+        );
+        if (remaining) {
+          throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The previous capture component is still installed", {
+            details: { reason: "mirror-uninstallation-unverified", dispatchState: "sent" },
+          });
+        }
       }
+      await this.installPackage(serial, privateHapPath, false, signal);
+      installed = await this.observeMirrorInstallation(serial, signal, "mirror-installation-unverified", "sent");
     }
     if (!installedMirrorMatches(preview, installed)) {
       throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The installed capture component could not be verified", { details: { reason: "mirror-installation-unverified", dispatchState: "sent" } });

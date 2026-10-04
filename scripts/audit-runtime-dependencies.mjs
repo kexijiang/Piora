@@ -8,6 +8,7 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const NODE_FORGE_RSA_PATCHED_SHA256 = "18ae286c1ef8e00fc6359ffe3280416946c1dfd6684c98c1c6af1590d7f7e9f4";
 const reviewedReplacements = [
   { name: "brace-expansion", lockedVersion: "5.0.9", installedVersion: "5.0.12" },
   { name: "undici", lockedVersion: "8.9.0", installedVersion: "8.11.2" },
@@ -67,13 +68,33 @@ export async function createVerifiedAuditLock(root = projectRoot) {
     effectiveLock.packages[targetPath] = { ...source, dev: target.dev, optional: target.optional };
     replacements.push({ path: targetPath, from: lockedVersion, to: installedVersion });
   }
-  return { lock: effectiveLock, replacements };
+  const forgePath = "node_modules/node-forge";
+  const forge = lock.packages[forgePath];
+  if (forge?.version !== "1.4.0"
+    || forge.resolved !== "https://registry.npmjs.org/node-forge/-/node-forge-1.4.0.tgz"
+    || !/^sha512-/.test(forge.integrity ?? "")) {
+    throw new Error("Review the node-forge audit patch after a lockfile change");
+  }
+  const forgeManifest = JSON.parse(await readFile(join(root, forgePath, "package.json"), "utf8"));
+  const rsaBytes = await readFile(join(root, forgePath, "lib", "rsa.js"));
+  const rsaSha256 = createHash("sha256").update(rsaBytes).digest("hex");
+  if (forgeManifest.name !== "node-forge" || forgeManifest.version !== "1.4.0"
+    || rsaSha256 !== NODE_FORGE_RSA_PATCHED_SHA256) {
+    throw new Error("Installed node-forge does not contain the reviewed DigestAlgorithm patch");
+  }
+  // npm's advisory database can only compare package versions. The installed
+  // bytes remain integrity-locked node-forge 1.4.0 plus the exact reviewed
+  // postinstall patch above; represent that effective code as the next patch
+  // version only in this temporary audit lock.
+  effectiveLock.packages[forgePath] = { ...forge, version: "1.4.1-piora.1" };
+  const nodeForgePatch = { path: forgePath, from: "1.4.0", effective: "1.4.1-piora.1", rsaSha256 };
+  return { lock: effectiveLock, replacements, nodeForgePatch };
 }
 
 async function main() {
   const npmCli = process.env.npm_execpath;
   if (!npmCli) throw new Error("Run this check with npm run audit:runtime");
-  const { lock, replacements } = await createVerifiedAuditLock();
+  const { lock, replacements, nodeForgePatch } = await createVerifiedAuditLock();
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "piora-runtime-audit-"));
   try {
     const manifest = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
@@ -81,7 +102,7 @@ async function main() {
     delete lock.packages[""].workspaces;
     await writeFile(join(temporaryDirectory, "package.json"), JSON.stringify(manifest));
     await writeFile(join(temporaryDirectory, "package-lock.json"), JSON.stringify(lock));
-    console.log(JSON.stringify({ verifiedRuntimeReplacements: replacements }));
+    console.log(JSON.stringify({ verifiedRuntimeReplacements: replacements, verifiedRuntimePatches: [nodeForgePatch] }));
     const result = spawnSync(process.execPath, [npmCli, "audit", "--omit=dev", "--audit-level=high",
       "--registry=https://registry.npmjs.org/", "--workspaces=false"], {
       cwd: temporaryDirectory, stdio: "inherit", windowsHide: true,

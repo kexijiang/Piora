@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
-import { validateH264Configuration, validateH264Frame } from './verify-harmony-mirror-device.mjs';
+import {
+  validateH264Configuration,
+  validateH264Frame,
+  verifyHarmonyMirrorOnDevice,
+} from './verify-harmony-mirror-device.mjs';
+
+const verifierSource = await readFile(new URL('./verify-harmony-mirror-device.mjs', import.meta.url), 'utf8');
 
 function config(codec = 0, sps = Buffer.from([0x67, 0x42, 0x00, 0x1f]), pps = Buffer.from([0x68, 0xce, 0x06, 0xe2])) {
   const payload = Buffer.alloc(17 + sps.length + pps.length);
@@ -46,4 +55,33 @@ test('malformed parameter sets and non-IDR key flags fail closed', () => {
 test('acceptance requires a first IDR and strictly increasing timestamps', () => {
   assert.throws(() => validateH264Frame(frame({ timestamp: 10n }), undefined, true), /key flag or slice type/);
   assert.throws(() => validateH264Frame(frame({ timestamp: 10n }), 10n), /strictly increasing/);
+});
+
+test('device verification requires an explicit absolute private acceptance HAP', async () => {
+  await assert.rejects(verifyHarmonyMirrorOnDevice({
+    projectRoot: process.cwd(),
+    resourcesDirectory: process.cwd(),
+    acceptedHapPath: 'relative-acceptance.hap',
+    serial: 'fixture-serial',
+    environment: {},
+  }), /absolute private acceptance HAP path is required/);
+  await assert.rejects(verifyHarmonyMirrorOnDevice({
+    projectRoot: process.cwd(),
+    resourcesDirectory: process.cwd(),
+    acceptedHapPath: join(tmpdir(), 'private-acceptance.hap'),
+    serial: 'contains whitespace',
+    environment: {},
+  }), /valid dedicated HDC serial is required/);
+});
+
+test('device verification installs and records only the receipt-bound private copy', () => {
+  assert.match(verifierSource, /verifyFrozenRegularFile\(acceptedHap, acceptedHapExpected\)/);
+  assert.match(verifierSource, /freezeRegularFile\(acceptedHap, frozenAcceptedHap\)/);
+  assert.ok((verifierSource.match(/verifyFrozenRegularFile\(frozenAcceptedHap, frozenAccepted\)/g) ?? []).length >= 2);
+  assert.match(verifierSource, /\['install', frozenAcceptedHap\]/);
+  assert.doesNotMatch(verifierSource, /\['install', acceptedHap\]/);
+  assert.doesNotMatch(verifierSource, /\['install', '-r'/);
+  assert.match(verifierSource, /acceptedHapSha256: frozenAccepted\.sha256/);
+  assert.match(verifierSource, /udidSha256: hash\(Buffer\.from\(acceptedDeviceUdid\.toLocaleLowerCase\(\), 'utf8'\)\)/);
+  assert.match(verifierSource, /--accepted-hap <private-signed-hap> --serial <serial>/);
 });

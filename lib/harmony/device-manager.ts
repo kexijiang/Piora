@@ -1921,7 +1921,7 @@ export class HarmonyDeviceManager {
       async started => await this.action("initialize_mirror", options.serial, options.leaseToken, undefined, options.signal, async (_backend, signal) => {
       const backend = this.requireBackend();
       if (!backend.mirrorPackagePath || !backend.initializeMirror) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Video initialization is unavailable");
-      const artifactPath = await importHapArtifact(backend.mirrorPackagePath(), join(dirname(this.configPath), "harmony-artifacts"));
+      const artifactPath = backend.mirrorPackagePath();
       this.requireLease(options.serial, options.leaseToken);
       if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Video initialization was cancelled");
       started();

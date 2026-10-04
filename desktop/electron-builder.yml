@@ -93,6 +93,25 @@ extraResources:
     filter:
       - "LICENSE"
       - "SOURCE.md"
+  # The packaged web verifier and runtime signing bridge share this source on
+  # every desktop platform. Windows additionally supplies HDC and the HAP.
+  - from: ../lib/harmony/runtime/PioraHapSigner.java
+    to: harmony-tools/PioraHapSigner.java
+  # Runtime signing uses this metadata-only project copy when the user has no
+  # hand-authored descriptor. DevEco CLI writes credentials only to the
+  # private user/cache directories created at initialization time.
+  - from: ../third_party/harmony-mirror
+    to: harmony-tools/signing-project
+    filter:
+      - "build-profile.json5"
+      - "oh-package.json5"
+      - "hvigorfile.ts"
+      - "hvigor/hvigor-config.json5"
+      - "AppScope/app.json5"
+      - "entry/build-profile.json5"
+      - "entry/oh-package.json5"
+      - "entry/hvigorfile.ts"
+      - "entry/src/main/module.json5"
 
 win:
   icon: icon.ico

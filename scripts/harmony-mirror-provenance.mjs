@@ -8,8 +8,9 @@ export const PREPARATION_FILE = '.piora-mirror-source.json';
 export const ARTIFACT_FILE = 'harmony-mirror-manifest.json';
 const MAX_FILE = 256 * 1024 * 1024;
 const MAX_SOURCE = 64 * 1024 * 1024;
-const MANIFEST_SCOPE = 'Measured source fingerprint and artifact metadata/hash; this does not prove SDK compilation, signature trust or distribution eligibility.';
+const MANIFEST_SCOPE = 'Measured source fingerprint, artifact metadata/hash and verified absence of a Harmony signing block or embedded signing profile; this does not prove SDK compilation, signature trust or distribution eligibility.';
 const GENERATED_LOCKS = ['entry/oh-package-lock.json5', 'oh-package-lock.json5'];
+const HAP_SIGNATURE_MAGIC = Buffer.from('<hap sign block>', 'ascii');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const equal = (left, right) => JSON.stringify(left) === JSON.stringify(right);
 const fail = message => { throw new Error(`Harmony mirror provenance: ${message}`); };
@@ -132,10 +133,20 @@ async function boundedZipEntry(entry, remaining) {
   });
 }
 
+export function assertUnsignedHap(bytes, zip) {
+  if (!Buffer.isBuffer(bytes) || !zip?.files || bytes.indexOf(HAP_SIGNATURE_MAGIC) !== -1) {
+    fail('public artifact contains a Harmony signing block');
+  }
+  const signingEntries = Object.keys(zip.files).filter(name =>
+    /(?:^|\/)(?:META-INF(?:\/|$)|profile(?:\.p7b|\.json)?$|signature(?:\.|\/|$)|signing(?:\.|\/|$))/i.test(name));
+  if (signingEntries.length) fail('public artifact contains a signing profile or signature entry');
+}
+
 async function measureHap(path) {
   const bytes = await regularFile(path);
   let zip;
   try { zip = await JSZip.loadAsync(bytes, { createFolders: false }); } catch { fail('artifact is not a readable HAP ZIP'); }
+  assertUnsignedHap(bytes, zip);
   if (Object.keys(zip.files).length > 20000) fail('artifact has too many ZIP entries');
   const metadataEntry = zip.file('module.json');
   if (!metadataEntry || metadataEntry.unsafeOriginalName !== 'module.json') fail('artifact lacks regular root module.json');
@@ -157,6 +168,9 @@ async function measureHap(path) {
     if (entry.name.endsWith('.so') && !entry.name.startsWith('libs/arm64-v8a/')) fail('artifact contains an unexpected native ABI');
     const contents = await boundedZipEntry(entry, MAX_FILE - expanded); expanded += contents.length;
     if (/TestBridge|BridgeSession|PcmTestInputSource|pioraPcmPacket|appTestPairing|AtlasFixture|atlas-action-increment|atlas-encrypted-prepare|atlas-landscape|atlas-portrait/.test(entry.name + '\n' + contents.toString('utf8'))) fail('artifact contains debug acceptance symbols');
+    if (/-----BEGIN CERTIFICATE-----|"(?:device-ids|development-certificate|app-identifier)"\s*:/.test(contents.toString('utf8'))) {
+      fail('public artifact contains embedded signing profile material');
+    }
   }
   return { filename: 'OHScrcpyServer.hap', size: bytes.length, sha256: hash(bytes), component, build };
 }
@@ -171,7 +185,7 @@ export async function recordHarmonyMirrorArtifact({ workspace, sourceDirectory, 
   if (!equal(preparationOrigin, origin) || !equal(snapshot, source) || !equal(source, prepared.source)) fail('source receipt, current source or CI identity changed');
   const location = relative(resolve(workspace), resolve(hapPath));
   if (isAbsolute(location) || location.startsWith(`..${sep}`) || location === '..'
-    || !/^entry\/build\/default\/outputs\/default\/entry-default-signed\.hap$/.test(location.split(sep).join('/'))) fail('record only the current workspace entry/default signed output');
+    || !/^entry\/build\/default\/outputs\/default\/entry-default-unsigned\.hap$/.test(location.split(sep).join('/'))) fail('record only the current workspace entry/default unsigned output');
   const physicalLocation = relative(await realpath(workspace), await realpath(hapPath));
   if (isAbsolute(physicalLocation) || physicalLocation.startsWith(`..${sep}`) || physicalLocation === '..') fail('artifact resolves outside the prepared workspace');
   const artifact = await measureHap(hapPath);
@@ -180,7 +194,7 @@ export async function recordHarmonyMirrorArtifact({ workspace, sourceDirectory, 
     || !equal(await snapshotHarmonyMirrorSource(sourceDirectory), source)) fail('source or generated build inputs changed while measuring the artifact');
   const manifest = { schemaVersion: 1, kind: 'ordinary-mirror-artifact-provenance', origin,
     sourceTreeSha256: source.sourceTreeSha256, api: source.api, abi: source.abi, artifact, generatedBuildInputs: prepared.generatedBuildInputs,
-    signature: 'unverified', scope: MANIFEST_SCOPE };
+    signature: 'absent', scope: MANIFEST_SCOPE };
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
   return manifest;
 }
@@ -192,7 +206,7 @@ export async function verifyHarmonyMirrorArtifact({ sourceDirectory, resourcesDi
   const manifest = await jsonFile(join(resourcesDirectory, ARTIFACT_FILE));
   const keys = ['schemaVersion', 'kind', 'origin', 'sourceTreeSha256', 'api', 'abi', 'artifact', 'generatedBuildInputs', 'signature', 'scope'].sort();
   if (!equal(Object.keys(manifest).sort(), keys) || manifest.schemaVersion !== 1 || manifest.kind !== 'ordinary-mirror-artifact-provenance'
-    || manifest.signature !== 'unverified' || manifest.scope !== MANIFEST_SCOPE) fail('unsupported or misleading manifest');
+    || manifest.signature !== 'absent' || manifest.scope !== MANIFEST_SCOPE) fail('unsupported or misleading manifest');
   if (!Array.isArray(manifest.generatedBuildInputs) || manifest.generatedBuildInputs.length > GENERATED_LOCKS.length
     || new Set(manifest.generatedBuildInputs.map(file => file?.path)).size !== manifest.generatedBuildInputs.length
     || manifest.generatedBuildInputs.some(file => !file || !equal(Object.keys(file).sort(), ['path', 'sha256', 'size'])

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { cp, lstat, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -141,6 +142,58 @@ export async function patchBundledUndici(root = projectRoot, sourceRoot = root) 
   });
 }
 
+const NODE_FORGE_RSA_UNPATCHED_SHA256 = "fd4740238145ec26470eb3f06a627c72039538ce1307dbdce40521f94dfd0a50";
+export const NODE_FORGE_RSA_PATCHED_SHA256 = "18ae286c1ef8e00fc6359ffe3280416946c1dfd6684c98c1c6af1590d7f7e9f4";
+const NODE_FORGE_RSA_PATCH_MARKER =
+  "// Piora: reject extra nested DigestAlgorithm elements (GHSA-86w9-cpqp-85rv).";
+
+export async function patchNodeForgeDigestAlgorithm(root = projectRoot) {
+  const packageRoot = join(root, "node_modules", "node-forge");
+  const manifest = await readPackage(packageRoot);
+  if (manifest.name !== "node-forge" || manifest.version !== "1.4.0") {
+    throw new Error(`Review the node-forge RSA patch after upgrading from 1.4.0; found ${manifest.name}@${manifest.version}`);
+  }
+  const file = join(packageRoot, "lib", "rsa.js");
+  const source = await readFile(file, "utf8");
+  const digest = createHash("sha256").update(source).digest("hex");
+  const predicate = [
+    "if(!asn1.validate(obj, digestInfoValidator, capture, errors) ||",
+    "            obj.value.length !== 2 ||",
+    "            !Array.isArray(obj.value[0].value) ||",
+    "            obj.value[0].value.length < 1 ||",
+    "            obj.value[0].value.length > 2) {",
+  ].join("\n");
+  if (source.includes(NODE_FORGE_RSA_PATCH_MARKER)) {
+    if (!source.includes(`${predicate}\n            ${NODE_FORGE_RSA_PATCH_MARKER}`)
+      || source.split(NODE_FORGE_RSA_PATCH_MARKER).length !== 2
+      || digest !== NODE_FORGE_RSA_PATCHED_SHA256) {
+      throw new Error("The installed node-forge RSA patch has an unexpected shape");
+    }
+    return { patched: false, reason: "already-patched", version: manifest.version, sha256: digest };
+  }
+  if (digest !== NODE_FORGE_RSA_UNPATCHED_SHA256) {
+    throw new Error("Refusing to patch unexpected node-forge 1.4.0 RSA source");
+  }
+  const before = [
+    "if(!asn1.validate(obj, digestInfoValidator, capture, errors) ||",
+    "            obj.value.length !== 2) {",
+  ].join("\n");
+  if (source.split(before).length !== 2) throw new Error("Expected one node-forge DigestInfo validation site");
+  const patched = source.replace(before, `${predicate}\n            ${NODE_FORGE_RSA_PATCH_MARKER}`);
+  await writeFile(file, patched, "utf8");
+  const verified = await readFile(file, "utf8");
+  const patchedSha256 = createHash("sha256").update(verified).digest("hex");
+  if (!verified.includes(`${predicate}\n            ${NODE_FORGE_RSA_PATCH_MARKER}`)
+    || patchedSha256 !== NODE_FORGE_RSA_PATCHED_SHA256) {
+    throw new Error("node-forge RSA patch verification failed");
+  }
+  return {
+    patched: true,
+    version: manifest.version,
+    sha256: patchedSha256,
+  };
+}
+
 export async function patchElectronBuilderWorkspaceCollector(root = projectRoot) {
   const packageRoot = join(root, "node_modules", "app-builder-lib");
   const packageManifest = await readPackage(packageRoot);
@@ -188,6 +241,7 @@ async function main() {
   const patches = await Promise.all([
     patchBundledBraceExpansion().then((result) => ({ package: "brace-expansion", ...result })),
     patchBundledUndici().then((result) => ({ package: "undici", ...result })),
+    patchNodeForgeDigestAlgorithm().then((result) => ({ package: "node-forge", ...result })),
     patchElectronBuilderWorkspaceCollector().then((result) => ({ package: "app-builder-lib", ...result })),
     patchNodePtyShutdown().then((result) => ({ package: "node-pty", ...result })),
   ]);

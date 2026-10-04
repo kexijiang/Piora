@@ -21,7 +21,8 @@ new source frames return to the absolute source timeline.
 The package keeps the existing `com.ohos.scrcpy.server` identity for the desktop
 video protocol. Explicit initialization replaces that capture component; passive
 viewing never installs or starts it. No upstream signing keys, certificates,
-generated profiles, build output, or device-bound signed HAP are included here.
+generated profiles, build output, or signed HAP are included in this editable
+source directory.
 
 Prepare a separate build workspace using:
 
@@ -34,9 +35,31 @@ DevEco CLI. `devecocli signature generate` creates local signing materials;
 `devecocli build --build-mode debug --product default` builds a device test HAP.
 Debug signing can be limited to registered devices and is not a public release
 signature. Do not copy those private configuration files into this source tree.
-Piora release packages continue to be built in GitHub Actions. A signed capture
-artifact must be verified before replacing the distributed HAP; adding this
-source does not establish that a beta package contains or has tested it.
+These commands are for isolated development tests and do not create a release
+artifact.
+
+Piora release packages continue to be built in GitHub Actions. A beta tagged run
+builds one public release-mode HAP that intentionally remains unsigned and binds
+its exact bytes to the source manifest. From that same unsigned input, the
+dedicated runner creates a separate private DevEco device-signed acceptance HAP,
+verifies its application signature and profile with the API-26 SDK, and uses it
+for the registered-phone gate. The private HAP and temporary verification files
+are deleted after the gate and never uploaded or packaged. Only the public
+unsigned HAP, its manifest, the non-secret receipt and a generated source note
+cross into the desktop packaging job. Adding this source does not establish that
+a beta tagged run or its final installed-desktop acceptance has passed.
+
+The installed desktop verifies that receipt before doing anything with the public
+HAP. Only explicit video-service initialization uses the user's private DevEco
+configuration. When no explicit descriptor is configured, Piora copies this
+project's metadata-only signing template into its private cache and invokes the
+bundled DevEco CLI to generate or update the standard signing configuration for
+the connected phone. It then signs a private local copy, verifies the result,
+and installs it with ordinary `hdc install`. It never uses `-r`; an
+incompatible installed component is removed and its absence checked first.
+Missing local signing configuration or a profile that does not contain the phone
+produces a configuration error before installation. Passive viewing never signs,
+installs, starts, wakes or unlocks the phone.
 
 The accepted device tests for source version 1.1.0 cover portrait native video,
 20/45-second recordings, denial followed by explicit consent, and watching a
@@ -109,7 +132,12 @@ capture epoch, produced fresh frames after both encoder replacements, used no
 screenshot fallback, captured screenshots during native video, recorded a
 playable MP4 with decoded frames, and completed explicit stop, uninstall and
 absence checks with no native dialogs or renderer errors. That private debug HAP
-is not distributed. The 1.1.27 release artifact must be built, release-signed,
-verified and bound to the same GitHub Actions run as the desktop packages; those
-exact packages must then pass installed desktop and phone acceptance before the
-beta is published.
+is not distributed. The 1.1.27 public artifact must be built unsigned and bound
+to the same GitHub Actions run as the desktop packages. A separate private
+DevEco device-signed copy made from those exact bytes must pass official
+verification and the dedicated-phone gate, then be deleted without upload. The
+same-run desktop packages must still pass explicit local signing, ordinary
+installation and phone acceptance before the beta is published; those checks are
+requirements and are not recorded here as completed. Stable publishing remains
+fail-closed until an AGC release certificate and profile for the same bundle are
+integrated.

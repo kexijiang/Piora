@@ -9,4 +9,4 @@ if (!workspace || !outputDirectory || extra.length) {
 }
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 await buildHarmonyMirrorRelease({ projectRoot, workspace: resolve(workspace), outputDirectory: resolve(outputDirectory) });
-console.log('Built, signed, officially verified and recorded the ordinary Harmony mirror HAP. Real-device acceptance is still required.');
+console.log('Built the public unsigned Harmony mirror HAP and a private, officially verified acceptance copy. Real-device acceptance is still required.');

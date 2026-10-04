@@ -9,4 +9,4 @@ if (!resourcesDirectory || !targetDirectory || extra.length) {
 }
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 await stageHarmonyMirrorRelease({ projectRoot, resourcesDirectory: resolve(resourcesDirectory), targetDirectory: resolve(targetDirectory) });
-console.log('Staged the same-run, signed, officially verified and real-device-accepted Harmony mirror resource.');
+console.log('Staged the same-run public unsigned HAP with its private-signing and real-device acceptance receipt.');

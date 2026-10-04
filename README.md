@@ -17,7 +17,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-最新正式版为 `0.5.4`，当前源码版本为 `0.5.5-beta.6`。此 beta 集中提供鸿蒙设备的应用、文件、SQLite 与终端工作台；安装包须经 GitHub Actions 构建，并在真实 Piora 桌面端与手机上验收同批字节后才会出现在[所有发布](https://github.com/kexijiang/Piora/releases)。真机支持范围和待验项目见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)，完整版本变化以 [CHANGELOG.md](CHANGELOG.md) 为准。
+最新正式版为 `0.5.4`，当前源码版本为 `0.5.5-beta.7`。此 beta 集中提供鸿蒙设备的应用、文件、SQLite 与终端工作台；安装包须经 GitHub Actions 构建，并在真实 Piora 桌面端与手机上验收同批字节后才会出现在[所有发布](https://github.com/kexijiang/Piora/releases)。beta.7 候选 Windows 包只携带由同次来源和真机验收收据约束的 unsigned 投屏 HAP；只有用户明确初始化时，Piora 才调用本机已登录的 DevEco CLI 生成或更新设备调试 Profile，生成并验签设备绑定副本后安装。真机支持范围和待验项目见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)，完整版本变化以 [CHANGELOG.md](CHANGELOG.md) 为准。
 
 [下载与安装](#下载与安装) · [开始使用](#开始使用) · [主要功能](#主要功能) · [鸿蒙设备工作台](#鸿蒙设备工作台) · [开发与贡献](#开发与贡献) · [文档索引](docs/README.md)
 
@@ -106,7 +106,7 @@ Windows 桌面包内置 **SenseVoiceSmall INT8** 模型和 **sherpa-onnx** 运�
 
 1. 在支持 HDC 的 OpenHarmony / HarmonyOS 设备上开启开发者选项和 USB 调试，并在手机确认电脑授权。
 2. 打开右侧设备面板，选择 HDC 和目标手机。Windows 包带有备用 HDC，也可使用 DevEco Studio / SDK 中适合设备的版本；多设备连接时明确选择目标。
-3. 缺少投屏服务时，点击面板中的“初始化投屏服务”直接安装。手机锁定时请在手机上手动解锁。
+3. 缺少投屏服务时，先安装 HarmonyOS API 26 SDK、运行 `devecocli auth login`，连接并解锁目标手机，再点击面板中的“初始化投屏服务”。Piora 会在私有缓存调用随包 DevEco CLI 自动生成或更新设备调试 Profile，核对随包 unsigned HAP 的发布收据，为当前手机生成并官方验签私有副本，然后以普通安装命令部署；不会使用 `-r` 覆盖安装。登录、适用 Profile 或 API 26 工具链缺失时会直接说明配置问题。
 4. 画面和设备能力就绪后即可持续观看、截图或录屏，无需停止投屏或中断正在运行的 AI 任务。需要操作手机时，从 AI、应用或测试工具发起；后台会按设备状态串行执行动作。
 
 **仅观看投屏不会自动安装服务、唤醒或解锁手机，也不会占用设备动作队列。** 截图和录屏使用独立的只读媒体通道；切换设备、关闭面板或停止任务后，等待中的旧动作不会继续派发。
@@ -204,9 +204,9 @@ npm run perf:check
 npm run verify:backgrounds
 ```
 
-`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows / Linux 上分组执行测试，Windows 高资源 Shell 测试单独运行。beta 标签构建必须通过专用自托管运行器上的 HAP 真机门禁；候选生成后还须安装同批 Piora 并完成手机验收，软件测试不能代替这两层硬件验证。
+`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows / Linux 上分组执行测试，Windows 高资源 Shell 测试单独运行。beta 标签构建会从随包的同一 unsigned HAP 输入生成仅供门禁使用的私有 DevEco device-signed 副本；该副本完成官方验签和真机门禁后删除且不上传。候选生成后还须安装同批 Piora，并验证用户明确初始化时的本机签名与手机安装；软件测试不能代替这两层硬件验证。
 
-发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；安装同批 Piora 并完成手机验收后，再由独立工作流发布这些原始字节。`vX.Y.Z` 稳定标签仍由完整发布工作流构建、验证和发布。不要移动已发布标签或本地制作发布包。
+发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；安装同批 Piora 并完成手机验收后，再由独立工作流发布这些原始字节。`vX.Y.Z` 稳定流程在接入同一 bundle 的 AGC release identity 前保持失败关闭。不要移动已发布标签或本地制作发布包。
 
 **CHANGELOG 是唯一更新说明来源**，Release 正文和 `beta.yml` / `latest.yml` 的更新说明由同一版本记录生成，并在发布前校验。具体步骤见[发布流程](docs/release.md)。
 

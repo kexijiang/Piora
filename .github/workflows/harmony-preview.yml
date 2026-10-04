@@ -48,9 +48,13 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build, sign and officially verify ordinary mirror HAP
+      - name: Build public HAP and private acceptance copy
         shell: pwsh
+        env:
+          HARMONY_SERIAL: ${{ secrets.HARMONY_DEVICE_SERIAL }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:HARMONY_SERIAL)) { throw 'HARMONY_DEVICE_SERIAL is required during signing' }
+          if ([string]::IsNullOrWhiteSpace($env:PIORA_HARMONY_SIGNING_CONFIG_PATH)) { throw 'PIORA_HARMONY_SIGNING_CONFIG_PATH is required on the dedicated runner' }
           $workspace = Join-Path $env:RUNNER_TEMP "piora-harmony-mirror-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           $resources = Join-Path $env:RUNNER_TEMP "piora-harmony-resource-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           if ((Test-Path -LiteralPath $workspace) -or (Test-Path -LiteralPath $resources)) {
@@ -58,14 +62,16 @@ jobs:
           }
           node scripts/build-harmony-mirror-release.mjs $workspace $resources
 
-      - name: Install and accept the same signed HAP on the dedicated phone
+      - name: Install and accept the private copy on the dedicated phone
         shell: pwsh
         env:
           HARMONY_SERIAL: ${{ secrets.HARMONY_DEVICE_SERIAL }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:HARMONY_SERIAL)) { throw 'HARMONY_DEVICE_SERIAL is required' }
+          $workspace = Join-Path $env:RUNNER_TEMP "piora-harmony-mirror-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           $resources = Join-Path $env:RUNNER_TEMP "piora-harmony-resource-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-          node scripts/verify-harmony-mirror-device.mjs $resources --serial $env:HARMONY_SERIAL
+          $acceptedHap = Join-Path $workspace '.private-acceptance/OHScrcpyServer.acceptance.hap'
+          node scripts/verify-harmony-mirror-device.mjs $resources --accepted-hap $acceptedHap --serial $env:HARMONY_SERIAL
 
       - name: Stage accepted same-run mirror resource
         shell: pwsh
@@ -86,6 +92,23 @@ jobs:
           if-no-files-found: error
           retention-days: 14
           compression-level: 0
+
+      - name: Remove private signing and acceptance files
+        if: always()
+        shell: pwsh
+        run: |
+          $runnerRoot = [IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+          $paths = @(
+            (Join-Path $env:RUNNER_TEMP "piora-harmony-mirror-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"),
+            (Join-Path $env:RUNNER_TEMP "piora-harmony-resource-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"),
+            (Join-Path $env:RUNNER_TEMP "piora-harmony-staging-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT")
+          )
+          foreach ($path in $paths) {
+            $full = [IO.Path]::GetFullPath($path)
+            if (-not $full.StartsWith($runnerRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Refusing cleanup outside runner temp" }
+            if (Test-Path -LiteralPath $full) { Remove-Item -LiteralPath $full -Recurse -Force -ErrorAction Stop }
+            if (Test-Path -LiteralPath $full) { throw "Private Harmony acceptance state remained after cleanup" }
+          }
 
   windows-preview:
     name: Build and verify preview (${{ matrix.brand }})
@@ -137,7 +160,7 @@ jobs:
         run: node scripts/stage-harmony-mirror-artifact.mjs .harmony-mirror-resource third_party/harmony-tools/windows-x64
 
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: npm run audit:runtime
 
       - name: Verify Harmony schemas and documentation
         run: npm run harmony:docs:check

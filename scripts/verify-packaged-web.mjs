@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -38,6 +39,7 @@ const expectedBackgroundCount = 37;
 const safeBackgroundAsset = /^\/themes\/dream-backgrounds\/[A-Za-z0-9][A-Za-z0-9._-]*\.webp$/;
 const bundledPetRelativeRoot = "companion-pets/bundled";
 const generatedBuiltinPetAsset = "companion-pets/piora-bot.webp";
+const nodeForgeRsaPatchedSha256 = "18ae286c1ef8e00fc6359ffe3280416946c1dfd6684c98c1c6af1590d7f7e9f4";
 const expectedBundledPetIds = Object.freeze([
   "azure",
   "corgi-scout",
@@ -812,12 +814,39 @@ export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
       throw new Error(`Packaged Pi runtime must contain the reviewed ${expected.name}@${expected.version}.`);
     }
   }
+  const nodeForgeRoot = join(runtimeWebRoot, "node_modules", "node-forge");
+  const nodeForgeManifestPath = join(nodeForgeRoot, "package.json");
+  const nodeForgeRsaPath = join(nodeForgeRoot, "lib", "rsa.js");
+  await Promise.all([assertFile(nodeForgeManifestPath), assertFile(nodeForgeRsaPath)]);
+  const [nodeForgeManifest, nodeForgeRsa] = await Promise.all([
+    readFile(nodeForgeManifestPath, "utf8").then(JSON.parse),
+    readFile(nodeForgeRsaPath),
+  ]);
+  const nodeForgeRsaSha256 = createHash("sha256").update(nodeForgeRsa).digest("hex");
+  if (nodeForgeManifest?.name !== "node-forge" || nodeForgeManifest?.version !== "1.4.0"
+    || nodeForgeRsaSha256 !== nodeForgeRsaPatchedSha256) {
+    throw new Error("Packaged runtime must contain the reviewed node-forge DigestAlgorithm patch.");
+  }
   return patchedBundledDependencies;
 }
 
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
+  await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "PioraHapSigner.java"));
+  for (const relativePath of [
+    "build-profile.json5",
+    "oh-package.json5",
+    "hvigorfile.ts",
+    "hvigor/hvigor-config.json5",
+    "AppScope/app.json5",
+    "entry/build-profile.json5",
+    "entry/oh-package.json5",
+    "entry/hvigorfile.ts",
+    "entry/src/main/module.json5",
+  ]) {
+    await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "signing-project", relativePath));
+  }
   const packagedWebEntries = (await readdir(packagedWebRoot)).sort();
   if (JSON.stringify(packagedWebEntries) !== JSON.stringify(["runtime.asar", "runtime.asar.unpacked", "server.js"])) {
     throw new Error(`Packaged web container must contain the launcher, runtime archive and native sidecar: ${packagedWebEntries.join(", ")}`);

@@ -50,6 +50,18 @@ export class HarmonyRequestError extends Error {
     if (this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "mirror-package-invalid") return chinese
       ? "投屏组件缺少可用的前台入口。请重新安装有效的投屏组件。"
       : "The capture package has no supported foreground entry. Reinstall a valid capture component.";
+    if (this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "mirror-local-signing-unavailable") return chinese
+      ? "无法为当前手机生成私有投屏组件。请运行 devecocli auth login，保持手机已连接并解锁，然后重新初始化；Piora 会自动生成或更新设备调试 Profile。"
+      : "Piora could not create the private capture component. Run devecocli auth login, keep this phone connected and unlocked, then initialize again; Piora will generate or update its device debug profile.";
+    if (this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "mirror-private-package-invalid") return chinese
+      ? "本机签名后的投屏组件与随包版本不一致，未向手机发送安装命令。请重新安装 Piora 后重试。"
+      : "The locally signed capture component differs from the bundled version. No install command was sent. Reinstall Piora and try again.";
+    if (this.code === "OBSERVATION_UNAVAILABLE" && this.reason === "mirror-device-identity-unavailable") return chinese
+      ? "无法确认当前手机是否包含在 DevEco 调试 Profile 中，未发送安装命令。请重新连接手机后重试。"
+      : "Piora could not verify that this phone is included in the DevEco debug profile. No install command was sent. Reconnect the phone and try again.";
+    if (this.code === "OBSERVATION_UNAVAILABLE" && this.reason === "mirror-uninstallation-unverified") return chinese
+      ? "旧投屏组件卸载后仍能被设备读取，已停止安装新版本。请在手机上确认旧组件已移除后重试。"
+      : "The old capture component was still visible after uninstall, so the new version was not installed. Confirm its removal on the phone and try again.";
     if (this.code === "OBSERVATION_UNAVAILABLE" && this.reason === "mirror-installation-unverified") return chinese
       ? "投屏组件已安装，但版本或启动入口尚未核实，因此未启动。请刷新应用信息后重新初始化。"
       : "The capture package was installed, but its version or entry could not be verified. It was not launched. Refresh application information and initialize again.";
