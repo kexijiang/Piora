@@ -393,6 +393,9 @@ async function main() {
     // Device text editing is reached through the source-loaded Harmony
     // extension, so Next cannot trace its GB18030/UTF-16 codec dependency.
     join(projectRoot, "node_modules", "iconv-lite"),
+    // Source-loaded HAP preview resolves JSZip's Node entry and its production
+    // dependencies even when Next bundles the separate browser entry.
+    join(projectRoot, "node_modules", "jszip"),
     // sharp resolves its versioned native bindings and optional platform
     // packages dynamically; the static trace can omit those binaries.
     join(projectRoot, "node_modules", "sharp"),

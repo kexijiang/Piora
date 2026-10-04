@@ -862,6 +862,61 @@ export async function verifyPackagedNativePiRuntime(runtimeWebRoot) {
   } finally { await rm(probe, { force: true }); }
 }
 
+export async function verifyPackagedHarmonyHapPreview(runtimeWebRoot) {
+  const probe = join(runtimeWebRoot, ".piora-hap-preview-smoke.cjs");
+  const fixture = join(runtimeWebRoot, ".piora-hap-preview-fixture.hap");
+  await writeFile(probe, `
+const { createJiti } = require("jiti");
+const { createRequire } = require("node:module");
+const { createHash } = require("node:crypto");
+const { readFile, writeFile } = require("node:fs/promises");
+const { join } = require("node:path");
+(async () => {
+  const { previewHapArtifact } = await createJiti(__filename, { fsCache: false, moduleCache: false })
+    .import("./lib/harmony/runtime/hap-preview.ts");
+  const JSZip = require("jszip");
+  const zip = new JSZip();
+  zip.file("module.json", JSON.stringify({
+    app: { bundleName: "dev.piora.packagedpreview", versionName: "1.0", versionCode: 7 },
+    module: { name: "entry", type: "entry", deviceTypes: ["phone"], abilities: [{ name: "PreviewAbility" }] },
+  }));
+  const bytes = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  const path = join(__dirname, ".piora-hap-preview-fixture.hap");
+  await writeFile(path, bytes, { flag: "wx" });
+  const preview = await previewHapArtifact(path);
+  process.stdout.write(JSON.stringify({
+    preview, originalSha256: createHash("sha256").update(bytes).digest("hex"),
+    unchanged: bytes.equals(await readFile(path)),
+    jszipPath: require.resolve("jszip"),
+    pakoPath: createRequire(require.resolve("jszip")).resolve("pako"),
+  }));
+})().catch(error => { console.error(error); process.exitCode = 1; });
+`, { flag: "wx", mode: 0o600 });
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [probe], {
+      cwd: runtimeWebRoot, timeout: 30000, maxBuffer: 1024 * 1024,
+      env: { ...process.env, NODE_PATH: "" },
+    });
+    const result = JSON.parse(stdout.trim());
+    for (const dependencyPath of [result.jszipPath, result.pakoPath]) {
+      const path = relative(runtimeWebRoot, dependencyPath);
+      if (!path || path === ".." || path.startsWith("../") || path.startsWith("..\\") || isAbsolute(path)) {
+        throw new Error("Packaged HAP preview resolved a dependency outside its runtime");
+      }
+    }
+    const preview = result.preview;
+    if (preview?.bundleName !== "dev.piora.packagedpreview" || preview.versionCode !== 7
+      || preview.moduleName !== "entry" || preview.signature !== "unverified"
+      || preview.sha256 !== result.originalSha256 || result.unchanged !== true) {
+      throw new Error("Packaged HAP preview failed compressed metadata or read-only verification");
+    }
+    return { bundleName: preview.bundleName, versionCode: preview.versionCode, compressed: true, unchanged: true };
+  } finally {
+    await rm(probe, { force: true });
+    await rm(fixture, { force: true });
+  }
+}
+
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
@@ -910,6 +965,7 @@ async function main() {
   const packagedPiAiModules = await verifyPackagedPiAiModuleSurface(runtimeWebRoot);
   const patchedBundledDependencies = await verifyPackagedBundledDependencies(runtimeWebRoot);
   const nativePiRuntime = await verifyPackagedNativePiRuntime(runtimeWebRoot);
+  const harmonyHapPreview = await verifyPackagedHarmonyHapPreview(runtimeWebRoot);
   const looseNodeModules = await stat(join(packagedWebRoot, "node_modules")).catch(() => undefined);
   if (looseNodeModules) {
     throw new Error("Packaged web dependencies must be archived; loose node_modules would regress portable startup");
@@ -1226,6 +1282,7 @@ async function main() {
       packagedPiAiRuntime,
       packagedPiAiModules,
       nativePiRuntime,
+      harmonyHapPreview,
       patchedBundledDependencies: patchedBundledDependencies.map(({ name, version }) => `${name}@${version}`),
       forbiddenDependencyChecks: forbiddenPackagedDependencies.length,
       packagedBackgrounds: packagedBackgrounds.backgroundCount,

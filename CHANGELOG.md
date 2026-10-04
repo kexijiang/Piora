@@ -6,6 +6,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### Dependency maintenance
 
+- 补齐源加载 HAP 预览所需的 JSZip Node 入口及实际生产依赖闭包；隔离子进程验证压缩元数据与只读行为，并拒绝缺少 JSZip 或 pako 的不完整打包树。
+
 - 修正注册 MCP 服务器的状态优先级：关闭原生连接或禁用服务器后显示“已禁用”，保留独立的连接批准状态，避免误报“需要授权”。
 
 - 同步最新 main 的鸿蒙工作台、发送取消状态和 beta.6 候选版本，保留 Pi 原始会话记录与停止队列防护；按合并后的实际锁文件重新生成许可证清单并重新验证兼容性。
