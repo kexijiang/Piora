@@ -49,6 +49,9 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const outputRef = useRef<HTMLDivElement>(null);
+  const rowHeightRef = useRef(rowHeight);
+  const visibleEntriesRef = useRef<Array<LogEntry & { id: number }>>([]);
+  rowHeightRef.current = rowHeight;
   const nextId = useRef(0);
   const following = useRef(true);
   const [followTail, setFollowTail] = useState(true);
@@ -58,7 +61,21 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
   const anchor = useRef<{ id: string; offset: number } | null>(null);
   const captureAnchor = () => {
     const output = outputRef.current;
-    if (!output || following.current) return;
+    if (!output) return;
+    // A programmatic scroll and a new log batch can land in the same frame. Read
+    // the element here instead of trusting the previous scroll event, otherwise
+    // the stale `following` flag can snap a reader back to the newest row.
+    const currentRowHeight = Math.max(1, rowHeightRef.current);
+    const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < currentRowHeight;
+    following.current = atBottom;
+    if (atBottom) return;
+    const currentEntries = visibleEntriesRef.current;
+    const currentIndex = Math.min(currentEntries.length - 1, Math.max(0, Math.floor(output.scrollTop / currentRowHeight)));
+    const currentEntry = currentEntries[currentIndex];
+    if (currentEntry) {
+      anchor.current = { id: String(currentEntry.id), offset: currentIndex * currentRowHeight - output.scrollTop };
+      return;
+    }
     const top = output.getBoundingClientRect().top;
     const row = Array.from(output.querySelectorAll<HTMLElement>("[data-log-id]")).find((item) => item.getBoundingClientRect().bottom > top);
     anchor.current = row ? { id: row.dataset.logId!, offset: row.getBoundingClientRect().top - top } : null;
@@ -128,6 +145,7 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
   const visibleEntries = useMemo(() => entries.filter((entry) => (!pid || String(entry.pid) === pid || (entry.pid !== undefined && matchingPids.has(entry.pid)))
     && (!level || entry.level === level) && (!tag || (entry.tag ?? "").toLocaleLowerCase().includes(tag.toLocaleLowerCase()))
     && timeRange.matches(entry.timestamp) && matcher.matches(entry.raw)), [entries, pid, matchingPids, level, tag, timeRange, matcher]);
+  visibleEntriesRef.current = visibleEntries;
   const firstRow = Math.min(Math.max(0, visibleEntries.length - 1), Math.max(0, Math.floor(scrollTop / rowHeight) - 8));
   const lastRow = Math.min(visibleEntries.length, Math.ceil((scrollTop + viewportHeight) / rowHeight) + 8);
 

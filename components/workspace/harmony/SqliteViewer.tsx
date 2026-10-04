@@ -241,6 +241,10 @@ function SqliteViewerSession({ serial, initialDatabaseId, chinese, onShowTasks }
   }, [catalog, initialDatabaseId, openDatabaseTabs, selectedDatabase, sqlDrafts, tableTabsByDatabase, tabsKey, tabsReady]);
   const read = async (table?: string, offset = 0, query?: string, indexToShow = "", queryContext?: QueryContext) => {
     if (!snapshot.current) return;
+    // Reflect the selected workspace immediately. Device snapshot reads may take
+    // long enough that leaving the SQL editor open makes the table click appear
+    // to have done nothing, and wastes the space reserved for incoming rows.
+    setQueryConsoleOpen(!table);
     controller.current?.abort();
     const current = new AbortController(); controller.current = current; setBusy(true); setError(""); setQueryFailure(null);
     try {
@@ -248,7 +252,6 @@ function SqliteViewerSession({ serial, initialDatabaseId, chinese, onShowTasks }
       if (!current.signal.aborted) {
         if (query !== undefined && !indexToShow) pendingResultReveal.current = data.result;
         setResult(data.result); setSelectedCell(null); setCopyNotice(""); setSelectedIndex(indexToShow); setContentTab(indexToShow ? "structure" : "data"); setQueryDurationMs(data.durationMs ?? null);
-        setQueryConsoleOpen(!table);
         if (table) setTableTabsByDatabase(currentTabs => ({ ...currentTabs, [selectedDatabase]: currentTabs[selectedDatabase]?.includes(table) ? currentTabs[selectedDatabase] : [...(currentTabs[selectedDatabase] ?? []), table].slice(-8) }));
       }
     } catch (failure) {
