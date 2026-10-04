@@ -18,7 +18,7 @@ export interface NativeMcpServerState {
   name: string; source: string; scope: "global" | "project" | "extension";
   transport: "stdio" | "http"; endpoint: string; exposure: string;
   state: NativeMcpState; tools: Array<{ name: string; exposure: ToolExposure }>;
-  resources: boolean; owner: "native" | "replacement"; approvalRequired?: boolean; configurationCurrent?: boolean;
+  resources: boolean; owner: "native" | "replacement"; approvalRequired?: boolean; configurationCurrent?: boolean; connectionAuthorized?: boolean;
 }
 type Permission = (tool: string, input?: Record<string, unknown>) => boolean;
 
@@ -69,8 +69,9 @@ export class NativeMcpController {
         return { ...config, servers: config.servers.map(entry => ({ ...entry, config: { ...entry.config, enabled: enabled && entry.config.enabled !== false } })) };
       },
       createTransport: (entry, workingDirectory, auth) => {
-        const observedAuth = auth ? { token: async () => { const token = await auth.token(); if (token) this.secrets.add(token); return token; },
-          ...(auth.onUnauthorized ? { onUnauthorized: auth.onUnauthorized.bind(auth) } : {}) } : undefined;
+        this.assertServerAuthorized(entry.name);
+        const observedAuth = auth ? { token: async () => { this.assertServerAuthorized(entry.name); const token = await auth.token(); this.assertServerAuthorized(entry.name); if (token) this.rememberSecret(token); return token; },
+          ...(auth.onUnauthorized ? { onUnauthorized: async (...args: Parameters<NonNullable<typeof auth.onUnauthorized>>) => { this.assertServerAuthorized(entry.name); await auth.onUnauthorized!(...args); this.assertServerAuthorized(entry.name); } } : {}) } : undefined;
         return this.observeTransport(entry, options.createTransport?.(entry, workingDirectory, observedAuth) ?? this.transport(entry, workingDirectory, observedAuth));
       },
       updateConfig: () => { throw new Error("Manage native MCP configuration in Piora Settings > Plugins"); },
@@ -136,6 +137,9 @@ export class NativeMcpController {
         && nativeMcpApprovalIdentity(this.cwd, server, current.source, current.config) === identity;
     } catch { return false; }
   }
+  private assertServerAuthorized(server: string): void {
+    if (!this.isServerAuthorized(server)) throw new Error("Native MCP connection authorization was revoked or its configuration changed. Reload after approving the current configuration.");
+  }
   declarationNames(names: readonly string[]): string[] {
     return names.filter(name => {
       const exposure = this.definitions.get(name)?.exposure;
@@ -150,9 +154,12 @@ export class NativeMcpController {
     }));
   }
   snapshot(): { enabled: boolean; projectTrusted: boolean; owner: "native" | "replacement"; servers: NativeMcpServerState[] } {
-    return { enabled: readNativeMcpPreferences(this.agentDir).enabled, projectTrusted: this.projectTrusted,
+    const preferences = readNativeMcpPreferences(this.agentDir);
+    return { enabled: preferences.enabled, projectTrusted: this.projectTrusted,
       owner: this.nativeStarted ? "native" : "replacement",
-      servers: [...this.states.values()].map(server => ({ ...server, configurationCurrent: this.configurationIsCurrent(server.name), owner: this.nativeStarted ? "native" : "replacement", tools: server.tools.map(tool => ({ ...tool })) })) };
+      servers: [...this.states.values()].map(server => ({ ...server, configurationCurrent: this.configurationIsCurrent(server.name), connectionAuthorized: this.isServerAuthorized(server.name),
+        ...(server.scope === "extension" ? { approvalRequired: !preferences.approvedRegistered.includes(this.registeredApprovals.get(server.name) ?? "") } : {}),
+        owner: this.nativeStarted ? "native" : "replacement", tools: server.tools.map(tool => ({ ...tool })) })) };
   }
   approveRegistered(name: string, approved: boolean): void {
     const identity = this.registeredApprovals.get(name);
@@ -160,6 +167,7 @@ export class NativeMcpController {
     const preferences = readNativeMcpPreferences(this.agentDir);
     preferences.approvedRegistered = [...new Set(preferences.approvedRegistered.filter(id => id !== identity).concat(approved ? [identity] : []))];
     writeNativeMcpPreferences(this.agentDir, preferences);
+    this.announce();
   }
   private observeEntry(entry: NativeMcpEntry, enabled: boolean): void {
     this.entries.set(entry.name, entry);
@@ -171,14 +179,51 @@ export class NativeMcpController {
       state: !enabled || config.enabled === false ? "disabled" : previous?.state ?? "configured",
       tools: previous?.tools ?? [], resources: previous?.resources ?? false, owner: "native" });
     const values = [...Object.values("url" in config ? config.headers ?? {} : config.env ?? {}), ...("url" in config && config.oauth?.clientSecret ? [config.oauth.clientSecret] : [])];
+    if ("url" in config) {
+      const url = new URL(config.url);
+      this.rememberSecret(config.url);
+      if (url.search) this.rememberSecret(url.search);
+      for (const [key, value] of url.searchParams) if (/token|key|secret|credential|auth|signature|password/i.test(key)) this.rememberSecret(value);
+    }
     for (const value of values) {
-      this.secrets.add(value);
-      try { this.secrets.add(environmentValue(value)); } catch { /* no command evaluation */ }
+      this.rememberSecret(value);
+      try { this.rememberSecret(environmentValue(value)); } catch { /* no command evaluation */ }
     }
   }
+  private rememberSecret(value: string): void {
+    if (!value) return;
+    this.secrets.add(value);
+    // A server may echo the token without the configured Authorization scheme.
+    const bearer = /^Bearer\s+(.+)$/i.exec(value);
+    if (bearer) this.secrets.add(bearer[1].trim());
+  }
   private redact(message: string): string {
-    for (const secret of this.secrets) if (secret.length >= 3) message = message.split(secret).join("[redacted]");
+    for (const secret of [...this.secrets].sort((a, b) => b.length - a.length)) if (secret.length >= 3) {
+      for (const form of new Set([secret, encodeURIComponent(secret), JSON.stringify(secret).slice(1, -1)])) message = message.split(form).join("[redacted]");
+    }
     return message;
+  }
+  private sanitize<T>(value: T): T {
+    const seen = new WeakMap<object, object>();
+    const copy = (input: unknown): unknown => {
+      if (typeof input === "string") return this.redact(input);
+      if (!input || typeof input !== "object") return input;
+      const existing = seen.get(input); if (existing) return existing;
+      const output = Array.isArray(input) ? [] : Object.create(Object.getPrototypeOf(input));
+      seen.set(input, output);
+      // Preserve public error prototypes/status/code for upstream auth/retry,
+      // but never retain an original cause, body, details or stack reference.
+      for (const key of Reflect.ownKeys(input)) {
+        if (Array.isArray(input) && key === "length") continue;
+        const descriptor = Object.getOwnPropertyDescriptor(input, key)!;
+        if ("value" in descriptor) Object.defineProperty(output, typeof key === "string" ? this.redact(key) : key, { ...descriptor, value: copy(descriptor.value) });
+      }
+      return output;
+    };
+    return copy(value) as T;
+  }
+  private safeError(error: unknown): Error {
+    return error instanceof Error ? this.sanitize(error) : new Error(typeof error === "string" ? this.redact(error) : "Native MCP operation failed");
   }
   private context<T extends ExtensionContext>(ctx: T): T {
     return new Proxy(ctx, { get: (target, key) => {
@@ -227,9 +272,10 @@ export class NativeMcpController {
         const wrapped = { ...definition, defaultActive: false,
           ...(original.prepareLoadout ? { prepareLoadout: (loadout: Parameters<NonNullable<typeof original.prepareLoadout>>[0]) => original.prepareLoadout!({ ...loadout,
             callable: loadout.callable.filter(tool => this.canDiscover(tool.name)) }) } : {}),
-          execute: (...[id, input, signal, update, ctx]: Parameters<typeof original.execute>) => {
+          execute: async (...[id, input, signal, update, ctx]: Parameters<typeof original.execute>) => {
             if (!this.isAllowed(original.name, input as Record<string, unknown>)) throw new Error("This tool is disabled by the Piora session capability policy.");
-            return original.execute(id, input, signal, update, this.context(ctx));
+            try { return this.sanitize(await original.execute(id, input, signal, update ? value => update(this.sanitize(value)) : undefined, this.context(ctx))); }
+            catch (error) { throw this.safeError(error); }
           },
         } as typeof definition;
         pi.registerTool(wrapped);
@@ -247,14 +293,28 @@ export class NativeMcpController {
     }) as ExtensionAPI["on"];
     const registerCommand = api.registerCommand;
     api.registerCommand = (name, options) => registerCommand(name, { ...options,
-      handler: async (args, ctx) => { try { return await options.handler(args, this.context(ctx) as typeof ctx); } catch { throw new Error("Native MCP command failed. Check connection status and sign-in requirements."); } } });
+      handler: async (args, ctx) => { try {
+        if (kind === "mcp" && name === "mcp") {
+          const [action, server] = args.trim().split(/\s+/);
+          if (action === "login" || action === "reconnect") {
+            if (!server) throw new Error("Specify an authorized MCP server");
+            this.assertServerAuthorized(server);
+          }
+        }
+        return await options.handler(args, this.context(ctx) as typeof ctx);
+      } catch { throw new Error("Native MCP command failed. Check connection status, authorization and sign-in requirements."); } } });
     return api;
   }
 
   private transport(entry: NativeMcpEntry, cwd: string, auth: Parameters<NonNullable<NativeMcpOptions["createTransport"]>>[2]): McpTransport {
     const config = entry.config;
     if ("url" in config) return new StreamableHttpTransport({ url: config.url,
-      headers: Object.fromEntries(Object.entries(config.headers ?? {}).map(([key, value]) => [key, environmentValue(value)])), authProvider: auth });
+      headers: Object.fromEntries(Object.entries(config.headers ?? {}).map(([key, value]) => [key, environmentValue(value)])), authProvider: auth,
+      fetch: (input, init) => {
+        const cancellation = init?.method === "POST" && typeof init.body === "string" && (() => { try { return JSON.parse(init.body).method === "notifications/cancelled"; } catch { return false; } })();
+        if (init?.method !== "DELETE" && !cancellation) this.assertServerAuthorized(entry.name);
+        return globalThis.fetch(input, init);
+      } });
     return new StdioTransport({ command: expandHome(config.command), args: config.args?.map(expandHome),
       cwd: resolve(cwd, expandHome(config.cwd ?? ".")), env: Object.fromEntries(Object.entries(config.env ?? {}).map(([key, value]) => [key, environmentValue(value)])), stderr: "pipe" });
   }
@@ -262,6 +322,15 @@ export class NativeMcpController {
     if (!this.states.has(entry.name)) this.observeEntry(entry, true);
     const state = this.states.get(entry.name)!;
     const methods = new Map<string | number, string>();
+    const onMessage = transport.onMessage.bind(transport), onError = transport.onError.bind(transport);
+    // Clean before conversion/truncation can save output to disk or deliver it
+    // to the MCP client, tool pipeline, progress listeners and codemode worker.
+    transport.onMessage = listener => onMessage(message => listener({ ...message,
+      ...("result" in message ? { result: this.sanitize(message.result) } : {}),
+      ...("error" in message ? { error: this.sanitize(message.error) } : {}),
+      ...("params" in message ? { params: this.sanitize(message.params) } : {}),
+    }));
+    transport.onError = listener => onError(error => listener(this.safeError(error)));
     transport.onMessage(message => {
       if ("id" in message && "error" in message && methods.get(message.id!) === "tools/list") { state.state = "failed"; this.announce(); }
       if ("id" in message && "result" in message && methods.get(message.id!) === "tools/list") { state.state = "connected"; this.announce(); }
@@ -276,12 +345,12 @@ export class NativeMcpController {
     transport.onClose(() => { if (!["needs-auth", "failed"].includes(state.state)) state.state = this.shuttingDown ? "closed" : "disconnected"; this.announce(); });
     transport.onError(() => { state.state = "failed"; this.announce(); });
     const start = transport.start.bind(transport), send = transport.send.bind(transport), close = transport.close.bind(transport);
-    transport.start = async () => { state.state = "connecting"; this.announce(); try { await start(); } catch (error) { state.state = "failed"; this.announce(); throw error; } };
-    transport.send = async message => { if ("id" in message && "method" in message) methods.set(message.id, message.method); try { await send(message); } catch (error) {
+    transport.start = async () => { this.assertServerAuthorized(entry.name); state.state = "connecting"; this.announce(); try { await start(); } catch (error) { state.state = "failed"; this.announce(); throw this.safeError(error); } };
+    transport.send = async message => { if (!("method" in message && message.method === "notifications/cancelled")) this.assertServerAuthorized(entry.name); if ("id" in message && "method" in message) methods.set(message.id, message.method); try { await send(message); } catch (error) {
       state.state = /Auth|Unauthorized|AuthorizationRequired/.test(error instanceof Error ? error.name : "") ? "needs-auth" : "failed";
-      this.announce(); throw error;
+      this.announce(); throw this.safeError(error);
     } };
-    transport.close = async () => { await close(); if (!["needs-auth", "failed"].includes(state.state)) state.state = this.shuttingDown ? "closed" : "disconnected"; this.announce(); };
+    transport.close = async () => { try { await close(); } catch (error) { throw this.safeError(error); } if (!["needs-auth", "failed"].includes(state.state)) state.state = this.shuttingDown ? "closed" : "disconnected"; this.announce(); };
     return transport;
   }
 }

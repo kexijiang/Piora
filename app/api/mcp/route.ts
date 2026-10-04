@@ -36,6 +36,7 @@ function view(ctx: Context) {
         endpoint: "url" in entry.config ? new URL(entry.config.url).origin : entry.config.command,
         state: state?.state ?? (entry.config.enabled === false ? "disabled" : "configured"),
         liveEndpoint: state?.endpoint, configurationCurrent: state?.configurationCurrent,
+        connectionAuthorized: state?.connectionAuthorized ?? false,
         tools: state?.tools ?? [], resources: state?.resources ?? false, owner: live?.owner ?? "not-started" };
     }), ...(live?.servers.filter(server => server.scope === "extension" && !config.servers.some(entry => entry.name === server.name)) ?? [])],
     reloadRequired: true,

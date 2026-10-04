@@ -48,6 +48,14 @@ test("native MCP configuration shows live ownership, explicit connection actions
   await page.waitForFunction(() => document.querySelector("textarea").value === "");
   assert.ok(mutations.some(m => m.config?.headers?.Authorization === "FIXTURE_PRIVATE_HEADER" && m.scope === "global"));
   assert.equal(await page.getByText("FIXTURE_PRIVATE_HEADER", { exact: false }).count(), 0);
+  for (const revoked of [{ enabled: false }, { state: "approval-required" }, { configurationCurrent: false }, { connectionAuthorized: false }, { approvalRequired: true }]) {
+    const previous = { ...state.servers[0] }; Object.assign(state.servers[0], revoked);
+    await page.getByRole("button", { name: "Refresh status", exact: true }).click();
+    await page.waitForFunction(() => [...document.querySelectorAll("button")].filter(button => ["Reconnect", "Sign in"].includes(button.textContent)).every(button => button.disabled));
+    assert.equal(await page.getByRole("button", { name: "Reconnect", exact: true }).isDisabled(), true);
+    assert.equal(await page.getByRole("button", { name: "Sign in", exact: true }).isDisabled(), true);
+    state.servers[0] = previous;
+  }
   state.owner = "replacement";
   await page.getByRole("button", { name: "Refresh status", exact: true }).click(); await page.getByText("Connection owner: Replacement extension", { exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Reconnect", exact: true }).isDisabled(), true);

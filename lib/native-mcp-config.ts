@@ -44,8 +44,12 @@ function rejectCommands(value: unknown): void {
 }
 function loopback(url: URL): boolean { return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname); }
 
-export function validateNativeMcpConfig(value: unknown, scope: "global" | "project"): NativeMcpConfig {
-  if (!object(value)) throw new Error("MCP server must be an object");
+export function validateNativeMcpConfig(raw: unknown, scope: "global" | "project"): NativeMcpConfig {
+  if (!object(raw)) throw new Error("MCP server must be an object");
+  // Match Pi's public aliases without retaining a second effective identity.
+  const value: Json = { ...raw, ...(raw.type === "streamable-http" ? { type: "http" } : {}),
+    ...(raw.exposure === "codemode-deferred" ? { exposure: "codemode" } : {}),
+    ...(object(raw.toolExposure) ? { toolExposure: Object.fromEntries(Object.entries(raw.toolExposure).map(([name, exposure]) => [name, exposure === "codemode-deferred" ? "codemode" : exposure])) } : {}) };
   if (value.disabled !== undefined) throw new Error("Native Pi uses enabled:false; legacy adapter configuration is separate");
   if (value.enabled !== undefined && typeof value.enabled !== "boolean") throw new Error("MCP enabled must be boolean");
   if (value.exposure !== undefined && !NATIVE_MCP_EXPOSURES.includes(value.exposure as NativeMcpExposure)) throw new Error("Unsupported MCP exposure");

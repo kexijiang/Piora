@@ -6,7 +6,7 @@ import styles from "./PluginsConfig.module.css";
 
 interface Server {
   name: string; source: string; scope: "global" | "project" | "extension"; override?: string;
-  enabled?: boolean; liveEndpoint?: string; configurationCurrent?: boolean; transport: string; endpoint: string; exposure: string; state: string;
+  enabled?: boolean; liveEndpoint?: string; configurationCurrent?: boolean; connectionAuthorized?: boolean; approvalRequired?: boolean; transport: string; endpoint: string; exposure: string; state: string;
   tools: Array<{ name: string; exposure: string }>; resources: boolean;
 }
 interface State { enabled: boolean; projectTrusted: boolean; owner: string; live: boolean; servers: Server[]; diagnostics: string[] }
@@ -76,7 +76,7 @@ export function NativeMcpConfig({ cwd, sessionId, onReloaded }: { cwd: string; s
           {server.configurationCurrent === false ? <p>{t("nativeMcp.pendingConfiguration")} {server.liveEndpoint ? t("nativeMcp.liveEndpoint", { endpoint: server.liveEndpoint }) : ""}</p> : null}
           <p>{t("nativeMcp.source", { source: server.source })}</p>
           {server.override ? <p>{t("nativeMcp.override", { path: server.override })}</p> : null}
-          {server.scope === "extension" ? <button type="button" disabled={busy || !sessionId} onClick={() => { void mutate({ action: "approve-registered", name: server.name, enabled: server.state === "approval-required" }); }}>{server.state === "approval-required" ? t("nativeMcp.approve") : t("nativeMcp.revoke")}</button> : <>
+          {server.scope === "extension" ? <button type="button" disabled={busy || !sessionId} onClick={() => { void mutate({ action: "approve-registered", name: server.name, enabled: server.approvalRequired ?? server.state === "approval-required" }); }}>{(server.approvalRequired ?? server.state === "approval-required") ? t("nativeMcp.approve") : t("nativeMcp.revoke")}</button> : <>
             <label><input type="checkbox" checked={server.enabled !== false} disabled={busy} onChange={event => { void mutate({ action: "server", scope: server.override ? "project" : server.scope, name: server.name, enabled: event.target.checked }); }} /> {t("nativeMcp.serverEnabled")}</label>
             <label>{t("nativeMcp.exposure")} <select aria-label={`${server.name} ${t("nativeMcp.exposure")}`} value={server.exposure} disabled={busy} onChange={event => { void mutate({ action: "server", scope: server.override ? "project" : server.scope, name: server.name, exposure: event.target.value }); }}>{exposures.map(exposure => <option key={exposure} value={exposure}>{t(`nativeMcp.exposure.${exposure}`)}</option>)}</select></label>
           </>}
@@ -84,8 +84,8 @@ export function NativeMcpConfig({ cwd, sessionId, onReloaded }: { cwd: string; s
           {server.tools.length ? <ul>{server.tools.map(tool => <li key={tool.name}><code>{tool.name}</code> · {tool.exposure}</li>)}</ul> : null}
           {server.resources ? <p>{t("nativeMcp.resources")}</p> : null}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <button type="button" disabled={busy || !sessionId || !data.enabled || data.owner !== "native"} onClick={() => { void command(`/mcp reconnect ${server.name}`); }}>{t("nativeMcp.reconnect")}</button>
-            {server.transport === "http" ? <button type="button" disabled={busy || !sessionId || !data.enabled || data.owner !== "native"} onClick={() => { void command(`/mcp login ${server.name}`); }}>{t("nativeMcp.login")}</button> : null}
+            <button type="button" disabled={busy || !sessionId || !data.enabled || data.owner !== "native" || server.enabled === false || server.configurationCurrent === false || server.connectionAuthorized === false || server.approvalRequired || ["disabled", "approval-required", "closed"].includes(server.state)} onClick={() => { void command(`/mcp reconnect ${server.name}`); }}>{t("nativeMcp.reconnect")}</button>
+            {server.transport === "http" ? <button type="button" disabled={busy || !sessionId || !data.enabled || data.owner !== "native" || server.enabled === false || server.configurationCurrent === false || server.connectionAuthorized === false || server.approvalRequired || ["disabled", "approval-required", "closed"].includes(server.state)} onClick={() => { void command(`/mcp login ${server.name}`); }}>{t("nativeMcp.login")}</button> : null}
           </div>
         </div>
       </details>)}
