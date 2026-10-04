@@ -6,6 +6,7 @@ import { lstat, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { dirname, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { findUnverifiedPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const reviewedReplacements = [
@@ -47,19 +48,26 @@ export async function createVerifiedAuditLock(root = projectRoot) {
     const targetPath = `node_modules/@earendil-works/pi-coding-agent/node_modules/${name}`;
     const source = lock.packages[sourcePath];
     const target = lock.packages[targetPath];
-    if (!target) continue;
-    if (source?.version !== installedVersion || target.version !== lockedVersion
+    if (source?.version !== installedVersion || (target && target.version !== lockedVersion)
       || source.resolved !== `https://registry.npmjs.org/${name}/-/${name}-${installedVersion}.tgz`
       || !/^sha512-/.test(source.integrity ?? "")) {
       throw new Error(`Review the ${name} audit replacement after a lockfile change`);
     }
     const sourceDirectory = join(root, sourcePath);
     const targetDirectory = join(root, targetPath);
-    for (const directory of [sourceDirectory, targetDirectory]) {
+    for (const directory of target ? [sourceDirectory, targetDirectory] : [sourceDirectory]) {
       const manifest = JSON.parse(await readFile(join(directory, "package.json"), "utf8"));
       if (manifest.name !== name || manifest.version !== installedVersion) {
         throw new Error(`Unpatched or unexpected ${name} at ${directory}; run npm ci`);
       }
+    }
+    if (!target) {
+      const unexpected = await lstat(targetDirectory).catch(error => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      });
+      if (unexpected) throw new Error(`Untracked bundled ${name} at ${targetDirectory}`);
+      continue;
     }
     if (await fingerprint(sourceDirectory) !== await fingerprint(targetDirectory)) {
       throw new Error(`Bundled ${name} differs from its integrity-locked replacement`);
@@ -74,6 +82,7 @@ async function main() {
   const npmCli = process.env.npm_execpath;
   if (!npmCli) throw new Error("Run this check with npm run audit:runtime");
   const { lock, replacements } = await createVerifiedAuditLock();
+  const embeddedDependencies = await findUnverifiedPiEmbeddedDependencies(projectRoot);
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "piora-runtime-audit-"));
   try {
     const manifest = JSON.parse(await readFile(join(projectRoot, "package.json"), "utf8"));
@@ -81,13 +90,14 @@ async function main() {
     delete lock.packages[""].workspaces;
     await writeFile(join(temporaryDirectory, "package.json"), JSON.stringify(manifest));
     await writeFile(join(temporaryDirectory, "package-lock.json"), JSON.stringify(lock));
-    console.log(JSON.stringify({ verifiedRuntimeReplacements: replacements }));
+    console.log(JSON.stringify({ verifiedRuntimeReplacements: replacements, unverifiedEmbeddedDependencies: embeddedDependencies }));
     const result = spawnSync(process.execPath, [npmCli, "audit", "--omit=dev", "--audit-level=high",
       "--registry=https://registry.npmjs.org/", "--workspaces=false"], {
       cwd: temporaryDirectory, stdio: "inherit", windowsHide: true,
     });
     if (result.error) throw result.error;
-    process.exitCode = result.status ?? 1;
+    if (embeddedDependencies.length) console.error("Unverified embedded Undici in Pi bundle; root overrides and directory patches do not cover compiled bytes.");
+    process.exitCode = embeddedDependencies.length ? 1 : result.status ?? 1;
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });
   }

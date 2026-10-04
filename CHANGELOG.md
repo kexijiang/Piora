@@ -6,11 +6,15 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### Dependency maintenance
 
+- 将四个 Pi 运行时包更新至 1.0.2，采用 1.0.1 的输出上限、Bedrock 与依赖发布修复；按移除 shrinkwrap 后的实际安装树调整工作器、WASM、提供商与许可证校验，保留原有会话迁移和停止队列防护。
+- 固定新 minimatch 10.2.6 的 brace-expansion 5.0.12，验证提升到顶层的 Undici 8.11.2；保留旧嵌套副本的严格版本与字节守卫，并增加预编译 Pi bundle 中未验证 Undici 的审计和打包阻断，避免把目录覆盖误报为完整修复。
+
 - Upgrade all four Pi runtime packages from 0.84.3 to 1.0.0; adapt turn guards, prompt admission, structured system context, headless themes and JSON tool arguments. Preserve raw chat history while the SDK owns provider context edits, and include dynamically loaded Pi workers/WASM in packaged dependency staging.
 - Retain Shell instructions/tool loadouts after context pruning, drain cancelled asynchronous steering/follow-up admissions before another prompt, avoid double-counting structured system context, and match Pi 1.0's session catalog discovery ordering.
 - Verify Shell provider prompt/tool declarations after request settlement and reject swallowed provider errors in migration acceptance.
 - Synchronize the SSH close-tab acceptance fixture with its observed DELETE request before checking uniqueness; retain the pending-close and failed-session assertions.
 - Keep Pi's streamed system/loadout messages in canonical provider history while excluding them from chat SSE, matching the history projection.
+- 将主应用与官网的 Next.js 升级至官方 16.3.8 安全补丁，同步 ESLint 工具、原生编译器、两份锁文件及第三方许可证清单，修复上游缓存隔离与信息泄露问题。
 - Update Electron within the 43.x series and refresh Next.js, HTTP, URI, date, and archive dependencies with stable fixes. Keep the current Pi runtime while its session lifecycle migration receives separate acceptance testing.
 - Preserve strict bundled-dependency patch checks, verify the actual patched runtime before auditing it, and refresh third-party license records.
 - Synchronize packaged Pi dependency checks with the reviewed security versions and reject stale or mislabeled packaged copies in regression tests.

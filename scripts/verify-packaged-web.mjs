@@ -14,6 +14,7 @@ import { generatePackageLicenseBundle } from "./package-license-bundle.mjs";
 import { verifyPackagedClipboard } from "./verify-packaged-clipboard.mjs";
 import { verifyPackagedShell } from "./verify-packaged-shell.mjs";
 import { verifyBrandStartupAssets } from "./verify-brand-startup-assets.mjs";
+import { verifyPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
 import {
   createIsolatedProcessEnvironment,
   prepareIsolatedEnvironment,
@@ -132,10 +133,10 @@ const requiredPaths = [
   "node_modules/@earendil-works/pi-ai/package.json",
   "node_modules/@earendil-works/pi-coding-agent/package.json",
   "node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/codemode-worker.js",
-  "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-codemode/package.json",
-  "node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-mcp/package.json",
-  "node_modules/@earendil-works/pi-coding-agent/node_modules/quickjs-wasi/quickjs.wasm",
-  "node_modules/@earendil-works/pi-coding-agent/node_modules/@aws-sdk/client-bedrock-runtime/package.json",
+  "node_modules/@earendil-works/pi-codemode/package.json",
+  "node_modules/@earendil-works/pi-mcp/package.json",
+  "node_modules/quickjs-wasi/quickjs.wasm",
+  "node_modules/@aws-sdk/client-bedrock-runtime/package.json",
   "node_modules/@earendil-works/pi-tui/package.json",
   "node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/dark.json",
   "node_modules/rrule/package.json",
@@ -186,7 +187,7 @@ async function listRegularFiles(root, description, current = root) {
 
 /**
  * pi-ai deliberately hides provider and OAuth implementations behind
- * bundler-opaque dynamic imports. Verify both installed package copies as
+ * bundler-opaque dynamic imports. Verify all installed package copies as
  * complete, byte-identical runtime units instead of trusting Next's trace.
  */
 export async function verifyPackagedPiAiRuntime(
@@ -201,6 +202,16 @@ export async function verifyPackagedPiAiRuntime(
     const pathSegments = copy.relativePath.split("/");
     const sourcePackageRoot = join(sourceProjectRoot, ...pathSegments);
     const packagedPackageRoot = join(webRoot, ...pathSegments);
+    if (copy.id === "coding-agent-nested" && !await lstat(sourcePackageRoot).catch(error => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    })) {
+      if (await lstat(packagedPackageRoot).catch(error => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      })) throw new Error("Unexpected packaged nested Pi AI runtime absent from source");
+      continue;
+    }
     const [sourceFiles, packagedFiles] = await Promise.all([
       listRegularFiles(sourcePackageRoot, `Source ${copy.label}`),
       listRegularFiles(packagedPackageRoot, `Packaged ${copy.label}`),
@@ -247,13 +258,15 @@ export async function verifyPackagedPiAiModuleSurface(webRootInput) {
   const webRoot = resolve(webRootInput);
   const copies = [];
 
-  // ModelRuntime is exported by pi-coding-agent, so Node resolves all built-in
-  // provider execution through its shrinkwrapped nested pi-ai copy. The
-  // top-level copy is still verified byte-for-byte above for direct SDK and
-  // extension imports, but importing its entire optional provider surface
-  // would incorrectly require dependencies that the app never resolves there.
+  // Verify the runtime Node actually resolves for coding-agent: nested on
+  // legacy shrinkwrapped installs, top-level after Pi removed shrinkwrap.
+  const nestedRoot = join(webRoot, packagedPiAiRuntimeCopies[1].relativePath);
+  const hasNestedRuntime = Boolean(await lstat(nestedRoot).catch(error => {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  }));
   const providerRuntimeCopies = packagedPiAiRuntimeCopies.filter((copy) => (
-    copy.id === "coding-agent-nested"
+    copy.id === (hasNestedRuntime ? "coding-agent-nested" : "top-level")
   ));
   for (const copy of providerRuntimeCopies) {
     const packageRoot = join(webRoot, ...copy.relativePath.split("/"));
@@ -808,13 +821,30 @@ export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
     { name: "undici", version: "8.11.2" },
   ];
   for (const expected of patchedBundledDependencies) {
-    const manifestPath = join(runtimeWebRoot, "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", expected.name, "package.json");
+    const codingAgentRoot = join(runtimeWebRoot, "node_modules", "@earendil-works", "pi-coding-agent");
+    // Inspect the current filesystem rather than Node's resolution cache:
+    // adding a stale nested package must not reuse a previous hoisted result.
+    const nested = join(codingAgentRoot, "node_modules", expected.name);
+    const nestedEntry = await lstat(nested).catch(error => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (nestedEntry?.isSymbolicLink() || (nestedEntry && !nestedEntry.isDirectory())) {
+      throw new Error(`Packaged Pi dependency must be a real directory: ${expected.name}`);
+    }
+    const directory = nestedEntry ? nested : join(runtimeWebRoot, "node_modules", expected.name);
+    const directoryEntry = await lstat(directory);
+    if (!directoryEntry.isDirectory() || directoryEntry.isSymbolicLink()) {
+      throw new Error(`Packaged Pi dependency must be a real directory: ${expected.name}`);
+    }
+    const manifestPath = join(directory, "package.json");
     await assertFile(manifestPath);
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
     if (manifest?.name !== expected.name || manifest?.version !== expected.version) {
       throw new Error(`Packaged Pi runtime must contain the reviewed ${expected.name}@${expected.version}.`);
     }
   }
+  await verifyPiEmbeddedDependencies(runtimeWebRoot);
   return patchedBundledDependencies;
 }
 

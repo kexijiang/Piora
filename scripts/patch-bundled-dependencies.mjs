@@ -50,22 +50,22 @@ async function patchBundledPackage({
   if (!sourceEntry.isDirectory() || sourceEntry.isSymbolicLink()) {
     throw new Error(`Expected a real directory at ${source}`);
   }
+  const sourcePackage = await readPackage(source);
+  if (sourcePackage.name !== packageName || sourcePackage.version !== patchedVersion) {
+    throw new Error(
+      `Expected locked ${packageName} ${patchedVersion}, found ${sourcePackage.name}@${sourcePackage.version}`,
+    );
+  }
   if (!targetEntry) {
+    // Pi >=1.0.1 hoists these packages after removing its shrinkwrap. The
+    // absence of a nested copy must not skip validation of the patch source.
     return { patched: false, reason: "bundled-copy-absent" };
   }
   if (!targetEntry.isDirectory() || targetEntry.isSymbolicLink()) {
     throw new Error(`Refusing to replace a non-directory or symlink at ${target}`);
   }
 
-  const [sourcePackage, targetPackage] = await Promise.all([
-    readPackage(source),
-    readPackage(target),
-  ]);
-  if (sourcePackage.name !== packageName || sourcePackage.version !== patchedVersion) {
-    throw new Error(
-      `Expected locked ${packageName} ${patchedVersion}, found ${sourcePackage.name}@${sourcePackage.version}`,
-    );
-  }
+  const targetPackage = await readPackage(target);
   if (
     targetPackage.name !== packageName
     || !acceptedBundledVersions.has(targetPackage.version)
@@ -124,7 +124,7 @@ export async function patchBundledBraceExpansion(root = projectRoot, sourceRoot 
     root,
     sourceRoot,
     packageName: "brace-expansion",
-    // Pi 1.0.0 still bundles shrinkwrapped 5.0.9; root overrides do not patch it.
+    // Retain strict guards for legacy/staged copies; Pi >=1.0.1 can hoist it.
     patchedVersion: "5.0.12",
     acceptedBundledVersions: new Set(["5.0.7", "5.0.9", "5.0.12"]),
   });

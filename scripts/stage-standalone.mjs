@@ -103,9 +103,8 @@ const assets = [
       pathSegments: ["@earendil-works", "pi-ai"],
     },
     {
-      // pi-coding-agent ships with its own shrinkwrapped dependency tree. Its
-      // imports therefore resolve this nested copy instead of the top-level
-      // package, even when both package versions currently match.
+      // Legacy installations can still have a nested copy. Pi >=1.0.1 removes
+      // shrinkwrap and resolves the required top-level runtime instead.
       name: "Pi coding-agent nested AI runtime",
       pathSegments: [
         "@earendil-works",
@@ -118,11 +117,11 @@ const assets = [
   ].map(({ name, pathSegments }) => ({
     // pi-ai intentionally hides OAuth and provider implementations behind
     // variable dynamic imports. Next's static output tracing cannot discover
-    // those files, so stage both complete package copies as runtime units.
+    // those files, so stage complete installed package copies as runtime units.
     name,
     source: join(projectRoot, "node_modules", ...pathSegments),
     destination: join(standaloneDirectory, "node_modules", ...pathSegments),
-    required: true,
+    required: name === "top-level Pi AI runtime",
     rejectSymlinks: true,
   })),
   ...[
@@ -374,15 +373,7 @@ async function main() {
   // Stage complete production dependency closures for source-loaded runtimes.
   // Opaque Pi providers and the lazy Hypium driver can add dependencies or
   // native agents without becoming visible to Next's static output trace.
-  const piAiProviderRuntimeRoot = join(
-    projectRoot,
-    "node_modules",
-    "@earendil-works",
-    "pi-coding-agent",
-    "node_modules",
-    "@earendil-works",
-    "pi-ai",
-  );
+  const piAiProviderRuntimeRoot = join(projectRoot, "node_modules", "@earendil-works", "pi-ai");
   const hypiumRuntimeRoot = join(projectRoot, "node_modules", "hypium-driver");
   const devecoCliRuntimeRoot = join(projectRoot, "node_modules", "@deveco", "deveco-cli");
   const dependencyAssets = await collectRuntimeDependencyAssets([
