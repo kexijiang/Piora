@@ -16,7 +16,7 @@ const fail = message => { throw new Error(`Harmony mirror provenance: ${message}
 
 /** The same exclusions apply to copying and measuring the unsigned source. */
 export function includeMirrorSource(path) {
-  return !/(?:^|[/\\])(?:build|\.hvigor|oh_modules|node_modules|\.signing|signing)(?:[/\\]|$)/.test(path)
+  return !/(?:^|[/\\])(?:build|\.hvigor|\.cxx|oh_modules|node_modules|\.signing|signing)(?:[/\\]|$)/.test(path)
     && !/(?:local\.properties|\.(?:p12|p7b|cer|pem|key))$/i.test(path)
     && ![PREPARATION_FILE, ARTIFACT_FILE].includes(path.split(/[/\\]/).at(-1));
 }

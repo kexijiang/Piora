@@ -104,6 +104,18 @@ test('new ohpm lock outputs are measured separately while committed locks stay p
   await assert.rejects(other.record(), /source receipt, current source or CI identity changed/);
 });
 
+test('Hvigor native .cxx intermediates do not change the measured source identity', async t => {
+  const f = await fixture(t);
+  const nativeOutput = join(f.workspace, 'entry/.cxx/default/default/release/arm64-v8a/CMakeFiles');
+  await mkdir(nativeOutput, { recursive: true });
+  await writeFile(join(nativeOutput, 'build.ninja'), 'generated native build output');
+  await writeFile(join(nativeOutput, 'capture-object.o'), 'generated object bytes');
+  const manifest = await f.record();
+  assert.deepEqual(manifest.generatedBuildInputs, []);
+  assert.equal(manifest.sourceTreeSha256, (await snapshotHarmonyMirrorSource(f.sourceDirectory)).sourceTreeSha256);
+  await f.verify();
+});
+
 test('repository source edits after recording invalidate a matching HAP hash', async t => {
   const f = await fixture(t); await f.record();
   await writeFile(join(f.sourceDirectory, 'entry/src/main/cpp/TcpServer.cpp'), '// different source');

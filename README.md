@@ -17,7 +17,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-最新正式版为 `0.5.4`，当前源码版本为 `0.5.5-beta.4`。此 beta 集中提供鸿蒙设备的应用、文件、SQLite 与终端工作台；安装包须经 GitHub Actions 构建，并在真实 Piora 桌面端与手机上验收同批字节后才会出现在[所有发布](https://github.com/kexijiang/Piora/releases)。真机支持范围和待验项目见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)，完整版本变化以 [CHANGELOG.md](CHANGELOG.md) 为准。
+最新正式版为 `0.5.4`，当前源码版本为 `0.5.5-beta.6`。此 beta 集中提供鸿蒙设备的应用、文件、SQLite 与终端工作台；安装包须经 GitHub Actions 构建，并在真实 Piora 桌面端与手机上验收同批字节后才会出现在[所有发布](https://github.com/kexijiang/Piora/releases)。真机支持范围和待验项目见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)，完整版本变化以 [CHANGELOG.md](CHANGELOG.md) 为准。
 
 [下载与安装](#下载与安装) · [开始使用](#开始使用) · [主要功能](#主要功能) · [鸿蒙设备工作台](#鸿蒙设备工作台) · [开发与贡献](#开发与贡献) · [文档索引](docs/README.md)
 
