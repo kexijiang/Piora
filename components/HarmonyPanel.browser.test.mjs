@@ -40,7 +40,7 @@ test("Harmony workspace keeps the mirror view-only with a responsive drawer and 
     });
     let recording = null, holder = null, delayTemplate = null, rejectRecording = false, textPreviewReads = 0;
     const recordingPairs = [];
-    let largeFileParent = false, delayedTextPreview = null, releaseTextPreview;
+    let largeFileParent = false, delayedTextPreview = null, releaseTextPreview, databaseReadDelay = null;
     let controls = [], rejectedControlStatus = null;
     let phoneName = "HUAWEI Mate 70 Pro";
     let connectionSample = { durationMs: 17.4, sampledAt: new Date().toISOString() }, phoneTransport = "usb", phoneState = "online", phoneIssue;
@@ -100,6 +100,7 @@ test("Harmony workspace keeps the mirror view-only with a responsive drawer and 
       if (url.pathname.endsWith("/templates") && input && delayTemplate) await delayTemplate;
       if (url.pathname.endsWith("/templates")) data = input ? { steps: [{ action: "launch_app", bundleName: input.parameters.bundleName, abilityName: "EntryAbility" }, { action: "checkpoint", name: "launched" }] } : { templates };
       if (url.pathname.endsWith("/apps")) data = { applications: [{ bundleName: "dev.piora.audio.fixture", label: "Harmony 测试 App", abilities: ["EntryAbility"], source: "bm-label" }] };
+      if (url.pathname === "/api/harmony/databases" && request.method() === "POST" && input?.action === "read" && databaseReadDelay) await databaseReadDelay;
       if (url.pathname === "/api/harmony/databases") data = request.method() === "GET"
         ? { scanning: false, startedAt: "2026-09-29T00:00:00Z", applications: [
           { bundleName: "dev.piora.audio.fixture", label: "Harmony 测试 App", status: "ready", databases: [{ id: "db-1", name: "notes.db" }] },
@@ -487,10 +488,23 @@ test("Harmony workspace keeps the mirror view-only with a responsive drawer and 
     await page.getByRole("button", { name: "notes.db" }).click();
     await page.getByText("双份 SHA-256 校验一致", { exact: false }).waitFor();
     assert.equal(await page.locator('.dbDatabaseNode').getByRole('button', { name: 'notes', exact: true }).count(), 1, 'tables belong to their database node');
+    let releaseDatabaseRead;
+    databaseReadDelay = new Promise(resolve => { releaseDatabaseRead = resolve; });
+    const tableReadStarted = page.waitForRequest(request => request.method() === "POST"
+      && new URL(request.url()).pathname === "/api/harmony/databases"
+      && request.postDataJSON()?.action === "read");
+    const tableRead = page.waitForResponse(response => response.request().method() === "POST"
+      && new URL(response.url()).pathname === "/api/harmony/databases"
+      && response.request().postDataJSON()?.action === "read");
     await page.getByRole("button", { name: "notes", exact: true }).click();
+    await tableReadStarted;
     const databaseBody = await page.locator(".drawerBody").boundingBox();
-    assert.equal(await page.getByRole("textbox", { name: "只读 SQL 查询" }).count(), 0,
-      "selecting a table gives the data view space instead of keeping the SQL editor expanded");
+    const sqlEditorsWhileLoading = await page.getByRole("textbox", { name: "只读 SQL 查询" }).count();
+    releaseDatabaseRead();
+    databaseReadDelay = null;
+    await tableRead;
+    assert.equal(sqlEditorsWhileLoading, 0,
+      "selecting a table gives the data view space immediately instead of keeping the SQL editor expanded during the read");
     const gridBox = await page.getByRole("region", { name: "查询结果表格" }).boundingBox();
     const headerHeight = await page.getByRole("region", { name: "查询结果表格" }).locator("thead").evaluate(element => element.getBoundingClientRect().height);
     assert.ok(headerHeight <= 32, `sortable column headers must not inherit tall tool-button spacing: ${headerHeight}`);

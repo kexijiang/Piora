@@ -8,7 +8,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 - 修正注册 MCP 服务器的状态优先级：关闭原生连接或禁用服务器后显示“已禁用”，保留独立的连接批准状态，避免误报“需要授权”。
 
-- 同步最新 main 的鸿蒙工作台、发送取消状态和 beta.2 候选版本，保留 Pi 原始会话记录与停止队列防护；按合并后的实际锁文件重新生成许可证清单并重新验证兼容性。
+- 同步最新 main 的鸿蒙工作台、发送取消状态和 beta.3 候选版本，保留 Pi 原始会话记录与停止队列防护；按合并后的实际锁文件重新生成许可证清单并重新验证兼容性。
 - 修复原生 MCP 配置保存后关闭并重开设置时重载按钮丢失，依据会话实际加载配置保留待重载状态，防止重复操作和已关闭面板的异步回写；明确工具与资源授权位于“设置 → 项目工具”。
 
 - 在原生 MCP 传输、进度和执行边界脱敏已知认证信息，防止服务端错误回显进入模型、日志与会话记录；撤销授权、禁用或修改配置后阻止旧连接重连与登录，并兼容官方 Streamable HTTP 和 Codemode 配置别名。
@@ -24,6 +24,22 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - Verify Shell provider prompt/tool declarations after request settlement and reject swallowed provider errors in migration acceptance.
 - Synchronize the SSH close-tab acceptance fixture with its observed DELETE request before checking uniqueness; retain the pending-close and failed-session assertions.
 - Keep Pi's streamed system/loadout messages in canonical provider history while excluding them from chat SSE, matching the history projection.
+
+## [0.5.5-beta.3] - 2026-10-05
+
+### 鸿蒙设备工作台
+
+- 投屏画面保持纯只读，移除鼠标点击、滑动、长按、文字注入、系统按键区和常驻控制权提示；Agent 与工具仍可在后台执行受约束的设备动作。截图和录屏使用独立媒体通道，可在投屏和 Agent 任务进行时直接完成，并保留缩略图、尺寸、文件位置与任务记录。
+- 文件管理改为可调整宽度的目录树与文件列表，支持输入文件或文件夹路径一键跳转、展开父链、分页定位、最近路径和按设备恢复。文本、图片、音视频与十六进制预览均在工作台内完成，编辑草稿、冲突检查、上传下载和后台传输继续按设备与应用范围隔离。
+- 数据库按“应用 → 数据库 → 表/视图/索引”自动发现，不要求输入数据库路径；区分扫描中、确认无数据库、无法访问和无法一致读取。每次打开或刷新重新采集带时间戳的只读快照，提供 SQL、结构、结果筛选排序、单元格复制与 CSV/JSON 导出，同名数据库以不透明标识区分。
+- 应用、日志、设备终端、媒体、任务与自动化场景统一进入工具抽屉。应用列表支持名称和包名搜索及明确分类；日志支持虚拟滚动、暂停显示、筛选和原样导出；终端支持多标签、搜索及粘贴审阅；场景可记录步骤截图、结束截图、日志和可导出报告。
+- 应用维护、文件操作和场景运行不再弹出 Windows 原生确认框；结果、失败原因和取消入口固定显示在当前工具内。安装仍保留不可变文件、SHA-256、版本与设备回读校验。
+- 选择数据库表时立即切换到数据区域，慢速设备读取期间不再让 SQL 编辑器占住结果空间；浏览历史日志时以当前可见行保持阅读位置，批量新日志不会把视图推回末尾。
+
+### 发布与验证
+
+- `0.5.5-beta.2` 候选因跨平台测试竞态和自托管 runner 工作路径过长而按门禁停止，没有创建 GitHub Release。此次修复应用分类继续扫描、场景截图启动、数据库读取和日志虚拟滚动的确定性等待，并为鸿蒙构建使用短路径 runner。
+- beta 标签仍只生成候选；Ubuntu、Windows、OpenHarmony 正式签名与真机门禁全部通过后，必须下载同一批 GitHub Actions 桌面产物，在真实 Piora 与手机上验收，再由独立发布工作流原样发布。更新元数据与 GitHub Release 继续使用本节说明。
 
 ## [0.5.5-beta.2] - 2026-10-05
 
