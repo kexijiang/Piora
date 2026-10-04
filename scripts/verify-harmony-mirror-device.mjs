@@ -22,6 +22,13 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const MAX_OUTPUT = 4 * 1024 * 1024;
 const DEVICE_PORT = 53_535;
 
+export function hasHdcFailureDiagnostic(output) {
+  const diagnostics = String(output).replaceAll('\0', '').split(/\r?\n/u)
+    .filter(line => !/^\s*No\s+Error[.!]?\s*$/iu.test(line))
+    .join('\n');
+  return /\[Fail\]|\bfailed\b|\berror\b|\binvalid\b/i.test(diagnostics);
+}
+
 function hdc(tool, serial, args, options = {}) {
   const result = spawnSync(tool, ['-t', serial, ...args], {
     encoding: options.encoding ?? 'utf8',
@@ -43,7 +50,7 @@ function hdc(tool, serial, args, options = {}) {
   // HDC has versions where a remote-side failure is reported in text while
   // the client process still exits zero. Critical acceptance cannot trust that
   // exit status alone.
-  if (/\[Fail\]|\bfailed\b|\berror\b|\binvalid\b/i.test(output)) {
+  if (hasHdcFailureDiagnostic(output)) {
     fail(`${options.label ?? args[0]} reported failure despite exit zero\n${diagnostic()}`);
   }
   return result;
@@ -328,7 +335,7 @@ export async function verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirect
     await verifyFrozenRegularFile(frozenAcceptedHap, frozenAccepted);
     const install = clean(hdc(tools.hdc, serial, ['install', frozenAcceptedHap], { label: 'private signed HAP install', timeout: 60_000 }));
     await verifyFrozenRegularFile(frozenAcceptedHap, frozenAccepted);
-    if (/\b(?:fail|error|invalid signature|verify pkcs7)\b/i.test(install) || !/success/i.test(install)) fail('the phone did not confirm the signed HAP installation');
+    if (hasHdcFailureDiagnostic(install) || /\bverify pkcs7\b/i.test(install) || !/success/i.test(install)) fail('the phone did not confirm the signed HAP installation');
     packageAbsent = false;
     const manifest = await jsonFileForDevice(join(resourcesDirectory, 'harmony-mirror-manifest.json'));
     const installed = clean(hdc(tools.hdc, serial, ['shell', 'bm', 'dump', '-n', MIRROR_BUNDLE], { label: 'installed package verification' }));
@@ -338,7 +345,7 @@ export async function verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirect
       fail('installed package identity or version was not verified');
     }
     const launch = clean(hdc(tools.hdc, serial, ['shell', 'aa', 'start', '-a', 'EntryAbility', '-b', MIRROR_BUNDLE], { label: 'mirror launch' }));
-    if (/\b(?:fail|error)\b/i.test(launch) || !/success/i.test(launch)) fail('the phone did not confirm the foreground launch');
+    if (hasHdcFailureDiagnostic(launch) || !/success/i.test(launch)) fail('the phone did not confirm the foreground launch');
 
     const start = await waitForNode(tools.hdc, serial, temporary, 'owned start button', node => node.id === 'piora-mirror-start'
       && node.clickable && typeof node.text === 'string' && /开始共享屏幕|start (?:screen )?sharing|share (?:the )?screen/i.test(node.text));

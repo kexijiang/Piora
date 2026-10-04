@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  hasHdcFailureDiagnostic,
   validateH264Configuration,
   validateH264Frame,
   verifyHarmonyMirrorOnDevice,
@@ -32,6 +33,16 @@ function frame({ key = false, timestamp = 1n, nal = key ? 0x65 : 0x41 } = {}) {
   payload.set([0, 0, 0, 1, nal], 9);
   return payload;
 }
+
+test('HDC textual diagnostics accept the successful No Error marker but retain real failures', () => {
+  assert.equal(hasHdcFailureDiagnostic('No Error'), false);
+  assert.equal(hasHdcFailureDiagnostic('\r\n  No Error.  \r\n'), false);
+  assert.equal(hasHdcFailureDiagnostic('install bundle successfully.\nNo Error'), false);
+  assert.equal(hasHdcFailureDiagnostic('[Fail] install rejected'), true);
+  assert.equal(hasHdcFailureDiagnostic('Error: permission denied'), true);
+  assert.equal(hasHdcFailureDiagnostic('No Error\ncommand failed'), true);
+  assert.equal(hasHdcFailureDiagnostic('No Error\ninvalid argument'), true);
+});
 
 test('real-device evidence accepts a bounded H.264 SPS/PPS config and IDR sequence', () => {
   const parsed = validateH264Configuration(config());
