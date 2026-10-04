@@ -1,10 +1,10 @@
 export const nativeMcpEn = {
   "nativeMcp.title": "Pi native MCP", "nativeMcp.pendingConfiguration": "Saved configuration differs from the live connection. Calls are revoked until reload.", "nativeMcp.liveEndpoint": "Live endpoint: {endpoint}", "nativeMcp.refresh": "Refresh status", "nativeMcp.global": "Global", "nativeMcp.project": "Project", "nativeMcp.description": "Connect configured stdio or Streamable HTTP servers. Legacy adapter configuration and cached metadata remain separate.",
-  "nativeMcp.enable": "Enable native MCP connections", "nativeMcp.permissions": "Connecting does not authorize model calls. Enable individual tools and server resources in the task capabilities.",
+  "nativeMcp.enable": "Enable native MCP connections", "nativeMcp.permissions": "Connecting does not authorize model calls. Enable individual tools and server resources in Settings → Project tools.",
   "nativeMcp.owner": "Connection owner: {owner}", "nativeMcp.native": "Pi native", "nativeMcp.replacement": "Replacement extension", "nativeMcp.notStarted": "No active connection owner",
   "nativeMcp.noLiveSession": "Configuration only. Open a normal task to see actual connection status.", "nativeMcp.reloadHint": "Reload the current task to apply connection changes.",
   "nativeMcp.empty": "No native servers configured. Native Pi reads global mcp.json and trusted project .pi/mcp.json.", "nativeMcp.source": "Source: {source}", "nativeMcp.override": "Project override: {path}",
-  "nativeMcp.serverEnabled": "Server enabled", "nativeMcp.exposure": "Tool exposure", "nativeMcp.liveTools": "Live discovered tools: {count}", "nativeMcp.resourceLabel": "{server} · Resource access", "nativeMcp.resourcePermissionHint": "Allow this server’s resource listings and reads; enable resource helper tools separately.", "nativeMcp.resources": "Server offers resources; resource access needs a separate task capability.",
+  "nativeMcp.serverEnabled": "Server enabled", "nativeMcp.exposure": "Tool exposure", "nativeMcp.liveTools": "Live discovered tools: {count}", "nativeMcp.resourceLabel": "{server} · Resource access", "nativeMcp.resourcePermissionHint": "Allow this server’s resource listings and reads; enable resource helper tools separately.", "nativeMcp.resources": "Server offers resources; enable server resource access separately in Settings → Project tools.",
   "nativeMcp.reconnect": "Reconnect", "nativeMcp.login": "Sign in", "nativeMcp.approve": "Allow registered server connection", "nativeMcp.revoke": "Revoke registered server",
   "nativeMcp.add": "Configure a server", "nativeMcp.name": "Server name", "nativeMcp.scope": "Scope", "nativeMcp.definition": "Server definition (strict JSON)", "nativeMcp.invalidJson": "Enter a valid JSON server definition.",
   "nativeMcp.privateConfig": "Existing headers, environment values and OAuth secrets are never returned to this page. New configuration is saved privately and the editor clears after saving.",
@@ -15,11 +15,11 @@ export const nativeMcpEn = {
 };
 export const nativeMcpZh = {
   "nativeMcp.title": "Pi 原生 MCP", "nativeMcp.pendingConfiguration": "已保存配置与实际连接不同；重载前禁止调用。", "nativeMcp.liveEndpoint": "实际连接地址：{endpoint}", "nativeMcp.refresh": "刷新状态", "nativeMcp.global": "全局", "nativeMcp.project": "项目", "nativeMcp.description": "连接已配置的 stdio 或 Streamable HTTP 服务器。旧 adapter 的配置与缓存元数据保持独立。",
-  "nativeMcp.enable": "启用原生 MCP 连接", "nativeMcp.permissions": "连接不授予模型调用权限。请在任务能力中单独启用工具及各服务器的资源访问。",
+  "nativeMcp.enable": "启用原生 MCP 连接", "nativeMcp.permissions": "连接不授予模型调用权限。请在设置 → 项目工具中单独启用工具及各服务器的资源访问。",
   "nativeMcp.owner": "连接实现：{owner}", "nativeMcp.native": "Pi 原生", "nativeMcp.replacement": "替代扩展", "nativeMcp.notStarted": "尚无活动连接实现",
   "nativeMcp.noLiveSession": "目前仅显示配置。打开常规任务后可查看实际连接状态。", "nativeMcp.reloadHint": "重载当前任务以应用连接变更。",
   "nativeMcp.empty": "尚未配置原生服务器。Pi 原生读取全局 mcp.json 与已信任项目的 .pi/mcp.json。", "nativeMcp.source": "来源：{source}", "nativeMcp.override": "项目覆盖：{path}",
-  "nativeMcp.serverEnabled": "启用服务器", "nativeMcp.exposure": "工具暴露方式", "nativeMcp.liveTools": "实际发现的工具：{count}", "nativeMcp.resourceLabel": "{server} · 资源访问", "nativeMcp.resourcePermissionHint": "允许该服务器的资源列表与读取；还需单独启用资源辅助工具。", "nativeMcp.resources": "服务器提供资源；资源访问需单独启用任务能力。",
+  "nativeMcp.serverEnabled": "启用服务器", "nativeMcp.exposure": "工具暴露方式", "nativeMcp.liveTools": "实际发现的工具：{count}", "nativeMcp.resourceLabel": "{server} · 资源访问", "nativeMcp.resourcePermissionHint": "允许该服务器的资源列表与读取；还需单独启用资源辅助工具。", "nativeMcp.resources": "服务器提供资源；请在设置 → 项目工具中单独启用服务器资源访问。",
   "nativeMcp.reconnect": "重新连接", "nativeMcp.login": "登录", "nativeMcp.approve": "允许连接扩展注册服务器", "nativeMcp.revoke": "撤销服务器授权",
   "nativeMcp.add": "配置服务器", "nativeMcp.name": "服务器名称", "nativeMcp.scope": "范围", "nativeMcp.definition": "服务器定义（严格 JSON）", "nativeMcp.invalidJson": "请输入有效的 JSON 服务器定义。",
   "nativeMcp.privateConfig": "现有请求头、环境变量和 OAuth 密钥不会返回此页面。新配置以私有权限保存，保存后清空编辑框。",

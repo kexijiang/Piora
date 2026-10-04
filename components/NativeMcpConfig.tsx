@@ -9,15 +9,15 @@ interface Server {
   enabled?: boolean; liveEndpoint?: string; configurationCurrent?: boolean; connectionAuthorized?: boolean; approvalRequired?: boolean; transport: string; endpoint: string; exposure: string; state: string;
   tools: Array<{ name: string; exposure: string }>; resources: boolean;
 }
-interface State { enabled: boolean; projectTrusted: boolean; owner: string; live: boolean; servers: Server[]; diagnostics: string[] }
+interface State { enabled: boolean; projectTrusted: boolean; owner: string; live: boolean; reloadRequired: boolean; servers: Server[]; diagnostics: string[] }
 const exposures = ["direct", "deferred", "codemode", "hidden"];
 
 export function NativeMcpConfig({ cwd, sessionId, onReloaded }: { cwd: string; sessionId: string | null; onReloaded?: () => void }) {
   const { t } = useI18n();
   const [data, setData] = useState<State | null>(null), [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false), [needsReload, setNeedsReload] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState(""), [scope, setScope] = useState<"global" | "project">("global"), [definition, setDefinition] = useState("");
-  const sequence = useRef(0), busyRef = useRef(false);
+  const sequence = useRef(0), busyRef = useRef(false), mounted = useRef(false), lifetime = useRef(0);
   const load = useCallback(async (signal?: AbortSignal) => {
     const id = ++sequence.current;
     try {
@@ -25,38 +25,44 @@ export function NativeMcpConfig({ cwd, sessionId, onReloaded }: { cwd: string; s
       const response = await fetch(`/api/mcp?${params}`, { signal });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      if (sequence.current === id) { setData(result); setError(null); }
-    } catch (error) { if (!signal?.aborted && sequence.current === id) setError(error instanceof Error ? error.message : "MCP status unavailable"); }
+      if (mounted.current && sequence.current === id) { setData(result); setError(null); }
+    } catch (error) { if (!signal?.aborted && mounted.current && sequence.current === id) setError(error instanceof Error ? error.message : "MCP status unavailable"); }
   }, [cwd, sessionId]);
+  const invalidate = useCallback(() => { mounted.current = false; ++lifetime.current; ++sequence.current; }, []);
   useEffect(() => {
+    mounted.current = true; ++lifetime.current; busyRef.current = false; setBusy(false); setData(null);
     const controller = new AbortController();
     void load(controller.signal);
     const interval = sessionId ? setInterval(() => { if (!busyRef.current) void load(controller.signal); }, 3000) : undefined;
-    return () => { controller.abort(); if (interval) clearInterval(interval); };
-  }, [load, sessionId]);
+    return () => { invalidate(); controller.abort(); if (interval) clearInterval(interval); };
+  }, [load, sessionId, invalidate]);
   const mutate = async (operation: Record<string, unknown>) => {
+    if (busyRef.current) return false;
+    const generation = lifetime.current;
     const id = ++sequence.current; busyRef.current = true; setBusy(true); setError(null);
     try {
       const response = await fetch("/api/mcp", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd, sessionId, ...operation }) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? `HTTP ${response.status}`);
-      if (sequence.current === id) { setData(result); setNeedsReload(true); } return true;
-    } catch (error) { setError(error instanceof Error ? error.message : "MCP configuration failed"); return false; }
-    finally { busyRef.current = false; setBusy(false); }
+      if (mounted.current && sequence.current === id) { setData(result); return true; } return false;
+    } catch (error) { if (mounted.current && sequence.current === id) setError(error instanceof Error ? error.message : "MCP configuration failed"); return false; }
+    finally { if (mounted.current && lifetime.current === generation) { busyRef.current = false; setBusy(false); } }
   };
   const command = async (message: string) => {
-    if (!sessionId) return;
+    if (!sessionId || busyRef.current) return;
+    const generation = lifetime.current, id = ++sequence.current;
     busyRef.current = true; setBusy(true); setError(null);
-    try { await sendAgentCommand(sessionId, { type: "prompt", message }); await load(); }
-    catch (error) { setError(error instanceof Error ? error.message : "MCP command failed"); }
-    finally { busyRef.current = false; setBusy(false); }
+    try { await sendAgentCommand(sessionId, { type: "prompt", message }); if (mounted.current && lifetime.current === generation && sequence.current === id) await load(); }
+    catch (error) { if (mounted.current && lifetime.current === generation) setError(error instanceof Error ? error.message : "MCP command failed"); }
+    finally { if (mounted.current && lifetime.current === generation) { busyRef.current = false; setBusy(false); } }
   };
   const reload = async () => {
-    if (!sessionId) return;
+    if (!sessionId || busyRef.current) return;
+    const generation = lifetime.current, id = ++sequence.current;
     busyRef.current = true; setBusy(true); setError(null);
-    try { await sendAgentCommand(sessionId, { type: "reload" }); setNeedsReload(false); await load(); onReloaded?.(); }
-    catch (error) { setError(error instanceof Error ? error.message : "Session reload failed"); }
-    finally { busyRef.current = false; setBusy(false); }
+    try { await sendAgentCommand(sessionId, { type: "reload" }); if (mounted.current && lifetime.current === generation && sequence.current === id) { await load(); if (mounted.current && lifetime.current === generation) onReloaded?.(); } }
+    catch (error) { if (mounted.current && lifetime.current === generation) setError(error instanceof Error ? error.message : "Session reload failed"); }
+    finally { if (mounted.current && lifetime.current === generation) { busyRef.current = false; setBusy(false); } }
   };
   return <section className={styles.nativePanel} aria-labelledby="native-mcp-title" style={{ display: "grid", gap: 14, minWidth: 0 }}>
     <h3 id="native-mcp-title">{t("nativeMcp.title")}</h3>
@@ -67,8 +73,8 @@ export function NativeMcpConfig({ cwd, sessionId, onReloaded }: { cwd: string; s
       <p>{t("nativeMcp.permissions")}</p>
       <p>{t("nativeMcp.owner", { owner: data.owner === "native" ? t("nativeMcp.native") : data.owner === "replacement" ? t("nativeMcp.replacement") : t("nativeMcp.notStarted") })}</p>
       {!data.live ? <p>{t("nativeMcp.noLiveSession")}</p> : null}
-      {needsReload ? <p>{t("nativeMcp.reloadHint")} <button type="button" disabled={busy || !sessionId} onClick={() => { void reload(); }}>{t("i18n.reloadSession")}</button></p> : null}
-      <button type="button" disabled={busy} onClick={() => { void load(); }}>{t("nativeMcp.refresh")}</button>
+      {data.reloadRequired ? <p>{t("nativeMcp.reloadHint")} <button type="button" disabled={busy || !sessionId} onClick={() => { void reload(); }}>{t("i18n.reloadSession")}</button></p> : null}
+      <button type="button" disabled={busy} onClick={() => { if (!busyRef.current) void load(); }}>{t("nativeMcp.refresh")}</button>
       {data.servers.length === 0 ? <p>{t("nativeMcp.empty")}</p> : data.servers.map(server => <details key={`${server.scope}:${server.name}`} className={styles.serverCard} open>
         <summary className={styles.serverSummary}><strong>{server.name}</strong><span>{server.transport}</span><span>{t(`nativeMcp.state.${server.state}`)}</span></summary>
         <div className={styles.serverBody}>
@@ -99,7 +105,7 @@ export function NativeMcpConfig({ cwd, sessionId, onReloaded }: { cwd: string; s
         <h4>{t("nativeMcp.add")}</h4>
         <label style={{ display: "grid", gap: 6 }}>{t("nativeMcp.name")} <input style={{ width: "100%", minWidth: 0 }} value={name} required maxLength={100} disabled={busy} onChange={event => setName(event.target.value)} /></label>
         <label style={{ display: "grid", gap: 6 }}>{t("nativeMcp.scope")} <select value={scope} disabled={busy} onChange={event => setScope(event.target.value as "global" | "project")}><option value="global">{t("nativeMcp.global")}</option><option value="project" disabled={!data.projectTrusted}>{t("nativeMcp.project")}</option></select></label>
-        <label>{t("nativeMcp.definition")}<textarea value={definition} required spellCheck={false} disabled={busy} rows={6} onChange={event => setDefinition(event.target.value)} placeholder={'{"command":"node","args":["/path/to/server.mjs"],"enabled":false,"exposure":"codemode"}'} style={{ display: "block", width: "100%", fontFamily: "var(--font-mono)" }} /></label>
+        <label>{t("nativeMcp.definition")}<textarea aria-label={t("nativeMcp.definition")} value={definition} required spellCheck={false} disabled={busy} rows={6} onChange={event => setDefinition(event.target.value)} placeholder={'{"command":"node","args":["/path/to/server.mjs"],"enabled":false,"exposure":"codemode"}'} style={{ display: "block", width: "100%", fontFamily: "var(--font-mono)" }} /></label>
         <p>{t("nativeMcp.privateConfig")}</p>
         {!data.projectTrusted ? <p>{t("nativeMcp.projectTrust")}</p> : null}
         <button type="submit" disabled={busy || !name.trim() || !definition.trim()}>{t("i18n.save")}</button>

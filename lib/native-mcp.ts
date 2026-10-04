@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -48,6 +49,9 @@ export class NativeMcpController {
   private resourcePermission: (server: string) => boolean = () => false;
   private changed: () => void = () => {};
   private nativeStarted = false;
+  private loadedConfigRevision: string | undefined;
+  private loadedEnabled = false;
+  private loadedRegisteredApprovals = new Map<string, boolean>();
   private shuttingDown = false;
   private states = new Map<string, NativeMcpServerState>();
   private entries = new Map<string, NativeMcpEntry>();
@@ -65,6 +69,11 @@ export class NativeMcpController {
         this.projectTrusted = ctx.isProjectTrusted();
         const config = options.loadConfig?.(ctx) ?? loadNativeMcpConfig(agentDir, cwd, this.projectTrusted);
         const enabled = readNativeMcpPreferences(agentDir).enabled;
+        this.loadedConfigRevision = this.configRevision(config);
+        this.loadedEnabled = enabled;
+        this.loadedRegisteredApprovals.clear();
+        this.entries.clear(); this.states.clear(); this.registeredApprovals.clear(); this.revealed.clear();
+        for (const [name, definition] of this.definitions) if (definition.server) this.definitions.delete(name);
         for (const entry of config.servers) this.observeEntry(entry, enabled);
         return { ...config, servers: config.servers.map(entry => ({ ...entry, config: { ...entry.config, enabled: enabled && entry.config.enabled !== false } })) };
       },
@@ -153,9 +162,25 @@ export class NativeMcpController {
       kind: "extension", toolNames: [], available: server.exposure !== "hidden" && !["disabled", "approval-required", "closed"].includes(server.state),
     }));
   }
-  snapshot(): { enabled: boolean; projectTrusted: boolean; owner: "native" | "replacement"; servers: NativeMcpServerState[] } {
+  private configRevision(config: ReturnType<typeof loadNativeMcpConfig>): string {
+    return createHash("sha256").update(JSON.stringify({
+      servers: config.servers.filter(entry => entry.scope !== "extension").map(entry =>
+        nativeMcpApprovalIdentity(this.cwd, entry.name, entry.source, entry.config)).sort(),
+      errors: [...config.errors].sort(), autoEnableCodemode: config.autoEnableCodemode ?? true,
+    })).digest("hex");
+  }
+  private reloadRequired(): boolean {
+    if (!this.nativeStarted || this.loadedConfigRevision === undefined) return false;
+    try {
+      const preferences = readNativeMcpPreferences(this.agentDir);
+      return preferences.enabled !== this.loadedEnabled
+        || this.configRevision(loadNativeMcpConfig(this.agentDir, this.cwd, this.projectTrusted)) !== this.loadedConfigRevision
+        || [...this.loadedRegisteredApprovals].some(([identity, approved]) => preferences.approvedRegistered.includes(identity) !== approved);
+    } catch { return true; }
+  }
+  snapshot(): { reloadRequired: boolean; enabled: boolean; projectTrusted: boolean; owner: "native" | "replacement"; servers: NativeMcpServerState[] } {
     const preferences = readNativeMcpPreferences(this.agentDir);
-    return { enabled: preferences.enabled, projectTrusted: this.projectTrusted,
+    return { reloadRequired: this.reloadRequired(), enabled: preferences.enabled, projectTrusted: this.projectTrusted,
       owner: this.nativeStarted ? "native" : "replacement",
       servers: [...this.states.values()].map(server => ({ ...server, configurationCurrent: this.configurationIsCurrent(server.name), connectionAuthorized: this.isServerAuthorized(server.name),
         ...(server.scope === "extension" ? { approvalRequired: !preferences.approvedRegistered.includes(this.registeredApprovals.get(server.name) ?? "") } : {}),
@@ -251,6 +276,7 @@ export class NativeMcpController {
           const source = server.extensionPath;
           const identity = nativeMcpApprovalIdentity(this.cwd, server.name, source, server.config);
           this.registeredApprovals.set(server.name, identity);
+          this.loadedRegisteredApprovals.set(identity, preferences.approvedRegistered.includes(identity));
           const approved = preferences.enabled && preferences.approvedRegistered.includes(identity);
           if (!this.entries.has(server.name) || this.entries.get(server.name)?.scope === "extension") {
             this.observeEntry({ name: server.name, source, scope: "extension", config: server.config }, approved);
@@ -287,7 +313,7 @@ export class NativeMcpController {
     api.on = ((event: string, handler: (event: unknown, ctx: ExtensionContext) => unknown) => {
       return Reflect.apply(pi.on, pi, [event, async (payload: unknown, ctx: ExtensionContext) => {
         if (kind === "mcp" && event === "session_start") { this.nativeStarted = true; this.shuttingDown = false; }
-        if (kind === "mcp" && event === "session_shutdown") this.shuttingDown = true;
+        if (kind === "mcp" && event === "session_shutdown") { this.shuttingDown = true; this.nativeStarted = false; }
         try { return await handler(payload, this.context(ctx)); } catch { throw new Error("Native MCP extension operation failed"); }
       }]);
     }) as ExtensionAPI["on"];

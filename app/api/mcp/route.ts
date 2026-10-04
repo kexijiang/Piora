@@ -39,7 +39,7 @@ function view(ctx: Context) {
         connectionAuthorized: state?.connectionAuthorized ?? false,
         tools: state?.tools ?? [], resources: state?.resources ?? false, owner: live?.owner ?? "not-started" };
     }), ...(live?.servers.filter(server => server.scope === "extension" && !config.servers.some(entry => entry.name === server.name)) ?? [])],
-    reloadRequired: true,
+    reloadRequired: live?.reloadRequired ?? false,
   };
 }
 function errorResponse(error: unknown) {
