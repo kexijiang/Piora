@@ -133,6 +133,7 @@ const requiredPaths = [
   "node_modules/@earendil-works/pi-agent-core/package.json",
   "node_modules/@earendil-works/pi-ai/package.json",
   "node_modules/@earendil-works/pi-coding-agent/package.json",
+  "node_modules/@earendil-works/pi-coding-agent/node_modules/jiti/package.json",
   "node_modules/@earendil-works/pi-coding-agent/node_modules/@aws-sdk/client-bedrock-runtime/package.json",
   "node_modules/@earendil-works/pi-tui/package.json",
   "node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/dark.json",
@@ -835,12 +836,13 @@ export async function verifyPackagedHarmonyHapPreview(runtimeWebRoot) {
   const probe = join(runtimeWebRoot, ".piora-hap-preview-smoke.cjs");
   const fixture = join(runtimeWebRoot, ".piora-hap-preview-fixture.hap");
   await writeFile(probe, `
-const { createJiti } = require("jiti");
 const { createRequire } = require("node:module");
 const { createHash } = require("node:crypto");
 const { readFile, writeFile } = require("node:fs/promises");
 const { join } = require("node:path");
 (async () => {
+  const requireFromPi = createRequire(join(__dirname, "node_modules", "@earendil-works", "pi-coding-agent", "package.json"));
+  const { createJiti } = requireFromPi("jiti");
   const { previewHapArtifact } = await createJiti(__filename, { fsCache: false, moduleCache: false })
     .import("./lib/harmony/runtime/hap-preview.ts");
   const JSZip = require("jszip");
@@ -856,6 +858,7 @@ const { join } = require("node:path");
   process.stdout.write(JSON.stringify({
     preview, originalSha256: createHash("sha256").update(bytes).digest("hex"),
     unchanged: bytes.equals(await readFile(path)),
+    jitiPath: requireFromPi.resolve("jiti"),
     jszipPath: require.resolve("jszip"),
     pakoPath: createRequire(require.resolve("jszip")).resolve("pako"),
   }));
@@ -867,7 +870,7 @@ const { join } = require("node:path");
       env: { ...process.env, NODE_PATH: "" },
     });
     const result = JSON.parse(stdout.trim());
-    for (const dependencyPath of [result.jszipPath, result.pakoPath]) {
+    for (const dependencyPath of [result.jitiPath, result.jszipPath, result.pakoPath]) {
       const path = relative(runtimeWebRoot, dependencyPath);
       if (!path || path === ".." || path.startsWith("../") || path.startsWith("..\\") || isAbsolute(path)) {
         throw new Error("Packaged HAP preview resolved a dependency outside its runtime");
