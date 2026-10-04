@@ -274,12 +274,12 @@ export function ProjectToolsConfig({ cwd, onChanged }: Props) {
             {items.map((item) => {
               const toolName = item.toolNames[0];
               const labelKey = TOOL_LABEL_KEYS[toolName];
-              const label = labelKey ? t(labelKey) : item.label;
+              const label = item.id.startsWith("mcp-resource:") ? t("nativeMcp.resourceLabel", { server: item.id.slice(13) }) : labelKey ? t(labelKey) : item.label;
               return <label className={styles.row} key={item.id} data-enabled={item.available && item.enabled || undefined} data-unavailable={!item.available ? "true" : undefined} data-saving={saving || loading || undefined}>
                 <span className={styles.icon}><AliIcon name={iconFor(item)} size={14} /></span>
                 <span className={styles.copy}>
                   <strong>{label}</strong>
-                  <small>{item.available ? toolName : t(item.unavailableReason === "profile_restricted" ? "sessionTools.profileRestricted" : "sessionTools.notAvailable")}</small>
+                  <small>{item.available ? toolName ?? t("nativeMcp.resourcePermissionHint") : t(item.unavailableReason === "profile_restricted" ? "sessionTools.profileRestricted" : "sessionTools.notAvailable")}</small>
                 </span>
                 {item.available ? <span className={styles.stateLabel}>{t(item.enabled ? "projectTools.on" : "projectTools.off")}</span> : null}
                 <span className={styles.toggle}>

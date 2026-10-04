@@ -15,6 +15,7 @@ import { verifyPackagedClipboard } from "./verify-packaged-clipboard.mjs";
 import { verifyPackagedShell } from "./verify-packaged-shell.mjs";
 import { verifyBrandStartupAssets } from "./verify-brand-startup-assets.mjs";
 import { verifyPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
+import { piNativeRuntimeProbe } from "./pi-native-runtime-probe.mjs";
 import {
   createIsolatedProcessEnvironment,
   prepareIsolatedEnvironment,
@@ -132,7 +133,7 @@ const requiredPaths = [
   "node_modules/@earendil-works/pi-agent-core/package.json",
   "node_modules/@earendil-works/pi-ai/package.json",
   "node_modules/@earendil-works/pi-coding-agent/package.json",
-  "node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/codemode-worker.js",
+  "node_modules/@earendil-works/pi-codemode/dist/runtime/worker.js",
   "node_modules/@earendil-works/pi-codemode/package.json",
   "node_modules/@earendil-works/pi-mcp/package.json",
   "node_modules/quickjs-wasi/quickjs.wasm",
@@ -848,6 +849,18 @@ export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
   return patchedBundledDependencies;
 }
 
+export async function verifyPackagedNativePiRuntime(runtimeWebRoot) {
+  const probe = join(runtimeWebRoot, ".piora-native-runtime-smoke.mjs");
+  await writeFile(probe, piNativeRuntimeProbe, { flag: "wx", mode: 0o600 });
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [probe], {
+      cwd: runtimeWebRoot, timeout: 60000, maxBuffer: 1024 * 1024,
+      env: { ...process.env, NODE_PATH: "" },
+    });
+    return JSON.parse(stdout.trim());
+  } finally { await rm(probe, { force: true }); }
+}
+
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
@@ -891,6 +904,7 @@ async function main() {
   const packagedPiAiRuntime = await verifyPackagedPiAiRuntime(runtimeWebRoot);
   const packagedPiAiModules = await verifyPackagedPiAiModuleSurface(runtimeWebRoot);
   const patchedBundledDependencies = await verifyPackagedBundledDependencies(runtimeWebRoot);
+  const nativePiRuntime = await verifyPackagedNativePiRuntime(runtimeWebRoot);
   const looseNodeModules = await stat(join(packagedWebRoot, "node_modules")).catch(() => undefined);
   if (looseNodeModules) {
     throw new Error("Packaged web dependencies must be archived; loose node_modules would regress portable startup");
@@ -1145,6 +1159,11 @@ async function main() {
     }
 
     const coreExtensionTools = verifyPackagedCoreTools(initialTools);
+    for (const name of ["codemode", "tool_search"]) {
+      const helper = requireArrayEntry(initialTools, entry => entry.name === name, `native Pi helper ${name}`);
+      if (helper.active) throw new Error(`Native helper ${name} must require explicit task authorization`);
+    }
+    requireArrayEntry(commands, entry => entry.name === "mcp" && entry.source === "extension", "native MCP command");
 
     const { body: projectTools } = await fetchJson(
       origin,
@@ -1201,6 +1220,7 @@ async function main() {
       dependencyChecks: requiredPaths.length,
       packagedPiAiRuntime,
       packagedPiAiModules,
+      nativePiRuntime,
       patchedBundledDependencies: patchedBundledDependencies.map(({ name, version }) => `${name}@${version}`),
       forbiddenDependencyChecks: forbiddenPackagedDependencies.length,
       packagedBackgrounds: packagedBackgrounds.backgroundCount,

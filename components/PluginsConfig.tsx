@@ -8,6 +8,7 @@ import type { PluginPackageInfo, PluginsResponse } from "@/lib/api-types";
 import { useI18n } from "@/hooks/useI18n";
 import { AliIcon } from "./AliIcon";
 import { CapabilityPrimer } from "./CapabilityPrimer";
+import { NativeMcpConfig } from "./NativeMcpConfig";
 import styles from "./PluginsConfig.module.css";
 
 type PluginScope = PluginPackageInfo["scope"];
@@ -590,6 +591,7 @@ export function PluginsConfig({
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const [addMode, setAddMode] = useState(false);
+  const [nativeMcpMode, setNativeMcpMode] = useState(false);
   const [installSource, setInstallSource] = useState("");
   const [installScope, setInstallScope] = useState<PluginScope>("global");
   const [busyKey, setBusyKey] = useState<string | null>(null);
@@ -813,6 +815,7 @@ export function PluginsConfig({
             }}
           >
             <div style={{ flex: 1, overflowY: "auto", padding: "8px 6px" }}>
+              <button type="button" aria-pressed={nativeMcpMode} onClick={() => { setNativeMcpMode(true); setAddMode(false); }} style={{ padding: "10px 8px", width: "100%", textAlign: "left", color: "var(--text)", background: nativeMcpMode ? "var(--bg-selected)" : "transparent", border: "none" }}>{t("nativeMcp.title")}</button>
               {loading ? (
                 <div style={{ padding: "10px 8px", fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>
                   {t("i18n.loading")}
@@ -841,12 +844,13 @@ export function PluginsConfig({
                     </div>
                     {group.packages.map((pkg) => {
                       const key = packageKey(pkg);
-                      const isSelected = !addMode && selected === key;
+                      const isSelected = !nativeMcpMode && !addMode && selected === key;
                       return (
                         <div
                           key={key}
                           onClick={() => {
                             setSelected(key);
+                            setNativeMcpMode(false);
                             setAddMode(false);
                             setActionError(null);
                             setActionMessage(null);
@@ -922,6 +926,7 @@ export function PluginsConfig({
               <button
                 type="button"
                 onClick={() => {
+                  setNativeMcpMode(false);
                   setAddMode(true);
                   setActionError(null);
                   setActionMessage(null);
@@ -954,7 +959,7 @@ export function PluginsConfig({
 
           <div style={{ flex: 1, overflowY: "auto", padding: embedded ? "20px 32px 36px" : 20 }}>
             {!embedded ? <CapabilityPrimer current="plugin" /> : null}
-            {addMode ? (
+            {nativeMcpMode ? <NativeMcpConfig key={`${cwd}:${sessionId ?? ""}`} cwd={cwd} sessionId={sessionId} onReloaded={onReloaded} /> : addMode ? (
               <AddPluginPanel
                 cwd={cwd}
                 source={installSource}

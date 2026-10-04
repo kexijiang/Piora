@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
 import { assertSessionNotMutating, drainSessionFileOperations, runSessionFileOperation, trackSessionFileOperation } from "./session-mutation";
 import { resolve } from "node:path";
+import { NativeMcpController, getNativeMcpController, setNativeMcpController, nativeMcpResourceCapabilityId } from "./native-mcp";
 import { validateAgentImages } from "./image-attachments";
 import { installImageContextPolicy } from "./image-context";
 import { installModelStallGuard } from "./model-stall-guard";
@@ -100,7 +101,7 @@ import {
   type SessionCapabilitySelection,
 } from "./session-capabilities";
 import {
-  projectToolSelection,
+  projectToolSelection, projectToolPolicyHistory,
   readProjectToolSettings,
   type ProjectToolSettingsRecord,
 } from "./project-tool-settings";
@@ -235,6 +236,7 @@ export class AgentSessionWrapper {
   private projectManaged: boolean;
   private readonly _projectRoot: string;
   private _alive = true;
+  readonly nativeMcp?: NativeMcpController;
 
   constructor(
     public readonly inner: AgentSessionLike,
@@ -244,11 +246,13 @@ export class AgentSessionWrapper {
       toolNameCeiling?: readonly string[];
       projectRoot?: string;
       projectManaged?: boolean;
+      nativeMcp?: NativeMcpController;
     } = {},
   ) {
+    this.nativeMcp = capabilityOptions.nativeMcp;
     this.remotePolicy = readRemoteSessionPolicy(inner.sessionManager.getEntries());
     this.cachedSessionTitle = inner.sessionManager.getSessionName()?.trim() || null;
-    this.capabilityCatalog = buildSessionCapabilityCatalog(inner.getAllTools(), runtimeProfile);
+    this.capabilityCatalog = [...buildSessionCapabilityCatalog(inner.getAllTools(), runtimeProfile), ...this.nativeMcp?.resourceCatalog() ?? []];
     this.capabilityPolicy = capabilityOptions.policy
       ?? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), this.capabilityCatalog, runtimeProfile);
     this.toolNameCeiling = this.remotePolicy === "notes" ? new Set<string>() : capabilityOptions.toolNameCeiling
@@ -257,11 +261,10 @@ export class AgentSessionWrapper {
     this._projectRoot = capabilityOptions.projectRoot ?? inner.sessionManager.getCwd();
     this.projectManaged = capabilityOptions.projectManaged === true;
     if (this.projectManaged) {
-      this.projectAllowedToolNames = new Set(resolveSessionCapabilityToolNames(
-        this.capabilityCatalog,
-        this.capabilityPolicy,
-        inner.getAllTools().map((tool) => tool.name),
-      ));
+      this.projectAllowedToolNames = new Set([
+        ...resolveSessionCapabilityToolNames(this.capabilityCatalog, this.capabilityPolicy, inner.getAllTools().map(tool => tool.name)),
+        ...this.capabilityPolicy.enabledCapabilityIds.filter(id => id.startsWith("tool:")).map(id => id.slice(5)),
+      ]);
     }
   }
 
@@ -299,7 +302,26 @@ export class AgentSessionWrapper {
   }
 
   private refreshCapabilityCatalog(): void {
-    this.capabilityCatalog = buildSessionCapabilityCatalog(this.inner.getAllTools(), this.runtimeProfile);
+    this.capabilityCatalog = [...buildSessionCapabilityCatalog(this.inner.getAllTools(), this.runtimeProfile), ...this.nativeMcp?.resourceCatalog() ?? []];
+  }
+
+  isToolAllowedByCapability(name: string): boolean {
+    if (!this._alive || this.remotePolicy === "notes") return false;
+    this.refreshCapabilityCatalog();
+    const permitted = resolveSessionCapabilityToolNames(this.capabilityCatalog, this.capabilityPolicy,
+      this.inner.getAllTools().map(tool => tool.name), this.toolNameCeiling);
+    return permitted.includes(name) && (!this.projectAllowedToolNames || this.projectAllowedToolNames.has(name));
+  }
+
+  isMcpResourceServerAllowed(server: string): boolean {
+    return this._alive && this.remotePolicy !== "notes" && this.runtimeProfile === "normal"
+      && this.capabilityPolicy.enabledCapabilityIds.includes(nativeMcpResourceCapabilityId(server));
+  }
+
+  refreshNativeMcpCapabilities(): void {
+    if (!this._alive) return;
+    this.applySessionCapabilities({ persistBudgetTrim: true });
+    this.emit({ type: "capabilities_changed", capabilities: this.getSessionCapabilities() });
   }
 
   private resolveCapabilityToolBudget(
@@ -313,7 +335,8 @@ export class AgentSessionWrapper {
       allTools.map((tool) => tool.name),
       this.toolNameCeiling,
     );
-    const budget = fitToolNamesWithinDefinitionBudget(allTools, requestedToolNames);
+    const declarationNames = this.nativeMcp?.declarationNames(requestedToolNames) ?? requestedToolNames;
+    const budget = fitToolNamesWithinDefinitionBudget(allTools, declarationNames);
     if (budget.droppedToolNames.length === 0) {
       return { policy, toolNames: budget.toolNames, trimmed: false };
     }
@@ -326,7 +349,8 @@ export class AgentSessionWrapper {
       );
     }
 
-    const enabledCapabilityIds = selectionFromToolNames(budget.toolNames, this.capabilityCatalog).enabledCapabilityIds ?? [];
+    const droppedIds = new Set(budget.droppedToolNames.map(name => `tool:${name}`));
+    const enabledCapabilityIds = policy.enabledCapabilityIds.filter(id => !droppedIds.has(id));
     return {
       policy: {
         ...policy,
@@ -372,14 +396,13 @@ export class AgentSessionWrapper {
       this.capabilityCatalog,
       this.runtimeProfile,
       record.revision - 1,
-      this.capabilityPolicy,
+      { ...this.capabilityPolicy, knownCapabilityIds: [...this.capabilityPolicy.knownCapabilityIds, ...projectToolPolicyHistory(record).knownCapabilityIds] },
     );
     const resolved = this.resolveCapabilityToolBudget(policy, true);
-    const projectAllowedToolNames = new Set(resolveSessionCapabilityToolNames(
-      this.capabilityCatalog,
-      resolved.policy,
-      this.inner.getAllTools().map((tool) => tool.name),
-    ));
+    const projectAllowedToolNames = new Set([
+      ...resolveSessionCapabilityToolNames(this.capabilityCatalog, resolved.policy, this.inner.getAllTools().map(tool => tool.name)),
+      ...resolved.policy.enabledCapabilityIds.filter(id => id.startsWith("tool:")).map(id => id.slice(5)),
+    ]);
     this.projectManaged = true;
     if (this.isRunning()) {
       this.pendingProjectCapabilityPolicy = resolved.policy;
@@ -2114,6 +2137,19 @@ export async function reloadLiveCompactionSettings(): Promise<void> {
   await reloadModelRetrySettings(managers);
 }
 
+/** Read-only discovery for project settings. Never start servers from this page. */
+export function getLiveProjectNativeMcpCatalog(projectRoot: string) {
+  const tools = new Map<string, ToolInfo>();
+  const resources = new Map<string, ReturnType<NativeMcpController["resourceCatalog"]>[number]>();
+  for (const session of getRegistry().values()) {
+    if (!session.isAlive() || session.runtimeProfile !== "normal" || normalizeRpcCwd(session.projectRoot) !== normalizeRpcCwd(projectRoot) || !session.nativeMcp) continue;
+    if (session.nativeMcp.snapshot().owner !== "native") continue;
+    for (const tool of session.inner.getAllTools()) if (tool.name.startsWith("mcp__") || ["codemode", "tool_search", "list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"].includes(tool.name)) tools.set(tool.name, tool);
+    for (const resource of session.nativeMcp.resourceCatalog()) resources.set(resource.id, resource);
+  }
+  return { tools: [...tools.values()], resources: [...resources.values()] };
+}
+
 export function applyProjectToolSettingsToLiveSessions(
   projectRoot: string,
   record: ProjectToolSettingsRecord,
@@ -2499,6 +2535,7 @@ export async function startRpcSession(
     if (!services) {
       const settingsManager = SettingsManager.create(cwd, agentDir);
       const extensionPlan = await resolveExtensionLoadPlan({ cwd, agentDir, settingsManager, profile: runtimeProfile, installMissing: true });
+      const nativeMcp = runtimeProfile === "normal" ? new NativeMcpController(cwd, agentDir) : undefined;
       services = await createAgentSessionServices({
         cwd,
         agentDir,
@@ -2522,6 +2559,7 @@ export async function startRpcSession(
               resourceLoaderOptions: {
                 additionalExtensionPaths: extensionPlan.enabledPaths,
                 noExtensions: true,
+                extensionFactories: nativeMcp?.factories,
                 extensionsOverride: (result) => applyExtensionLoadPlan(result, extensionPlan),
                 systemPromptOverride: (base) => resolveSessionSystemPrompt(
                   sessionManager.getEntries(),
@@ -2531,6 +2569,7 @@ export async function startRpcSession(
               },
             }),
       });
+      if (nativeMcp) setNativeMcpController(services, nativeMcp);
       if (runtimeProfile === "device-control") {
         if (
           services.resourceLoader.getSkills().skills.length > 0
@@ -2598,13 +2637,15 @@ export async function startRpcSession(
       if (configuredModel !== inner.model) await inner.setModel(configuredModel);
     }
 
-    const capabilityCatalog = buildSessionCapabilityCatalog(inner.getAllTools(), runtimeProfile);
+    const nativeMcp = getNativeMcpController(services);
+    const capabilityCatalog = [...buildSessionCapabilityCatalog(inner.getAllTools(), runtimeProfile), ...nativeMcp?.resourceCatalog() ?? []];
     const restoredPolicy = projectToolRecord
       ? createSessionCapabilityPolicy(
           projectToolSelection(projectToolRecord),
           capabilityCatalog,
           runtimeProfile,
           projectToolRecord.revision - 1,
+          projectToolPolicyHistory(projectToolRecord),
         )
       : sessionFile
         ? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), capabilityCatalog, runtimeProfile)
@@ -2637,9 +2678,12 @@ export async function startRpcSession(
       policy: restoredPolicy,
       projectRoot,
       projectManaged: Boolean(projectToolRecord),
+      nativeMcp,
       ...(notesOnly ? { toolNameCeiling: [] } : toolNames !== undefined ? { toolNameCeiling: toolNames } : {}),
     });
     startupWrapper = wrapper;
+    nativeMcp?.bind(name => wrapper.isToolAllowedByCapability(name), server => wrapper.isMcpResourceServerAllowed(server),
+      () => wrapper.refreshNativeMcpCapabilities());
     wrapper.onDestroy(() => {
       if (registry.get(realSessionId) === wrapper) registry.delete(realSessionId);
       // A disposed AgentSession owns the ResourceLoader/runtime binding held by

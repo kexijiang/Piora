@@ -36,6 +36,7 @@ export interface ModelLike {
 export interface ToolInfo {
   name: string;
   description: string;
+  exposure?: string;
   parameters?: unknown;
   inputSchema?: unknown;
   promptGuidelines?: readonly string[];
