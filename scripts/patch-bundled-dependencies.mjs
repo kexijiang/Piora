@@ -3,6 +3,7 @@
 import { cp, lstat, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { patchPiSourceProfile } from "./pi-source-profile.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -50,22 +51,22 @@ async function patchBundledPackage({
   if (!sourceEntry.isDirectory() || sourceEntry.isSymbolicLink()) {
     throw new Error(`Expected a real directory at ${source}`);
   }
+  const sourcePackage = await readPackage(source);
+  if (sourcePackage.name !== packageName || sourcePackage.version !== patchedVersion) {
+    throw new Error(
+      `Expected locked ${packageName} ${patchedVersion}, found ${sourcePackage.name}@${sourcePackage.version}`,
+    );
+  }
   if (!targetEntry) {
+    // Pi >=1.0.1 hoists these packages after removing its shrinkwrap. The
+    // absence of a nested copy must not skip validation of the patch source.
     return { patched: false, reason: "bundled-copy-absent" };
   }
   if (!targetEntry.isDirectory() || targetEntry.isSymbolicLink()) {
     throw new Error(`Refusing to replace a non-directory or symlink at ${target}`);
   }
 
-  const [sourcePackage, targetPackage] = await Promise.all([
-    readPackage(source),
-    readPackage(target),
-  ]);
-  if (sourcePackage.name !== packageName || sourcePackage.version !== patchedVersion) {
-    throw new Error(
-      `Expected locked ${packageName} ${patchedVersion}, found ${sourcePackage.name}@${sourcePackage.version}`,
-    );
-  }
+  const targetPackage = await readPackage(target);
   if (
     targetPackage.name !== packageName
     || !acceptedBundledVersions.has(targetPackage.version)
@@ -124,8 +125,7 @@ export async function patchBundledBraceExpansion(root = projectRoot, sourceRoot 
     root,
     sourceRoot,
     packageName: "brace-expansion",
-    // Pi 0.84.3's shrinkwrap bypasses root overrides for its bundled copy.
-    // Retain the reviewed replacement until a separately verified Pi migration.
+    // Retain strict guards for legacy/staged copies; Pi >=1.0.1 can hoist it.
     patchedVersion: "5.0.12",
     acceptedBundledVersions: new Set(["5.0.7", "5.0.9", "5.0.12"]),
   });
@@ -137,7 +137,7 @@ export async function patchBundledUndici(root = projectRoot, sourceRoot = root) 
     sourceRoot,
     packageName: "undici",
     patchedVersion: "8.11.2",
-    acceptedBundledVersions: new Set(["8.5.0", "8.9.0", "8.11.2"]),
+    acceptedBundledVersions: new Set(["8.5.0", "8.9.0", "8.10.2", "8.11.2"]),
   });
 }
 
@@ -191,6 +191,7 @@ async function main() {
     patchElectronBuilderWorkspaceCollector().then((result) => ({ package: "app-builder-lib", ...result })),
     patchNodePtyShutdown().then((result) => ({ package: "node-pty", ...result })),
   ]);
+  patches.push({ package: "pi-source-profile", ...await patchPiSourceProfile(projectRoot) });
   console.log(JSON.stringify({ bundledDependencyPatches: patches }));
 }
 

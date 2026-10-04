@@ -163,12 +163,12 @@ export function SessionToolsControl({ capabilities, busy, saving, onChange, onOp
             {items.map((item) => {
               const toolName = item.toolNames[0];
               const labelKey = TOOL_LABEL_KEYS[toolName];
-              const label = labelKey ? t(labelKey) : item.label;
+              const label = item.id.startsWith("mcp-resource:") ? t("nativeMcp.resourceLabel", { server: item.id.slice(13) }) : labelKey ? t(labelKey) : item.label;
               return <label key={item.id} className={styles.row} data-unavailable={!item.available ? "true" : undefined}>
                 <span className={styles.icon}><AliIcon name={iconFor(item)} size={14} /></span>
                 <span className={styles.copy}>
                   <strong>{label}</strong>
-                  <small>{item.available ? toolName : t("sessionTools.profileRestricted")}</small>
+                  <small>{item.available ? toolName ?? t("nativeMcp.resourcePermissionHint") : t(item.unavailableReason === "profile_restricted" ? "sessionTools.profileRestricted" : "sessionTools.notAvailable")}</small>
                 </span>
                 <input
                   type="checkbox"

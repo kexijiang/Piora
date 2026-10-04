@@ -50,6 +50,7 @@ export interface SessionCapabilityEntryLike {
 export interface SessionCapabilityToolInfo {
   name: string;
   description: string;
+  exposure?: string;
   sourceInfo?: {
     path: string;
     source: string;
@@ -172,7 +173,8 @@ export function buildSessionCapabilityCatalog(
         description: tool.description?.trim() || `Allow the model to call ${tool.name}.`,
         kind: definition?.kind ?? "extension",
         toolNames: [tool.name],
-        available: profileAllowed,
+        available: profileAllowed && tool.exposure !== "hidden",
+        ...(profileAllowed && tool.exposure === "hidden" ? { unavailableReason: "not_registered" as const } : {}),
         ...(!profileAllowed ? { unavailableReason: "profile_restricted" as const } : {}),
       };
     })
@@ -269,6 +271,12 @@ export function restoreSessionCapabilityPolicy(
       enabledIds.add("tool:ssh");
     }
     const catalogIds = new Set(catalog.map((item) => item.id));
+    // Async MCP discovery can occur after session restoration. Preserve only
+    // previously known/selected IDs; their absence grants no execution until a
+    // live available catalog entry returns. New discoveries remain opt-in.
+    const pendingIds = profile === "normal" ? restored.knownCapabilityIds.filter(id => !catalogIds.has(id)
+      && (id.startsWith("tool:") || id.startsWith("mcp-resource:"))
+      && !(id !== "tool:harmony_control" && id.startsWith("tool:") && HARMONY_TOOL_SET.has(id.slice(5)))) : [];
     const migratedIds = catalog
       .filter((item) => enabledIds.has(item.id) || CAPABILITY_DEFINITIONS.some((definition) => (
         definition.kind === item.kind && enabledIds.has(definition.legacyId)
@@ -277,8 +285,8 @@ export function restoreSessionCapabilityPolicy(
     return {
       ...restored,
       preset: "custom",
-      enabledCapabilityIds: uniqueStrings(migratedIds),
-      knownCapabilityIds: uniqueStrings([...restored.knownCapabilityIds.filter((id) => catalogIds.has(id)), ...catalogIds]),
+      enabledCapabilityIds: uniqueStrings([...migratedIds, ...pendingIds.filter(id => enabledIds.has(id))]),
+      knownCapabilityIds: uniqueStrings([...pendingIds, ...restored.knownCapabilityIds.filter((id) => catalogIds.has(id)), ...catalogIds]),
     };
   }
   return createSessionCapabilityPolicy(undefined, catalog, profile, -1);

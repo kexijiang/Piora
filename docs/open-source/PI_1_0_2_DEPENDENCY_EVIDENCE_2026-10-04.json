@@ -1,0 +1,112 @@
+{
+  "codingAgent": "1.0.2",
+  "closurePackages": 121,
+  "identities": [
+    {
+      "name": "brace-expansion",
+      "version": "5.0.12",
+      "path": "node_modules/brace-expansion",
+      "integrity": "sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ=="
+    },
+    {
+      "name": "undici",
+      "version": "8.11.2",
+      "path": "node_modules/undici",
+      "integrity": "sha512-u4UB2/IrKdU6lFxumHmmo1a3fCQO5tzQllRorfoRS63txhrB7xTpSn1PftwC4qEHkOaqP95fCWW4lJzwErwzhQ=="
+    },
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "1.0.2",
+      "path": "node_modules/@earendil-works/pi-ai",
+      "integrity": "sha512-JP59xGlSAQ/HhQ6EHN5qmneBlWfDyu6FPPryAvAaSo8A38ubAsEpS9YisCM5Jbbns0srrDffLZonE0OXorHI5A=="
+    },
+    {
+      "name": "@earendil-works/pi-codemode",
+      "version": "1.0.2",
+      "path": "node_modules/@earendil-works/pi-codemode",
+      "integrity": "sha512-tvfDSVz984ra/4y/hIFmYGpP5ojC+C6/ey+DNbjTzfJvbXviW4JYTXwVcm33KAceI0xcOuE+P1yRGLtQgis0/w=="
+    },
+    {
+      "name": "@earendil-works/pi-mcp",
+      "version": "1.0.2",
+      "path": "node_modules/@earendil-works/pi-mcp",
+      "integrity": "sha512-ED3+q41xLQkxzdadZIQy68SLYcqCJbve8iGbGkZoWjPJ9OZCPHTKcof24fjMO1LfnbIl1uMfhRBueS6IfdiCbQ=="
+    },
+    {
+      "name": "quickjs-wasi",
+      "version": "3.6.2",
+      "path": "node_modules/quickjs-wasi",
+      "integrity": "sha512-FCqGtGOrMgzUiIrMNMA2YnsOxCNwo31dzqXvclXUC6xeT35NJLKXQJsvbeCTjvoFAwZgEAPg8U6+KAPDGXn8Mg=="
+    },
+    {
+      "name": "@aws-sdk/client-bedrock-runtime",
+      "version": "3.1127.0",
+      "path": "node_modules/@aws-sdk/client-bedrock-runtime",
+      "integrity": "sha512-IDl/lrPb90aH+pZFHGNDmgH9nAUQj5PlZH1sJ3w7RikctyjHSnY3oNjZhrLoaBoQn/rNK0zsP6OHEqEhj2tdLA=="
+    }
+  ],
+  "embedded": [
+    {
+      "path": "node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/chunk-ZSBPJAJ2.js",
+      "modules": 110,
+      "sha256": "bc5a8273cca467e8f76e313c7a77016f2dc81d3629b8e7f0c9e202110c231541"
+    }
+  ],
+  "aiBytes": {
+    "copyCount": 1,
+    "fileCount": 842,
+    "copies": [
+      {
+        "id": "top-level",
+        "fileCount": 842
+      }
+    ]
+  },
+  "providerModules": {
+    "copyCount": 1,
+    "copies": [
+      {
+        "id": "top-level",
+        "moduleCount": 148,
+        "oauthProviderIds": [
+          "anthropic",
+          "github-copilot",
+          "kimi-coding",
+          "meta",
+          "openai",
+          "openai-codex",
+          "openrouter",
+          "radius",
+          "xai"
+        ],
+        "subscriptionProviderIds": [
+          "anthropic",
+          "github-copilot",
+          "kimi-coding",
+          "meta",
+          "openai",
+          "openai-codex",
+          "xai"
+        ],
+        "oauthLoaders": [
+          "loadAnthropicOAuth",
+          "loadGitHubCopilotOAuth",
+          "loadKimiCodingOAuth",
+          "loadMetaOAuth",
+          "loadOpenAIChatGPTOAuth",
+          "loadOpenAICodexOAuth",
+          "loadOpenRouterOAuth",
+          "loadRadiusOAuth",
+          "loadXaiOAuth"
+        ]
+      }
+    ]
+  },
+  "securityBlock": "Unverified embedded Undici in Pi bundle: node_modules/@earendil-works/pi-coding-agent/dist/bundle/chunks/chunk-ZSBPJAJ2.js. Root overrides and directory patches do not cover these compiled bytes.",
+  "lockfileSha256": "fb834017ca504581ad32b8fae844a43f5cb142907011d9995a94236f16d7c3f5",
+  "upstreamUndici": {
+    "version": "8.10.2",
+    "source": "https://github.com/earendil-works/pi/blob/v1.0.2/package-lock.json"
+  },
+  "validationScope": "Installed dependency closure copied into an isolated temporary directory. Not a production application package or live-provider acceptance."
+}

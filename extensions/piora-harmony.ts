@@ -1,4 +1,5 @@
 import { observationPage } from "../lib/harmony/observation/page.ts";
+import { assertToolJsonObject } from "../lib/tool-json.ts";
 import { actionCatalog, actionSchema, scenarioStepSchema, selectorSchema } from "../lib/harmony/contracts/actions.ts";
 import { dispatchHarmonyAction } from "../lib/harmony/action-dispatcher.ts";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "../lib/file-access.ts";
@@ -1558,7 +1559,9 @@ const harmonyControlTool = defineTool({
     }
     const target = operationTools.get(params.operation);
     if (!target) throw new Error(`Unknown Harmony operation: ${params.operation}. Call help.`);
-    const input = validateToolArguments(target, { type: "toolCall", id: toolCallId, name: target.name, arguments: params.input ?? {} });
+    const argumentsObject = params.input ?? {};
+    assertToolJsonObject(argumentsObject);
+    const input = validateToolArguments(target, { type: "toolCall", id: toolCallId, name: target.name, arguments: argumentsObject });
     return target.execute(toolCallId, input, signal, onUpdate, ctx);
   },
 });

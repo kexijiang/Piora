@@ -163,6 +163,30 @@
   gap: 8px;
 }
 
+.nativePanel { min-width: 0; }
+.nativePanel p { margin: 0; line-height: 1.55; }
+.nativePanel h3, .nativePanel h4 { margin: 0; font-weight: 600; }
+.nativePanel label { min-width: 0; line-height: 1.5; }
+.nativePanel input:not([type="checkbox"]), .nativePanel select, .nativePanel textarea {
+  min-width: 0;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--text);
+}
+.nativePanel textarea { resize: vertical; min-height: 130px; }
+.nativePanel button {
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.nativePanel button:disabled { opacity: .5; cursor: default; }
+.nativePanel :is(button, input, select, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .serverCard {
   border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
   border-radius: var(--radius-control);

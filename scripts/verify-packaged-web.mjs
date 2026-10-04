@@ -14,6 +14,8 @@ import { generatePackageLicenseBundle } from "./package-license-bundle.mjs";
 import { verifyPackagedClipboard } from "./verify-packaged-clipboard.mjs";
 import { verifyPackagedShell } from "./verify-packaged-shell.mjs";
 import { verifyBrandStartupAssets } from "./verify-brand-startup-assets.mjs";
+import { verifyPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
+import { piNativeRuntimeProbe } from "./pi-native-runtime-probe.mjs";
 import {
   createIsolatedProcessEnvironment,
   prepareIsolatedEnvironment,
@@ -131,7 +133,11 @@ const requiredPaths = [
   "node_modules/@earendil-works/pi-agent-core/package.json",
   "node_modules/@earendil-works/pi-ai/package.json",
   "node_modules/@earendil-works/pi-coding-agent/package.json",
-  "node_modules/@earendil-works/pi-coding-agent/node_modules/@aws-sdk/client-bedrock-runtime/package.json",
+  "node_modules/@earendil-works/pi-codemode/dist/runtime/worker.js",
+  "node_modules/@earendil-works/pi-codemode/package.json",
+  "node_modules/@earendil-works/pi-mcp/package.json",
+  "node_modules/quickjs-wasi/quickjs.wasm",
+  "node_modules/@aws-sdk/client-bedrock-runtime/package.json",
   "node_modules/@earendil-works/pi-tui/package.json",
   "node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/dark.json",
   "node_modules/rrule/package.json",
@@ -183,7 +189,7 @@ async function listRegularFiles(root, description, current = root) {
 
 /**
  * pi-ai deliberately hides provider and OAuth implementations behind
- * bundler-opaque dynamic imports. Verify both installed package copies as
+ * bundler-opaque dynamic imports. Verify all installed package copies as
  * complete, byte-identical runtime units instead of trusting Next's trace.
  */
 export async function verifyPackagedPiAiRuntime(
@@ -198,6 +204,16 @@ export async function verifyPackagedPiAiRuntime(
     const pathSegments = copy.relativePath.split("/");
     const sourcePackageRoot = join(sourceProjectRoot, ...pathSegments);
     const packagedPackageRoot = join(webRoot, ...pathSegments);
+    if (copy.id === "coding-agent-nested" && !await lstat(sourcePackageRoot).catch(error => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    })) {
+      if (await lstat(packagedPackageRoot).catch(error => {
+        if (error.code === "ENOENT") return undefined;
+        throw error;
+      })) throw new Error("Unexpected packaged nested Pi AI runtime absent from source");
+      continue;
+    }
     const [sourceFiles, packagedFiles] = await Promise.all([
       listRegularFiles(sourcePackageRoot, `Source ${copy.label}`),
       listRegularFiles(packagedPackageRoot, `Packaged ${copy.label}`),
@@ -244,13 +260,15 @@ export async function verifyPackagedPiAiModuleSurface(webRootInput) {
   const webRoot = resolve(webRootInput);
   const copies = [];
 
-  // ModelRuntime is exported by pi-coding-agent, so Node resolves all built-in
-  // provider execution through its shrinkwrapped nested pi-ai copy. The
-  // top-level copy is still verified byte-for-byte above for direct SDK and
-  // extension imports, but importing its entire optional provider surface
-  // would incorrectly require dependencies that the app never resolves there.
+  // Verify the runtime Node actually resolves for coding-agent: nested on
+  // legacy shrinkwrapped installs, top-level after Pi removed shrinkwrap.
+  const nestedRoot = join(webRoot, packagedPiAiRuntimeCopies[1].relativePath);
+  const hasNestedRuntime = Boolean(await lstat(nestedRoot).catch(error => {
+    if (error.code === "ENOENT") return undefined;
+    throw error;
+  }));
   const providerRuntimeCopies = packagedPiAiRuntimeCopies.filter((copy) => (
-    copy.id === "coding-agent-nested"
+    copy.id === (hasNestedRuntime ? "coding-agent-nested" : "top-level")
   ));
   for (const copy of providerRuntimeCopies) {
     const packageRoot = join(webRoot, ...copy.relativePath.split("/"));
@@ -805,14 +823,98 @@ export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
     { name: "undici", version: "8.11.2" },
   ];
   for (const expected of patchedBundledDependencies) {
-    const manifestPath = join(runtimeWebRoot, "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", expected.name, "package.json");
+    const codingAgentRoot = join(runtimeWebRoot, "node_modules", "@earendil-works", "pi-coding-agent");
+    // Inspect the current filesystem rather than Node's resolution cache:
+    // adding a stale nested package must not reuse a previous hoisted result.
+    const nested = join(codingAgentRoot, "node_modules", expected.name);
+    const nestedEntry = await lstat(nested).catch(error => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (nestedEntry?.isSymbolicLink() || (nestedEntry && !nestedEntry.isDirectory())) {
+      throw new Error(`Packaged Pi dependency must be a real directory: ${expected.name}`);
+    }
+    const directory = nestedEntry ? nested : join(runtimeWebRoot, "node_modules", expected.name);
+    const directoryEntry = await lstat(directory);
+    if (!directoryEntry.isDirectory() || directoryEntry.isSymbolicLink()) {
+      throw new Error(`Packaged Pi dependency must be a real directory: ${expected.name}`);
+    }
+    const manifestPath = join(directory, "package.json");
     await assertFile(manifestPath);
     const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
     if (manifest?.name !== expected.name || manifest?.version !== expected.version) {
       throw new Error(`Packaged Pi runtime must contain the reviewed ${expected.name}@${expected.version}.`);
     }
   }
+  await verifyPiEmbeddedDependencies(runtimeWebRoot);
   return patchedBundledDependencies;
+}
+
+export async function verifyPackagedNativePiRuntime(runtimeWebRoot) {
+  const probe = join(runtimeWebRoot, ".piora-native-runtime-smoke.mjs");
+  await writeFile(probe, piNativeRuntimeProbe, { flag: "wx", mode: 0o600 });
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [probe], {
+      cwd: runtimeWebRoot, timeout: 60000, maxBuffer: 1024 * 1024,
+      env: { ...process.env, NODE_PATH: "" },
+    });
+    return JSON.parse(stdout.trim());
+  } finally { await rm(probe, { force: true }); }
+}
+
+export async function verifyPackagedHarmonyHapPreview(runtimeWebRoot) {
+  const probe = join(runtimeWebRoot, ".piora-hap-preview-smoke.cjs");
+  const fixture = join(runtimeWebRoot, ".piora-hap-preview-fixture.hap");
+  await writeFile(probe, `
+const { createJiti } = require("jiti");
+const { createRequire } = require("node:module");
+const { createHash } = require("node:crypto");
+const { readFile, writeFile } = require("node:fs/promises");
+const { join } = require("node:path");
+(async () => {
+  const { previewHapArtifact } = await createJiti(__filename, { fsCache: false, moduleCache: false })
+    .import("./lib/harmony/runtime/hap-preview.ts");
+  const JSZip = require("jszip");
+  const zip = new JSZip();
+  zip.file("module.json", JSON.stringify({
+    app: { bundleName: "dev.piora.packagedpreview", versionName: "1.0", versionCode: 7 },
+    module: { name: "entry", type: "entry", deviceTypes: ["phone"], abilities: [{ name: "PreviewAbility" }] },
+  }));
+  const bytes = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+  const path = join(__dirname, ".piora-hap-preview-fixture.hap");
+  await writeFile(path, bytes, { flag: "wx" });
+  const preview = await previewHapArtifact(path);
+  process.stdout.write(JSON.stringify({
+    preview, originalSha256: createHash("sha256").update(bytes).digest("hex"),
+    unchanged: bytes.equals(await readFile(path)),
+    jszipPath: require.resolve("jszip"),
+    pakoPath: createRequire(require.resolve("jszip")).resolve("pako"),
+  }));
+})().catch(error => { console.error(error); process.exitCode = 1; });
+`, { flag: "wx", mode: 0o600 });
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [probe], {
+      cwd: runtimeWebRoot, timeout: 30000, maxBuffer: 1024 * 1024,
+      env: { ...process.env, NODE_PATH: "" },
+    });
+    const result = JSON.parse(stdout.trim());
+    for (const dependencyPath of [result.jszipPath, result.pakoPath]) {
+      const path = relative(runtimeWebRoot, dependencyPath);
+      if (!path || path === ".." || path.startsWith("../") || path.startsWith("..\\") || isAbsolute(path)) {
+        throw new Error("Packaged HAP preview resolved a dependency outside its runtime");
+      }
+    }
+    const preview = result.preview;
+    if (preview?.bundleName !== "dev.piora.packagedpreview" || preview.versionCode !== 7
+      || preview.moduleName !== "entry" || preview.signature !== "unverified"
+      || preview.sha256 !== result.originalSha256 || result.unchanged !== true) {
+      throw new Error("Packaged HAP preview failed compressed metadata or read-only verification");
+    }
+    return { bundleName: preview.bundleName, versionCode: preview.versionCode, compressed: true, unchanged: true };
+  } finally {
+    await rm(probe, { force: true });
+    await rm(fixture, { force: true });
+  }
 }
 
 async function main() {
@@ -862,6 +964,8 @@ async function main() {
   const packagedPiAiRuntime = await verifyPackagedPiAiRuntime(runtimeWebRoot);
   const packagedPiAiModules = await verifyPackagedPiAiModuleSurface(runtimeWebRoot);
   const patchedBundledDependencies = await verifyPackagedBundledDependencies(runtimeWebRoot);
+  const nativePiRuntime = await verifyPackagedNativePiRuntime(runtimeWebRoot);
+  const harmonyHapPreview = await verifyPackagedHarmonyHapPreview(runtimeWebRoot);
   const looseNodeModules = await stat(join(packagedWebRoot, "node_modules")).catch(() => undefined);
   if (looseNodeModules) {
     throw new Error("Packaged web dependencies must be archived; loose node_modules would regress portable startup");
@@ -1116,6 +1220,11 @@ async function main() {
     }
 
     const coreExtensionTools = verifyPackagedCoreTools(initialTools);
+    for (const name of ["codemode", "tool_search"]) {
+      const helper = requireArrayEntry(initialTools, entry => entry.name === name, `native Pi helper ${name}`);
+      if (helper.active) throw new Error(`Native helper ${name} must require explicit task authorization`);
+    }
+    requireArrayEntry(commands, entry => entry.name === "mcp" && entry.source === "extension", "native MCP command");
 
     const { body: projectTools } = await fetchJson(
       origin,
@@ -1172,6 +1281,8 @@ async function main() {
       dependencyChecks: requiredPaths.length,
       packagedPiAiRuntime,
       packagedPiAiModules,
+      nativePiRuntime,
+      harmonyHapPreview,
       patchedBundledDependencies: patchedBundledDependencies.map(({ name, version }) => `${name}@${version}`),
       forbiddenDependencyChecks: forbiddenPackagedDependencies.length,
       packagedBackgrounds: packagedBackgrounds.backgroundCount,

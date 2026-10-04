@@ -1,6 +1,6 @@
 import { createReadStream, type Stats } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { createInterface } from "node:readline";
 import type { SessionInfo } from "@earendil-works/pi-coding-agent";
 
@@ -68,8 +68,9 @@ export class SessionCatalogIndex {
     }
     const present = new Set(files);
     for (const file of this.entries.keys()) if (!present.has(file)) this.remove(file);
-    // Preserve discovery order for equal activity times, matching SDK sorting.
+    // Keep reads in file order; apply SDK discovery ordering once stats exist.
     const results: Array<SessionCatalogEntry | null> = new Array(files.length).fill(null);
+    const modifiedOnDisk = new Map<string, number>();
     let cursor = 0;
     // Bound simultaneous stream buffers, JSON decoding and disk operations.
     await Promise.all(Array.from({ length: Math.min(4, files.length) }, async () => {
@@ -78,6 +79,7 @@ export class SessionCatalogIndex {
         const file = files[position];
         try {
           const state = await stat(file);
+          modifiedOnDisk.set(file, state.mtimeMs);
           const version = signature(state);
           const cached = this.entries.get(file);
           if (cached?.signature === version) { results[position] = cached.value; continue; }
@@ -97,6 +99,10 @@ export class SessionCatalogIndex {
       }
     }));
     return results.filter((value): value is SessionCatalogEntry => value !== null)
-      .sort((left, right) => right.modified.getTime() - left.modified.getTime());
+      // Pi 1.0 discovers recent files first, then keeps that order when
+      // transcript activity ties. Reader completion order must not leak in.
+      .sort((left, right) => right.modified.getTime() - left.modified.getTime()
+        || (modifiedOnDisk.get(right.path) ?? 0) - (modifiedOnDisk.get(left.path) ?? 0)
+        || basename(right.path).localeCompare(basename(left.path)));
   }
 }

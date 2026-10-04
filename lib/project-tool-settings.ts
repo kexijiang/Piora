@@ -4,7 +4,7 @@ import { dirname, resolve } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 import { writePrivateFileAtomicSync } from "./atomic-file";
-import type { SessionCapabilityPreset, SessionCapabilitySelection } from "./session-capabilities";
+import type { SessionCapabilityPreset, SessionCapabilitySelection, SessionCapabilityPolicy } from "./session-capabilities";
 
 const PROJECT_TOOL_SETTINGS_VERSION = 1;
 const MAX_PROJECT_TOOL_SETTINGS_BYTES = 1024 * 1024;
@@ -57,7 +57,7 @@ function parseRecord(value: unknown): ProjectToolSettingsRecord | null {
     || typeof source.updatedAt !== "string"
   ) return null;
   const enabledCapabilityIds = [...new Set(source.enabledCapabilityIds.filter((id): id is string => (
-    typeof id === "string" && id.startsWith("tool:") && id.length <= 260
+    typeof id === "string" && (id.startsWith("tool:") || id.startsWith("mcp-resource:")) && id.length <= 260
   )))].sort();
   return {
     projectRoot: resolve(source.projectRoot),
@@ -121,7 +121,7 @@ export function writeProjectToolSettings(
   if (!isPreset(selection.preset)) throw new TypeError("Invalid project tool preset");
   const enabledCapabilityIds = selection.preset === "custom"
     ? [...new Set((selection.enabledCapabilityIds ?? []).filter((id) => (
-        typeof id === "string" && id.startsWith("tool:") && id.length <= 260
+        typeof id === "string" && (id.startsWith("tool:") || id.startsWith("mcp-resource:")) && id.length <= 260
       )))].sort()
     : [];
   if (enabledCapabilityIds.length > MAX_CAPABILITY_IDS) throw new TypeError("Too many project tools selected");
@@ -145,4 +145,12 @@ export function writeProjectToolSettings(
   mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
   writePrivateFileAtomicSync(path, `${JSON.stringify(settings, null, 2)}\n`);
   return { ...record, enabledCapabilityIds: [...record.enabledCapabilityIds] };
+}
+
+/** A persisted project selection is already explicit authorization. Keep its IDs
+ * while async native MCP discovery is pending; absence grants no execution. */
+export function projectToolPolicyHistory(record: ProjectToolSettingsRecord): SessionCapabilityPolicy {
+  const selection = projectToolSelection(record);
+  return { version: 1, revision: record.revision, preset: record.preset,
+    enabledCapabilityIds: selection.enabledCapabilityIds ?? [], knownCapabilityIds: selection.enabledCapabilityIds ?? [], updatedAt: record.updatedAt };
 }

@@ -1,12 +1,15 @@
 import type {
   AgentSessionEvent,
   ModelRuntime,
+  PromptOptions,
+  AgentSession,
   SessionManager,
   SettingsManager,
   SlashCommandInfo,
   Theme,
 } from "@earendil-works/pi-coding-agent";
 import type { UserInputQuestion, UserInputResult } from "./user-input";
+import type { Agent } from "@earendil-works/pi-agent-core";
 
 export interface ContextUsage {
   percent: number | null;
@@ -33,6 +36,7 @@ export interface ModelLike {
 export interface ToolInfo {
   name: string;
   description: string;
+  exposure?: string;
   parameters?: unknown;
   inputSchema?: unknown;
   promptGuidelines?: readonly string[];
@@ -154,6 +158,7 @@ export interface AgentSessionLike {
   readonly sessionManager: SessionManager;
   readonly settingsManager: SettingsManager;
   readonly agent: {
+    transformContext?: Agent["transformContext"];
     maxRetryDelayMs?: number;
     state?: {
       messages?: unknown[];
@@ -178,7 +183,7 @@ export interface AgentSessionLike {
     images?: Array<{ type: "image"; data: string; mimeType: string }>;
     streamingBehavior?: "steer" | "followUp";
     source?: "interactive" | "rpc";
-    preflightResult?: (success: boolean) => void;
+    preflightResult?: PromptOptions["preflightResult"];
   }): Promise<void>;
   abort(): Promise<void>;
   sendCustomMessage(message: { customType: string; content: string; display: boolean; details?: Record<string, unknown> }, options?: { triggerTurn?: boolean }): Promise<void>;
@@ -194,8 +199,8 @@ export interface AgentSessionLike {
   getLastAssistantText(): string | undefined;
   setAutoCompactionEnabled(enabled: boolean): void;
   setAutoRetryEnabled(enabled: boolean): void;
-  steer(text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): Promise<void>;
-  followUp(text: string, images?: Array<{ type: "image"; data: string; mimeType: string }>): Promise<void>;
+  steer: AgentSession["steer"];
+  followUp: AgentSession["followUp"];
   readonly pendingMessageCount: number;
   getSteeringMessages(): readonly string[];
   getFollowUpMessages(): readonly string[];

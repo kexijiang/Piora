@@ -1,0 +1,9 @@
+{
+  "version": "8.10.2",
+  "esbuild": "0.28.2",
+  "normalization": "AST excludes locations, raw formatting, shorthand-property syntax and numeric identifier collision suffixes; no literal values or operators are changed. Diagnostic comparison, not an accepted-byte security guard.",
+  "embeddedModules": 110,
+  "reproducedModules": 110,
+  "matchingModules": 110,
+  "mismatches": []
+}

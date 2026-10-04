@@ -4,6 +4,29 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### Dependency maintenance
+
+- 补齐源加载 HAP 预览所需的 JSZip Node 入口及实际生产依赖闭包；隔离子进程验证压缩元数据与只读行为，并拒绝缺少 JSZip 或 pako 的不完整打包树。
+
+- 修正注册 MCP 服务器的状态优先级：关闭原生连接或禁用服务器后显示“已禁用”，保留独立的连接批准状态，避免误报“需要授权”。
+
+- 同步最新 main 的鸿蒙工作台、发送取消状态和 beta.6 候选版本，保留 Pi 原始会话记录与停止队列防护；按合并后的实际锁文件重新生成许可证清单并重新验证兼容性。
+- 修复原生 MCP 配置保存后关闭并重开设置时重载按钮丢失，依据会话实际加载配置保留待重载状态，防止重复操作和已关闭面板的异步回写；明确工具与资源授权位于“设置 → 项目工具”。
+
+- 在原生 MCP 传输、进度和执行边界脱敏已知认证信息，防止服务端错误回显进入模型、日志与会话记录；撤销授权、禁用或修改配置后阻止旧连接重连与登录，并兼容官方 Streamable HTTP 和 Codemode 配置别名。
+- 为 Pi 1.0.2 原生 MCP 增加 stdio、Streamable HTTP 与显式 OAuth 登录、重连配置界面；保留旧 adapter 配置独立性，通过项目工具设置逐项授权工具和服务器资源，并在各任务中隔离执行权限，防止异步发现、Codemode 嵌套调用、配置变更与插件冲突扩大权限。
+- 按官方未打包代码的实际 worker 路径修正隔离打包校验，验证三项原生扩展工厂和本地 MCP→Codemode→QuickJS 调用闭包，保留 WASM、源码完整性及嵌入依赖安全守卫。
+
+- 将四个 Pi 运行时包更新至 1.0.2，采用 1.0.1 的输出上限、Bedrock 与依赖发布修复；按移除 shrinkwrap 后的实际安装树调整工作器、WASM、提供商与许可证校验，保留原有会话迁移和停止队列防护。
+- 固定新 minimatch 10.2.6 的 brace-expansion 5.0.12，验证提升到顶层的 Undici 8.11.2；保留旧嵌套副本的严格版本与字节守卫，并增加预编译 Pi bundle 中未验证 Undici 的审计和打包阻断，避免把目录覆盖误报为完整修复。
+- 将 Pi 的重复预编译入口切换到同一官方发布包中的完整未打包代码，保持 CLI、RPC、SDK 与 worker 能力并统一解析 Undici 8.11.2；用发布包完整性和 985 个源码文件的字节承诺约束转换，拒绝未知版本、改动源码、额外编译依赖及伪造入口，保留其他审计阻碍。
+
+- Upgrade all four Pi runtime packages from 0.84.3 to 1.0.0; adapt turn guards, prompt admission, structured system context, headless themes and JSON tool arguments. Preserve raw chat history while the SDK owns provider context edits, and include dynamically loaded Pi workers/WASM in packaged dependency staging.
+- Retain Shell instructions/tool loadouts after context pruning, drain cancelled asynchronous steering/follow-up admissions before another prompt, avoid double-counting structured system context, and match Pi 1.0's session catalog discovery ordering.
+- Verify Shell provider prompt/tool declarations after request settlement and reject swallowed provider errors in migration acceptance.
+- Synchronize the SSH close-tab acceptance fixture with its observed DELETE request before checking uniqueness; retain the pending-close and failed-session assertions.
+- Keep Pi's streamed system/loadout messages in canonical provider history while excluding them from chat SSE, matching the history projection.
+
 ## [0.5.5-beta.6] - 2026-10-05
 
 ### 鸿蒙设备工作台

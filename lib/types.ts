@@ -306,6 +306,8 @@ export type SessionEntry =
   | BranchSummaryEntry
   | CustomEntry
   | CustomMessageEntry
+  | import("@earendil-works/pi-coding-agent").ContextEditEntry
+  | Extract<import("@earendil-works/pi-coding-agent").SessionEntry, { type: "usage" }>
   | LabelEntry
   | SessionInfoEntry;
 
