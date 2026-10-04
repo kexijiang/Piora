@@ -60,18 +60,26 @@ import { readSessionTitleModel, readSessionTitlePrompt } from "@/lib/session-tit
 import { isProjectlessChatCwd } from "@/lib/projectless-chat-path";
 import type { SessionCapabilitiesState } from "@/lib/session-capabilities";
 
-function replaceUrlWithoutNextNavigation(url: string): void {
-  // Next patches history.replaceState and treats an ordinary call as an App
-  // Router navigation. Piora's query string is only desktop selection state;
-  // dispatching a route restore while a newly-created session starts can feed
-  // an incomplete router tree into Next and crash the whole renderer. Preserve
-  // Next's current state and set its native-history marker so the patched
-  // method performs only the underlying URL replacement.
+function getSelectionHistoryState(): Record<string, unknown> {
   const currentState = window.history.state;
   const nextState = currentState && typeof currentState === "object"
-    ? { ...currentState, __NA: true }
-    : { __NA: true };
-  window.history.replaceState(nextState, "", url);
+    ? { ...currentState }
+    : {};
+  // Incoming Next markers bypass its native-history synchronization. Let Next
+  // attach its current router tree and markers while retaining custom data.
+  delete nextState.__NA;
+  delete nextState._N;
+  return nextState;
+}
+
+function replaceUrlWithoutNextNavigation(url: string): void {
+  // Native history updates synchronize Next's canonical URL without fetching a
+  // route. Later router commits must see the same URL as Piora's selection.
+  window.history.replaceState(getSelectionHistoryState(), "", url);
+}
+
+function pushUrlWithoutNextNavigation(url: string): void {
+  window.history.pushState(getSelectionHistoryState(), "", url);
 }
 import type { ChatInputHandle } from "./ChatInput";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
@@ -125,7 +133,7 @@ function SettingsSectionLoading() {
 
 const SettingsDialog = dynamic(() => import("./SettingsDialog").then((module) => module.SettingsDialog), { ssr: false, loading: SettingsSectionLoading });
 const RoomWorkspace = dynamic(() => import("./RoomWorkspace").then((module) => module.RoomWorkspace), { ssr: false });
-const RightPanel = dynamic(() => import("./workspace/RightPanel").then((module) => module.RightPanel), { ssr: false });
+const RightPanel = dynamic(() => import("./workspace/RightPanel").then((module) => module.RightPanel), { ssr: false, loading: SettingsSectionLoading });
 const SystemPromptEditor = dynamic(() => import("./SystemPromptEditor").then((module) => module.SystemPromptEditor), { ssr: false });
 const CompanionPet = dynamic(() => import("./CompanionPet").then((module) => module.CompanionPet), { ssr: false });
 const ModelsConfig = dynamic(() => import("./ModelsConfig").then((module) => module.ModelsConfig), { ssr: false });
@@ -871,11 +879,13 @@ export function AppShell() {
         : nextTabs.at(-1)?.id ?? null;
     setFileTabs(nextTabs);
     setActiveFileTabId(nextActiveId);
-    setRightPanelOpen(nextTabs.length > 0);
+    // Restoring project files must not close a device/tool panel the user
+    // opened while the initial project notification was still pending.
+    setRightPanelOpen(open => nextTabs.length > 0 || (open && rightPanelTab !== "files"));
     if (!cwdBelongsToCurrentSelection) {
       replaceUrlWithoutNextNavigation("/");
     }
-  }, [activeFileTabId, fileTabs, selectedRoom, selectedSession, translate]);
+  }, [activeFileTabId, fileTabs, rightPanelTab, selectedRoom, selectedSession, translate]);
 
   useEffect(() => {
     if (!activeProjectRoot) return;
@@ -910,6 +920,7 @@ export function AppShell() {
     setSelectedRoom(null);
     if (!isRestore && selectedSessionIdRef.current === session.id) {
       setActiveTopPanel(null);
+      replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}`);
       return;
     }
     setNewSessionCwd(null);
@@ -927,8 +938,7 @@ export function AppShell() {
       // onCwdChange effect firing after setSelectedCwd in the sidebar
       suppressCwdBumpRef.current = true;
     }
-    // Skip history replacement when restoring from URL — the param is already correct.
-    // and calling replace in production Next.js triggers a Suspense remount loop
+    // History restoration already has the requested URL; do not rewrite it.
     if (!isRestore) {
       replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}`);
       // Session changes remount ChatWindow. Restore focus after that mount so
@@ -1548,7 +1558,7 @@ export function AppShell() {
     setHistoryLocation({ open: true, leafId: null, entryId: null });
     setHistoryDialogOpen(true);
     if (new URLSearchParams(window.location.search).get("view") !== "history") {
-      window.history.pushState({ ...window.history.state, __NA: true }, "", historyLocationUrl(selectedSession.id));
+      pushUrlWithoutNextNavigation(historyLocationUrl(selectedSession.id));
     }
   }, [selectedSession]);
 
@@ -1557,7 +1567,7 @@ export function AppShell() {
     setHistoryLocation({ open: false, leafId: null, entryId: null });
     const params = new URLSearchParams(window.location.search);
     params.delete("view"); params.delete("historyLeaf"); params.delete("historyEntry");
-    window.history.pushState({ ...window.history.state, __NA: true }, "", `?${params}`);
+    pushUrlWithoutNextNavigation(`?${params}`);
     requestAnimationFrame(() => {
       const target = historyReturnFocus.current;
       if (target?.isConnected) target.focus({ preventScroll: true }); else chatInputRef.current?.focus();
@@ -1568,7 +1578,7 @@ export function AppShell() {
     if (!id) return;
     setHistoryLocation({ open: true, leafId, entryId });
     const url = historyLocationUrl(id, leafId, entryId);
-    if (window.location.search !== url) window.history.pushState({ ...window.history.state, __NA: true }, "", url);
+    if (window.location.search !== url) pushUrlWithoutNextNavigation(url);
   }, []);
   const openRelatedHistory = useCallback(async (id: string) => {
     const response = await fetch(`/api/sessions/${encodeURIComponent(id)}?deferThinking=1&deferMedia=1`);
@@ -1576,7 +1586,7 @@ export function AppShell() {
     if (!response.ok || !body.info) throw new Error(body.error || `HTTP ${response.status}`);
     handleSelectSession(body.info, true);
     setHistoryLocation({ open: true, leafId: null, entryId: null }); setHistoryDialogOpen(true);
-    window.history.pushState({ ...window.history.state, __NA: true }, "", historyLocationUrl(id));
+    pushUrlWithoutNextNavigation(historyLocationUrl(id));
   }, [handleSelectSession]);
 
   const handleTaskRename = useCallback(async (name: string) => {
@@ -1797,6 +1807,8 @@ export function AppShell() {
       // The composer owns this shortcut so it remains available while its
       // textarea is focused and ignores editors, terminals, and other inputs.
       if (shortcut.id === "composer.voiceInput") return;
+      // Device capture belongs to the visible Harmony panel, never a global command.
+      if (shortcut.id === "harmony.screenshot") return;
       if (shortcut.id === "capture.screenshot" && window.piDesktop?.screenshot) return;
       if (historyDialogOpen && shortcut.id.startsWith("session.")) return;
       event.preventDefault();

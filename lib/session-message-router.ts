@@ -14,6 +14,7 @@ import {
 import type {
   AbortReceipt,
   DispatchReceipt,
+  PromptCancellationReceipt,
   SessionCommandEvent,
   SessionCommandRecord,
   SessionCommandStatus,
@@ -134,6 +135,13 @@ export class SessionMessageRouter {
   private readonly knownCommands = new Map<string, SessionCommandRecord>();
   private readonly activeCommands = new Map<string, SessionCommandRecord>();
   private readonly wakeSubscriptions = new Map<string, () => void>();
+  private readonly pendingSubmissions = new Map<string, Promise<DispatchReceipt>>();
+  // Never expire or evict an acknowledged fence: a delayed POST may still arrive.
+  // The pending HTTP request cannot survive this router's process lifetime.
+  private readonly cancellationIntents = new Set<string>();
+  private readonly commandDurability = new Map<string, Promise<void>>();
+  private readonly cancellationWork = new Map<string, Promise<PromptCancellationReceipt>>();
+  private readonly admissions = new Map<string, { session: AgentSessionWrapper; started: boolean; runId?: string; cancelTerminal?: () => void }>();
 
   constructor(options: RouterOptions = {}) {
     this.store = options.store ?? new SessionControlStore();
@@ -189,10 +197,20 @@ export class SessionMessageRouter {
   }
 
   private async transition(command: SessionCommandRecord, status: SessionCommandStatus, patch: Partial<SessionCommandRecord> = {}, eventType?: SessionCommandEvent["type"]): Promise<void> {
+    command = this.knownCommands.get(command.commandId) ?? command;
+    if ((TERMINAL_STATUSES.has(command.status) && command.status !== status)
+      || (this.cancellationWork.has(command.commandId) && !TERMINAL_STATUSES.has(status))) return;
     command.status = status;
     Object.assign(command, patch);
     this.knownCommands.set(command.commandId, command);
     await this.store.appendStatus(command, status, patch);
+    const latest = this.knownCommands.get(command.commandId) ?? command;
+    if (TERMINAL_STATUSES.has(latest.status) && latest.status !== status) {
+      // A delayed persistence operation must not become the journal's last row
+      // after cancellation has already settled the canonical record.
+      await this.store.appendStatus(latest, latest.status);
+      return;
+    }
     await this.publish({
       type: eventType ?? `command_${status}` as SessionCommandEvent["type"],
       sessionId: command.targetSessionId,
@@ -236,9 +254,38 @@ export class SessionMessageRouter {
     if (input.delivery === "steer") {
       return this.steerSession(input, principal);
     }
-    const existing = this.store.findByIdempotencyKey(input.idempotencyKey, input.targetSessionId) ?? [...this.knownCommands.values()].find((command) => command.targetSessionId === input.targetSessionId && command.idempotencyKey === input.idempotencyKey);
+    const key = this.submissionKey(input.targetSessionId, input.idempotencyKey);
+    const pending = this.pendingSubmissions.get(key);
+    if (pending) return { ...await pending, idempotent: true };
+    const operation = this.admitSubmission(input);
+    this.pendingSubmissions.set(key, operation);
+    try { return await operation; }
+    finally { if (this.pendingSubmissions.get(key) === operation) this.pendingSubmissions.delete(key); }
+  }
+
+  private submissionKey(sessionId: string, idempotencyKey: string): string {
+    return JSON.stringify([sessionId, idempotencyKey]);
+  }
+
+  private submissionCommand(sessionId: string, idempotencyKey: string): SessionCommandRecord | undefined {
+    const known = [...this.knownCommands.values()].find(command => command.targetSessionId === sessionId && command.idempotencyKey === idempotencyKey);
+    if (known) return known;
+    const stored = this.store.findByIdempotencyKey(idempotencyKey, sessionId);
+    if (stored) this.knownCommands.set(stored.commandId, stored);
+    return stored;
+  }
+
+  private isCancelled(command: SessionCommandRecord): boolean {
+    const canonical = this.knownCommands.get(command.commandId) ?? command;
+    return canonical.status === "cancelled" || this.cancellationWork.has(command.commandId)
+      || this.cancellationIntents.has(this.submissionKey(command.targetSessionId, command.idempotencyKey));
+  }
+
+  private async admitSubmission(input: SessionMessageInput): Promise<DispatchReceipt> {
+    const key = this.submissionKey(input.targetSessionId, input.idempotencyKey);
+    const existing = this.submissionCommand(input.targetSessionId, input.idempotencyKey);
     if (existing) {
-      this.knownCommands.set(existing.commandId, existing);
+      if (this.cancellationIntents.has(key)) await this.cancelRecord(existing);
       if (!TERMINAL_STATUSES.has(existing.status)) void this.drain(existing.targetSessionId);
       return {
         accepted: true,
@@ -257,17 +304,37 @@ export class SessionMessageRouter {
       const code = errorCode(error);
       throw new SessionMessageRouterError(code, code === "SESSION_NOT_FOUND" ? "Session not found." : safeErrorMessage(error), { cause: error });
     }
-    const command = this.makeRecord(input);
     await this.ensureLoaded(input.targetSessionId);
+    const command = this.makeRecord(input);
+    this.knownCommands.set(command.commandId, command);
+    let commandPersisted = false;
     try {
-      const position = getSessionInboxRegistry().enqueue(command).position;
-      await this.store.appendCommand(command);
+      const durability = this.store.appendCommand(command);
+      this.commandDurability.set(command.commandId, durability);
+      try { await durability; }
+      finally { this.commandDurability.delete(command.commandId); }
+      commandPersisted = true;
       await this.publish({ type: "command_accepted", sessionId: command.targetSessionId, commandId: command.commandId, status: "accepted", timestamp: command.acceptedAt });
+      if (this.isCancelled(command)) {
+        await this.cancelRecord(command);
+        return { accepted: true, commandId: command.commandId, sessionId: command.targetSessionId, status: "cancelled" };
+      }
+      const position = getSessionInboxRegistry().enqueue(command).position;
       await this.transition(command, "queued", { queuedAt: Date.now() }, "command_queued");
+      if (this.isCancelled(command)) {
+        await this.cancelRecord(command);
+        return { accepted: true, commandId: command.commandId, sessionId: command.targetSessionId, status: "cancelled" };
+      }
       void this.drain(input.targetSessionId);
       return { accepted: true, commandId: command.commandId, sessionId: command.targetSessionId, status: "queued", queuePosition: position };
     } catch (error) {
       const code = /full|too large/i.test(safeErrorMessage(error)) ? (safeErrorMessage(error).includes("large") ? "SESSION_MESSAGE_TOO_LARGE" : "SESSION_QUEUE_FULL") : "RUNTIME_START_FAILED";
+      getSessionInboxRegistry().removeCommand(command.targetSessionId, command.commandId);
+      if (commandPersisted && !this.isCancelled(command) && !TERMINAL_STATUSES.has(command.status)) {
+        // The original must be durable before admission, but a rejected inbox
+        // admission must also be terminal so recovery cannot replay it.
+        await this.transition(command, "failed", { errorCode: code, errorMessage: safeErrorMessage(error) }, "command_failed");
+      }
       throw new SessionMessageRouterError(code, code === "SESSION_QUEUE_FULL" ? "Session inbox is full." : safeErrorMessage(error), { cause: error });
     }
   }
@@ -376,14 +443,20 @@ export class SessionMessageRouter {
       };
       cancel = () => finish("interrupted");
       const unsubscribe = session.onEvent((event) => {
-        if (event.commandId !== command.commandId && event.runId !== command.runId) return;
-        if (event.type === "prompt_done") finish(command.status === "cancelled" ? "cancelled" : "completed");
+        if (event.commandId !== command.commandId && (!command.runId || event.runId !== command.runId)) return;
+        if (event.type === "prompt_started" && typeof event.runId === "string") {
+          command.runId = event.runId;
+          const admission = this.admissions.get(command.commandId);
+          if (admission?.session === session) admission.runId = event.runId;
+        }
+        const cancelled = this.isCancelled(command);
+        if (event.type === "prompt_done") finish(cancelled ? "cancelled" : "completed");
         else if (event.type === "prompt_error") {
           if (typeof event.errorMessage === "string") command.errorMessage = safeErrorMessage(event.errorMessage);
-          finish(command.status === "cancelled" ? "cancelled" : "failed");
+          finish(cancelled ? "cancelled" : "failed");
         }
       });
-      const removeDestroy = session.onDestroy(() => finish(command.status === "cancelled" ? "cancelled" : "interrupted"));
+      const removeDestroy = session.onDestroy(() => finish(this.isCancelled(command) ? "cancelled" : "interrupted"));
     });
     return { promise, cancel: () => cancel() };
   }
@@ -397,6 +470,11 @@ export class SessionMessageRouter {
       while (inbox.queue.length > 0) {
         const command = inbox.queue[0];
         if (!command) break;
+        if (this.isCancelled(command)) {
+          getSessionInboxRegistry().removeCommand(sessionId, command.commandId);
+          await this.cancelRecord(command);
+          continue;
+        }
         if (command.expiresAt !== undefined && command.expiresAt <= Date.now()) {
           getSessionInboxRegistry().shift(inbox);
           command.errorCode = "COMMAND_EXPIRED";
@@ -408,6 +486,7 @@ export class SessionMessageRouter {
         try {
           session = (await this.resolver(sessionId)).session;
         } catch (error) {
+          if (this.isCancelled(command)) continue;
           const code = errorCode(error);
           if (code === "SESSION_BUSY") return;
           getSessionInboxRegistry().shift(inbox);
@@ -416,15 +495,28 @@ export class SessionMessageRouter {
           await this.transition(command, "failed", {}, "command_failed");
           continue;
         }
+        if (this.isCancelled(command)) continue;
         if (session.isRunning()) {
           this.watchForIdle(sessionId, session);
           return;
         }
-        getSessionInboxRegistry().shift(inbox);
+        getSessionInboxRegistry().removeCommand(sessionId, command.commandId);
+        const admission: { session: AgentSessionWrapper; started: boolean; runId?: string; cancelTerminal?: () => void } = { session, started: false };
+        this.admissions.set(command.commandId, admission);
         await this.transition(command, "dispatching", {}, "command_dispatching");
+        if (this.isCancelled(command)) {
+          await this.cancelRecord(command);
+          this.admissions.delete(command.commandId);
+          continue;
+        }
         const terminal = this.waitForTerminal(session, command);
+        admission.cancelTerminal = terminal.cancel;
         try {
           const teamExecution = command.teamExecution ? resolveTeamExecutionContext(command.teamExecution) : undefined;
+          // No await between the canonical fence and the actual wrapper call.
+          if (this.isCancelled(command)) { terminal.cancel(); continue; }
+          admission.started = true;
+          this.activeCommands.set(sessionId, command);
           const started = await session.startTrackedPrompt({
             commandId: command.commandId,
             ...(command.source === "ui" ? { clientPromptId: command.idempotencyKey } : {}),
@@ -436,12 +528,18 @@ export class SessionMessageRouter {
             teamExecution,
           });
           command.runId = started.runId;
-          this.activeCommands.set(sessionId, command);
-          await this.publish({ type: "prompt_started", sessionId, commandId: command.commandId, runId: started.runId, timestamp: Date.now() });
-          await this.transition(command, "delivered", { runId: started.runId }, "command_delivered");
-          await this.transition(command, "running", { runId: started.runId }, "command_running");
+          admission.runId = started.runId;
+          if (this.isCancelled(command)) await this.cancelRecord(command);
+          else {
+            await this.publish({ type: "prompt_started", sessionId, commandId: command.commandId, runId: started.runId, timestamp: Date.now() });
+            await this.transition(command, "delivered", { runId: started.runId }, "command_delivered");
+            await this.transition(command, "running", { runId: started.runId }, "command_running");
+          }
         } catch (error) {
           terminal.cancel();
+          this.admissions.delete(command.commandId);
+          if (this.activeCommands.get(sessionId)?.commandId === command.commandId) this.activeCommands.delete(sessionId);
+          if (this.isCancelled(command)) { await this.cancelRecord(command); continue; }
           const code = errorCode(error);
           if (code === "SESSION_BUSY") {
             inbox.queue.unshift(command);
@@ -455,8 +553,10 @@ export class SessionMessageRouter {
           await this.transition(command, "failed", {}, "command_failed");
           continue;
         }
-        const status = await terminal.promise;
-        this.activeCommands.delete(sessionId);
+        const terminalStatus = await terminal.promise;
+        const status = this.isCancelled(command) ? "cancelled" : terminalStatus;
+        this.admissions.delete(command.commandId);
+        if (this.activeCommands.get(sessionId)?.commandId === command.commandId) this.activeCommands.delete(sessionId);
         if (status === "completed") {
           await this.transition(command, "completed", {}, "command_completed");
           await this.publish({ type: "prompt_done", sessionId, commandId: command.commandId, runId: command.runId, timestamp: Date.now() });
@@ -505,25 +605,91 @@ export class SessionMessageRouter {
   }
 
   async cancelCommand(commandId: string, principal?: SessionRoutePrincipal): Promise<AbortReceipt> {
-    const command = await this.getCommand(commandId);
+    const command = this.canonicalCommand(commandId);
     assertPrincipal({ targetSessionId: command.targetSessionId, content: "", source: "system", idempotencyKey: command.idempotencyKey }, principal);
+    const receipt = await this.cancelRecord(command);
+    return { ...receipt, status: receipt.status === "cancelled" || receipt.status === "interrupted" ? receipt.status : "idle" };
+  }
+
+  async cancelPromptSubmission(input: { targetSessionId: string; idempotencyKey: string; promptCommandId?: string }, principal?: SessionRoutePrincipal): Promise<PromptCancellationReceipt> {
+    if (typeof input.targetSessionId !== "string" || !input.targetSessionId.trim() || input.targetSessionId.length > 512
+      || typeof input.idempotencyKey !== "string" || !input.idempotencyKey.trim() || input.idempotencyKey.length > 512
+      || (input.promptCommandId !== undefined && !/^cmd_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.promptCommandId))) {
+      throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "A bounded original submission identity is required.");
+    }
+    assertPrincipal({ targetSessionId: input.targetSessionId, content: "", source: "ui", idempotencyKey: input.idempotencyKey }, principal);
+    let command = this.submissionCommand(input.targetSessionId, input.idempotencyKey);
+    if (input.promptCommandId) {
+      command = this.canonicalCommand(input.promptCommandId);
+    }
+    if (command) {
+      if (command.targetSessionId !== input.targetSessionId || command.idempotencyKey !== input.idempotencyKey || command.delivery !== "next_turn") {
+        throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "The command does not match this prompt submission.");
+      }
+      return this.cancelRecord(command);
+    }
+    const key = this.submissionKey(input.targetSessionId, input.idempotencyKey);
+    if (!this.cancellationIntents.has(key) && this.cancellationIntents.size >= 256) {
+      throw new SessionMessageRouterError("SESSION_QUEUE_FULL", "Pending prompt cancellation capacity is full.");
+    }
+    this.cancellationIntents.add(key);
+    // A resolver may still be blocked before a real command exists. The fence
+    // is already effective; do not make Stop wait for that original POST.
+    return { accepted: true, sessionId: input.targetSessionId, status: "cancellation_pending" };
+  }
+
+  private cancelRecord(command: SessionCommandRecord): Promise<PromptCancellationReceipt> {
+    command = this.knownCommands.get(command.commandId) ?? command;
+    const existing = this.cancellationWork.get(command.commandId);
+    if (existing) return existing;
+    const key = this.submissionKey(command.targetSessionId, command.idempotencyKey);
     if (TERMINAL_STATUSES.has(command.status)) {
-      return { accepted: true, sessionId: command.targetSessionId, status: command.status === "cancelled" ? "cancelled" : "idle", commandId, ...(command.runId ? { runId: command.runId } : {}) };
+      this.cancellationIntents.delete(key);
+      return Promise.resolve({ accepted: true, sessionId: command.targetSessionId, status: command.status, commandId: command.commandId, ...(command.runId ? { runId: command.runId } : {}) });
     }
-    const removed = getSessionInboxRegistry().removeCommand(command.targetSessionId, commandId);
-    if (removed || ["accepted", "queued", "dispatching"].includes(command.status)) {
-      await this.transition(command, "cancelled", {}, "command_cancelled");
-      return { accepted: true, sessionId: command.targetSessionId, status: "cancelled", commandId };
-    }
-    const active = this.activeCommands.get(command.targetSessionId);
-    if (!active || active.commandId !== commandId) {
-      throw new SessionMessageRouterError("COMMAND_NOT_FOUND", "The command is not the active command for this Session.");
-    }
+    const priorStatus = command.status;
+    getSessionInboxRegistry().removeCommand(command.targetSessionId, command.commandId);
+    // Canonical mutation happens synchronously, before journal waits or SDK calls.
     command.status = "cancelled";
-    await this.transition(command, "cancelled", {}, "command_cancelled");
-    const session = getRpcSession(command.targetSessionId);
-    if (session?.isAlive()) await session.send({ type: "abort", commandId });
-    return { accepted: true, sessionId: command.targetSessionId, status: "cancelled", commandId, ...(command.runId ? { runId: command.runId } : {}) };
+    this.knownCommands.set(command.commandId, command);
+    const admission = this.admissions.get(command.commandId);
+    const active = this.activeCommands.get(command.targetSessionId);
+    const session = admission?.session ?? getRpcSession(command.targetSessionId);
+    const runId = admission?.runId ?? command.runId;
+    let abort: Promise<{ value?: unknown; error?: unknown }> | undefined;
+    const ownsAdmission = admission?.started === true && active?.commandId === command.commandId;
+    const ownsRun = active?.commandId === command.commandId && !!runId && session?.getActivePromptRunId() === runId;
+    const pendingAdmission = ownsAdmission && !runId && !session?.getActivePromptRunId() && !session?.isRunning();
+    if (session?.isAlive() && (ownsRun || pendingAdmission)) {
+      // AgentSessionWrapper.send(abort) signals abortGeneration synchronously.
+      // No await can admit a newer run between identity check and this call.
+      abort = session.send({ type: "abort", commandId: command.commandId, ...(runId ? { runId } : {}) })
+        .then(value => ({ value }), error => ({ error }));
+    } else if (priorStatus === "running" || priorStatus === "delivered" || ownsAdmission) {
+      command.status = "interrupted";
+      // The runtime no longer belongs to this old command. Settle only its
+      // router waiter rather than waiting for, or aborting, the newer run.
+      admission?.cancelTerminal?.();
+    }
+    const cancellation = (async (): Promise<PromptCancellationReceipt> => {
+      await this.commandDurability.get(command.commandId);
+      await this.transition(command, command.status, {}, command.status === "interrupted" ? "command_interrupted" : "command_cancelled");
+      const outcome = await abort;
+      if (outcome && Object.hasOwn(outcome, "error")) throw outcome.error;
+      const result = outcome?.value as { queuedMessages?: { id?: unknown; steering?: unknown; followUp?: unknown } } | undefined;
+      const queued = result?.queuedMessages;
+      const queuedMessages = queued && typeof queued.id === "string" && Array.isArray(queued.steering) && Array.isArray(queued.followUp)
+        && queued.steering.every(item => typeof item === "string") && queued.followUp.every(item => typeof item === "string")
+        ? { id: queued.id, steering: queued.steering as string[], followUp: queued.followUp as string[] } : undefined;
+      this.cancellationIntents.delete(key);
+      return { accepted: true, sessionId: command.targetSessionId, status: command.status, commandId: command.commandId,
+        ...(runId ? { runId } : {}), ...(queuedMessages ? { queuedMessages } : {}) };
+    })();
+    // Failed journal/SDK work remains a failed receipt on retry. Clearing this
+    // cache would turn an unproven canonical terminal into a false success or
+    // issue a second generic abort against a newer run.
+    this.cancellationWork.set(command.commandId, cancellation);
+    return cancellation;
   }
 
   async getState(sessionId: string): Promise<SessionControlState> {
@@ -545,12 +711,16 @@ export class SessionMessageRouter {
   }
 
   async getCommand(commandId: string): Promise<SessionCommandRecord> {
+    return { ...this.canonicalCommand(commandId) };
+  }
+
+  private canonicalCommand(commandId: string): SessionCommandRecord {
     const known = this.knownCommands.get(commandId);
-    if (known) return { ...known };
+    if (known) return known;
     const found = this.store.findByCommandId(commandId);
     if (!found) throw new SessionMessageRouterError("COMMAND_NOT_FOUND", "Command not found.");
     this.knownCommands.set(commandId, found);
-    return { ...found };
+    return found;
   }
 
   listEvents(sessionId: string, afterCursor = 0): SessionCommandEvent[] {

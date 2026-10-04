@@ -7,17 +7,23 @@ import { harmonyErrorResponse, noStoreJson, requireHarmonyAccess } from "../_sha
 
 export const dynamic = "force-dynamic";
 
+// A 16 Ki-character terminal input can exceed 24 KiB in UTF-8 and reach
+// 96 KiB when JSON escapes individual code units. Keep the entire request
+// bounded while allowing the terminal's existing character limit.
+const MAX_TERMINAL_REQUEST_BYTES = 128 * 1024;
+
 export async function POST(request: Request) {
   const denied = requireHarmonyAccess(request); if (denied) return denied;
   if (!hasJsonContentType(request)) return noStoreJson({ error: "Content-Type must be application/json" }, { status: 415 });
   try {
-    const body = await parseJsonWithinLimit(request, 24 * 1024) as Record<string, unknown>;
+    const body = await parseJsonWithinLimit(request, MAX_TERMINAL_REQUEST_BYTES) as Record<string, unknown>;
     if (!body || typeof body.action !== "string") throw new HarmonyError("INVALID_ARGUMENT", "Choose a terminal action");
     if (body.action === "start") {
       if (typeof body.serial !== "string" || typeof body.leaseToken !== "string" || (body.kind !== "shared" && body.kind !== "sandbox")
         || (body.kind === "sandbox" && typeof body.bundleName !== "string")) throw new HarmonyError("INVALID_ARGUMENT", "Choose a device and terminal scope");
+      if (body.clientTerminalId !== undefined && typeof body.clientTerminalId !== "string") throw new HarmonyError("INVALID_ARGUMENT", "Invalid device terminal tab identity");
       const scope: HarmonyFileScope = body.kind === "shared" ? { kind: "shared" } : { kind: "sandbox", bundleName: body.bundleName as string };
-      return noStoreJson({ id: await startDeviceTerminal(body.serial, body.leaseToken, scope) });
+      return noStoreJson({ id: await startDeviceTerminal(body.serial, body.leaseToken, scope, body.clientTerminalId as string | undefined) });
     }
     if (typeof body.id !== "string" || typeof body.leaseToken !== "string" || !["input", "resize", "keepalive", "stop"].includes(body.action)) {
       throw new HarmonyError("INVALID_ARGUMENT", "Invalid terminal action");

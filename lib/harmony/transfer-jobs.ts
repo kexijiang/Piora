@@ -42,8 +42,8 @@ export class HarmonyTransferJobs {
   private releaseJobLease(id: string): void {
     const token = this.jobLeaseTokens.get(id);
     if (!token) return;
-    this.jobLeaseTokens.delete(id);
     this.leaseHooks?.release(token);
+    this.jobLeaseTokens.delete(id);
   }
 
   constructor(private readonly journalPath: string, private readonly runner: TransferRunner, private readonly leaseHooks?: LeaseHooks) {
@@ -117,7 +117,11 @@ export class HarmonyTransferJobs {
       this.controllers.delete(job.id);
       const timer = this.renewalTimers.get(job.id);
       if (timer) { clearInterval(timer); this.renewalTimers.delete(job.id); }
-      this.releaseJobLease(job.id);
+      try { this.releaseJobLease(job.id); }
+      catch (error) {
+        job.status = "interrupted";
+        job.error = `Device control release needs review: ${error instanceof Error ? error.message : String(error)}`.slice(0, 500);
+      }
       if (this.serialTails.get(serial) === task) this.serialTails.delete(serial);
     }).catch(() => undefined);
     return structuredClone(job);
@@ -182,6 +186,12 @@ export class HarmonyTransferJobs {
       job.error = error instanceof Error ? error.message.slice(0, 500) : String(error).slice(0, 500);
       for (const item of job.items) if (item.status === "queued" || item.status === "running") item.status = "interrupted";
     } finally {
+      // Completion must not become visible before the task relinquishes device control.
+      try { this.releaseJobLease(job.id); }
+      catch (error) {
+        job.status = "interrupted";
+        job.error = `Device control release needs review: ${error instanceof Error ? error.message : String(error)}`.slice(0, 500);
+      }
       job.updatedAt = new Date().toISOString();
       try { this.persist(); } catch { /* Live state stays visible; failure is surfaced by the next mutation. */ }
     }

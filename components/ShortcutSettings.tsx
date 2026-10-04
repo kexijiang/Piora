@@ -26,7 +26,7 @@ const SHORTCUT_GROUPS = [
     titleKey: "shortcuts.group.workspace",
     descriptionKey: "shortcuts.group.workspaceDescription",
     icon: "layout",
-    includes: (id: ApplicationShortcutId) => id.startsWith("panel."),
+    includes: (id: ApplicationShortcutId) => id.startsWith("panel.") || id === "harmony.screenshot",
   },
   {
     id: "input",
@@ -128,7 +128,7 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
                   const formatted = formatShortcutBinding(bindings[item.id], mac);
                   const keys = formatted ? formatted.split("+") : [];
                   return (
-                    <div data-settings-id={item.id === "capture.screenshot" ? "shortcuts.screenshot" : item.titleKey === "shortcuts.commandPalette" ? "shortcuts.palette" : item.titleKey === "commands.searchChats" ? "shortcuts.search" : item.id === "composer.voiceInput" ? "shortcuts.voice" : undefined} className={styles.row} data-modified={isChanged || undefined} key={item.id}>
+                    <div data-settings-id={item.id === "harmony.screenshot" ? "shortcuts.deviceScreenshot" : item.id === "capture.screenshot" ? "shortcuts.screenshot" : item.titleKey === "shortcuts.commandPalette" ? "shortcuts.palette" : item.titleKey === "commands.searchChats" ? "shortcuts.search" : item.id === "composer.voiceInput" ? "shortcuts.voice" : undefined} className={styles.row} data-modified={isChanged || undefined} key={item.id}>
                       <div className={styles.copy}>
                         <strong>{t(item.titleKey)}{isChanged ? <span className={styles.modifiedDot} aria-label={t("shortcuts.modified")} /> : null}</strong>
                         <span>{t(item.descriptionKey)}</span>

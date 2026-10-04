@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { statSync, readFileSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
-import { asHarmonyError, HarmonyError } from "./errors";
+import { asHarmonyError, HarmonyError, isHarmonyError } from "./errors";
 import { observationQuality, requireValidObservation } from "./observation/quality";
 import { findHarmonyNodes, validateHarmonySelector } from "./selector";
 import { resolveRetainedTarget } from "./observation/target-resolver";
@@ -12,6 +12,7 @@ import { acquireDeviceLock } from "./runtime/device-lock";
 import { capabilitiesFromHelp } from "./capabilities/probes";
 import type { HarmonyDoctorReport } from "./contracts/capabilities";
 import { ScenarioExecutionStore, observationFingerprint } from "./scenario/execution-store";
+import { collectScenarioLogs } from "./scenario/report-logs";
 import { InputCalibrationStore, deviceFingerprint } from "./input/calibration-store";
 import type { PhysicalKey } from "./input/key-catalog";
 import { AudioAssetStore } from "./audio/audio-assets";
@@ -20,12 +21,14 @@ import { WindowsAcousticProvider } from "./audio/acoustic-provider";
 import { runVoiceInput, validateVoiceProfile, VoiceProfileStore, type VoiceProfile } from "./audio/audio-session";
 import { createSupportBundle, saveSupportBundle } from "./diagnostics/support-bundle";
 import { HarmonyRecoveryStore } from "./runtime/recovery-store";
+import { HarmonyOperationTasks } from "./operation-tasks";
 import { boundedCleanup } from "./runtime/resource-scope";
 import { importHapArtifact } from "./runtime/hap-artifact";
 import { importDeviceFileArtifact } from "./runtime/file-artifact";
 import { validateTcpDeviceAddress } from "./tcp-device";
 import { transformFramePoint, type HarmonyGeometry } from "./observation/geometry";
 import { videoMetadataTransform } from "./media/video-metadata";
+import { peekHarmonySqliteSnapshotMetadata } from "./sqlite-inspector";
 import { createHybridHarmonyBackend } from "./hybrid-backend";
 import { runHarmonyScenario, validateHarmonyScenario } from "./scenario-executor";
 import {
@@ -74,6 +77,10 @@ const MIN_LEASE_TTL_MS = 5_000;
 const MAX_LEASE_TTL_MS = 30 * 60_000;
 const DEVICE_REFRESH_TTL_MS = 10_000;
 const DEVICE_MISSING_GRACE_REFRESHES = 2;
+// HDC's cancelled screenshot still performs an independent, bounded temporary
+// file cleanup (up to three seconds). Input-release deadlines are shorter and
+// must not make that ordinary read-only cleanup look like an unreleased hold.
+const PASSIVE_FRAME_CLEANUP_TIMEOUT_MS = 5_000;
 // Keep a few lightweight semantic snapshots so an Agent can safely use a
 // second ref from the same observation after another action or observer has
 // advanced the current snapshot. Every retained target is re-read and
@@ -152,6 +159,7 @@ function validateOwner(owner: HarmonyLeaseOwner): void {
 }
 
 export class HarmonyDeviceManager {
+  readonly operationTasks: HarmonyOperationTasks;
   private backend?: HarmonyAutomationBackend;
   private readonly injectedBackend: boolean;
   private readonly backendFactory: (config: HarmonyConfig) => HarmonyAutomationBackend;
@@ -168,10 +176,18 @@ export class HarmonyDeviceManager {
   private readonly snapshots = new Map<string, StoredSnapshot>();
   private readonly referenceSnapshots = new Map<string, StoredReferenceSnapshot[]>();
   private readonly recordings = new Map<string, HarmonyRecordingState>();
+  private readonly recordingStarts = new Set<string>();
+  private readonly recordingTasks = new Map<string, string>();
+  private readonly recordingFinishes = new Map<string, Promise<HarmonyMediaArtifact>>();
+  private readonly recordingFailures = new Map<string, HarmonyError>();
+  private readonly recordingRecoveryDevices = new Set<string>();
+  private readonly inputOnlyStops = new Set<string>();
   private readonly liveFrameControllers = new Map<string, AbortController>();
   private readonly logStreamControllers = new Map<AbortController, string>();
   private readonly liveFramePromises = new Map<string, Promise<HarmonySnapshot>>();
   private readonly videoConnections = new Map<string, Set<HarmonyVideoConnection>>();
+  private readonly videoConnectionCurrent = new WeakMap<HarmonyVideoConnection, () => boolean>();
+  private readonly videoConnectionFrames = new WeakMap<HarmonyVideoConnection, { capturedAt: number; generation: number; width?: number; height?: number }>();
   private readonly liveFrameRevisions = new Map<string, number>();
   private readonly snapshotRevisions = new Map<string, number>();
   private readonly listeners = new Set<Listener>();
@@ -185,6 +201,7 @@ export class HarmonyDeviceManager {
   private readonly controllersByOwner = new Map<string, Set<AbortController>>();
   private readonly controllersByLease = new Map<string, Set<AbortController>>();
   private readonly controllersByDevice = new Map<string, Set<AbortController>>();
+  private readonly controllersByMedia = new Map<string, Set<AbortController>>();
   private readonly leaseTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private readonly stoppingDevices = new Map<string, "stopping" | "recovering">();
   private readonly stopPromises = new Map<string, Promise<{ dispatchBlocked: true; cleanup: "complete" | "uncertain" }>>();
@@ -205,7 +222,7 @@ export class HarmonyDeviceManager {
   private voiceProfiles?: VoiceProfileStore;
   private readonly acoustic = new WindowsAcousticProvider();
   private readonly frameDimensions = new Map<string, { width: number; height: number }>();
-  private readonly frameCapturedAt = new Map<string, number>();
+  private readonly frameCapturedAt = new Map<string, { capturedAt: number; generation: number }>();
   private readonly geometries = new Map<string, HarmonyGeometry>();
   private stoppingAll = false;
   private disposed = false;
@@ -219,6 +236,8 @@ export class HarmonyDeviceManager {
     this.configPath = options.configPath ?? defaultHarmonyConfigPath();
     this.config = readHarmonyConfig(this.configPath);
     this.now = options.now ?? Date.now;
+    this.operationTasks = new HarmonyOperationTasks(!options.backend || options.configPath
+      ? join(dirname(this.configPath), "harmony-operation-tasks.json") : undefined, this.now);
     if (!options.backend || options.configPath) {
       this.scenarioStore = new ScenarioExecutionStore(join(dirname(this.configPath), "harmony-executions"));
       this.scenarioStore.recoverInterrupted();
@@ -266,6 +285,10 @@ export class HarmonyDeviceManager {
     this.referenceSnapshots.delete(serial);
     this.geometries.delete(`${serial}:video`);
     this.geometries.delete(`${serial}:screenshot`);
+    this.frameCapturedAt.delete(`${serial}:video`);
+    this.frameCapturedAt.delete(`${serial}:screenshot`);
+    this.frameDimensions.delete(`${serial}:video`);
+    this.frameDimensions.delete(`${serial}:screenshot`);
   }
 
   private retainSnapshotReferences(serial: string, snapshot: StoredSnapshot): void {
@@ -289,7 +312,7 @@ export class HarmonyDeviceManager {
     return () => this.listeners.delete(listener);
   }
 
-  private withAbort(parent?: AbortSignal, ownerId?: string, serial?: string, leaseToken?: string): { controller: AbortController; cleanup: () => void } {
+  private withAbort(parent?: AbortSignal, ownerId?: string, serial?: string, leaseToken?: string, media = false): { controller: AbortController; cleanup: () => void } {
     const controller = new AbortController();
     const abort = () => controller.abort(parent?.reason);
     if (parent?.aborted) controller.abort(parent.reason);
@@ -297,6 +320,7 @@ export class HarmonyDeviceManager {
     this.activeControllers.add(controller);
     const indexes: Array<[Map<string, Set<AbortController>>, string | undefined]> = [
       [this.controllersByDevice, serial], [this.controllersByLease, leaseToken],
+      [this.controllersByMedia, media ? serial : undefined],
     ];
     for (const [index, key] of indexes) {
       if (!key) continue;
@@ -336,12 +360,13 @@ export class HarmonyDeviceManager {
     ownerId?: string,
     serial?: string,
     leaseToken?: string,
+    laneName = "device",
   ): Promise<T> {
     if (this.disposed) return Promise.reject(new HarmonyError("INTERNAL_ERROR", "Harmony device manager is disposed"));
     const epoch = this.queueEpoch;
     const operationId = ++this.operationId;
-    const abort = this.withAbort(parentSignal, ownerId, serial, leaseToken);
-    const laneKey = serial ? `device:${serial}` : "global";
+    const abort = this.withAbort(parentSignal, ownerId, serial, leaseToken, laneName === "media");
+    const laneKey = serial ? `${laneName}:${serial}` : "global";
     const lane = this.operationLanes.get(laneKey) ?? { tail: Promise.resolve(), pending: 0, active: false };
     if (lane.pending >= 64) {
       abort.cleanup();
@@ -401,8 +426,8 @@ export class HarmonyDeviceManager {
     this.leaseTimers.set(lease.token, timer);
   }
 
-  private requireAdmission(serial: string): void {
-    if (this.stoppingAll || this.stoppingDevices.has(serial)) {
+  private requireAdmission(serial: string, passive = false): void {
+    if (this.stoppingAll || (this.stoppingDevices.has(serial) && !(passive && this.inputOnlyStops.has(serial)))) {
       throw new HarmonyError("DEVICE_BUSY", "Device dispatch is blocked while stopping or awaiting cleanup confirmation", {
         details: { state: this.stoppingDevices.get(serial) ?? "stopping", dispatchState: "not-sent" },
       });
@@ -424,7 +449,9 @@ export class HarmonyDeviceManager {
       reason,
     });
     if (!this.stoppingDevices.has(lease.serial) && (this.physicalLocks.has(lease.serial) || this.recordings.has(lease.serial) || this.controllersByLease.get(lease.token)?.size)) {
-      void this.stopDevice(lease.serial, reason);
+      // An ordinary lease release ends input ownership, not device observation.
+      const deviceLost = reason === "device_offline" || reason === "device_disconnected" || reason === "device_epoch_changed";
+      void this.stopDeviceResources(lease.serial, reason, deviceLost ? undefined : lease.owner.id);
     }
   }
 
@@ -447,8 +474,8 @@ export class HarmonyDeviceManager {
     return lease;
   }
 
-  private controlBackend(serial: string, token: string, signal: AbortSignal): HarmonyAutomationBackend {
-    return fencedBackend(this.requireBackend(), signal, () => { this.requireLease(serial, token); }, async (method, args) => {
+  private controlBackend(serial: string, token: string, signal: AbortSignal, trackInstallation = true): HarmonyAutomationBackend {
+    const controlled = fencedBackend(this.requireBackend(), signal, () => { this.requireLease(serial, token); }, async (method, args) => {
       this.requireLease(serial, token);
       if (method === "installPackage") {
         args[1] = await importHapArtifact(String(args[1]), join(dirname(this.configPath), "harmony-artifacts"));
@@ -468,6 +495,14 @@ export class HarmonyDeviceManager {
       const failures = this.capabilityFailures.get(serial) ?? new Map<string, string>();
       failures.set(action, failure.code); this.capabilityFailures.set(serial, failures);
     });
+    if (!trackInstallation || !controlled.installPackage) return controlled;
+    // Scenario steps invoke the backend directly; they must use the same journal as direct installs.
+    return new Proxy(controlled, { get: (target, key, receiver) => key === "installPackage"
+      ? async (device: string, hapPath: string, replace = true, installSignal?: AbortSignal) =>
+        this.operationTasks.track({ serial: device, kind: "installation", title: basename(hapPath), target: hapPath }, async started => {
+          started(); await controlled.installPackage!(device, hapPath, replace, installSignal);
+        }, () => ({ verification: "device-confirmed" }))
+      : Reflect.get(target, key, receiver) });
   }
 
   private duration(ttlMs?: number): number {
@@ -500,6 +535,8 @@ export class HarmonyDeviceManager {
       if (current.state !== "online") {
         const lease = this.leasesBySerial.get(device.serial);
         if (lease) this.removeLease(lease, "device_offline");
+        if (this.recordings.has(device.serial) || this.videoConnections.has(device.serial) || this.liveFrameControllers.has(device.serial)
+          || [...this.logStreamControllers.values()].includes(device.serial)) void this.stopDevice(device.serial, "device_offline");
       }
     }
     for (const serial of [...this.presentLastRefresh]) {
@@ -517,6 +554,8 @@ export class HarmonyDeviceManager {
         this.forgetDeviceSnapshots(serial);
         const lease = this.leasesBySerial.get(serial);
         if (lease) this.removeLease(lease, "device_disconnected");
+        if (this.recordings.has(serial) || this.videoConnections.has(serial) || this.liveFrameControllers.has(serial)
+          || [...this.logStreamControllers.values()].includes(serial)) void this.stopDevice(serial, "device_disconnected");
       }
     }
     for (const serial of presentNow) this.presentLastRefresh.add(serial);
@@ -600,6 +639,26 @@ export class HarmonyDeviceManager {
     }, signal, undefined, serial);
   }
 
+  async statFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    return await this.enqueue("stat_device_file", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.statFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device path lookup is unavailable");
+      return await backend.statFile(serial, scope, path, queuedSignal);
+    }, signal, undefined, serial);
+  }
+
+  async isSqliteFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<boolean> {
+    validateSerial(serial);
+    return await this.enqueue("inspect_device_file_signature", async queuedSignal => {
+      await this.onlineDevice(serial, queuedSignal);
+      const backend = this.requireBackend();
+      if (!backend.isSqliteFile) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "SQLite file signature inspection is unavailable");
+      return await backend.isSqliteFile(serial, scope, path, queuedSignal);
+    }, signal, undefined, serial);
+  }
+
   async searchFiles(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, query: string, signal?: AbortSignal) {
     validateSerial(serial);
     return await this.enqueue("search_device_files", async queuedSignal => {
@@ -652,6 +711,16 @@ export class HarmonyDeviceManager {
         if (!backend.renamePath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file rename is unavailable");
         await backend.renamePath(options.serial, options.scope, options.path, options.newPath, signal);
       });
+  }
+
+  async copyPath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; newPath: string; move: boolean; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
+    const result = await this.action(options.move ? "move_path" : "copy_path", options.serial, options.leaseToken, undefined, options.signal,
+      async (backend, signal) => {
+        if (!backend.copyPath) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device file copy and move are unavailable");
+        await backend.copyPath(options.serial, options.scope, options.path, options.newPath, options.move, signal);
+      });
+    if (result.receipt) { result.receipt.effect = "applied"; result.receipt.verification = "passed"; }
+    return result;
   }
 
   async chmodPath(options: { serial: string; leaseToken: string; scope: import("./device-files").HarmonyFileScope; path: string; mode: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
@@ -771,6 +840,23 @@ export class HarmonyDeviceManager {
         const observation = await backend.snapshot(serial, { includeTree: true, includeScreenshot: false, signal: queuedSignal });
         requireValidObservation(observation); checks.push({ name: "ui-tree", status: "passed", reason: "Current scoped tree parsed successfully; contents are not included in doctor" });
       } catch { checks.push({ name: "ui-tree", status: "unknown", reason: "Cannot verify the current window tree; inspect device authorization and foreground test app" }); }
+      if (!backend.listFiles) checks.push({ name: "file-access", status: "unknown", reason: "Provider has no shared-directory metadata reader; no application sandbox was checked" });
+      else {
+        try {
+          const listing = await backend.listFiles(serial, { kind: "shared" }, "/data/local/tmp", queuedSignal, 0);
+          if (queuedSignal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Doctor cancelled");
+          if (!Array.isArray(listing.files) || listing.files.length > 500 || typeof listing.truncated !== "boolean") throw new HarmonyError("INVALID_RESPONSE", "Invalid directory metadata");
+          checks.push({ name: "file-access", status: "passed", reason: `Fixed shared temporary-directory metadata read confirmed${listing.truncated ? "; first page was truncated" : ""}. No file contents or application sandbox were read.` });
+        } catch (error) {
+          if (queuedSignal.aborted || (isHarmonyError(error) && error.code === "COMMAND_ABORTED")) throw new HarmonyError("COMMAND_ABORTED", "Doctor cancelled");
+          const failure = asHarmonyError(error);
+          const category = `${error instanceof Error ? error.message : ""} ${failure.message} ${typeof failure.details?.reason === "string" ? failure.details.reason : ""}`;
+          const reason = /permission denied|access denied|not permitted|权限|无权/i.test(category) ? "Shared temporary-directory metadata access was denied"
+            : /no such file|not found|不存在/i.test(category) ? "The fixed shared temporary directory was not found"
+            : "Shared temporary-directory metadata could not be verified";
+          checks.push({ name: "file-access", status: failure.code === "CAPABILITY_UNAVAILABLE" ? "unknown" : "failed", reason: `${reason} (${failure.code}). This does not determine application sandbox or file-content access.` });
+        }
+      }
       if (!this.injectedBackend) {
         try {
           const { inspectHarmonyCheckEnvironment } = await import("./check-runtime");
@@ -789,7 +875,25 @@ export class HarmonyDeviceManager {
       const forwards = backend.interruptedForwards?.(serial) ?? [];
       if (forwards.length) checks.push({ name: "orphaned-video-forwards", status: "unknown", reason: `Prior process exited; manually inspect only these recorded local ports: ${forwards.map(forward => forward.localPort).join(", ")}. No automatic removal.` });
       if (queuedSignal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Doctor cancelled");
-      return { serial, deviceEpoch: device.generation, checkedAt: iso(this.now()),
+      const checkedAt = this.now();
+      const frames = (["video", "screenshot"] as const).map(space => ({ space, observation: this.frameCapturedAt.get(`${serial}:${space}`) }))
+        .filter(entry => entry.observation?.generation === device.generation && Number.isFinite(entry.observation.capturedAt));
+      const fresh = frames.filter(entry => checkedAt - entry.observation!.capturedAt >= 0 && checkedAt - entry.observation!.capturedAt <= 5000)
+        .sort((left, right) => right.observation!.capturedAt - left.observation!.capturedAt)[0];
+      checks.push({ name: "frame-freshness", status: fresh ? "passed" : "unknown", reason: fresh
+        ? `Latest ${fresh.space === "video" ? "encoded video packet" : "screenshot"} received at ${iso(fresh.observation!.capturedAt)}; age ${checkedAt - fresh.observation!.capturedAt} ms. Reception time alone does not verify client decoding or drawing.`
+        : frames.some(entry => checkedAt < entry.observation!.capturedAt) ? "Observed frame time is ahead of the current clock; freshness is unconfirmed. No new frame was requested."
+          : frames.length ? "Last received frame is older than five seconds; no new frame was requested."
+            : "No frame received in the current device epoch; video configuration alone is not a frame. No new capture or viewer was started." });
+      const database = peekHarmonySqliteSnapshotMetadata(serial);
+      const recentSnapshot = this.operationTasks.list(serial).find(task => task.kind === "snapshot" && (task.status === "completed" || task.status === "failed"));
+      const history = recentSnapshot ? recentSnapshot.status === "completed"
+        ? ` Last historical capture completed at ${recentSnapshot.completedAt ?? recentSnapshot.updatedAt}; history alone does not establish a currently open snapshot.`
+        : ` Last capture failed at ${recentSnapshot.updatedAt}${recentSnapshot.errorCode && /^[A-Z_]{1,64}$/.test(recentSnapshot.errorCode) ? ` (${recentSnapshot.errorCode})` : ""}; this does not determine access for every application.` : "";
+      checks.push({ name: "database-snapshot", status: database.active > 0 ? "passed" : "unknown", reason: database.latestActive
+        ? `${database.active} current-device local read-only snapshot(s); latest private copy created at ${iso(database.latestActive.createdAt)}, first verified at ${iso(database.latestActive.readyAt)}, expires at ${iso(database.latestActive.expiresAt)}. Data reflects capture time; refresh in Database for a new capture.${history}`
+        : `${database.opening ? "A local snapshot is still awaiting its first successful verification." : database.expired ? "Existing local snapshots have expired." : "No verified local snapshot is currently open; choose an automatically discovered application database in Database."} Doctor did not scan, open, query or clean up a database.${history}` });
+      return { serial, deviceEpoch: device.generation, checkedAt: iso(checkedAt),
         versions,
         capabilities: capabilities.map(capability => ({ ...capability, deviceEpoch: device.generation })), checks,
         nextActions: checks.some(check => check.status !== "passed") ? ["Inspect the phone's display configuration; unlock it manually if needed. No automatic unlock is performed."] : [],
@@ -880,7 +984,6 @@ export class HarmonyDeviceManager {
     const lease = this.leasesByToken.get(token);
     if (!lease) return false;
     this.removeLease(lease, "released");
-    if (this.physicalLocks.has(lease.serial) || this.recordings.has(lease.serial)) void this.stopDevice(lease.serial, "released");
     return true;
   }
 
@@ -904,7 +1007,7 @@ export class HarmonyDeviceManager {
   ): Promise<HarmonySnapshot> {
       const device = await this.onlineDevice(serial, signal);
       const raw = await this.requireBackend().snapshot(serial, { includeTree, includeScreenshot, signal });
-      if (raw.screenshot?.width && raw.screenshot.height) this.recordFrameDimensions(serial, "screenshot", raw.screenshot.width, raw.screenshot.height);
+      if (includeScreenshot && raw.screenshot) this.recordScreenshotObservation(serial, device.generation, raw.screenshot, signal);
       const revision = (this.snapshotRevisions.get(serial) ?? 0) + 1;
       this.snapshotRevisions.set(serial, revision);
       const nodes: HarmonyUiNode[] | undefined = includeTree ? raw.nodes?.map((node, index, all) => ({
@@ -968,6 +1071,8 @@ export class HarmonyDeviceManager {
       }
       validateHarmonyScenario(options);
       const execution = this.scenarioStore?.create(options, lease.owner, device.generation, resumeId, deviceFingerprint(device));
+      const deviceDetails = { model: device.model, product: device.product, osVersion: device.osVersion, apiVersion: device.apiVersion, uitestVersion: device.uitestVersion, transport: device.transport };
+      if (execution && this.scenarioStore) { execution.device = deviceDetails; this.scenarioStore.write(execution); }
       try {
       const result = await runHarmonyScenario({ ...options, signal }, {
         serial: options.serial,
@@ -976,6 +1081,9 @@ export class HarmonyDeviceManager {
         backend: this.controlBackend(options.serial, options.leaseToken, signal),
         signal,
         now: this.now,
+        captureScreenshot: captureSignal => this.trackScreenshot(options.serial,
+          () => this.captureSnapshotNow(options.serial, false, true, captureSignal)),
+        saveScreenshot: snapshot => this.trackScreenshot(options.serial, async () => snapshot),
         capture: async (captureOptions, captureSignal) => await this.captureSnapshotNow(
           options.serial,
           captureOptions.includeTree,
@@ -1007,6 +1115,11 @@ export class HarmonyDeviceManager {
           this.scenarioStore.write(execution);
         },
       });
+      result.device = deviceDetails;
+      if (options.policy?.collectLogs) {
+        result.logs = await collectScenarioLogs(this.requireBackend(), options.serial, signal);
+        const completed = this.now(); result.completedAt = iso(completed); result.durationMs = Math.max(0, completed - Date.parse(result.startedAt));
+      }
       if (execution && this.scenarioStore) { this.scenarioStore.finish(execution, result); result.executionId = execution.id; }
       this.emit({
         type: "operation",
@@ -1024,6 +1137,7 @@ export class HarmonyDeviceManager {
   }
 
   listExecutions(serial?: string) { return this.scenarioStore?.list(serial) ?? []; }
+  getExecutionProgress(clientRunId: string, serial: string) { return this.scenarioStore?.getByClientRunId(clientRunId, serial); }
 
   removeExecution(id: string, serial: string) { this.scenarioStore?.remove(id, serial); }
 
@@ -1041,7 +1155,10 @@ export class HarmonyDeviceManager {
   private async interruptLiveFrame(serial: string, reason: string): Promise<void> {
     const inFlight = this.liveFramePromises.get(serial);
     this.cancelLiveFrame(serial, reason);
-    if (inFlight && await boundedCleanup(inFlight, this.cleanupTimeoutMs) !== "complete") {
+    // An aborted read-only frame rejects when its process has settled. A
+    // rejection here is still completed cleanup, not an uncertain device hold.
+    if (inFlight && await boundedCleanup(inFlight.then(() => undefined, () => undefined),
+      Math.max(this.cleanupTimeoutMs, PASSIVE_FRAME_CLEANUP_TIMEOUT_MS)) !== "complete") {
       throw new HarmonyError("DEVICE_BUSY", "A previous frame capture has not settled", { details: { dispatchState: "not-sent", cleanup: "uncertain" } });
     }
   }
@@ -1064,7 +1181,7 @@ export class HarmonyDeviceManager {
         signal: controller.signal,
       });
       if (!raw.screenshot) throw new HarmonyError("INVALID_RESPONSE", "Harmony screenshot is unavailable");
-      if (raw.screenshot.width && raw.screenshot.height) this.recordFrameDimensions(options.serial, "screenshot", raw.screenshot.width, raw.screenshot.height);
+      this.recordScreenshotObservation(options.serial, device.generation, raw.screenshot, controller.signal);
       const revision = (this.liveFrameRevisions.get(options.serial) ?? 0) + 1;
       this.liveFrameRevisions.set(options.serial, revision);
       return {
@@ -1085,34 +1202,85 @@ export class HarmonyDeviceManager {
 
   async openVideoStream(options: { serial: string; signal?: AbortSignal }): Promise<HarmonyVideoConnection> {
     validateSerial(options.serial);
-    this.requireAdmission(options.serial);
-    await this.onlineDevice(options.serial, options.signal);
+    this.requireAdmission(options.serial, true);
+    const device = await this.onlineDevice(options.serial, options.signal);
     const backend = this.requireBackend();
     if (!backend.openVideoStream) {
       throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony video streaming is unavailable in this runtime");
     }
     const connection = await backend.openVideoStream(options.serial, options.signal);
-    try { this.requireAdmission(options.serial); } catch (error) { await connection.close(); throw error; }
+    try {
+      this.requireAdmission(options.serial, true);
+      if (this.generations.get(options.serial) !== device.generation) throw new HarmonyError("STALE_SNAPSHOT", "The device epoch changed while opening video");
+    } catch (error) { await connection.close(); throw error; }
     let closing: Promise<void> | undefined;
+    let closed = false;
+    let dimensions: { width: number; height: number } | undefined;
+    const current = () => !closed && !options.signal?.aborted && this.devices.get(options.serial)?.state === "online"
+      && this.generations.get(options.serial) === device.generation;
     const tracked: HarmonyVideoConnection = {
       stream: connection.stream.pipeThrough(videoMetadataTransform((width, height) => {
+        if (!current()) return;
+        if (dimensions?.width !== width || dimensions?.height !== height) this.videoConnectionFrames.delete(tracked);
+        dimensions = { width, height };
         this.recordFrameDimensions(options.serial, "video", width, height);
-      }, () => { this.frameCapturedAt.set(`${options.serial}:video`, this.now()); })),
+      }, () => {
+        if (!current()) return;
+        const observation = { capturedAt: this.now(), generation: device.generation, ...dimensions };
+        this.recordFrameDimensions(options.serial, "video", dimensions?.width ?? 0, dimensions?.height ?? 0);
+        this.videoConnectionFrames.set(tracked, observation);
+        this.frameCapturedAt.set(`${options.serial}:video`, observation);
+      })),
       // A failed read-only video forward cleanup is not an unreleased key/touch.
       // The backend retains its exact port journal and close error for diagnosis.
-      close: () => closing ??= connection.close().finally(() => this.videoConnections.get(options.serial)?.delete(tracked)),
+      close: () => {
+        if (closing) return closing;
+        closed = true;
+        const viewers = this.videoConnections.get(options.serial);
+        viewers?.delete(tracked);
+        this.videoConnectionFrames.delete(tracked);
+        if (!viewers?.size) this.videoConnections.delete(options.serial);
+        if (this.generations.get(options.serial) === device.generation) {
+          const remaining = [...(viewers ?? [])].filter(viewer => this.videoConnectionCurrent.get(viewer)?.())
+            .map(viewer => this.videoConnectionFrames.get(viewer)).filter(observation => observation !== undefined)
+            .sort((left, right) => right.capturedAt - left.capturedAt)[0];
+          if (remaining) {
+            this.recordFrameDimensions(options.serial, "video", remaining.width ?? 0, remaining.height ?? 0);
+            this.frameCapturedAt.set(`${options.serial}:video`, remaining);
+          } else {
+            this.frameCapturedAt.delete(`${options.serial}:video`);
+            this.geometries.delete(`${options.serial}:video`);
+            this.frameDimensions.delete(`${options.serial}:video`);
+          }
+        }
+        return closing = Promise.resolve().then(() => connection.close());
+      },
     };
+    this.videoConnectionCurrent.set(tracked, current);
     const set = this.videoConnections.get(options.serial) ?? new Set<HarmonyVideoConnection>(); set.add(tracked); this.videoConnections.set(options.serial, set);
     return tracked;
   }
 
   private recordFrameDimensions(serial: string, space: "video" | "screenshot", width: number, height: number): void {
-    if (![width, height].every(value => Number.isInteger(value) && value > 0 && value <= 16_384)) return;
     const key = `${serial}:${space}`;
-    this.frameCapturedAt.set(key, this.now());
+    if (![width, height].every(value => Number.isInteger(value) && value > 0 && value <= 16_384)) {
+      this.frameDimensions.delete(key); this.geometries.delete(key);
+      if (space === "video") this.frameCapturedAt.delete(key);
+      return;
+    }
     const previous = this.frameDimensions.get(key);
-    if (previous?.width !== width || previous?.height !== height) this.geometries.delete(key);
-    this.frameDimensions.set(key, { width, height });
+    if (previous?.width !== width || previous?.height !== height) {
+      this.geometries.delete(key);
+      if (space === "video") this.frameCapturedAt.delete(key);
+      this.frameDimensions.set(key, { width, height });
+    }
+  }
+
+  private recordScreenshotObservation(serial: string, generation: number, screenshot: NonNullable<HarmonySnapshot["screenshot"]>, signal?: AbortSignal): void {
+    if (signal?.aborted || this.devices.get(serial)?.state !== "online" || this.generations.get(serial) !== generation) return;
+    const key = `${serial}:screenshot`;
+    this.frameCapturedAt.set(key, { capturedAt: this.now(), generation });
+    this.recordFrameDimensions(serial, "screenshot", screenshot.width ?? 0, screenshot.height ?? 0);
   }
 
   async getFrameGeometry(serial: string, space: "video" | "screenshot", signal?: AbortSignal): Promise<HarmonyGeometry> {
@@ -1122,8 +1290,13 @@ export class HarmonyDeviceManager {
     const key = `${serial}:${space}`;
     const frame = this.frameDimensions.get(key);
     if (!frame) throw new HarmonyError("STALE_SNAPSHOT", "No server-observed frame geometry is available");
-    if (this.now() - (this.frameCapturedAt.get(key) ?? 0) > 5000) throw new HarmonyError("STALE_SNAPSHOT", "The frame is stale; wait for live video or a new screenshot");
+    const observation = this.frameCapturedAt.get(key);
+    const age = observation ? this.now() - observation.capturedAt : Number.NaN;
+    if (!observation || observation.generation !== device.generation || !Number.isFinite(age) || age < 0 || age > 5000) throw new HarmonyError("STALE_SNAPSHOT", "The frame is stale; wait for live video or a new screenshot");
     const native = await backend.displayGeometry(serial, signal);
+    const currentObservation = this.frameCapturedAt.get(key);
+    const currentAge = currentObservation ? this.now() - currentObservation.capturedAt : Number.NaN;
+    if (this.generations.get(serial) !== device.generation || currentObservation?.generation !== device.generation || this.frameDimensions.get(key) !== frame || !Number.isFinite(currentAge) || currentAge < 0 || currentAge > 5000) throw new HarmonyError("STALE_SNAPSHOT", "Frame geometry changed or expired during verification");
     // Current video and screenCap providers send the full current-orientation
     // display. A changed aspect ratio is not evidence of a known crop.
     if (Math.abs(frame.width / frame.height - native.nativeWidth / native.nativeHeight) > 0.002) {
@@ -1163,21 +1336,28 @@ export class HarmonyDeviceManager {
     leaseToken?: string;
     signal?: AbortSignal;
   }): Promise<HarmonyMediaArtifact> {
-    await this.interruptLiveFrame(options.serial, "capture_screenshot");
-    const snapshot = await this.snapshot({
-      serial: options.serial,
-      ...(options.leaseToken ? { leaseToken: options.leaseToken } : {}),
-      includeTree: false,
-      includeScreenshot: true,
-      signal: options.signal,
+    // A screenshot is read-only. HDC serializes captures internally, so taking one
+    // must not abort the live view or require releasing manual control.
+    return await this.trackScreenshot(options.serial, () => {
+      if (options.leaseToken) this.requireLease(options.serial, options.leaseToken);
+      return this.captureLiveFrame({ serial: options.serial, signal: options.signal });
     });
-    if (!snapshot.screenshot) throw new HarmonyError("INVALID_RESPONSE", "Harmony screenshot is unavailable");
-    return await saveHarmonyScreenshot(this.config, options.serial, snapshot.screenshot, new Date(snapshot.capturedAt));
+  }
+
+  private trackScreenshot(serial: string, capture: () => Promise<HarmonySnapshot>): Promise<HarmonyMediaArtifact> {
+    return this.operationTasks.track({ serial, kind: "screenshot", title: "Screenshot", target: serial }, async started => {
+      started();
+      const snapshot = await capture();
+      if (!snapshot.screenshot) throw new HarmonyError("INVALID_RESPONSE", "Harmony screenshot is unavailable");
+      return await saveHarmonyScreenshot(this.config, serial, snapshot.screenshot, new Date(snapshot.capturedAt));
+    }, artifact => ({ capturedAt: artifact.createdAt, bytes: artifact.size, verification: "media-saved", mediaFilename: artifact.filename }));
   }
 
   getRecordingState(serial: string): HarmonyRecordingState | undefined {
     validateSerial(serial);
+    if (this.recordingStarts.has(serial)) return undefined;
     const state = this.recordings.get(serial);
+    if (state && this.recordingFailures.get(state.recordingId)?.details?.recordingStopped === true) return undefined;
     return state ? { ...state } : undefined;
   }
 
@@ -1188,18 +1368,24 @@ export class HarmonyDeviceManager {
     signal?: AbortSignal;
   }): Promise<HarmonyRecordingState> {
     validateSerial(options.serial);
-    const lease = this.requireLease(options.serial, options.leaseToken);
-    if (lease.owner.id !== options.ownerId) throw new HarmonyError("LEASE_REQUIRED", "The recording owner does not hold this device lease");
-    await this.interruptLiveFrame(options.serial, "start_recording");
-    return await this.enqueue("start_recording", async (signal, operationId) => {
+    if (typeof options.ownerId !== "string" || !options.ownerId.trim() || options.ownerId.length > 160)
+      throw new HarmonyError("INVALID_ARGUMENT", "Choose a valid recording owner");
+    const taskId = this.operationTasks.begin({ serial: options.serial, kind: "recording", title: "Screen recording", target: options.serial });
+    let dispatched = false;
+    try { return await this.enqueue("start_recording", async (signal, operationId) => {
+      this.requireAdmission(options.serial, true);
       if (options.leaseToken) {
         const lease = this.requireLease(options.serial, options.leaseToken);
         if (lease.owner.id !== options.ownerId) throw new HarmonyError("LEASE_REQUIRED", "The recording owner does not hold this device lease");
       }
       if (this.recordings.has(options.serial)) throw new HarmonyError("DEVICE_BUSY", "This Harmony device is already recording");
-      const backend = this.controlBackend(options.serial, lease.token, signal);
+      // Native recording owns one read-only H.264 subscriber. Its media owner
+      // never acquires or preempts the input lease, including a long AI action.
+      const backend = this.requireBackend();
       if (!backend.startRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony screen recording is unavailable on this device runtime");
       await this.onlineDevice(options.serial, signal);
+      this.requireAdmission(options.serial, true);
+      if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Recording start cancelled", { details: { dispatchState: "not-sent" } });
       const recordingId = randomBytes(12).toString("hex");
       const state: HarmonyRecordingState = {
         serial: options.serial,
@@ -1209,31 +1395,42 @@ export class HarmonyDeviceManager {
         ownerId: options.ownerId,
       };
       this.recoveryStore?.record(options.serial, "recording", "active");
+      this.recordingStarts.add(options.serial);
       this.recordings.set(options.serial, state);
+      this.recordingTasks.set(recordingId, taskId);
       // Register ownership before dispatch so a concurrent stop can reclaim it.
-      try { await backend.startRecording(options.serial, state.remoteName, signal); }
+      dispatched = true;
+      try { await backend.startRecording(options.serial, state.remoteName, signal, error => this.recordingFailed(state, error)); }
       catch (error) {
-        if (error instanceof HarmonyError && (error.details?.recordingStopped || error.details?.dispatchState === "not-sent")) this.recordings.delete(options.serial);
-        if (error instanceof HarmonyError && (error.details?.recordingStopped || (error.details?.cleanup !== "uncertain" && error.details?.dispatchState === "not-sent"))) this.recoveryStore?.clear(options.serial, "recording");
-        else { this.recoveryStore?.record(options.serial, "recording", "uncertain"); this.stoppingDevices.set(options.serial, "recovering"); }
+        if (isHarmonyError(error) && (error.details?.recordingStopped || error.details?.dispatchState === "not-sent")) {
+          this.recordings.delete(options.serial); this.recordingTasks.delete(recordingId);
+        }
+        if (isHarmonyError(error) && (error.details?.recordingStopped || (error.details?.cleanup !== "uncertain" && error.details?.dispatchState === "not-sent"))) this.recoveryStore?.clear(options.serial, "recording");
+        else { this.recoveryStore?.record(options.serial, "recording", "uncertain"); this.recordingRecoveryDevices.add(options.serial); this.stoppingDevices.set(options.serial, "recovering"); }
         throw error;
       }
+      finally { this.recordingStarts.delete(options.serial); }
       if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Recording start cancelled; cleanup is required");
-      const timer = setTimeout(() => { void this.stopDevice(options.serial, "recording_duration_limit"); }, 120_000);
+      const failure = this.recordingFailures.get(recordingId);
+      if (failure) throw failure;
+      this.operationTasks.started(taskId, "recording");
+      // The media duration limit must not cancel an unrelated AI/input owner.
+      const timer = setTimeout(() => { void this.stopRecording({ serial: options.serial, ownerId: state.ownerId, recordingId }).catch(() => undefined); }, 120_000);
       timer.unref?.(); this.recordingTimers.set(options.serial, timer);
       this.emit({ type: "operation", timestamp: iso(this.now()), serial: options.serial, operation: "start_recording", operationId });
       return { ...state };
-    }, options.signal, options.ownerId, options.serial, lease.token);
+    }, options.signal, options.ownerId, options.serial, undefined, "media"); }
+    catch (error) { this.operationTasks.failed(taskId, error, dispatched); throw error; }
   }
 
   async stopRecording(options: {
     serial: string;
     leaseToken?: string;
     ownerId: string;
+    recordingId?: string;
     signal?: AbortSignal;
   }): Promise<HarmonyMediaArtifact> {
     validateSerial(options.serial);
-    await this.interruptLiveFrame(options.serial, "stop_recording");
     return await this.enqueue("stop_recording", async (signal, operationId) => {
       if (options.leaseToken) {
         const lease = this.requireLease(options.serial, options.leaseToken);
@@ -1242,29 +1439,83 @@ export class HarmonyDeviceManager {
       const state = this.recordings.get(options.serial);
       if (!state) throw new HarmonyError("INVALID_ARGUMENT", "This Harmony device is not recording");
       if (state.ownerId !== options.ownerId) throw new HarmonyError("DEVICE_BUSY", "The recording belongs to another controller");
-      const backend = this.requireBackend();
-      if (!backend.stopRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony screen recording is unavailable on this device runtime");
-      const destinationPath = await prepareHarmonyRecordingPath(this.config, options.serial, new Date(state.startedAt));
-      try { await backend.stopRecording(options.serial, state.remoteName, destinationPath, signal); }
-      catch (error) {
-        if (error instanceof HarmonyError && error.details?.recordingStopped) {
-          this.recordings.delete(options.serial);
-          clearTimeout(this.recordingTimers.get(options.serial)); this.recordingTimers.delete(options.serial);
-          // Saving/finalizing may fail after the owned reader is already closed.
-          // Report that failure, but do not invent an unreleased device operation.
-          this.recoveryStore?.clear(options.serial, "recording");
-        } else {
-          this.recoveryStore?.record(options.serial, "recording", "uncertain"); this.stoppingDevices.set(options.serial, "recovering");
-        }
-        throw error;
-      }
-      this.recordings.delete(options.serial);
-      this.recoveryStore?.clear(options.serial, "recording");
-      clearTimeout(this.recordingTimers.get(options.serial)); this.recordingTimers.delete(options.serial);
-      const artifact = await recordingArtifact(options.serial, destinationPath, new Date());
+      if (options.recordingId !== undefined && options.recordingId !== state.recordingId)
+        throw new HarmonyError("STALE_SNAPSHOT", "The recording changed; refresh its state before stopping");
+      const artifact = await this.finishRecording(state, signal);
       this.emit({ type: "operation", timestamp: iso(this.now()), serial: options.serial, operation: "stop_recording", operationId });
       return artifact;
-    }, options.signal, options.ownerId, options.serial);
+    }, options.signal, options.ownerId, options.serial, undefined, "media");
+  }
+
+  private recordingFailed(state: HarmonyRecordingState, error: HarmonyError): void {
+    if (this.recordings.get(state.serial) !== state) return;
+    this.recordingFailures.set(state.recordingId, error);
+    const taskId = this.recordingTasks.get(state.recordingId);
+    try { if (taskId) this.operationTasks.failed(taskId, error); }
+    catch (failure) { this.runtimeError = asHarmonyError(failure); }
+    void this.enqueue("recording_failed", async signal => {
+      if (this.recordings.get(state.serial) === state) await this.finishRecording(state, signal);
+    }, undefined, state.ownerId, state.serial, undefined, "media").catch(() => undefined);
+    this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
+  }
+
+  private finishRecording(state: HarmonyRecordingState, signal: AbortSignal, reason?: string): Promise<HarmonyMediaArtifact> {
+    const existing = this.recordingFinishes.get(state.recordingId);
+    if (existing) return existing;
+    const finishing = this.finishRecordingNow(state, signal, reason);
+    this.recordingFinishes.set(state.recordingId, finishing);
+    void finishing.finally(() => { if (this.recordingFinishes.get(state.recordingId) === finishing) this.recordingFinishes.delete(state.recordingId); }).catch(() => undefined);
+    return finishing;
+  }
+
+  private async finishRecordingNow(state: HarmonyRecordingState, signal: AbortSignal, reason?: string): Promise<HarmonyMediaArtifact> {
+    const serial = state.serial, taskId = this.recordingTasks.get(state.recordingId);
+    let stopped = false;
+    try {
+      const backend = this.requireBackend();
+      if (!backend.stopRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony screen recording is unavailable on this device runtime");
+      // A journal write failure must never prevent closing the owned reader.
+      let journalFailure: unknown;
+      try { if (taskId) this.operationTasks.started(taskId, "saving"); }
+      catch (error) { journalFailure = error; }
+      const destinationPath = await prepareHarmonyRecordingPath(this.config, serial, new Date(state.startedAt));
+      await backend.stopRecording(serial, state.remoteName, destinationPath, signal);
+      stopped = true;
+      if (this.recordings.get(serial) === state) this.recordings.delete(serial);
+      this.clearRecordingRecovery(serial);
+      clearTimeout(this.recordingTimers.get(serial)); this.recordingTimers.delete(serial);
+      const artifact = await recordingArtifact(serial, destinationPath, new Date());
+      const mediaFailure = this.recordingFailures.get(state.recordingId);
+      if (mediaFailure) throw mediaFailure;
+      if (journalFailure) throw journalFailure;
+      if (taskId) this.operationTasks.complete(taskId, { capturedAt: artifact.createdAt, bytes: artifact.size,
+        verification: "media-saved", mediaFilename: artifact.filename });
+      this.recordingTasks.delete(state.recordingId);
+      this.recordingFailures.delete(state.recordingId);
+      return artifact;
+    }
+      catch (error) {
+        if (stopped || (isHarmonyError(error) && error.details?.recordingStopped)) {
+          if (this.recordings.get(serial) === state) this.recordings.delete(serial);
+          clearTimeout(this.recordingTimers.get(serial)); this.recordingTimers.delete(serial);
+          // Saving/finalizing may fail after the owned reader is already closed.
+          // Report that failure, but do not invent an unreleased device operation.
+          this.clearRecordingRecovery(serial); this.recordingTasks.delete(state.recordingId); this.recordingFailures.delete(state.recordingId);
+        } else {
+          this.recoveryStore?.record(serial, "recording", "uncertain"); this.recordingRecoveryDevices.add(serial); this.stoppingDevices.set(serial, "recovering");
+        }
+        const failure = asHarmonyError(error);
+        const disconnected = reason === "device_offline" || reason === "device_disconnected";
+        if (taskId) this.operationTasks.failed(taskId, new HarmonyError(disconnected ? "DEVICE_OFFLINE" : failure.code, failure.message,
+          { details: { ...failure.details, ...(stopped ? { recordingStopped: true } : {}) } }));
+        throw error;
+      }
+  }
+
+  private clearRecordingRecovery(serial: string): void {
+    this.recoveryStore?.clear(serial, "recording");
+    if (this.recordingRecoveryDevices.delete(serial) && !this.cleanupWork.has(serial)
+      && !this.stopPromises.has(serial) && !this.uncertainInput.has(serial)) this.stoppingDevices.delete(serial);
   }
 
   getLatestSnapshot(serial: string): HarmonySnapshot | undefined {
@@ -1296,7 +1547,7 @@ export class HarmonyDeviceManager {
       this.requireLease(serial, leaseToken);
       const device = await this.onlineDevice(serial, queuedSignal);
       if (generation !== undefined && generation !== device.generation) {
-        throw new HarmonyError("STALE_SNAPSHOT", "The device reconnected after this snapshot was captured", {
+        throw new HarmonyError("STALE_SNAPSHOT", "The device screen changed or a person interrupted this action; observe a fresh screen before trying again", {
           details: { expectedGeneration: device.generation, receivedGeneration: generation },
           retryable: true,
         });
@@ -1308,7 +1559,7 @@ export class HarmonyDeviceManager {
       this.snapshots.delete(serial);
       const startedAt = iso(this.now());
       const ownsHold = ["key_hold", "touch_hold", "voice_input", "open_assistant"].includes(operation);
-      const dispatch = () => invoke(this.controlBackend(serial, leaseToken, queuedSignal), queuedSignal);
+      const dispatch = () => invoke(this.controlBackend(serial, leaseToken, queuedSignal, operation !== "install_package"), queuedSignal);
       if (ownsHold) await this.withInputRecovery(serial, lease, dispatch);
       else await dispatch();
       if (queuedSignal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Device operation was cancelled; its effect may be unknown", { details: { dispatchState: "sent" } });
@@ -1606,11 +1857,15 @@ export class HarmonyDeviceManager {
   }
 
   async installPackage(options: HarmonyInstallAppOptions): Promise<HarmonyOperationResult> {
-    return await this.action("install_package", options.serial, options.leaseToken, undefined, options.signal,
+    return await this.operationTasks.track({ serial: options.serial, kind: "installation", title: basename(options.hapPath), target: options.hapPath },
+      async started => await this.action("install_package", options.serial, options.leaseToken, undefined, options.signal,
       async (backend, signal) => {
         if (!backend.installPackage) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony package installation is unavailable");
-        await backend.installPackage(options.serial, options.hapPath, options.replace ?? true, signal);
-      });
+        const hapPath = options.expectedHash === undefined ? options.hapPath
+          : await importHapArtifact(options.hapPath, join(dirname(this.configPath), "harmony-artifacts"), options.expectedHash);
+        started();
+        await backend.installPackage(options.serial, hapPath, options.replace ?? true, signal);
+      }), () => ({ verification: "device-confirmed" }));
   }
 
   async stopApp(options: { serial: string; leaseToken: string; bundleName: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
@@ -1662,14 +1917,16 @@ export class HarmonyDeviceManager {
   }
 
   async initializeMirror(options: { serial: string; leaseToken: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
-    return await this.action("initialize_mirror", options.serial, options.leaseToken, undefined, options.signal, async (_backend, signal) => {
+    return await this.operationTasks.track({ serial: options.serial, kind: "installation", title: "OHScrcpyServer.hap", target: "com.ohos.scrcpy.server" },
+      async started => await this.action("initialize_mirror", options.serial, options.leaseToken, undefined, options.signal, async (_backend, signal) => {
       const backend = this.requireBackend();
       if (!backend.mirrorPackagePath || !backend.initializeMirror) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Video initialization is unavailable");
       const artifactPath = await importHapArtifact(backend.mirrorPackagePath(), join(dirname(this.configPath), "harmony-artifacts"));
       this.requireLease(options.serial, options.leaseToken);
       if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Video initialization was cancelled");
+      started();
       await backend.initializeMirror(options.serial, artifactPath, signal);
-    });
+    }), () => ({ verification: "device-confirmed" }));
   }
 
   async updateConfig(
@@ -1770,7 +2027,7 @@ export class HarmonyDeviceManager {
 
   async confirmCleanup(serial: string, signal?: AbortSignal) {
     validateSerial(serial);
-    if (this.cleanupUnsettled.has(serial) || this.stopPromises.has(serial) || this.operationLanes.get(`device:${serial}`)?.active || this.operationLanes.get(`device:${serial}`)?.pending || this.recordings.has(serial)) throw new HarmonyError("DEVICE_BUSY", "Wait for owned operations and recording cleanup to settle before confirming");
+    if (this.cleanupUnsettled.has(serial) || this.stopPromises.has(serial) || this.operationLanes.get(`device:${serial}`)?.active || this.operationLanes.get(`device:${serial}`)?.pending || this.operationLanes.get(`media:${serial}`)?.active || this.operationLanes.get(`media:${serial}`)?.pending || this.recordings.has(serial)) throw new HarmonyError("DEVICE_BUSY", "Wait for owned operations and recording cleanup to settle before confirming");
     if (!this.stoppingDevices.has(serial)) return { cleanup: "complete" as const };
     await this.onlineDevice(serial, signal);
     const observation = await this.requireBackend().snapshot(serial, { includeTree: true, includeScreenshot: false, signal });
@@ -1780,63 +2037,142 @@ export class HarmonyDeviceManager {
     this.recoveryStore?.clear(serial);
     this.physicalLocks.get(serial)?.release(); this.physicalLocks.delete(serial);
     this.stoppingDevices.delete(serial);
+    this.inputOnlyStops.delete(serial);
     this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
     return { cleanup: "manual-confirmed" as const };
   }
 
-  stopDevice(serial: string, reason = "device_stop"): Promise<{ dispatchBlocked: true; cleanup: "complete" | "uncertain" }> {
+  /** Fence an Agent's input for a direct human gesture while keeping passive video alive. */
+  async preemptAgentForManual(serial: string): Promise<void> {
     validateSerial(serial);
-    const existing = this.stopPromises.get(serial);
-    if (existing) return existing;
-    const hadPhysicalControl = this.leasesBySerial.has(serial) || this.physicalLocks.has(serial) || this.uncertainInput.has(serial);
-    // The fence is synchronous and precedes all asynchronous resource cleanup.
-    this.stoppingDevices.set(serial, "stopping");
+    const ongoing = this.stopPromises.get(serial);
+    if (ongoing) {
+      const outcome = await ongoing;
+      if (outcome.cleanup !== "complete") throw new HarmonyError("DEVICE_BUSY", "Device input release is uncertain");
+    }
     const lease = this.leasesBySerial.get(serial);
-    if (lease) this.removeLease(lease, reason);
-    for (const controller of this.controllersByDevice.get(serial) ?? []) controller.abort(reason);
-    this.liveFrameControllers.get(serial)?.abort(reason);
-    for (const [controller, deviceSerial] of this.logStreamControllers) if (deviceSerial === serial) controller.abort(reason);
-    this.forgetDeviceSnapshots(serial);
+    if (!lease) return;
+    if (lease.owner.kind !== "agent") throw new HarmonyError("LEASE_CONFLICT", "Another manual window is operating the device");
+    if (this.recordings.get(serial)?.ownerId === lease.owner.id) {
+      const outcome = await this.stopDevice(serial, "manual_preemption");
+      if (outcome.cleanup !== "complete") throw new HarmonyError("DEVICE_BUSY", "Device recording cleanup is uncertain");
+      return;
+    }
+    this.stoppingDevices.set(serial, "stopping");
+    this.removeLease(lease, "manual_preemption");
+    for (const controller of this.controllersByDevice.get(serial) ?? [])
+      if (!this.controllersByMedia.get(serial)?.has(controller)) controller.abort("manual_preemption");
     const generation = (this.generations.get(serial) ?? 0) + 1;
     this.generations.set(serial, generation);
     const device = this.devices.get(serial);
     if (device) this.devices.set(serial, { ...device, generation });
-    clearTimeout(this.recordingTimers.get(serial)); this.recordingTimers.delete(serial);
+    this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
+    const cleanup = (async () => {
+      // Wait for the aborted action to settle before resetting input. Resetting
+      // in parallel could let a late driver action press after the release.
+      await this.operationLanes.get(`device:${serial}`)?.tail;
+      await this.backend?.resetAutomation?.(serial);
+      if (this.uncertainInput.has(serial)) throw new Error("Input release was not verified");
+    })();
+    this.cleanupUnsettled.add(serial);
+    void cleanup.finally(() => this.cleanupUnsettled.delete(serial)).catch(() => undefined);
+    const outcome = await boundedCleanup(cleanup, this.cleanupTimeoutMs);
+    if (outcome !== "complete") {
+      this.stoppingDevices.set(serial, "recovering");
+      this.recoveryStore?.record(serial, "input", "uncertain");
+      void cleanup.then(() => {
+        if (this.stoppingDevices.get(serial) !== "recovering" || this.uncertainInput.has(serial)) return;
+        this.recoveryStore?.clear(serial, "input");
+        this.physicalLocks.get(serial)?.release(); this.physicalLocks.delete(serial);
+        this.stoppingDevices.delete(serial);
+        this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
+      }).catch(() => undefined);
+      this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
+      throw new HarmonyError("DEVICE_BUSY", "Input release is uncertain; confirm release on the phone before clicking");
+    }
+    this.recoveryStore?.clear(serial, "input");
+    this.physicalLocks.get(serial)?.release(); this.physicalLocks.delete(serial);
+    this.stoppingDevices.delete(serial);
+    this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
+  }
+
+  stopDevice(serial: string, reason = "device_stop"): Promise<{ dispatchBlocked: true; cleanup: "complete" | "uncertain" }> {
+    const ongoing = this.stopPromises.get(serial);
+    // Upgrade the fence now; the full cleanup still awaits the same input work.
+    if (ongoing && this.inputOnlyStops.has(serial)) this.stopPromises.delete(serial);
+    return this.stopDeviceResources(serial, reason);
+  }
+
+  private stopDeviceResources(serial: string, reason: string, releasedOwnerId?: string): Promise<{ dispatchBlocked: true; cleanup: "complete" | "uncertain" }> {
+    validateSerial(serial);
+    const existing = this.stopPromises.get(serial);
+    if (existing) return existing;
+    const inputOnly = releasedOwnerId !== undefined;
+    if (inputOnly) this.inputOnlyStops.add(serial); else this.inputOnlyStops.delete(serial);
+    const hadPhysicalControl = this.leasesBySerial.has(serial) || this.physicalLocks.has(serial) || this.uncertainInput.has(serial);
+    // The fence is synchronous and precedes all asynchronous resource cleanup.
+    this.stoppingDevices.set(serial, "stopping");
+    const lease = this.leasesBySerial.get(serial);
+    if (lease && (!inputOnly || lease.owner.id === releasedOwnerId)) this.removeLease(lease, reason);
+    for (const controller of this.controllersByDevice.get(serial) ?? [])
+      if (!inputOnly || this.controllersByOwner.get(releasedOwnerId!)?.has(controller)) controller.abort(reason);
+    if (!inputOnly) {
+      this.liveFrameControllers.get(serial)?.abort(reason);
+      for (const [controller, deviceSerial] of this.logStreamControllers) if (deviceSerial === serial) controller.abort(reason);
+      const generation = (this.generations.get(serial) ?? 0) + 1;
+      this.generations.set(serial, generation);
+      const device = this.devices.get(serial);
+      if (device) this.devices.set(serial, { ...device, generation });
+    }
+    this.forgetDeviceSnapshots(serial);
+    if (!inputOnly || this.recordings.get(serial)?.ownerId === releasedOwnerId) {
+      clearTimeout(this.recordingTimers.get(serial)); this.recordingTimers.delete(serial);
+    }
     const cleanupController = new AbortController();
     let inputCleanupComplete = false;
-    const cleanupWork = this.cleanupWork.get(serial) ?? Promise.allSettled([
-      Promise.allSettled([this.operationLanes.get(`device:${serial}`)?.tail, this.backend?.resetAutomation?.(serial)]).then(results => {
-        inputCleanupComplete = results.every(result => result.status === "fulfilled");
-        if (!inputCleanupComplete) throw new Error("Device input cleanup failed");
-      }),
-      this.liveFramePromises.get(serial),
-      ...[...(this.videoConnections.get(serial) ?? [])].map(connection => connection.close()),
+    const previousCleanup = this.cleanupWork.get(serial);
+    const cleanupWork = Promise.allSettled([
+      previousCleanup ? previousCleanup.then(() => { inputCleanupComplete = true; })
+        : Promise.allSettled([this.operationLanes.get(`device:${serial}`)?.tail]).then(async () => {
+          // A late driver must settle before input is reset and its lock released.
+          await this.backend?.resetAutomation?.(serial); inputCleanupComplete = true;
+        }),
+      ...(!inputOnly ? [
+        this.liveFramePromises.get(serial),
+        ...[...(this.videoConnections.get(serial) ?? [])].map(connection => connection.close()),
+      ] : []),
       (async () => {
+        if (inputOnly && this.recordings.get(serial)?.ownerId !== releasedOwnerId
+          && ![...(this.controllersByMedia.get(serial) ?? [])].some(controller => this.controllersByOwner.get(releasedOwnerId!)?.has(controller))) return;
         // The start operation may still be settling when the stop fence is raised.
-        await this.operationLanes.get(`device:${serial}`)?.tail;
+        await this.operationLanes.get(`media:${serial}`)?.tail;
         const recording = this.recordings.get(serial);
-        if (!recording) return;
-        if (!this.backend?.stopRecording) throw new Error("Recording cleanup unavailable");
-        const path = await prepareHarmonyRecordingPath(this.config, serial, new Date(recording.startedAt));
-        try { await this.backend.stopRecording(serial, recording.remoteName, path, cleanupController.signal); }
-        catch (error) { if (error instanceof HarmonyError && error.details?.recordingStopped) this.recordings.delete(serial); throw error; }
-        if (this.recordings.get(serial) === recording) this.recordings.delete(serial);
+        if (!recording || (inputOnly && recording.ownerId !== releasedOwnerId)) return;
+        await this.finishRecording(recording, cleanupController.signal, reason);
       })(),
     ]).then(results => { if (results.some(result => result.status === "rejected")) throw new Error("A device resource could not be cleaned up"); });
     this.cleanupUnsettled.add(serial);
-    void cleanupWork.finally(() => this.cleanupUnsettled.delete(serial)).catch(() => undefined);
+    void cleanupWork.finally(() => {
+      if (this.cleanupWork.get(serial) === cleanupWork) this.cleanupUnsettled.delete(serial);
+    }).catch(() => undefined);
     this.cleanupWork.set(serial, cleanupWork);
     const finishCleanup = () => {
+      if (this.cleanupWork.get(serial) !== cleanupWork) return;
       this.cleanupWork.delete(serial);
-      this.recoveryStore?.clear(serial);
+      if (inputOnly) this.recoveryStore?.clear(serial, "input");
+      else { this.recordingRecoveryDevices.delete(serial); this.recoveryStore?.clear(serial); }
       this.physicalLocks.get(serial)?.release();
       this.physicalLocks.delete(serial);
-      this.stoppingDevices.delete(serial);
+      if (!this.stopPromises.has(serial)) this.inputOnlyStops.delete(serial);
+      if (inputOnly && this.recordingRecoveryDevices.has(serial)) this.stoppingDevices.set(serial, "recovering");
+      else this.stoppingDevices.delete(serial);
     };
     const stopping = boundedCleanup(cleanupWork, this.cleanupTimeoutMs).then(result => {
       const cleanup = this.uncertainInput.has(serial) ? "uncertain" : result;
+      if (this.cleanupWork.get(serial) !== cleanupWork) return { dispatchBlocked: true as const, cleanup };
       if (cleanup === "complete") finishCleanup();
-      else if ((!hadPhysicalControl || inputCleanupComplete) && !this.uncertainInput.has(serial) && !this.recordings.has(serial)
+      else if ((!hadPhysicalControl || inputCleanupComplete) && !this.uncertainInput.has(serial)
+        && (inputOnly ? this.recordings.get(serial)?.ownerId !== releasedOwnerId : !this.recordings.has(serial))
         && !this.operationLanes.get(`device:${serial}`)?.active && !this.operationLanes.get(`device:${serial}`)?.pending) {
         // Video forwarding or file finalization can fail after input is released.
         // Preserve the backend warning/receipt without persisting a false input latch.
@@ -1854,7 +2190,11 @@ export class HarmonyDeviceManager {
       }
       this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
       return { dispatchBlocked: true as const, cleanup };
-    }).finally(() => { this.stopPromises.delete(serial); });
+    }).finally(() => {
+      if (this.stopPromises.get(serial) !== stopping) return;
+      this.stopPromises.delete(serial);
+      if (!this.cleanupWork.has(serial)) this.inputOnlyStops.delete(serial);
+    });
     this.stopPromises.set(serial, stopping);
     return stopping;
   }

@@ -19,6 +19,7 @@ export async function GET(request: Request) {
       throw new HarmonyError("INVALID_ARGUMENT", "Choose a device, file scope and path");
     }
     const scope: HarmonyFileScope = kind === "shared" ? { kind: "shared" } : { kind: "sandbox", bundleName: bundleName! };
+    if (params.get("stat") === "1") return noStoreJson({ file: await getHarmonyDeviceManager().statFile(serial, scope, path, request.signal) });
     const offset = validateDeviceFileOffset(/^\d+$/.test(offsetText) ? Number(offsetText) : Number.NaN);
     const result = await getHarmonyDeviceManager().listFiles(serial, scope, path, request.signal, offset);
     return noStoreJson({ scope, path, offset, ...result });

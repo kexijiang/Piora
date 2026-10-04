@@ -4,16 +4,19 @@ import { brandText } from "@/lib/branding";
 
 import { Component, useCallback, useEffect, useId, useMemo, useRef, useState, type ErrorInfo, type ReactNode } from "react";
 import { useI18n } from "@/hooks/useI18n";
+import { useApplicationShortcuts } from "@/hooks/useApplicationShortcuts";
+import { formatShortcutBinding, isMacPlatform, shortcutMatchesEvent, shouldPreserveApplicationShortcut } from "@/lib/keyboard-shortcuts";
 import { useHarmonyManualControl } from "@/hooks/useHarmonyManualControl";
 import { useHarmonyLiveFrame } from "@/hooks/useHarmonyLiveFrame";
 import { formatHarmonyDeviceLabel } from "@/lib/harmony/device-label";
+import { currentHarmonyResponseSample, normalizeHarmonyResponseSample, type HarmonyResponseSample } from "@/lib/harmony/device-connection";
 import { HarmonyRequestError } from "@/lib/harmony/request-error";
-import { framePointFromClient } from "@/lib/harmony/observation/geometry";
 import { copyText } from "@/lib/clipboard";
 import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
 import { HarmonyCheckPanel } from "./HarmonyCheckPanel";
 import { WorkbenchTools } from "./harmony/WorkbenchTools";
+import { MediaHistory } from "./harmony/MediaHistory";
 import { TcpDeviceConnection } from "./harmony/TcpDeviceConnection";
 import styles from "./HarmonyPanel.module.css";
 
@@ -21,8 +24,10 @@ type RuntimeProfile = "normal" | "device-control";
 type HarmonyDevice = {
   serial: string;
   state: "online" | "unauthorized" | "offline" | "unknown";
+  connectionIssue?: "hdc-channel-not-ready";
   transport?: "usb" | "tcp" | "unknown";
   transportEvidence?: "hdc" | "endpoint" | "unavailable";
+  responseSample?: HarmonyResponseSample;
   name?: string;
   model?: string;
   product?: string;
@@ -39,9 +44,10 @@ type HarmonyState = {
   snapshots: Array<{ serial: string; generation: number; revision: number; capturedAt: string; hasTree: boolean; hasScreenshot: boolean }>;
 };
 type RecordingState = { serial: string; recordingId: string; startedAt: string; ownerId: string };
-type MediaArtifact = { kind: "screenshot" | "recording"; path: string; filename: string; size: number };
+type MediaArtifact = { kind: "screenshot" | "recording"; path: string; filename: string; size: number; serial?: string; createdAt?: string; width?: number; height?: number };
 type MediaNotice = {
   message: string;
+  purpose?: "mirror-initialization";
   artifact?: MediaArtifact;
   copyStatus?: "copying" | "copied" | "failed";
   pathStatus?: "copying" | "copied" | "failed";
@@ -75,8 +81,10 @@ function normalizeDevices(value: unknown): HarmonyDevice[] {
     return [{
       serial,
       state,
+      ...(state === "unknown" && source.connectionIssue === "hdc-channel-not-ready" ? { connectionIssue: source.connectionIssue } : {}),
       transport: source.transport === "usb" || source.transport === "tcp" ? source.transport : "unknown",
       transportEvidence: source.transportEvidence === "hdc" || source.transportEvidence === "endpoint" ? source.transportEvidence : "unavailable",
+      responseSample: normalizeHarmonyResponseSample(source.responseSample),
       ...(optionalString(source.name) ? { name: optionalString(source.name) } : {}),
       ...(optionalString(source.model) ? { model: optionalString(source.model) } : {}),
       ...(optionalString(source.product) ? { product: optionalString(source.product) } : {}),
@@ -191,6 +199,10 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const { locale } = useI18n();
   const chinese = locale === "zh-CN";
   const copy = useCallback((zh: string, en: string) => chinese ? zh : en, [chinese]);
+  const { bindings } = useApplicationShortcuts();
+  const screenshotBinding = bindings["harmony.screenshot"];
+  const screenshotShortcutLabel = formatShortcutBinding(screenshotBinding, isMacPlatform(typeof window === "undefined" ? undefined : window.piDesktop?.platform));
+  const panelRef = useRef<HTMLDivElement>(null);
   const [profile, setProfile] = useState<RuntimeProfile | "web">("web");
   const [devices, setDevices] = useState<HarmonyDevice[]>([]);
   const [managerState, setManagerState] = useState<HarmonyState | null>(null);
@@ -205,26 +217,27 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const [visionModelKey, setVisionModelKey] = useState("");
   const [shareScreenshot, setShareScreenshot] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toolTab, setToolTab] = useState<"apps" | "files" | "commands" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs" | "check">("scenarios");
+  const [toolTab, setToolTab] = useState<"apps" | "files" | "databases" | "commands" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs" | "check">("files");
+  const [databaseSelection, setDatabaseSelection] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [toolsVisited, setToolsVisited] = useState(false);
-  const [textOpen, setTextOpen] = useState(false);
   const drawerId = useId();
   const toolsButtonRef = useRef<HTMLButtonElement>(null);
+  const drawerBodyRef = useRef<HTMLDivElement>(null);
+  const drawerScrollPositions = useRef<Record<string, number>>({});
   const [frameZoom, setFrameZoom] = useState<FrameZoom>("fit");
   const [recordingElapsed, setRecordingElapsed] = useState(0);
   const [diagnostics, setDiagnostics] = useState<unknown>(null);
   const [tree, setTree] = useState<unknown>(null);
-  const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
+  const [screenshotBusy, setScreenshotBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const visibleError = error ?? deviceError;
-  const [frameInteractionError, setFrameInteractionError] = useState<string | null>(null);
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
   const [recording, setRecording] = useState<RecordingState | null>(null);
   const [mediaNotice, setMediaNotice] = useState<MediaNotice | null>(null);
-  const pointerStartRef = useRef<{ x: number; y: number; pointerId: number; geometryId?: string; generation: number; serial: string } | null>(null);
   const frameRef = useRef<HTMLCanvasElement>(null);
   const frameViewportRef = useRef<HTMLDivElement>(null);
   const framePanRef = useRef<{ pointerId: number; startX: number; startY: number; scrollLeft: number; scrollTop: number } | null>(null);
@@ -244,14 +257,23 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const selectedGeneration = selected?.generation;
   const canScreenshot = Boolean(selectedOnline && selected?.capabilities.screenshot);
 
+  useEffect(() => { setDatabaseSelection(""); }, [selectedSerial]);
+
   const holder = managerState?.leases.find((item) => item.serial === selectedSerial);
   const controlStatus = managerState?.controls.find(item => item.serial === selectedSerial)?.status;
   const { lease, ownerId, clearControl, ensureControl, canControl, blocked } = useHarmonyManualControl({
-    active: active && desktopAvailable, serial: selectedSerial, generation: selectedGeneration,
+    active: active && desktopAvailable, serial: selectedSerial,
     online: Boolean(selectedOnline), holder, chinese, controlStatus,
   });
-  const openTools = (tab = toolTab) => { setToolTab(tab); setToolsVisited(true); setToolsOpen(true); setSettingsOpen(false); };
+  const changeToolTab = (tab: typeof toolTab) => {
+    if (toolsOpen && drawerBodyRef.current) drawerScrollPositions.current[`${selectedSerial}:${toolTab}`] = drawerBodyRef.current.scrollTop;
+    setToolTab(tab);
+  };
+  const openTools = (tab = toolTab) => { changeToolTab(tab); setToolsVisited(true); setToolsOpen(true); setSettingsOpen(false); };
   const closeTools = () => { setToolsOpen(false); toolsButtonRef.current?.focus(); };
+  useEffect(() => {
+    if (toolsOpen && drawerBodyRef.current) drawerBodyRef.current.scrollTop = drawerScrollPositions.current[`${selectedSerial}:${toolTab}`] ?? 0;
+  }, [selectedSerial, toolTab, toolsOpen]);
   useEffect(() => {
     if (!toolsOpen) return;
     const tab = ["diagnostics", "inputs", "check"].includes(toolTab) ? "apps" : toolTab;
@@ -273,6 +295,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
     status: frameStatus,
     mode: frameMode,
     error: frameLoadError,
+    fallbackReason: frameFallbackReason,
     refresh: requestFrame,
   } = useHarmonyLiveFrame({
     active: active && desktopAvailable,
@@ -280,13 +303,22 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
     serial: selectedSerial,
     generation: selectedGeneration,
     canvasRef: frameRef,
+    chinese,
     fallbackError: copy("投屏暂不可用，请检查设备授权与 HDC。", "Live view unavailable. Check device authorization and HDC."),
   });
 
   useEffect(() => {
     setFrameSize(liveFrame ? { width: liveFrame.width, height: liveFrame.height } : null);
-    if (liveFrame) setFrameInteractionError(null);
   }, [liveFrame]);
+
+  const currentNativeVideoLive = active && desktopAvailable && selectedOnline
+    && frameMode === "video" && frameStatus === "live"
+    && liveFrame?.serial === selectedSerial && liveFrame?.generation === selectedGeneration;
+  useEffect(() => {
+    if (currentNativeVideoLive && mediaNotice?.purpose === "mirror-initialization") {
+      setMediaNotice(current => current?.purpose === "mirror-initialization" ? null : current);
+    }
+  }, [currentNativeVideoLive, mediaNotice?.purpose]);
 
   const refresh = useCallback(async (signal?: AbortSignal) => {
     if (!desktopAvailable) return;
@@ -413,6 +445,8 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   }, [recording]);
 
   const run = useCallback(async <T,>(operation: () => Promise<T>, after?: (value: T) => void | Promise<void>) => {
+    if (busyRef.current) return undefined;
+    busyRef.current = true;
     setBusy(true);
     try {
       const value = await operation();
@@ -424,6 +458,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       if (operationError instanceof HarmonyRequestError && operationError.controlStatus) void refresh();
       return undefined;
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }, [copy, chinese, refresh]);
@@ -445,9 +480,8 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
     });
   }, [copy, run]);
 
-  const copyMediaArtifact = async (artifact: MediaArtifact) => {
+  const copyMediaArtifact = useCallback(async (artifact: MediaArtifact) => {
     const label = artifact.kind === "screenshot" ? copy("截图", "Screenshot") : copy("录屏文件", "Recording file");
-    openTools("history");
     setMediaNotice({ artifact, copyStatus: "copying", message: copy(`${label}已保存，正在复制…`, `${label} saved. Copying…`) });
     try {
       const writeMedia = window.piDesktop?.clipboard?.copyHarmonyMedia;
@@ -462,7 +496,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         ? { artifact, copyStatus: "failed", message: copy(`${label}已保存，但复制失败，可重试或复制路径。`, `${label} saved, but copying failed. Retry or copy the path.`) }
         : current);
     }
-  };
+  }, [copy]);
 
   const copyMediaPath = async () => {
     const artifact = mediaNotice?.artifact;
@@ -488,15 +522,23 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
     });
   };
 
-  const mediaAction = (mediaActionName: "capture_screenshot" | "start_recording" | "stop_recording") => {
+  const initializeMirror = async () => {
+    const result = await action({ action: "initialize_mirror" });
+    if (result === undefined) return;
+    setMediaNotice({ purpose: "mirror-initialization", message: copy("投屏组件已启动。请在手机点击“开始共享屏幕”并确认系统授权；授权后可点“重连视频流”。", "Capture component started. Tap Start screen sharing on the phone and confirm system consent, then reconnect video.") });
+    requestFrame();
+  };
+
+  const mediaAction = useCallback((mediaActionName: "capture_screenshot" | "start_recording" | "stop_recording") => {
     if (!selectedSerial) return;
-    void run(async () => {
-      const leaseToken = mediaActionName === "start_recording" ? await ensureControl() : undefined;
+    const execute = async () => {
       return jsonRequest<{ artifact?: MediaArtifact; recording?: RecordingState }>("/api/harmony/media", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: mediaActionName, serial: selectedSerial, leaseToken, ownerId }),
+        body: JSON.stringify({ action: mediaActionName, serial: selectedSerial, ownerId,
+          ...(mediaActionName === "stop_recording" && recording?.serial === selectedSerial ? { recordingId: recording.recordingId } : {}) }),
       });
-    }, async (payload) => {
+    };
+    const complete = async (payload: { artifact?: MediaArtifact; recording?: RecordingState }) => {
       if (payload.recording) {
         setRecording(payload.recording);
         setMediaNotice({ message: copy("录屏已开始", "Recording started") });
@@ -504,8 +546,34 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         if (payload.artifact.kind === "recording") setRecording(null);
         await copyMediaArtifact(payload.artifact);
       }
-    });
-  };
+    };
+    if (mediaActionName === "capture_screenshot") {
+      if (screenshotBusy) return;
+      setScreenshotBusy(true);
+      void execute().then(async (payload) => {
+        await complete(payload);
+        setError(null);
+      }).catch((failure) => {
+        setError(messageOf(failure, copy("截图失败", "Screenshot failed"), chinese));
+      }).finally(() => setScreenshotBusy(false));
+    } else {
+      void run(execute, complete);
+    }
+  }, [selectedSerial, recording, ownerId, copyMediaArtifact, screenshotBusy, run, copy, chinese]);
+
+  useEffect(() => {
+    if (!active || !canScreenshot || !screenshotBinding) return;
+    const shortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.repeat || event.isComposing || screenshotBusy || shouldPreserveApplicationShortcut(event.target)) return;
+      if (!shortcutMatchesEvent(event, screenshotBinding, isMacPlatform(window.piDesktop?.platform))) return;
+      if (!panelRef.current?.getClientRects().length) return;
+      if ([...document.querySelectorAll<HTMLElement>('[aria-modal="true"]')].some(dialog => dialog.getClientRects().length > 0)) return;
+      event.preventDefault();
+      mediaAction("capture_screenshot");
+    };
+    document.addEventListener("keydown", shortcut);
+    return () => document.removeEventListener("keydown", shortcut);
+  }, [active, canScreenshot, screenshotBinding, screenshotBusy, mediaAction]);
 
   const stopDevice = () => {
     clearControl();
@@ -536,13 +604,6 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
     return payloadValue;
   }, () => setSettingsOpen(false));
 
-  const imagePoint = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    const canvas = frameRef.current;
-    if (!canvas || !frameSize) return null;
-    const bounds = canvas.getBoundingClientRect();
-    return framePointFromClient(event.clientX, event.clientY, bounds, frameSize.width, frameSize.height);
-  };
-
   const formatRecordingElapsed = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
   const panFrame = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -564,48 +625,60 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
 
   const snapshot = managerState?.snapshots.find((item) => item.serial === selectedSerial);
   const frameMatchesDevice = Boolean(liveFrame && selected && liveFrame.serial === selected.serial && liveFrame.generation === selected.generation);
-  const frameError = frameInteractionError ?? frameLoadError;
+  const frameError = frameLoadError;
   const agentHasControl = holder?.owner.kind === "agent";
-  const canPointControl = Boolean(!busy && canControl && frameStatus === "live" && frameMatchesDevice && liveFrame?.geometryId && selected?.capabilities.tap);
   const runtimeReady = managerState?.runtime.status === "ready";
   const deviceStateLabel = selected?.state === "online"
     ? copy("已连接", "Connected")
     : selected?.state === "unauthorized"
       ? copy("等待手机授权", "Authorization needed")
-      : selected
+      : selected?.state === "offline"
         ? copy("设备离线", "Offline")
-        : copy("未连接", "Not connected");
+        : selected ? copy("连接未确认", "Connection unconfirmed") : copy("未连接", "Not connected");
   const visionModel = visionModels.find((model) => `${model.provider}\u0000${model.modelId}` === visionModelKey);
   const zoomScale = frameZoom === "fit" ? null : Number(frameZoom) / 100;
   const frameCanvasStyle = zoomScale && frameSize
     ? { width: frameSize.width * zoomScale, height: frameSize.height * zoomScale, maxWidth: "none", maxHeight: "none" }
     : undefined;
   const ownsRecording = recording?.ownerId === ownerId;
+  const responseSample = selectedOnline ? currentHarmonyResponseSample(selected?.responseSample) : undefined;
+  const serialSuffix = selected ? devices.some(other => other.serial !== selected.serial && other.serial.slice(-6) === selected.serial.slice(-6)) ? selected.serial : selected.serial.slice(-6) : undefined;
+  const connectionLabel = selected?.transport === "usb" ? "USB" : selected?.transport === "tcp" ? "TCP/Wi-Fi" : copy("连接方式未知", "Unknown transport");
+  const connectionHint = selected?.transportEvidence === "endpoint"
+    ? copy("连接方式根据 IP:端口标识推断，HDC 未直接标注。", "Transport inferred from IP:port; not reported directly by HDC.")
+    : selected?.transportEvidence === "hdc" ? copy("连接方式由 HDC 标注。", "Transport reported by HDC.") : copy("HDC 未给出可核验的连接方式。", "HDC did not provide a verifiable transport.");
 
-  return <div className={styles.root}>
+  return <div ref={panelRef} className={styles.root} data-maximized={maximized}>
     <header className={styles.deviceHeader}>
       <div className={styles.deviceIdentity}>
         <span className={styles.deviceMark}><AliIcon name="mobile" size={15} /></span>
-        <select aria-label={copy("选择设备", "Select device")} value={selectedSerial} onChange={(event) => {
+        <div className={styles.deviceIdentityText}>
+        <select aria-label={copy("选择设备", "Select device")} title={selected ? `${formatHarmonyDeviceLabel(selected)} · ${selected.serial}${selected.osVersion ? ` · ${selected.osVersion}` : ""}` : undefined} value={selectedSerial} onChange={(event) => {
           const nextSerial = event.target.value;
           clearControl();
-          pointerStartRef.current = null;
           setSelectedSerial(nextSerial);
           setTree(null);
           setFrameSize(null);
           setRecording(null);
           setMediaNotice(null);
-          setText("");
-          setTextOpen(false);
           setFrameZoom("fit");
         }}>
           {!devices.length ? <option value="">{copy("没有设备", "No device")}</option> : null}
-          {devices.map((device) => <option key={device.serial} value={device.serial}>{formatHarmonyDeviceLabel(device)}</option>)}
+          {devices.map((device) => {
+            const label = formatHarmonyDeviceLabel(device);
+            const suffix = devices.some(other => other.serial !== device.serial && other.serial.slice(-6) === device.serial.slice(-6)) ? device.serial : device.serial.slice(-6);
+            return <option key={device.serial} value={device.serial}>{label === device.serial ? label : `${label} · ${suffix}`}</option>;
+          })}
         </select>
+        <div className={styles.deviceConnection}>
         <span className={styles.deviceState} data-state={selected?.state ?? "unknown"}><i />{deviceStateLabel}</span>
+        {selected && serialSuffix ? <span title={copy(`设备序列号：${selected.serial}`, `Device serial: ${selected.serial}`)}>{selected.serial === serialSuffix ? serialSuffix : `…${serialSuffix}`}</span> : null}
+        {selected ? <span title={connectionHint}>{connectionLabel}</span> : null}
+        {selectedOnline ? <span title={responseSample ? copy(`最近一次只读参数响应（包含主机 HDC 耗时），采样于 ${new Date(responseSample.sampledAt).toLocaleString()}；不代表视频延迟。`, `Last read-only parameter response (includes host HDC overhead), sampled at ${new Date(responseSample.sampledAt).toLocaleString()}; not video latency.`) : copy("尚无当前可核验的参数响应样本；不会显示旧值或估算延迟。", "No current verified parameter response; stale or estimated latency is not shown.")}>{responseSample ? copy(`响应 ${responseSample.durationMs} ms`, `Response ${responseSample.durationMs} ms`) : copy("响应未确认", "Response unconfirmed")}</span> : null}
+        </div></div>
       </div>
       <div className={styles.toolbarActions}>
-        {onMaximizedChange ? <button className={styles.focusButton} aria-label={maximized ? copy("返回双栏", "Return to split view") : copy("专注投屏", "Focus screen")} type="button" onClick={() => onMaximizedChange(!maximized)} title={maximized ? copy("返回双栏", "Return to split view") : copy("专注投屏", "Focus screen")}>
+        {onMaximizedChange ? <button className={styles.focusButton} aria-label={maximized ? copy("返回双栏", "Return to split view") : toolsOpen ? copy("展开设备工作台", "Expand device workbench") : copy("专注投屏", "Focus screen")} type="button" onClick={() => onMaximizedChange(!maximized)} title={maximized ? copy("返回双栏", "Return to split view") : toolsOpen ? copy("展开设备工作台", "Expand device workbench") : copy("专注投屏", "Focus screen")}>
           <AliIcon name={maximized ? "fullscreen-exit" : "fullscreen"} size={16} />
         </button> : null}
         <button className={styles.iconButton} type="button" onClick={() => { requestFrame(); void refresh(); }} disabled={busy} title={copy("刷新设备", "Refresh devices")} aria-label={copy("刷新设备", "Refresh devices")}><AliIcon name="reload" size={14} /></button>
@@ -691,10 +764,6 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         {controlStatus ? <div className={styles.activityBar} role="status">
           <span>{controlStatus === "stopping" ? copy("正在停止设备操作，请稍候…", "Stopping device operations…") : copy("设备清理尚未确认，暂不能操作或开始录屏", "Device cleanup is unconfirmed. Input and new recordings are paused.")}</span>
           {controlStatus === "recovering" ? <button type="button" onClick={() => openTools("diagnostics")}>{copy("检查并恢复", "Check and recover")}</button> : null}
-        </div> : blocked ? <div className={styles.activityBar} data-agent-control={agentHasControl}>
-          <span><AliIcon name={agentHasControl ? "robot" : "mobile"} size={13} />{agentHasControl ? copy("AI 正在操作", "AI is operating") : copy("其他窗口正在操作", "Another window is operating")}</span>
-          {agentHasControl && onGuideAgent ? <button type="button" onClick={() => onGuideAgent()}>{copy("指导 AI", "Guide AI")}</button> : null}
-          <button type="button" disabled={busy} onClick={() => void run(() => ensureControl(true), () => { void refresh(); })}>{copy("停止并接管", "Stop and take over")}</button>
         </div> : null}
     <div className={styles.deviceArea}>
       <div className={styles.zoomControls}>
@@ -705,9 +774,9 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       <div
         ref={frameViewportRef}
         className={styles.frameViewport}
-        data-pannable={frameZoom !== "fit" && !canPointControl ? "true" : "false"}
+        data-pannable={frameZoom !== "fit" ? "true" : "false"}
         onPointerDown={(event) => {
-          if (frameZoom === "fit" || canPointControl) return;
+          if (frameZoom === "fit") return;
           const viewport = frameViewportRef.current;
           if (!viewport) return;
           framePanRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, scrollLeft: viewport.scrollLeft, scrollTop: viewport.scrollTop };
@@ -717,8 +786,8 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         onPointerUp={(event) => { if (framePanRef.current?.pointerId === event.pointerId) framePanRef.current = null; }}
         onPointerCancel={() => { framePanRef.current = null; }}
       >
-      <div className={styles.frame} data-enabled={canPointControl ? "true" : "false"} data-zoom={frameZoom}>
-        {selectedOnline ? <div className={styles.frameStatus} data-status={frameStatus} aria-live="polite">
+      <div className={styles.frame} data-zoom={frameZoom}>
+        {selectedOnline ? <div className={styles.frameStatus} data-status={frameStatus} data-video-error={frameFallbackReason ?? undefined} aria-live="polite">
           <span />{frameStatus === "error"
             ? frameMode === "frames" ? copy("兼容投屏重试中", "Retrying compatible view") : copy("视频流重连中", "Reconnecting stream")
             : frameStatus === "loading"
@@ -726,41 +795,22 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
               : frameMode === "frames" ? copy("兼容投屏 · 自动刷新", "Compatible view · auto refresh") : copy("实时视频流", "Live video")}
           {frameSize ? ` · ${frameSize.width}×${frameSize.height}` : ""}
         </div> : null}
+        {selectedOnline && frameMode === "frames" && frameStatus === "live" ? <div className={styles.frameVideoActions}>
+          <button className={styles.frameVideoSetup} type="button" onClick={requestFrame}>{copy("重试视频", "Retry video")}</button>
+          <button className={styles.frameVideoSetup} type="button" disabled={!canControl || busy}
+            onClick={() => void initializeMirror()}>{copy("启用实时视频", "Enable live video")}</button>
+          {frameFallbackReason ? <small data-video-fallback-reason title={frameFallbackReason}>{frameFallbackReason}</small> : null}
+        </div> : null}
         {selectedOnline ? <canvas
           ref={frameRef}
           style={frameCanvasStyle}
           role="img"
           aria-label={copy("手机实时视频流", "Live device video stream")}
-          onPointerDown={(event) => {
-            if (!canPointControl) return;
-            const point = imagePoint(event);
-            pointerStartRef.current = point && liveFrame ? { ...point, pointerId: event.pointerId, geometryId: liveFrame.geometryId, generation: liveFrame.generation, serial: selectedSerial } : null;
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }}
-          onPointerCancel={() => { pointerStartRef.current = null; }}
-          onLostPointerCapture={() => { pointerStartRef.current = null; }}
-          onPointerUp={(event) => {
-            const from = pointerStartRef.current;
-            const to = imagePoint(event);
-            pointerStartRef.current = null;
-            if (!from || from.pointerId !== event.pointerId || !to || !canPointControl || !liveFrame || !frameMatchesDevice || from.serial !== selectedSerial || from.generation !== liveFrame.generation || from.geometryId !== liveFrame.geometryId) return;
-            if (!liveFrame.geometryId) {
-              setFrameInteractionError(copy("正在自动校准点击位置，请稍候。", "Calibrating touch coordinates automatically. Please wait."));
-              return;
-            }
-            const distance = Math.hypot(to.x - from.x, to.y - from.y);
-            if (distance > 12 && !selected?.capabilities.swipe) {
-              setFrameInteractionError(copy("当前设备不支持滑动注入。", "This device does not support swipe injection."));
-              return;
-            }
-            void action(distance > 12
-              ? { action: "swipe", fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, durationMs: 300, generation: liveFrame.generation, coordinateSpace: "frame", geometryId: liveFrame.geometryId }
-              : { action: "tap", x: to.x, y: to.y, generation: liveFrame.generation, coordinateSpace: "frame", geometryId: liveFrame.geometryId });
-          }}
         /> : <div className={styles.frameEmpty}>
           <AliIcon name="mobile" size={28} />
-          <strong>{copy("连接一台设备", "Connect a device")}</strong>
-          <span>{copy("实时视频会显示在这里", "The live video stream will appear here")}</span>
+          <strong>{selected?.connectionIssue === "hdc-channel-not-ready" ? copy("调试通信未就绪", "Debugging communication is not ready") : selected?.state === "offline" ? copy("设备已离线", "Device is offline") : selected?.state === "unauthorized" ? copy("等待手机授权", "Waiting for device authorization") : selected ? copy("连接状态未确认", "Connection is unconfirmed") : copy("连接一台设备", "Connect a device")}</strong>
+          <span>{selected?.state === "offline" ? selected.transport === "usb" ? copy("重新连接 USB 并确认手机调试授权，恢复后自动显示画面。", "Reconnect USB and confirm device debugging authorization. The view resumes automatically.") : copy("检查设备网络与 HDC 连接，恢复后自动显示画面。", "Check the device network and HDC connection. The view resumes automatically.")
+            : selected?.state === "unauthorized" ? copy("请在手机上确认调试授权；投屏不会自动解锁设备。", "Confirm debugging authorization on the phone. Mirroring never unlocks the device.") : selected?.connectionIssue === "hdc-channel-not-ready" ? selected.transport === "usb" ? copy("检测到 USB，但手机调试通信尚未建立。请重新插拔 USB，解锁手机并确认调试授权，再刷新设备。", "USB was detected, but debugging communication is not established. Reconnect USB, unlock the phone and confirm authorization, then refresh devices.") : copy("检测到设备，但调试通信尚未建立。请检查设备网络与 HDC 连接，再刷新设备。", "The device was detected, but debugging communication is not established. Check the network and HDC connection, then refresh devices.") : selected ? copy("刷新设备检查连接状态，确认后再查看画面。", "Refresh devices to confirm the connection before viewing.") : copy("实时视频会显示在这里", "The live video stream will appear here")}</span>
           {!runtimeReady ? <button type="button" onClick={() => setSettingsOpen(true)}>{copy("打开设置", "Open settings")}</button> : null}
         </div>}
         {frameError ? <div className={styles.frameError} role="status">{frameError}</div> : null}
@@ -769,58 +819,54 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
     </div>
 
 
-        {textOpen ? <form className={styles.textControl} onSubmit={(event) => { event.preventDefault(); if (text) void action({ action: "input_text", text }).then(result => { if (result !== undefined) setText(""); }); }}>
-          <input autoFocus aria-label={copy("输入到手机", "Type on device")} placeholder={copy("输入文字，回车发送", "Type text and press Enter")} value={text} onChange={event => setText(event.target.value)} />
-          <button className={styles.iconButton} type="submit" disabled={!canControl || !text || busy || !selected?.capabilities.inputText} aria-label={copy("发送到手机", "Send to device")}><AliIcon name="enter" size={14} /></button>
-          <button className={styles.iconButton} type="button" onClick={() => setTextOpen(false)} aria-label={copy("关闭输入", "Close input")}><AliIcon name="close" size={13} /></button>
-        </form> : null}
-        <div className={styles.actionBar}>
-          <div className={styles.keyRow} aria-label={copy("系统按键", "System keys")}>
-            {(["back", "home", "recents"] as const).map((key, index) => <button key={key} type="button" disabled={!canControl || busy || !selected?.capabilities.keys} onClick={() => void action({ action: "press_key", key })} title={(chinese ? ["返回", "主页", "最近任务"] : ["Back", "Home", "Recents"])[index]} aria-label={(chinese ? ["返回", "主页", "最近任务"] : ["Back", "Home", "Recents"])[index]}><AliIcon name={(["arrowleft", "home", "layout"] as const)[index]} size={15} /></button>)}
-            <button type="button" disabled={!canControl || !selected?.capabilities.inputText} aria-pressed={textOpen} aria-label={copy("输入文字", "Type text")} title={copy("输入文字", "Type text")} onClick={() => setTextOpen(open => !open)}><AliIcon name="edit" size={15} /></button>
-          </div>
-          <span className={styles.actionDivider} />
-          <button type="button" disabled={!canScreenshot || busy} onClick={() => mediaAction("capture_screenshot")}><AliIcon name="save" size={15} />{copy("截图", "Screenshot")}</button>
-          {recording ? <button className={styles.recordingButton} type="button" disabled={busy || !ownsRecording} onClick={() => mediaAction("stop_recording")}><AliIcon name="stop" size={15} />{ownsRecording ? copy(`停止录屏 · ${formatRecordingElapsed(recordingElapsed)}`, `Stop recording · ${formatRecordingElapsed(recordingElapsed)}`) : copy("AI 正在录屏", "AI recording")}</button>
-            : <button type="button" aria-label={copy("开始录屏", "Start recording")} disabled={!canControl || busy} onClick={() => mediaAction("start_recording")}><AliIcon name="play" size={15} />{copy("录屏", "Record")}</button>}
-          {lease || holder || busy ? <button className={styles.stopButton} type="button" disabled={!selectedOnline} onClick={stopDevice} aria-label={copy("停止当前设备操作", "Stop this device")} title={copy("停止当前设备操作", "Stop this device")}><AliIcon name="stop" size={15} /></button> : null}
-        </div>
       </div>
-      <section id={drawerId} className={styles.toolDrawer} hidden={!toolsOpen} aria-label={copy("设备工具", "Device tools")} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closeTools(); } }}>
-        <div className={styles.drawerHeading}><strong>{copy("工具", "Tools")}</strong><button className={styles.iconButton} type="button" onClick={closeTools} aria-label={copy("关闭工具", "Close tools")}><AliIcon name="close" size={15} /></button></div>
+      <section id={drawerId} className={styles.toolDrawer} data-tab={toolTab} hidden={!toolsOpen} aria-label={copy("设备工具", "Device tools")} onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); closeTools(); } }}>
+        <div className={styles.drawerHeading}><strong>{copy("工具", "Tools")}</strong><div className={styles.drawerHeadingActions}>
+          {onMaximizedChange ? <button type="button" onClick={() => onMaximizedChange(!maximized)} aria-label={maximized ? copy("返回双栏", "Return to split view") : copy("展开设备工作台", "Expand device workbench")} title={maximized ? copy("返回双栏", "Return to split view") : copy("展开设备工作台", "Expand device workbench")}><AliIcon name={maximized ? "fullscreen-exit" : "fullscreen"} size={14} />{maximized ? copy("还原", "Restore") : copy("展开", "Expand")}</button> : null}
+          <button className={styles.iconButton} type="button" onClick={closeTools} aria-label={copy("关闭工具", "Close tools")}><AliIcon name="close" size={15} /></button>
+        </div></div>
         <div className={styles.drawerTabs} role="tablist" aria-label={copy("设备工具分类", "Device tool categories")}>
-          {(["apps", "files", "commands", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs", "check"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => setToolTab(tab)} onKeyDown={event => {
-            const tabs = ["apps", "files", "commands", "scenarios", "voice", "logs", "history"] as const;
+          {(["apps", "files", "databases", "commands", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs", "check"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => changeToolTab(tab)} onKeyDown={event => {
+            const tabs = ["apps", "files", "databases", "commands", "scenarios", "voice", "logs", "history"] as const;
             const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
-            if (next >= 0) { event.preventDefault(); setToolTab(tabs[next]); document.getElementById(`${drawerId}-${tabs[next]}`)?.focus(); }
-          }}>{(chinese ? ["应用", "文件", "命令", "测试", "语音", "日志", "任务"] : ["Apps", "Files", "Commands", "Tests", "Voice", "Logs", "Tasks"])[index]}</button>)}
+            if (next >= 0) { event.preventDefault(); changeToolTab(tabs[next]); document.getElementById(`${drawerId}-${tabs[next]}`)?.focus(); }
+          }}>{(chinese ? ["应用", "文件", "数据库", "命令", "测试", "语音", "日志", "任务"] : ["Apps", "Files", "Database", "Commands", "Tests", "Voice", "Logs", "Tasks"])[index]}</button>)}
         </div>
-        <div className={styles.drawerBody} id={`${drawerId}-content`} role="tabpanel" aria-label={copy("工具内容", "Tool content")}>
-          {["diagnostics", "inputs", "check"].includes(toolTab) ? <div className={styles.toolTitle}><strong>{toolTab === "diagnostics" ? copy("连接诊断", "Diagnostics") : toolTab === "inputs" ? copy("按键与触摸校准", "Input calibration") : copy("代码检查", "Code checks")}</strong><button type="button" onClick={() => setToolTab("scenarios")}>{copy("返回测试", "Back to tests")}</button></div> : null}
+        <div ref={drawerBodyRef} className={styles.drawerBody} id={`${drawerId}-content`} role="tabpanel" aria-label={copy("工具内容", "Tool content")} onScroll={event => { drawerScrollPositions.current[`${selectedSerial}:${toolTab}`] = event.currentTarget.scrollTop; }}>
+          {["diagnostics", "inputs", "check"].includes(toolTab) ? <div className={styles.toolTitle}><strong>{toolTab === "diagnostics" ? copy("连接诊断", "Diagnostics") : toolTab === "inputs" ? copy("按键与触摸校准", "Input calibration") : copy("代码检查", "Code checks")}</strong><button type="button" onClick={() => changeToolTab("scenarios")}>{copy("返回测试", "Back to tests")}</button></div> : null}
           {toolTab === "history" ? <div className={styles.mediaWorkspace}>
           {mediaNotice ? <div className={styles.mediaNotice} role="status" aria-live="polite">
             <span>{mediaNotice.message}</span>
             {mediaNotice.artifact ? <>
+              {/* The desktop-authenticated image route needs the request headers preserved; Next's optimizer does not forward them. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {mediaNotice.artifact.kind === "screenshot" ? <img className={styles.mediaThumbnail} src={`/api/harmony/media/preview?serial=${encodeURIComponent(mediaNotice.artifact.serial ?? selectedSerial)}&filename=${encodeURIComponent(mediaNotice.artifact.filename)}`} alt={copy("最近保存的设备截图", "Last saved device screenshot")} /> : null}
+              <small>{mediaNotice.artifact.createdAt ? new Date(mediaNotice.artifact.createdAt).toLocaleString() : ""}{mediaNotice.artifact.width && mediaNotice.artifact.height ? ` · ${mediaNotice.artifact.width}×${mediaNotice.artifact.height}` : ""} · {(mediaNotice.artifact.size / 1024).toFixed(1)} KiB</small>
               <div className={styles.mediaPath}>
                 <span>{copy("保存路径", "Saved to")}</span>
                 <code>{mediaNotice.artifact.path}</code>
               </div>
               <div className={styles.mediaNoticeActions}>
+                <button type="button" disabled={!window.piDesktop?.openPath || busy} onClick={() => void run(async () => {
+                  if (!await window.piDesktop?.openPath?.(mediaNotice.artifact!.path)) throw new Error(copy("无法打开媒体文件", "Could not open media file"));
+                })}>{copy("打开文件", "Open file")}</button>
                 <button type="button" disabled={mediaNotice.copyStatus === "copying" || mediaNotice.pathStatus === "copying"} onClick={() => void copyMediaPath()}>
                   <AliIcon name="copy" size={13} />{mediaNotice.pathStatus === "copied" ? copy("路径已复制", "Path copied") : copy("复制路径", "Copy path")}
                 </button>
                 {mediaNotice.copyStatus === "failed" ? <button type="button" disabled={busy || mediaNotice.pathStatus === "copying"} onClick={() => void run(() => copyMediaArtifact(mediaNotice.artifact!))}>{copy("重新复制", "Retry copy")}</button> : null}
                 {mediaNotice.pathStatus === "failed" ? <span>{copy("路径复制失败，请重试", "Could not copy the path. Please retry.")}</span> : null}
+                {mediaNotice.artifact.kind === "screenshot" ? <button type="button" disabled={!canScreenshot || screenshotBusy} onClick={() => mediaAction("capture_screenshot")}>{copy("再截一张", "Capture again")}</button> : null}
               </div>
             </> : null}
-          </div> : <div className={styles.mediaEmpty}>{copy("截图和录屏保存后会显示在这里。", "Saved screenshots and recordings appear here.")}</div>}
+          </div> : null}
+          <MediaHistory serial={selectedSerial} refreshKey={mediaNotice?.artifact?.filename} chinese={chinese} />
 
           </div> : null}
-          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} onOpenLocalTerminal={onOpenLocalTerminal} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
+          {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} onControlHandoff={clearControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} initialDatabaseId={databaseSelection} onOpenDatabase={id => { setDatabaseSelection(id); changeToolTab("databases"); }} onOpenFiles={() => changeToolTab("files")} onShowTasks={() => changeToolTab("history")} onOpenLocalTerminal={onOpenLocalTerminal} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
           {toolTab === "logs" ? <HarmonyLogViewer active={active && toolsOpen} serial={selectedSerial} online={Boolean(selectedOnline)} copy={copy} /> : null}
           {toolTab === "check" ? <HarmonyCheckPanel active={active && toolsOpen} cwd={cwd} onOpenFile={onOpenFile} onGuideAgent={onGuideAgent} /> : null}
           {toolTab === "diagnostics" ? <div className={styles.moreBody}>
-            <button type="button" disabled={!canControl || busy} onClick={() => void action({ action: "initialize_mirror" }).then(result => { if (result !== undefined) requestFrame(); })}>{copy("初始化投屏服务", "Initialize video service")}</button>
+            <button type="button" disabled={!canControl || busy} onClick={() => void initializeMirror()}>{copy("初始化投屏服务", "Initialize video service")}</button>
             <button type="button" disabled={!selectedOnline || busy} onClick={requestFrame}>{copy("重连视频流", "Reconnect video")}</button>
             <button type="button" disabled={!selectedOnline || busy || !selected?.capabilities.uiTree} onClick={() => void run(() => jsonRequest<{ snapshot: unknown }>(`/api/harmony/tree?serial=${encodeURIComponent(selectedSerial)}`), payload => setTree(payload.snapshot))}>{copy("读取界面结构", "Read interface structure")}</button>
             <details className={styles.diagnostics}><summary>{copy("开发者信息", "Developer details")}</summary><pre>{JSON.stringify({ selected, holder, snapshot, diagnostics, tree }, null, 2)}</pre></details>
@@ -829,14 +875,26 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         </div>
       </section>
     </main>
+        {mediaNotice ? <div className={styles.captureNotice} role="status">
+          <span>{mediaNotice.message}</span>
+          {mediaNotice.artifact ? <button type="button" onClick={() => openTools("history")}>{copy("查看路径", "View file")}</button> : null}
+          {mediaNotice.copyStatus === "failed" ? <button type="button" disabled={busy} onClick={() => void run(() => copyMediaArtifact(mediaNotice.artifact!))}>{copy("重新复制", "Retry copy")}</button> : null}
+          <button type="button" aria-label={copy("关闭投屏提示", "Dismiss mirror notice")} onClick={() => setMediaNotice(null)}>×</button>
+        </div> : null}
+        <div className={styles.actionBar}>
+          <button type="button" title={`${copy("截图", "Screenshot")}${screenshotShortcutLabel ? ` · ${screenshotShortcutLabel}` : ""}`} disabled={!canScreenshot || screenshotBusy} onClick={() => mediaAction("capture_screenshot")}><AliIcon name="save" size={15} />{screenshotBusy ? copy("截图中…", "Capturing…") : copy("截图", "Screenshot")}</button>
+          {recording ? <button className={styles.recordingButton} type="button" disabled={busy || !ownsRecording} onClick={() => mediaAction("stop_recording")}><AliIcon name="stop" size={15} />{ownsRecording ? copy(`停止录屏 · ${formatRecordingElapsed(recordingElapsed)}`, `Stop recording · ${formatRecordingElapsed(recordingElapsed)}`) : copy("AI 正在录屏", "AI recording")}</button>
+            : <button type="button" aria-label={copy("开始录屏", "Start recording")} disabled={!canControl || busy} onClick={() => mediaAction("start_recording")}><AliIcon name="play" size={15} />{copy("录屏", "Record")}</button>}
+          {lease || holder || busy ? <button className={styles.stopButton} type="button" disabled={!selectedOnline} onClick={stopDevice} aria-label={copy("停止当前设备操作", "Stop this device")} title={copy("停止当前设备操作", "Stop this device")}><AliIcon name="stop" size={15} /></button> : null}
+        </div>
     <footer className={styles.statusBar}>
-      <span title={copy("锁屏时请手动解锁，投屏不会自动唤醒或解锁。", "Unlock manually. Mirroring never wakes or unlocks your phone.")}>{controlStatus ? controlStatus === "stopping" ? copy("正在停止", "Stopping") : copy("等待恢复", "Recovery required") : blocked ? copy("正在旁观", "Observing") : selectedOnline && frameStatus === "live" && frameMatchesDevice ? selected?.capabilities.tap ? liveFrame?.geometryId ? copy("可直接点击、滑动", "Touch and swipe ready") : copy("正在自动校准点击位置", "Calibrating touch coordinates") : copy("投屏已连接", "Mirror connected") : selectedOnline ? copy("等待实时画面", "Waiting for live view") : sessionRunning ? copy("等待设备连接", "Waiting for a device") : copy("请连接设备", "Connect a device")}</span>
+      <span title={copy("锁屏时请手动解锁，投屏不会自动唤醒或解锁。", "Unlock manually. Mirroring never wakes or unlocks your phone.")}>{controlStatus ? controlStatus === "stopping" ? copy("正在停止", "Stopping") : copy("等待恢复", "Recovery required") : selected?.connectionIssue === "hdc-channel-not-ready" ? copy("等待调试通信", "Waiting for debugging communication") : blocked && !agentHasControl ? copy("其他窗口正在操作", "Another window is operating") : selectedOnline && frameStatus === "live" && frameMatchesDevice ? copy("投屏只读 · 已连接", "View-only mirror connected") : selectedOnline ? copy("等待实时画面", "Waiting for live view") : sessionRunning ? copy("等待设备连接", "Waiting for a device") : copy("请连接设备", "Connect a device")}</span>
       <div className={styles.footerActions}>
       {lease || holder || busy ? <button className={styles.stopButton} type="button" onClick={stopDevice} aria-label={copy("停止设备任务", "Stop device task")} title={copy("停止设备任务", "Stop device task")}><AliIcon name="stop" size={13} /></button> : null}
       <button ref={toolsButtonRef} type="button" aria-expanded={toolsOpen} aria-controls={drawerId} onClick={() => toolsOpen ? closeTools() : openTools()}>{copy("工具", "Tools")}<AliIcon name={toolsOpen ? "arrowdown" : "arrowup"} size={13} /></button>
       </div>
     </footer>
-    {visibleError ? <div className={styles.error} role="alert">{visibleError}<button className={styles.iconButton} type="button" onClick={() => { setError(null); setDeviceError(null); }} aria-label={copy("关闭提示", "Dismiss message")}><AliIcon name="close" size={12} /></button></div> : null}
+    {visibleError ? <div className={styles.error} role="alert"><span>{visibleError}</span><button className={styles.iconButton} type="button" onClick={() => { setError(null); setDeviceError(null); }} aria-label={copy("关闭提示", "Dismiss message")}><AliIcon name="close" size={12} /></button></div> : null}
   </div>;
 }
 

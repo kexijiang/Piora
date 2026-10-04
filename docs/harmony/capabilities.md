@@ -32,12 +32,15 @@
 | `create_directory` | direct | control | Create one device directory without creating parents |
 | `delete_path` | direct | control | Delete one regular device file or empty directory |
 | `rename_path` | direct | control | Rename one device file or directory without overwriting |
+| `copy_path` | direct | control | Copy one regular device file or bounded directory to a new path, verifying contents before publishing |
+| `move_path` | direct | control | Move one regular device file or bounded directory, verifying the destination before removing its source |
 | `chmod_path` | direct | control | Set three-digit octal permissions on one regular device file or directory |
 | `initialize_mirror` | direct | control | Initialize the capture component on request; never unlock |
 | `wait_for` | scenario | read | Wait for a valid semantic observation |
 | `assert` | scenario | read | Assert a valid semantic observation |
 | `wait_idle` | scenario | read | Report driver idle or explicitly bounded delay |
 | `checkpoint` | scenario | read | Persist an explicit execution boundary |
+| `capture_screenshot` | scenario | read | Save a fresh device screenshot as a local execution artifact |
 | `stop_device` | direct | control | Fence and stop only the selected device |
 | `emergency_stop` | direct | control | Fence and stop all devices |
 

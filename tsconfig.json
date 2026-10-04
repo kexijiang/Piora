@@ -45,6 +45,7 @@
     "website-xiaoyi/**",
     "lib/design-to-harmony/fixtures/harmony-flex/**",
     "lib/design-to-harmony/fixtures/harmony-absolute/**",
-    "tests/harmony-fixture/base/**"
+    "tests/harmony-fixture/base/**",
+    "third_party/harmony-mirror/**"
   ]
 }

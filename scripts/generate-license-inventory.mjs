@@ -145,6 +145,10 @@ export function renderLicenseInventory(records, lockfileSha256) {
     "",
     "SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sherpa-onnx 1.13.6. Model weights use the FunASR Model Open Source License Agreement; the toolkit uses MIT and sherpa-onnx uses Apache-2.0. Exact model hashes, upstream attribution, and separate license texts are recorded in [speech provenance](third_party/sensevoice/SOURCE.md) and copied into resources/speech with the native runtime notices.",
     "",
+    "## Harmony device tools and capture source",
+    "",
+    "Bundled HDC uses Apache-2.0, libusb uses LGPL-2.1-or-later, and the capture component uses HongJing's MIT license. See [bundled artifact provenance](third_party/harmony-tools/windows-x64/SOURCE.md). The editable ordinary-permission Piora capture component and retained original copyright notice are in [capture source provenance](third_party/harmony-mirror/SOURCE.md) and [MIT license](third_party/harmony-mirror/LICENSE-HONGJING-MIT.txt). Source preparation does not include signing materials or establish that a release artifact has been replaced.",
+    "",
   ].join("\n");
 }
 

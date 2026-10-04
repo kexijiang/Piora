@@ -27,8 +27,7 @@ export async function POST(request: Request) {
       }
       if (body.action === "takeover") {
         if (body.confirmed !== true) throw new HarmonyError("INVALID_ARGUMENT", "Explicitly confirm stopping the current controller before taking over");
-        const stopped = await manager.stopDevice(body.serial, "manual_takeover");
-        if (stopped.cleanup !== "complete") throw new HarmonyError("DEVICE_BUSY", "Cleanup is uncertain; confirm release on the phone before taking control");
+        await manager.preemptAgentForManual(body.serial);
       }
       const lease = await manager.acquireLease({
         serial: body.serial,

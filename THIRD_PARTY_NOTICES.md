@@ -1,5 +1,14 @@
 # Third-party notices
 
+## Harmony capture component
+
+Piora's ordinary-permission capture component derives native code from
+HongJing, Copyright (c) 2025 qingwei, under the MIT License.
+See [license](third_party/harmony-mirror/LICENSE-HONGJING-MIT.txt) and
+[source provenance and adaptation notes](third_party/harmony-mirror/SOURCE.md).
+The existing bundled HDC, libusb, and legacy capture HAP have their separate
+license notices in `third_party/harmony-tools/windows-x64/`.
+
 ## Ant Design official icons via Alibaba Iconfont
 
 Selected SVG glyphs are sourced from Alibaba Iconfont collection 9402,

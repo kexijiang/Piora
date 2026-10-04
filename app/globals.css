@@ -1815,6 +1815,26 @@ select:focus-visible,
   }
 }
 
+.chat-composer-footer {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.composer-submit-controls {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
 .model-settings-control {
   position: relative;
   min-width: 0;
@@ -1823,7 +1843,8 @@ select:focus-visible,
 
 .model-settings-trigger {
   display: flex;
-  max-width: min(250px, 34vw);
+  min-width: 0;
+  max-width: min(250px, 100%);
   height: 28px;
   align-items: center;
   gap: 6px;

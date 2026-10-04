@@ -5,14 +5,19 @@ import type { HarmonyDoctorReport } from "@/lib/harmony/contracts/capabilities";
 import type { ScenarioExecution } from "@/lib/harmony/scenario/execution-store";
 import { ApplicationPicker } from "./ApplicationPicker";
 import { DeviceFiles } from "./DeviceFiles";
+import { SqliteViewer } from "./SqliteViewer";
 import { DeviceConsole } from "./DeviceConsole";
 import { TransferJobs } from "./TransferJobs";
+import { DatabaseExportJobs } from "./DatabaseExportJobs";
+import { TaskOverview } from "./TaskOverview";
 import { ScenarioWorkbench } from "./ScenarioWorkbench";
+import { ScenarioReportMetadata, ScenarioStepResults } from "./ScenarioStepResults";
 import styles from "../HarmonyPanel.module.css";
 import type { AudioOutput } from "@/lib/harmony/audio/acoustic-provider";
 
-interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string; onCleanupConfirmed?: () => Promise<void>; onOpenLocalTerminal?: () => void }
-export function WorkbenchTools({ serial, canControl, ensureControl, tab, active, chinese, geometryId, cwd, ownerId, onCleanupConfirmed, onOpenLocalTerminal }: Props) {
+interface Props { serial: string; canControl: boolean; ensureControl: () => Promise<string>; onControlHandoff?: () => void; tab: string; active: boolean; chinese: boolean; geometryId?: string; cwd?: string | null; ownerId?: string; onCleanupConfirmed?: () => Promise<void>; onOpenLocalTerminal?: () => void; onOpenDatabase?: (id: string) => void; onOpenFiles?: () => void; onShowTasks?: () => void; initialDatabaseId?: string }
+export function WorkbenchTools({ serial, canControl, ensureControl, onControlHandoff, tab, active, chinese, geometryId, cwd, ownerId, onCleanupConfirmed, onOpenLocalTerminal, onOpenDatabase, onOpenFiles, onShowTasks, initialDatabaseId }: Props) {
+  const [visitedTabs, setVisitedTabs] = useState<string[]>(() => [tab]);
   const [busy, setBusy] = useState(false), [error, setError] = useState<string>();
   const [report, setReport] = useState<HarmonyDoctorReport>(), [history, setHistory] = useState<ScenarioExecution[]>([]);
   const [key, setKey] = useState("volume_down"), [duration, setDuration] = useState(800), [calibration, setCalibration] = useState<string>();
@@ -23,9 +28,47 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
   const [includeTree, setIncludeTree] = useState(false), [includeScreenshot, setIncludeScreenshot] = useState(false);
   const [message, setMessage] = useState<string>();
   const controller = useRef<AbortController | null>(null);
+  const [sandboxTarget, setSandboxTarget] = useState<{ id: number; bundleName: string }>();
+  const sandboxTargetId = useRef(0);
   const copy = (zh: string, en: string) => chinese ? zh : en;
+  const doctorCheckLabel = (name: string) => ({
+    connection: copy("设备连接", "Device connection"),
+    "native-geometry": copy("屏幕尺寸与方向", "Display size and orientation"),
+    "ui-tree": copy("当前界面控件", "Current UI tree"),
+    "video-component": copy("投屏组件安装状态", "Capture component installation"),
+    "screen-unlocked": copy("手机解锁状态", "Phone unlock state"),
+    "package-install-command": copy("应用安装命令", "Package installation command"),
+    "bounded-uinput-protocol": copy("按键与触摸释放协议", "Bounded key and touch protocol"),
+    "deveco-cli": copy("鸿蒙开发工具", "Harmony development tools"),
+    "hdc-selection": copy("当前 HDC 工具", "Selected HDC tool"),
+    "acoustic-routes": copy("音频输出与校准", "Audio output and calibration"),
+    "hypium-worker": copy("自动化执行器", "Automation worker"),
+    "orphaned-video-forwards": copy("遗留视频连接", "Unconfirmed video forwards"),
+    "frame-freshness": copy("画面采集时间", "Frame freshness"),
+    "file-access": copy("文件读取能力", "File access"),
+    "database-snapshot": copy("数据库快照能力", "Database snapshots"),
+  } as Record<string, string>)[name] ?? name;
+  const doctorStatus = (status: string) => ({
+    passed: copy("已验证", "Verified"), failed: copy("检查失败", "Failed"), unknown: copy("尚未验证", "Not verified"),
+    supported: copy("命令可用", "Command available"), unsupported: copy("不支持", "Unsupported"),
+    unavailable: copy("当前不可用", "Unavailable"), "needs-calibration": copy("需要校准", "Needs calibration"),
+    declared: copy("工具声明", "Declared"), probed: copy("已探测", "Probed"), verified: copy("实际验证", "Verified"),
+  } as Record<string, string>)[status] ?? status;
+  const executionStatus = (value: string) => ({ running: copy("执行中", "Running"), passed: copy("已通过", "Passed"),
+    failed: copy("失败", "Failed"), interrupted: copy("待核对", "Needs review"), "not-run": copy("未运行", "Not run") })[value as "running"] ?? value;
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { if (!active) controller.current?.abort(); }, [active]);
+  useEffect(() => { setVisitedTabs(current => current.includes(tab) ? current : [...current, tab]); }, [tab]);
+  useEffect(() => {
+    if (!active || tab !== "history" || !serial) return;
+    const requestController = new AbortController();
+    setHistory([]);
+    void fetch(`/api/harmony/scenario?serial=${encodeURIComponent(serial)}`, { signal: requestController.signal, cache: "no-store" })
+      .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error?.message ?? data.error ?? "Unable to load scenario history"); return data; })
+      .then(data => { if (!requestController.signal.aborted) setHistory(Array.isArray(data.executions) ? data.executions : []); })
+      .catch(failure => { if (!requestController.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); });
+    return () => requestController.abort();
+  }, [active, tab, serial]);
   if (!active || !serial) return null;
   const request = async (path: string, body?: unknown) => {
     const response = await fetch(path, { cache: "no-store", signal: controller.current?.signal,
@@ -43,8 +86,9 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
   return <section className={styles.workbench} aria-label={copy("设备工具内容", "Device workbench")}>
       {error ? <p role="alert">{error}</p> : null}{message ? <p role="status">{message}</p> : null}
       {busy ? <button type="button" onClick={() => { controller.current?.abort(); setMessage(copy("已请求取消；请查看设备释放状态。", "Cancellation requested; check release state.")); }}>{copy("取消本次操作", "Cancel this operation")}</button> : null}
-      <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} canControl={canControl} ensureControl={ensureControl} chinese={chinese} cwd={cwd}/></div>
-      {tab === "files" ? <DeviceFiles serial={serial} chinese={chinese} cwd={cwd} canControl={canControl} ensureControl={ensureControl} /> : null}
+      <div hidden={tab !== "apps"}><ApplicationPicker serial={serial} active={active && tab === "apps"} canControl={canControl} ensureControl={ensureControl} chinese={chinese} cwd={cwd} onOpenSandbox={onOpenFiles ? bundleName => { setSandboxTarget({ id: ++sandboxTargetId.current, bundleName }); onOpenFiles(); } : undefined}/></div>
+      {visitedTabs.includes("files") || tab === "files" ? <div hidden={tab !== "files"}><DeviceFiles serial={serial} initialSandbox={sandboxTarget} chinese={chinese} cwd={cwd} canControl={canControl} ensureControl={ensureControl} onControlHandoff={onControlHandoff} onDatabaseOpen={onOpenDatabase} /></div> : null}
+      {visitedTabs.includes("databases") || tab === "databases" ? <div hidden={tab !== "databases"}><SqliteViewer serial={serial} initialDatabaseId={initialDatabaseId} chinese={chinese} onShowTasks={onShowTasks} /></div> : null}
       <div hidden={tab !== "commands"}><DeviceConsole serial={serial} chinese={chinese} canControl={canControl} ensureControl={ensureControl} onOpenLocalTerminal={onOpenLocalTerminal} visible={active && tab === "commands"} cwd={cwd} /></div>
       <div hidden={tab !== "scenarios"}><ScenarioWorkbench active={tab === "scenarios"} serial={serial} canControl={canControl} ensureControl={ensureControl} cwd={cwd} chinese={chinese}/></div>
       {tab === "diagnostics" ? <>
@@ -52,7 +96,7 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
         <p>{copy("只读检查连接、命令和坐标能力，不自动解锁。已探测不代表真机动作已验证。", "Read-only connection, command and geometry checks. Never unlocks automatically. Probed commands are not verified physical effects.")}</p>
         <details><summary>{copy("恢复清理不确定的设备", "Recover a device with uncertain cleanup")}</summary><p>{copy("先在手机确认所有按键和触摸已松开，录屏已停止。此操作会重新读取现场，记录人工确认，再允许重新取得控制。", "First physically confirm all keys and touch are released and recording is stopped. This rereads the device, records manual confirmation, then allows control to be reacquired.")}</p><button disabled={busy} onClick={() => void run(async () => { await request("/api/harmony/calibration", { action: "confirm_cleanup", serial, released: true, recordingStopped: true }); if (controller.current?.signal.aborted) return; setMessage(copy("设备已恢复，可重新操作或录屏。", "Device recovered. You can control it or start recording.")); await onCleanupConfirmed?.(); })}>{copy("已检查手机并确认释放", "I checked the phone and confirm release")}</button></details>
         <button disabled={busy} onClick={() => void run(async () => setReport((await request(`/api/harmony/capabilities?reprobe=1&serial=${encodeURIComponent(serial)}`)).report))}>{copy("检查设备", "Check device")}</button>
-        {report ? <ul>{report.checks.map(check => <li key={check.name}>{check.name}: {check.status}{check.reason ? ` · ${check.reason}` : ""}</li>)}{report.capabilities.map(capability => <li key={capability.action}><strong>{capability.action}</strong>: {capability.status} · {capability.evidence}<br/><small>{capability.reason}</small></li>)}</ul> : null}
+        {report ? <ul>{report.checks.map(check => <li key={check.name}>{doctorCheckLabel(check.name)}：{doctorStatus(check.status)}{check.reason ? ` · ${check.reason}` : ""}</li>)}{report.capabilities.map(capability => <li key={capability.action}><strong>{capability.action}</strong>：{doctorStatus(capability.status)} · {doctorStatus(capability.evidence)}<br/><small>{capability.reason}</small></li>)}</ul> : null}
       </> : null}
       {tab === "diagnostics" ? <details><summary>{copy("导出支持包", "Export support bundle")}</summary>
         <label><input type="checkbox" checked={includeTree} onChange={event => setIncludeTree(event.target.checked)}/>{copy("包含当前 UI 文本（可能含私聊内容）", "Include current UI text (may include private conversations)")}</label><br/>
@@ -100,14 +144,19 @@ export function WorkbenchTools({ serial, canControl, ensureControl, tab, active,
         {profileId ? <p>{copy("语音配置 ID", "Voice profile ID")}: <code style={{ overflowWrap: "anywhere" }}>{profileId}</code></p> : null}
       </> : null}
       {tab === "history" ? <>
+        <TaskOverview serial={serial} chinese={chinese} />
+        <DatabaseExportJobs serial={serial} chinese={chinese} />
         <TransferJobs serial={serial} scope={{ kind: "shared" }} deviceDirectory="/data/local/tmp" cwd={cwd} selectedFiles={[]} chinese={chinese} canControl={canControl} ensureControl={ensureControl} onDownloadsQueued={() => undefined} historyOnly />
-        <h3>{copy("测试执行记录", "Scenario executions")}</h3>
+        <h3 data-harmony-task-section="scenario">{copy("测试执行记录", "Scenario executions")}</h3>
         <button disabled={busy} onClick={() => void run(async () => setHistory((await request(`/api/harmony/scenario?serial=${encodeURIComponent(serial)}`)).executions))}>{copy("刷新执行记录", "Refresh executions")}</button>
-        <ol>{history.slice(0,20).map(record => <li key={record.id}><strong>{record.status}</strong> · {record.startedAt}<br/>{record.steps.filter(step => step.status === "passed").length}/{record.steps.length} · {record.checkpoint?.name ?? copy("无检查点", "No checkpoint")}
+        <ol>{history.slice(0,20).map(record => <li key={record.id}><strong>{executionStatus(record.status)}</strong> · {new Date(record.startedAt).toLocaleString()}<br/>{record.steps.filter(step => step.status === "passed").length}/{record.steps.length} · {record.checkpoint?.name ?? copy("无检查点", "No checkpoint")}
           {record.status !== "running" && record.checkpoint ? <button disabled={busy || !canControl} onClick={() => void run(async () => { const data = await request("/api/harmony/scenario", { serial, leaseToken: await ensureControl(), resumeExecutionId: record.id }); setMessage(JSON.stringify(data.result)); })}>{copy("重新核对现场并恢复安全步骤", "Recheck state and resume safe steps")}</button> : null}
           {record.status !== "running" ? <button disabled={busy} onClick={() => void run(async () => { await request("/api/harmony/scenario", { action: "remove", executionId: record.id, serial }); setHistory(items => items.filter(item => item.id !== record.id)); })}>{copy("删除此记录及私有输入", "Delete record and private inputs")}</button> : null}
           <button onClick={() => { const blob = new Blob([JSON.stringify(record, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `harmony-${record.id}.json`; anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }}>{copy("导出结果", "Export result")}</button>
-          <details><summary>{copy("步骤结果", "Step results")}</summary><ul>{record.steps.map(step => <li key={step.index}>{step.action}: {step.status}{step.message ? ` · ${step.message}` : ""}</li>)}</ul></details>
+          <details><summary>{copy("步骤结果", "Step results")}</summary>
+            <ScenarioReportMetadata device={record.device} observation={record.finalObservation} observationError={record.finalObservationError} screenshot={record.finalScreenshot} logs={record.logs} serial={serial} chinese={chinese} />
+            <ScenarioStepResults steps={record.steps} serial={serial} chinese={chinese} />
+          </details>
         </li>)}</ol>
       </> : null}
   </section>;

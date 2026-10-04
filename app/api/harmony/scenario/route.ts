@@ -61,6 +61,7 @@ export async function POST(request: Request) {
       throw new HarmonyError("INVALID_ARGUMENT", "policy must be a JSON object when provided");
     }
     const result = await getHarmonyDeviceManager().runScenario({
+      ...(body.clientRunId !== undefined ? { clientRunId: requiredString(body, "clientRunId", 36) } : {}),
       serial: requiredString(body, "serial", 256),
       leaseToken: requiredString(body, "leaseToken", 256),
       steps: body.steps as HarmonyScenarioStep[],
@@ -81,6 +82,17 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   const denied = requireHarmonyAccess(request); if (denied) return denied;
-  try { return noStoreJson({ executions: getHarmonyDeviceManager().listExecutions(new URL(request.url).searchParams.get("serial") ?? undefined) }); }
+  try {
+    const params = new URL(request.url).searchParams;
+    const clientRunId = params.get("clientRunId");
+    const serial = params.get("serial") ?? undefined;
+    if (clientRunId !== null && (!serial || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(clientRunId))) throw new HarmonyError("INVALID_ARGUMENT", "A run UUID and device are required");
+    const manager = getHarmonyDeviceManager();
+    if (clientRunId !== null) {
+      const execution = manager.getExecutionProgress(clientRunId, serial!);
+      return noStoreJson({ executions: execution ? [execution] : [] });
+    }
+    return noStoreJson({ executions: manager.listExecutions(serial) });
+  }
   catch (error) { return harmonyErrorResponse(error); }
 }

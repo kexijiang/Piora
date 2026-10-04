@@ -14,19 +14,62 @@ export interface HarmonySqliteResult {
   views?: string[];
   table?: string;
   columns?: string[];
-  fields?: Array<{ name: string; type: string; notNull: boolean; primaryKey: number }>;
-  indexes?: Array<{ name: string; unique: boolean }>;
+  fields?: Array<{ name: string; type: string; notNull: boolean; primaryKey: number; defaultValue?: string | null; generated?: "virtual" | "stored" }>;
+  indexes?: Array<{
+    name: string; table?: string; unique: boolean; columns?: string[];
+    partial?: boolean; origin?: "created" | "unique" | "primary-key"; definition?: string;
+    keyParts?: Array<{ kind: "column" | "expression" | "rowid"; name?: string; descending: boolean; collation?: string }>;
+  }>;
+  foreignKeys?: Array<{ from: string; table: string; to: string | null }>;
+  definition?: string;
   sql?: string;
   rows?: Array<Array<string | number | null | { blobHex: string; size: number; truncated: boolean }>>;
   offset?: number;
   hasMore?: boolean;
 }
 
-interface SqliteSnapshot { directory: string; path: string; expiresAt: number; inFlight: number; closed: boolean; timer?: ReturnType<typeof setTimeout> }
+export type HarmonySqliteExportOptions = { range: "all" | "page"; offset: number; encoding: "utf-8" | "utf-8-bom" | "utf-16le" };
+
+export function validateHarmonySqliteExportOptions(format: "csv" | "json", options: HarmonySqliteExportOptions): void {
+  if (!options || (options.range !== "all" && options.range !== "page")
+    || !Number.isInteger(options.offset) || options.offset < 0 || options.offset > 10_000
+    || (options.range === "all" && options.offset !== 0)
+    || !["utf-8", "utf-8-bom", "utf-16le"].includes(options.encoding)
+    || (format === "json" && options.encoding !== "utf-8")) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Choose a valid export range, offset and encoding");
+  }
+}
+
+interface SqliteSnapshot { directory: string; path: string; ownerSerial?: string; createdAt: number; readyAt?: number; expiresAt: number; inFlight: number; closed: boolean; timer?: ReturnType<typeof setTimeout> }
 const SNAPSHOT_TTL_MS = 10 * 60_000;
 const MAX_SNAPSHOTS = 8;
 const snapshotStore = globalThis as typeof globalThis & { __pioraHarmonySqliteSnapshots?: Map<string, SqliteSnapshot> };
 const snapshots = snapshotStore.__pioraHarmonySqliteSnapshots ??= new Map<string, SqliteSnapshot>();
+
+export interface HarmonySqliteSnapshotMetadata {
+  active: number;
+  opening: number;
+  expired: number;
+  closed: number;
+  latestActive?: { createdAt: number; readyAt: number; expiresAt: number };
+}
+
+/** Pure local metadata: no database reads, workers, cleanup, paths or snapshot IDs. */
+export function peekHarmonySqliteSnapshotMetadata(serial: string): HarmonySqliteSnapshotMetadata {
+  const now = Date.now();
+  const metadata: HarmonySqliteSnapshotMetadata = { active: 0, opening: 0, expired: 0, closed: 0 };
+  for (const item of snapshots.values()) {
+    if (item.ownerSerial !== serial) continue;
+    if (item.closed) { metadata.closed++; continue; }
+    if (!Number.isFinite(item.expiresAt) || item.expiresAt <= now) { metadata.expired++; continue; }
+    if (!Number.isFinite(item.createdAt) || !Number.isFinite(item.readyAt) || item.readyAt! > now) { metadata.opening++; continue; }
+    metadata.active++;
+    if (!metadata.latestActive || item.createdAt > metadata.latestActive.createdAt) {
+      metadata.latestActive = { createdAt: item.createdAt, readyAt: item.readyAt!, expiresAt: item.expiresAt };
+    }
+  }
+  return metadata;
+}
 
 function workerPath(): string {
   const root = process.env.PIORA_WEB_RUNTIME_ROOT?.trim() || process.cwd();
@@ -53,8 +96,16 @@ async function runSqliteWorker<T>(data: Record<string, unknown>, timeoutMs: numb
     const onAbort = () => { void finish(new HarmonyError("COMMAND_ABORTED", "SQLite operation cancelled")); };
     signal?.addEventListener("abort", onAbort, { once: true });
     if (signal?.aborted) onAbort();
-    worker.once("message", (message: T & { error?: string }) => { void (message.error
-      ? finish(new HarmonyError("INVALID_RESPONSE", `SQLite operation failed: ${message.error}`)) : finish(undefined, message)); });
+    worker.once("message", (message: T & { error?: string; sqlErrorOffset?: unknown }) => {
+      let sqlErrorOffset: number | undefined;
+      if (typeof data.sql === "string" && Number.isInteger(message.sqlErrorOffset) && Number(message.sqlErrorOffset) >= 0
+        && Number(message.sqlErrorOffset) <= Buffer.byteLength(data.sql, "utf8")) {
+        const prefix = Buffer.from(data.sql, "utf8").subarray(0, Number(message.sqlErrorOffset)).toString("utf8");
+        if (Buffer.byteLength(prefix, "utf8") === message.sqlErrorOffset) sqlErrorOffset = prefix.length;
+      }
+      void (message.error ? finish(new HarmonyError("INVALID_RESPONSE", `SQLite operation failed: ${message.error}`,
+        { details: sqlErrorOffset === undefined ? undefined : { sqlErrorOffset } })) : finish(undefined, message));
+    });
     worker.once("error", error => { void finish(new HarmonyError("INVALID_RESPONSE", "SQLite worker failed", { cause: error })); });
     worker.once("exit", code => { if (code !== 0) void finish(new HarmonyError("INVALID_RESPONSE", "SQLite worker exited")); });
   });
@@ -64,8 +115,9 @@ async function inspectCopy(path: string, table: string | undefined, offset: numb
   return runSqliteWorker<HarmonySqliteResult>({ path, table, offset, sql }, 5_000, signal);
 }
 
-async function privateCopy(path: string): Promise<{ directory: string; snapshot: string }> {
-  if (typeof path !== "string" || path.length > 4096 || !isAbsolute(path) || !isExistingFilePathAllowed(path, await getAllowedFileRoots())) {
+async function privateCopy(path: string, trustedDeviceCapture = false): Promise<{ directory: string; snapshot: string }> {
+  if (typeof path !== "string" || path.length > 4096 || !isAbsolute(path)
+    || (!trustedDeviceCapture && !isExistingFilePathAllowed(path, await getAllowedFileRoots()))) {
     throw new HarmonyError("INVALID_ARGUMENT", "Choose an existing database in an allowed workspace");
   }
   const source = await lstat(path);
@@ -110,19 +162,40 @@ async function cleanupSnapshot(id: string, item: SqliteSnapshot): Promise<void> 
 }
 
 /** Freeze an allowed workspace database into a private, read-only inspection session. */
-export async function openHarmonySqliteSnapshot(path: string): Promise<{ id: string; result: HarmonySqliteResult }> {
+async function openSnapshot(path: string, trustedDeviceCapture: boolean, ownerSerial?: string): Promise<{ id: string; result: HarmonySqliteResult }> {
   for (const [id, item] of snapshots) if (item.closed || item.expiresAt <= Date.now()) await cleanupSnapshot(id, item);
   if (snapshots.size >= MAX_SNAPSHOTS) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Close an open database before opening another");
-  const { directory, snapshot } = await privateCopy(path);
+  const { directory, snapshot } = await privateCopy(path, trustedDeviceCapture);
   const id = randomUUID();
-  const item: SqliteSnapshot = { directory, path: snapshot, expiresAt: Date.now() + SNAPSHOT_TTL_MS, inFlight: 0, closed: false };
+  const createdAt = Date.now();
+  const item: SqliteSnapshot = { directory, path: snapshot, ownerSerial, createdAt, expiresAt: createdAt + SNAPSHOT_TTL_MS, inFlight: 0, closed: false };
   snapshots.set(id, item);
   try {
     const result = await readHarmonySqliteSnapshot(id);
-    item.timer = setTimeout(() => { void cleanupSnapshot(id, item); }, SNAPSHOT_TTL_MS);
+    if (item.closed || snapshots.get(id) !== item || item.expiresAt <= Date.now()) throw new HarmonyError("STALE_SNAPSHOT", "Database snapshot expired during validation");
+    item.readyAt = Date.now();
+    item.timer = setTimeout(() => { void cleanupSnapshot(id, item); }, Math.max(0, item.expiresAt - item.readyAt));
     item.timer.unref();
     return { id, result };
   } catch (error) { await cleanupSnapshot(id, item); throw error; }
+}
+
+/** Only call with a private device capture created by the server; never expose its path in an API. */
+export async function openHarmonySqliteTrustedSnapshot(path: string, serial: string) {
+  if (!/^[A-Za-z0-9._:\[\]-]{1,256}$/.test(serial)) throw new HarmonyError("INVALID_ARGUMENT", "Choose a valid device");
+  return openSnapshot(path, true, serial);
+}
+
+/** Freeze an allowed workspace database into a private, read-only inspection session. */
+export async function openHarmonySqliteSnapshot(path: string): Promise<{ id: string; result: HarmonySqliteResult }> {
+  return openSnapshot(path, false);
+}
+
+/** An opaque snapshot ID is only valid in the device or workspace where it was opened. */
+export function assertHarmonySqliteSnapshotOwner(id: string, serial?: string): void {
+  const item = snapshots.get(id);
+  if (!item || item.closed || item.expiresAt <= Date.now()) throw new HarmonyError("STALE_SNAPSHOT", "Database snapshot expired; open it again");
+  if (item.ownerSerial !== serial) throw new HarmonyError("INVALID_ARGUMENT", "Database snapshot belongs to another device or workspace");
 }
 
 export async function readHarmonySqliteSnapshot(id: string, table?: string, offset = 0, sql?: string, signal?: AbortSignal): Promise<HarmonySqliteResult> {
@@ -146,10 +219,12 @@ export async function closeHarmonySqliteSnapshot(id: string): Promise<void> {
 }
 
 /** Produce a bounded file in the private snapshot directory and stream it to the authenticated caller. */
-export async function exportHarmonySqliteSnapshot(id: string, table: string | undefined, sql: string | undefined, format: "csv" | "json", signal?: AbortSignal): Promise<{ stream: Readable; filename: string; size: number }> {
+export async function exportHarmonySqliteSnapshot(id: string, table: string | undefined, sql: string | undefined, format: "csv" | "json", options: HarmonySqliteExportOptions = { range: "all", offset: 0, encoding: "utf-8" }, signal?: AbortSignal): Promise<{ stream: Readable; filename: string; size: number; rows: number }> {
   validateRead(table, 0, sql);
   if (!table && !sql) throw new HarmonyError("INVALID_ARGUMENT", "Choose a table or read-only query to export");
   if (format !== "csv" && format !== "json") throw new HarmonyError("INVALID_ARGUMENT", "Choose CSV or JSON export");
+  validateHarmonySqliteExportOptions(format, options);
+  if (options.range === "page") validateRead(table, options.offset, sql);
   const item = snapshots.get(id);
   if (!item || item.closed || item.expiresAt <= Date.now()) {
     if (item) await cleanupSnapshot(id, item);
@@ -166,14 +241,15 @@ export async function exportHarmonySqliteSnapshot(id: string, table: string | un
     }
   };
   try {
-    const output = await runSqliteWorker<{ bytes: number; rows: number }>({ path: item.path, table, sql, mode: "export", format, outputPath }, 30_000, signal);
+    const output = await runSqliteWorker<{ bytes: number; rows: number }>({ path: item.path, table, sql, mode: "export", format, outputPath,
+      exportRange: options.range, exportOffset: options.offset, encoding: options.encoding }, 30_000, signal);
     if (output.bytes < 1 || output.bytes > 64 * 1024 * 1024 || (await stat(outputPath)).size !== output.bytes) {
       throw new HarmonyError("INVALID_RESPONSE", "Database export size could not be verified");
     }
     const stream = createReadStream(outputPath);
     stream.once("close", () => { void release().catch(() => undefined); });
     handedOff = true;
-    return { stream, filename: `harmony-database-${id.slice(0, 8)}.${format}`, size: output.bytes };
+    return { stream, filename: `harmony-database-${id.slice(0, 8)}.${format}`, size: output.bytes, rows: output.rows };
   } finally { if (!handedOff) await release(); }
 }
 

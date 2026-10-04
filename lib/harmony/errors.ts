@@ -30,6 +30,10 @@ export interface HarmonyErrorOptions {
   retryable?: boolean;
 }
 
+// Route modules and the long-lived device manager may be reloaded separately
+// during development. Keep typed device errors recognizable across reloads.
+const harmonyErrorBrand = Symbol.for("piora.harmony.error");
+
 /**
  * Stable, serialization-safe error surfaced by the Harmony device subsystem.
  * Command arguments and captured device content are deliberately never stored.
@@ -42,6 +46,7 @@ export class HarmonyError extends Error {
   constructor(code: HarmonyErrorCode, message: string, options: HarmonyErrorOptions = {}) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "HarmonyError";
+    Object.defineProperty(this, harmonyErrorBrand, { value: true });
     this.code = code;
     this.details = options.details;
     this.retryable = options.retryable ?? false;
@@ -59,7 +64,9 @@ export class HarmonyError extends Error {
 }
 
 export function isHarmonyError(value: unknown): value is HarmonyError {
-  return value instanceof HarmonyError;
+  return value instanceof HarmonyError || Boolean(value && typeof value === "object"
+    && (value as Record<symbol, unknown>)[harmonyErrorBrand] === true
+    && typeof (value as HarmonyError).toJSON === "function");
 }
 
 export function asHarmonyError(value: unknown): HarmonyError {

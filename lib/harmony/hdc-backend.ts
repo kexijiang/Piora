@@ -5,20 +5,22 @@ import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
 
-import { type CommandExecutor, runCommand } from "./command-runner";
+import { type CommandExecutor, type CommandResult, runCommand } from "./command-runner";
 import { HarmonyError, isHarmonyError } from "./errors";
+import { isHdcChannelNotReadyResponse } from "./device-connection";
 import { readHarmonyConfig, defaultHarmonyConfigPath, resolveHdcPath, type ResolveHdcOptions } from "./runtime";
 import { parseUiObservation } from "./ui-tree";
 import { parseDisplayGeometry, type NativeDisplayGeometry } from "./observation/geometry";
 import { ForwardOwnershipStore } from "./runtime/forward-store";
 import { startOwnedRecording } from "./media/owned-recording";
+import { previewHapArtifact } from "./runtime/hap-preview";
 import { streamHdcLines } from "./log-stream";
 import { capabilitiesFromHelp } from "./capabilities/probes";
 import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
 import { runBoundedHold } from "./input/bounded-hold";
 import { focusedWindowId, windowBundle } from "./observation/window-scope";
 import { parseApplicationLabels, parseBundleList, parseApplicationDetails, type HarmonyApplication } from "./observation/applications";
-import { deviceFileListScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, validateWritableDeviceFilePath, type HarmonyFileScope } from "./device-files";
+import { deviceFileListScript, deviceFileStatScript, parseDeviceFileListing, quoteDeviceShell, validateDeviceFilePath, validateWritableDeviceFilePath, type HarmonyFileScope } from "./device-files";
 import { decodeDeviceText, encodeDeviceText, MAX_DEVICE_TEXT_BYTES, type DeviceTextEncoding, type DeviceTextReadEncoding, type WritableDeviceNewline } from "./device-text";
 import { MAX_DEVICE_TRANSFER_BYTES, deviceTransferTimeoutMs } from "./device-transfer-limits";
 import { assertUnredirectedPath } from "./runtime/path-safety";
@@ -45,11 +47,51 @@ const APP_IDENTIFIER_PATTERN = /^[A-Za-z][A-Za-z0-9_.]{0,255}$/;
 const MAX_LOG_QUERY_LENGTH = 256;
 const MAX_LOG_LINES = 2_000;
 const MIRROR_BUNDLE = "com.ohos.scrcpy.server";
-const MIRROR_ABILITY = "ScrcpyService";
 const MIRROR_DEVICE_PORT = 53_535;
 const MIRROR_MAX_SHORT_EDGE = 1_080;
 const MIRROR_BITRATE = 6_000_000;
 const MIRROR_FRAME_RATE = 30;
+
+function installedMirrorMatches(
+  preview: Awaited<ReturnType<typeof previewHapArtifact>>,
+  installed: HarmonyApplication | undefined,
+): boolean {
+  return preview.versionCode !== undefined
+    && preview.versionName !== undefined
+    && installed?.bundleName === preview.bundleName
+    && installed.versionCode === preview.versionCode
+    && installed.versionName === preview.versionName
+    && installed.abilities?.includes("EntryAbility") === true;
+}
+
+/** The sandbox shell reparses its command and drops script quotes on some HDC versions.
+ * ASCII transport preserves the original script without changing the app sandbox or writing a script file.
+ */
+function protectSandboxShell(args: readonly string[]): readonly string[] {
+  if (args.length !== 6 || args[2] !== "shell" || args[3] !== "-b") return args;
+  return [...args.slice(0, 5), `printf %s ${Buffer.from(args[5], "utf8").toString("base64")} | base64 -d | sh`];
+}
+
+/** HDC may exit zero even when bm/aa rejected the operation. Never publish raw command paths. */
+function requireDeviceReply(result: CommandResult, success: RegExp, operation: string, description: string): void {
+  const reply = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "")
+    .split(/\r?\n/).map(line => operation === "install_package" || operation === "uninstall_package"
+      ? line.replace(/^\s*\[Info\]\s*App (?:install|uninstall) path:[^\r\n]*?(?:,\s*|\s+)msg\s*:\s*/i, "") : line).join("\n");
+  const failed = /\berror\s*:|\bfail(?:ed|ure)?\b|permission denied|\[(?:fail|error)\]/i.test(reply);
+  const signatureRejected = operation === "install_package" && /fail(?:ed)? to verify (?:pkcs7|signature)|signature verification fail|invalid signature/i.test(reply);
+  const deviceErrorCode = reply.match(/\b(?:error\s*code|code)\s*[:=]\s*(\d{1,12})\b/i)?.[1];
+  if (operation === "launch_app" && deviceErrorCode === "10106102") {
+    throw new HarmonyError("SCREEN_LOCKED", "Unlock the phone before launching the application", {
+      details: { operation, dispatchState: "sent", reason: "app-launch-locked", deviceErrorCode },
+    });
+  }
+  if (failed || !success.test(reply)) throw new HarmonyError(failed ? "COMMAND_FAILED" : "INVALID_RESPONSE",
+    signatureRejected ? "The device rejected the HAP signature; use a package signed for this device"
+      : failed ? `The device rejected ${description}` : `The device did not confirm ${description}`, {
+      details: { operation, dispatchState: "sent", ...(signatureRejected ? { reason: "signature-rejected" } : {}),
+        ...(deviceErrorCode ? { deviceErrorCode } : {}) },
+    });
+}
 
 const NO_UITEST_CAPABILITIES: HarmonyCapabilities = {
   uiTree: false,
@@ -117,6 +159,12 @@ function parseDeviceLine(line: string): { serial: string; state: HarmonyDeviceCo
 function cleanOutput(output: Buffer): string | undefined {
   const value = output.toString("utf8").replace(/\0/g, "").trim();
   return value && !/^(unknown|null|undefined)$/i.test(value) ? value.slice(0, 512) : undefined;
+}
+
+export function parseHarmonyScreenLockState(output: string): "locked" | "unlocked" | "unknown" {
+  const matches = [...output.matchAll(/^[ \t]*(?:\*[ \t]*)?screenLocked(?:[ \t]*[:=][ \t]*|[ \t]+)(true|false)\b/gim)];
+  if (matches.length !== 1) return "unknown";
+  return matches[0][1].toLowerCase() === "true" ? "locked" : "unlocked";
 }
 
 function preferredDeviceName(values: Array<string | undefined>, model?: string, product?: string): string | undefined {
@@ -291,6 +339,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private readonly ownedRecordings = new Map<string, { name: string; recording: Awaited<ReturnType<typeof startOwnedRecording>> }>();
   private readonly recordingStarts = new Set<string>();
   private readonly liveScreenshotPaths = new Map<string, { directory: string; localPath: string; remotePath: string }>();
+  private readonly screenshotTails = new Map<string, Promise<void>>();
 
   private readonly forwardStore?: ForwardOwnershipStore;
   private readonly forwards = new Map<number, ReturnType<ForwardOwnershipStore["create"]>>();
@@ -317,7 +366,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private async run(args: readonly string[], operation: string, signal?: AbortSignal, timeoutMs?: number) {
     const result = await this.execute({
       executable: this.hdcPath,
-      args,
+      args: protectSandboxShell(args),
       timeoutMs: timeoutMs ?? this.commandTimeoutMs,
       maxOutputBytes: 4 * 1024 * 1024,
       signal,
@@ -327,10 +376,14 @@ export class HdcBackend implements HarmonyAutomationBackend {
     // Treat that protocol response as an error so taps and pulls cannot report
     // false success. An empty target list is the one expected bracketed status.
     const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "");
+    const channelNotReady = args[0] === "-t" && isHdcChannelNotReadyResponse(output);
+    if (channelNotReady) {
+      this.deviceInfoBySerial.delete(args[1]); this.capabilitiesBySerial.delete(args[1]);
+    }
     if (operation !== "list_devices" && operation !== "list_devices_legacy"
-      && /(?:^|\r?\n)\s*\[(?:Fail|Error|E\d{3,})\]/i.test(output)) {
+      && (channelNotReady || /(?:^|\r?\n)\s*\[(?:Fail|Error|E\d{3,})\]/i.test(output))) {
       throw new HarmonyError("COMMAND_FAILED", "HDC rejected the device command", {
-        details: { operation },
+        details: { operation, ...(channelNotReady ? { reason: "hdc-channel-not-ready" } : {}) },
         retryable: true,
       });
     }
@@ -342,16 +395,20 @@ export class HdcBackend implements HarmonyAutomationBackend {
     return await this.run(["-t", serial, "shell", ...args], operation, signal, timeoutMs);
   }
 
-  private async safeInfo(serial: string, args: readonly string[], signal?: AbortSignal): Promise<string | undefined> {
+  private async safeInfo(serial: string, args: readonly string[], signal?: AbortSignal, onResponse?: (result: CommandResult, value: string) => void, onFailure?: (error: unknown) => void): Promise<string | undefined> {
     try {
-      const value = cleanOutput((await this.shell(serial, args, "device_info", signal)).stdout);
+      const result = await this.shell(serial, args, "device_info", signal);
+      if (result.exitCode !== 0) return undefined;
+      const value = cleanOutput(result.stdout);
       // Device shell utilities can print diagnostics and still exit with zero.
       // Those diagnostics are not device names, models, or versions.
       if (!value || /[\r\n]/.test(value)
         || /(?:not found|not exist|permission denied|invalid (?:argument|parameter)|unknown (?:command|option)|get .* fail|^error\b|^usage:|^\/.*(?:sh|shell):)/i.test(value)) return undefined;
+      onResponse?.(result, value);
       return value;
     } catch (error) {
       if (isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
+      onFailure?.(error);
       return undefined;
     }
   }
@@ -369,7 +426,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
       apps = parseBundleList((await this.shell(serial, ["bm", "dump", "-a"], "application_list", signal)).stdout.toString("utf8"));
     }
     const term = query.toLocaleLowerCase();
-    return apps.filter(app => `${app.bundleName}\n${app.label ?? ""}`.toLocaleLowerCase().includes(term)).slice(0, 200);
+    return apps.filter(app => `${app.bundleName}\n${app.label ?? ""}`.toLocaleLowerCase().includes(term));
   }
 
   async listFiles(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal, offset = 0) {
@@ -378,6 +435,31 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), deviceFileListScript(normalized, offset)];
     const output = (await this.run(args, "list_device_files", signal, 20_000)).stdout;
     return parseDeviceFileListing(output, normalized);
+  }
+
+  async statFile(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal) {
+    validateSerial(serial);
+    const normalized = validateDeviceFilePath(scope, path);
+    if (normalized === "/" || normalized === ".") {
+      await this.listFiles(serial, scope, normalized, signal);
+      return { path: normalized, name: normalized, kind: "directory" as const };
+    }
+    const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), deviceFileStatScript(normalized)];
+    const output = (await this.run(args, "stat_device_file", signal, 10_000)).stdout;
+    const file = parseDeviceFileListing(output, posix.dirname(normalized)).files.find(item => item.path === normalized);
+    if (!file) throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The requested device path could not be verified");
+    return file;
+  }
+
+  async isSqliteFile(serial: string, scope: HarmonyFileScope, path: string, signal?: AbortSignal): Promise<boolean> {
+    validateSerial(serial);
+    const normalized = validateDeviceFilePath(scope, path);
+    const script = `f=${quoteDeviceShell(normalized)}; if [ ! -f "$f" ]; then printf '__PIORA_SQLITE_UNAVAILABLE__'; exit 0; fi; h=$(dd if="$f" bs=15 count=1 2>/dev/null); rc=$?; if [ "$rc" -ne 0 ]; then printf '__PIORA_SQLITE_UNAVAILABLE__'; elif [ "$h" = 'SQLite format 3' ]; then printf '__PIORA_SQLITE_YES__'; else printf '__PIORA_SQLITE_NO__'; fi`;
+    const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script];
+    const output = (await this.run(args, "inspect_device_file_signature", signal, 10_000)).stdout.toString("utf8").trim();
+    if (output.endsWith("__PIORA_SQLITE_YES__")) return true;
+    if (output.endsWith("__PIORA_SQLITE_NO__")) return false;
+    throw new HarmonyError("OBSERVATION_UNAVAILABLE", "Device could not verify the SQLite file signature");
   }
 
   async pullFile(serial: string, scope: HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
@@ -458,9 +540,9 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
-  private async fileShell(serial: string, scope: HarmonyFileScope, script: string, operation: string, signal?: AbortSignal): Promise<string> {
+  private async fileShell(serial: string, scope: HarmonyFileScope, script: string, operation: string, signal?: AbortSignal, timeoutMs?: number): Promise<string> {
     validateSerial(serial);
-    return (await this.run(["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script], operation, signal)).stdout.toString("utf8").trim();
+    return (await this.run(["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script], operation, signal, timeoutMs)).stdout.toString("utf8").trim();
   }
 
   async runShellCommand(serial: string, scope: HarmonyFileScope, command: string, signal?: AbortSignal) {
@@ -472,7 +554,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const marker = `__PIORA_COMMAND_${randomUUID().replaceAll("-", "")}__`;
     const script = `sh -c ${quoteDeviceShell(command)}; code=$?; printf '\\n${marker}%s\\n' "$code"`;
     const result = await this.execute({ executable: this.hdcPath,
-      args: ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script],
+      args: protectSandboxShell(["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : []), script]),
       operation: "manual_device_command", signal, timeoutMs: 15_000, maxOutputBytes: 128 * 1024 });
     const stdout = result.stdout.toString("utf8");
     const at = stdout.lastIndexOf(marker);
@@ -518,6 +600,105 @@ export class HdcBackend implements HarmonyAutomationBackend {
     await this.fileShell(serial, scope, `mv -n ${quoteDeviceShell(source)} ${quoteDeviceShell(target)}`, "device_rename_path", signal);
     if (await this.fileKind(serial, scope, source, signal) !== "missing" || await this.fileKind(serial, scope, target, signal) !== kind) {
       throw new HarmonyError("INVALID_RESPONSE", "Device rename could not be verified", { details: { dispatchState: "sent" } });
+    }
+  }
+
+  async copyPath(serial: string, scope: HarmonyFileScope, path: string, newPath: string, move: boolean, signal?: AbortSignal): Promise<void> {
+    const source = move ? validateWritableDeviceFilePath(scope, path) : validateDeviceFilePath(scope, path);
+    const target = validateWritableDeviceFilePath(scope, newPath);
+    if (source === target) throw new HarmonyError("INVALID_ARGUMENT", "Choose a different destination path");
+    const sourceKind = await this.fileKind(serial, scope, source, signal);
+    if (sourceKind !== "file" && sourceKind !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "Copy and move require a regular file or directory");
+    if (sourceKind === "directory" && target.startsWith(`${source}/`)) throw new HarmonyError("INVALID_ARGUMENT", "A directory cannot be copied or moved into itself");
+    if (await this.fileKind(serial, scope, target, signal) !== "missing") throw new HarmonyError("INVALID_ARGUMENT", "The destination already exists");
+    if (await this.fileKind(serial, scope, posix.dirname(target), signal) !== "directory") throw new HarmonyError("INVALID_ARGUMENT", "The destination directory does not exist");
+    if (sourceKind === "directory") {
+      const inspection = await this.fileShell(serial, scope,
+        `set -o pipefail; p=${quoteDeviceShell(source)}; bad=$(find "$p" ! -type d ! -type f -print -quit 2>/dev/null) || exit 2; if [ -n "$bad" ]; then printf '__PIORA_UNSUPPORTED_ENTRY__'; else find "$p" -print | wc -l; fi`,
+        "device_copy_tree_inspection", signal, 30_000);
+      if (inspection === "__PIORA_UNSUPPORTED_ENTRY__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Directory contains a symlink or special file; copy it separately after review");
+      const entries = Number(inspection);
+      if (!/^\d+$/.test(inspection) || !Number.isSafeInteger(entries) || entries > 10_000) {
+        throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Directory copy is limited to 10000 entries");
+      }
+    }
+    const sizeText = await this.fileShell(serial, scope, sourceKind === "file"
+      ? `stat -c '%s' ${quoteDeviceShell(source)}` : `du -sb ${quoteDeviceShell(source)}`, "device_copy_size", signal, 30_000);
+    const sizeMatch = sourceKind === "file" ? /^(\d+)$/.exec(sizeText) : /^(\d+)\s/.exec(sizeText);
+    const size = sizeMatch ? Number(sizeMatch[1]) : Number.NaN;
+    if (!Number.isSafeInteger(size) || size > 1024 * 1024 * 1024) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device copy and move are limited to at most 1 GiB");
+    }
+    const timeoutMs = size > 256 * 1024 * 1024 ? 30 * 60_000 : Math.max(30_000, this.commandTimeoutMs);
+    const digest = async (candidate: string, digestSignal?: AbortSignal) => {
+      const script = sourceKind === "file" ? `sha256sum ${quoteDeviceShell(candidate)}`
+        : `set -o pipefail; p=${quoteDeviceShell(candidate)}; bad=$(find "$p" ! -type d ! -type f -print -quit 2>/dev/null) || exit 2; if [ -n "$bad" ]; then printf '__PIORA_UNSUPPORTED_ENTRY__'; else tar -C "$p" -cf - -s --mtime @0 --owner 0 --group 0 . | sha256sum; fi`;
+      const output = await this.fileShell(serial, scope, script, "device_copy_hash", digestSignal, timeoutMs);
+      if (output === "__PIORA_UNSUPPORTED_ENTRY__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Directory contains a symlink or special file; copy it separately after review");
+      const match = /^([a-f0-9]{64})\s/i.exec(output);
+      if (!match) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device tar and sha256sum are required to verify the copied content");
+      return match[1].toLowerCase();
+    };
+    const originalHash = await digest(source, signal);
+    const staged = `${target}.piora-copy-${randomUUID()}`;
+    validateWritableDeviceFilePath(scope, staged);
+    let stagedMayExist = false;
+    try {
+      if (await this.fileKind(serial, scope, staged, signal) !== "missing") throw new HarmonyError("INVALID_ARGUMENT", "Temporary destination already exists");
+      stagedMayExist = true;
+      const copied = await this.fileShell(serial, scope,
+        `cp ${sourceKind === "directory" ? "-R " : ""}${quoteDeviceShell(source)} ${quoteDeviceShell(staged)} && printf '__PIORA_COPIED__'`, "device_copy_path", signal, timeoutMs);
+      if (copied !== "__PIORA_COPIED__") throw new HarmonyError("INVALID_RESPONSE", "Device copy did not confirm completion", { details: { dispatchState: "sent" } });
+      if (await this.fileKind(serial, scope, staged, signal) !== sourceKind
+        || await digest(source, signal) !== originalHash || await digest(staged, signal) !== originalHash) {
+        throw new HarmonyError("STALE_SNAPSHOT", "Source changed during copy or destination content differs; no destination was published");
+      }
+      const published = await this.fileShell(serial, scope,
+        `d=${quoteDeviceShell(target)}; s=${quoteDeviceShell(staged)}; if [ -e "$d" ] || [ -L "$d" ]; then printf '__PIORA_EXISTS__'; elif mv -n "$s" "$d"; then printf '__PIORA_PUBLISHED__'; fi`,
+        "device_copy_publish", signal, timeoutMs);
+      if (published === "__PIORA_EXISTS__") throw new HarmonyError("INVALID_ARGUMENT", "The destination appeared while copying; it was not overwritten");
+      if (published !== "__PIORA_PUBLISHED__" || await this.fileKind(serial, scope, staged, signal) !== "missing"
+        || await this.fileKind(serial, scope, target, signal) !== sourceKind || await digest(target, signal) !== originalHash) {
+        throw new HarmonyError("INVALID_RESPONSE", "Device copy result could not be verified", { details: { dispatchState: "sent" } });
+      }
+      if (move && sourceKind === "directory") {
+        const heldSource = `${source}.piora-move-${randomUUID()}`;
+        validateWritableDeviceFilePath(scope, heldSource);
+        if (await this.fileKind(serial, scope, heldSource, signal) !== "missing") throw new HarmonyError("INVALID_ARGUMENT", "Temporary source path already exists");
+        if (await digest(source, signal) !== originalHash) throw new HarmonyError("STALE_SNAPSHOT", "Source changed before moving; verified destination remains as a copy");
+        const held = await this.fileShell(serial, scope,
+          `s=${quoteDeviceShell(source)}; h=${quoteDeviceShell(heldSource)}; if [ -e "$h" ] || [ -L "$h" ]; then printf '__PIORA_EXISTS__'; elif mv -n "$s" "$h"; then printf '__PIORA_HELD__'; fi`,
+          "device_move_hold_source", signal, timeoutMs);
+        if (held !== "__PIORA_HELD__" || await this.fileKind(serial, scope, source, signal) !== "missing"
+          || await this.fileKind(serial, scope, heldSource, signal) !== "directory") {
+          throw new HarmonyError("INVALID_RESPONSE", "Directory move could not safely isolate its source; inspect the source and destination", { details: { dispatchState: "sent" } });
+        }
+        if (await digest(heldSource, signal) !== originalHash) {
+          await this.fileShell(serial, scope,
+            `s=${quoteDeviceShell(source)}; h=${quoteDeviceShell(heldSource)}; if [ ! -e "$s" ] && [ ! -L "$s" ]; then mv -n "$h" "$s"; fi`,
+            "device_move_restore_source", undefined, timeoutMs).catch(() => undefined);
+          throw new HarmonyError("STALE_SNAPSHOT", "Directory changed during move; verified destination remains as a copy; inspect the source before retrying");
+        }
+        const removed = await this.fileShell(serial, scope,
+          `h=${quoteDeviceShell(heldSource)}; rm -r "$h" && printf '__PIORA_REMOVED__'`, "device_move_remove_source", signal, timeoutMs);
+        if (removed !== "__PIORA_REMOVED__" || await this.fileKind(serial, scope, heldSource, signal) !== "missing"
+          || await digest(target, signal) !== originalHash) {
+          throw new HarmonyError("INVALID_RESPONSE", "Destination is verified but source cleanup is incomplete; inspect both directories", { details: { dispatchState: "sent" } });
+        }
+      } else if (move) {
+        const removed = await this.fileShell(serial, scope,
+          `s=${quoteDeviceShell(source)}; h=$(sha256sum "$s" 2>/dev/null); case "$h" in ${originalHash}' '*) rm "$s" && printf '__PIORA_REMOVED__';; *) printf '__PIORA_CHANGED__';; esac`,
+          "device_move_remove_source", signal, timeoutMs);
+        if (removed === "__PIORA_CHANGED__") throw new HarmonyError("STALE_SNAPSHOT", "Source changed before removal; verified destination remains as a copy");
+        if (removed !== "__PIORA_REMOVED__" || await this.fileKind(serial, scope, source, signal) !== "missing"
+          || await digest(target, signal) !== originalHash) {
+          throw new HarmonyError("INVALID_RESPONSE", "Destination was copied, but source removal could not be verified; inspect both paths", { details: { dispatchState: "sent" } });
+        }
+      }
+    } finally {
+      if (stagedMayExist) await this.fileShell(serial, scope,
+        `s=${quoteDeviceShell(staged)}; if [ -d "$s" ] && [ ! -L "$s" ]; then rm -r "$s"; elif [ -f "$s" ] && [ ! -L "$s" ]; then rm "$s"; fi`,
+        "device_copy_cleanup", undefined, 10_000).catch(() => undefined);
     }
   }
 
@@ -637,7 +818,9 @@ export class HdcBackend implements HarmonyAutomationBackend {
         return { serial, state, transport, transportEvidence, capabilities: { ...NO_UITEST_CAPABILITIES, launchApp: false } };
       }
       const cached = this.deviceInfoBySerial.get(serial);
-      if (cached && cached.expiresAt > Date.now()) return { ...cached.device, state, transport, transportEvidence };
+      if (cached && cached.expiresAt > Date.now() && cached.device.transport === transport) return { ...cached.device, state, transport, transportEvidence };
+      let responseSample: BackendDevice["responseSample"];
+      let channelNotReady = false;
       const [model, product, userName, persistedName, deviceName, osVersion, apiVersion, uitestVersion] = await Promise.all([
         this.safeInfo(serial, ["param", "get", "const.product.model"], signal),
         this.safeInfo(serial, ["param", "get", "const.product.name"], signal),
@@ -645,15 +828,26 @@ export class HdcBackend implements HarmonyAutomationBackend {
         this.safeInfo(serial, ["param", "get", "persist.sys.device_name"], signal),
         this.safeInfo(serial, ["param", "get", "const.product.devicename"], signal),
         this.safeInfo(serial, ["param", "get", "const.product.software.version"], signal),
-        this.safeInfo(serial, ["param", "get", "const.ohos.apiversion"], signal),
+        this.safeInfo(serial, ["param", "get", "const.ohos.apiversion"], signal, (result, value) => {
+          if (/^\d+$/.test(value) && Number.isFinite(result.durationMs) && result.durationMs >= 0 && result.durationMs <= 60_000) {
+            responseSample = { durationMs: Math.round(result.durationMs), sampledAt: new Date().toISOString() };
+          }
+        }, error => { if (isHarmonyError(error) && error.details?.reason === "hdc-channel-not-ready") channelNotReady = true; }),
         this.safeInfo(serial, ["uitest", "--version"], signal),
       ]);
+      // Missing parameters or denied optional utilities do not imply an offline
+      // phone. Require an explicit channel error and no successful metadata read.
+      if (channelNotReady && ![model, product, userName, persistedName, deviceName, osVersion, apiVersion, uitestVersion].some(Boolean)) {
+        return { serial, state: "unknown", connectionIssue: "hdc-channel-not-ready", transport, transportEvidence,
+          capabilities: { ...NO_UITEST_CAPABILITIES, launchApp: false } };
+      }
       const capabilities = capabilitiesForUiTest(uitestVersion);
       this.capabilitiesBySerial.set(serial, capabilities);
       const deviceInfo: Omit<BackendDevice, "state"> = {
         serial,
         transport,
         transportEvidence,
+        responseSample,
         model,
         product,
         name: preferredDeviceName([userName, persistedName, deviceName], model, product),
@@ -692,7 +886,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const check = (name: string, known: boolean, reason: string) => ({ name, status: known ? "passed" as const : "unknown" as const, reason });
     return { hdcVersion: version.trim().split(/\r?\n/)[0]?.slice(0, 160), checks: [
       check("video-component", mirror.includes(MIRROR_BUNDLE) && !/not found|not exist|failed/i.test(mirror), "Package presence only; video connection and initialization are separate"),
-      check("screen-unlocked", /screenLocked\s*[:=]\s*false/i.test(lock) && !/screenLocked\s*[:=]\s*true/i.test(lock), "Read-only lock inspection; unlock manually if required"),
+      check("screen-unlocked", parseHarmonyScreenLockState(lock) === "unlocked", "Read-only lock inspection; unlock manually if required"),
       check("package-install-command", /\binstall\b/.test(install), "Help availability only; installation may still be denied by the device"),
       check("bounded-uinput-protocol", ["--down", "--up", "--interval"].every(token => uinput.includes(token)), "Help evidence only; physical key/touch behavior requires calibration"),
     ] };
@@ -848,6 +1042,23 @@ export class HdcBackend implements HarmonyAutomationBackend {
   }
 
   private async captureScreen(serial: string, signal?: AbortSignal): Promise<HarmonyScreenshot> {
+    // Passive frame polling and a user screenshot share one HDC temporary path.
+    // Serialize only that path, leaving video and device input free to continue.
+    const previous = this.screenshotTails.get(serial) ?? Promise.resolve();
+    let release!: () => void;
+    const tail = new Promise<void>((resolve) => { release = resolve; });
+    this.screenshotTails.set(serial, tail);
+    try {
+      await previous;
+      if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Screenshot capture was cancelled");
+      return await this.captureScreenNow(serial, signal);
+    } finally {
+      release();
+      if (this.screenshotTails.get(serial) === tail) this.screenshotTails.delete(serial);
+    }
+  }
+
+  private async captureScreenNow(serial: string, signal?: AbortSignal): Promise<HarmonyScreenshot> {
     let paths = this.liveScreenshotPaths.get(serial);
     if (!paths) {
       const directory = await mkdtemp(join(tmpdir(), "piora-harmony-live-"));
@@ -859,18 +1070,27 @@ export class HdcBackend implements HarmonyAutomationBackend {
       this.liveScreenshotPaths.set(serial, paths);
     }
     await rm(paths.localPath, { force: true }).catch(() => undefined);
-    await this.shell(serial, ["uitest", "screenCap", "-p", paths.remotePath], "screen_capture", signal);
-    await this.run(["-t", serial, "file", "recv", paths.remotePath, paths.localPath], "screenshot_pull", signal, 20_000);
-    const info = await stat(paths.localPath);
-    if (info.size <= 0 || info.size > MAX_SCREENSHOT_BYTES) {
-      throw new HarmonyError("INVALID_RESPONSE", "Harmony screenshot file has an invalid size", {
-        details: { size: info.size, maxBytes: MAX_SCREENSHOT_BYTES },
-      });
+    try {
+      await this.shell(serial, ["uitest", "screenCap", "-p", paths.remotePath], "screen_capture", signal);
+      await this.run(["-t", serial, "file", "recv", paths.remotePath, paths.localPath], "screenshot_pull", signal, 20_000);
+      const info = await stat(paths.localPath);
+      if (info.size <= 0 || info.size > MAX_SCREENSHOT_BYTES) {
+        throw new HarmonyError("INVALID_RESPONSE", "Harmony screenshot file has an invalid size", {
+          details: { size: info.size, maxBytes: MAX_SCREENSHOT_BYTES },
+        });
+      }
+      return parsePng(await readFile(paths.localPath));
+    } finally {
+      // Keep cleanup inside the per-device capture queue, using its own bounded
+      // command even after caller cancellation. Decoded bytes need no staging file.
+      await Promise.allSettled([
+        this.shell(serial, ["rm", "-f", paths.remotePath], "screenshot_cleanup", undefined, 3_000),
+        rm(paths.localPath, { force: true }),
+      ]);
     }
-    return parsePng(await readFile(paths.localPath));
   }
 
-  async startRecording(serial: string, remoteName: string, signal?: AbortSignal): Promise<void> {
+  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<void> {
     validateSerial(serial);
     if (!/^piora-recording-[0-9A-Za-z-]{8,96}\.mp4$/.test(remoteName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony recording name");
     if (this.ownedRecordings.has(serial) || this.recordingStarts.has(serial)) throw new HarmonyError("DEVICE_BUSY", "This runtime already owns a recording on the device");
@@ -878,7 +1098,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     let connection: HarmonyVideoConnection | undefined;
     try {
       connection = await this.openVideoStream(serial, signal);
-      const recording = await startOwnedRecording(connection, signal);
+      const recording = await startOwnedRecording(connection, signal, onFailure);
       this.ownedRecordings.set(serial, { name: remoteName, recording });
     } catch (error) {
       try { await connection?.close(); }
@@ -921,9 +1141,10 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private async requireUnlockedScreen(serial: string, signal?: AbortSignal): Promise<void> {
     const result = await this.shell(serial, ["hidumper", "-s", "ScreenlockService", "-a", "-all"], "screen_lock_state", signal, 8_000);
     const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
-    if (!/screenLocked\s*[:=]\s*false/i.test(output) || /screenLocked\s*[:=]\s*true/i.test(output)) {
+    const lockState = parseHarmonyScreenLockState(output);
+    if (lockState !== "unlocked") {
       throw new HarmonyError("SCREEN_LOCKED", "Unlock the phone yourself before starting screen mirroring; Piora never wakes or unlocks it automatically", {
-        details: { reason: /screenLocked\s*[:=]\s*true/i.test(output) ? "locked" : "lock-state-unknown" },
+        details: { reason: lockState === "locked" ? "locked" : "lock-state-unknown" },
       });
     }
   }
@@ -932,7 +1153,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const result = await this.shell(serial, ["bm", "dump", "-n", MIRROR_BUNDLE], "mirror_server_check", signal, 8_000);
     const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "");
     if (!output.includes(MIRROR_BUNDLE) || /(?:not\s+exist|not\s+found|failed)/i.test(output)) {
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Initialize the phone video component in the Harmony workbench; passive viewing never installs it");
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Initialize the phone video component in the Harmony workbench; passive viewing never installs it", { details: { reason: "mirror-component-missing" } });
     }
     await this.requireUnlockedScreen(serial, signal);
   }
@@ -940,15 +1161,37 @@ export class HdcBackend implements HarmonyAutomationBackend {
   async initializeMirror(serial: string, hapPath: string, signal?: AbortSignal): Promise<void> {
     validateSerial(serial);
     await this.requireUnlockedScreen(serial, signal);
-    await this.installPackage(serial, hapPath, true, signal);
-    await this.requireUnlockedScreen(serial, signal);
-    await this.shell(
-      serial,
-      ["aa", "start", "-b", MIRROR_BUNDLE, "-a", MIRROR_ABILITY],
-      "mirror_server_start",
-      signal,
-      20_000,
-    );
+    const preview = await previewHapArtifact(hapPath, signal);
+    if (preview.bundleName !== MIRROR_BUNDLE || !preview.abilities.includes("EntryAbility")
+      || preview.versionCode === undefined || preview.versionName === undefined) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The capture package has no supported foreground entry", { details: { reason: "mirror-package-invalid", dispatchState: "not-sent" } });
+    }
+
+    let installed: HarmonyApplication | undefined;
+    try {
+      [installed] = await this.applications(serial, "", MIRROR_BUNDLE, signal);
+    } catch (error) {
+      if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
+      // A missing package is reported differently across HDC versions. Treat an
+      // unreadable pre-install dump as absent, then require an exact reread.
+    }
+
+    if (!installedMirrorMatches(preview, installed)) {
+      await this.installPackage(serial, hapPath, true, signal);
+      try {
+        [installed] = await this.applications(serial, "", MIRROR_BUNDLE, signal);
+      } catch (cause) {
+        if (signal?.aborted || isHarmonyError(cause) && cause.code === "COMMAND_ABORTED") throw cause;
+        throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The installed capture component could not be verified", {
+          cause,
+          details: { reason: "mirror-installation-unverified", dispatchState: "sent" },
+        });
+      }
+    }
+    if (!installedMirrorMatches(preview, installed)) {
+      throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The installed capture component could not be verified", { details: { reason: "mirror-installation-unverified", dispatchState: "sent" } });
+    }
+    await this.launchApp(serial, MIRROR_BUNDLE, "EntryAbility", signal);
   }
 
   private async createMirrorForward(serial: string, signal?: AbortSignal): Promise<number> {
@@ -1004,6 +1247,10 @@ export class HdcBackend implements HarmonyAutomationBackend {
         }
       }
       if (!socket) throw lastError ?? new Error("Harmony video service is unavailable");
+      if (signal?.aborted) {
+        socket.destroy();
+        throw new Error("Harmony video connection was cancelled");
+      }
     } catch (error) {
       await this.removeMirrorForward(serial, localPort);
       throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Unable to connect to the Harmony video service", {
@@ -1014,6 +1261,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
     const videoSocket = socket;
     videoSocket.write(encodeMirrorVideoParameters());
+    // A new subscriber needs an IDR from the already-consented encoder.
+    videoSocket.write(encodeMirrorPacket(0x10, Buffer.from([0x43])));
     const heartbeat = setInterval(() => {
       if (!videoSocket.destroyed && videoSocket.writable) videoSocket.write(encodeMirrorHeartbeat());
     }, 2_000);
@@ -1261,7 +1510,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
     const args = ["aa", "start", "-b", bundleName];
     if (abilityName) args.push("-a", abilityName);
-    await this.shell(serial, args, "launch_app", signal);
+    const result = await this.shell(serial, args, "launch_app", signal);
+    requireDeviceReply(result, /^\s*start ability successfully\.?\s*$/im, "launch_app", "starting the application");
   }
 
   async installPackage(serial: string, hapPathValue: string, replace = true, signal?: AbortSignal): Promise<void> {
@@ -1277,10 +1527,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
       throw new HarmonyError("INVALID_ARGUMENT", "The HAP package is invalid or exceeds the installation limit");
     }
     const result = await this.run(["-t", serial, "install", ...(replace ? ["-r"] : []), hapPath], "install_package", signal, 120_000);
-    const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
-    if (/(?:install\s+fail|failure\[|permission denied)/i.test(output)) {
-      throw new HarmonyError("COMMAND_FAILED", "Harmony package installation failed", { retryable: true, details: { operation: "install_package" } });
-    }
+    requireDeviceReply(result, /^\s*install bundle successfully\.?\s*$/im, "install_package", "installing the package");
   }
 
   async stopApp(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
@@ -1290,21 +1537,20 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
   async clearAppData(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
-    await this.shell(serial, ["bm", "clean", "-d", "-n", bundleName], "clear_app_data", signal, 30_000);
+    const result = await this.shell(serial, ["bm", "clean", "-d", "-n", bundleName], "clear_app_data", signal, 30_000);
+    requireDeviceReply(result, /^\s*clean bundle data files successfully\.?\s*$/im, "clear_app_data", "clearing the app data");
   }
 
   async clearAppCache(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
     const result = await this.shell(serial, ["bm", "clean", "-c", "-n", bundleName], "clear_app_cache", signal, 30_000);
-    const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
-    if (!/clean bundle data files successfully/i.test(output)) {
-      throw new HarmonyError("INVALID_RESPONSE", "The device did not confirm clearing the app cache", { details: { dispatchState: "sent" } });
-    }
+    requireDeviceReply(result, /^\s*clean bundle cache files successfully\.?\s*$/im, "clear_app_cache", "clearing the app cache");
   }
 
   async uninstallPackage(serial: string, bundleName: string, signal?: AbortSignal): Promise<void> {
     if (!APP_IDENTIFIER_PATTERN.test(bundleName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony bundle name");
-    await this.run(["-t", serial, "uninstall", bundleName], "uninstall_package", signal, 120_000);
+    const result = await this.run(["-t", serial, "uninstall", bundleName], "uninstall_package", signal, 120_000);
+    requireDeviceReply(result, /^\s*uninstall bundle successfully\.?\s*$/im, "uninstall_package", "uninstalling the package");
   }
 
   async setAppEnabled(serial: string, bundleName: string, enabled: boolean, signal?: AbortSignal): Promise<void> {

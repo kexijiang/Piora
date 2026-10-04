@@ -128,7 +128,7 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
         break;
       }
       case "install_app":
-        result = await manager.installPackage({ ...common, hapPath: requiredString(body, "hapPath", 4096), replace: body.replace === undefined ? true : body.replace as boolean });
+        result = await manager.installPackage({ ...common, hapPath: requiredString(body, "hapPath", 4096), replace: body.replace === undefined ? true : body.replace as boolean, expectedHash: body.expectedHash as string | undefined });
         break;
       case "upload_file": {
         const kind = body.kind as "shared" | "sandbox";
@@ -139,12 +139,15 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
       case "create_directory":
       case "delete_path":
       case "rename_path":
+      case "copy_path":
+      case "move_path":
       case "chmod_path": {
         const scope = body.kind === "shared" ? { kind: "shared" as const } : { kind: "sandbox" as const, bundleName: requiredString(body, "bundleName", 256) };
         const path = requiredString(body, "path", 4096);
         if (body.action === "create_directory") result = await manager.createDirectory({ ...common, scope, path });
         else if (body.action === "delete_path") result = await manager.deletePath({ ...common, scope, path });
         else if (body.action === "rename_path") result = await manager.renamePath({ ...common, scope, path, newPath: requiredString(body, "newPath", 4096) });
+        else if (body.action === "copy_path" || body.action === "move_path") result = await manager.copyPath({ ...common, scope, path, newPath: requiredString(body, "newPath", 4096), move: body.action === "move_path" });
         else result = await manager.chmodPath({ ...common, scope, path, mode: requiredString(body, "mode", 3) });
         break;
       }

@@ -95,8 +95,8 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.snapshot(serial, options);
   }
 
-  async startRecording(serial: string, remoteName: string, signal?: AbortSignal): Promise<void> {
-    await this.hdc.startRecording(serial, remoteName, signal);
+  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<void> {
+    await this.hdc.startRecording(serial, remoteName, signal, onFailure);
   }
 
   async stopRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {
@@ -184,6 +184,14 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.listFiles(serial, scope, path, signal, offset);
   }
 
+  async statFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    return await this.hdc.statFile(serial, scope, path, signal);
+  }
+
+  async isSqliteFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal) {
+    return await this.hdc.isSqliteFile(serial, scope, path, signal);
+  }
+
   async pullFile(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal) {
     return await this.hdc.pullFile(serial, scope, path, destinationPath, signal);
   }
@@ -202,6 +210,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
 
   async renamePath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal) {
     await this.hdc.renamePath(serial, scope, path, newPath, signal);
+  }
+
+  async copyPath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, move: boolean, signal?: AbortSignal) {
+    await this.hdc.copyPath(serial, scope, path, newPath, move, signal);
   }
 
   async chmodPath(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, mode: string, signal?: AbortSignal) {

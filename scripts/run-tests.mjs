@@ -11,6 +11,15 @@ const child = spawn(process.execPath, [
   "lib/*.test.mjs",
   "lib/i18n/*.test.mjs",
   "services/git-oauth/*.test.mjs",
+  // Native lifecycle/transport helpers execute with the real host compiler;
+  // keep these explicit so new device-source regressions are covered by CI.
+  "scripts/harmony-native-encoder-lifecycle.test.mjs",
+  "scripts/harmony-capture-background.test.mjs",
+  "scripts/harmony-capture-session.test.mjs",
+  "scripts/prepare-harmony-mirror.test.mjs",
+  "scripts/harmony-mirror-provenance.test.mjs",
+  "scripts/harmony-mirror-release.test.mjs",
+  "scripts/verify-harmony-mirror-device.test.mjs",
 ], { stdio: "inherit", windowsHide: true });
 
 child.once("error", error => {

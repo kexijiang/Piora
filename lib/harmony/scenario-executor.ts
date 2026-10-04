@@ -6,6 +6,7 @@ import { requireValidObservation } from "./observation/quality";
 import { findHarmonyNodes, harmonyNodeCenter, resolveHarmonyNode, validateHarmonySelector } from "./selector";
 import type {
   HarmonyAutomationBackend,
+  HarmonyMediaArtifact,
   HarmonyScenarioOptions,
   HarmonyScenarioPolicy,
   HarmonyScenarioResult,
@@ -32,6 +33,8 @@ export interface HarmonyScenarioExecutorContext {
   signal: AbortSignal;
   now?: () => number;
   capture(options: { includeTree: boolean; includeScreenshot: boolean }, signal?: AbortSignal): Promise<HarmonySnapshot>;
+  captureScreenshot?(signal: AbortSignal): Promise<HarmonyMediaArtifact>;
+  saveScreenshot?(snapshot: HarmonySnapshot): Promise<HarmonyMediaArtifact>;
   invalidateSnapshot(): void;
   beforeStep?(): void;
   scrollBudget?: { remaining: number };
@@ -130,10 +133,14 @@ function normalizePolicy(policy: HarmonyScenarioPolicy | undefined): Required<Ha
     defaultIntervalMs: bounded(policy?.defaultIntervalMs, 250, 100, 5_000, "policy.defaultIntervalMs"),
     settleAfterAction: optionalScenarioBoolean(policy?.settleAfterAction, "policy.settleAfterAction") ?? true,
     captureFinalScreenshot: optionalScenarioBoolean(policy?.captureFinalScreenshot, "policy.captureFinalScreenshot") ?? false,
+    collectLogs: optionalScenarioBoolean(policy?.collectLogs, "policy.collectLogs") ?? false,
   };
 }
 
 export function validateHarmonyScenario(options: HarmonyScenarioOptions): void {
+  if (options.clientRunId !== undefined && (typeof options.clientRunId !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(options.clientRunId))) {
+    throw new HarmonyError("INVALID_ARGUMENT", "clientRunId must be a UUID");
+  }
   if (!Array.isArray(options.steps) || options.steps.length < 1 || options.steps.length > MAX_SCENARIO_STEPS) {
     throw new HarmonyError("INVALID_ARGUMENT", `A Harmony scenario requires between 1 and ${MAX_SCENARIO_STEPS} steps`);
   }
@@ -206,6 +213,8 @@ export function validateHarmonyScenario(options: HarmonyScenarioOptions): void {
       const idleMs = bounded(step.idleMs as number | undefined, 250, 50, 10_000, `${prefix}.idleMs`);
       bounded(step.timeoutMs as number | undefined, 5_000, idleMs, 60_000, `${prefix}.timeoutMs`);
     } else if (step.action === "checkpoint") {
+      requiredScenarioString(step.name, `${prefix}.name`, 120);
+    } else if (step.action === "capture_screenshot" && step.name !== undefined) {
       requiredScenarioString(step.name, `${prefix}.name`, 120);
     }
   }
@@ -327,6 +336,11 @@ async function executeStep(
     return context.compound(step, context.signal);
   }
   if (step.action === "checkpoint") return "checkpoint";
+  if (step.action === "capture_screenshot") {
+    if (!context.captureScreenshot) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "This scenario runtime cannot save screenshot artifacts", { details: { dispatchState: "not-sent" } });
+    await context.captureScreenshot(context.signal);
+    return "captured_device_screenshot";
+  }
   if (step.action === "wait_for") {
     await waitFor(context, step.condition, policy);
     return "semantic_wait";
@@ -435,12 +449,14 @@ export async function runHarmonyScenario(
 
   try {
     for (const [index, step] of options.steps.entries()) {
+      const label = step.action === "capture_screenshot" ? step.name : undefined;
       if (now() - started > MAX_SCENARIO_TIMEOUT_MS) {
         results.push({ index, ...(step.id ? { id: step.id } : {}), action: step.action, status: "failed", durationMs: 0, message: "Scenario time limit exceeded" });
         break;
       }
       const stepStarted = now();
       let dispatched = false;
+      let screenshot: HarmonyMediaArtifact | undefined;
       const writes = new Set(["tap", "doubleTap", "longPress", "swipe", "fling", "drag", "semanticAction", "inputText", "pressKey", "launchApp", "stopApp", "clearAppData", "installPackage", "uninstallPackage"]);
       const receipt = (state: "not-sent" | "sent" | "unknown", verification: "passed" | "failed" | "not-run") => ({
         action: step.action, dispatchState: state, effect: state === "not-sent" ? "not-applied" as const : "unknown" as const,
@@ -453,16 +469,20 @@ export async function runHarmonyScenario(
         return (...args: unknown[]) => { if (writes.has(String(key))) dispatched = true; return value.apply(target, args); };
       } });
       try {
-        await context.onStep?.({ index, id: step.id, action: step.action, status: "running", durationMs: 0, receipt: receipt("unknown", "not-run") });
+        await context.onStep?.({ index, id: step.id, action: step.action, ...(label ? { label } : {}), status: "running", durationMs: 0, receipt: receipt("unknown", "not-run") });
         if (step.action === "voice_input") dispatched = true;
-        const strategy = await executeStep({ ...executionContext, backend }, step, policy);
+        const strategy = await executeStep({ ...executionContext, backend, ...(executionContext.captureScreenshot ? {
+          captureScreenshot: async (signal: AbortSignal) => { screenshot = await executionContext.captureScreenshot!(signal); return screenshot; },
+        } : {}) }, step, policy);
         if (step.action === "checkpoint") checkpoint = { name: step.name, stepIndex: index };
         results.push({
           index,
           ...(step.id ? { id: step.id } : {}),
           action: step.action,
           status: "passed",
-          receipt: receipt(dispatched ? "sent" : "not-sent", ["assert", "wait_for", "geometry_assert", "voice_input", "input_text", "clear_text"].includes(step.action) || ("waitFor" in step && step.waitFor) ? "passed" : "not-run"),
+          ...(label ? { label } : {}),
+          ...(screenshot ? { screenshot } : {}),
+          receipt: receipt(dispatched ? "sent" : "not-sent", ["capture_screenshot", "assert", "wait_for", "geometry_assert", "voice_input", "input_text", "clear_text"].includes(step.action) || ("waitFor" in step && step.waitFor) ? "passed" : "not-run"),
           durationMs: Math.max(0, now() - stepStarted),
           ...(strategy ? { strategy } : {}),
         });
@@ -478,6 +498,7 @@ export async function runHarmonyScenario(
           ...(step.id ? { id: step.id } : {}),
           action: step.action,
           status: "failed",
+          ...(label ? { label } : {}),
           error: normalized.toJSON(),
           receipt: receipt(normalized.details?.dispatchState === "not-sent" ? "not-sent" : dispatched ? "unknown" : "not-sent", "failed"),
           durationMs: Math.max(0, now() - stepStarted),
@@ -493,22 +514,27 @@ export async function runHarmonyScenario(
 
     for (let index = results.length; index < options.steps.length; index += 1) {
       const step = options.steps[index];
-      results.push({ index, id: step.id, action: step.action, status: "not-run", durationMs: 0, receipt: {
+      results.push({ index, id: step.id, action: step.action, ...(step.action === "capture_screenshot" && step.name ? { label: step.name } : {}), status: "not-run", durationMs: 0, receipt: {
         action: step.action, dispatchState: "not-sent", effect: "not-applied", verification: "not-run", provider: context.backend.kind,
         deviceEpoch: context.generation, leaseEpoch: context.leaseEpoch ?? 0, startedAt: new Date(now()).toISOString(), completedAt: new Date(now()).toISOString(),
       } });
     }
     let finalSnapshot: HarmonySnapshot | undefined;
+    let finalScreenshot: HarmonyMediaArtifact | undefined;
+    let finalObservationError: HarmonyScenarioResult["finalObservationError"];
     try {
       finalSnapshot = await executionContext.capture(
         { includeTree: true, includeScreenshot: policy.captureFinalScreenshot },
         executionContext.signal,
       );
-    } catch {
+      if (policy.captureFinalScreenshot && !finalSnapshot.screenshot) throw new HarmonyError("INVALID_RESPONSE", "The required final screenshot was not returned");
+      if (policy.captureFinalScreenshot && executionContext.saveScreenshot) finalScreenshot = await executionContext.saveScreenshot(finalSnapshot);
+    } catch (error) {
+      finalObservationError = asHarmonyError(error).toJSON();
       // A structured step result remains useful when the device disappears before final observation.
     }
     const completed = now();
-    const failed = results.some((result) => result.status === "failed") || results.length !== options.steps.length;
+    const failed = results.some((result) => result.status === "failed") || results.length !== options.steps.length || Boolean(policy.captureFinalScreenshot && finalObservationError);
     return {
       serial: context.serial,
       generation: finalSnapshot?.generation ?? context.generation,
@@ -520,6 +546,9 @@ export async function runHarmonyScenario(
       ...(checkpoint ? { checkpoint } : {}),
       steps: results,
       ...(finalSnapshot ? { finalSnapshot } : {}),
+      ...(finalScreenshot ? { finalScreenshot } : {}),
+      ...(finalSnapshot ? { finalObservation: { capturedAt: finalSnapshot.capturedAt, revision: finalSnapshot.revision, nodeCount: finalSnapshot.nodes?.length ?? 0, quality: finalSnapshot.quality } } : {}),
+      ...(finalObservationError ? { finalObservationError } : {}),
     };
   } finally {
     clearTimeout(scenarioTimeout);

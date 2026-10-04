@@ -69,7 +69,9 @@ export async function POST(request: Request) {
       } });
     }
     if (body.action === "stop_recording") {
-      const artifact = await manager.stopRecording({ serial, ownerId, ...(leaseToken ? { leaseToken } : {}), signal: request.signal });
+      const recordingId = optionalString(body, "recordingId", 64);
+      const artifact = await manager.stopRecording({ serial, ownerId, ...(leaseToken ? { leaseToken } : {}),
+        ...(recordingId ? { recordingId } : {}), signal: request.signal });
       return noStoreJson({ artifact });
     }
     throw new HarmonyError("INVALID_ARGUMENT", "Unsupported Harmony media action");

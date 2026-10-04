@@ -12,9 +12,16 @@ function sha256(contents) {
 
 module.exports = async function prepareDesktopBuild(context) {
   const projectRoot = resolve(context.appDir, "..");
+  const targetPlatform = context.electronPlatformName ?? process.platform;
+  if (targetPlatform === "win32" && process.env.PIORA_REQUIRE_HARMONY_RELEASE_RESOURCE === "1") {
+    const { verifyStagedHarmonyMirrorRelease } = await import("./harmony-mirror-release.mjs");
+    await verifyStagedHarmonyMirrorRelease({
+      projectRoot,
+      resourcesDirectory: join(projectRoot, "third_party", "harmony-tools", "windows-x64"),
+    });
+  }
   const { prepareBuildReleaseNotes } = await import("./create-release-notes.mjs");
   await prepareBuildReleaseNotes(projectRoot);
-  const targetPlatform = context.electronPlatformName ?? process.platform;
   if (targetPlatform !== "win32") return true;
   const { stagePowerShell } = await import("./stage-powershell.mjs");
   await stagePowerShell(projectRoot);

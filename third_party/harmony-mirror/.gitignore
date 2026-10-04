@@ -1,0 +1,12 @@
+build/
+.hvigor/
+oh_modules/
+node_modules/
+local.properties
+.signing/
+signing/
+*.p12
+*.p7b
+*.cer
+*.pem
+*.key

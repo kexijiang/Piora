@@ -139,6 +139,7 @@ const requiredPaths = [
   "node_modules/node-pty/package.json",
   "node_modules/hypium-driver/package.json",
   "node_modules/mediabunny/package.json",
+  "node_modules/@sqlite.org/sqlite-wasm/package.json",
   "node_modules/hypium-driver/build/lib/resource/uitest_agent_v1.2.2.so",
   "node_modules/xmldom/package.json",
 ];
@@ -826,6 +827,10 @@ async function main() {
     await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "shell", "runtime", name));
   }
   await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "harmony", "runtime", "sqlite-inspector.cjs"));
+  await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "harmony", "runtime", "sqlite-error-location.cjs"));
+  for (const asset of ["node.mjs", "sqlite-wasm/jswasm/sqlite3-node.mjs", "sqlite-wasm/jswasm/sqlite3.wasm"]) {
+    await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "node_modules", "@sqlite.org", "sqlite-wasm", asset));
+  }
   const launcherSource = await readFile(join(packagedWebRoot, "server.js"), "utf8");
   if (
     !launcherSource.includes("const dir = path.join(__dirname, 'runtime.asar')")

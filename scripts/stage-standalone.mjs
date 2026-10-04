@@ -134,6 +134,7 @@ const assets = [
     ["interactive terminal runtime", "node-pty"],
     // Code intelligence loads TypeScript from a worker by computed path.
     ["TypeScript language service", "typescript"],
+    ["SQLite error position parser", "@sqlite.org/sqlite-wasm"],
   ].map(([name, packageName]) => ({
     name,
     source: join(projectRoot, "node_modules", packageName),

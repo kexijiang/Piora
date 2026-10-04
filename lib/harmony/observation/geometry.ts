@@ -48,25 +48,47 @@ export function framePointFromClient(x: number, y: number, rect: { left: number;
   return px >= 0 && py >= 0 && px < frameWidth && py < frameHeight ? { x: Math.floor(px), y: Math.floor(py) } : null;
 }
 
-/** OpenHarmony dmserver DisplayDumper table; unknown/multiple displays stay unsupported. */
+/** Only one verified real display may provide coordinates; virtual capture displays are not input targets. */
 export function parseDisplayGeometry(output: string): NativeDisplayGeometry | undefined {
   const lines = output.split(/\r?\n/);
   const start = lines.findIndex(line => /DisplayId\s+.*Rotation.*\[/.test(line));
   if (start < 0) {
-    // ScreenSessionDumper also prints DisplayId in user/display relation sections.
-    // Scope identity to SCREEN SESSION, never count those unrelated repeated IDs.
-    const sessions = [...output.matchAll(/^\s*\[SCREEN SESSION\]\s*$\n([\s\S]*?)(?=^\s*\[|$(?![\s\S]))/gm)];
-    const properties = [...output.matchAll(/^\s*\[SCREEN PROPERTY\]\s*$\n([\s\S]*?)(?=^\s*\[|$(?![\s\S]))/gm)];
-    if (sessions.length !== 1 || properties.length !== 1 || properties[0].index! < sessions[0].index!) return undefined;
-    const ids = [...sessions[0][1].matchAll(/^\s*DisplayId:\s*(\d+)\s*$/gm)];
-    if (ids.length !== 1) return undefined;
-    const section = properties[0][1];
-    const bounds = section.match(/^\s*Bounds<L,T,W,H>:\s*0(?:\.0+)?,\s*0(?:\.0+)?,\s*(\d+)(?:\.0+)?,\s*(\d+)(?:\.0+)?,?\s*$/m);
-    const rotation = section.match(/^\s*ScreenRotation:\s*([0-3])\s*$/m);
-    if (!bounds || !rotation) return undefined;
-    const nativeWidth = Number(bounds[1]), nativeHeight = Number(bounds[2]);
-    if (nativeWidth < 1 || nativeHeight < 1 || nativeWidth > 16_384 || nativeHeight > 16_384) return undefined;
-    return { nativeWidth, nativeHeight, displayId: ids[0][1], displayRotation: (Number(rotation[1])*90) as NativeDisplayGeometry["displayRotation"] };
+    // Modern dumps repeat SCREEN PROPERTY in client diagnostics. Bind sections
+    // to a Screen ID record, stopping before the independent Display ID dump.
+    const markers = [...output.matchAll(/^[ \t]*-+[ \t]*Screen ID:[ \t]*(\d+)[ \t]*-+[ \t]*\r?$/gm)];
+    const records = markers.length ? markers.map((marker, index) => {
+      const body = output.slice(marker.index! + marker[0].length, markers[index + 1]?.index ?? output.length);
+      return body.split(/^[ \t]*-+[ \t]*(?:Display ID:|Client Screen Infos)/m)[0];
+    }) : [output];
+    const real: NativeDisplayGeometry[] = [];
+    const identities = new Set<string>();
+    for (const record of records) {
+      const sections = (name: string) => [...record.matchAll(new RegExp(`^[ \\t]*\\[${name}\\][ \\t]*\\r?\\n([\\s\\S]*?)(?=^[ \\t]*\\[|$(?![\\s\\S]))`, "gm"))];
+      const sessions = sections("SCREEN SESSION"), properties = sections("SCREEN PROPERTY"), infos = sections("SCREEN INFO");
+      if (sessions.length !== 1 || properties.length !== 1 || infos.length > 1 || properties[0].index! < sessions[0].index!) return undefined;
+      const ids = [...sessions[0][1].matchAll(/^[ \t]*DisplayId:[ \t]*(\d+)[ \t]*\r?$/gm)];
+      if (ids.length !== 1 || [...sessions[0][1].matchAll(/^[ \t]*DisplayId:/gm)].length !== 1 || identities.has(ids[0][1])) return undefined;
+      identities.add(ids[0][1]);
+      const types = [
+        ...sessions[0][1].matchAll(/^[ \t]*ScreenType:[ \t]*(.*)$/gm),
+        ...(infos[0]?.[1] ?? "").matchAll(/^[ \t]*ScreenType:[ \t]*(.*)$/gm),
+        ...properties[0][1].matchAll(/^[ \t]*GetScreenType:[ \t]*(.*)$/gm),
+      ].map(match => match[1].trim());
+      // OpenHarmony utils/include/screen_info.h: REAL=1, VIRTUAL=2.
+      // A screen name or internal flag alone does not classify an input target.
+      if (types.some(type => type !== "1" && type !== "2") || new Set(types).size > 1 || (!types.length && records.length > 1)) return undefined;
+      if (types[0] === "2") continue;
+      const section = properties[0][1];
+      const bounds = [...section.matchAll(/^[ \t]*Bounds<L,T,W,H>:[ \t]*0(?:\.0+)?,[ \t]*0(?:\.0+)?,[ \t]*(\d+)(?:\.0+)?,[ \t]*(\d+)(?:\.0+)?,?[ \t]*\r?$/gm)];
+      const rotations = [...section.matchAll(/^[ \t]*ScreenRotation:[ \t]*(0|1|2|3|90|180|270)[ \t]*\r?$/gm)];
+      if (bounds.length !== 1 || rotations.length !== 1
+        || [...section.matchAll(/^[ \t]*Bounds<L,T,W,H>:/gm)].length !== 1
+        || [...section.matchAll(/^[ \t]*ScreenRotation:/gm)].length !== 1) return undefined;
+      const nativeWidth = Number(bounds[0][1]), nativeHeight = Number(bounds[0][2]), rotation = Number(rotations[0][1]);
+      if (nativeWidth < 1 || nativeHeight < 1 || nativeWidth > 16_384 || nativeHeight > 16_384) return undefined;
+      real.push({ nativeWidth, nativeHeight, displayId: ids[0][1], displayRotation: (rotation < 4 ? rotation * 90 : rotation) as NativeDisplayGeometry["displayRotation"] });
+    }
+    return real.length === 1 ? real[0] : undefined;
   }
   const rows = lines.slice(start + 1).map(line => line.match(/^\s*(\d+)\s+\d+\s+[\d.]+\s+[\d.]+\s+([0-3])\s+\d+\s+\d+\s+\d+\s+\[\s*0\s+0\s+(\d+)\s+(\d+)\s*\]/)).filter(match => match !== null);
   if (rows.length !== 1) return undefined;

@@ -11,6 +11,13 @@
 *.txt text eol=lf
 *.yaml text eol=lf
 *.yml text eol=lf
+# Source provenance measures actual bytes across Linux/Windows CI jobs.
+third_party/harmony-mirror/.gitignore text eol=lf
+third_party/harmony-mirror/**/*.cpp text eol=lf
+third_party/harmony-mirror/**/*.h text eol=lf
+third_party/harmony-mirror/**/*.ets text eol=lf
+third_party/harmony-mirror/**/*.json5 text eol=lf
+third_party/harmony-mirror/**/*.svg text eol=lf
 .gitattributes text eol=lf
 .npmrc text eol=lf
 .nvmrc text eol=lf

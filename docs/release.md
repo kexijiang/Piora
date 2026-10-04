@@ -6,12 +6,12 @@ Piora publishes desktop packages from [`kexijiang/Piora`](https://github.com/kex
 
 | Channel | Tag | Workflow | Packages |
 | --- | --- | --- | --- |
-| Beta | `vX.Y.Z-beta.N` | `.github/workflows/harmony-preview.yml` | Windows x64 NSIS installer, portable EXE, installer blockmap, `beta.yml`, `SHA256SUMS.txt` |
+| Beta | `vX.Y.Z-beta.N` | `.github/workflows/harmony-preview.yml`, then `.github/workflows/publish-preview.yml` | Windows x64 NSIS installer, portable EXE, installer blockmap, `beta.yml`, `SHA256SUMS.txt` |
 | Stable | `vX.Y.Z` | `.github/workflows/release.yml` | Windows installer, portable EXE, extract-and-run ZIP, installer blockmap, `latest.yml`, Linux x64 AppImage, combined `SHA256SUMS.txt` |
 
-Beta is published as a GitHub prerelease. Stable publication is marked latest. The stable workflow ignores prerelease tags even though its tag trigger matches `v*`. A push to `main` runs CI; it does not itself publish a package.
+Beta tag CI builds and uploads a candidate without creating a GitHub Release. After the exact downloaded installer or portable package passes installed Piora and phone acceptance, the separately dispatched publish workflow publishes those same bytes as a GitHub prerelease. Stable publication is marked latest. The stable workflow ignores prerelease tags even though its tag trigger matches `v*`. A push to `main` runs CI; it does not itself publish a package.
 
-Windows installers support application updates; beta installers consume beta update metadata. Portable builds are replaced manually. The optional scheduled silent-update setting is disabled by default and defers installation while tasks or unsaved edits remain. Packages are unsigned. Linux does not bundle the Windows local Whisper runtime.
+Windows installers support application updates; beta installers consume beta update metadata. Portable builds are replaced manually. The optional scheduled silent-update setting is disabled by default and defers installation while tasks or unsaved edits remain. Desktop installers and executables are not Authenticode signed; the bundled Harmony HAP has its own mandatory OpenHarmony signing and verification gate. Linux does not bundle the Windows local Whisper runtime.
 
 ## Prepare the source
 
@@ -90,17 +90,25 @@ gh run list --repo kexijiang/Piora --workflow harmony-preview.yml --limit 5
 
 For stable releases, wait for main-branch CI before creating `vX.Y.Z`, omit `--prerelease` from metadata verification, and follow `release.yml`. Always pass `--repo kexijiang/Piora` to `gh`: a fork checkout with an `upstream` remote may otherwise select the upstream project.
 
-Beta CI validates metadata, installs dependencies, runs source hygiene, licenses, lint, types, tests, backgrounds and performance budgets, then builds Windows packages. It checks updater metadata, package isolation, package licenses, the Electron runtime and installed application, creates checksums and notes, uploads artifacts, and only then creates the prerelease.
+Beta CI validates metadata, builds, release-signs and verifies the ordinary-permission Harmony capture HAP on the dedicated self-hosted Windows runner, and accepts that exact HAP on its attached phone. The reusable Ubuntu/Windows test suite runs in parallel with the Windows package path. After the HAP gate succeeds, the package job runs source hygiene, licenses, lint, types, backgrounds and performance budgets, builds Windows packages with the accepted same-run HAP, and checks updater metadata, package isolation, package licenses, the Electron runtime and installed application before uploading the candidate. The later publication job accepts only an overall successful original run, so neither the independent test suite nor package verification may fail.
+
+Download the candidate from that exact successful run and test the installed or portable Piora bytes with the intended phone. Record the tag, run ID, package hash, HAP identity and acceptance result. Before publication, configure required-reviewer protection for the repository's `preview-publish` environment; naming an environment in workflow YAML does not create an approval rule. Only after acceptance succeeds, dispatch the publication workflow with the same tag and build run ID:
+
+```powershell
+gh workflow run publish-preview.yml --repo kexijiang/Piora -f tag=v0.4.41-beta.8 -f build_run_id=<successful-preview-run-id>
+```
+
+The publication workflow binds the requested run to the tag commit, rechecks release metadata, verifies the grouped package checksums and CHANGELOG-derived notes, and publishes the already accepted bytes. It does not rebuild the desktop package.
 
 Stable CI first runs the Ubuntu source gate, builds Windows and Linux, verifies their runtimes and artifacts, combines checksums, and publishes only after both platforms succeed. Do not bypass a failed gate by manually uploading unverified binaries.
 
 ## Verify and report
 
-- Confirm the Actions run belongs to the intended repository, tag and exact commit.
-- Report queued, building, failed and published distinctly. A pushed tag is not proof of a successful release.
+- Confirm both the build run and, for beta, the later publication run belong to the intended repository, tag and exact commit.
+- Report queued, building, candidate ready, acceptance failed, publication queued and published distinctly. A pushed tag or successful candidate build is not proof of a published release.
 - If a gate fails, inspect that step's log, fix the source and use a new candidate version when the tagged source must change.
 - After success, check the Release contains the expected package set and verify downloaded SHA-256 checksums.
-- On clean machines, verify startup, model setup, image history reload, project selection, editing/conflicts, terminal, browser login, device control when hardware is available, and external extension loading.
+- On clean machines, verify startup, model setup, image history reload, project selection, editing/conflicts, terminal, browser login, external extension loading, and the Harmony workbench's read-only projection, media, files, databases and agent actions when hardware is available.
 - For installed updates, test download, busy/unsaved deferral, installation, restart and data retention. Verify portable replacement separately.
 - Record the exact commit, run and Release URLs. Historical acceptance/design documents describe their own tested versions, not automatic proof for the new release.
 

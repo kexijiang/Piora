@@ -503,6 +503,8 @@ export const zhCNLocale: LocalePlugin = {
     "commands.openClipboard": "打开剪贴板",
     "commands.screenshot": "截图",
     "shortcuts.screenshotDescription": "在任意窗口启动屏幕截图，可复制、保存或添加到聊天草稿。",
+    "shortcuts.deviceScreenshot": "鸿蒙设备截图",
+    "shortcuts.deviceScreenshotDescription": "仅在可见的鸿蒙设备面板中截取当前手机画面；输入框、终端与弹窗中不生效。",
     "shortcuts.registrationFailed": "系统无法注册此快捷键；如果之前有可用设置，已恢复此前设置。",
     "shortcuts.settingsDescription": "打开通用设置。",
     "automations.title": "定时任务",

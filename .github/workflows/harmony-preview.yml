@@ -16,23 +16,15 @@ jobs:
   tests:
     uses: ./.github/workflows/test-suite.yml
     with:
-      platforms: '["windows-latest"]'
+      platforms: '["ubuntu-latest", "windows-latest"]'
 
-  windows-preview:
-    name: Build and verify preview (${{ matrix.brand }})
-    runs-on: windows-latest
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - brand: piora
-            prefix: Piora
-            channel: beta
-    env:
-      PIORA_BRAND: ${{ matrix.brand }}
-      BRAND_PREFIX: ${{ matrix.prefix }}
-      BRAND_CHANNEL: ${{ matrix.channel }}
+  harmony-mirror:
+    name: Build, sign and accept Harmony mirror HAP
+    runs-on: [self-hosted, Windows, harmony-device, harmony-api26, ephemeral]
+    environment: harmony-hardware
+    timeout-minutes: 45
+    permissions:
+      contents: read
 
     steps:
       - name: Check out tagged source
@@ -55,6 +47,94 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Build, sign and officially verify ordinary mirror HAP
+        shell: pwsh
+        run: |
+          $workspace = Join-Path $env:RUNNER_TEMP "piora-harmony-mirror-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $resources = Join-Path $env:RUNNER_TEMP "piora-harmony-resource-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          if ((Test-Path -LiteralPath $workspace) -or (Test-Path -LiteralPath $resources)) {
+            throw 'Ephemeral runner paths must be absent before the release build'
+          }
+          node scripts/build-harmony-mirror-release.mjs $workspace $resources
+
+      - name: Install and accept the same signed HAP on the dedicated phone
+        shell: pwsh
+        env:
+          HARMONY_SERIAL: ${{ secrets.HARMONY_DEVICE_SERIAL }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:HARMONY_SERIAL)) { throw 'HARMONY_DEVICE_SERIAL is required' }
+          $resources = Join-Path $env:RUNNER_TEMP "piora-harmony-resource-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          node scripts/verify-harmony-mirror-device.mjs $resources --serial $env:HARMONY_SERIAL
+
+      - name: Stage accepted same-run mirror resource
+        shell: pwsh
+        run: |
+          $resources = Join-Path $env:RUNNER_TEMP "piora-harmony-resource-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          $staging = Join-Path $env:RUNNER_TEMP "piora-harmony-staging-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          node scripts/stage-harmony-mirror-artifact.mjs $resources $staging
+
+      - name: Upload accepted Harmony mirror resource
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: harmony-mirror-resource-${{ github.ref_name }}
+          path: |
+            ${{ runner.temp }}/piora-harmony-staging-${{ github.run_id }}-${{ github.run_attempt }}/OHScrcpyServer.hap
+            ${{ runner.temp }}/piora-harmony-staging-${{ github.run_id }}-${{ github.run_attempt }}/harmony-mirror-manifest.json
+            ${{ runner.temp }}/piora-harmony-staging-${{ github.run_id }}-${{ github.run_attempt }}/harmony-mirror-signature-verification.json
+            ${{ runner.temp }}/piora-harmony-staging-${{ github.run_id }}-${{ github.run_attempt }}/SOURCE.md
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  windows-preview:
+    name: Build and verify preview (${{ matrix.brand }})
+    needs: harmony-mirror
+    runs-on: windows-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - brand: piora
+            prefix: Piora
+            channel: beta
+    env:
+      PIORA_BRAND: ${{ matrix.brand }}
+      BRAND_PREFIX: ${{ matrix.prefix }}
+      BRAND_CHANNEL: ${{ matrix.channel }}
+      PIORA_REQUIRE_HARMONY_RELEASE_RESOURCE: '1'
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.19.0
+          cache: npm
+
+      - name: Verify preview tag and package metadata
+        shell: pwsh
+        run: |
+          git fetch --no-tags --force origin +refs/heads/main:refs/remotes/origin/main
+          node scripts/verify-release-metadata.mjs $env:GITHUB_REF_NAME --prerelease --require-origin-main
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Download accepted Harmony mirror resource
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: harmony-mirror-resource-${{ github.ref_name }}
+          path: .harmony-mirror-resource
+
+      - name: Stage accepted Harmony mirror for desktop packaging
+        run: node scripts/stage-harmony-mirror-artifact.mjs .harmony-mirror-resource third_party/harmony-tools/windows-x64
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
@@ -80,8 +160,16 @@ jobs:
       - name: Verify performance budgets
         run: npm run perf:check
 
+      # A real ordinary-HAP build/sign/device chain must supply this same-run resource.
+      # Do not synthesize acceptance for the checked-in 1.0.3 binary.
+      - name: Verify accepted Harmony mirror release resource before packaging
+        run: node scripts/verify-harmony-mirror-artifact.mjs
+
       - name: Build preview installer and portable application
         run: npm run dist:win:preview
+
+      - name: Verify packaged Harmony mirror release resource
+        run: node scripts/verify-harmony-mirror-artifact.mjs desktop/release/win-unpacked/resources/harmony-tools
 
       - name: Verify preview update metadata
         shell: pwsh
@@ -171,57 +259,3 @@ jobs:
           path: scripts/assemble-brand-release.mjs
           if-no-files-found: error
           retention-days: 14
-
-  publish-preview:
-    name: Publish verified preview
-    needs: [tests, windows-preview]
-    runs-on: windows-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-
-    steps:
-      - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.19.0
-
-      - name: Download verified preview payload
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
-        with:
-          pattern: '*-${{ github.ref_name }}'
-          path: downloaded-brands
-          merge-multiple: false
-
-      - name: Verify and assemble Piora artifacts
-        shell: pwsh
-        run: |
-          $notes = "downloaded-brands/piora-windows-$env:GITHUB_REF_NAME/release-notes.md"
-          New-Item -ItemType Directory -Path desktop -Force | Out-Null
-          node "downloaded-brands/brand-release-tooling-$env:GITHUB_REF_NAME/assemble-brand-release.mjs" downloaded-brands desktop/release $env:GITHUB_REF_NAME $notes
-          if ($LASTEXITCODE -ne 0) { throw 'Brand release assembly failed' }
-
-      - name: Create GitHub prerelease
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
-          $releaseRoot = (Resolve-Path -LiteralPath desktop/release).Path
-          $assets = @(
-            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-setup.exe")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-setup.exe.blockmap")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-portable.exe")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "beta.yml")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "SHA256SUMS.txt")).Path
-          )
-          $releaseNotesPath = (Resolve-Path -LiteralPath (Join-Path $releaseRoot "release-notes.md")).Path
-          gh release create $env:GITHUB_REF_NAME @assets `
-            --repo $env:GITHUB_REPOSITORY `
-            --title "Piora $env:GITHUB_REF_NAME Preview" `
-            --notes-file $releaseNotesPath `
-            --verify-tag `
-            --prerelease
-          if ($LASTEXITCODE -ne 0) {
-            throw "gh release create failed with exit code $LASTEXITCODE"
-          }

@@ -84,9 +84,11 @@ builds link to the installer instead of modifying themselves. The Linux package
 intentionally omits the Windows-only pinned local Whisper runtime, so local
 speech transcription reports unavailable there.
 
-Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` and publish Windows installer,
-portable EXE, blockmap, `beta.yml`, and checksums as a prerelease; they do not run
-the stable Linux/ZIP pipeline. Installed beta builds use the beta update channel.
+Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` to build and upload a Windows
+installer, portable EXE, blockmap, `beta.yml`, checksums, and release notes without
+publishing them. After those exact bytes pass installed Piora and phone acceptance,
+`publish-preview.yml` publishes them as a prerelease. The beta path does not run the
+stable Linux/ZIP pipeline. Installed beta builds use the beta update channel.
 Settings > General also provides an opt-in scheduled silent update: installation
 waits for tasks to finish, edits to be saved, and the computer to be idle. This is
 unavailable in portable/development builds. See [release procedure](../docs/release.md)
