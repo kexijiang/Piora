@@ -147,6 +147,10 @@ export function createApplicationCertificateArguments({ signTool, keyStore, root
 export function createOrdinaryReleaseProfile({ distributionCertificate, now = Date.now(), uuid = randomUUID() }) {
   const notBefore = Math.floor(now / 1000) - 60 * 60;
   const notAfter = notBefore + 5 * 365 * 24 * 60 * 60;
+  const normalizedDistributionCertificate = distributionCertificate
+    .replaceAll('\r\n', '\n')
+    .replaceAll('\r', '\n')
+    .replace(/\n*$/, '\n');
   return {
     'version-name': '2.0.0',
     'version-code': 2,
@@ -156,7 +160,7 @@ export function createOrdinaryReleaseProfile({ distributionCertificate, now = Da
     type: 'release',
     'bundle-info': {
       'developer-id': 'OpenHarmony',
-      'distribution-certificate': distributionCertificate,
+      'distribution-certificate': normalizedDistributionCertificate,
       'bundle-name': MIRROR_BUNDLE,
       apl: 'normal',
       'app-feature': 'hos_normal_app',

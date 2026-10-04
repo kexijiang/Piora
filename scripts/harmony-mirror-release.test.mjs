@@ -52,7 +52,8 @@ async function receiptFixture(t) {
 
 test('generated OpenHarmony release profile stays ordinary and currently valid', () => {
   const now = Date.UTC(2026, 9, 5);
-  const profile = createOrdinaryReleaseProfile({ distributionCertificate: 'public certificate fixture', now,
+  const profile = createOrdinaryReleaseProfile({
+    distributionCertificate: '-----BEGIN CERTIFICATE-----\r\npublic certificate fixture\r\n-----END CERTIFICATE-----', now,
     uuid: '00000000-0000-4000-8000-000000000001' });
   assert.equal(profile.type, 'release');
   assert.equal(profile['app-distribution-type'], 'os_integration');
@@ -61,13 +62,21 @@ test('generated OpenHarmony release profile stays ordinary and currently valid',
   assert.equal(profile['app-privilege-capabilities'], undefined);
   assert.deepEqual(profile['bundle-info'], {
     'developer-id': 'OpenHarmony',
-    'distribution-certificate': 'public certificate fixture',
+    'distribution-certificate': '-----BEGIN CERTIFICATE-----\npublic certificate fixture\n-----END CERTIFICATE-----\n',
     'bundle-name': 'com.ohos.scrcpy.server',
     apl: 'normal',
     'app-feature': 'hos_normal_app',
   });
   assert.ok(profile.validity['not-before'] * 1000 <= now);
   assert.ok(profile.validity['not-after'] * 1000 > now);
+});
+
+test('profile certificate keeps the API 26 PEM line-ending contract', () => {
+  const certificate = '-----BEGIN CERTIFICATE-----\nfixture\n-----END CERTIFICATE-----';
+  const profile = createOrdinaryReleaseProfile({ distributionCertificate: certificate });
+  assert.equal(profile['bundle-info']['distribution-certificate'], `${certificate}\n`);
+  assert.equal(createOrdinaryReleaseProfile({ distributionCertificate: `${certificate}\n\n` })
+    ['bundle-info']['distribution-certificate'], `${certificate}\n`);
 });
 
 test('application signing generates the required SDK CA chain instead of reusing the one-certificate template leaf', () => {
