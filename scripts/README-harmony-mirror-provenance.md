@@ -36,6 +36,6 @@ Piora 为这台手机生成并官方验签私有缓存副本，确认 bundle、�
 
 `harmony-preview.yml` 只构建并上传已验证的 installer/portable，不创建 GitHub Release。下载这次 run 的桌面 artifact，用真正的 Piora 安装包和手机完成最终验收后，才可手动运行 `publish-preview.yml`，输入原 beta tag 和构建 run ID。发布 job 绑定 `preview-publish` environment；仓库必须为这个 environment 配置 required reviewers 后，才能依赖它提供人工批准门禁。job 还会核对 run 是该 tag 提交上成功完成的 `harmony-preview.yml`，并且只下载和发布那次 run 的字节。
 
-这一拆分允许一次代码/tag 推送完成候选构建，同时避免 tag 一推送就公开尚未经过安装包实机验收的 beta。这里描述的是门禁要求；没有对应 tagged run 和最终安装包验收记录时，不得写成 beta.9 已通过或已发布。
+这一拆分允许一次代码/tag 推送完成候选构建，同时避免 tag 一推送就公开尚未经过安装包实机验收的 beta。这里描述的是门禁要求；没有对应 tagged run 和最终安装包验收记录时，不得写成 beta.10 已通过或已发布。
 
 本地只能运行来源、receipt、运行时签名和 workflow 的单元测试；不得本地生成可发布的 HAP 或桌面包。进入 staging 的 public unsigned HAP 必须来自 tagged CI run，并由同一输入生成的私有 device-signed 副本完成上述真机门禁。
