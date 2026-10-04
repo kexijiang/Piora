@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  createApplicationCertificateArguments,
   createHarmonyMirrorSourceNote,
   createOrdinaryReleaseProfile,
   MIRROR_HAP_FILE,
@@ -67,6 +68,23 @@ test('generated OpenHarmony release profile stays ordinary and currently valid',
   });
   assert.ok(profile.validity['not-before'] * 1000 <= now);
   assert.ok(profile.validity['not-after'] * 1000 > now);
+});
+
+test('application signing generates the required SDK CA chain instead of reusing the one-certificate template leaf', () => {
+  const args = createApplicationCertificateArguments({
+    signTool: 'hap-sign-tool.jar',
+    keyStore: 'OpenHarmony.p12',
+    rootCertificate: 'rootCA.cer',
+    subCertificate: 'subCA.cer',
+    outputCertificate: 'application-release.cer',
+  });
+  assert.deepEqual(args.slice(0, 3), ['-jar', 'hap-sign-tool.jar', 'generate-app-cert']);
+  assert.equal(args[args.indexOf('-keyAlias') + 1], 'openharmony application release');
+  assert.equal(args[args.indexOf('-issuerKeyAlias') + 1], 'openharmony application ca');
+  assert.equal(args[args.indexOf('-rootCaCertFile') + 1], 'rootCA.cer');
+  assert.equal(args[args.indexOf('-subCaCertFile') + 1], 'subCA.cer');
+  assert.equal(args[args.indexOf('-outForm') + 1], 'certChain');
+  assert.equal(args[args.indexOf('-outFile') + 1], 'application-release.cer');
 });
 
 test('signature receipt binds exact bytes and remains fail closed before device acceptance', async t => {
