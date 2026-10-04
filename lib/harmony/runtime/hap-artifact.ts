@@ -5,7 +5,7 @@ import { readBoundedRegularFile, enforceArtifactQuota } from "./bounded-file";
 import { HarmonyError } from "../errors";
 
 /** Freeze the selected build before dispatch, without a second authorization flow. */
-export async function importHapArtifact(path: string, directory: string): Promise<string> {
+export async function importHapArtifact(path: string, directory: string, expectedHash?: string): Promise<string> {
   if (!isAbsolute(path) || extname(path).toLowerCase() !== ".hap") {
     throw new HarmonyError("INVALID_ARGUMENT", "An absolute HAP artifact path is required");
   }
@@ -17,6 +17,9 @@ export async function importHapArtifact(path: string, directory: string): Promis
   if (data.length !== info.size) throw new HarmonyError("INVALID_ARGUMENT", "HAP changed while being imported; retry with a stable artifact");
   const hash = (bytes: Buffer) => createHash("sha256").update(bytes).digest("hex");
   const artifactHash = hash(data);
+  if (expectedHash !== undefined && (!/^[a-f0-9]{64}$/.test(expectedHash) || expectedHash !== artifactHash)) {
+    throw new HarmonyError("STALE_SNAPSHOT", "The HAP changed after preview; preview the new package before installing", { details: { reason: "hap-preview-changed", dispatchState: "not-sent" } });
+  }
   await mkdir(directory, { recursive: true, mode: 0o700 });
   await enforceArtifactQuota(directory, "hap", data.length);
   const artifactPath = join(directory, `${artifactHash}.hap`);

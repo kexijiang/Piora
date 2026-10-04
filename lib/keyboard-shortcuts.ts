@@ -11,6 +11,7 @@ export const APPLICATION_SHORTCUTS = [
   { id: "panel.commands", titleKey: "commands.openCommands", descriptionKey: "shortcuts.openCommandsDescription", defaultBinding: "Mod+Backquote" },
   { id: "panel.review", titleKey: "commands.openReview", descriptionKey: "shortcuts.openReviewDescription", defaultBinding: "Mod+Shift+G" },
   { id: "panel.browser", titleKey: "commands.openBrowser", descriptionKey: "shortcuts.openBrowserDescription", defaultBinding: "Mod+T" },
+  { id: "harmony.screenshot", titleKey: "shortcuts.deviceScreenshot", descriptionKey: "shortcuts.deviceScreenshotDescription", defaultBinding: "Alt+Shift+S" },
   { id: "composer.voiceInput", titleKey: "commands.voiceInput", descriptionKey: "shortcuts.voiceInputDescription", defaultBinding: "Mod+Shift+M" },
   { id: "companion.togglePanel", titleKey: "commands.openCompanionPanel", descriptionKey: "shortcuts.companionPanelDescription", defaultBinding: "Ctrl+Space" },
   { id: "companion.clipboard", titleKey: "commands.openClipboard", descriptionKey: "shortcuts.clipboardDescription", defaultBinding: "Mod+Alt+V" },
@@ -149,7 +150,7 @@ export function shouldPreserveApplicationShortcut(target: EventTarget | null): b
     "input",
     "textarea",
     "select",
-    "[contenteditable='true']",
+    "[contenteditable]:not([contenteditable='false'])",
     "[role='textbox']",
     ".xterm",
   ].join(",")));

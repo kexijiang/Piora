@@ -1,0 +1,10 @@
+{
+  "app": {
+    "bundleName": "com.ohos.scrcpy.server",
+    "vendor": "Piora",
+    "versionCode": 1000127,
+    "versionName": "1.1.27",
+    "icon": "$media:app_icon",
+    "label": "$string:app_name"
+  }
+}

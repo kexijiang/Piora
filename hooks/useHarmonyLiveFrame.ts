@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, type RefObject } from "react";
+import { HarmonyRequestError } from "@/lib/harmony/request-error";
 
 export type HarmonyFrameStatus = "idle" | "loading" | "live" | "error";
 export type HarmonyFrameMode = "idle" | "video" | "frames";
@@ -21,6 +22,7 @@ interface UseHarmonyLiveFrameOptions {
   serial: string;
   generation?: number;
   fallbackError: string;
+  chinese?: boolean;
   canvasRef: RefObject<HTMLCanvasElement | null>;
 }
 
@@ -57,9 +59,9 @@ type StreamAttempt = {
   jpegChain: Promise<void>;
 };
 
-async function responseError(response: Response): Promise<string> {
-  const payload = await response.json().catch(() => ({})) as { error?: { message?: string } | string };
-  return typeof payload.error === "string" ? payload.error : payload.error?.message || `Request failed (${response.status})`;
+async function responseError(response: Response, chinese: boolean): Promise<string> {
+  const payload = await response.json().catch(() => ({})) as { error?: unknown };
+  return new HarmonyRequestError(payload.error, response.status).messageFor(chinese);
 }
 
 function startCodedUnit(unit: Uint8Array): Uint8Array {
@@ -134,6 +136,33 @@ function delay(milliseconds: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+async function waitForDecoderCapacity(decoder: VideoDecoder, signal: AbortSignal): Promise<boolean> {
+  if (signal.aborted || decoder.state !== "configured") return false;
+  if (decoder.decodeQueueSize <= 8) return true;
+  return new Promise((resolveCapacity) => {
+    let settled = false;
+    const finish = (available: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      decoder.removeEventListener("dequeue", check);
+      signal.removeEventListener("abort", abort);
+      resolveCapacity(available);
+    };
+    const check = () => {
+      if (signal.aborted || decoder.state !== "configured") finish(false);
+      else if (decoder.decodeQueueSize <= 4) finish(true);
+    };
+    const abort = () => finish(false);
+    // Apply bounded backpressure before abandoning a dependent frame group.
+    // Most short decoder bursts drain without waiting for another keyframe.
+    const timer = window.setTimeout(() => finish(!signal.aborted && decoder.state === "configured" && decoder.decodeQueueSize <= 8), 1_000);
+    decoder.addEventListener("dequeue", check);
+    signal.addEventListener("abort", abort, { once: true });
+    check();
+  });
+}
+
 function reconnectDelay(failures: number): number {
   return Math.min(8_000, 250 * (2 ** Math.min(Math.max(0, failures - 1), 5)));
 }
@@ -144,6 +173,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
   const [mode, setMode] = useState<HarmonyFrameMode>("idle");
   const [error, setError] = useState<string | null>(null);
   const [frame, setFrame] = useState<HarmonyLiveFrame | null>(null);
+  const [fallbackReason, setFallbackReason] = useState<string | null>(null);
   const refresh = useCallback(() => setRefreshKey((key) => key + 1), []);
 
   useEffect(() => {
@@ -152,6 +182,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
       setStatus("idle");
       setMode("idle");
       setError(null);
+      setFallbackReason(null);
       return;
     }
     if (options.paused) return;
@@ -159,6 +190,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     const lifecycle = new AbortController();
     let disposed = false;
     let decoder: VideoDecoder | undefined;
+    let decoderEpoch = 0;
     let config: StreamConfig | undefined;
     let revision = 0;
     let firstKeyframe = false;
@@ -166,6 +198,9 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     let hasFrame = false;
     let activeAttempt: StreamAttempt | undefined;
     const closeDecoder = () => {
+      // A stream can change configuration without replacing its connection.
+      // Invalidate callbacks before close, which may itself deliver an error.
+      decoderEpoch += 1;
       // WebCodecs closes itself after a fatal decode error.
       if (decoder && decoder.state !== "closed") decoder.close();
       decoder = undefined;
@@ -183,6 +218,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
     setStatus("loading");
     setMode("video");
     setError(null);
+    setFallbackReason(null);
     const initialCanvas = options.canvasRef.current;
     initialCanvas?.getContext("2d")?.clearRect(0, 0, initialCanvas.width, initialCanvas.height);
 
@@ -229,12 +265,13 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
       }
       setStatus("live");
       setError(null);
+      setFallbackReason(null);
     };
 
     const drawVideoFrame = (videoFrame: VideoFrame, attempt: StreamAttempt) => {
       try {
         const canvas = options.canvasRef.current;
-        if (!canvas || disposed || activeAttempt !== attempt) return;
+        if (!canvas || disposed || activeAttempt !== attempt || attempt.controller.signal.aborted) return;
         const width = videoFrame.displayWidth || videoFrame.codedWidth;
         const height = videoFrame.displayHeight || videoFrame.codedHeight;
         if (canvas.width !== width || canvas.height !== height) {
@@ -250,6 +287,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
 
     const configureDecoder = async (next: StreamConfig, attempt: StreamAttempt) => {
       closeDecoder();
+      const configuredEpoch = decoderEpoch;
       firstKeyframe = false;
       if (next.codec !== H264) return;
       if (!("VideoDecoder" in window)) throw new Error("This Piora runtime does not support hardware video decoding");
@@ -261,12 +299,18 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
         hardwareAcceleration: "prefer-hardware",
       };
       const support = await VideoDecoder.isConfigSupported(decoderConfig);
-      if (disposed || activeAttempt !== attempt) return;
+      if (disposed || activeAttempt !== attempt || attempt.controller.signal.aborted || decoderEpoch !== configuredEpoch) return;
       if (!support.supported) throw new Error(`H.264 decoder ${decoderConfig.codec} is unavailable`);
       decoder = new VideoDecoder({
-        output: (videoFrame) => drawVideoFrame(videoFrame, attempt),
+        output: (videoFrame) => {
+          if (decoderEpoch !== configuredEpoch) {
+            videoFrame.close();
+            return;
+          }
+          drawVideoFrame(videoFrame, attempt);
+        },
         error: (decodeError) => {
-          if (disposed || activeAttempt !== attempt) return;
+          if (disposed || activeAttempt !== attempt || attempt.controller.signal.aborted || decoderEpoch !== configuredEpoch) return;
           const failure = new Error(decodeError.message || options.fallbackError);
           attempt.failure = failure;
           void attempt.reader?.cancel(failure).catch(() => undefined);
@@ -330,11 +374,19 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
       if (config.codec === H264) {
         if (!decoder || decoder.state !== "configured") return;
         if (!firstKeyframe && !keyframe) return;
-        if (decoder.decodeQueueSize > 8 && !keyframe) {
-          // Dropping one dependent H.264 delta frame corrupts the reference chain.
-          // Drop the rest of the GOP and recover cleanly from the next keyframe.
-          firstKeyframe = false;
-          return;
+        if (decoder.decodeQueueSize > 8) {
+          const pendingDecoder = decoder;
+          const available = await waitForDecoderCapacity(pendingDecoder, attempt.controller.signal);
+          if (disposed || activeAttempt !== attempt || attempt.controller.signal.aborted || decoder !== pendingDecoder || decoder.state !== "configured") return;
+          if (!available) {
+            // Waiting for another keyframe on this connection can deadlock when
+            // the producer only has dependent deltas left. Reconnect so the
+            // bundled stream opens a fresh capture and requests a new IDR.
+            const failure = new Error("Harmony video decoder remained overloaded");
+            attempt.failure = failure;
+            attempt.controller.abort();
+            throw failure;
+          }
         }
         const chunkData = keyframe ? keyframeData(config, data) : startCodedUnit(data);
         decoder.decode(new EncodedVideoChunk({ type: keyframe ? "key" : "delta", timestamp, data: chunkData }));
@@ -403,7 +455,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
             cache: "no-store",
             signal: lifecycle.signal,
           });
-          if (!response.ok) throw new Error(await responseError(response));
+          if (!response.ok) throw new Error(await responseError(response, Boolean(options.chinese)));
           const generation = Number(response.headers.get("X-Harmony-Generation"));
           const frameRevision = Number(response.headers.get("X-Harmony-Revision"));
           if (!Number.isSafeInteger(generation) || !Number.isSafeInteger(frameRevision)) {
@@ -487,8 +539,16 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
             headers: { Accept: "application/vnd.piora.harmony-stream" },
             signal: attempt.controller.signal,
           });
-          if (!response.ok) throw new Error(await responseError(response));
+          if (disposed || lifecycle.signal.aborted || activeAttempt !== attempt || attempt.controller.signal.aborted) {
+            await response.body?.cancel().catch(() => undefined);
+            throw attempt.failure ?? new Error("Harmony video connection was cancelled");
+          }
+          if (!response.ok) throw new Error(await responseError(response, Boolean(options.chinese)));
           if (!response.body) throw new Error("Harmony video response has no stream body");
+          // Establishing the connection and decoding its first frame each have
+          // a bounded budget. Configuration packets cannot renew the latter;
+          // only an actual displayed frame renews it after this transition.
+          armWatchdog(attempt);
           await consume(response.body, attempt);
         } catch (streamError) {
           window.clearTimeout(attempt.watchdog);
@@ -498,7 +558,9 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
           failures += 1;
           setStatus("error");
           setFrame(previous => previous ? { ...previous, geometryId: undefined } : previous);
-          setError(attempt.failure?.message ?? (streamError instanceof Error ? streamError.message : options.fallbackError));
+          const reason = attempt.failure?.message ?? (streamError instanceof Error ? streamError.message : options.fallbackError);
+          setError(reason);
+          setFallbackReason(reason);
           closeDecoder();
           config = undefined;
           firstKeyframe = false;
@@ -533,7 +595,7 @@ export function useHarmonyLiveFrame(options: UseHarmonyLiveFrameOptions) {
       void activeAttempt?.reader?.cancel().catch(() => undefined);
       void activeAttempt?.jpegChain.catch(() => undefined);
     };
-  }, [options.active, options.canvasRef, options.enabled, options.fallbackError, options.generation, options.paused, options.serial, refreshKey]);
+  }, [options.active, options.canvasRef, options.chinese, options.enabled, options.fallbackError, options.generation, options.paused, options.serial, refreshKey]);
 
-  return { frame, status, mode, error, refresh };
+  return { frame, status, mode, error, fallbackReason, refresh };
 }

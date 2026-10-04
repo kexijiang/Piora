@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import ts from "typescript";
 import { randomUUID } from "node:crypto";
@@ -222,6 +224,436 @@ test("closes the session event stream only after prompt settlement or a pre-prom
   assert.match(sendSource, /if \(promptRequestStarted && sentSessionId && !definitivelyRejected\) \{[\s\S]*?return false;[\s\S]*?\}[\s\S]*?closeEvents\(\)/);
 });
 
+function promptSettlementHarness() {
+  const commandGuard = source.indexOf("  const isPromptCommandSettled = useCallback");
+  const settlement = source.slice(commandGuard < 0 ? source.indexOf("  const finishPromptWithoutStream = useCallback") : commandGuard, source.indexOf("  const waitForBashSettlement = useCallback"));
+  const reconciliation = source.slice(source.indexOf("  const reconcileAgentState = useCallback"), source.indexOf("  // Recovery net for missed SSE events"));
+  const callbacks = `${settlement}\n${reconciliation}`;
+  const calls = [], delays = [];
+  let now = 0;
+  const env = {
+    useCallback: callback => callback, AbortController, AbortSignal, Date: { now: () => now },
+    PROMPT_SETTLE_INITIAL_DELAY_MS: 800, PROMPT_SETTLE_POLL_MS: 600, PROMPT_SETTLE_MAX_MS: 20000,
+    delay: ms => new Promise(resolve => delays.push({ ms, resolve })),
+    closeEvents: () => calls.push(["close"]), loadSession: async sid => calls.push(["load", sid]),
+    dispatch() {}, restoreStatusClock() {}, selectionFromSystemPromptBinding: () => null,
+    normalizeQueuedMessages: queue => ({ steering: queue?.steering ?? [], followUp: queue?.followUp ?? [] }),
+    onAgentEnd() {}, response: { running: true, state: { runtime: "running", isStreaming: false, isPromptRunning: false, isCompacting: false } },
+  };
+  for (const name of new Set(callbacks.match(/\b\w+Ref\b/g))) env[name] = { current: null };
+  for (const name of new Set(callbacks.match(/\bset[A-Z]\w+(?=\()/g))) env[name] = () => {};
+  env.sessionIdRef.current = "session-a"; env.promptRunIdRef.current = 1; env.agentRunningRef.current = true;
+  env.phaseEventRevisionRef.current = 0; env.suppressCompletionNotificationRef.current = true;
+  env.promptSettlementByRunRef.current = new Map(); env.promptSettlementPollByRunRef.current = new Map();
+  env.fetch = async () => ({ ok: true, json: async () => env.response });
+  const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const actual = new Function("env", `with(env) { ${js}; return { reconcileAgentState, waitForPromptSettlement, finishPromptWithoutStream }; }`)(env);
+  return { env, calls, ...actual, advanceDelay: async () => {
+    assert.ok(delays.length, "the actual settlement callback must request its next delay");
+    const next = delays.shift(); now += next.ms; next.resolve();
+    await new Promise(resolve => setImmediate(resolve));
+  } };
+}
+
+test("reconciliation keeps SSE open while server runtime is running after the model ends, then closes once at idle", async () => {
+  const h = promptSettlementHarness();
+  await h.reconcileAgentState("session-a");
+  assert.deepEqual(h.calls, [], "server prompt cleanup is still running even though all model flags are false");
+  assert.equal(h.env.agentRunningRef.current, true);
+  h.env.response.state.runtime = "idle";
+  await h.reconcileAgentState("session-a");
+  assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+  await h.reconcileAgentState("session-a");
+  assert.equal(h.calls.length, 2, "the same idle run must settle only once");
+});
+
+test("prompt settlement polling keeps SSE open while server runtime is running after the model ends", async () => {
+  const h = promptSettlementHarness();
+  const pending = h.waitForPromptSettlement("session-a");
+  await h.advanceDelay();
+  assert.deepEqual(h.calls, [], "prompt_done polling cannot close a still-running server cleanup");
+  assert.equal(h.env.agentRunningRef.current, true);
+  h.env.response.state.runtime = "idle";
+  await h.advanceDelay(); await pending;
+  assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+  assert.equal(h.env.promptSettlementPollByRunRef.current.size, 0);
+});
+
+test("old reconciliation responses cannot close a new prompt run", async () => {
+  const h = promptSettlementHarness();
+  let respond;
+  h.env.fetch = () => new Promise(resolve => { respond = resolve; });
+  const old = h.reconcileAgentState("session-a");
+  h.env.promptRunIdRef.current = 2;
+  respond({ ok: true, json: async () => ({ running: true, state: { runtime: "idle" } }) });
+  await old;
+  assert.deepEqual(h.calls, []); assert.equal(h.env.agentRunningRef.current, true);
+  h.env.fetch = async () => ({ ok: true, json: async () => ({ running: true, state: { runtime: "idle" } }) });
+  await h.reconcileAgentState("session-a");
+  assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+});
+
+test("old prompt settlement responses cannot close a new prompt run", async () => {
+  const h = promptSettlementHarness();
+  let respond;
+  h.env.fetch = () => new Promise(resolve => { respond = resolve; });
+  const old = h.waitForPromptSettlement("session-a");
+  await h.advanceDelay();
+  h.env.promptRunIdRef.current = 2;
+  respond({ ok: true, json: async () => ({ running: true, state: { runtime: "idle" } }) });
+  await old;
+  assert.deepEqual(h.calls, []); assert.equal(h.env.agentRunningRef.current, true);
+  assert.equal(h.env.promptSettlementPollByRunRef.current.size, 0);
+});
+
+function sessionMountHarness(response) {
+  const h = promptSettlementHarness();
+  const mount = source.slice(source.indexOf("  // Load session on mount"), source.indexOf("  useEffect(() => {\n    const sid = sessionIdRef.current;", source.indexOf("  // Load session on mount")));
+  for (const name of new Set(mount.match(/\b\w+Ref\b/g))) {
+    if (!(name in h.env)) h.env[name] = { current: null };
+  }
+  for (const name of new Set(mount.match(/\bset[A-Z]\w+(?=\()/g))) {
+    if (!(name in h.env)) h.env[name] = () => {};
+  }
+  h.env.agentRunningRef.current = false;
+  Object.assign(h.env, {
+    session: { id: "session-a" }, initialSessionData: null, response,
+    useEffect: callback => { h.cleanup = callback(); }, takePrefetchedSession: () => null,
+    invalidatePrefetchedSession() {}, connectEvents: async sid => h.calls.push(["connect", sid]),
+    loadSession: async sid => { h.calls.push(["load", sid]); return h.env.response; },
+  });
+  const js = ts.transpileModule(mount, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  new Function("env", `with(env) { ${js}; }`)(h.env);
+  return h;
+}
+
+test("mount recovery reconnects SSE during server runtime cleanup and settles the same run only at idle", async () => {
+  const h = sessionMountHarness({ running: true, state: { runtime: "running", isStreaming: false, isPromptRunning: false, isCompacting: false } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.env.agentRunningRef.current, true, "a refresh during prompt cleanup must restore the running span");
+  assert.deepEqual(h.calls, [["load", "session-a"], ["connect", "session-a"]]);
+  await h.reconcileAgentState("session-a");
+  assert.equal(h.calls.length, 2, "the restored stream stays open until server cleanup completes");
+  h.env.response.state.runtime = "idle";
+  await h.reconcileAgentState("session-a");
+  assert.deepEqual(h.calls, [["load", "session-a"], ["connect", "session-a"], ["close"], ["load", "session-a"]]);
+  await h.reconcileAgentState("session-a");
+  assert.equal(h.calls.length, 4, "the restored run settles only once");
+});
+
+test("mount recovery does not reconnect an idle server runtime", async () => {
+  const h = sessionMountHarness({ running: true, state: { runtime: "idle", isStreaming: false, isPromptRunning: false, isCompacting: false } });
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(h.env.agentRunningRef.current, false);
+  assert.deepEqual(h.calls, [["load", "session-a"]]);
+});
+
+function promptSubmissionHarness(overrides = {}) {
+  const h = promptSettlementHarness();
+  for (const extra of [sendHarness().env, abortHarness().env]) {
+    for (const [name, value] of Object.entries(extra)) if (!(name in h.env)) h.env[name] = value;
+  }
+  const callbacks = source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
+    + source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"))
+    + source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
+  for (const name of new Set(callbacks.match(/\b\w+Ref\b/g))) if (!(name in h.env)) h.env[name] = { current: null };
+  for (const name of new Set(callbacks.match(/\bset[A-Z]\w+(?=\()/g))) if (!(name in h.env)) h.env[name] = () => {};
+  h.env.agentRunningRef.current = false; h.env.promptRunIdRef.current = 0; h.env.session = { id: "session-a" };
+  Object.assign(h.env, {
+    finishPromptWithoutStream: h.finishPromptWithoutStream, waitForPromptSettlement: h.waitForPromptSettlement,
+    savePendingPrompt: async record => { h.env.saved = structuredClone(record); },
+    setMessages: update => { h.env.messages = typeof update === "function" ? update(h.env.messages) : update; },
+    reduceAgentPhase: (_phase, event) => ({ kind: event.type }), isRunProgressEvent: () => true,
+    handleExtensionUiRequest() {}, refreshContextUsage() {},
+    sendAgentCommand: async () => ({ accepted: true, sessionId: "session-a", commandId: "cmd-current", status: "queued" }),
+    response: { running: true, state: { runtime: "idle", isStreaming: false, isPromptRunning: false, isCompacting: false }, promptCommand: { commandId: "cmd-current", status: "queued" } },
+    ...overrides,
+  });
+  const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent }; }`)(h.env) };
+}
+
+test("actual send keeps SSE open through a delayed prompt POST in both existing and new sessions", async () => {
+  for (const isNew of [false, true]) {
+    let acknowledge;
+    const h = promptSubmissionHarness({ isNew, newSessionCwd: isNew ? "workspace" : null,
+      sendAgentCommand: () => new Promise(resolve => { acknowledge = resolve; }) });
+    const sending = h.handleSend("prepare the session");
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(typeof acknowledge, "function", "the real send callback must reach the prompt POST");
+    await h.reconcileAgentState("session-a"); await h.reconcileAgentState("session-a");
+    assert.deepEqual(h.calls, [], "idle before POST acknowledgement must not close or hydrate the stream");
+    const polling = h.waitForPromptSettlement("session-a");
+    await h.advanceDelay();
+    assert.deepEqual(h.calls, [], "terminal polling must also wait for the in-flight POST");
+    acknowledge({ accepted: true, sessionId: "session-a", commandId: "cmd-current", status: "queued" });
+    assert.equal(await sending, true);
+    h.env.response.promptCommand.status = "completed";
+    await h.advanceDelay(); await polling;
+    await h.reconcileAgentState("session-a");
+    assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+  }
+});
+
+test("actual accepted prompt stays open through every nonterminal command state and missing receipts", async () => {
+  const h = promptSubmissionHarness();
+  assert.equal(await h.handleSend("prepare the session"), true);
+  const urls = [];
+  h.env.fetch = async url => {
+    urls.push(url);
+    return { ok: true, json: async () => h.env.response };
+  };
+  for (const status of ["accepted", "queued", "dispatching", "delivered", "running"]) {
+    h.env.response.promptCommand = { commandId: "cmd-current", status };
+    await h.reconcileAgentState("session-a");
+    assert.deepEqual(h.calls, [], `${status} must not settle an idle wrapper before this command finishes`);
+  }
+  for (const promptCommand of [null, undefined, { commandId: "cmd-other", status: "completed" }]) {
+    h.env.response.promptCommand = promptCommand;
+    await h.reconcileAgentState("session-a"); assert.deepEqual(h.calls, []);
+  }
+  h.handleAgentEvent({ type: "prompt_started", commandId: "cmd-current", runId: "server-run" });
+  h.handleAgentEvent({ type: "agent_start" });
+  h.env.response.state.runtime = "running";
+  h.env.response.promptCommand = { commandId: "cmd-current", status: "completed" };
+  await h.reconcileAgentState("session-a"); assert.deepEqual(h.calls, [], "command completion still requires server idle");
+  h.env.response.state.runtime = "idle";
+  await h.reconcileAgentState("session-a"); await h.reconcileAgentState("session-a");
+  assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+  assert.ok(urls.every(url => url === "/api/agent/session-a?promptCommandId=cmd-current"));
+});
+
+test("actual settlement polling waits for the exact accepted command to become terminal", async () => {
+  const h = promptSubmissionHarness();
+  await h.handleSend("prepare the session");
+  const urls = [];
+  h.env.fetch = async url => { urls.push(url); return { ok: true, json: async () => h.env.response }; };
+  const polling = h.waitForPromptSettlement("session-a");
+  await h.advanceDelay(); assert.deepEqual(h.calls, []);
+  h.env.response.promptCommand = null;
+  await h.advanceDelay(); assert.deepEqual(h.calls, []);
+  h.env.response.promptCommand = { commandId: "cmd-current", status: "failed" };
+  await h.advanceDelay(); await polling;
+  assert.ok(urls.every(url => url === "/api/agent/session-a?promptCommandId=cmd-current"));
+  assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+});
+
+test("every exact terminal command state settles an actual idle submission", async () => {
+  for (const status of ["completed", "failed", "cancelled", "expired", "interrupted"]) {
+    const h = promptSubmissionHarness();
+    await h.handleSend("prepare the session");
+    h.env.response.promptCommand.status = status;
+    await h.reconcileAgentState("session-a");
+    assert.deepEqual(h.calls, [["close"], ["load", "session-a"]], `${status} is terminal for this exact command`);
+  }
+});
+
+test("old actual prompt POST acknowledgements cannot replace a newer run's command identity", async () => {
+  let firstReply;
+  let posts = 0;
+  const h = promptSubmissionHarness({ sendAgentCommand: () => ++posts === 1
+    ? new Promise(resolve => { firstReply = resolve; })
+    : Promise.resolve({ accepted: true, sessionId: "session-a", commandId: "cmd-new", status: "queued" }) });
+  const first = h.handleSend("first");
+  await new Promise(resolve => setImmediate(resolve));
+  h.env.agentRunningRef.current = false;
+  assert.equal(await h.handleSend("second"), true);
+  firstReply({ accepted: true, sessionId: "session-a", commandId: "cmd-old", status: "queued" });
+  assert.equal(await first, false);
+  const urls = [];
+  h.env.fetch = async url => {
+    urls.push(url);
+    return { ok: true, json: async () => ({ running: true, state: { runtime: "idle" }, promptCommand: { commandId: "cmd-new", status: "queued" } }) };
+  };
+  await h.reconcileAgentState("session-a"); assert.deepEqual(h.calls, []);
+  assert.deepEqual(urls, ["/api/agent/session-a?promptCommandId=cmd-new"]);
+});
+
+test("an old command GET cannot settle the next actual submission", async () => {
+  const h = promptSubmissionHarness();
+  await h.handleSend("first");
+  let reply;
+  h.env.fetch = () => new Promise(resolve => { reply = resolve; });
+  const stale = h.reconcileAgentState("session-a");
+  h.env.agentRunningRef.current = false;
+  h.env.sendAgentCommand = async () => ({ accepted: true, sessionId: "session-a", commandId: "cmd-new", status: "queued" });
+  await h.handleSend("second");
+  reply({ ok: true, json: async () => ({ running: true, state: { runtime: "idle" }, promptCommand: { commandId: "cmd-current", status: "completed" } }) });
+  await stale;
+  assert.deepEqual(h.calls, []); assert.equal(h.env.agentRunningRef.current, true);
+});
+
+test("Stop during an actual prompt POST cancels its exact durable key rather than only cancelling preparation", async () => {
+  let acknowledge;
+  const commands = [];
+  const h = promptSubmissionHarness({ sendAgentCommand: (_sid, command) => {
+    commands.push(command);
+    return command.type === "prompt" ? new Promise(resolve => { acknowledge = resolve; }) : Promise.resolve({ accepted: true });
+  } });
+  const sending = h.handleSend("prepare the session");
+  await new Promise(resolve => setImmediate(resolve));
+  await h.handleAbort();
+  assert.equal(commands.length, 2);
+  assert.equal(commands[0].type, "prompt");
+  assert.deepEqual(commands[1], { type: "cancel_prompt_submission", idempotencyKey: h.env.saved.id });
+  assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+  acknowledge({ accepted: true, sessionId: "session-a", commandId: "cmd-current", status: "queued" });
+  assert.equal(await sending, false);
+});
+
+test("tracked Stop preserves the SDK's queued guidance handoff without a second generic abort", async () => {
+  const commands = [];
+  const h = promptSubmissionHarness({ sendAgentCommand: async (_sid, command) => {
+    commands.push(command);
+    return command.type === "cancel_prompt_submission"
+      ? { queuedMessages: { id: "queue-handoff", steering: ["continue safely"], followUp: [] } }
+      : { accepted: true, sessionId: "session-a", commandId: commands.length === 1 ? "cmd-current" : "cmd-new", status: "queued" };
+  } });
+  await h.handleSend("original");
+  const originalKey = h.env.saved.id;
+  await h.handleAbort();
+  assert.deepEqual(commands.map(command => command.type), ["prompt", "cancel_prompt_submission", "prompt"]);
+  assert.deepEqual(commands[1], { type: "cancel_prompt_submission", idempotencyKey: originalKey, promptCommandId: "cmd-current" });
+  assert.equal(commands[2].message, "continue safely");
+  assert.equal(commands[2].idempotencyKey, "queue-handoff");
+});
+
+test("actual ambiguous prompt failures retain idle recovery and definite 4xx failures close immediately", async () => {
+  for (const status of [0, 409]) {
+    const h = promptSubmissionHarness();
+    h.env.sendAgentCommand = async () => { const error = new h.env.AgentCommandError("send failed"); error.status = status; throw error; };
+    assert.equal(await h.handleSend("prepare the session"), false);
+    if (status === 0) {
+      assert.deepEqual(h.calls, [], "an ambiguous POST keeps the event stream alive");
+      const polling = h.env.promptSettlementPollByRunRef.current.get(h.env.promptRunIdRef.current);
+      assert.ok(polling);
+      await h.advanceDelay(); await polling;
+      assert.deepEqual(h.calls, [["close"], ["load", "session-a"]]);
+    } else {
+      assert.deepEqual(h.calls, [["close"]]);
+      assert.equal(h.env.promptSettlementPollByRunRef.current.size, 0);
+    }
+  }
+});
+
+async function routerSubmissionHarness() {
+  const jiti = createJiti(import.meta.url);
+  const [{ SessionMessageRouter }, { SessionControlStore }, { SessionCommandEventHub }] = await Promise.all([
+    jiti.import("../lib/session-message-router.ts"), jiti.import("../lib/session-control-store.ts"), jiti.import("../lib/session-command-events.ts"),
+  ]);
+  const root = await mkdtemp(join(tmpdir(), "piora-hook-prompt-cancel-"));
+  const sid = randomUUID();
+  const listeners = new Set();
+  let acknowledgeStart;
+  const started = new Promise(resolve => { acknowledgeStart = resolve; });
+  const session = {
+    sessionId: sid, active: false, starts: [], aborts: [],
+    isAlive: () => true, isRunning: () => session.active,
+    getActivePromptRunId: () => session.runId,
+    getTaskRuntimeSnapshot: () => ({ runtime: session.active ? "running" : "idle", pendingApproval: false, lastPromptFailed: false }),
+    onEvent: listener => { listeners.add(listener); return () => listeners.delete(listener); }, onDestroy: () => () => {},
+    emit: event => { for (const listener of listeners) listener(event); },
+    startTrackedPrompt: async input => {
+      session.active = true; session.runId = randomUUID(); session.starts.push(input);
+      acknowledgeStart();
+      session.emit({ type: "prompt_started", commandId: input.commandId, runId: session.runId });
+      return { accepted: true, sessionId: sid, commandId: input.commandId, runId: session.runId };
+    },
+    send: async command => {
+      session.aborts.push(command); session.active = false;
+      session.emit({ type: "prompt_done", commandId: session.starts.at(-1)?.commandId, runId: session.runId, aborted: true });
+      session.runId = undefined;
+      return { accepted: true };
+    },
+    finish: () => {
+      session.active = false;
+      session.emit({ type: "prompt_done", commandId: session.starts.at(-1)?.commandId, runId: session.runId });
+      session.runId = undefined;
+    },
+  };
+  globalThis.__piSessions ??= new Map(); globalThis.__piSessions.set(sid, session);
+  const store = new SessionControlStore({ root });
+  const events = new SessionCommandEventHub(store);
+  const router = new SessionMessageRouter({ store, events, resolver: async () => ({ session, realSessionId: sid, cwd: root }) });
+  const h = promptSubmissionHarness({ session: { id: sid } });
+  h.env.sessionIdRef.current = sid;
+  h.env.sendAgentCommand = async (_sid, command) => {
+    assert.equal(_sid, sid);
+    if (command.type === "prompt") return router.dispatchSessionMessage({ targetSessionId: sid, content: command.message, source: "ui", idempotencyKey: command.idempotencyKey });
+    assert.equal(command.type, "cancel_prompt_submission", "tracked cancellation must never fall through to generic abort");
+    return router.cancelPromptSubmission({ targetSessionId: sid, idempotencyKey: command.idempotencyKey, ...(command.promptCommandId ? { promptCommandId: command.promptCommandId } : {}) });
+  };
+  return { ...h, sid, session, started, router, store, events, cleanup: async () => {
+    globalThis.__piSessions.delete(sid); globalThis.__piSessionInboxes?.delete(sid);
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 30 });
+  } };
+}
+
+test("actual Stop intent prevents a late prompt POST from entering the real router while a new run proceeds", { timeout: 15_000 }, async () => {
+  const h = await routerSubmissionHarness();
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  const send = h.env.sendAgentCommand;
+  let firstKey;
+  h.env.sendAgentCommand = async (sid, command) => {
+    if (command.type === "prompt" && command.message === "first") { firstKey = command.idempotencyKey; await gate; }
+    return send(sid, command);
+  };
+  try {
+    const first = h.handleSend("first");
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(firstKey);
+    await h.handleAbort();
+    assert.equal(h.env.saved.id, firstKey, "a cancellation intent must not replace the original durable recovery record");
+    assert.equal(await h.handleSend("second"), true);
+    await h.started;
+    assert.equal(h.session.starts.length, 1);
+    const currentSubmission = h.env.promptSubmissionRef.current;
+    release(); assert.equal(await first, false);
+    assert.deepEqual(h.session.starts.map(input => input.message), ["second"], "cancelled late admission must never start a model or tool span");
+    assert.equal(h.session.aborts.length, 0, "the old cancelled key cannot abort the new running command");
+    assert.equal(h.env.promptSubmissionRef.current, currentSubmission);
+    const cancelled = h.store.loadCommands(h.sid).find(command => command.idempotencyKey === firstKey);
+    assert.equal(cancelled?.status, "cancelled");
+    h.session.finish(); await h.router.resumeSession(h.sid);
+  } finally { release(); if (h.session.active) h.session.finish(); await h.cleanup(); }
+});
+
+test("actual queued Stop removes only its exact real router command before idle drain", { timeout: 15_000 }, async () => {
+  const h = await routerSubmissionHarness();
+  h.session.active = true;
+  try {
+    assert.equal(await h.handleSend("queued"), true);
+    const key = h.env.saved.id;
+    await h.handleAbort();
+    h.session.active = false; h.session.emit({ type: "session_idle" });
+    await h.router.resumeSession(h.sid);
+    assert.equal(h.session.starts.length, 0, "a cancelled queued command must not begin after the wrapper returns idle");
+    assert.equal(h.session.aborts.length, 0, "queued cancellation must not abort an unrelated running span");
+    assert.equal(h.store.loadCommands(h.sid).find(command => command.idempotencyKey === key)?.status, "cancelled");
+  } finally { await h.cleanup(); }
+});
+
+test("actual Stop during the real router's dispatching await fences admission", { timeout: 15_000 }, async () => {
+  const h = await routerSubmissionHarness();
+  let release, entered;
+  const gate = new Promise(resolve => { release = resolve; });
+  const dispatching = new Promise(resolve => { entered = resolve; });
+  const publish = h.events.publish.bind(h.events);
+  h.events.publish = async event => {
+    if (event.type === "command_dispatching") { entered(); await gate; }
+    return publish(event);
+  };
+  try {
+    assert.equal(await h.handleSend("dispatching"), true);
+    await dispatching;
+    await h.handleAbort();
+    release(); await h.router.resumeSession(h.sid);
+    assert.equal(h.session.starts.length, 0, "cancelled canonical command state must win over an older local dispatching record");
+    assert.equal(h.store.loadCommands(h.sid).find(command => command.idempotencyKey === h.env.saved.id)?.status, "cancelled");
+  } finally { release(); await h.cleanup(); }
+});
+
 test("cancels stale session loads when switching tasks", () => {
   const loadSource = source.slice(
     source.indexOf("  const loadSession = useCallback"),
@@ -280,16 +712,21 @@ test("a silent replacement load clears an initial spinner without showing a canc
   assert.equal(env.setErrorValue, null);
 });
 
-test("settles the local stream as soon as the server accepts an abort", () => {
-  const abortSource = source.slice(
-    source.indexOf("  const handleAbort = useCallback"),
-    source.indexOf("  const handleFork = useCallback"),
-  );
-
-  assert.match(abortSource, /const runId = promptRunIdRef\.current/);
-  assert.match(abortSource, /setAgentPhase\(\{ kind: "stopping" \}\)/);
-  assert.match(abortSource, /await sendAgentCommand(?:<[^>]+>)?\(sid, \{ type: "abort" \}, \{ timeoutMs: 10_000 \}\);[\s\S]*?void finishPromptWithoutStream\(sid, runId\)/);
-  assert.match(abortSource, /addNotice\(\{ type: "error", message: t\("chat.stopFailed"/);
+test("settles an untracked restored run only after the server accepts its ordinary abort", async () => {
+  let acknowledge;
+  const h = abortHarness({ sendAgentCommand: async (_sid, command) => {
+    assert.equal(command.type, "abort");
+    return new Promise(resolve => { acknowledge = resolve; });
+  } });
+  const stopping = h.run();
+  assert.equal(typeof acknowledge, "function");
+  assert.deepEqual(h.calls, [], "a restored run must stay visible until its real server stop is acknowledged");
+  acknowledge({ accepted: true }); await stopping;
+  assert.deepEqual(h.calls, ["finish"]);
+  const failed = abortHarness({ sendAgentCommand: async () => { throw new Error("offline"); } });
+  await failed.run();
+  assert.deepEqual(failed.calls, [{ type: "error", message: "chat.stopFailed" }]);
+  assert.equal(failed.env.agentRunningRef.current, true, "a rejected stop must not claim local settlement");
 });
 
 test("visible termination precedes a stalled history reload and is idempotent", async () => {

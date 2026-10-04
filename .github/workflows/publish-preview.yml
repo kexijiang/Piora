@@ -1,0 +1,102 @@
+name: Publish accepted preview artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing beta tag produced by harmony-preview.yml
+        type: string
+        required: true
+      build_run_id:
+        description: Successful preview build run whose exact artifacts passed installed-app and phone acceptance
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  publish-preview:
+    name: Publish locally accepted preview
+    runs-on: windows-latest
+    environment: preview-publish
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    env:
+      PREVIEW_TAG: ${{ inputs.tag }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+
+    steps:
+      - name: Check out the accepted tag
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.19.0
+
+      - name: Bind the requested tag to one successful preview run
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:PREVIEW_TAG -notmatch '^v\d+\.\d+\.\d+-beta\.\d+$') { throw 'tag must be a beta version tag' }
+          if ($env:BUILD_RUN_ID -notmatch '^[1-9]\d*$') { throw 'build_run_id must be a GitHub Actions run id' }
+          git fetch --no-tags --force origin +refs/heads/main:refs/remotes/origin/main
+          node scripts/verify-release-metadata.mjs $env:PREVIEW_TAG --prerelease --require-origin-main
+          $tagCommit = (git rev-list -n 1 $env:PREVIEW_TAG).Trim()
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:BUILD_RUN_ID" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Unable to read the requested workflow run' }
+          if ($run.event -ne 'push' -or $run.status -ne 'completed' -or $run.conclusion -ne 'success' `
+              -or $run.path -ne '.github/workflows/harmony-preview.yml' -or $run.head_branch -ne $env:PREVIEW_TAG `
+              -or $run.head_sha -ne $tagCommit) {
+            throw 'The requested run is not the successful preview build for this exact tag commit'
+          }
+
+      - name: Download the exact verified preview payload
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: '*-${{ inputs.tag }}'
+          path: downloaded-brands
+          merge-multiple: false
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.build_run_id }}
+
+      - name: Verify and assemble Piora artifacts
+        shell: pwsh
+        run: |
+          node scripts/create-release-notes.mjs $env:PREVIEW_TAG accepted-release-notes.md
+          if ($LASTEXITCODE -ne 0) { throw 'Canonical release-note generation failed' }
+          New-Item -ItemType Directory -Path desktop -Force | Out-Null
+          node "downloaded-brands/brand-release-tooling-$env:PREVIEW_TAG/assemble-brand-release.mjs" downloaded-brands desktop/release $env:PREVIEW_TAG accepted-release-notes.md
+          if ($LASTEXITCODE -ne 0) { throw 'Brand release assembly failed' }
+
+      - name: Create GitHub prerelease from the accepted bytes
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:PREVIEW_TAG -replace '^v', ''
+          $releaseRoot = (Resolve-Path -LiteralPath desktop/release).Path
+          $assets = @(
+            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-setup.exe")).Path,
+            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-setup.exe.blockmap")).Path,
+            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-portable.exe")).Path,
+            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "beta.yml")).Path,
+            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "SHA256SUMS.txt")).Path
+          )
+          $releaseNotesPath = (Resolve-Path -LiteralPath (Join-Path $releaseRoot 'release-notes.md')).Path
+          gh release create $env:PREVIEW_TAG @assets `
+            --repo $env:GITHUB_REPOSITORY `
+            --title "Piora $env:PREVIEW_TAG Preview" `
+            --notes-file $releaseNotesPath `
+            --verify-tag `
+            --prerelease
+          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE" }

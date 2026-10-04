@@ -7457,6 +7457,10 @@
             "replace": {
               "type": "boolean"
             },
+            "expectedHash": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
             "serial": {
               "type": "string",
               "minLength": 1,
@@ -7719,6 +7723,142 @@
             "action": {
               "type": "string",
               "const": "rename_path"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "shared"
+                },
+                {
+                  "type": "string",
+                  "const": "sandbox"
+                }
+              ]
+            },
+            "bundleName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "newPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "copy_path",
+      "description": "Copy one regular device file or bounded directory to a new path, verifying contents before publishing",
+      "risk": "control",
+      "capability": "copy_path",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "kind",
+            "path",
+            "newPath"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "copy_path"
+            },
+            "kind": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "const": "shared"
+                },
+                {
+                  "type": "string",
+                  "const": "sandbox"
+                }
+              ]
+            },
+            "bundleName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "newPath": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "serial": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "leaseToken": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "move_path",
+      "description": "Move one regular device file or bounded directory, verifying the destination before removing its source",
+      "risk": "control",
+      "capability": "move_path",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "dispatch-receipt-with-separate-verification",
+      "modes": [
+        "direct"
+      ],
+      "schemas": {
+        "direct": {
+          "type": "object",
+          "required": [
+            "action",
+            "kind",
+            "path",
+            "newPath"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "move_path"
             },
             "kind": {
               "anyOf": [
@@ -8691,6 +8831,44 @@
             "action": {
               "type": "string",
               "const": "checkpoint"
+            },
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "protocolVersion": 1,
+      "action": "capture_screenshot",
+      "description": "Save a fresh device screenshot as a local execution artifact",
+      "risk": "read",
+      "capability": "capture_screenshot",
+      "retry": "only-before-dispatch",
+      "cleanup": "owned-resources",
+      "result": "observation-with-quality",
+      "modes": [
+        "scenario"
+      ],
+      "schemas": {
+        "scenario": {
+          "type": "object",
+          "required": [
+            "action"
+          ],
+          "properties": {
+            "action": {
+              "type": "string",
+              "const": "capture_screenshot"
             },
             "name": {
               "type": "string",

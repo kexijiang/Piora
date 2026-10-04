@@ -1,0 +1,8 @@
+{
+  "modelVersion": "5.0.0",
+  "name": "entry",
+  "version": "1.0.0",
+  "dependencies": {
+    "libscrcpy_capture.so": "file:./src/main/cpp/types/libscrcpy_capture"
+  }
+}

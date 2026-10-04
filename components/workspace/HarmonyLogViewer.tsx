@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createLogMatcher } from "@/lib/harmony/log-filter";
+import { createLogMatcher, createLogTimeRange } from "@/lib/harmony/log-filter";
 import { AliIcon } from "../AliIcon";
 import styles from "./HarmonyPanel.module.css";
 
@@ -30,6 +30,17 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
   const [level, setLevel] = useState("");
   const [query, setQuery] = useState("");
   const [regex, setRegex] = useState(false);
+  const [tag, setTag] = useState("");
+  const [fromTime, setFromTime] = useState("");
+  const [toTime, setToTime] = useState("");
+  const [dropped, setDropped] = useState(0);
+  const [evicted, setEvicted] = useState(0);
+  const [notice, setNotice] = useState<string>();
+  const [selected, setSelected] = useState<LogEntry>();
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(300);
+  const [rowHeight, setRowHeight] = useState(24);
+  const measureRef = useRef<HTMLDivElement>(null);
   const processListId = useId();
   const deferredQuery = useDeferredValue(query);
   const [entries, setEntries] = useState<Array<LogEntry & { id: number }>>([]);
@@ -54,8 +65,12 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
   };
 
   useEffect(() => {
+    buffered.current = []; setEntries([]); setDropped(0); setEvicted(0); setSelected(undefined); setNotice(undefined);
+    anchor.current = null; following.current = true; setFollowTail(true); setScrollTop(0);
+  }, [serial, refreshKey]);
+
+  useEffect(() => {
     setPid("");
-    setEntries([]);
     if (!active || !online || !serial) {
       setProcesses([]);
       return;
@@ -71,14 +86,17 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
 
   useEffect(() => {
     if (!active || !online || !serial) return;
-    buffered.current = []; setEntries([]); setLoading(true); setError(null);
+    setLoading(true); setError(null);
     const stream = new EventSource(`/api/harmony/logs/events?serial=${encodeURIComponent(serial)}`);
     stream.addEventListener("connected", () => { setLoading(false); setError(null); });
     stream.addEventListener("logs", (event) => {
       try {
         const payload = JSON.parse((event as MessageEvent).data) as { entries: LogEntry[]; dropped?: number };
-        buffered.current = [...buffered.current, ...payload.entries.map((entry) => ({ ...entry, id: nextId.current++ }))].slice(-10000);
-        if (payload.dropped) setError(copy("日志产生过快，部分记录未显示", "Some records were dropped because logs arrived too quickly"));
+        const combined = [...buffered.current, ...payload.entries.map((entry) => ({ ...entry, id: nextId.current++ }))];
+        const removed = Math.max(0, combined.length - 10000);
+        buffered.current = combined.slice(-10000);
+        if (removed) setEvicted(count => count + removed);
+        if (Number.isSafeInteger(payload.dropped) && payload.dropped! > 0) setDropped(count => count + payload.dropped!);
         if (!pausedRef.current) { captureAnchor(); setEntries(buffered.current); }
       } catch { setError(copy("日志数据无法解析", "Invalid log data")); }
     });
@@ -94,20 +112,50 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
   }, [active, online, refreshKey, serial]);
 
   useLayoutEffect(() => {
+    const output = outputRef.current, measure = measureRef.current;
+    if (!output || !measure) return;
+    const update = () => { setViewportHeight(output.clientHeight); setRowHeight(measure.getBoundingClientRect().height || 24); };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(output); observer.observe(measure);
+    return () => observer.disconnect();
+  }, []);
+
+  const selectedProcess = useMemo(() => processes.find((process) => String(process.pid) === pid), [pid, processes]);
+  const matchingPids = useMemo(() => new Set(processes.filter(process => process.name.toLocaleLowerCase().includes(pid.toLocaleLowerCase())).map(process => process.pid)), [pid, processes]);
+  const matcher = useMemo(() => createLogMatcher(deferredQuery, regex), [deferredQuery, regex]);
+  const timeRange = useMemo(() => createLogTimeRange(fromTime, toTime), [fromTime, toTime]);
+  const visibleEntries = useMemo(() => entries.filter((entry) => (!pid || String(entry.pid) === pid || (entry.pid !== undefined && matchingPids.has(entry.pid)))
+    && (!level || entry.level === level) && (!tag || (entry.tag ?? "").toLocaleLowerCase().includes(tag.toLocaleLowerCase()))
+    && timeRange.matches(entry.timestamp) && matcher.matches(entry.raw)), [entries, pid, matchingPids, level, tag, timeRange, matcher]);
+  const firstRow = Math.min(Math.max(0, visibleEntries.length - 1), Math.max(0, Math.floor(scrollTop / rowHeight) - 8));
+  const lastRow = Math.min(visibleEntries.length, Math.ceil((scrollTop + viewportHeight) / rowHeight) + 8);
+
+  useLayoutEffect(() => {
     const output = outputRef.current;
     if (!output) return;
     if (following.current && !paused) output.scrollTop = output.scrollHeight;
     else if (anchor.current) {
-      const row = output.querySelector<HTMLElement>(`[data-log-id="${anchor.current.id}"]`);
-      if (row) output.scrollTop += row.getBoundingClientRect().top - output.getBoundingClientRect().top - anchor.current.offset;
+      const index = visibleEntries.findIndex(entry => String(entry.id) === anchor.current!.id);
+      if (index >= 0) output.scrollTop = index * rowHeight - anchor.current.offset;
       else output.scrollTop = 0;
     }
     anchor.current = null;
-  }, [entries, paused, deferredQuery, regex, pid, level]);
+    setScrollTop(output.scrollTop);
+  }, [visibleEntries, paused, rowHeight]);
 
-  const selectedProcess = useMemo(() => processes.find((process) => String(process.pid) === pid), [pid, processes]);
-  const matcher = useMemo(() => createLogMatcher(deferredQuery, regex), [deferredQuery, regex]);
-  const visibleEntries = useMemo(() => entries.filter((entry) => (!pid || String(entry.pid) === pid || processes.some((process) => process.pid === entry.pid && process.name.toLocaleLowerCase().includes(pid.toLocaleLowerCase()))) && (!level || entry.level === level) && matcher.matches(entry.raw)), [entries, pid, processes, level, matcher]);
+  const exportLogs = (filtered: boolean) => {
+    const rows = filtered ? visibleEntries : entries;
+    const url = URL.createObjectURL(new Blob([rows.map(entry => entry.raw).join("\n") + "\n"], { type: "text/plain;charset=utf-8" }));
+    const link = document.createElement("a"); link.href = url;
+    link.download = `harmony-logs-${new Date().toISOString().replace(/[:.]/g, "-")}-${filtered ? "filtered" : "all"}.txt`;
+    link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setNotice(copy(`已导出 ${rows.length} 行；仅包含当前保留的日志`, `Exported ${rows.length} retained lines`));
+  };
+  const copyText = async (text: string) => {
+    try { await navigator.clipboard.writeText(text); setNotice(copy("日志已复制", "Logs copied")); }
+    catch { setError(copy("复制失败，请选中文字后复制", "Copy failed. Select the text and copy it.")); }
+  };
 
   return <section className={styles.logViewer} aria-label={copy("设备日志", "Device logs")}>
     <div className={styles.logToolbar}>
@@ -122,28 +170,55 @@ export function HarmonyLogViewer({ active, serial, online, copy }: {
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy("筛选日志", "Filter logs")} aria-label={copy("筛选日志", "Filter logs")} />
       </label>
       <button className={styles.iconButton} type="button" onClick={() => setRegex(!regex)} aria-pressed={regex} title={copy("正则表达式", "Regular expression")}>.*</button>
-      <button className={styles.iconButton} type="button" onClick={() => { if (paused) { captureAnchor(); setEntries(buffered.current); } setPaused(!paused); }} aria-pressed={paused} title={paused ? copy("继续", "Resume") : copy("暂停", "Pause")}>
+      <button className={styles.iconButton} type="button" onClick={() => { if (paused) { captureAnchor(); setEntries(buffered.current); } pausedRef.current = !paused; setPaused(!paused); }} aria-pressed={paused} aria-label={paused ? copy("继续显示日志", "Resume log display") : copy("暂停显示日志", "Pause log display")} title={paused ? copy("继续", "Resume") : copy("暂停", "Pause")}>
         <AliIcon name={paused ? "play" : "pause"} size={13} />
       </button>
       <button className={styles.iconButton} type="button" onClick={() => setRefreshKey((key) => key + 1)} title={copy("刷新日志", "Refresh logs")} aria-label={copy("刷新日志", "Refresh logs")}>
         <AliIcon name="reload" size={13} />
       </button>
     </div>
+    <div className={styles.logFilters}>
+      <input value={tag} onChange={event => setTag(event.target.value)} aria-label={copy("日志 TAG", "Log TAG")} placeholder="TAG" />
+      <input value={fromTime} onChange={event => setFromTime(event.target.value)} aria-label={copy("日志开始时间", "Log start time")} placeholder={copy("开始 HH:mm:ss", "From HH:mm:ss")} />
+      <input value={toTime} onChange={event => setToTime(event.target.value)} aria-label={copy("日志结束时间", "Log end time")} placeholder={copy("结束 HH:mm:ss", "To HH:mm:ss")} />
+      <small>{copy("设备时钟；可填 MM-DD HH:mm:ss，起止格式一致。", "Device clock; optional MM-DD prefix, same format for both limits.")}</small>
+    </div>
+    <div className={styles.logActions}>
+      <button type="button" disabled={!entries.length} onClick={() => exportLogs(false)}>{copy("导出保留日志", "Export retained logs")}</button>
+      <button type="button" disabled={!visibleEntries.length} onClick={() => exportLogs(true)}>{copy("导出筛选结果", "Export filtered logs")}</button>
+      <button type="button" onMouseDown={event => event.preventDefault()} onClick={() => {
+        const selection = window.getSelection();
+        if (selection?.anchorNode && outputRef.current?.contains(selection.anchorNode) && selection.focusNode && outputRef.current.contains(selection.focusNode) && selection.toString()) void copyText(selection.toString());
+        else if (selected) void copyText(selected.raw);
+        else setNotice(copy("请先选中日志文字或打开一行详情", "Select log text or open a line first"));
+      }}>{copy("复制选中日志", "Copy selected logs")}</button>
+      <button type="button" onClick={() => { buffered.current = []; setEntries([]); setSelected(undefined); setDropped(0); setEvicted(0); setNotice(undefined); anchor.current = null; }}>{copy("清空当前视图", "Clear current view")}</button>
+    </div>
     <div className={styles.logMeta}>
       <span>{selectedProcess ? `${selectedProcess.name} · PID ${selectedProcess.pid}` : copy("所有进程", "All processes")}</span>
-      <span>{visibleEntries.length} / {entries.length} {copy("行（保留最近 10000 行）", "lines (latest 10000 retained)")}{loading ? ` · ${copy("连接中", "connecting")}` : ""}{paused ? ` · ${copy("已暂停显示", "display paused")}` : ""}</span>
-      {!followTail && <button onClick={() => { following.current = true; setFollowTail(true); if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight; }}>{copy("跟随最新日志", "Follow latest")}</button>}
+      <span>{visibleEntries.length} / {entries.length} {copy("行（保留最近 10000 行）", "lines (latest 10000 retained)")}{loading ? ` · ${copy("连接中", "connecting")}` : ""}{paused ? ` · ${copy("已暂停显示，继续采集", "display paused; still collecting")}` : ""}{!online ? ` · ${copy("已断开，保留已采集日志", "disconnected; collected logs retained")}` : ""}{dropped ? ` · ${copy("未接收", "Dropped")} ${dropped}` : ""}{evicted ? ` · ${copy("超出保留上限", "Evicted")} ${evicted}` : ""}</span>
+      {(!followTail || paused) && <button onClick={() => { following.current = true; setFollowTail(true); pausedRef.current = false; setPaused(false); setEntries(buffered.current); if (outputRef.current) outputRef.current.scrollTop = outputRef.current.scrollHeight; }}>{copy("跟随最新日志", "Follow latest")}</button>}
     </div>
-    <div ref={outputRef} className={styles.logOutput} role="log" aria-live="off" onScroll={(event) => { const output = event.currentTarget; const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < 24; following.current = atBottom; setFollowTail(atBottom); }}>
-      {visibleEntries.length ? visibleEntries.map((entry) => <div className={styles.logLine} data-log-id={entry.id} data-level={entry.level} key={entry.id}>
+    <div ref={outputRef} className={styles.logOutput} role="log" aria-live="off" onScroll={(event) => { const output = event.currentTarget; setScrollTop(output.scrollTop); const atBottom = output.scrollHeight - output.scrollTop - output.clientHeight < rowHeight; following.current = atBottom; setFollowTail(atBottom); }}>
+      <div ref={measureRef} className={styles.logRowMeasure} aria-hidden="true" />
+      {visibleEntries.length ? <div style={{ height: visibleEntries.length * rowHeight, position: "relative" }}>
+        <div style={{ position: "absolute", top: firstRow * rowHeight, left: 0, right: 0 }}>
+        {visibleEntries.slice(firstRow, lastRow).map((entry) => <div className={styles.logLine} style={{ height: rowHeight }} data-log-id={entry.id} data-level={entry.level} key={entry.id}
+          role="button" tabIndex={0} aria-label={copy("查看日志详情", "View log details")} onClick={() => setSelected(entry)} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelected(entry); } }}>
         <span className={styles.logTime}>{entry.timestamp ?? ""}</span>
         <span className={styles.logLevel}>{entry.level === "unknown" ? "·" : entry.level.slice(0, 1).toUpperCase()}</span>
         <span className={styles.logPid}>{entry.pid ?? ""}</span>
         <span className={styles.logTag}>{entry.tag ?? entry.domain ?? ""}</span>
         <span className={styles.logMessage}>{entry.message}</span>
-      </div>) : <div className={styles.logEmpty}>{online ? copy("没有匹配的日志", "No matching logs") : copy("请先连接设备", "Connect a device first")}</div>}
+      </div>)}</div></div> : <div className={styles.logEmpty}>{online ? copy("没有匹配的日志", "No matching logs") : copy("请先连接设备", "Connect a device first")}</div>}
     </div>
+    {selected ? <div className={styles.logDetails} aria-label={copy("日志详情", "Log details")}>
+      <div><strong>{copy("日志详情", "Log details")}</strong><button type="button" onClick={() => void copyText(selected.raw)}>{copy("复制完整行", "Copy complete line")}</button><button type="button" onClick={() => setSelected(undefined)}>{copy("关闭详情", "Close details")}</button></div>
+      <pre>{selected.raw}</pre>
+    </div> : null}
+    {notice ? <div role="status" className={styles.inlineHint}>{notice}</div> : null}
     {error ? <div className={styles.error} role="alert">{error}</div> : null}
     {matcher.error && <div className={styles.error} role="alert">{copy("正则表达式无效：", "Invalid regular expression: ")}{matcher.error}</div>}
+    {timeRange.error && <div className={styles.error} role="alert">{copy("时间格式无效：填写 HH:mm[:ss] 或 MM-DD HH:mm[:ss]，起止格式一致。", "Invalid time: use HH:mm[:ss] or MM-DD HH:mm[:ss], with matching limit formats.")}</div>}
   </section>;
 }

@@ -63,24 +63,26 @@ export function quoteDeviceShell(value: string): string {
 /** HDC drops NUL output bytes; record/unit separators survive its transport. */
 export function parseDeviceFileListing(output: Buffer, parent: string): { files: HarmonyDeviceFile[]; truncated: boolean } {
   const records = output.toString("utf8").split("\x1e").map(record => record.replace(/^[\r\n]+/, ""));
-  const marker = records.findIndex(value => ["__PIORA_DIR_OK__", "__PIORA_DIR_ERROR__", "__PIORA_STAT_ERROR__"].includes(value));
+  const marker = records.findIndex(value => ["__PIORA_DIR_OK__", "__PIORA_DIR_MISSING__", "__PIORA_DIR_DENIED__", "__PIORA_STAT_ERROR__"].includes(value));
   if (marker < 0) throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The device did not return a file listing");
-  if (records[marker] === "__PIORA_DIR_ERROR__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device directory is missing or inaccessible");
-  if (records[marker] === "__PIORA_STAT_ERROR__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device stat is unavailable for file browsing");
+  if (records[marker] === "__PIORA_DIR_MISSING__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device directory does not exist", { details: { reason: "missing" } });
+  if (records[marker] === "__PIORA_DIR_DENIED__") throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The device directory is inaccessible", { details: { reason: "inaccessible" } });
+  if (records.includes("__PIORA_STAT_ERROR__")) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device stat is unavailable for file browsing");
   const files: HarmonyDeviceFile[] = [];
   let truncated = false;
   for (let index = marker + 1; index < records.length; index++) {
     if (records[index] === "__PIORA_TRUNCATED__") { truncated = true; break; }
+    if (!records[index].trim()) continue;
     const fields = records[index].split("\x1f");
-    if (fields.length !== 2) continue;
+    if (fields.length !== 2) throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The device file listing is malformed; retry the directory read");
     const [path, metadataText] = fields;
     const metadata = metadataText.split("|");
-    if (metadata.length !== 4) continue;
+    if (metadata.length !== 4) throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The device file metadata is malformed; retry the directory read");
     const [kindText, sizeText, modifiedText, mode] = metadata;
     if (!path || !path.startsWith(parent === "." ? "" : parent === "/" ? "/" : `${parent}/`)) continue;
     const name = posix.basename(path);
     if (!name || name === "." || name === ".." || /[\0-\x1f\x7f]/.test(name)) continue;
-    const kind = kindText === "directory" ? "directory" : kindText === "regular file" ? "file" : kindText.includes("symbolic link") ? "symlink" : "other";
+    const kind = kindText === "directory" ? "directory" : kindText === "regular file" || kindText === "regular empty file" ? "file" : kindText.includes("symbolic link") ? "symlink" : "other";
     const size = /^\d+$/.test(sizeText) ? Number(sizeText) : undefined;
     const modifiedAt = /^\d+$/.test(modifiedText) ? Number(modifiedText) * 1000 : undefined;
     files.push({ path, name, kind, size: Number.isSafeInteger(size) ? size : undefined,
@@ -93,5 +95,10 @@ export function parseDeviceFileListing(output: Buffer, parent: string): { files:
 export function deviceFileListScript(path: string, offset = 0): string {
   validateDeviceFileOffset(offset);
   const quoted = quoteDeviceShell(path);
-  return `d=${quoted}; if [ ! -d "$d" ] || [ ! -r "$d" ] || [ ! -x "$d" ]; then printf '__PIORA_DIR_ERROR__\\036'; exit 0; fi; if ! stat -c '%F' "$d" >/dev/null 2>&1; then printf '__PIORA_STAT_ERROR__\\036'; exit 0; fi; printf '__PIORA_DIR_OK__\\036'; rs=$(printf '\\036'); us=$(printf '\\037'); nl=$(printf '\\n_'); nl=\${nl%_}; fmt="%n\${us}%F|%s|%Y|%a\${rs}"; n=0; batch=0; more=0; offset=${offset}; end=$((offset+${DEVICE_FILE_PAGE_SIZE})); set --; for f in "$d"/* "$d"/.[!.]* "$d"/..?*; do [ -e "$f" ] || [ -L "$f" ] || continue; case "$f" in *"$rs"*|*"$us"*|*"$nl"*) continue;; esac; if [ "$n" -lt "$offset" ]; then n=$((n+1)); continue; fi; if [ "$n" -ge "$end" ]; then more=1; break; fi; set -- "$@" "$f"; n=$((n+1)); batch=$((batch+1)); if [ "$batch" -ge 50 ]; then stat -c "$fmt" "$@" 2>/dev/null; set --; batch=0; fi; done; if [ "$#" -gt 0 ]; then stat -c "$fmt" "$@" 2>/dev/null; fi; if [ "$more" -eq 1 ]; then printf '__PIORA_TRUNCATED__\\036'; fi`;
+  return `d=${quoted}; if [ ! -d "$d" ]; then printf '__PIORA_DIR_MISSING__\\036'; exit 0; fi; if [ ! -r "$d" ] || [ ! -x "$d" ]; then printf '__PIORA_DIR_DENIED__\\036'; exit 0; fi; if ! stat -c '%F' "$d" >/dev/null 2>&1; then printf '__PIORA_STAT_ERROR__\\036'; exit 0; fi; printf '__PIORA_DIR_OK__\\036'; rs=$(printf '\\036'); us=$(printf '\\037'); nl=$(printf '\\n_'); nl=\${nl%_}; fmt="%n\${us}%F|%s|%Y|%a\${rs}"; n=0; batch=0; more=0; offset=${offset}; end=$((offset+${DEVICE_FILE_PAGE_SIZE})); set --; for f in "$d"/* "$d"/.[!.]* "$d"/..?*; do [ -e "$f" ] || [ -L "$f" ] || continue; case "$f" in *"$rs"*|*"$us"*|*"$nl"*) continue;; esac; if [ "$n" -lt "$offset" ]; then n=$((n+1)); continue; fi; if [ "$n" -ge "$end" ]; then more=1; break; fi; set -- "$@" "$f"; n=$((n+1)); batch=$((batch+1)); if [ "$batch" -ge 50 ]; then stat -c "$fmt" "$@" 2>/dev/null || { printf '__PIORA_STAT_ERROR__\\036'; exit 0; }; set --; batch=0; fi; done; if [ "$#" -gt 0 ]; then stat -c "$fmt" "$@" 2>/dev/null || { printf '__PIORA_STAT_ERROR__\\036'; exit 0; }; fi; if [ "$more" -eq 1 ]; then printf '__PIORA_TRUNCATED__\\036'; fi`;
+}
+
+export function deviceFileStatScript(path: string): string {
+  const quoted = quoteDeviceShell(path);
+  return `f=${quoted}; if [ ! -e "$f" ] && [ ! -L "$f" ]; then printf '__PIORA_DIR_MISSING__\\036'; exit 0; fi; printf '__PIORA_DIR_OK__\\036'; us=$(printf '\\037'); rs=$(printf '\\036'); stat -c "%n\${us}%F|%s|%Y|%a\${rs}" "$f" 2>/dev/null || printf '__PIORA_STAT_ERROR__\\036'`;
 }

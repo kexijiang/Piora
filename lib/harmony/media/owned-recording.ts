@@ -3,7 +3,7 @@ import { constants } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Output, Mp4OutputFormat, StreamTarget, EncodedVideoPacketSource, EncodedPacket } from "mediabunny";
-import { HarmonyError } from "../errors";
+import { asHarmonyError, HarmonyError } from "../errors";
 import type { HarmonyVideoConnection } from "../types";
 
 const MAX_BYTES = 256 * 1024 * 1024;
@@ -37,7 +37,7 @@ function configuration(payload: Buffer) {
 }
 
 /** Records only this subscriber's encoded stream. No global recorder, process kill or device media deletion. */
-export async function startOwnedRecording(connection: HarmonyVideoConnection, signal?: AbortSignal) {
+export async function startOwnedRecording(connection: HarmonyVideoConnection, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void) {
   const directory = await mkdtemp(join(tmpdir(), "piora-owned-recording-"));
   const path = join(directory, "capture.mp4");
   const handle = await open(path, "wx", 0o600).catch(async error => { await rmdir(directory); await connection.close(); throw error; });
@@ -53,11 +53,30 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
   try { output.addVideoTrack(source); await output.start(); reader = connection.stream.getReader(); }
   catch (error) { await output.cancel().catch(() => undefined); await handle.close(); await rm(path, { force: true }); await rmdir(directory); await connection.close(); throw error; }
   let stopping = false, failure: unknown, frames = 0, firstTimestamp: number | undefined, config: ReturnType<typeof configuration> | undefined;
+  let accepted = false, ended = false, failureReported = false;
+  const reportFailure = () => {
+    if (!accepted || !ended || stopping || !failure || failureReported || !onFailure) return;
+    failureReported = true;
+    const error = asHarmonyError(failure);
+    // The reader's pump has settled. A failed forward close is still explicitly
+    // uncertain, but no surviving media reader can be mistaken for phone input.
+    queueMicrotask(() => {
+      // The notification cannot revive the settled pump or bypass reader cleanup.
+      try { onFailure(new HarmonyError(error.code, error.message, { details: { ...error.details, recordingStopped: true } })); }
+      catch { /* Observer errors do not change the recording's retained failure. */ }
+    });
+  };
   let resolveReady!: () => void, rejectReady!: (error: unknown) => void;
   const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
   let closing: Promise<void> | undefined;
-  const close = () => closing ??= Promise.all([reader.cancel().catch(() => undefined), connection.close()]).then(() => undefined)
-    .catch(cause => { throw new HarmonyError("DEVICE_BUSY", "Recording stream cleanup is uncertain", { cause, details: { cleanup: "uncertain", recordingStopped: true } }); });
+  // An already errored reader rejects cancel with its original stream error.
+  // Await cancellation settlement; forward closure is the owned transport check.
+  const close = () => closing ??= Promise.allSettled([reader.cancel().catch(() => undefined), connection.close()]).then(results => {
+    const rejected = results.find(result => result.status === "rejected");
+    if (rejected) throw new HarmonyError("DEVICE_BUSY", "Recording stream cleanup is uncertain", {
+      cause: rejected.reason, details: { cleanup: "uncertain", recordingStopped: true },
+    });
+  });
   const abort = () => { failure = new HarmonyError("COMMAND_ABORTED", "Recording startup was cancelled", { details: { dispatchState: "not-sent" } }); rejectReady(failure); void close().catch(() => undefined); };
   signal?.addEventListener("abort", abort, { once: true });
   const startup = setTimeout(() => { failure = new HarmonyError("COMMAND_TIMEOUT", "No H.264 keyframe arrived for recording", { details: { dispatchState: "not-sent" } }); rejectReady(failure); void close().catch(() => undefined); }, 15000);
@@ -91,7 +110,14 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
         }
       }
     } catch (error) { failure ??= error; rejectReady(error); }
-    finally { await close().catch(error => { failure ??= error; }); }
+    finally {
+      await close().catch(error => {
+        const original = failure ? asHarmonyError(failure) : asHarmonyError(error);
+        failure = new HarmonyError(original.code, original.message, { cause: error,
+          details: { ...original.details, cleanup: "uncertain", recordingStopped: true } });
+      });
+      ended = true; reportFailure();
+    }
   })();
   if (signal?.aborted) abort();
   let discardPromise: Promise<void> | undefined;
@@ -105,6 +131,7 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
   try { await ready; }
   catch (error) { await discard(); throw error; }
   finally { clearTimeout(startup); signal?.removeEventListener("abort", abort); }
+  accepted = true; reportFailure();
   const stop = (destination: string) => completion ??= (async () => {
     stopping = true;
     try {
@@ -114,6 +141,7 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
       await copyFile(path, destination, constants.COPYFILE_EXCL);
       return (await stat(destination)).size;
     } finally {
+      await pump;
       if (output.state !== "finalized") await output.cancel().catch(() => undefined);
       await handle.close().catch(() => undefined);
       await rm(path, { force: true }); await rmdir(directory);

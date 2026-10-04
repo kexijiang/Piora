@@ -20,19 +20,20 @@ function releaseToken(token: string) {
   void manualRequest("release", { leaseToken: token }).catch(() => undefined);
 }
 
-/** Acquire only for an intentional input; simply displaying a phone never claims it. */
-export function useHarmonyManualControl({ active, serial, generation, online, holder, chinese, controlStatus }: {
-  active: boolean; serial: string; generation?: number; online: boolean; holder?: Holder; chinese: boolean;
+/** Acquire only for an explicit tool action; simply displaying a phone never claims it. */
+export function useHarmonyManualControl({ active, serial, online, holder, chinese, controlStatus }: {
+  active: boolean; serial: string; online: boolean; holder?: Holder; chinese: boolean;
   controlStatus?: "stopping" | "recovering";
 }) {
   const [ownerId, setOwnerId] = useState("");
   const [lease, setLease] = useState<ManualLease | null>(null);
   const [revision, setRevision] = useState(0);
   const currentLease = useRef<ManualLease | null>(null);
+  const preemptedLeaseToken = useRef<string | null>(null);
   const epoch = useRef(0);
   const pending = useRef<Promise<string> | null>(null);
   const context = useRef<string | null>(null);
-  const contextKey = `${active}:${online}:${serial}:${generation}:${controlStatus ?? "ready"}`;
+  const contextKey = `${active}:${online}:${serial}`;
 
   useEffect(() => {
     const key = "piora-harmony-manual-owner-v1";
@@ -48,6 +49,7 @@ export function useHarmonyManualControl({ active, serial, generation, online, ho
     pending.current = null;
     const previous = currentLease.current;
     currentLease.current = null;
+    preemptedLeaseToken.current = null;
     setLease(null);
     if (previous) releaseToken(previous.token);
   }, []);
@@ -69,7 +71,7 @@ export function useHarmonyManualControl({ active, serial, generation, online, ho
   }, [contextKey, clearControl]);
 
   const blocked = Boolean(holder && holder.owner.id !== ownerId);
-  useEffect(() => { if (blocked) clearControl(); }, [blocked, clearControl]);
+  useEffect(() => { if (blocked && holder?.owner.kind !== "agent") clearControl(); }, [blocked, holder?.owner.kind, clearControl]);
 
   useEffect(() => {
     if (!lease || !active) return;
@@ -90,9 +92,13 @@ export function useHarmonyManualControl({ active, serial, generation, online, ho
     if (context.current !== contextKey || epoch.current !== revision) throw new Error(chinese ? "设备状态已改变，请重新操作" : "Device state changed; try again");
     if (!active || !online || !serial || !ownerId) throw new Error(chinese ? "请先连接设备" : "Connect a device first");
     if (controlStatus) throw new HarmonyRequestError({ code: "DEVICE_BUSY", details: { state: controlStatus } }, 409);
-    if (blocked && !takeover) throw new Error(chinese ? "设备正在由其他控制者操作，请先接管" : "Another controller is active; take over first");
     const current = currentLease.current;
-    if (!takeover && current?.serial === serial && Date.parse(current.expiresAt) > Date.now()) return current.token;
+    if (current?.serial === serial && Date.parse(current.expiresAt) > Date.now() && !takeover
+      && (!blocked || preemptedLeaseToken.current === current.token)) return current.token;
+    // An explicit user tool action may preempt an agent action.
+    // Another manual window remains a conflict instead of being silently stopped.
+    if (blocked && holder?.owner.kind !== "agent") throw new Error(chinese ? "设备正在由其他窗口操作" : "Another window is operating the device");
+    takeover = takeover || Boolean(blocked && holder?.owner.kind === "agent");
     if (pending.current) return pending.current;
     const expectedEpoch = epoch.current;
     const request = manualRequest(takeover ? "takeover" : "acquire", { serial, ownerId, ...(takeover ? { confirmed: true } : {}) })
@@ -102,13 +108,14 @@ export function useHarmonyManualControl({ active, serial, generation, online, ho
           throw new Error(chinese ? "设备状态已改变，请重新操作" : "Device state changed; try again");
         }
         currentLease.current = acquired;
+        preemptedLeaseToken.current = takeover ? acquired.token : null;
         setLease(acquired);
         return acquired.token;
       });
     pending.current = request;
     try { return await request; } finally { if (pending.current === request) pending.current = null; }
-  }, [contextKey, revision, active, online, serial, ownerId, blocked, chinese, controlStatus]);
+  }, [contextKey, revision, active, online, serial, ownerId, blocked, holder, chinese, controlStatus]);
 
   return { lease, ownerId, clearControl, ensureControl: obtain,
-    canControl: Boolean(active && online && ownerId && !blocked && !controlStatus), blocked };
+    canControl: Boolean(active && online && ownerId && (!blocked || holder?.owner.kind === "agent") && !controlStatus), blocked };
 }

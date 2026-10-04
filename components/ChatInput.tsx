@@ -2233,7 +2233,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
           />
 
           {/* Composer footer: attach + model selector (bottom-right of the input) */}
-          <div style={{ flexBasis: "100%", display: "flex", alignItems: "center", gap: 6, marginTop: 6, minWidth: 0 }}>
+          <div className="chat-composer-footer">
             <div ref={attachmentMenuRef} className="composer-add-control">
               {attachmentMenuOpen && (
                 <div className="composer-add-menu" role="menu" aria-label={t("chat.addMenu")}>
@@ -2421,6 +2421,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                 ) : <div className="context-usage-tooltip-note">{t("chat.contextIncludesSystemTools")}</div>}
               </div>
             </div> : null}
+            <div className="composer-submit-controls">
             {/* Codex-style model settings: one compact summary chip with focused submenus. */}
             {(modelOptions.length > 0 || currentName || modelError) && onModelChange && (
               <div ref={dropdownRef} className="model-settings-control">
@@ -2775,6 +2776,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                 <AliIcon name="send" size={16} />
               </button>
             )}
+            </div>
           </div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 import { mkdir, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { HarmonyError } from "./errors";
 import type { HarmonyConfig, HarmonyMediaArtifact, HarmonyScreenshot } from "./types";
@@ -24,9 +24,11 @@ export function resolveHarmonyStorage(config: HarmonyConfig, environment: NodeJS
   };
 }
 
-function safeDeviceName(serial: string): string {
+export function safeHarmonyDeviceName(serial: string): string {
   const normalized = serial.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 64);
-  return normalized || "device";
+  if (normalized === serial) return normalized || "device";
+  const hash = createHash("sha256").update(serial).digest("hex").slice(0, 16);
+  return `${(normalized || "device").slice(0, 47)}-${hash}`;
 }
 
 function timestampName(timestamp: Date): string {
@@ -43,7 +45,7 @@ export function nextHarmonyArtifactPath(
   const directory = kind === "screenshot" ? storage.screenshotDirectory : storage.recordingDirectory;
   if (!isAbsolute(directory)) throw new HarmonyError("INVALID_ARGUMENT", "Harmony media storage paths must be absolute");
   const extension = kind === "screenshot" ? "png" : "mp4";
-  return join(directory, `${safeDeviceName(serial)}-${timestampName(createdAt)}-${randomUUID().slice(0, 8)}.${extension}`);
+  return join(directory, `${safeHarmonyDeviceName(serial)}-${timestampName(createdAt)}-${randomUUID().slice(0, 8)}.${extension}`);
 }
 
 export async function prepareHarmonyRecordingPath(
@@ -73,6 +75,8 @@ export async function saveHarmonyScreenshot(
     filename: basename(path),
     createdAt: createdAt.toISOString(),
     size: info.size,
+    width: screenshot.width,
+    height: screenshot.height,
     mimeType: "image/png",
   };
 }

@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `dcffd96271e949c77debe95eeb65cc68bc9ec78e4034d0eb28d6503c2d9d0fa0`
+Lockfile SHA-256: `e466c01a2fe89708b16be0d68f209b1b6300e04c9731ef5f40663f1e05427496`
 
 Unique locked packages: **1354**. Runtime packages: **910**. Build/development-only packages: **444**.
 
@@ -1387,3 +1387,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 ## Bundled Windows offline speech
 
 SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sherpa-onnx 1.13.6. Model weights use the FunASR Model Open Source License Agreement; the toolkit uses MIT and sherpa-onnx uses Apache-2.0. Exact model hashes, upstream attribution, and separate license texts are recorded in [speech provenance](third_party/sensevoice/SOURCE.md) and copied into resources/speech with the native runtime notices.
+
+## Harmony device tools and capture source
+
+Bundled HDC uses Apache-2.0, libusb uses LGPL-2.1-or-later, and the capture component uses HongJing's MIT license. See [bundled artifact provenance](third_party/harmony-tools/windows-x64/SOURCE.md). The editable ordinary-permission Piora capture component and retained original copyright notice are in [capture source provenance](third_party/harmony-mirror/SOURCE.md) and [MIT license](third_party/harmony-mirror/LICENSE-HONGJING-MIT.txt). Source preparation does not include signing materials or establish that a release artifact has been replaced.

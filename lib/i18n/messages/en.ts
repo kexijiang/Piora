@@ -505,6 +505,8 @@ export const enLocale: LocalePlugin = {
     "commands.openClipboard": "Open clipboard",
     "commands.screenshot": "Screenshot",
     "shortcuts.screenshotDescription": "Capture a screen region from any window, then copy, save, or attach it to a chat draft.",
+    "shortcuts.deviceScreenshot": "Harmony device screenshot",
+    "shortcuts.deviceScreenshotDescription": "Capture the selected phone in the visible Harmony panel; inactive in inputs, terminals, and dialogs.",
     "shortcuts.registrationFailed": "This shortcut is unavailable. A previous working setting was restored when possible.",
     "shortcuts.settingsDescription": "Open General settings.",
     "automations.title": "Scheduled tasks",

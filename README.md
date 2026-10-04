@@ -17,7 +17,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-最新正式版为 `0.5.4`，当前源码版本为 `0.5.5-beta.1`。此 beta 集中提供鸿蒙设备的应用、文件、SQLite 与终端工作台；安装包须经 GitHub Actions 验证后才会出现在[所有发布](https://github.com/kexijiang/Piora/releases)。真机支持范围和待验项目见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)，完整版本变化以 [CHANGELOG.md](CHANGELOG.md) 为准。
+最新正式版为 `0.5.4`，当前源码版本为 `0.5.5-beta.2`。此 beta 集中提供鸿蒙设备的应用、文件、SQLite 与终端工作台；安装包须经 GitHub Actions 构建，并在真实 Piora 桌面端与手机上验收同批字节后才会出现在[所有发布](https://github.com/kexijiang/Piora/releases)。真机支持范围和待验项目见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)，完整版本变化以 [CHANGELOG.md](CHANGELOG.md) 为准。
 
 [下载与安装](#下载与安装) · [开始使用](#开始使用) · [主要功能](#主要功能) · [鸿蒙设备工作台](#鸿蒙设备工作台) · [开发与贡献](#开发与贡献) · [文档索引](docs/README.md)
 
@@ -100,28 +100,28 @@ Windows 桌面包内置 **SenseVoiceSmall INT8** 模型和 **sherpa-onnx** 运�
 
 ## 鸿蒙设备工作台
 
-设备面板以完整手机画面为主，**连接可用后可直接点击、滑动和输入，无需另开“控制设备”按钮**。应用、测试、语音、日志和记录放在默认收起的“工具”抽屉中；宽面板从侧边展开，窄面板从底部展开，诊断与校准收进设备设置。
+设备面板以完整手机画面为主，投屏画布只用于观看：可以缩放和平移视野，但鼠标点击、拖动、长按和键盘输入都不会发送到手机。应用、测试、语音、日志和记录放在默认收起的“工具”抽屉中；宽面板从侧边展开，窄面板从底部展开，诊断与校准收进设备设置。
 
 ### 连接与操作
 
 1. 在支持 HDC 的 OpenHarmony / HarmonyOS 设备上开启开发者选项和 USB 调试，并在手机确认电脑授权。
 2. 打开右侧设备面板，选择 HDC 和目标手机。Windows 包带有备用 HDC，也可使用 DevEco Studio / SDK 中适合设备的版本；多设备连接时明确选择目标。
 3. 缺少投屏服务时，点击面板中的“初始化投屏服务”直接安装。手机锁定时请在手机上手动解锁。
-4. 画面和设备能力就绪后直接操作；AI 或其他窗口占用设备时，需显式“停止并接管”。
+4. 画面和设备能力就绪后即可持续观看、截图或录屏，无需停止投屏或中断正在运行的 AI 任务。需要操作手机时，从 AI、应用或测试工具发起；后台会按设备状态串行执行动作。
 
-**仅观看投屏不会自动安装服务、唤醒或解锁手机，也不会占用设备控制。** 手动输入发生时才取得控制；切换设备、关闭面板或停止后，等待中的旧输入不会继续派发。
+**仅观看投屏不会自动安装服务、唤醒或解锁手机，也不会占用设备动作队列。** 截图和录屏使用独立的只读媒体通道；切换设备、关闭面板或停止任务后，等待中的旧动作不会继续派发。
 
 ### 测试与开发
 
 - 按应用名称或包标识查找已安装应用，选择场景和验证内容后运行；提供六种场景模板、步骤预览、执行记录和检查点恢复。
-- 手机已通过 HDC 连接后，手动与 Agent 操作均直接可用，不再要求应用范围授权或单次批准。点击位置自动校准与重试，实际不支持的能力仍按设备情况提示。
+- 手机已通过 HDC 连接后，Agent、应用和测试工具可直接派发设备动作，不再要求应用范围授权或单次批准。需要坐标的后台动作按最新画面自动校准与重试；投屏画布仍只读，实际不支持的能力按设备情况提示。
 - 查看设备日志、保存截图和录屏；录屏保存当前投屏的视频流。
 - 集成 DevEco 工程检查、ArkTS 与 Linter 诊断、文件定位和修复复查。工程检查仍需本机安装并配置 DevEco Studio 及对应 SDK。
 - 提供本地 WAV 校验、声学输出预览、语音校准和按住说话流程；手机实际识别结果匹配后才记录为通过。
 
 设备自动化和声学输入仍需逐机型、逐系统验证。软件回归通过不代表所有手机或真实麦克风链路已验收；不可用、需校准和未完成状态会按实际结果显示。
 
-详见[首次连接](docs/harmony/quickstart.md)、[控制与停止](docs/harmony/controls.md)、[语音输入](docs/harmony/voice-input.md)、[能力目录](docs/harmony/capabilities.md)与[实测范围](docs/harmony/compatibility.md)。
+详见[首次连接](docs/harmony/quickstart.md)、[观察与停止](docs/harmony/controls.md)、[语音输入](docs/harmony/voice-input.md)、[能力目录](docs/harmony/capabilities.md)与[实测范围](docs/harmony/compatibility.md)。
 
 ## Windows 电脑控制
 
@@ -204,9 +204,9 @@ npm run perf:check
 npm run verify:backgrounds
 ```
 
-`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows / Linux 上分组执行测试，Windows 高资源 Shell 测试单独运行；设备实机验收使用单独的可选流程，不能用软件测试替代。
+`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows / Linux 上分组执行测试，Windows 高资源 Shell 测试单独运行。beta 标签构建必须通过专用自托管运行器上的 HAP 真机门禁；候选生成后还须安装同批 Piora 并完成手机验收，软件测试不能代替这两层硬件验证。
 
-发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 或 `vX.Y.Z` 标签后，由 GitHub Actions 构建、验证并发布；不要移动已发布标签或本地制作发布包。
+发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；安装同批 Piora 并完成手机验收后，再由独立工作流发布这些原始字节。`vX.Y.Z` 稳定标签仍由完整发布工作流构建、验证和发布。不要移动已发布标签或本地制作发布包。
 
 **CHANGELOG 是唯一更新说明来源**，Release 正文和 `beta.yml` / `latest.yml` 的更新说明由同一版本记录生成，并在发布前校验。具体步骤见[发布流程](docs/release.md)。
 

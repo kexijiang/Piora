@@ -125,6 +125,8 @@ win:
         - "hdc.exe"
         - "libusb_shared.dll"
         - "OHScrcpyServer.hap"
+        - "harmony-mirror-manifest.json"
+        - "harmony-mirror-signature-verification.json"
         - "LICENSE*"
         - "SOURCE.md"
   # Stable releases are currently checksum-verified but not Authenticode

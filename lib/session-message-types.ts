@@ -76,6 +76,17 @@ export interface AbortReceipt {
   status: "cancelled" | "interrupted" | "idle";
   commandId?: string;
   runId?: string;
+  queuedMessages?: { id: string; steering: string[]; followUp: string[] };
+}
+
+/** Pending acknowledges an in-process cancellation fence, not a fake submission. */
+export interface PromptCancellationReceipt {
+  accepted: true;
+  sessionId: string;
+  status: SessionCommandStatus | "cancellation_pending";
+  commandId?: string;
+  runId?: string;
+  queuedMessages?: { id: string; steering: string[]; followUp: string[] };
 }
 
 export interface SessionControlState {

@@ -17,8 +17,10 @@ export interface HarmonyCapabilities {
 export interface HarmonyDevice {
   serial: string;
   state: HarmonyDeviceConnectionState;
+  connectionIssue?: "hdc-channel-not-ready";
   transport?: "usb" | "tcp" | "unknown";
   transportEvidence?: "hdc" | "endpoint" | "unavailable";
+  responseSample?: import("./device-connection").HarmonyResponseSample;
   name?: string;
   model?: string;
   product?: string;
@@ -160,6 +162,8 @@ export interface HarmonyMediaArtifact {
   filename: string;
   createdAt: string;
   size: number;
+  width?: number;
+  height?: number;
   mimeType: "image/png" | "video/mp4";
 }
 
@@ -281,6 +285,7 @@ export interface HarmonyInstallAppOptions {
   leaseToken: string;
   hapPath: string;
   replace?: boolean;
+  expectedHash?: string;
   signal?: AbortSignal;
 }
 
@@ -317,6 +322,7 @@ export interface HarmonyWaitCondition {
 }
 
 export type HarmonyScenarioStep =
+  | { id?: string; action: "capture_screenshot"; name?: string }
   | { id?: string; action: "voice_input"; audioAssetId: string; profileId: string; timeoutMs?: number; geometryId?: string; requiredMode?: "tap" | "push-to-talk" }
   | { id?: string; action: "geometry_assert"; rotation: 0 | 90 | 180 | 270 }
   | { id?: string; action: "tap" | "double_tap" | "long_press"; selector: HarmonyUiSelector; waitFor?: HarmonyWaitCondition }
@@ -337,9 +343,11 @@ export interface HarmonyScenarioPolicy {
   defaultIntervalMs?: number;
   settleAfterAction?: boolean;
   captureFinalScreenshot?: boolean;
+  collectLogs?: boolean;
 }
 
 export interface HarmonyScenarioOptions {
+  clientRunId?: string;
   serial: string;
   leaseToken: string;
   steps: HarmonyScenarioStep[];
@@ -348,6 +356,8 @@ export interface HarmonyScenarioOptions {
 }
 
 export interface HarmonyScenarioStepResult {
+  label?: string;
+  screenshot?: HarmonyMediaArtifact;
   index: number;
   id?: string;
   action: HarmonyScenarioStep["action"];
@@ -360,6 +370,11 @@ export interface HarmonyScenarioStepResult {
 }
 
 export interface HarmonyScenarioResult {
+  logs?: { status: "collected" | "failed"; capturedAt: string; source: "device-tail"; limit: number; truncated: boolean; entries: HarmonyLogEntry[]; error?: ReturnType<import("./errors").HarmonyError["toJSON"]> };
+  finalScreenshot?: HarmonyMediaArtifact;
+  device?: Pick<HarmonyDevice, "model" | "product" | "osVersion" | "apiVersion" | "uitestVersion" | "transport">;
+  finalObservation?: { capturedAt: string; revision: number; nodeCount: number; quality?: HarmonySnapshot["quality"] };
+  finalObservationError?: ReturnType<import("./errors").HarmonyError["toJSON"]>;
   executionId?: string;
   serial: string;
   generation: number;
@@ -398,8 +413,10 @@ export type HarmonyManagerEvent =
 export interface BackendDevice {
   serial: string;
   state: HarmonyDeviceConnectionState;
+  connectionIssue?: "hdc-channel-not-ready";
   transport?: "usb" | "tcp" | "unknown";
   transportEvidence?: "hdc" | "endpoint" | "unavailable";
+  responseSample?: import("./device-connection").HarmonyResponseSample;
   name?: string;
   model?: string;
   product?: string;
@@ -423,11 +440,14 @@ export interface HarmonyAutomationBackend {
   connectTcpDevice?(address: string, remove: boolean, signal?: AbortSignal): Promise<void>;
   applications?(serial: string, query?: string, bundleName?: string, signal?: AbortSignal): Promise<import("./observation/applications").HarmonyApplication[]>;
   listFiles?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, offset?: number): Promise<{ files: import("./device-files").HarmonyDeviceFile[]; truncated: boolean }>;
+  isSqliteFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<boolean>;
+  statFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<import("./device-files").HarmonyDeviceFile>;
   pullFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, destinationPath: string, signal?: AbortSignal): Promise<{ destinationPath: string; size: number }>;
   pushFile?(serial: string, scope: import("./device-files").HarmonyFileScope, sourcePath: string, path: string, overwrite: boolean, signal?: AbortSignal): Promise<void>;
   createDirectory?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
   deletePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal): Promise<void>;
   renamePath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, signal?: AbortSignal): Promise<void>;
+  copyPath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, newPath: string, move: boolean, signal?: AbortSignal): Promise<void>;
   chmodPath?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, mode: string, signal?: AbortSignal): Promise<void>;
   readTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, signal?: AbortSignal, encoding?: import("./device-text").DeviceTextReadEncoding): Promise<{ text: string; hash: string; size: number; encoding?: import("./device-text").DeviceTextEncoding; newline?: import("./device-text").DeviceNewline }>;
   saveTextFile?(serial: string, scope: import("./device-files").HarmonyFileScope, path: string, text: string, expectedHash: string, signal?: AbortSignal, newlineMode?: import("./device-text").WritableDeviceNewline, encoding?: import("./device-text").DeviceTextEncoding): Promise<void>;
@@ -447,7 +467,7 @@ export interface HarmonyAutomationBackend {
     serial: string,
     options: { includeTree: boolean; includeScreenshot: boolean; signal?: AbortSignal },
   ): Promise<BackendSnapshot>;
-  startRecording?(serial: string, remoteName: string, signal?: AbortSignal): Promise<void>;
+  startRecording?(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: import("./errors").HarmonyError) => void): Promise<void>;
   stopRecording?(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number>;
   openVideoStream?(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection>;
   mirrorPackagePath?(): string;

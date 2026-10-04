@@ -27,7 +27,7 @@ export function TcpDeviceConnection({ chinese, onRefresh }: { chinese: boolean; 
     </label>
     <button type="button" disabled={busy || !address.trim()} onClick={() => void change("connect")}>{copy("连接 Wi-Fi 设备", "Connect Wi-Fi device")}</button>
     <button type="button" disabled={busy || !address.trim()} onClick={() => void change("disconnect")}>{copy("断开此 TCP 连接", "Disconnect this TCP device")}</button>
-    <p>{copy("先在设备设置中启用无线调试并确认地址与端口；仅接受局域网 IPv4。切换通道可能中断已有会话，正在控制的设备须先释放控制权。", "Enable wireless debugging on the device and enter its address and port. Only private IPv4 is accepted. Changing transport may interrupt sessions; release device control first.")}</p>
+    <p>{copy("先在设备设置中启用无线调试并确认地址与端口；仅接受局域网 IPv4。切换通道前，请停止当前设备任务并关闭设备 Shell，避免中断正在执行的操作。", "Enable wireless debugging on the device and enter its address and port. Only private IPv4 is accepted. Stop device tasks and close device shells before changing transport to avoid interrupting active operations.")}</p>
     {message ? <p role="status">{message}</p> : null}
     {error ? <p role="alert">{error}</p> : null}
   </div>;

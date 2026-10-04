@@ -2,15 +2,16 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { HarmonyFileScope } from "@/lib/harmony/device-files";
-import { InteractiveDeviceShell } from "./InteractiveDeviceShell";
+import { DeviceShellTabs } from "./DeviceShellTabs";
 import { CommandShortcuts } from "./CommandShortcuts";
 import { SmartShellPanel } from "../SmartShellPanel";
 import { terminalSearchMatch } from "@/lib/harmony/terminal-search";
+import { readClipboardText, copyText } from "@/lib/clipboard";
 
 type Entry = { command: string; stdout: string; stderr: string; exitCode?: number; durationMs?: number; error?: string };
 type ConsoleTab = { id: number; label: string; draft: string; entries: Entry[] };
 type SearchMatch = { kind: "command"; tabId: number; tabLabel: string; entryIndex: number; command: string; excerpt: string }
-  | { kind: "device"; excerpt: string }
+  | { kind: "device"; tabId: number; label: string; excerpt: string }
   | { kind: "local"; sessionId: string; label: string; excerpt: string };
 
 export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOpenLocalTerminal, visible, cwd }: { serial: string; chinese: boolean; canControl: boolean; ensureControl: () => Promise<string>; onOpenLocalTerminal?: () => void; visible: boolean; cwd?: string | null }) {
@@ -20,11 +21,11 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
   const [kind, setKind] = useState<HarmonyFileScope["kind"]>("shared"), [bundleName, setBundleName] = useState("");
   const [splitLocal, setSplitLocal] = useState(false);
   const [searchText, setSearchText] = useState(""), [searchTerm, setSearchTerm] = useState("");
-  const [deviceOutput, setDeviceOutput] = useState("");
+  const [deviceOutputs, setDeviceOutputs] = useState<{ id: number; label: string; output: string }[]>([]);
   const [localOutputs, setLocalOutputs] = useState<{ id: string; label: string; output: string }[]>([]);
   const [localSearchError, setLocalSearchError] = useState(""), [searchingLocal, setSearchingLocal] = useState(false);
   const [searchRevision, setSearchRevision] = useState(0);
-  const [deviceSearchTarget, setDeviceSearchTarget] = useState<{ query: string; revision: number }>();
+  const [deviceSearchTarget, setDeviceSearchTarget] = useState<{ tabId: number; query: string; revision: number }>();
   const [localSearchTarget, setLocalSearchTarget] = useState<{ sessionId: string; query: string; revision: number }>();
   const [clipboardMessage, setClipboardMessage] = useState("");
   const [selectedMatch, setSelectedMatch] = useState<{ tabId: number; entryIndex: number }>();
@@ -35,8 +36,10 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
     const query = searchTerm.trim().toLocaleLowerCase();
     if (!query) return [];
     const found: SearchMatch[] = [];
-    const deviceMatch = terminalSearchMatch(deviceOutput, query);
-    if (deviceMatch) found.push({ kind: "device", excerpt: deviceMatch.excerpt });
+    for (const tab of deviceOutputs) {
+      const deviceMatch = terminalSearchMatch(tab.output, query);
+      if (deviceMatch) found.push({ kind: "device", tabId: tab.id, label: tab.label, excerpt: deviceMatch.excerpt });
+    }
     for (const session of localOutputs) {
       const match = terminalSearchMatch(session.output, query);
       if (match) found.push({ kind: "local", sessionId: session.id, label: session.label, excerpt: match.excerpt });
@@ -55,7 +58,7 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
       if (found.length >= 100) return found;
     }
     return found;
-  }, [searchTerm, tabs, deviceOutput, localOutputs]);
+  }, [searchTerm, tabs, deviceOutputs, localOutputs]);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => { const timer = window.setTimeout(() => setSearchTerm(searchText), 150); return () => window.clearTimeout(timer); }, [searchText]);
   useEffect(() => {
@@ -92,12 +95,12 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
     document.getElementById(`${logId}-${selectedMatch.tabId}-${selectedMatch.entryIndex}`)?.scrollIntoView({ block: "nearest" });
   }, [activeId, logId, selectedMatch]);
   const copyToClipboard = async (value: string) => {
-    try { await navigator.clipboard.writeText(value); setClipboardMessage(copy("已复制到剪贴板", "Copied to clipboard")); }
+    try { await copyText(value); setClipboardMessage(copy("已复制到剪贴板", "Copied to clipboard")); }
     catch (cause) { setClipboardMessage(cause instanceof Error ? cause.message : String(cause)); }
   };
   const pasteIntoDraft = async () => {
     try {
-      const value = await navigator.clipboard.readText();
+      const value = await readClipboardText();
       updateTab(activeId, tab => ({ ...tab, draft: `${tab.draft}${value}`.slice(0, 8192) }));
       setClipboardMessage(copy("已粘贴到命令草稿，请检查后手动执行", "Pasted into the draft. Review before running."));
     } catch (cause) { setClipboardMessage(cause instanceof Error ? cause.message : String(cause)); }
@@ -141,15 +144,15 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
       {searchingLocal ? <span role="status">{copy("正在搜索本机终端…", "Searching local terminals…")}</span> : null}
       {localSearchError ? <p role="alert">{copy("本机终端搜索失败：", "Local terminal search failed: ")}{localSearchError}</p> : null}
       <p role="status">{copy(`找到 ${matches.length} 条${matches.length === 100 ? "（最多显示 100 条）" : ""}`, `${matches.length} matches${matches.length === 100 ? " (showing up to 100)" : ""}`)}</p>
-      <ul>{matches.map(match => <li key={match.kind === "command" ? `command-${match.tabId}-${match.entryIndex}` : match.kind === "local" ? `local-${match.sessionId}` : "device"}><button onClick={() => {
+      <ul>{matches.map(match => <li key={match.kind === "command" ? `command-${match.tabId}-${match.entryIndex}` : match.kind === "local" ? `local-${match.sessionId}` : `device-${match.tabId}`}><button onClick={() => {
         if (match.kind === "command") { setActiveId(match.tabId); setSelectedMatch({ tabId: match.tabId, entryIndex: match.entryIndex }); }
-        else if (match.kind === "device") setDeviceSearchTarget({ query: searchTerm.trim(), revision: ++searchTargetSequence.current });
+        else if (match.kind === "device") setDeviceSearchTarget({ tabId: match.tabId, query: searchTerm.trim(), revision: ++searchTargetSequence.current });
         else { setSplitLocal(true); setLocalSearchTarget({ sessionId: match.sessionId, query: searchTerm.trim(), revision: ++searchTargetSequence.current }); }
       }}>
-        {match.kind === "command" ? `${copy("标签", "Tab")} ${match.tabLabel} · ${match.command.slice(0, 80)}` : match.kind === "device" ? copy("交互式设备 Shell", "Interactive device shell") : `${copy("本机终端", "Local terminal")} ${match.label}`} · {match.excerpt}
+        {match.kind === "command" ? `${copy("标签", "Tab")} ${match.tabLabel} · ${match.command.slice(0, 80)}` : match.kind === "device" ? `${copy("设备 Shell", "Device shell")} ${match.label}` : `${copy("本机终端", "Local terminal")} ${match.label}`} · {match.excerpt}
       </button></li>)}</ul>
     </div> : null}
-    <label>{copy("范围", "Scope")}<select value={kind} onChange={event => setKind(event.target.value as HarmonyFileScope["kind"])}><option value="shared">{copy("设备 Shell", "Device shell")}</option><option value="sandbox">{copy("调试应用沙箱", "Debug app sandbox")}</option></select></label>
+    <label>{copy("范围", "Scope")}<select aria-label={copy("范围", "Scope")} value={kind} onChange={event => setKind(event.target.value as HarmonyFileScope["kind"])}><option value="shared">{copy("设备 Shell", "Device shell")}</option><option value="sandbox">{copy("调试应用沙箱", "Debug app sandbox")}</option></select></label>
     {kind === "sandbox" ? <label>{copy("应用包名", "App bundle")}<input value={bundleName} onChange={event => setBundleName(event.target.value)} /></label> : null}
     <label>{copy("命令（Ctrl+Enter 执行）", "Command (Ctrl+Enter to run)")}<textarea rows={3} maxLength={8192} style={{ width: "100%" }} value={active?.draft ?? ""} onChange={event => updateTab(activeId, tab => ({ ...tab, draft: event.target.value }))} onKeyDown={event => { if (event.ctrlKey && event.key === "Enter") { event.preventDefault(); void execute(); } }} /></label>
     <button onClick={() => void pasteIntoDraft()}>{copy("从剪贴板粘贴到草稿", "Paste clipboard into draft")}</button>
@@ -171,8 +174,8 @@ export function DeviceConsole({ serial, chinese, canControl, ensureControl, onOp
       {entry.error ? <p role="alert">{entry.error}</p> : null}
     </article>)}</div>
     {visible ? <div style={{ display: "grid", gridTemplateColumns: splitLocal && cwd ? "repeat(auto-fit, minmax(min(100%, 370px), 1fr))" : "minmax(0, 1fr)", gap: 12 }}>
-      <InteractiveDeviceShell key={`${serial}:${kind}:${bundleName}`} serial={serial} scope={kind === "sandbox" ? { kind, bundleName } : { kind }}
-        chinese={chinese} canControl={canControl} ensureControl={ensureControl} onOutputChange={searchText.trim() ? setDeviceOutput : undefined} searchTarget={deviceSearchTarget} />
+      <DeviceShellTabs key={`${serial}:${kind}:${bundleName}`} serial={serial} scope={kind === "sandbox" ? { kind, bundleName } : { kind }}
+        chinese={chinese} canControl={canControl} ensureControl={ensureControl} onOutputsChange={searchText.trim() ? setDeviceOutputs : undefined} searchTarget={deviceSearchTarget} />
       {splitLocal && cwd ? <div aria-label={copy("本机终端分屏", "Local terminal split")} style={{ height: 400, minWidth: 0, border: "1px solid var(--border)" }}><SmartShellPanel cwd={cwd} searchTarget={localSearchTarget} /></div> : null}
     </div> : null}
   </section>;

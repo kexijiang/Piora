@@ -1453,7 +1453,7 @@ const harmonyDatabaseTool = defineTool({
     const destination = await openLocalFile(params.destinationPath, "wx", 0o600);
     let saved = false;
     try {
-      const exported = await exportHarmonySqliteSnapshot(id, params.table, params.sql, params.format, signal);
+      const exported = await exportHarmonySqliteSnapshot(id, params.table, params.sql, params.format, undefined, signal);
       await pipeline(exported.stream, destination.createWriteStream(), { signal });
       if ((await statLocalFile(params.destinationPath)).size !== exported.size) throw new Error("Database export size mismatch");
       saved = true;

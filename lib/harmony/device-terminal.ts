@@ -14,15 +14,17 @@ class DeviceTerminal {
   readonly serial: string;
   readonly leaseToken: string;
   readonly scopeKey: string;
+  readonly clientTerminalId: string;
   private child: IPty | null = null;
   private output = "";
   private connected = false;
   private watchdog: ReturnType<typeof setInterval> | null = null;
 
-  constructor(serial: string, leaseToken: string, scope: HarmonyFileScope, executable: string) {
+  constructor(serial: string, leaseToken: string, scope: HarmonyFileScope, executable: string, clientTerminalId: string) {
     this.serial = serial;
     this.leaseToken = leaseToken;
     this.scopeKey = JSON.stringify(scope);
+    this.clientTerminalId = clientTerminalId;
     const args = ["-t", serial, "shell", ...(scope.kind === "sandbox" ? ["-b", scope.bundleName] : [])];
     try {
       const child = loadTerminalPty().spawn(executable, args, { cols: 100, rows: 30, cwd: process.cwd(), env: process.env,
@@ -88,7 +90,7 @@ declare global {
 const terminals = globalThis.__pioraHarmonyDeviceTerminals ??= new Map<string, DeviceTerminal>();
 const starts = globalThis.__pioraHarmonyDeviceTerminalStarts ??= new Map<string, Promise<string>>();
 
-async function startDeviceTerminalUnlocked(serial: string, leaseToken: string, scope: HarmonyFileScope) {
+async function startDeviceTerminalUnlocked(serial: string, leaseToken: string, scope: HarmonyFileScope, clientTerminalId: string) {
   validateDeviceFilePath(scope, scope.kind === "sandbox" ? "data/storage/el2/base" : "/data/local/tmp");
   const manager = getHarmonyDeviceManager();
   const lease = manager.renewLease(leaseToken);
@@ -96,22 +98,31 @@ async function startDeviceTerminalUnlocked(serial: string, leaseToken: string, s
   const devices = await manager.listDevices();
   if (!devices.some(device => device.serial === serial && device.state === "online")) throw new HarmonyError("DEVICE_OFFLINE", "Device is offline");
   manager.renewLease(leaseToken);
-  const existing = [...terminals.values()].find(item => item.serial === serial);
+  const deviceTerminals = [...terminals.values()].filter(item => item.serial === serial);
+  if (deviceTerminals.some(item => item.leaseToken !== leaseToken)) {
+    throw new HarmonyError("LEASE_CONFLICT", "Another device terminal owner is active");
+  }
+  const existing = deviceTerminals.find(item => item.clientTerminalId === clientTerminalId);
   if (existing) {
-    if (existing.leaseToken !== leaseToken) throw new HarmonyError("LEASE_CONFLICT", "Another device terminal is active");
     if (existing.isConnected() && existing.scopeKey === JSON.stringify(scope)) return existing.id;
     existing.stop();
   }
+  if (deviceTerminals.filter(item => item !== existing && item.isConnected()).length >= 8) {
+    throw new HarmonyError("DEVICE_BUSY", "At most eight device terminal sessions may be open");
+  }
   const hdcPath = manager.getState(serial).runtime.hdcPath;
   if (!hdcPath) throw new HarmonyError("HDC_NOT_FOUND", "HDC is unavailable");
-  const terminal = new DeviceTerminal(serial, leaseToken, scope, hdcPath);
+  const terminal = new DeviceTerminal(serial, leaseToken, scope, hdcPath, clientTerminalId);
   terminals.set(terminal.id, terminal);
   return terminal.id;
 }
 
-export async function startDeviceTerminal(serial: string, leaseToken: string, scope: HarmonyFileScope) {
+export async function startDeviceTerminal(serial: string, leaseToken: string, scope: HarmonyFileScope, clientTerminalId = "legacy") {
+  if (typeof clientTerminalId !== "string" || !/^[A-Za-z0-9._:-]{1,128}$/.test(clientTerminalId)) {
+    throw new HarmonyError("INVALID_ARGUMENT", "Invalid device terminal tab identity");
+  }
   const previous = starts.get(serial);
-  const start = (previous ? previous.catch(() => "") : Promise.resolve("")).then(() => startDeviceTerminalUnlocked(serial, leaseToken, scope));
+  const start = (previous ? previous.catch(() => "") : Promise.resolve("")).then(() => startDeviceTerminalUnlocked(serial, leaseToken, scope, clientTerminalId));
   starts.set(serial, start);
   try { return await start; }
   finally { if (starts.get(serial) === start) starts.delete(serial); }

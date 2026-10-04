@@ -7,6 +7,14 @@ import { requireValidObservation } from "../observation/quality";
 import type { HarmonyScenarioOptions, HarmonyScenarioResult, HarmonyScenarioStepResult, HarmonySnapshot } from "../types";
 
 export interface ScenarioExecution {
+  logs?: HarmonyScenarioResult["logs"];
+  finalScreenshot?: HarmonyScenarioResult["finalScreenshot"];
+  device?: HarmonyScenarioResult["device"];
+  finalObservation?: HarmonyScenarioResult["finalObservation"];
+  finalObservationError?: HarmonyScenarioResult["finalObservationError"];
+  completedAt?: string;
+  durationMs?: number;
+  clientRunId?: string;
   processId: number;
   flowVersion: 1; flowHash: string; deviceFingerprint?: string;
   artifactHashes: Record<string, string>;
@@ -21,14 +29,19 @@ export function observationFingerprint(snapshot: HarmonySnapshot): string {
   requireValidObservation(snapshot);
   return createHash("sha256").update(JSON.stringify({ quality: snapshot.quality, nodes: snapshot.nodes?.map(({ ref, parentRef, ...node }) => { void ref; void parentRef; return node; }) })).digest("hex");
 }
-/** Private local execution journal; public records exclude inputs, trees and screenshots. */
+/** Private local execution journal; public records exclude inputs, raw trees and image bytes. */
 export class ScenarioExecutionStore {
-  constructor(private readonly directory: string) { mkdirSync(directory, { recursive: true, mode: 0o700 }); }
+  private readonly clientRuns = new Map<string, { id: string; serial: string }>();
+  constructor(private readonly directory: string) {
+    mkdirSync(directory, { recursive: true, mode: 0o700 });
+    for (const record of this.list()) if (record.clientRunId) this.clientRuns.set(record.clientRunId, { id: record.id, serial: record.serial });
+  }
   private path(id: string, suffix = "json") {
     if (!/^[a-f0-9-]{36}$/.test(id)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid scenario execution ID");
     return join(this.directory, `${id}.${suffix}`);
   }
   create(options: HarmonyScenarioOptions, owner: { id: string; sessionId?: string }, deviceEpoch: number, resumedFrom?: string, fingerprint?: string): ScenarioExecution {
+    if (options.clientRunId && this.clientRuns.has(options.clientRunId)) throw new HarmonyError("INVALID_ARGUMENT", "This scenario run ID has already been used; inspect its record before starting another run");
     if (this.list().length >= 500) throw new HarmonyError("DEVICE_BUSY", "Scenario journal is full; export and remove older records first");
     const now = new Date().toISOString();
     const artifactHashes: Record<string, string> = {};
@@ -37,12 +50,15 @@ export class ScenarioExecutionStore {
       artifactHashes[String(index)] = createHash("sha256").update(readFileSync(step.hapPath)).digest("hex");
     }
     const record: ScenarioExecution = { processId: process.pid, flowVersion: 1, deviceFingerprint: fingerprint,
+      ...(options.clientRunId ? { clientRunId: options.clientRunId } : {}),
       flowHash: createHash("sha256").update(JSON.stringify(options.steps)).digest("hex"), artifactHashes, id: randomUUID(), serial: options.serial, ownerId: owner.id, sessionId: owner.sessionId, deviceEpoch,
       status: "running", startedAt: now, updatedAt: now, resumedFrom,
-      steps: options.steps.map((step, index) => ({ index, id: step.id, action: step.action, status: "not-run", durationMs: 0 })),
+      steps: options.steps.map((step, index) => ({ index, id: step.id, action: step.action, ...(step.action === "capture_screenshot" && step.name ? { label: step.name } : {}), status: "not-run", durationMs: 0 })),
     };
     writePrivateFileAtomicSync(this.path(record.id, "inputs.json"), JSON.stringify({ steps: options.steps, policy: options.policy }));
-    this.write(record); return record;
+    this.write(record);
+    if (record.clientRunId) this.clientRuns.set(record.clientRunId, { id: record.id, serial: record.serial });
+    return record;
   }
   write(record: ScenarioExecution) { record.updatedAt = new Date().toISOString(); writePrivateFileAtomicSync(this.path(record.id), JSON.stringify(record)); }
   get(id: string): ScenarioExecution {
@@ -50,10 +66,15 @@ export class ScenarioExecutionStore {
     if (statSync(path).size > 1024 * 1024) throw new HarmonyError("INVALID_RESPONSE", "Scenario record exceeds limit");
     return JSON.parse(readFileSync(path, "utf8")) as ScenarioExecution;
   }
+  getByClientRunId(clientRunId: string, serial: string): ScenarioExecution | undefined {
+    const entry = this.clientRuns.get(clientRunId);
+    return entry?.serial === serial ? this.get(entry.id) : undefined;
+  }
   remove(id: string, serial: string) {
     const record = this.get(id);
     if (record.serial !== serial || record.status === "running") throw new HarmonyError("DEVICE_BUSY", "Only completed records for the selected device can be removed");
     unlinkSync(this.path(id, "inputs.json")); unlinkSync(this.path(id));
+    if (record.clientRunId) this.clientRuns.delete(record.clientRunId);
   }
   list(serial?: string): ScenarioExecution[] {
     return readdirSync(this.directory).filter(file => /^[a-f0-9-]{36}\.json$/.test(file)).map(file => this.get(file.slice(0, -5)))
@@ -69,7 +90,12 @@ export class ScenarioExecutionStore {
       } }
     }
   }
-  finish(record: ScenarioExecution, result: HarmonyScenarioResult) { record.status = result.status; record.steps = result.steps; this.write(record); }
+  finish(record: ScenarioExecution, result: HarmonyScenarioResult) {
+    record.status = result.status; record.steps = result.steps; record.completedAt = result.completedAt; record.durationMs = result.durationMs;
+    record.finalScreenshot = result.finalScreenshot;
+    record.logs = result.logs;
+    record.finalObservation = result.finalObservation; record.finalObservationError = result.finalObservationError; this.write(record);
+  }
   resumeInputs(id: string, snapshot: HarmonySnapshot, sessionId?: string, fingerprint?: string): Pick<HarmonyScenarioOptions, "steps" | "policy"> {
     const record = this.get(id);
     if (record.flowVersion !== 1 || record.deviceFingerprint !== fingerprint) throw new HarmonyError("STALE_SNAPSHOT", "Device or workflow version changed; start a fresh scenario");

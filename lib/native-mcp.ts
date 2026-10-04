@@ -280,7 +280,7 @@ export class NativeMcpController {
           const approved = preferences.enabled && preferences.approvedRegistered.includes(identity);
           if (!this.entries.has(server.name) || this.entries.get(server.name)?.scope === "extension") {
             this.observeEntry({ name: server.name, source, scope: "extension", config: server.config }, approved);
-            if (!approved) this.states.get(server.name)!.state = "approval-required";
+            if (!approved && preferences.enabled && server.config.enabled !== false) this.states.get(server.name)!.state = "approval-required";
           }
           return approved;
         });
