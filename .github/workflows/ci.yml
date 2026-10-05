@@ -41,7 +41,11 @@ jobs:
           cache: npm
           cache-dependency-path: website/package-lock.json
       - run: npm ci --legacy-peer-deps=false
-      - run: npm audit --audit-level=high
+      # Production dependencies stay gated at high severity. Dev tooling is excluded:
+      # advisory GHSA-vfj7-8cjw-p6xm covers every published braces version (latest 3.0.3)
+      # with no fixed release, and all 8 affected high findings come from dev-only chains
+      # (eslint-config-next / vinext -> fast-glob -> micromatch -> braces).
+      - run: npm audit --audit-level=high --omit=dev
       - run: npm run check
       - run: npm run build:sites
 

@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 持续集成
+
+- Website 检查的依赖审计改为只审生产依赖（`npm audit --audit-level=high --omit=dev`）。上游公告 GHSA-vfj7-8cjw-p6xm 覆盖 braces 的全部已发布版本（最新即 3.0.3），暂无修复版；受影响的 8 个 high 全部来自仅用于开发的工具链（eslint-config-next、vinext 经 fast-glob/micromatch 引入 braces），生产依赖仍按 high 严重级别拦截，锁文件与生产依赖未改动。
+
 ## [0.5.5-beta.13] - 2026-10-05
 
 ### 全软件网络代理
