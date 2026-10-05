@@ -384,10 +384,22 @@ async function main() {
     "@earendil-works",
     "pi-ai",
   );
+  const piCodingAgentJitiRuntimeRoot = join(
+    projectRoot,
+    "node_modules",
+    "@earendil-works",
+    "pi-coding-agent",
+    "node_modules",
+    "jiti",
+  );
   const hypiumRuntimeRoot = join(projectRoot, "node_modules", "hypium-driver");
   const devecoCliRuntimeRoot = join(projectRoot, "node_modules", "@deveco", "deveco-cli");
   const dependencyAssets = await collectRuntimeDependencyAssets([
     piAiProviderRuntimeRoot,
+    // First-party extensions execute from source through Pi coding-agent's
+    // nested Jiti loader. Next may trace only its manifest, so stage the full
+    // conditional-export package used by createRequire at runtime.
+    piCodingAgentJitiRuntimeRoot,
     hypiumRuntimeRoot,
     // Next traces the ESM entry while source-loaded extensions use Jiti's
     // CommonJS entry. Preserve both conditional exports and their dependencies.
