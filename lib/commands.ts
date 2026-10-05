@@ -84,7 +84,6 @@ export const GUI_COMMANDS: Command[] = [
   command("panel.design", "panel", "commands.openDesign", { needs: "project" }),
   command("composer.voiceInput", "navigate", "commands.voiceInput", { needs: "project" }),
   command("companion.togglePanel", "panel", "commands.openCompanionPanel"),
-  command("capture.screenshot", "panel", "commands.screenshot"),
   command("panel.toggleSidebar", "panel", "commands.toggleSidebar"),
   command("panel.close", "panel", "commands.closePanel"),
   command("settings.general", "settings", "commands.settings"),
@@ -95,7 +94,7 @@ export const GUI_COMMANDS: Command[] = [
 ];
 
 export function buildSlashCommandRegistry(commands: PiSlashCommand[], busy: boolean): SlashCommandPaletteItem[] {
-  return [...(busy ? [] : BUILTIN_SLASH_COMMANDS), ...commands];
+  return [...(busy ? BUILTIN_SLASH_COMMANDS.filter((command) => command.name === "reload") : BUILTIN_SLASH_COMMANDS), ...commands];
 }
 
 export function getSlashCommandDescription(command: SlashCommandPaletteItem, t: (key: string) => string): string {

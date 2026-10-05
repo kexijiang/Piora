@@ -21,7 +21,8 @@ test("mirroring is view-only while Agent and tool control remain available", () 
   assert.match(source, /await ensureControl\(\)/);
   assert.match(source, /投屏只读 · 已连接/);
   assert.doesNotMatch(source, /onPointerUp=\{\(event\) => \{\s*const from/);
-  assert.doesNotMatch(source, /action: "input_text"/);
+  assert.doesNotMatch(source, /action: "(?:tap|swipe|input_text|press_key)"/);
+  assert.match(source, /onGuideAgent/);
   assert.match(source, /frameMode === "frames"/);
 });
 

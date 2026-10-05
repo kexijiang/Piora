@@ -28,8 +28,6 @@ import {
   requirePromptToolIdentity,
   type PromptToolIdentity,
 } from "../lib/prompt-run-registry.ts";
-import { readHarmonyCheckConfig } from "../lib/harmony/check-config.ts";
-import { inspectHarmonyCheckEnvironment, readHarmonyCheckReport, runHarmonyCheck } from "../lib/harmony/check-runtime.ts";
 import { closeHarmonySqliteSnapshot, exportHarmonySqliteSnapshot, openHarmonySqliteSnapshot, readHarmonySqliteSnapshot } from "../lib/harmony/sqlite-inspector.ts";
 import { open as openLocalFile, rm as removeLocalFile, stat as statLocalFile } from "node:fs/promises";
 import { pipeline } from "node:stream/promises";
@@ -50,7 +48,6 @@ declare global {
   // These maps contain opaque lease tokens only in the server process. They
   // are never returned to the model, browser UI, logs, or session file.
   var __pioraHarmonyAgentLeases: AgentLeaseState | undefined;
-  var __pioraHarmonyCheckIterations: Map<string, number> | undefined;
   var __pioraHarmonyAgentSqlite: Map<string, string> | undefined;
 }
 
@@ -59,7 +56,6 @@ const leaseState: AgentLeaseState = globalThis.__pioraHarmonyAgentLeases ??= {
   cleanupRuns: new Set(),
 };
 leaseState.defaultDevices ??= new Map<string, string>();
-const harmonyCheckIterations = globalThis.__pioraHarmonyCheckIterations ??= new Map<string, number>();
 const aiSqliteSnapshots = globalThis.__pioraHarmonyAgentSqlite ??= new Map<string, string>();
 
 function leaseKey(runId: string, serial: string): string {
@@ -1563,74 +1559,14 @@ const harmonyControlTool = defineTool({
   },
 });
 
-const harmonyCheckTool = defineTool({
-  name: "piora_harmony_check",
-  label: "Check ArkTS",
-  description: "Run bundled DevEco ArkTS syntax/semantic diagnostics and Code Linter checks for the current Harmony project. Use after editing .ets files, fix every actionable diagnostic, and rerun until status is passed. An incomplete result means the toolchain could not finish and must never be reported as clean code.",
-  executionMode: "sequential",
-  parameters: Type.Object({
-    action: Type.Optional(Type.Union([Type.Literal("check"), Type.Literal("latest"), Type.Literal("environment")])),
-    checks: Type.Optional(Type.Array(Type.Union([Type.Literal("arkts"), Type.Literal("lint")]), { maxItems: 2 })),
-    files: Type.Optional(Type.Array(Type.String({ maxLength: 1024 }), { maxItems: 500, description: "Optional .ets files for ArkTS diagnostics. Code Linter still checks the project scope." })),
-    fix: Type.Optional(Type.Boolean({ description: "Allow Code Linter's safe built-in fixes. Re-read changed files afterward." })),
-    product: Type.Optional(Type.String({ pattern: "^[A-Za-z0-9_-]{1,80}$" })),
-  }),
-  async execute(toolCallId, params, signal, _onUpdate, ctx) {
-    const identity = requirePromptToolIdentity(ctx.sessionManager.getSessionId(), toolCallId);
-    const action = params.action ?? "check";
-    const config = readHarmonyCheckConfig();
-    if (action === "environment") {
-      return textResult(JSON.stringify({ environment: inspectHarmonyCheckEnvironment(config), config }, null, 2), identity);
-    }
-    if (action === "latest") {
-      return textResult(JSON.stringify({ report: readHarmonyCheckReport(ctx.cwd) }, null, 2), identity);
-    }
-    const iterationKey = `${identity.sessionId}\0${identity.runId}`;
-    const count = (harmonyCheckIterations.get(iterationKey) ?? 0) + 1;
-    if (count > config.maxAgentIterations) {
-      return textResult(JSON.stringify({ status: "incomplete", message: `The ${config.maxAgentIterations}-iteration safety limit was reached. Report the remaining diagnostics instead of looping.` }, null, 2), identity);
-    }
-    harmonyCheckIterations.set(iterationKey, count);
-    registerPromptRunCleanup(identity, () => { harmonyCheckIterations.delete(iterationKey); });
-    const report = await runHarmonyCheck({
-      projectRoot: ctx.cwd,
-      checks: params.checks,
-      files: params.files,
-      fix: params.fix,
-      product: params.product,
-      signal,
-      config,
-    });
-    return textResult(JSON.stringify({
-      status: report.status,
-      summary: report.summary,
-      durationMs: report.durationMs,
-      checks: report.checks.map((step) => ({ kind: step.kind, status: step.status, durationMs: step.durationMs, filesChecked: step.filesChecked, message: step.message })),
-      diagnostics: report.diagnostics.slice(0, 200),
-      iteration: count,
-      maxIterations: config.maxAgentIterations,
-      instruction: report.status === "passed" ? "Checks passed."
-        : report.status === "issues" ? "Fix the diagnostics and run piora_harmony_check again."
-          : "The check did not complete. Diagnose the environment or report it as incomplete; do not claim the code passed.",
-    }, null, 2), identity, { reportId: report.id, status: report.status });
-  },
-});
-
 export default function pioraHarmony(api: ExtensionAPI) {
   api.registerTool(harmonyControlTool);
-  api.registerTool(harmonyCheckTool);
   api.on?.("before_agent_start", (event) => {
     const selected = event.systemPromptOptions.selectedTools ?? [];
     const capabilities: string[] = [];
     if (selected.some((name) => name.startsWith("harmony_")) && !event.systemPrompt.includes('<piora_runtime_capability name="harmony_phone_operator"')) capabilities.push(`<piora_runtime_capability name="harmony_phone_operator" availability="active">
  Harmony phone control is available through \`harmony_control\`. Start with operation=list_devices. Use operation=help with topic=run_scenario for multi-step semantic actions, waits and assertions; it acquires control automatically. Read operation-specific help before calling unfamiliar operations. Prefer the UI tree; request screenshots only when needed. Release control when done. Never claim device access is unavailable before checking this tool.
 </piora_runtime_capability>`);
-    if (selected.includes("piora_harmony_check") && !event.systemPrompt.includes('<piora_runtime_capability name="harmony_code_check"')) {
-      const config = readHarmonyCheckConfig();
-      capabilities.push(`<piora_runtime_capability name="harmony_code_check" availability="active">
-Piora provides native ArkTS syntax/semantic and Code Linter checks through \`piora_harmony_check\`. ${config.checkAfterAgentEdits ? "After changing ArkTS files, run it before declaring the task complete." : "Run it when validation is requested or appropriate."} Fix actionable diagnostics and rerun, up to ${config.maxAgentIterations} iterations. Treat status=incomplete as an environment/tool failure, never as a successful validation. Do not substitute TypeScript tsc for ArkTS validation.
-</piora_runtime_capability>`);
-    }
     if (!capabilities.length) return;
     return { systemPrompt: `${event.systemPrompt}\n\n${capabilities.join("\n\n")}` };
   });

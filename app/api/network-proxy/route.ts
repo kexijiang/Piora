@@ -6,6 +6,7 @@ import {
 } from "@/lib/network-proxy";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { isApiRequestAllowed } from "@/lib/request-security";
+import { applyDesktopProxySettings } from "@/lib/desktop-network-proxy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +26,7 @@ export async function PATCH(request: Request) {
     const body = await parseJsonWithinLimit(request, 8_192);
     const settings = writeNetworkProxySettings(body);
     applyNetworkProxySettings(settings);
+    await applyDesktopProxySettings(settings);
     return json(settings);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Unable to save proxy settings" }, 400);

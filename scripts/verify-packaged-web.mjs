@@ -56,8 +56,8 @@ const execFileAsync = promisify(execFile);
 let activeServerStderr = "";
 
 export function verifyPackagedCoreTools(tools) {
-  const required = ["browser", "harmony_control", "piora_harmony_check", "piora_room"];
-  const optional = ["piora_goal", "piora_plan", "piora_plan_execution", "computer_control"];
+  const required = ["browser", "harmony_control", "piora_room"];
+  const optional = ["computer_control"];
   const inspect = (name) => {
     const tool = tools.find((entry) => entry.name === name);
     return { name, loaded: Boolean(tool), active: tool?.active === true };
@@ -65,7 +65,7 @@ export function verifyPackagedCoreTools(tools) {
   const core = required.map(inspect);
   if (core.some((tool) => !tool.loaded)) throw new Error(`Packaged first-party tools failed to load: ${JSON.stringify(core)}`);
   if (core.some((tool) => tool.active !== (
-    tool.name === "browser" || tool.name === "harmony_control" || tool.name === "piora_harmony_check"
+    tool.name === "browser" || tool.name === "harmony_control"
   ))) {
     throw new Error(`Packaged first-party tools do not match the compact coding preset: ${JSON.stringify(core)}`);
   }
@@ -115,17 +115,13 @@ const requiredPaths = [
   "extensions/piora-vision-agent.ts",
   "extensions/piora-automations.ts",
   "extensions/piora-user-input.ts",
-  "extensions/piora-goal.ts",
-  "extensions/piora-plan.ts",
   "extensions/piora-room.ts",
-  "lib/plan-artifact-registry.ts",
   "lib/team-agent-templates.ts",
   "lib/team-prompt-context.ts",
   "lib/team-run-store.ts",
   "lib/team-tool-service.ts",
   ".next/server/app/desktop-pet/page_client-reference-manifest.js",
   ".next/server/app/desktop-clipboard/page_client-reference-manifest.js",
-  ".next/server/app/desktop-screenshot/page_client-reference-manifest.js",
   "node_modules/next/package.json",
   "node_modules/@modelcontextprotocol/sdk/package.json",
   "node_modules/@deveco/deveco-cli/package.json",
@@ -655,13 +651,6 @@ async function inspectElectronShell(webRoot, required) {
       throw new Error(`Packaged OpenPets attribution is stale or modified: ${fileName}`);
     }
   }
-  const screenshotAttributionRoot = join(projectRoot, "third_party", "react-screenshots");
-  const packagedScreenshotAttributionRoot = join(resourcesRoot, "licenses", "react-screenshots");
-  for (const fileName of ["LICENSE", "SOURCE.md"]) {
-    const sourceBytes = await readFile(join(screenshotAttributionRoot, fileName));
-    const packagedBytes = await readFile(join(packagedScreenshotAttributionRoot, fileName));
-    if (!sourceBytes.equals(packagedBytes)) throw new Error(`Packaged screenshot attribution is stale: ${fileName}`);
-  }
   for (const fileName of ["LICENSE", "SOURCE.md"]) {
     const source = await readFile(join(projectRoot, "third_party", "mediabunny", fileName));
     const packaged = await readFile(join(resourcesRoot, "licenses", "mediabunny", fileName));
@@ -1095,12 +1084,6 @@ async function main() {
     });
     if (!companionPageResponse.ok) {
       throw new Error(`Packaged companion page returned ${companionPageResponse.status}`);
-    }
-    const screenshotPageResponse = await fetch(`${origin}/desktop-screenshot`, {
-      headers: { "X-Pi-Desktop-Token": token },
-    });
-    if (!screenshotPageResponse.ok) {
-      throw new Error(`Packaged screenshot page returned ${screenshotPageResponse.status}`);
     }
     if (process.platform === "win32") {
       const headers = { "X-Pi-Desktop-Token": token };

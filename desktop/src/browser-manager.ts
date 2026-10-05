@@ -29,7 +29,7 @@ export const BROWSER_VIEWPORT_CHANNEL = "pi:browser-viewport";
 export const BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL = "pi:browser-import-chrome-bookmarks";
 export const BROWSER_BOOKMARK_MENU_CHANNEL = "pi:browser-bookmark-menu";
 
-const BROWSER_PARTITION = "persist:piora-browser";
+export const BROWSER_PARTITION = "persist:piora-browser";
 const MAX_TABS = 20;
 const MANUAL_BROWSER_SESSION_ID = "__piora_browser_manual__";
 

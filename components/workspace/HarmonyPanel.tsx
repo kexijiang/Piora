@@ -14,7 +14,6 @@ import { HarmonyRequestError } from "@/lib/harmony/request-error";
 import { copyText } from "@/lib/clipboard";
 import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
-import { HarmonyCheckPanel } from "./HarmonyCheckPanel";
 import { WorkbenchTools } from "./harmony/WorkbenchTools";
 import { MediaHistory } from "./harmony/MediaHistory";
 import { TcpDeviceConnection } from "./harmony/TcpDeviceConnection";
@@ -187,7 +186,6 @@ type HarmonyPanelProps = {
   onMaximizedChange?: (maximized: boolean) => void;
   sessionRunning?: boolean;
   cwd?: string | null;
-  onOpenFile?: (path: string, line: number) => void;
   onOpenLocalTerminal?: () => void;
   onGuideAgent?: ((prompt?: string) => void) | undefined;
   onSnapshot?: (fingerprint: number) => void;
@@ -195,7 +193,7 @@ type HarmonyPanelProps = {
 
 type FrameZoom = "fit" | "100" | "150" | "200";
 
-export function HarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenFile, onOpenLocalTerminal, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
+export function HarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenLocalTerminal, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
   const { locale } = useI18n();
   const chinese = locale === "zh-CN";
   const copy = useCallback((zh: string, en: string) => chinese ? zh : en, [chinese]);
@@ -217,7 +215,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const [visionModelKey, setVisionModelKey] = useState("");
   const [shareScreenshot, setShareScreenshot] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toolTab, setToolTab] = useState<"apps" | "files" | "databases" | "commands" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs" | "check">("files");
+  const [toolTab, setToolTab] = useState<"apps" | "files" | "databases" | "commands" | "scenarios" | "voice" | "logs" | "history" | "diagnostics" | "inputs">("files");
   const [databaseSelection, setDatabaseSelection] = useState("");
   const [toolsOpen, setToolsOpen] = useState(false);
   const [toolsVisited, setToolsVisited] = useState(false);
@@ -276,7 +274,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   }, [selectedSerial, toolTab, toolsOpen]);
   useEffect(() => {
     if (!toolsOpen) return;
-    const tab = ["diagnostics", "inputs", "check"].includes(toolTab) ? "apps" : toolTab;
+    const tab = ["diagnostics", "inputs"].includes(toolTab) ? "apps" : toolTab;
     document.getElementById(`${drawerId}-${tab}`)?.focus({ preventScroll: true });
   }, [toolsOpen, toolTab, drawerId]);
 
@@ -749,7 +747,6 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         <div className={styles.settingsLinks}>
           <button type="button" onClick={() => openTools("diagnostics")}>{copy("连接诊断", "Diagnostics")}</button>
           <button type="button" onClick={() => openTools("inputs")}>{copy("按键与触摸校准", "Input calibration")}</button>
-          <button type="button" onClick={() => openTools("check")}>{copy("代码检查", "Code checks")}</button>
         </div>
         <p className={styles.inlineHint}>{copy("锁屏时请在手机上手动解锁。投屏不会自动唤醒或解锁。", "Unlock on the phone when needed. Mirroring never wakes or unlocks it.")}</p>
       </div>
@@ -826,14 +823,14 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
           <button className={styles.iconButton} type="button" onClick={closeTools} aria-label={copy("关闭工具", "Close tools")}><AliIcon name="close" size={15} /></button>
         </div></div>
         <div className={styles.drawerTabs} role="tablist" aria-label={copy("设备工具分类", "Device tool categories")}>
-          {(["apps", "files", "databases", "commands", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs", "check"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => changeToolTab(tab)} onKeyDown={event => {
+          {(["apps", "files", "databases", "commands", "scenarios", "voice", "logs", "history"] as const).map((tab, index) => <button id={`${drawerId}-${tab}`} aria-controls={`${drawerId}-content`} key={tab} role="tab" type="button" tabIndex={toolTab === tab || (index === 0 && ["diagnostics", "inputs"].includes(toolTab)) ? 0 : -1} aria-selected={toolTab === tab} onClick={() => changeToolTab(tab)} onKeyDown={event => {
             const tabs = ["apps", "files", "databases", "commands", "scenarios", "voice", "logs", "history"] as const;
             const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : -1;
             if (next >= 0) { event.preventDefault(); changeToolTab(tabs[next]); document.getElementById(`${drawerId}-${tabs[next]}`)?.focus(); }
           }}>{(chinese ? ["应用", "文件", "数据库", "命令", "测试", "语音", "日志", "任务"] : ["Apps", "Files", "Database", "Commands", "Tests", "Voice", "Logs", "Tasks"])[index]}</button>)}
         </div>
         <div ref={drawerBodyRef} className={styles.drawerBody} id={`${drawerId}-content`} role="tabpanel" aria-label={copy("工具内容", "Tool content")} onScroll={event => { drawerScrollPositions.current[`${selectedSerial}:${toolTab}`] = event.currentTarget.scrollTop; }}>
-          {["diagnostics", "inputs", "check"].includes(toolTab) ? <div className={styles.toolTitle}><strong>{toolTab === "diagnostics" ? copy("连接诊断", "Diagnostics") : toolTab === "inputs" ? copy("按键与触摸校准", "Input calibration") : copy("代码检查", "Code checks")}</strong><button type="button" onClick={() => changeToolTab("scenarios")}>{copy("返回测试", "Back to tests")}</button></div> : null}
+          {["diagnostics", "inputs"].includes(toolTab) ? <div className={styles.toolTitle}><strong>{toolTab === "diagnostics" ? copy("连接诊断", "Diagnostics") : copy("按键与触摸校准", "Input calibration")}</strong><button type="button" onClick={() => changeToolTab("scenarios")}>{copy("返回测试", "Back to tests")}</button></div> : null}
           {toolTab === "history" ? <div className={styles.mediaWorkspace}>
           {mediaNotice ? <div className={styles.mediaNotice} role="status" aria-live="polite">
             <span>{mediaNotice.message}</span>
@@ -864,7 +861,6 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
           </div> : null}
           {toolsVisited ? <WorkbenchTools key={selectedSerial} tab={toolTab} serial={selectedSerial} active={active} chinese={chinese} canControl={canControl} ensureControl={ensureControl} onControlHandoff={clearControl} geometryId={liveFrame?.geometryId} cwd={cwd} ownerId={ownerId} initialDatabaseId={databaseSelection} onOpenDatabase={id => { setDatabaseSelection(id); changeToolTab("databases"); }} onOpenFiles={() => changeToolTab("files")} onShowTasks={() => changeToolTab("history")} onOpenLocalTerminal={onOpenLocalTerminal} onCleanupConfirmed={async () => { setError(null); await refresh(); }} /> : null}
           {toolTab === "logs" ? <HarmonyLogViewer active={active && toolsOpen} serial={selectedSerial} online={Boolean(selectedOnline)} copy={copy} /> : null}
-          {toolTab === "check" ? <HarmonyCheckPanel active={active && toolsOpen} cwd={cwd} onOpenFile={onOpenFile} onGuideAgent={onGuideAgent} /> : null}
           {toolTab === "diagnostics" ? <div className={styles.moreBody}>
             <button type="button" disabled={!canControl || busy} onClick={() => void initializeMirror()}>{copy("初始化投屏服务", "Initialize video service")}</button>
             <button type="button" disabled={!selectedOnline || busy} onClick={requestFrame}>{copy("重连视频流", "Reconnect video")}</button>

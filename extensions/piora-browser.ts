@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright-core";
+import { browserNetworkProxyOptions } from "../lib/network-proxy.ts";
 
 type BrowserSession = {
   context: BrowserContext;
@@ -19,13 +20,16 @@ type BrowserRuntime = {
   persistTimer: ReturnType<typeof setTimeout> | null;
   persistChain: Promise<void>;
   watchedPages: WeakSet<Page>;
+  proxySignature?: string;
+  proxyReload?: Promise<void>;
+  activeActions?: number;
 };
 
 declare global {
   var __pioraBrowserRuntime: BrowserRuntime | undefined;
 }
 
-const runtime = globalThis.__pioraBrowserRuntime ??= {
+const runtime: BrowserRuntime = globalThis.__pioraBrowserRuntime ??= {
   contextPromise: null,
   sessions: new Map(),
   revision: 0,
@@ -70,11 +74,13 @@ function browserStorageStatePath(): string {
 async function launchPersistentBrowser(): Promise<BrowserContext> {
   const configuredExecutable = process.env.PIORA_BROWSER_EXECUTABLE?.trim();
   const profileDirectory = browserProfileDirectory();
+  const networkOptions = browserNetworkProxyOptions();
   const baseOptions = {
     headless: true,
     viewport: BROWSER_VIEWPORT,
     locale: "en-US",
     serviceWorkers: "allow" as const,
+    ...networkOptions,
   };
   const attempts: Array<() => Promise<BrowserContext>> = [];
   if (configuredExecutable) {
@@ -102,6 +108,7 @@ async function launchPersistentBrowser(): Promise<BrowserContext> {
   for (const attempt of attempts) {
     try {
       const context = await attempt();
+      runtime.proxySignature = JSON.stringify(networkOptions);
       context.setDefaultTimeout(15_000);
       context.setDefaultNavigationTimeout(NAVIGATION_TIMEOUT_MS);
       await restoreBrowserState(context);
@@ -183,6 +190,7 @@ async function getBrowserContext(): Promise<BrowserContext> {
 }
 
 async function getSession(sessionId: string): Promise<BrowserSession> {
+  await refreshBrowserNetworkProxy();
   const existing = runtime.sessions.get(sessionId);
   if (existing && !existing.page.isClosed()) {
     if (!Array.isArray(existing.pages)) existing.pages = [existing.page];
@@ -206,6 +214,37 @@ async function getSession(sessionId: string): Promise<BrowserSession> {
   runtime.sessions.set(sessionId, session);
   runtime.revision += 1;
   return session;
+}
+
+/** Reopen tabs with the saved proxy on their next action, retaining the profile. */
+export async function refreshBrowserNetworkProxy(): Promise<void> {
+  if (runtime.proxyReload) return runtime.proxyReload;
+  if (runtime.activeActions) return;
+  if (!runtime.contextPromise || runtime.proxySignature === undefined) return;
+  const signature = JSON.stringify(browserNetworkProxyOptions());
+  if (signature === runtime.proxySignature) return;
+  runtime.proxyReload ??= (async () => {
+    const context = await runtime.contextPromise!;
+    const saved = [...runtime.sessions].map(([id, session]) => ({ id, urls: sessionPages(session).map(page => page.url()), active: sessionPages(session).indexOf(session.page) }));
+    await persistBrowserState(context);
+    await context.close();
+    const replacement = await getBrowserContext();
+    for (const { id, urls, active } of saved) {
+      const pages: Page[] = [];
+      for (const url of urls) {
+        const page = await replacement.newPage();
+        if (/^https?:/.test(url)) await page.goto(url, { waitUntil: "domcontentloaded" }).catch(() => {});
+        pages.push(page);
+      }
+      if (pages.length) {
+        const session = { context: replacement, pages, page: pages[active] ?? pages[0] };
+        for (const page of pages) addSessionPage(session, page);
+        runtime.sessions.set(id, session);
+      }
+    }
+    runtime.revision += 1;
+  })().finally(() => { runtime.proxyReload = undefined; });
+  await runtime.proxyReload;
 }
 
 function sessionPages(session: BrowserSession): Page[] {
@@ -335,98 +374,103 @@ const browserTool = defineTool({
     }
 
     const session = await getSession(sessionId);
-    markActive(sessionId, session);
-    let page = session.page;
-    switch (params.action) {
-      case "open": {
-        if (!params.url) throw new Error("open requires url");
-        await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
-        break;
+    runtime.activeActions = (runtime.activeActions ?? 0) + 1;
+    try {
+      markActive(sessionId, session);
+      let page = session.page;
+      switch (params.action) {
+        case "open": {
+          if (!params.url) throw new Error("open requires url");
+          await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
+          break;
+        }
+        case "snapshot":
+          return textResult(await snapshotPage(page), { action: params.action, url: page.url() });
+        case "click":
+          await targetLocator(page, params.selector, params.ref).click();
+          break;
+        case "type": {
+          if (params.text === undefined) throw new Error("type requires text");
+          const target = targetLocator(page, params.selector, params.ref);
+          await target.fill(params.text).catch(async () => {
+            await target.click();
+            await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+            await page.keyboard.type(params.text as string);
+          });
+          if (params.submit) await target.press("Enter");
+          break;
+        }
+        case "press":
+          await page.keyboard.press(params.key || "Enter");
+          break;
+        case "scroll":
+          await page.mouse.wheel(0, params.deltaY ?? 720);
+          break;
+        case "screenshot": {
+          const bytes = await page.screenshot({ type: "png", fullPage: params.fullPage ?? false });
+          return {
+            content: [
+              { type: "text" as const, text: await pageSummary(page) },
+              { type: "image" as const, data: bytes.toString("base64"), mimeType: "image/png" },
+            ],
+            details: { action: params.action, url: page.url(), fullPage: params.fullPage ?? false },
+          };
+        }
+        case "evaluate": {
+          if (!params.text) throw new Error("evaluate requires a JavaScript expression in text");
+          const value = await page.evaluate((expression) => globalThis.eval(expression), params.text);
+          return textResult(JSON.stringify(value, null, 2) ?? "undefined", { action: params.action, url: page.url() });
+        }
+        case "back":
+          await page.goBack({ waitUntil: "domcontentloaded" });
+          break;
+        case "forward":
+          await page.goForward({ waitUntil: "domcontentloaded" });
+          break;
+        case "reload":
+          await page.reload({ waitUntil: "domcontentloaded" });
+          break;
+        case "tabs": {
+          const tabs = sessionPages(session);
+          const lines = await Promise.all(tabs.map(async (tab, index) => `${index}: ${await tab.title()} — ${tab.url()}${tab === page ? " (active)" : ""}`));
+          return textResult(lines.join("\n") || "No tabs", { action: params.action, count: tabs.length });
+        }
+        case "new_tab": {
+          page = await session.context.newPage();
+          addSessionPage(session, page);
+          session.page = page;
+          if (params.url) await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
+          break;
+        }
+        case "switch_tab": {
+          const tabs = sessionPages(session);
+          const index = Math.floor(params.tabIndex ?? -1);
+          if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
+          page = tabs[index];
+          session.page = page;
+          await page.bringToFront();
+          break;
+        }
+        case "close_tab": {
+          const tabs = sessionPages(session);
+          const index = params.tabIndex === undefined ? tabs.indexOf(page) : Math.floor(params.tabIndex);
+          if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
+          await tabs[index].close();
+          const remaining = sessionPages(session);
+          page = remaining[0] ?? await session.context.newPage();
+          if (!remaining[0]) addSessionPage(session, page);
+          session.page = page;
+          break;
+        }
       }
-      case "snapshot":
-        return textResult(await snapshotPage(page), { action: params.action, url: page.url() });
-      case "click":
-        await targetLocator(page, params.selector, params.ref).click();
-        break;
-      case "type": {
-        if (params.text === undefined) throw new Error("type requires text");
-        const target = targetLocator(page, params.selector, params.ref);
-        await target.fill(params.text).catch(async () => {
-          await target.click();
-          await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-          await page.keyboard.type(params.text as string);
-        });
-        if (params.submit) await target.press("Enter");
-        break;
-      }
-      case "press":
-        await page.keyboard.press(params.key || "Enter");
-        break;
-      case "scroll":
-        await page.mouse.wheel(0, params.deltaY ?? 720);
-        break;
-      case "screenshot": {
-        const bytes = await page.screenshot({ type: "png", fullPage: params.fullPage ?? false });
-        return {
-          content: [
-            { type: "text" as const, text: await pageSummary(page) },
-            { type: "image" as const, data: bytes.toString("base64"), mimeType: "image/png" },
-          ],
-          details: { action: params.action, url: page.url(), fullPage: params.fullPage ?? false },
-        };
-      }
-      case "evaluate": {
-        if (!params.text) throw new Error("evaluate requires a JavaScript expression in text");
-        const value = await page.evaluate((expression) => globalThis.eval(expression), params.text);
-        return textResult(JSON.stringify(value, null, 2) ?? "undefined", { action: params.action, url: page.url() });
-      }
-      case "back":
-        await page.goBack({ waitUntil: "domcontentloaded" });
-        break;
-      case "forward":
-        await page.goForward({ waitUntil: "domcontentloaded" });
-        break;
-      case "reload":
-        await page.reload({ waitUntil: "domcontentloaded" });
-        break;
-      case "tabs": {
-        const tabs = sessionPages(session);
-        const lines = await Promise.all(tabs.map(async (tab, index) => `${index}: ${await tab.title()} — ${tab.url()}${tab === page ? " (active)" : ""}`));
-        return textResult(lines.join("\n") || "No tabs", { action: params.action, count: tabs.length });
-      }
-      case "new_tab": {
-        page = await session.context.newPage();
-        addSessionPage(session, page);
-        session.page = page;
-        if (params.url) await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
-        break;
-      }
-      case "switch_tab": {
-        const tabs = sessionPages(session);
-        const index = Math.floor(params.tabIndex ?? -1);
-        if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
-        page = tabs[index];
-        session.page = page;
-        await page.bringToFront();
-        break;
-      }
-      case "close_tab": {
-        const tabs = sessionPages(session);
-        const index = params.tabIndex === undefined ? tabs.indexOf(page) : Math.floor(params.tabIndex);
-        if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
-        await tabs[index].close();
-        const remaining = sessionPages(session);
-        page = remaining[0] ?? await session.context.newPage();
-        if (!remaining[0]) addSessionPage(session, page);
-        session.page = page;
-        break;
-      }
+      if (signal?.aborted) throw new Error("Browser action aborted");
+      await page.waitForTimeout(120);
+      await persistBrowserState(session.context);
+      markActive(sessionId, session);
+      return textResult(await pageSummary(page), { action: params.action, url: page.url() });
+    } finally {
+      runtime.activeActions = Math.max(0, (runtime.activeActions ?? 1) - 1);
     }
-    if (signal?.aborted) throw new Error("Browser action aborted");
-    await page.waitForTimeout(120);
-    await persistBrowserState(session.context);
-    markActive(sessionId, session);
-    return textResult(await pageSummary(page), { action: params.action, url: page.url() });
   },
 });
 

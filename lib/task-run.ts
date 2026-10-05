@@ -1,10 +1,9 @@
-import type { PlanArtifactState } from "./plan-artifact-registry";
 import type { RoomArtifact, RoomTask } from "./room-types";
 
 export const TASK_RUN_SCHEMA_VERSION = 1;
 export const TASK_PLAN_SCHEMA_VERSION = 1;
 
-export type TaskRunSource = "session" | "plan" | "room";
+export type TaskRunSource = "session" | "room";
 
 export type TaskRunPhase =
   | "draft"
@@ -319,64 +318,6 @@ export function projectTaskRun(input: TaskRunProjectionInput): TaskRunState | un
     ...(input.errorSummary ? { reason: input.errorSummary } : {}),
     evidence: [],
     artifacts: [],
-  };
-}
-
-export function projectPlanArtifactTaskRun(state: PlanArtifactState): TaskRunState {
-  const execution = state.execution;
-  const phase: TaskRunPhase = execution
-    ? execution.status
-    : state.status === "draft"
-      ? "waiting_approval"
-      : state.status === "approved"
-        ? "planned"
-        : "cancelled";
-  const currentStep = execution?.currentStepId
-    ? state.plan.steps.find((step) => step.id === execution.currentStepId)
-    : undefined;
-  return {
-    schemaVersion: TASK_RUN_SCHEMA_VERSION,
-    taskId: state.plan.id,
-    source: "plan",
-    sessionId: state.sessionId,
-    operationId: execution?.runId ?? state.runId,
-    objective: state.plan.objective,
-    phase,
-    attempt: execution?.attempt ?? 0,
-    createdAt: state.createdAt,
-    updatedAt: state.updatedAt,
-    ...(execution?.startedAt ? { startedAt: execution.startedAt } : {}),
-    ...(execution?.finishedAt ? { finishedAt: execution.finishedAt } : {}),
-    ...(execution?.progress
-      ? { progress: execution.progress }
-      : currentStep
-        ? { progress: currentStep.title }
-        : {}),
-    ...(execution?.reason
-      ? { reason: execution.reason }
-      : phase === "waiting_approval"
-        ? { reason: "The structured plan is waiting for user approval." }
-        : {}),
-    plan: copyPlan(state.plan),
-    evidence: execution?.evidence.map((item) => ({
-      id: item.id,
-      kind: item.kind,
-      summary: item.summary,
-      createdAt: item.createdAt,
-      source: item.source,
-      ...(item.toolName ? { toolName: item.toolName } : {}),
-      ...(item.toolCallId ? { toolCallId: item.toolCallId } : {}),
-    })) ?? [],
-    artifacts: execution?.artifacts.map((item) => ({
-      id: item.id,
-      kind: item.kind,
-      name: item.name,
-      ...(item.summary ? { summary: item.summary } : {}),
-      createdAt: item.createdAt,
-      source: item.source,
-      ...(item.toolName ? { toolName: item.toolName } : {}),
-      ...(item.toolCallId ? { toolCallId: item.toolCallId } : {}),
-    })) ?? [],
   };
 }
 

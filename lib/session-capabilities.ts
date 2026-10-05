@@ -77,12 +77,6 @@ const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
     matches: (name) => BUILTIN_TOOL_SET.has(name),
   },
   {
-    legacyId: "harmony-check",
-    kind: "workspace",
-    profiles: ["normal"],
-    matches: (name) => name === "piora_harmony_check",
-  },
-  {
     legacyId: "browser",
     kind: "browser",
     profiles: ["normal"],
@@ -129,7 +123,7 @@ const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
 const PRESET_TOOL_NAMES: Record<Exclude<SessionCapabilityPreset, "custom">, ReadonlySet<string>> = {
   chat: new Set(),
   // The optional computer extension is registered only after explicit opt-in.
-  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser", "ssh", "harmony_control", "piora_harmony_check", "computer_control"]),
+  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser", "ssh", "harmony_control", "computer_control"]),
   research: new Set(["browser"]),
   device: new Set(HARMONY_AGENT_TOOLS),
 };
@@ -141,7 +135,6 @@ const TOOL_ORDER = new Map([
   "piora_request_user_input",
   "piora_automation",
   "piora_room",
-  "piora_harmony_check",
   ...HARMONY_AGENT_TOOLS,
 ].map((name, index) => [name, index]));
 
@@ -365,7 +358,6 @@ export function createDefaultSessionCapabilitiesState(
         "browser",
         "ssh",
         "harmony_control",
-        "piora_harmony_check",
         "piora_automation",
         "piora_room",
       ];

@@ -2,7 +2,6 @@ import { randomBytes } from "node:crypto";
 import { createSmokeSessionProbe } from "./smoke-session-probe.js";
 import { SystemLauncher } from "./system-launcher";
 import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
-import { ScreenshotController } from "./screenshot-controller.js";
 import { copyHarmonyMedia } from "./harmony-media-clipboard.js";
 import { pathToFileURL } from "node:url";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
@@ -63,7 +62,7 @@ import {
   prepareAgentDataDirectoryChange,
   validateAgentDataDirectory,
 } from "./agent-data-directory.js";
-import { DesktopBrowserManager } from "./browser-manager.js";
+import { BROWSER_PARTITION, DesktopBrowserManager } from "./browser-manager.js";
 import { FileLogger, type Logger } from "./logger.js";
 import { runOptionalStartupTask } from "./startup-tasks.js";
 import { ensurePortableDesktopShortcut, type PortableShortcutResult } from "./portable-shortcut.js";
@@ -174,8 +173,6 @@ let companionWindow: BrowserWindow | null = null;
 let companionBubbleWindow: BrowserWindow | null = null;
 let companionPanelWindow: BrowserWindow | null = null;
 let clipboardController: ClipboardController | undefined;
-let screenshotController: ScreenshotController | undefined;
-let screenshotShortcutAccelerator: string | undefined;
 let logger: FileLogger | undefined = new FileLogger(app.getPath("userData"));
 let startupStage = "initializing-desktop";
 const desktopStartedAt = Date.now();
@@ -250,6 +247,23 @@ async function handleStandaloneMessage(message: unknown): Promise<unknown> {
     action?: unknown;
     value?: unknown;
   };
+  if (candidate.type === "pi-desktop:network-request" && typeof candidate.requestId === "string" && /^[a-f0-9-]{36}$/.test(candidate.requestId)) {
+    const requestId = candidate.requestId;
+    try {
+      let value: boolean | string;
+      if (candidate.action === "apply") value = await applyDesktopNetworkProxy(candidate.value);
+      else if (candidate.action === "resolve" && typeof candidate.value === "string" && candidate.value.length <= 8_192) {
+        const url = new URL(candidate.value);
+        if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Invalid network URL");
+        // This partition always follows the OS, independently of manual app settings.
+        const system = electronSession.fromPartition("piora-system-network");
+        value = await system.resolveProxy(url.href);
+      } else throw new Error("Invalid network operation");
+      return { type: "pi-desktop:network-response", requestId, ok: true, value };
+    } catch (error) {
+      return { type: "pi-desktop:network-response", requestId, ok: false, error: error instanceof Error ? error.message : "Network request failed" };
+    }
+  }
   if (candidate.type === "pi-desktop:ssh-vault-request" && typeof candidate.requestId === "string" && /^[a-f0-9-]{36}$/.test(candidate.requestId)) {
     const requestId = candidate.requestId;
     try {
@@ -481,33 +495,6 @@ function menuAcceleratorOption(id: DesktopShortcutId): { accelerator: string } |
   return accelerator ? { accelerator } : {};
 }
 
-async function startScreenshotFromDesktop(): Promise<void> {
-  const result = await screenshotController?.start();
-  if (!result || result.ok || result.error === "截图窗口已经打开") return;
-  logger?.warn("Screenshot could not start", result.error);
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    await dialog.showMessageBox(mainWindow, {
-      type: "error", title: "Piora", message: result.error ?? "无法启动截图",
-      buttons: [app.getLocale().toLowerCase().startsWith("zh") ? "确定" : "OK"],
-    });
-  }
-}
-
-function syncScreenshotShortcut(binding: string | null): boolean {
-  const next = toElectronAccelerator(binding);
-  if (next === screenshotShortcutAccelerator && (!next || globalShortcut.isRegistered(next))) return true;
-  const previous = screenshotShortcutAccelerator;
-  if (previous) globalShortcut.unregister(previous);
-  const activate = () => { void startScreenshotFromDesktop().catch((error) => logger?.warn("Screenshot failed", error)); };
-  if (next && !globalShortcut.register(next, activate)) {
-    screenshotShortcutAccelerator = previous && globalShortcut.register(previous, activate) ? previous : undefined;
-    if (previous && !screenshotShortcutAccelerator) logger?.warn("Previous screenshot shortcut could not be restored", { previous });
-    return false;
-  }
-  screenshotShortcutAccelerator = next;
-  return true;
-}
-
 function registerKeyboardShortcutHandler(): void {
   ipcMain.removeHandler(KEYBOARD_SHORTCUTS_CHANNEL);
   ipcMain.handle(KEYBOARD_SHORTCUTS_CHANNEL, (event, requested: unknown): boolean => {
@@ -518,13 +505,11 @@ function registerKeyboardShortcutHandler(): void {
       return false;
     }
     const previous = keyboardShortcutBindings;
-    if (!syncScreenshotShortcut(parsed["capture.screenshot"])) return false;
     keyboardShortcutBindings = parsed;
     const companionShortcutRegistered = syncCompanionPanelShortcut();
     const clipboardShortcutRegistered = clipboardController?.setShortcut(toElectronAccelerator(parsed["companion.clipboard"])) ?? true;
     if (!companionShortcutRegistered || !clipboardShortcutRegistered) {
       keyboardShortcutBindings = previous;
-      syncScreenshotShortcut(previous["capture.screenshot"]);
       syncCompanionPanelShortcut();
       clipboardController?.setShortcut(toElectronAccelerator(previous["companion.clipboard"]));
       return false;
@@ -558,13 +543,20 @@ function parseDesktopNetworkProxySettings(input: unknown): {
 async function applyDesktopNetworkProxy(input: unknown): Promise<boolean> {
   const settings = parseDesktopNetworkProxySettings(input);
   if (!settings) return false;
-  const target = electronSession.fromPartition(DESKTOP_PARTITION, { cache: true });
+  const targets = new Set([
+    electronSession.defaultSession,
+    electronSession.fromPartition(DESKTOP_PARTITION, { cache: true }),
+    electronSession.fromPartition(BROWSER_PARTITION, { cache: true }),
+    autoUpdater.netSession,
+  ]);
   try {
-    if (settings.mode === "manual") {
-      const bypass = ["<local>", ...settings.bypass.split(/[;,\s]+/).filter(Boolean)].join(",");
-      await target.setProxy({ mode: "fixed_servers", proxyRules: settings.proxyUrl, proxyBypassRules: bypass });
-    } else {
-      await target.setProxy({ mode: settings.mode });
+    for (const target of targets) {
+      if (settings.mode === "manual") {
+        const bypass = ["localhost", "127.0.0.1", "[::1]", ...settings.bypass.split(/[;,\s]+/).filter(Boolean)].join(",");
+        await target.setProxy({ mode: "fixed_servers", proxyRules: settings.proxyUrl, proxyBypassRules: bypass });
+      } else {
+        await target.setProxy({ mode: settings.mode });
+      }
     }
     // The shell applies these settings while lazy startup chunks and SSE may
     // still be loading. Closing all connections aborts those active requests;
@@ -585,6 +577,17 @@ function registerNetworkProxyHandler(): void {
     if (!isTrustedMainWindowSender(event)) return false;
     return applyDesktopNetworkProxy(input);
   });
+}
+
+async function syncSavedDesktopNetworkProxy(): Promise<void> {
+  if (!serverUrl || !applicationToken) return;
+  const response = await fetch(new URL("/api/network-proxy", serverUrl), {
+    headers: { [DESKTOP_TOKEN_HEADER]: applicationToken },
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!response.ok || !await applyDesktopNetworkProxy(await response.json())) {
+    throw new Error("Unable to apply saved application network proxy");
+  }
 }
 
 function isUpdateAttentionState(state: DesktopUpdateState = desktopUpdateState): boolean {
@@ -857,7 +860,7 @@ function installApplicationMenu(): void {
     newSession: "新聊天", openFolder: "打开文件夹", close: "关闭", quit: brandText("退出 Piora"),
     undo: "撤销", redo: "重做", cut: "剪切", copy: "复制", paste: "粘贴", delete: "删除", selectAll: "全选", settings: "设置",
     sidebar: "切换侧栏", files: "切换文件面板", commands: "打开命令面板", review: "打开审查面板", browser: "浏览器", companion: "显示/隐藏桌面宠物", find: "搜索聊天记录",
-    actualSize: "实际大小", zoomIn: "放大", zoomOut: "缩小", fullscreen: "切换全屏", screenshot: "截图",
+    actualSize: "实际大小", zoomIn: "放大", zoomOut: "缩小", fullscreen: "切换全屏",
     documentation: "文档", about: brandText("关于 Piora"), aboutDetail: "基于 Pi Agent 与 pi-web 的开源桌面应用。",
     checkUpdates: "检查更新…", checkingUpdates: "正在检查更新…", updateAvailable: "有更新",
     downloadingUpdate: "正在下载更新", restartToInstall: "安装并重启", retryUpdate: "检查更新失败，点击重试",
@@ -867,7 +870,7 @@ function installApplicationMenu(): void {
     newSession: "New chat", openFolder: "Open folder", close: "Close", quit: brandText("Quit Piora"),
     undo: "Undo", redo: "Redo", cut: "Cut", copy: "Copy", paste: "Paste", delete: "Delete", selectAll: "Select all", settings: "Settings",
     sidebar: "Toggle sidebar", files: "Toggle Files panel", commands: "Open Commands panel", review: "Open Review panel", browser: "Browser", companion: "Show/hide desktop pet", find: "Search conversations",
-    actualSize: "Actual size", zoomIn: "Zoom in", zoomOut: "Zoom out", fullscreen: "Toggle full screen", screenshot: "Screenshot",
+    actualSize: "Actual size", zoomIn: "Zoom in", zoomOut: "Zoom out", fullscreen: "Toggle full screen",
     documentation: "Documentation", about: brandText("About Piora"), aboutDetail: "An open-source desktop application built with Pi Agent and pi-web.",
     checkUpdates: "Check for updates…", checkingUpdates: "Checking for updates…", updateAvailable: "Update available",
     downloadingUpdate: "Downloading update", restartToInstall: "Install and restart", retryUpdate: "Update check failed — retry",
@@ -939,7 +942,6 @@ function installApplicationMenu(): void {
         { label: copy.review, ...menuAcceleratorOption("panel.review"), click: () => sendMenuAction("open-review") },
         { label: copy.browser, ...menuAcceleratorOption("panel.browser"), click: () => sendMenuAction("open-browser") },
         { label: copy.companion, click: () => sendMenuAction("toggle-companion") },
-        { label: copy.screenshot, click: () => { void startScreenshotFromDesktop(); } },
         { type: "separator" },
         { label: copy.find, ...menuAcceleratorOption("navigate.searchChats"), click: () => sendMenuAction("search-chats") },
         { type: "separator" },
@@ -2061,7 +2063,6 @@ function updateTrayMenu(): void {
     { label: isChinese ? brandText("显示 Piora") : brandText("Show Piora"), click: () => focusMainWindow() },
     { label: isChinese ? "新任务" : "New task", click: () => focusMainWindow("new-session") },
     { label: isChinese ? "打开随身舱" : "Open companion panel", click: () => showCompanionPanel() },
-    { label: isChinese ? "截图" : "Screenshot", click: () => { void startScreenshotFromDesktop(); } },
     {
       label: companionShouldBeVisible ? (isChinese ? "隐藏桌宠" : "Hide companion") : (isChinese ? "显示桌宠" : "Show companion"),
       click: () => mainWindow?.webContents.send("pi:menu-action", "toggle-companion"),
@@ -2728,6 +2729,7 @@ async function startApplication(): Promise<void> {
     activateStandaloneProfile("normal", initialRuntime.dataDirectory, serverUrl);
     logger.info("Bundled service is ready", { elapsedMs: Date.now() - startupStartedAt });
   }
+  await syncSavedDesktopNetworkProxy().catch(error => logger?.warn("Saved network proxy could not be applied at startup", error));
   warmInitialModelCatalog(serverUrl, token, logger);
 
   recordStartupStage("initializing-desktop-services");
@@ -2814,12 +2816,6 @@ async function startApplication(): Promise<void> {
   // worker off the critical path to the main application window.
   void clipboardController.start().catch(error => logger?.warn("Clipboard startup failed; application remains available", error));
   clipboardController.setShortcut(toElectronAccelerator(keyboardShortcutBindings["companion.clipboard"]));
-  screenshotController = new ScreenshotController({
-    host: mainWindow, origin: serverUrl, partition: DESKTOP_PARTITION,
-    trustedMain: isTrustedMainWindowSender,
-    onError: error => logger?.warn("Screenshot failed", error),
-  });
-  if (!syncScreenshotShortcut(keyboardShortcutBindings["capture.screenshot"])) logger?.warn("Default screenshot shortcut is unavailable");
   registerFileShellHandlers();
   installDisplayReconciliation();
 
@@ -2839,10 +2835,6 @@ async function startApplication(): Promise<void> {
 }
 
 async function stopApplication(): Promise<void> {
-  screenshotController?.dispose();
-  screenshotController = undefined;
-  if (screenshotShortcutAccelerator) globalShortcut.unregister(screenshotShortcutAccelerator);
-  screenshotShortcutAccelerator = undefined;
   await clipboardController?.stop().catch(error => { if (error instanceof ClipboardDraftFlushError) throw error; logger?.warn("Clipboard shutdown failed", error); });
   if (scheduledUpdateTimer) clearInterval(scheduledUpdateTimer);
   scheduledUpdateTimer = undefined;

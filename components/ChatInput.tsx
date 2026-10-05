@@ -11,7 +11,7 @@ import { useAnchoredMenuPosition } from "@/hooks/useAnchoredMenuPosition";
 import { readPromptOptimizerModel, readPromptOptimizerSystemPrompt } from "@/lib/prompt-optimizer-settings";
 import type { AttachedFile, BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
 import { storeBrowserFiles } from "@/lib/file-attachments";
-import { clearDraft, forgetCapturedImageFromDraft, getDraft, setDraft, hydrateDraft, deferDraftPersistence, DRAFT_STORAGE_ERROR_EVENT, SCREENSHOT_DRAFT_UPDATED_EVENT, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
+import { clearDraft, getDraft, setDraft, hydrateDraft, deferDraftPersistence, DRAFT_STORAGE_ERROR_EVENT, type ChatDraftFile, type ChatDraftImage } from "@/lib/draft-store";
 import {
   MAX_ATTACHED_IMAGE_BYTES,
   MAX_ATTACHED_IMAGE_TOTAL_BYTES,
@@ -97,7 +97,6 @@ export interface AttachedImage {
   data: string;   // base64, no prefix
   mimeType: string;
   previewUrl: string; // object URL for display
-  captureId?: string;
 }
 
 interface ModelOption {
@@ -248,7 +247,7 @@ const SLASH_SOURCE_GROUP_LABEL_KEYS: Record<SlashCommandSource, string> = {
 
 
 function imageToDraftImage(image: AttachedImage): ChatDraftImage {
-  return { data: image.data, mimeType: image.mimeType, ...(image.captureId ? { captureId: image.captureId } : {}) };
+  return { data: image.data, mimeType: image.mimeType };
 }
 
 function draftImageToAttachedImage(image: ChatDraftImage): AttachedImage {
@@ -428,7 +427,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   const atItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const historyItemRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const draftKeyRef = useRef(draftKey);
-  const screenshotTargetToken = useRef<string>("");
   const retryOfPromptIdsRef = useRef<string[]>(draftKey ? getDraft(draftKey)?.retryOfPromptIds ?? [] : []);
   const valueRef = useRef(value);
   const attachedImagesRef = useRef(attachedImages);
@@ -442,30 +440,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
 
   useEffect(() => {
     if (folderInputRef.current) folderInputRef.current.webkitdirectory = true;
-  }, []);
-
-  useEffect(() => {
-    if (!draftKey || !window.piDesktop?.screenshot) return;
-    if (!screenshotTargetToken.current) screenshotTargetToken.current = crypto.randomUUID();
-    const token = screenshotTargetToken.current;
-    void window.piDesktop.screenshot.setTarget({ token, draftKey, available: !isStreaming && !isCompacting }).catch(() => {});
-    return () => { void window.piDesktop?.screenshot?.setTarget({ token, draftKey: null, available: false }).catch(() => {}); };
-  }, [draftKey, isStreaming, isCompacting]);
-
-  useEffect(() => {
-    const updated = (event: Event) => {
-      const { key, captureId } = (event as CustomEvent<{ key: string; captureId: string }>).detail;
-      if (key !== draftKeyRef.current) return;
-      const image = getDraft(key)?.images.find((item) => item.captureId === captureId);
-      if (!image) return;
-      const current = attachedImagesRef.current;
-      if (current.some((item) => item.captureId === captureId)) return;
-      const next = [...current, draftImageToAttachedImage(image)];
-      attachedImagesRef.current = next;
-      setAttachedImages(next);
-    };
-    window.addEventListener(SCREENSHOT_DRAFT_UPDATED_EVENT, updated);
-    return () => window.removeEventListener(SCREENSHOT_DRAFT_UPDATED_EVENT, updated);
   }, []);
 
   const stopVoiceInput = useCallback((abort = false) => {
@@ -533,7 +507,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     setAttachedImages((prev) => {
       const next = [...prev];
       const [removed] = next.splice(index, 1);
-      if (removed?.captureId && draftKeyRef.current) forgetCapturedImageFromDraft(draftKeyRef.current, removed.captureId);
       if (removed) revokeImagePreview(removed);
       return next;
     });
@@ -711,8 +684,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
 
   const clearImages = useCallback(() => {
     setAttachedImages((prev) => {
-      const key = draftKeyRef.current;
-      if (key) prev.forEach((image) => { if (image.captureId) forgetCapturedImageFromDraft(key, image.captureId); });
       prev.forEach(revokeImagePreview);
       return [];
     });
@@ -1265,6 +1236,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   }, [commitReplyDraft]);
 
   const applySlashCommand = useCallback((command: SlashCommandPaletteItem) => {
+    if (isStreaming && command.source === "builtin") return;
     const nextValue = `/${command.name} `;
     setValue(nextValue);
     setSlashMenuOpen(false);
@@ -1277,7 +1249,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       ta.style.height = "auto";
       resizeComposerTextarea(ta);
     });
-  }, [setValue]);
+  }, [isStreaming, setValue]);
 
   const sendQueued = useCallback(async (mode: "steer" | "followup") => {
     if (sendingRef.current) return;
@@ -2038,6 +2010,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                             type="button"
                             role="option"
                             aria-selected={active}
+                            aria-disabled={isStreaming && command.source === "builtin"}
                             className="slash-command-item"
                             data-active={active ? "true" : "false"}
                             onMouseDown={(e) => {
@@ -2047,7 +2020,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                             onMouseEnter={() => setSlashActiveIndex(index)}
                           >
                             <span className="slash-command-item-name">/{command.name}</span>
-                            <span className="slash-command-item-desc">{getSlashCommandDescription(command, t)}</span>
+                            <span className="slash-command-item-desc">{isStreaming && command.source === "builtin" ? t("chat.commandWaitUntilIdle") : getSlashCommandDescription(command, t)}</span>
                             <span className="slash-command-item-source">{t(SLASH_SOURCE_GROUP_LABEL_KEYS[command.source])}</span>
                           </button>
                         );
@@ -2238,18 +2211,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
               {attachmentMenuOpen && (
                 <div className="composer-add-menu" role="menu" aria-label={t("chat.addMenu")}>
                   <div className="composer-add-menu-title">{t("chat.add")}</div>
-                  {window.piDesktop?.screenshot ? <button
-                    type="button" role="menuitem" className="composer-add-option"
-                    onClick={() => {
-                      setAttachmentMenuOpen(false);
-                      void window.piDesktop?.screenshot?.start().then((result) => {
-                        if (result && !result.ok) setAttachmentError(result.error ?? "无法启动截图");
-                      });
-                    }}
-                  >
-                    <span className="composer-add-option-icon"><AliIcon name="attachment" size={15} /></span>
-                    <span className="composer-add-option-copy"><strong>{t("chat.screenshot")}</strong><small>{t("chat.screenshotDescription")}</small></span>
-                  </button> : null}
                   <button
                     type="button"
                     role="menuitem"

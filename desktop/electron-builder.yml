@@ -88,11 +88,6 @@ extraResources:
     to: licenses/mediabunny/source
     filter:
       - "**/*"
-  - from: ../third_party/react-screenshots
-    to: licenses/react-screenshots
-    filter:
-      - "LICENSE"
-      - "SOURCE.md"
   # The packaged web verifier and runtime signing bridge share this source on
   # every desktop platform. Windows additionally supplies HDC and the HAP.
   - from: ../lib/harmony/runtime/PioraHapSigner.java

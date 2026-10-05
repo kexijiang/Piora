@@ -1,6 +1,6 @@
 # Piora unified TaskRun runtime
 
-Status: core runtime contract with optional workflow extensions, 2026-08-31
+Status: core runtime contract, 2026-09-30
 
 ## Boundary
 
@@ -14,9 +14,7 @@ The core sources are:
 - collaboration-room tasks persisted by the room store;
 - future Harmony approval references.
 
-Goals and structured plans are not core task modes. `piora-goal.ts` and `piora-plan.ts` are optional
-first-party extensions, disabled by default. Their custom session entries are private extension
-state and are not projected into sidebar task status or the core prompt protocol.
+Goal tracking and structured planning belong to user-installed Pi extensions. Piora does not bundle their tools, commands, or lifecycle state.
 
 ## Identity
 
@@ -40,31 +38,6 @@ draft -> planned -> waiting_approval -> running -> verifying -> completed
 `waiting_user` asks for information. `waiting_approval` asks for authority to perform a known
 action. Replay never repeats external side effects; an unfinished runtime becomes `interrupted`
 unless the owning subsystem proves it can resume safely.
-
-## Optional Plans extension
-
-The Plans extension stores a versioned `piora-plan-artifact` custom entry and registers two ordinary
-tools:
-
-- `piora_plan` saves a structured plan for review;
-- `piora_plan_execution` tracks dependency-ordered execution and verification.
-
-The user controls saved plans with `/plan status`, `/plan approve`, `/plan cancel`, and
-`/plan execute`. These commands and tools exist only while the extension is enabled. Plan approval
-and execution are not RPC commands, do not activate a composer mode, and do not acquire a core
-read-only lease.
-
-Completed steps require evidence. Final execution completion requires verification coverage for
-every success criterion and a change summary. The extension observes its own tool execution events
-to record successful runtime checks and file artifacts. Incomplete execution becomes `interrupted`
-when its extension turn settles.
-
-## Optional Goals extension
-
-The Goals extension registers `piora_goal` and `/goal`. `piora_goal` can explicitly create a saved
-goal, record progress and evidence, or finish, block, or wait for the user. A later ordinary user
-message can rebind the saved goal to that extension turn. The extension never starts automatic
-model continuations and the core wrapper has no goal lifecycle state.
 
 ## Runtime projection and UI attention
 

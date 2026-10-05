@@ -239,5 +239,3 @@ CI 没有实体手机，因此不能替代这组硬件验收。
 设备快照仍由 `HarmonyDeviceManager` 一次生成。启用视觉路由时，截图作为独立、无历史的图片请求发送给用户选择的 image-capable 模型，返回受提示约束的观察文本；操作模型继续使用 revision-scoped UI refs、UI 树和观察文本。默认不把原图加入操作模型 tool result，避免同一屏幕被发送给两个提供商。视觉失败会作为结构化 warning 返回，UI 树路径仍可继续。
 
 ### 14.3 可选工作流扩展边界
-
-设备控制运行时不再集成目标模式，也不接受 `goalMode` 请求字段。`piora-goal` 和 `piora-plan` 仅属于 normal profile 下默认关闭的可选扩展；启用后通过普通扩展工具工作，不改变 Harmony 的设备租约、审批队列或 `AgentSessionWrapper` 生命周期。设备控制任务需要持续执行时，应由调用方显式发送后续消息或使用独立的调度能力，核心运行时不会自动续接模型回合。

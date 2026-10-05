@@ -858,12 +858,6 @@ export class HarmonyDeviceManager {
         }
       }
       if (!this.injectedBackend) {
-        try {
-          const { inspectHarmonyCheckEnvironment } = await import("./check-runtime");
-          const environment = inspectHarmonyCheckEnvironment();
-          versions.deveco = environment.studioVersion; versions.devecoCli = environment.cliVersion;
-          checks.push({ name: "deveco-cli", status: environment.ready ? "passed" : "unknown", reason: environment.ready ? "Installed toolchain detected; project ArkTS/lint checks remain separate" : "Configure DevEco Studio under Harmony development settings" });
-        } catch { checks.push({ name: "deveco-cli", status: "unknown", reason: "Local development toolchain could not be inspected" }); }
         const candidates = discoverHdcCandidates({ config: this.config });
         checks.push({ name: "hdc-selection", status: "passed", reason: `Selected: ${backend.hdcPath}; ${candidates.length} local candidate(s). A runtime switch requires an explicit selection.` });
         try { const outputs = await this.acoustic.outputs(queuedSignal); checks.push({ name: "acoustic-routes", status: outputs.length ? "passed" : "unknown", reason: `${outputs.length} output(s); ${this.voiceStore().listIds(device).length} device-bound calibrated profile(s). No sound was played.` }); }

@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.5.5-beta.12",
+  "version": "0.5.5-beta.13",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -86,8 +86,6 @@
     "test:team:acceptance": "node scripts/run-team-acceptance.mjs",
     "test:team:soak": "node scripts/run-team-soak.mjs",
     "build:harmony-worker": "tsc -p tsconfig.harmony-worker.json",
-    "test:harmony-check": "node --test lib/harmony-check.test.mjs",
-    "test:harmony-check:real": "node scripts/verify-harmony-check.mjs",
     "perf:check": "node scripts/check-performance-budgets.mjs",
     "pack:win": "npm run build:app && npm run pack --workspace @piora/desktop",
     "dist:win": "npm run build:app && npm run dist --workspace @piora/desktop",

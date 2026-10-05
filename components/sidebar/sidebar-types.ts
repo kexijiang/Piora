@@ -87,13 +87,6 @@ declare global {
       }>;
       setGlobalShortcut?: (enabled: boolean) => Promise<boolean>;
       setKeyboardShortcuts?: (bindings: Record<string, string | null>) => Promise<boolean>;
-      screenshot?: {
-        start: () => Promise<{ ok: boolean; error?: string }>;
-        setTarget: (target: { token: string; draftKey: string | null; available: boolean }) => Promise<boolean>;
-        pending: () => Promise<import("@/desktop/src/screenshot-types").PendingScreenshotAttachment | null>;
-        ack: (captureId: string, success: boolean, message?: string) => Promise<boolean>;
-        onAttachment: (listener: (attachment: import("@/desktop/src/screenshot-types").PendingScreenshotAttachment) => void) => () => void;
-      };
       setNetworkProxy?: (settings: {
         mode: "system" | "manual" | "direct";
         proxyUrl: string;

@@ -94,7 +94,6 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
 
   { id: "shortcuts", section: "shortcuts", labelKey: "settings.shortcuts", descriptionKey: "settings.shortcutsDescription", keywords: ["keyboard", "hotkey", "键盘", "快捷键"] },
   { id: "shortcuts.palette", section: "shortcuts", labelKey: "shortcuts.commandPalette", descriptionKey: "shortcuts.commandPaletteDescription", keywords: ["ctrl k", "command", "命令面板"] },
-  { id: "shortcuts.screenshot", section: "shortcuts", requiresDesktop: true, labelKey: "commands.screenshot", descriptionKey: "shortcuts.screenshotDescription", keywords: ["screenshot", "screen capture", "ctrl alt a", "截图", "截屏", "快捷键"] },
   { id: "shortcuts.search", section: "shortcuts", labelKey: "commands.searchChats", descriptionKey: "shortcuts.searchChatsDescription", keywords: ["find", "search", "搜索", "聊天记录"] },
 
   { id: "speech", section: "speech", labelKey: "speech.title", descriptionKey: "speech.description", keywords: ["voice", "dictation", "speech", "语音", "识别"] },
@@ -133,7 +132,6 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
 
   { id: "remote", section: "remote", labelKey: "remote.title", descriptionKey: "remote.description", keywords: ["http", "sse", "token", "远程", "令牌"] },
   { id: "harmony", section: "harmony", labelKey: "harmonyStorage.title", descriptionKey: "harmonyStorage.description", keywords: ["openharmony", "arkts", "lint", "deveco", "screenshot", "recording", "鸿蒙", "语法", "语义", "规范", "截图", "录屏"] },
-  { id: "harmony.checks", section: "harmony", requiresDesktop: true, labelKey: "harmonyCheck.settingsTitle", descriptionKey: "harmonyCheck.settingsDescription", keywords: ["arkts", "lsp", "codelinter", "deveco", "check", "鸿蒙", "检查", "修复"] },
   { id: "harmony.screenshots", section: "harmony", requiresDesktop: true, labelKey: "harmonyStorage.screenshotDirectory", descriptionKey: "harmonyStorage.screenshotDescription", keywords: ["png", "folder", "截图", "文件夹"] },
   { id: "harmony.recordings", section: "harmony", requiresDesktop: true, labelKey: "harmonyStorage.recordingDirectory", descriptionKey: "harmonyStorage.recordingDescription", keywords: ["mp4", "folder", "录屏", "文件夹"] },
   { id: "usage", section: "usage", labelKey: "usage.title", descriptionKey: "usage.description", keywords: ["token", "statistics", "usage", "用量", "统计"] },

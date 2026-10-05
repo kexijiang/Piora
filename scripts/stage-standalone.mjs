@@ -26,13 +26,6 @@ const assets = [
     rejectSymlinks: true,
   },
   {
-    name: "desktop screenshot client reference manifest",
-    source: join(nextDirectory, "server", "app", "desktop-screenshot", "page_client-reference-manifest.js"),
-    destination: join(standaloneDirectory, ".next", "server", "app", "desktop-screenshot", "page_client-reference-manifest.js"),
-    required: true,
-    rejectSymlinks: true,
-  },
-  {
     name: "Next.js static assets",
     source: join(nextDirectory, "static"),
     destination: join(standaloneDirectory, ".next", "static"),
@@ -75,8 +68,6 @@ const assets = [
     ["Piora visual-agent extension", "extensions/piora-vision-agent.ts"],
     ["Piora scheduled-task extension", "extensions/piora-automations.ts"],
     ["Piora user-input extension", "extensions/piora-user-input.ts"],
-    ["Optional Piora Goals extension", "extensions/piora-goal.ts"],
-    ["Optional Piora Plans extension", "extensions/piora-plan.ts"],
     ["Piora collaboration-room extension", "extensions/piora-room.ts"],
     // First-party extensions execute from source at runtime and resolve their
     // relative imports through this tree. Stage the complete Piora library so

@@ -304,6 +304,7 @@ export class StandaloneServer {
           PIORA_HOME: this.options.homeDirectory,
           PIORA_WEB_RUNTIME_ROOT: this.options.runtimeRoot,
           PIORA_RUNTIME_PROFILE: this.options.runtimeProfile ?? "normal",
+          PIORA_DESKTOP_NETWORK_IPC: "1",
           ...(this.options.desktopDataDirectory
             ? { PIORA_DESKTOP_DATA_DIR: this.options.desktopDataDirectory }
             : {}),

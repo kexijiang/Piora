@@ -49,7 +49,6 @@ Additional server-side subsystems share the same Next.js process but have separa
 - **Rooms** coordinate multiple agent sessions through `room-store`, `room-coordinator`, and room SSE routes.
 - **Harmony** uses the ordinary session and a desktop-authenticated gateway. Shared action contracts feed direct/scenario dispatch. HDC-connected devices allow control without app grants or one-use approvals; immutable HAP imports retain integrity checks. The manager owns leases/epochs and per-device queues; observation quality/geometry gate writes. Hypium runs in a packaged child worker; HDC retains discovery/media boundaries. Passive mirroring never installs, wakes or unlocks a phone. See `docs/harmony/architecture.md`.
 - **Companion pets** keep imported sprite metadata in the companion store and serve runtime spritesheets through dedicated routes; desktop companion windows are separate renderer entry points.
-- **Optional workflow extensions** provide goal tracking and structured plans through ordinary extension tools and slash commands. They are disabled by default, have no special composer mode, and do not alter the core prompt protocol or session runtime.
 
 ---
 
@@ -80,8 +79,6 @@ lib/
   extension-config.ts        extension inventory, stable ids, load plan, and preferences
   first-party-extensions.ts  bundled extension descriptors and profile membership
   prompt-run-registry.ts     active prompt identity and terminal cleanup
-  goal-run-registry.ts       state helper owned by the optional Goals extension
-  plan-artifact-registry.ts  state helper owned by the optional Plans extension
   task-status.ts             normalized running/task snapshots
   session-reader.ts          read-only session loading, context building, and caches
   session-{path,flags,trash}.ts session lookup, metadata flags, and recoverable deletion
@@ -102,7 +99,7 @@ lib/
 components/
   AppShell.tsx              top-level layout, URL/project/tab state, workspace composition
   ChatWindow.tsx            chat rendering, session hook, and task-control registration
-  ChatInput.tsx             composer, model/thinking controls, one-shot goal/plan selection
+  ChatInput.tsx             composer, model/thinking controls and attachments
   MessageView.tsx           user/assistant/tool message rendering
   SessionSidebar.tsx        sidebar composition; details live under components/sidebar/
   Room*.tsx                 room navigation, settings, and multi-agent workspace
@@ -132,13 +129,6 @@ hooks/
 - One `AgentSessionWrapper` per session id, keyed in `globalThis.__piSessions`
 - `globalThis` survives Next.js hot-reload; plain module-level Map does not
 - Idle timeout: 10 minutes. Concurrent `startRpcSession()` calls share a single start Promise (`globalThis.__piStartLocks`)
-
-### Optional Goals and Plans extensions
-- `extensions/piora-goal.ts` and `extensions/piora-plan.ts` are ordinary configurable first-party extensions. Both are disabled by default and appear in Settings > Extensions.
-- Core prompt requests do not accept goal/plan flags, `AgentSessionWrapper` does not track workflow mode state, and the composer exposes no Goal or Plan mode controls.
-- Enabling an extension registers its tools and slash commands through Pi's normal extension loader. Its tools then participate in the ordinary per-session capability selection instead of being force-enabled by the wrapper.
-- The Goals extension persists `piora-goal-run` custom entries and exposes `piora_goal` plus `/goal`. It may carry saved context into a later user prompt, but it never starts automatic model continuations.
-- The Plans extension persists `piora-plan-artifact` custom entries and exposes `piora_plan`, `piora_plan_execution`, and `/plan`. Approval and execution are extension commands; no core read-only lease or prompt mode exists. Restored incomplete executions become `interrupted`, never falsely `running`.
 
 ### Extension inventory and toggles
 - `lib/extension-config.ts` resolves Pi's first-party, user, project, and package extension paths before session construction. Disabled extensions are removed from the load plan, so their modules are not executed.

@@ -13,7 +13,6 @@ export const DESKTOP_SHORTCUT_IDS = [
   "composer.voiceInput",
   "companion.togglePanel",
   "companion.clipboard",
-  "capture.screenshot",
   "settings.general",
 ] as const;
 
@@ -35,7 +34,6 @@ export const DEFAULT_DESKTOP_SHORTCUT_BINDINGS: DesktopShortcutBindings = {
   "composer.voiceInput": "Mod+Shift+M",
   "companion.togglePanel": "Ctrl+Space",
   "companion.clipboard": "Mod+Alt+V",
-  "capture.screenshot": "Ctrl+Alt+A",
   "settings.general": "Mod+,",
 };
 

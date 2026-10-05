@@ -3467,6 +3467,11 @@ select:focus-visible,
   box-shadow: none;
 }
 
+.slash-command-item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .slash-command-item-name {
   overflow: hidden;
   color: var(--text);
