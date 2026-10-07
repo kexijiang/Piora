@@ -11,6 +11,7 @@ asarUnpack:
 compression: normal
 afterPack: ../scripts/electron-after-pack-licenses.cjs
 beforeBuild: ../scripts/electron-before-build.cjs
+artifactBuildStarted: ../scripts/electron-portable-payload.cjs
 releaseInfo:
   releaseNotesFile: release-notes.md
 
@@ -111,6 +112,10 @@ extraResources:
 win:
   icon: icon.ico
   extraResources:
+    - from: build/portable-extractor
+      to: portable-extractor
+      filter:
+        - "**/*"
     - from: ../node_modules/@microsoft/winappcli/bin/win-x64
       to: winappcli
       filter:
@@ -187,6 +192,9 @@ publish:
   releaseType: release
 
 nsis:
+  # NSIS and portable share AppPackageHelper's archive. Every payload file
+  # must be in that archive for the portable manifest to describe exact bytes.
+  preCompressedFileExtensions: []
   oneClick: false
   allowToChangeInstallationDirectory: true
   perMachine: false

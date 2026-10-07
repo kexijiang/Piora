@@ -94,6 +94,9 @@ next-env.d.ts
 /public/vendor/vditor/
 .factory
 desktop/build/speech/
+desktop/build/portable-extractor/
+desktop/build/.portable-extractor-*/
+desktop/build/portable-payload-x64.json
 
 .worktrees/
 

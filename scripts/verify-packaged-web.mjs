@@ -986,6 +986,11 @@ async function main() {
       force: true,
     });
     if (process.platform === "win32") {
+      const { verifyStagedPortableExtractor } = await import("./stage-portable-extractor.mjs");
+      await verifyStagedPortableExtractor(join(dirname(packagedWebRoot), "portable-extractor"));
+      const { verifyPayload } = createRequire(import.meta.url)("./portable-payload.cjs");
+      const expectedVersion = JSON.parse(await readFile(join(projectRoot, "desktop/package.json"), "utf8")).version;
+      await verifyPayload(dirname(dirname(packagedWebRoot)), join(projectRoot, "desktop/build/portable-payload-x64.json"), expectedVersion);
       const { verifyStagedPowerShell } = await import("./stage-powershell.mjs");
       const shellRoot = join(temporaryDirectory, "powershell");
       await cp(join(dirname(packagedWebRoot), "powershell"), shellRoot, { recursive: true });

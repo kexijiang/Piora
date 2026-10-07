@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `1749c8417d4a99e7d8cb4a0314b1ff74621634e2afcb80088595af9538130ab7`
+Lockfile SHA-256: `4f98c85d4d57ece2fba059ad1cdbd503c17f8eba555bf7162d7cf74f6eabb8df`
 
 Unique locked packages: **1376**. Runtime packages: **934**. Build/development-only packages: **442**.
 
@@ -134,32 +134,32 @@ Every locked package declares a license.
 | `@iconify/types` | `2.0.0` | MIT | No |
 | `@iconify/utils` | `3.1.1` | MIT | No |
 | `@img/colour` | `1.1.0` | MIT | No |
-| `@img/sharp-darwin-arm64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-darwin-x64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-freebsd-wasm32` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-libvips-darwin-arm64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-darwin-x64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-arm` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-arm64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-ppc64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-riscv64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-s390x` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linux-x64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linuxmusl-arm64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-libvips-linuxmusl-x64` | `1.3.3` | LGPL-3.0-or-later | Yes |
-| `@img/sharp-linux-arm` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-linux-arm64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-linux-ppc64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-linux-riscv64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-linux-s390x` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-linux-x64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-linuxmusl-arm64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-linuxmusl-x64` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-wasm32` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later AND MIT | Yes |
-| `@img/sharp-webcontainers-wasm32` | `0.35.4` | Apache-2.0 | Yes |
-| `@img/sharp-win32-arm64` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
-| `@img/sharp-win32-ia32` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
-| `@img/sharp-win32-x64` | `0.35.4` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
+| `@img/sharp-darwin-arm64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-darwin-x64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-freebsd-wasm32` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-libvips-darwin-arm64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-darwin-x64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-arm` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-arm64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-ppc64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-riscv64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-s390x` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linux-x64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linuxmusl-arm64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-libvips-linuxmusl-x64` | `1.3.4` | LGPL-3.0-or-later | Yes |
+| `@img/sharp-linux-arm` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-linux-arm64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-linux-ppc64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-linux-riscv64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-linux-s390x` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-linux-x64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-linuxmusl-arm64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-linuxmusl-x64` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-wasm32` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later AND MIT | Yes |
+| `@img/sharp-webcontainers-wasm32` | `0.35.5` | Apache-2.0 | Yes |
+| `@img/sharp-win32-arm64` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
+| `@img/sharp-win32-ia32` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
+| `@img/sharp-win32-x64` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
 | `@isaacs/cliui` | `8.0.2` | ISC | No |
 | `@isaacs/fs-minipass` | `4.0.1` | ISC | No |
 | `@jridgewell/gen-mapping` | `0.3.13` | MIT | No |
@@ -218,7 +218,7 @@ Every locked package declares a license.
 | `@mermaid-js/parser` | `1.2.0` | MIT | No |
 | `@microsoft/winappcli` | `0.7.0` | MIT | Yes |
 | `@mixmark-io/domino` | `2.2.0` | BSD-2-Clause | No |
-| `@modelcontextprotocol/sdk` | `1.30.0` | MIT | No |
+| `@modelcontextprotocol/sdk` | `1.31.0` | MIT | No |
 | `@next/env` | `16.3.8` | MIT | No |
 | `@next/swc-darwin-arm64` | `16.3.8` | MIT | Yes |
 | `@next/swc-darwin-x64` | `16.3.8` | MIT | Yes |
@@ -774,7 +774,7 @@ Every locked package declares a license.
 | `property-information` | `7.1.0` | MIT | No |
 | `protobufjs` | `7.6.5` | BSD-3-Clause | No |
 | `protobufjs` | `7.6.6` | BSD-3-Clause | No |
-| `proxy-addr` | `2.0.7` | MIT | No |
+| `proxy-addr` | `2.0.8` | MIT | No |
 | `proxy-from-env` | `2.1.0` | MIT | No |
 | `qs` | `6.16.0` | BSD-3-Clause | No |
 | `range-parser` | `1.3.0` | MIT | No |
@@ -825,10 +825,10 @@ Every locked package declares a license.
 | `serve-static` | `2.2.1` | MIT | No |
 | `setimmediate` | `1.0.5` | MIT | No |
 | `setprototypeof` | `1.2.0` | ISC | No |
-| `sharp` | `0.35.4` | Apache-2.0 | No |
+| `sharp` | `0.35.5` | Apache-2.0 | No |
 | `shebang-command` | `2.0.0` | MIT | No |
 | `shebang-regex` | `3.0.0` | MIT | No |
-| `shell-quote` | `1.10.0` | MIT | No |
+| `shell-quote` | `1.11.0` | MIT | No |
 | `shlex` | `2.1.2` | MIT | No |
 | `side-channel` | `1.1.1` | MIT | No |
 | `side-channel-list` | `1.0.1` | MIT | No |
@@ -836,12 +836,12 @@ Every locked package declares a license.
 | `side-channel-weakmap` | `1.0.2` | MIT | No |
 | `signal-exit` | `3.0.7` | ISC | No |
 | `signal-exit` | `4.1.0` | ISC | No |
-| `smol-toml` | `1.8.0` | BSD-3-Clause | No |
+| `smol-toml` | `1.9.0` | BSD-3-Clause | No |
 | `socket.io-client` | `4.8.3` | MIT | No |
 | `socket.io-parser` | `4.2.7` | MIT | No |
 | `source-map` | `0.5.7` | BSD-3-Clause | No |
 | `source-map` | `0.6.1` | BSD-3-Clause | No |
-| `source-map-js` | `1.2.1` | BSD-3-Clause | No |
+| `source-map-js` | `1.2.2` | BSD-3-Clause | No |
 | `source-map-support` | `0.5.21` | MIT | No |
 | `space-separated-tokens` | `2.0.2` | MIT | No |
 | `sprintf-js` | `1.0.3` | BSD-3-Clause | No |
@@ -1405,6 +1405,10 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 ## Bundled Windows offline speech
 
 SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sherpa-onnx 1.13.6. Model weights use the FunASR Model Open Source License Agreement; the toolkit uses MIT and sherpa-onnx uses Apache-2.0. Exact model hashes, upstream attribution, and separate license texts are recorded in [speech provenance](third_party/sensevoice/SOURCE.md) and copied into resources/speech with the native runtime notices.
+
+## Bundled portable archive extractor
+
+7-Zip Extra 26.04, unmodified x64 7za.exe by Igor Pavlov, uses LGPL-2.1-or-later with BSD-2-Clause and BSD-3-Clause components. Its complete corresponding source archive, upstream License.txt, full LGPL COPYING, and version/hash manifest are shipped in resources/portable-extractor and verified by packaging gates. The Extra executable has no RAR decoder and is not subject to the full distribution's unRAR restriction. See [source and license provenance](third_party/7zip/SOURCE.md).
 
 ## Harmony device tools and capture source
 

@@ -200,6 +200,12 @@ jobs:
       - name: Verify packaged standalone service
         run: npm run verify:package
 
+      - name: Verify portable long-path extraction and integrity failures
+        shell: pwsh
+        run: |
+          $env:PIORA_TEST_7ZA = (Resolve-Path -LiteralPath 'desktop/build/portable-extractor/7za.exe').Path
+          node --test lib/portable-payload.test.mjs
+
       - name: Verify packaged license bundle
         run: npm run licenses:package:check
 

@@ -238,6 +238,12 @@ jobs:
       - name: Verify packaged standalone service
         run: npm run verify:package
 
+      - name: Verify portable long-path extraction and integrity failures
+        shell: pwsh
+        run: |
+          $env:PIORA_TEST_7ZA = (Resolve-Path -LiteralPath 'desktop/build/portable-extractor/7za.exe').Path
+          node --test lib/portable-payload.test.mjs
+
       - name: Smoke-test portable executable
         shell: pwsh
         # Hosted Windows runners apply aggressive scanning to self-extracting
