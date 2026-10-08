@@ -3,12 +3,14 @@ import { replySuggestionsEn } from "./reply-suggestions";
 import type { LocalePlugin } from "../types";
 import { smartShellEn } from "./smart-shell";
 import { sshEn } from "./ssh";
+import { skillSourcesEn } from "./skill-sources";
 
 /** Pi Web 内置英语语言包。 */
 export const enLocale: LocalePlugin = {
   id: "en",
   label: "English",
   messages: {
+    ...skillSourcesEn,
     ...sshEn,
     ...replySuggestionsEn,
     "input.imageContextHint": "Images are sent for this turn only. Attach them again to inspect them in a later turn.",

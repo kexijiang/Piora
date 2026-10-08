@@ -1,6 +1,7 @@
 import { DefaultResourceLoader, getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { SkillInfo, SkillsResponse } from "@/lib/api-types";
 import { annotateSkillsWithInstallInfo } from "@/lib/skill-lock";
+import { annotateManagedSkills } from "@/lib/skill-sources/install";
 
 export async function loadSkillsWithInstallInfo(cwd: string): Promise<SkillsResponse> {
   const agentDir = getAgentDir();
@@ -8,7 +9,7 @@ export async function loadSkillsWithInstallInfo(cwd: string): Promise<SkillsResp
   await loader.reload();
   const { skills, diagnostics } = loader.getSkills();
   return {
-    skills: annotateSkillsWithInstallInfo(skills as SkillInfo[], { cwd, agentDir }),
+    skills: annotateManagedSkills(annotateSkillsWithInstallInfo(skills as SkillInfo[], { cwd, agentDir }), cwd),
     diagnostics,
     projectResourcesLoaded: true,
   };

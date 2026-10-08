@@ -4,17 +4,32 @@ import type { SkillInstallScope } from "@/lib/api-types";
 import { buildSkillUpdateArgs } from "@/lib/skill-updates";
 import { loadSkillsWithInstallInfo } from "@/lib/skills-service";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
+import { allowedCwd, apiError, body as readBody, requiredString } from "@/lib/skill-sources/api";
+import { findManagedInstall, installRemoteSkill } from "@/lib/skill-sources/install";
+import { invalidateServicesCache } from "@/lib/rpc-manager";
+import { SkillSourceError } from "@/lib/skill-sources/types";
+import { getRuntimeHomeDirectory } from "@/lib/runtime-home";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json() as {
+    const data = await readBody(req);
+    if (data.installId || (typeof data.package === "string" && data.package.startsWith("piora:"))) {
+      if (data.scope !== "global" && data.scope !== "project") throw new SkillSourceError("scope", "Invalid install scope");
+      const cwd = await allowedCwd(data.cwd, data.scope === "project");
+      const id = requiredString(data.installId || String(data.package).slice(6), "installId");
+      const record = findManagedInstall(id, data.scope, cwd);
+      const install = await installRemoteSkill({ sourceId: record.sourceId, skillId: record.skillId, scope: data.scope, cwd, updateId: id });
+      invalidateServicesCache();
+      return NextResponse.json({ success: true, install });
+    }
+    const body = data as {
       cwd?: unknown;
       package?: unknown;
       scope?: unknown;
     };
-    const cwd = typeof body.cwd === "string" ? body.cwd : "";
+    const cwd = typeof body.cwd === "string" && body.cwd ? body.cwd : body.scope === "global" ? getRuntimeHomeDirectory() : "";
     const pkg = typeof body.package === "string" ? body.package : "";
     const scope = body.scope === "global" || body.scope === "project"
       ? body.scope as SkillInstallScope
@@ -23,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "cwd, package, and scope are required" }, { status: 400 });
     }
     const allowedRoots = await getAllowedFileRoots();
-    if (!isExistingFilePathAllowed(cwd, allowedRoots)) {
+    if (body.cwd && !isExistingFilePathAllowed(cwd, allowedRoots)) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 });
     }
 
@@ -54,6 +69,7 @@ export async function POST(req: Request) {
       output: `${stdout}${stderr}`.slice(-500),
     });
   } catch (error: unknown) {
+    if (error instanceof SkillSourceError) return apiError(error);
     const detail = error as { stdout?: string; stderr?: string; message?: string };
     const output = `${detail.stdout ?? ""}${detail.stderr ?? ""}`;
     return NextResponse.json(

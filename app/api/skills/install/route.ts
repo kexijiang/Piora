@@ -3,6 +3,9 @@ import { runNpx } from "@/lib/npx";
 import { invalidateServicesCache } from "@/lib/rpc-manager";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
 import { hasJsonContentType, isApiRequestAllowed } from "@/lib/request-security";
+import { allowedCwd, apiError, body as readBody, requiredString } from "@/lib/skill-sources/api";
+import { installRemoteSkill } from "@/lib/skill-sources/install";
+import { SkillSourceError } from "@/lib/skill-sources/types";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +21,15 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { package: pkg, scope, cwd } = await req.json() as { package?: string; scope?: string; cwd?: string };
+    const data = await readBody(req);
+    if (data.sourceId !== undefined) {
+      if (data.scope !== "global" && data.scope !== "project") throw new SkillSourceError("scope", "Invalid install scope");
+      const cwd = await allowedCwd(data.cwd, data.scope === "project");
+      const install = await installRemoteSkill({ sourceId: requiredString(data.sourceId, "sourceId"), skillId: requiredString(data.skillId, "skillId"), scope: data.scope, cwd, version: typeof data.version === "string" ? data.version : undefined });
+      invalidateServicesCache();
+      return NextResponse.json({ success: true, install });
+    }
+    const { package: pkg, scope, cwd } = data as { package?: string; scope?: string; cwd?: string };
     if (!pkg?.trim()) return NextResponse.json({ error: "package required" }, { status: 400 });
 
     const isGlobal = scope !== "project";
@@ -47,6 +58,7 @@ export async function POST(req: Request) {
     invalidateServicesCache();
     return NextResponse.json({ success: true, output });
   } catch (e: unknown) {
+    if (e instanceof SkillSourceError) return apiError(e);
     const err = e as { stdout?: string; stderr?: string; message?: string };
     const output = ((err.stdout ?? "") + (err.stderr ?? "")).replace(ANSI_RE, "");
     return NextResponse.json({ error: output || (err.message ?? String(e)) }, { status: 500 });

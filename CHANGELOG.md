@@ -4,6 +4,13 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 技能来源与发现
+
+- 技能设置新增“发现 / 已安装 / 来源管理”：按来源浏览与搜索技能，查看说明、文件和运行依赖后选择全局或项目安装，保留启停与更新检查。
+- 内置 skills.sh、腾讯 SkillHub、ClawHub 和 Anthropic、Vercel 精选仓库，支持自定义公开/私有 Git 仓库及兼容协议的自建市场；SkillHub 需配置部署凭据，私有 Git 复用本机认证。
+- 新安装记录准确来源与版本，提供缓存回退、同名冲突检查、更新本地修改保护和失败回滚；来源停用或删除不移除已安装技能，旧 CLI 安装记录继续兼容。
+- 市场凭据与配置分开保存，跨域下载不转发凭据，技能文件解包校验路径与体积；添加来源和安装技能不会执行技能脚本。
+
 ## [0.5.5-beta.15] - 2026-10-07
 
 ### 鸿蒙设备工作台
