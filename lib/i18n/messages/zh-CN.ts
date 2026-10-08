@@ -1,4 +1,5 @@
 import { brandText } from "../../branding";
+import { skillSourcesZh } from "./skill-sources";
 import { replySuggestionsZh } from "./reply-suggestions";
 import type { LocalePlugin } from "../types";
 import { smartShellZh } from "./smart-shell";
@@ -9,6 +10,7 @@ export const zhCNLocale: LocalePlugin = {
   id: "zh-CN",
   label: "简体中文",
   messages: {
+    ...skillSourcesZh,
     ...sshZh,
     "input.imageContextHint": "图片仅随本轮任务发送，原图保留在聊天中；后续需重新看图时请再次附加。",
     ...replySuggestionsZh,
