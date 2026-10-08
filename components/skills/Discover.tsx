@@ -6,7 +6,7 @@ import type { CatalogPage, CatalogSkill, SkillDetail, SkillSource } from "@/lib/
 import { skillsRequest } from "./client";
 import styles from "./Skills.module.css";
 
-export function SkillDiscovery({ sources, installed, cwd, onInstalled }: { sources: SkillSource[]; installed: SkillInfo[]; cwd: string; onInstalled: () => Promise<void> }) {
+export function SkillDiscovery({ sources, installed, cwd, onInstalled, onConfigureSource }: { sources: SkillSource[]; installed: SkillInfo[]; cwd: string; onInstalled: () => Promise<void>; onConfigureSource: (id: string | null) => void }) {
   const { t } = useI18n();
   const [query, setQuery] = useState(""), [submitted, setSubmitted] = useState(""), [sourceId, setSourceId] = useState("");
   const [pages, setPages] = useState<Record<string, CatalogPage>>({}), [loading, setLoading] = useState<Set<string>>(new Set());
@@ -77,12 +77,16 @@ export function SkillDiscovery({ sources, installed, cwd, onInstalled }: { sourc
       <input aria-label={t("skills.search")} placeholder={t("skills.search")} value={query} maxLength={500} onChange={e => setQuery(e.target.value)}/>
       <select aria-label={t("skills.source")} value={sourceId} onChange={e => setSourceId(e.target.value)}><option value="">{t("skills.allSources")}</option>{sources.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
       <button className={styles.primary}>{t("skills.search")}</button><button type="button" onClick={() => setGeneration(n => n + 1)}>{t("skills.refresh")}</button>
+      <button type="button" onClick={() => onConfigureSource(null)}>{t("skills.addSource")}</button>
     </form>
     {(sourceId ? sources.filter(s => s.id === sourceId) : sources).map(source => {
       const page = pages[source.id];
       return <section className={styles.group} key={source.id} aria-label={source.name}>
         <h3>{source.name}</h3>{loading.has(source.id) && <p role="status" className={styles.muted}>{t("skills.loading")}</p>}
-        {page && page.state !== "ready" && <p className={page.state === "error" ? styles.error : styles.muted}>{t(`skills.${page.state}`)}{page.error ? ` · ${page.error}` : ""}</p>}
+        {page && page.state !== "ready" && <div className={styles.row}>
+          {page.state !== "auth-required" && <p className={page.state === "error" ? styles.error : styles.muted}>{t(`skills.${page.state}`)}{page.error ? ` · ${page.error}` : ""}</p>}
+          <button type="button" onClick={() => onConfigureSource(source.id)}>{t(page.state === "auth-required" ? "skills.auth-required" : "skills.configure")}</button>
+        </div>}
         {page?.fetchedAt && <p className={styles.muted}>{page.stale ? `${t("skills.cached")} · ` : ""}{t("skills.updatedAt")}: {new Date(page.fetchedAt).toLocaleString()}</p>}
         {page?.state === "ready" && !page.items.length && <p className={styles.muted}>{t("skills.empty")}</p>}
         <div className={styles.grid}>{page?.items.map(item => <button key={item.id} className={`${styles.card} ${styles.cardButton}`} onClick={() => { setSelection(item); setNotice(""); }}>
