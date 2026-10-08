@@ -1,15 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { SkillSource, SourceInput } from "@/lib/skill-sources/types";
 import { skillsRequest } from "./client";
 import styles from "./Skills.module.css";
 
 const blank: SourceInput = { name: "", kind: "git", url: "", enabled: true };
-export function SkillSources({ sources, onChanged }: { sources: SkillSource[]; onChanged: () => Promise<void> }) {
+export function SkillSources({ sources, onChanged, initialSourceId }: { sources: SkillSource[]; onChanged: () => Promise<void>; initialSourceId?: string | null }) {
   const { t } = useI18n();
-  const [editing, setEditing] = useState<SkillSource | null>(null), [form, setForm] = useState<SourceInput | null>(null);
+  const [editing, setEditing] = useState<SkillSource | null>(() => sources.find(source => source.id === initialSourceId) || null);
+  const [form, setForm] = useState<SourceInput | null>(() => editing ? { ...editing, credential: "" } : initialSourceId === null ? { ...blank } : null);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const formRef = useRef<HTMLFormElement>(null), formOpen = form !== null;
+  useEffect(() => {
+    if (!formOpen) return;
+    formRef.current?.scrollIntoView({ block: "nearest" });
+    const field = editing && editing.kind !== "git" ? 'input[type="password"]' : 'input:not([type="checkbox"]):not(:disabled)';
+    formRef.current?.querySelector<HTMLInputElement>(field)?.focus({ preventScroll: true });
+  }, [editing, formOpen]);
   async function action(data: unknown, method = "POST", close = false) {
     setBusy(true); setError(""); setNotice("");
     try {
@@ -23,7 +31,8 @@ export function SkillSources({ sources, onChanged }: { sources: SkillSource[]; o
   return <>
     <div className={styles.toolbar}><button onClick={() => edit(null)} disabled={busy}>{t("skills.addSource")}</button><span className={styles.muted}>{t("skills.sourceIntro")}</span></div>
     {error && <p role="alert" className={styles.error}>{error}</p>}{notice && <p role="status">{notice}</p>}
-    {form && <form className={styles.form} onSubmit={e => { e.preventDefault(); void action({ ...form, id: editing?.id }, "POST", true); }}>
+    {form && <form ref={formRef} className={styles.form} onSubmit={e => { e.preventDefault(); void action({ ...form, id: editing?.id }, "POST", true); }}>
+      <h3>{editing ? `${t("skills.configure")} · ${editing.name}` : t("skills.addSource")}</h3>
       <label>{t("skills.name")}<input required value={form.name} maxLength={120} disabled={busy} onChange={e => setForm({ ...form, name: e.target.value })}/></label>
       <label>{t("skills.kind")}<select value={form.kind} disabled={busy || editing?.builtin} onChange={e => setForm({ ...form, kind: e.target.value as SourceInput["kind"] })}>
         <option value="git">Git</option><option value="skills-sh">skills.sh v1</option><option value="skillhub">SkillHub</option><option value="clawhub">ClawHub</option>

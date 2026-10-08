@@ -12,6 +12,7 @@ import styles from "./skills/Skills.module.css";
 export function SkillsConfig({ cwd, onClose, embedded = false }: { cwd: string; onClose: () => void; embedded?: boolean }) {
   const { t } = useI18n();
   const [tab, setTab] = useState<"discover" | "installed" | "sources">("discover");
+  const [sourceEditor, setSourceEditor] = useState<string | null>();
   const [sources, setSources] = useState<SkillSource[]>([]), [skills, setSkills] = useState<SkillInfo[]>([]);
   const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState(false), [loading, setLoading] = useState(true);
   const [updates, setUpdates] = useState<Record<string, SkillUpdateResult>>({}), [projectValid, setProjectValid] = useState(false);
@@ -32,6 +33,7 @@ export function SkillsConfig({ cwd, onClose, embedded = false }: { cwd: string; 
     return () => { cancelled = true; generation.current = current + 1; };
   }, [loadSkills, loadSources]);
   const effectiveCwd = projectValid ? cwd : "";
+  function configureSource(id: string | null) { setSourceEditor(id); setTab("sources"); }
   async function action(fn: () => Promise<void>) { setBusy(true); setError(""); try { await fn(); } catch (e) { setError(String(e instanceof Error ? e.message : e)); } finally { setBusy(false); } }
   function key(skill: SkillInfo) { return `${skill.install?.scope}:${skill.install?.package}`; }
   async function check(skill?: SkillInfo) {
@@ -40,10 +42,10 @@ export function SkillsConfig({ cwd, onClose, embedded = false }: { cwd: string; 
   }
   const content = <div ref={ref} className={`${styles.shell} ${embedded ? styles.embedded : ""}`} role={embedded ? "region" : "dialog"} aria-modal={embedded ? undefined : true} aria-label={t("common.skills")}>
     <header className={styles.header}><div><h2>{t("common.skills")}</h2><span className={styles.muted}>{t("skills.intro")}</span></div>{!embedded && <button onClick={onClose}>{t("skills.close")}</button>}</header>
-    <nav className={styles.tabs} role="tablist" aria-label={t("common.skills")}>{(["discover", "installed", "sources"] as const).map(value => <button key={value} role="tab" id={`skills-tab-${value}`} aria-selected={tab === value} aria-controls="skills-panel" onClick={() => setTab(value)}>{t(`skills.${value}`)}</button>)}</nav>
+    <nav className={styles.tabs} role="tablist" aria-label={t("common.skills")}>{(["discover", "installed", "sources"] as const).map(value => <button key={value} role="tab" id={`skills-tab-${value}`} aria-selected={tab === value} aria-controls="skills-panel" onClick={() => { setSourceEditor(undefined); setTab(value); }}>{t(`skills.${value}`)}</button>)}</nav>
     {error && <div role="alert" className={`${styles.notice} ${styles.error}`}>{error}</div>}{notice && <div role="status" className={styles.notice}>{notice}</div>}
     <div className={styles.body} role="tabpanel" id="skills-panel" aria-labelledby={`skills-tab-${tab}`}>
-      {loading ? <p role="status">{t("skills.loading")}</p> : tab === "discover" ? <SkillDiscovery sources={sources} installed={skills} cwd={effectiveCwd} onInstalled={loadSkills}/> : tab === "sources" ? <SkillSources sources={sources} onChanged={loadSources}/> : <>
+      {loading ? <p role="status">{t("skills.loading")}</p> : tab === "discover" ? <SkillDiscovery sources={sources} installed={skills} cwd={effectiveCwd} onInstalled={loadSkills} onConfigureSource={configureSource}/> : tab === "sources" ? <SkillSources sources={sources} onChanged={loadSources} initialSourceId={sourceEditor}/> : <>
         <div className={styles.toolbar}><button disabled={busy} onClick={() => void action(() => check())}>{busy ? t("skills.busy") : t("skills.check")}</button><button disabled={busy} onClick={() => void action(loadSkills)}>{t("skills.refresh")}</button></div>
         {!skills.length && <p className={styles.muted}>{t("skills.empty")}</p>}
         {diagnostics.map((diagnostic, index) => <p className={styles.muted} key={index}>{diagnostic.message} {diagnostic.path}</p>)}

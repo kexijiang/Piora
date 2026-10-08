@@ -43,7 +43,7 @@ test("skill settings browse partial sources, ignore old searches, install global
         searches.push(data);
         if (data.query === "old") await new Promise(r => setTimeout(r, 300));
         const items = data.sourceId === "clawhub" ? [{ ...skill, name: data.query || skill.name, id: data.cursor ? "@alice/second" : skill.id }] : [];
-        const result = { sourceId: data.sourceId, state: data.sourceId === "skills-sh" ? "error" : data.sourceId === "skillhub" ? "disabled" : "ready", items, nextCursor: data.cursor ? undefined : "next", fetchedAt: new Date().toISOString(), error: data.sourceId === "skills-sh" ? "offline" : undefined };
+        const result = { sourceId: data.sourceId, state: data.sourceId === "skills-sh" ? "error" : data.sourceId === "skillhub" ? "auth-required" : "ready", items, nextCursor: data.cursor ? undefined : "next", fetchedAt: new Date().toISOString(), error: data.sourceId === "skills-sh" ? "offline" : undefined };
         try { await route.fulfill({ json: { pages: [result] } }); } catch { /* aborted old query */ } return;
       }
       if (url.pathname === "/api/skills/detail") return route.fulfill({ json: { detail: { ...skill, readme: "---\nname: demo\ndescription: Demo\n---\n# Demo\nUse the reference files.", files: ["SKILL.md", "references/a.txt"], requirements: "Python 3" } } });
@@ -54,6 +54,23 @@ test("skill settings browse partial sources, ignore old searches, install global
     await page.goto("http://skills.test/");
     await page.getByRole("button", { name: /Demo A reusable/ }).waitFor();
     assert.match(await page.getByRole("region", { name: "skills.sh", exact: true }).textContent(), /连接失败/);
+    await page.getByRole("region", { name: "腾讯 SkillHub", exact: true }).getByRole("button", { name: "需要配置凭据" }).click();
+    assert.equal(await page.getByRole("tab", { name: "来源管理" }).getAttribute("aria-selected"), "true");
+    assert.equal(await page.getByLabel("名称", { exact: true }).inputValue(), "腾讯 SkillHub");
+    assert.equal(await page.getByLabel("来源类型").inputValue(), "skillhub");
+    assert.equal(await page.getByLabel("仓库或服务地址").isDisabled(), true);
+    await page.waitForFunction(() => document.activeElement?.getAttribute("type") === "password");
+    await page.getByLabel("API Key / Bearer Token", { exact: true }).fill("unsaved-key");
+    await page.getByRole("button", { name: "取消", exact: true }).click();
+    assert.equal(sourceWrites.length, 0);
+    await page.getByRole("tab", { name: "发现", exact: true }).click();
+    await page.getByRole("tab", { name: "来源管理" }).click();
+    assert.equal(await page.getByLabel("API Key / Bearer Token", { exact: true }).count(), 0);
+    await page.getByRole("tab", { name: "发现", exact: true }).click();
+    await page.getByRole("region", { name: "skills.sh", exact: true }).getByRole("button", { name: "配置", exact: true }).click();
+    assert.equal(await page.getByLabel("名称", { exact: true }).inputValue(), "skills.sh");
+    await page.getByRole("tab", { name: "发现", exact: true }).click();
+    await page.getByRole("button", { name: /Demo A reusable/ }).waitFor();
     await Promise.all([
       page.waitForResponse(response => response.url().endsWith("/search") && response.request().postDataJSON().refresh === true),
       page.getByRole("button", { name: "刷新", exact: true }).click(),
@@ -73,12 +90,19 @@ test("skill settings browse partial sources, ignore old searches, install global
     await page.getByRole("button", { name: "安装技能" }).click(); await page.getByText(/已有会话请在空闲后执行/).waitFor();
     assert.equal(installs[0].scope, "global"); assert.equal(installs[0].version, "1.0.0");
     await page.getByRole("tab", { name: "已安装", exact: true }).click(); await page.getByRole("heading", { name: "demo", exact: true }).waitFor();
-    await page.getByRole("tab", { name: "来源管理" }).click(); await page.getByRole("button", { name: "添加来源" }).click();
-    await page.getByLabel("名称", { exact: true }).fill("Team Hub"); await page.getByLabel("来源类型").selectOption("clawhub"); await page.getByLabel("仓库或服务地址").fill("https://team.example"); await page.getByLabel("API Key / Bearer Token", { exact: true }).fill("secret-input");
+    await page.getByRole("tab", { name: "发现", exact: true }).click(); await page.getByRole("button", { name: "添加来源" }).click();
+    assert.equal(await page.getByLabel("名称", { exact: true }).inputValue(), "");
+    assert.equal(await page.getByLabel("来源类型").isDisabled(), false);
+    await page.getByLabel("名称", { exact: true }).fill("Team Hub"); await page.getByLabel("来源类型").selectOption("skillhub"); await page.getByLabel("仓库或服务地址").fill("https://team.example"); await page.getByLabel("API Key / Bearer Token", { exact: true }).fill("secret-input");
     await page.getByRole("button", { name: "保存", exact: true }).click(); await page.getByRole("heading", { name: "Team Hub" }).waitFor();
-    assert.equal(sourceWrites.at(-1).kind, "clawhub"); assert.equal(sourceWrites.at(-1).credential, "secret-input");
+    assert.equal(sourceWrites.at(-1).kind, "skillhub"); assert.equal(sourceWrites.at(-1).credential, "secret-input");
     assert.equal(await page.getByText("secret-input", { exact: true }).count(), 0);
     await page.evaluate(() => window.setLocale("en")); await page.getByRole("tab", { name: "Sources", exact: true }).waitFor();
+    await page.getByRole("tab", { name: "Discover", exact: true }).click();
+    await page.getByRole("region", { name: "腾讯 SkillHub", exact: true }).getByRole("button", { name: "Configure credentials", exact: true }).click();
+    assert.equal(await page.getByLabel("Name", { exact: true }).inputValue(), "腾讯 SkillHub");
+    assert.equal(await page.getByLabel("API key / bearer token", { exact: true }).inputValue(), "");
+    await page.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.setViewportSize({ width: 390, height: 820 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     if (process.env.PIORA_SKILLS_SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.PIORA_SKILLS_SCREENSHOT_DIR, "skills-sources-mobile.png") });
