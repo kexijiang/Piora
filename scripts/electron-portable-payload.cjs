@@ -41,7 +41,9 @@ async function afterAllArtifactBuild() {
   // Installer payloads retain their pre-compression manifest and elevate helper.
   for (const entry of contexts.values()) {
     const { context } = entry;
-    if (!context.targets.length || !context.targets.every(target => target.name === "dir")) continue;
+    // WinPackager.createTargets drops "dir", so Windows --dir supplies [];
+    // the common target factory can instead supply an explicit NoOpTarget.
+    if (!context.targets.every(target => target.name === "dir")) continue;
     entry.generation ??= writePayloadManifest(context);
     await entry.generation;
   }
