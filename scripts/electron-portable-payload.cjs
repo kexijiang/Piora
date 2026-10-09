@@ -4,6 +4,14 @@ const { join, resolve } = require("node:path");
 const { createPayloadManifest } = require("./portable-payload.cjs");
 const contexts = new Map();
 
+async function writePayloadManifest(context) {
+  const manifest = await createPayloadManifest(context.appOutDir, {
+    version: context.packager.appInfo.version,
+    executable: `${context.packager.appInfo.productFilename}.exe`,
+  });
+  await writeFile(join(context.packager.projectDir, "build", "portable-payload-x64.json"), manifest);
+}
+
 function registerPayloadContext(context) {
   if (context.electronPlatformName !== "win32") return;
   if (context.arch !== 1) throw new Error("Portable payload supports only the reviewed Windows x64 target");
@@ -22,14 +30,23 @@ async function prepareArtifactPayload(event) {
       const targets = context.targets.filter(target => ["nsis", "portable"].includes(target.name));
       if (!targets.length || targets.some(target => typeof target.packageHelper?.elevateHelper?.copy !== "function")) throw new Error("Unsupported electron-builder NSIS payload lifecycle");
       for (const target of targets) await target.packageHelper.elevateHelper.copy(context.appOutDir, target);
-      const manifest = await createPayloadManifest(context.appOutDir, {
-        version: context.packager.appInfo.version,
-        executable: `${context.packager.appInfo.productFilename}.exe`,
-      });
-      await writeFile(join(context.packager.projectDir, "build", "portable-payload-x64.json"), manifest);
+      await writePayloadManifest(context);
     })();
     await entry.generation;
   }
 }
+async function afterAllArtifactBuild() {
+  // --dir has no artifactBuildStarted event. Finalize only directory-only builds
+  // here, after resource edits/fuses/signing (afterSign does not run unsigned).
+  // Installer payloads retain their pre-compression manifest and elevate helper.
+  for (const entry of contexts.values()) {
+    const { context } = entry;
+    if (!context.targets.length || !context.targets.every(target => target.name === "dir")) continue;
+    entry.generation ??= writePayloadManifest(context);
+    await entry.generation;
+  }
+  return [];
+}
 module.exports = prepareArtifactPayload;
 module.exports.registerPayloadContext = registerPayloadContext;
+module.exports.afterAllArtifactBuild = afterAllArtifactBuild;
