@@ -12,6 +12,7 @@ compression: normal
 afterPack: ../scripts/electron-after-pack-licenses.cjs
 beforeBuild: ../scripts/electron-before-build.cjs
 artifactBuildStarted: ../scripts/electron-portable-payload.cjs
+afterAllArtifactBuild: ../scripts/electron-portable-payload.cjs
 releaseInfo:
   releaseNotesFile: release-notes.md
 
