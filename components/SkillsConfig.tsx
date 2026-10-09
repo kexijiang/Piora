@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
+import { CapabilityPrimer } from "./CapabilityPrimer";
 import type { SkillInfo, SkillsResponse, SkillUpdateResult } from "@/lib/api-types";
 import type { SkillSource } from "@/lib/skill-sources/types";
 import { SkillDiscovery } from "./skills/Discover";
@@ -45,6 +46,7 @@ export function SkillsConfig({ cwd, onClose, embedded = false }: { cwd: string; 
     <nav className={styles.tabs} role="tablist" aria-label={t("common.skills")}>{(["discover", "installed", "sources"] as const).map(value => <button key={value} role="tab" id={`skills-tab-${value}`} aria-selected={tab === value} aria-controls="skills-panel" onClick={() => { setSourceEditor(undefined); setTab(value); }}>{t(`skills.${value}`)}</button>)}</nav>
     {error && <div role="alert" className={`${styles.notice} ${styles.error}`}>{error}</div>}{notice && <div role="status" className={styles.notice}>{notice}</div>}
     <div className={styles.body} role="tabpanel" id="skills-panel" aria-labelledby={`skills-tab-${tab}`}>
+      {!embedded && <CapabilityPrimer current="skill" />}
       {loading ? <p role="status">{t("skills.loading")}</p> : tab === "discover" ? <SkillDiscovery sources={sources} installed={skills} cwd={effectiveCwd} onInstalled={loadSkills} onConfigureSource={configureSource}/> : tab === "sources" ? <SkillSources sources={sources} onChanged={loadSources} initialSourceId={sourceEditor}/> : <>
         <div className={styles.toolbar}><button disabled={busy} onClick={() => void action(() => check())}>{busy ? t("skills.busy") : t("skills.check")}</button><button disabled={busy} onClick={() => void action(loadSkills)}>{t("skills.refresh")}</button></div>
         {!skills.length && <p className={styles.muted}>{t("skills.empty")}</p>}
