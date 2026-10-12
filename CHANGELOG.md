@@ -6,7 +6,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### Pi 1.0.2 与原生 MCP
 
-- 同步 main 至 beta.16，合并现有依赖安全、技能来源、代理与打包修复；保留原生 MCP、Pi 官方源码校验和 worker/WASM 隔离检查。
+- 同步 main 至 beta.17，合并现有依赖安全、技能来源、代理与打包修复；保留原生 MCP、Pi 官方源码校验和 worker/WASM 隔离检查。
 - 修复打开历史会话或会话空闲超时后 MCP 设置报错、项目配置不可用的问题；设置沿用普通会话的工作区策略，跨工作区会话操作和无活动会话的注册服务器授权仍被拒绝。
 - 打包按 Pi 实际解析位置收集 Jiti，兼容 1.0.2 提升后的依赖目录，继续验证 HAP 预览在隔离目录中加载 Jiti、JSZip 和 Pako。
 - 完整性回归在 Windows 使用无需提权的目录联接，验证来源检查仍拒绝链接入口，避免普通开发环境因符号链接权限中断验证。
@@ -31,6 +31,26 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - Verify Shell provider prompt/tool declarations after request settlement and reject swallowed provider errors in migration acceptance.
 - Synchronize the SSH close-tab acceptance fixture with its observed DELETE request before checking uniqueness; retain the pending-close and failed-session assertions.
 - Keep Pi's streamed system/loadout messages in canonical provider history while excluding them from chat SSE, matching the history projection.
+
+## [0.5.5-beta.17] - 2026-10-11
+
+### 技能来源与发现
+
+- 技能设置新增“发现 / 已安装 / 来源管理”：按来源浏览与搜索技能，查看说明、文件和运行依赖后选择全局或项目安装，保留启停与更新检查。
+- 发现页的凭据提示可直接打开对应来源配置，停用或连接失败的来源也可快捷编辑；新增“添加来源”入口，直接填写自定义仓库或市场。
+- 恢复独立技能设置中的技能、扩展与插件区别说明，修复重构后遗漏的能力说明回归；网站依赖同步更新 sharp 与 source-map-js 安全版本，恢复 CI 安全审计。
+- 修复 Windows 目录构建未生成文件完整性清单导致的 CI 验包失败；清单在最终文件处理完成后生成，安装器继续沿用压缩前的校验流程。
+- 补齐 Windows 构建器将目录目标转换为空列表的兼容处理，确保目录验包实际生成清单；回归测试直接调用构建器的目标解析逻辑，避免模拟数据与 CI 行为不一致。
+- 内置 skills.sh、腾讯 SkillHub、ClawHub 和 Anthropic、Vercel 精选仓库，支持自定义公开/私有 Git 仓库及兼容协议的自建市场；SkillHub 需配置部署凭据，私有 Git 复用本机认证。
+- 新安装记录准确来源与版本，提供缓存回退、同名冲突检查、更新本地修改保护和失败回滚；来源停用或删除不移除已安装技能，旧 CLI 安装记录继续兼容。
+- 市场凭据与配置分开保存，跨域下载不转发凭据，技能文件解包校验路径与体积；添加来源和安装技能不会执行技能脚本。
+
+### 发布与验证
+
+- `0.5.5-beta.16` 的 tagged 构建在专用 runner 排队满 24 小时后被 GitHub 自动取消，未产出任何桌面制品。本候选以全新标签重新构建与 beta.16 完全相同的源码（main 仍为“准备 0.5.5-beta.16 技能管理与打包修复候选”），用户可见更新点与上一节相同，不引入新改动。
+- 发布前在开发机复核同一提交：`harmony:docs:check`、`verify:hygiene`、`licenses:check`、`verify:backgrounds`、`perf:check`、`audit:runtime`、`typecheck`（根与桌面）、`lint`（0 错误）以及 website 的 `npm ci`、生产依赖审计（0 漏洞）与 `npm run check` 全部通过；技能模块的路径校验、git 隔离调用与跨域凭据不转发经人工复核，未发现缺陷。
+- 开发机的完整测试分片中，`lib/companion-pet-route.test.mjs` 两例因宿主宠物目录枚举差异失败、一例 `useAgentSession` Stop 场景在负载下超时，均在 origin/main 基线或单测复跑中以相同形态复现，GitHub CI 对同一提交的 6 个测试分片全部通过，属本机环境差异，不计为产品缺陷。
+- 同步根包、桌面包和锁文件版本至 `0.5.5-beta.17`，更新 README 版本说明与许可证清单；更新元数据与 GitHub Release 说明统一从本节生成。候选构建、签名、真机及最终安装包验收未完成前不视为通过。
 
 ## [0.5.5-beta.16] - 2026-10-09
 
