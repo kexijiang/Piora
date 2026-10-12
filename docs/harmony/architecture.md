@@ -12,7 +12,7 @@
 
 `POST /api/harmony/scenario/preview` 只解析不超过 128 KiB 的步骤与策略，复用 `validateHarmonyScenario` 的实际运行参数校验。接口受同一桌面身份、可信请求与 JSON 边界保护，不构建设备管理器，不冻结安装包、不取得租约、不检查设备能力或派发动作；返回去重动作列表和 `deviceVerified: false`。场景编辑器显示这些边界，新增、改参数、排序、删除和修改结束截图策略都会撤销旧预览。模板与应用列表分别结算，应用读取失败保留自定义步骤；运行前再次校验，准备控制期间取消后不发送场景，运行中锁定编辑，关闭工具中止当前请求。危险应用维护步骤在运行前列出设备与实际目标，结果按动作、状态和耗时呈现并可导出。
 
-设备截图使用独立的 `harmony.screenshot` 快捷键标识，默认 Alt+Shift+S，复用应用快捷键设置、冲突检查与持久配置；与桌面截图命令分开。Electron 接受完整键位映射但不将设备截图注册为全局快捷键或菜单动作。可见且 active 的 Harmony 面板自行匹配当前配置，设备不可截图、正在截图、输入框/终端/显式保留区域、可见模态弹窗、已处理事件、重复与输入法组合按键均不抢键；隐藏面板不处理。截图不获取人工租约，仍可在 AI 持有控制或一般工具准备期间独立采集。
+设备截图使用独立的 `harmony.screenshot` 快捷键标识，默认 Alt+Shift+S，复用应用快捷键设置、冲突检查与持久配置。Electron 接受完整键位映射但不将设备截图注册为全局快捷键或菜单动作。可见且 active 的 Harmony 面板自行匹配当前配置，设备不可截图、正在截图、输入框/终端/显式保留区域、可见模态弹窗、已处理事件、重复与输入法组合按键均不抢键；隐藏面板不处理。截图不获取人工租约，仍可在 AI 持有控制或一般工具准备期间独立采集。
 
 HDC 的 Connected 列表只表示主机发现传输目标。目标命令返回明确的通道尚未建立、isDead 或 hChannel nullptr 协议错误时，丢弃该设备的在线信息与能力缓存，返回不含原始输出的 `hdc-channel-not-ready` 原因。参数查询出现该原因且本轮所有设备信息均不可核实时，设备状态为 unknown，不缓存为在线；下次列表读取立即重试。存在有效信息的部分查询失败，以及普通参数缺失、权限不足、未知命令不单独推断设备离线。界面保留 USB 传输证据并显示连接未确认，停止实时帧与截图/新录屏入口；提示重连、授权和刷新，不自动重启主机 HDC、解锁或派发输入，也不声称失败前的动作已撤销。
 
@@ -94,7 +94,7 @@ AI 的 `harmony_control` 中 `database` 操作复用相同快照服务；每个 
 
 命令兼容性依据：[OpenHarmony HDC 文档](https://github.com/openharmony/docs/blob/master/zh-cn/application-dev/dfx/hdc.md)与[Bundle Manager 文档](https://github.com/openharmony/docs/blob/master/en/application-dev/tools/bm-tool.md)。
 
-现有 `check-runtime/check-config/check-types` 继续提供 DevEco CLI 检查。开发验证链引用 report ID、工程源指纹、用户选中 HAP hash、场景执行 ID 与按进程过滤日志；不声称读取 IDE Problems 或证明用户选中的 HAP 一定来自该源码构建。
+内置 ArkTS/Code Linter 检查入口、面板、设置和接口已下线。开发验证链保留工程源指纹、用户选中 HAP hash、场景执行 ID 与按进程过滤日志；不声称读取 IDE Problems 或证明用户选中的 HAP 一定来自该源码构建。
 
 现代 DisplayManager 诊断按独立 Screen ID 记录解析，不能把后面的 Client Screen Infos 重复属性当成另一块输入屏幕。存在多条记录时必须有明确且一致的屏幕类型；只选择唯一 REAL 屏，排除已确认的 VIRTUAL 录屏显示，不根据名称推测。重复标识、类型冲突、多个真实屏幕或未知分类均拒绝坐标操作。方向同时支持 0–3 索引与 0/90/180/270 角度，矩形仍要求零原点、完整且有界。类型取值依据 [OpenHarmony screen_info.h](https://github.com/openharmony/window_window_manager/blob/master/utils/include/screen_info.h)。
 
@@ -102,4 +102,4 @@ AI 的 `harmony_control` 中 `database` 操作复用相同快照服务；每个 
 
 普通权限投屏组件最后一个观看连接断开时保留现有已授权采集五秒。连接恢复取消等待任务，单调 presence epoch 阻止旧任务释放新连接；持续断开才停止采集，能力销毁时立即清理等待任务和全部资源。手机明确点击开始共享时，同一会话边界取消旧停止计时器；尚未连接的请求最多等待三十秒供正常系统授权和首次连接，连接建立后恢复五秒断开清理。计时器不创建采集或请求授权。桌面刷新只重建观看连接，不重新安装组件；真实设备必须验证超过原等待期限后仍收到原生帧，以及持续断开后可明确授权恢复。
 
-普通组件由 tagged GitHub Actions 的专用 ephemeral Windows/API26/真机 runner 在隔离目录构建。来源门禁量测源码、明确的 ohpm 锁文件、release HAP 元数据与 SHA，并绑定 repository、commit、workflow、run 和 attempt；SDK 示例 release 身份经 `localSign` 后必须再通过官方 `verify-app`/`verify-profile`，profile 限定目标 bundle、`normal`、`hos_normal_app` 且无 ACL 或 privilege capability。随后同一 HAP 必须在指定 HDC 开发手机上完成安装回读、启动、系统授权、真实 H.264 配置/关键帧/连续帧、PNG 截图及卸载缺席检查。独立签名 receipt 保存非敏感证书指纹、profile 边界和散列后的设备身份；provenance manifest 仍用 `signature: unverified` 表示来源接口本身不替代验签。四个经门禁的资源由同 run artifact 传给 Windows builder，beforeBuild 与解包后再次核对。beta tag 只产出 artifact；真正的安装包和手机验收完成后，手动 publish workflow 按 tag 和原 run ID 发布同批字节。该 job 绑定 `preview-publish` environment，仓库必须另行配置 required reviewers 才能形成批准门禁。缺少 runner、SDK、设备或证据时拒绝打包，不能退回旧 1.0.3。具体调用及边界见 `scripts/README-harmony-mirror-provenance.md`。
+普通组件由 tagged GitHub Actions 的专用 ephemeral Windows/API26/真机 runner 在隔离目录构建。来源门禁量测源码、明确的 ohpm 锁文件、public unsigned release HAP 元数据与 SHA，并绑定 repository、commit、workflow、run 和 attempt；公开 HAP 必须确认不存在 Harmony signing block、签名条目或嵌入 Profile，provenance manifest 记录 `signature: absent`。专用 runner 从完全相同的 unsigned 字节生成不上传的 DevEco device-signed 验收副本，再用官方 `verify-app`/`verify-profile` 确认 profile 限定目标 bundle、`normal`、`hos_normal_app` 且无 ACL 或 privilege capability。该私有副本在指定 HDC 开发手机上完成安装回读、启动、系统授权、真实 H.264 配置/关键帧/连续帧、PNG 截图及卸载缺席检查后即被清理；独立 receipt 只保存非敏感证书指纹、profile 边界、公开与私有散列关系及散列后的设备身份。公开 HAP、manifest、receipt 与来源说明由同 run artifact 传给 Windows builder，beforeBuild 与解包后再次核对。beta tag 只产出候选 artifact；真正的安装包和手机验收完成后，手动 publish workflow 按 tag 和原 run ID 发布同批字节。该 job 绑定 `preview-publish` environment，仓库必须另行配置 required reviewers 才能形成批准门禁。缺少 runner、SDK、设备或证据时拒绝打包，不能退回旧 1.0.3。具体调用及边界见 `scripts/README-harmony-mirror-provenance.md`。

@@ -26,6 +26,9 @@ module.exports = async function generatePackagedLicenses(context) {
   const resourcesRoot = join(context.appOutDir, "resources");
   const webRoot = join(resourcesRoot, "web");
   if (context.electronPlatformName === "win32") {
+    const { verifyStagedPortableExtractor } = await import("./stage-portable-extractor.mjs");
+    await verifyStagedPortableExtractor(join(resourcesRoot, "portable-extractor"));
+    require("./electron-portable-payload.cjs").registerPayloadContext(context);
     const { verifyStagedPowerShell } = await import("./stage-powershell.mjs");
     await verifyStagedPowerShell(join(resourcesRoot, "powershell"));
     const { verifyStagedSpeech } = await import("./stage-speech.mjs");

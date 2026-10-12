@@ -12,6 +12,11 @@ export interface SkillSearchResult {
 export type SkillInstallScope = "global" | "project";
 
 export interface SkillInstallInfo {
+  sourceId?: string;
+  skillId?: string;
+  installId?: string;
+  sourceUrl?: string;
+  pinned?: boolean;
   package: string;
   scope: SkillInstallScope;
   source: string;

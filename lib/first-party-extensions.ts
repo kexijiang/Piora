@@ -77,22 +77,6 @@ export const FIRST_PARTY_EXTENSIONS: readonly FirstPartyExtensionDescriptor[] = 
     required: true,
   },
   {
-    id: "piora:goal",
-    fileName: "piora-goal.ts",
-    name: `${APP_DISPLAY_NAME} Goals`,
-    description: "Optional goal tracking tools and /goal commands for long-running work.",
-    profiles: ["normal"],
-    defaultEnabled: false,
-  },
-  {
-    id: "piora:plan",
-    fileName: "piora-plan.ts",
-    name: `${APP_DISPLAY_NAME} Plans`,
-    description: "Optional structured planning and plan-execution tools with /plan commands.",
-    profiles: ["normal"],
-    defaultEnabled: false,
-  },
-  {
     id: "piora:room",
     fileName: "piora-room.ts",
     name: `${APP_DISPLAY_NAME} Rooms`,

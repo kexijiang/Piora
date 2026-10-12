@@ -10,26 +10,11 @@ type ConfigPayload = {
   storage?: StoragePaths;
   error?: string | { message?: string };
 };
-type CheckConfig = {
-  arktsEnabled: boolean;
-  lintEnabled: boolean;
-  checkAfterAgentEdits: boolean;
-  maxAgentIterations: number;
-  timeoutMs: number;
-  studioPath?: string;
-  products: Record<string, string>;
-};
-type CheckPayload = {
-  config?: CheckConfig;
-  environment?: { ready: boolean; cliVersion: string; studioPath?: string; studioVersion?: string; source?: string; error?: string };
-  error?: string | { message?: string };
-};
-
 function errorText(payload: ConfigPayload, status: number): string {
   return typeof payload.error === "string" ? payload.error : payload.error?.message || `HTTP ${status}`;
 }
 
-export function HarmonyStorageSettings({ cwd }: { cwd?: string }) {
+export function HarmonyStorageSettings() {
   const { t } = useI18n();
   const [desktopAvailable, setDesktopAvailable] = useState<boolean | null>(null);
   const [paths, setPaths] = useState<StoragePaths>({ screenshotDirectory: "", recordingDirectory: "" });
@@ -37,22 +22,6 @@ export function HarmonyStorageSettings({ cwd }: { cwd?: string }) {
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"loading" | "idle" | "saving" | "saved" | "error">("loading");
   const [error, setError] = useState("");
-  const [checkConfig, setCheckConfig] = useState<CheckConfig | null>(null);
-  const [checkEnvironment, setCheckEnvironment] = useState<CheckPayload["environment"]>();
-  const [checkStatus, setCheckStatus] = useState<"loading" | "idle" | "saving" | "saved" | "error">("loading");
-  const [checkError, setCheckError] = useState("");
-
-  const loadChecks = useCallback(async () => {
-    setCheckStatus("loading");
-    try {
-      const suffix = cwd ? `?cwd=${encodeURIComponent(cwd)}` : "";
-      const response = await fetch(`/api/harmony/check${suffix}`, { cache: "no-store" });
-      const payload = await response.json() as CheckPayload;
-      if (!response.ok || !payload.config) throw new Error(typeof payload.error === "string" ? payload.error : payload.error?.message || `HTTP ${response.status}`);
-      setCheckConfig(payload.config); setCheckEnvironment(payload.environment); setCheckError(""); setCheckStatus("idle");
-    } catch (reason) { setCheckError(reason instanceof Error ? reason.message : String(reason)); setCheckStatus("error"); }
-  }, [cwd]);
-
   const load = useCallback(async () => {
     setStatus("loading");
     try {
@@ -75,25 +44,9 @@ export function HarmonyStorageSettings({ cwd }: { cwd?: string }) {
   useEffect(() => {
     const available = Boolean(window.piDesktop);
     setDesktopAvailable(available);
-    if (available) { void load(); void loadChecks(); }
+    if (available) void load();
     else setStatus("idle");
-  }, [load, loadChecks]);
-
-  const saveChecks = async () => {
-    if (!checkConfig) return;
-    setCheckStatus("saving");
-    try {
-      const response = await fetch("/api/harmony/check", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ config: checkConfig }) });
-      const payload = await response.json() as CheckPayload;
-      if (!response.ok || !payload.config) throw new Error(typeof payload.error === "string" ? payload.error : payload.error?.message || `HTTP ${response.status}`);
-      setCheckConfig(payload.config); setCheckEnvironment(payload.environment); setCheckError(""); setCheckStatus("saved");
-    } catch (reason) { setCheckError(reason instanceof Error ? reason.message : String(reason)); setCheckStatus("error"); }
-  };
-
-  const chooseCheckPath = async () => {
-    const selected = await window.piDesktop?.selectDirectory?.();
-    if (selected) setCheckConfig((current) => current ? { ...current, studioPath: selected } : current);
-  };
+  }, [load]);
 
   const choose = async (field: keyof StoragePaths) => {
     const selected = await window.piDesktop?.selectDirectory?.();
@@ -162,31 +115,6 @@ export function HarmonyStorageSettings({ cwd }: { cwd?: string }) {
       ) : null}
       {desktopAvailable !== false ? (
       <div style={{ display: "grid", gap: 18, maxWidth: 760 }}>
-      <section className="settings-conversation-section" data-settings-id="harmony.checks" style={{ display: "grid", gap: 16 }}>
-        <div style={{ display: "grid", gap: 4 }}>
-          <strong style={{ color: "var(--text)" }}>{t("harmonyCheck.settingsTitle")}</strong>
-          <small style={{ color: "var(--text-dim)", lineHeight: 1.5 }}>{t("harmonyCheck.settingsDescription")}</small>
-        </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg)" }}>
-          <AliIcon name={checkEnvironment?.ready ? "check-circle" : "warning"} size={16} style={{ color: checkEnvironment?.ready ? "var(--status-success)" : "var(--status-warning)", marginTop: 2 }} />
-          <span style={{ display: "grid", gap: 3, minWidth: 0 }}><strong style={{ fontSize: "var(--text-sm)" }}>{checkEnvironment?.ready ? t("harmonyCheck.ready") : t("harmonyCheck.notReady")}</strong>
-            <small style={{ color: "var(--text-dim)", overflowWrap: "anywhere" }}>{checkEnvironment?.ready ? `DevEco CLI ${checkEnvironment.cliVersion} · DevEco Studio ${checkEnvironment.studioVersion ?? ""}` : checkEnvironment?.error ?? t("harmonyCheck.detecting")}</small></span>
-        </div>
-        {checkConfig ? <>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 7 }}><input type="checkbox" checked={checkConfig.arktsEnabled} onChange={(event) => setCheckConfig({ ...checkConfig, arktsEnabled: event.target.checked })} />{t("harmonyCheck.arkts")}</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 7 }}><input type="checkbox" checked={checkConfig.lintEnabled} onChange={(event) => setCheckConfig({ ...checkConfig, lintEnabled: event.target.checked })} />{t("harmonyCheck.lint")}</label>
-            <label style={{ display: "flex", alignItems: "center", gap: 7 }}><input type="checkbox" checked={checkConfig.checkAfterAgentEdits} onChange={(event) => setCheckConfig({ ...checkConfig, checkAfterAgentEdits: event.target.checked })} />{t("harmonyCheck.afterEdits")}</label>
-          </div>
-          <label style={{ display: "grid", gap: 6 }}><span style={{ color: "var(--text-muted)", fontSize: "var(--text-sm)" }}>{t("harmonyCheck.studioPath")}</span><span style={{ display: "flex", gap: 8 }}><input value={checkConfig.studioPath ?? ""} placeholder={checkEnvironment?.studioPath ?? t("harmonyCheck.autoDetect")} onChange={(event) => setCheckConfig({ ...checkConfig, studioPath: event.target.value || undefined })} style={{ flex: 1, minWidth: 0 }} /><button type="button" onClick={() => void chooseCheckPath()} aria-label={t("harmonyStorage.choose")}><AliIcon name="folder-open" size={14} /></button></span></label>
-          <details><summary style={{ cursor: "pointer", color: "var(--text-muted)" }}>{t("harmonyCheck.advanced")}</summary><div style={{ display: "grid", gap: 12, paddingTop: 12 }}>
-            <label style={{ display: "grid", gap: 6 }}><span>{t("harmonyCheck.maxIterations")}: {checkConfig.maxAgentIterations}</span><input type="range" min={1} max={5} value={checkConfig.maxAgentIterations} onChange={(event) => setCheckConfig({ ...checkConfig, maxAgentIterations: Number(event.target.value) })} /></label>
-            <label style={{ display: "grid", gap: 6 }}><span>{t("harmonyCheck.timeout")}: {Math.round(checkConfig.timeoutMs / 1000)}s</span><input type="range" min={10} max={90} step={5} value={checkConfig.timeoutMs / 1000} onChange={(event) => setCheckConfig({ ...checkConfig, timeoutMs: Number(event.target.value) * 1000 })} /></label>
-          </div></details>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}><button type="button" disabled={checkStatus === "saving" || (!checkConfig.arktsEnabled && !checkConfig.lintEnabled)} onClick={() => void saveChecks()}>{checkStatus === "saving" ? t("harmonyStorage.saving") : t("harmonyCheck.save")}</button><button type="button" disabled={checkStatus === "loading"} onClick={() => void loadChecks()}>{t("harmonyCheck.redetect")}</button>{checkStatus === "saved" ? <small style={{ color: "var(--status-success)" }}>{t("harmonyStorage.saved")}</small> : null}</div>
-        </> : checkStatus === "loading" ? <p>{t("harmonyCheck.detecting")}</p> : null}
-        {checkError ? <p role="alert" style={{ color: "var(--status-failed)", overflowWrap: "anywhere" }}>{checkError}</p> : null}
-      </section>
       <section className="settings-conversation-section" style={{ display: "grid", gap: 20, maxWidth: 760 }}>
         <div style={{ display: "grid", gap: 4 }}><strong style={{ color: "var(--text)" }}>{t("harmonyStorage.mediaTitle")}</strong><small style={{ color: "var(--text-dim)", lineHeight: 1.5 }}>{t("harmonyStorage.mediaDescription")}</small></div>
         <div style={{ minHeight: 58, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid color-mix(in srgb, var(--accent) 15%, var(--border))", borderRadius: "var(--radius-control)", background: "color-mix(in srgb, var(--accent) 5%, var(--bg))" }}>

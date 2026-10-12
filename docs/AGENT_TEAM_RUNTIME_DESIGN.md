@@ -97,7 +97,6 @@ PromptRun             = Session 的一次实际模型执行
 | Room 工具和上下文注入 | `extensions/piora-room.ts` | 扩展为结构化团队协议和真正的系统提示词追加 |
 | RoomTask → TaskRun 投影 | `lib/task-run.ts` | 增加 TeamRun 顶层投影和 TeamTask 子投影 |
 | worktree 创建、删除、项目归一 | `lib/worktree.ts` | Agent 专属工作区和并行隔离 |
-| Goal/Plan 状态机和证据门禁经验 | `lib/goal-run-registry.ts`, `lib/plan-artifact-registry.ts` | 借鉴 reducer、revision 和恢复规则 |
 | Room SSE 和 UI | `app/api/rooms/[id]/events/route.ts`, `components/RoomWorkspace.tsx` | 升级为可回放事件和 TeamRun 控制台 |
 
 ### 3.2 当前阻止“自主团队”成立的问题
@@ -1415,7 +1414,7 @@ Task `submit_task` 前必须满足：
 - artifact 路径必须位于当前 Agent workspace；
 - commit hash 必须通过只读 git 命令确认属于当前 branch。
 
-不要复制 Plan execution 已有的命令判断逻辑。将 `lib/plan-artifact-registry.ts` 中的 `runtimeVerificationLabel()`、tool argument/result normalization 抽到新文件 `lib/runtime-evidence.ts`，Plan 和 Team 共同调用。`AgentSessionWrapper.start()` 当前已经观察 `tool_execution_start/end` 并调用 `capturePlanRuntimeToolResult()`；在同一位置增加 `captureTeamRuntimeToolResult()`，由 active Team Prompt Context 判断是否属于 TeamTask。
+运行时证据归一化由 lib/runtime-evidence.ts 负责。Team 工具执行结果在活跃的 Team Prompt Context 中记录；目标与计划扩展由用户自行安装。
 
 ## 14. Worktree、产物和集成
 

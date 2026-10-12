@@ -1107,8 +1107,17 @@ function parseArguments(argv) {
   return options;
 }
 
+async function main() {
+  const options = parseArguments(process.argv.slice(2));
+  if (process.platform === "win32") {
+    const { verifyStagedPortableExtractor } = await import("./stage-portable-extractor.mjs");
+    await verifyStagedPortableExtractor(join(dirname(resolve(options.webRoot ?? DEFAULT_WEB_ROOT)), "portable-extractor"));
+  }
+  return generatePackageLicenseBundle(options);
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === scriptPath) {
-  generatePackageLicenseBundle(parseArguments(process.argv.slice(2)))
+  main()
     .then((result) => {
       console.log(JSON.stringify(result));
     })

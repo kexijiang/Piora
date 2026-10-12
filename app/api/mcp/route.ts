@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAgentDir, ProjectTrustStore } from "@earendil-works/pi-coding-agent";
+import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { resolve } from "node:path";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
 import { getRpcSession, invalidateServicesCache } from "@/lib/rpc-manager";
@@ -14,10 +14,15 @@ export const dynamic = "force-dynamic";
 async function context(cwd: string, sessionId?: string) {
   if (!cwd || !isExistingFilePathAllowed(cwd, await getAllowedFileRoots())) throw new Error("Access denied");
   const session = sessionId ? getRpcSession(sessionId) : undefined;
-  if (sessionId && (!session || resolve(session.inner.sessionManager.getCwd()) !== resolve(cwd))) throw new Error("Session does not belong to this workspace");
+  // Browsed sessions need not have a live wrapper (including after idle expiry).
+  // Configuration remains scoped by the workspace allow-list; live-only actions
+  // below still require the matching wrapper and its native controller.
+  if (session && resolve(session.inner.sessionManager.getCwd()) !== resolve(cwd)) throw new Error("Session does not belong to this workspace");
   const agentDir = getAgentDir();
   const live = session?.nativeMcp?.snapshot();
-  const projectTrusted = live?.projectTrusted ?? new ProjectTrustStore(agentDir).get(cwd) === true;
+  // Match SettingsManager.create(cwd, agentDir) in session startup. Piora has
+  // no separate Project Trust flow, so an idle session must use the same policy.
+  const projectTrusted = live?.projectTrusted ?? true;
   return { cwd, agentDir, session, projectTrusted, live };
 }
 type Context = Awaited<ReturnType<typeof context>>;

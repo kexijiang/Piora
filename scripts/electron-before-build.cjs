@@ -27,6 +27,8 @@ module.exports = async function prepareDesktopBuild(context) {
   await stagePowerShell(projectRoot);
   const { stageSpeech } = await import("./stage-speech.mjs");
   await stageSpeech(projectRoot);
+  const { stagePortableExtractor } = await import("./stage-portable-extractor.mjs");
+  await stagePortableExtractor(projectRoot);
   const customTemplatePath = join(projectRoot, "desktop", "build", "portable-cache.nsi");
   const builderPackagePath = require.resolve("app-builder-lib/package.json", { paths: [projectRoot] });
   const stockTemplatePath = join(dirname(builderPackagePath), "templates", "nsis", "portable.nsi");
@@ -37,7 +39,7 @@ module.exports = async function prepareDesktopBuild(context) {
   const currentHash = sha256(currentTemplate);
   const customHash = sha256(customTemplate);
   const isPioraCacheTemplate = currentTemplate.toString("utf8").includes(
-    "# PIORA_PORTABLE_CACHE_TEMPLATE_V1",
+    "# PIORA_PORTABLE_CACHE_TEMPLATE_V",
   );
   if (
     currentHash !== STOCK_PORTABLE_TEMPLATE_SHA256

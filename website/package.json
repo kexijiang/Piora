@@ -20,6 +20,10 @@
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
+  "overrides": {
+    "sharp": "0.35.5",
+    "source-map-js": "1.2.2"
+  },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.62.3",
     "@cloudflare/workers-types": "5.20260930.2",

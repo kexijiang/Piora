@@ -3,22 +3,31 @@ import { spawnSync } from 'node:child_process';
 import { createConnection, createServer } from 'node:net';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { readGitHubBuildOrigin } from './harmony-mirror-provenance.mjs';
 import {
   attachDeviceAcceptance,
+  extractHarmonyUdids,
+  freezeRegularFile,
   MIRROR_BUNDLE,
-  MIRROR_HAP_FILE,
   readAndVerifySignatureReceipt,
   resolveHarmonyReleaseTools,
+  verifyFrozenRegularFile,
 } from './harmony-mirror-release.mjs';
 
 const fail = message => { throw new Error(`Harmony mirror device acceptance: ${message}`); };
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const MAX_OUTPUT = 4 * 1024 * 1024;
 const DEVICE_PORT = 53_535;
+
+export function hasHdcFailureDiagnostic(output) {
+  const diagnostics = String(output).replaceAll('\0', '').split(/\r?\n/u)
+    .filter(line => !/^\s*No\s+Error[.!]?\s*$/iu.test(line))
+    .join('\n');
+  return /\[Fail\]|\bfailed\b|\berror\b|\binvalid\b/i.test(diagnostics);
+}
 
 function hdc(tool, serial, args, options = {}) {
   const result = spawnSync(tool, ['-t', serial, ...args], {
@@ -27,18 +36,22 @@ function hdc(tool, serial, args, options = {}) {
     timeout: options.timeout ?? 20_000,
     maxBuffer: MAX_OUTPUT,
   });
-  if (result.error || result.status !== 0) {
-    const output = Buffer.isBuffer(result.stdout) ? Buffer.concat([result.stdout, result.stderr ?? Buffer.alloc(0)]).toString('utf8')
-      : `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
-    fail(`${options.label ?? args[0]} failed${result.status === null ? '' : ` with exit ${result.status}`}\n${output.slice(-4_000)}`);
-  }
   const output = Buffer.isBuffer(result.stdout) ? Buffer.concat([result.stdout, result.stderr ?? Buffer.alloc(0)]).toString('utf8')
     : `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
+  const diagnostic = () => {
+    let value = output;
+    if (options.sensitiveOutput) value = value.replace(/[A-Za-z0-9_+/=-]{24,}/g, '<redacted>');
+    if (serial.length >= 8) value = value.replaceAll(serial, '<redacted-target>');
+    return value.slice(-4_000);
+  };
+  if (result.error || result.status !== 0) {
+    fail(`${options.label ?? args[0]} failed${result.status === null ? '' : ` with exit ${result.status}`}\n${diagnostic()}`);
+  }
   // HDC has versions where a remote-side failure is reported in text while
   // the client process still exits zero. Critical acceptance cannot trust that
   // exit status alone.
-  if (/\[Fail\]|\bfailed\b|\berror\b|\binvalid\b/i.test(output)) {
-    fail(`${options.label ?? args[0]} reported failure despite exit zero\n${output.slice(-4_000)}`);
+  if (hasHdcFailureDiagnostic(output)) {
+    fail(`${options.label ?? args[0]} reported failure despite exit zero\n${diagnostic()}`);
   }
   return result;
 }
@@ -279,25 +292,50 @@ async function captureScreenshot(hdcPath, serial, directory) {
   }
 }
 
-export async function verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirectory, serial, environment = process.env }) {
+export async function verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirectory, acceptedHapPath, serial, environment = process.env }) {
   if (!/^[A-Za-z0-9._:\[\]-]{1,256}$/.test(serial ?? '')) fail('a valid dedicated HDC serial is required');
+  if (typeof acceptedHapPath !== 'string' || !isAbsolute(acceptedHapPath)) fail('an absolute private acceptance HAP path is required');
   const origin = readGitHubBuildOrigin(projectRoot, environment);
-  await readAndVerifySignatureReceipt(resourcesDirectory, origin);
+  const receipt = await readAndVerifySignatureReceipt(resourcesDirectory, origin);
+  const acceptedHap = resolve(acceptedHapPath);
+  const acceptedHapExpected = {
+    size: receipt.acceptanceArtifact.size,
+    sha256: receipt.acceptanceArtifact.sha256,
+  };
+  try { await verifyFrozenRegularFile(acceptedHap, acceptedHapExpected); }
+  catch { fail('private acceptance HAP does not match the signed artifact receipt'); }
   const tools = await resolveHarmonyReleaseTools(environment);
+  const udidOutput = requiredText(hdc(tools.hdc, serial, ['shell', 'bm', 'get', '--udid'], {
+    label: 'registered device UDID check',
+    sensitiveOutput: true,
+  }), 'registered device UDID check');
+  const boundDeviceSha256 = receipt.verification.profile.boundDeviceSha256;
+  const deviceUdids = extractHarmonyUdids(udidOutput);
+  if (deviceUdids.length !== 1) fail('connected phone returned an ambiguous UDID');
+  const acceptedDeviceUdid = deviceUdids.find(value => hash(Buffer.from(value.toLocaleLowerCase(), 'utf8')) === boundDeviceSha256);
+  if (!acceptedDeviceUdid) fail('connected phone is not present in the signed profile allow-list');
   const temporary = await mkdtemp(join(tmpdir(), 'piora-harmony-release-acceptance-'));
-  const localPort = await freePort();
+  const frozenAcceptedHap = join(temporary, 'receipt-bound-acceptance.hap');
+  let localPort;
   let forwardCreated = false, forwardRemoved = false, installAttempted = false, packageAbsent = false, evidence, operationError;
+  let frozenAccepted;
   try {
+    localPort = await freePort();
+    frozenAccepted = await freezeRegularFile(acceptedHap, frozenAcceptedHap);
+    if (frozenAccepted.size !== acceptedHapExpected.size || frozenAccepted.sha256 !== acceptedHapExpected.sha256) {
+      fail('private acceptance HAP changed before its device snapshot was frozen');
+    }
     const lock = requiredText(hdc(tools.hdc, serial, ['shell', 'hidumper', '-s', 'ScreenlockService', '-a', '-all'], { label: 'screen lock check' }), 'screen lock check');
     if (!/^\s*\*?\s*screenLocked\s*[:= ]\s*false\b/im.test(lock)) fail('the dedicated phone must already be unlocked');
     const beforeInstall = requiredText(hdc(tools.hdc, serial, ['shell', 'bm', 'dump', '-a'], { label: 'pre-install package absence check', timeout: 15_000 }), 'pre-install package absence check');
     if (beforeInstall.includes(MIRROR_BUNDLE)) fail('the dedicated phone already contains the mirror bundle; refusing to replace it');
     packageAbsent = true;
 
-    const hap = resolve(resourcesDirectory, MIRROR_HAP_FILE);
     installAttempted = true;
-    const install = clean(hdc(tools.hdc, serial, ['install', hap], { label: 'signed HAP install', timeout: 60_000 }));
-    if (/\b(?:fail|error|invalid signature|verify pkcs7)\b/i.test(install) || !/success/i.test(install)) fail('the phone did not confirm the signed HAP installation');
+    await verifyFrozenRegularFile(frozenAcceptedHap, frozenAccepted);
+    const install = clean(hdc(tools.hdc, serial, ['install', frozenAcceptedHap], { label: 'private signed HAP install', timeout: 60_000 }));
+    await verifyFrozenRegularFile(frozenAcceptedHap, frozenAccepted);
+    if (hasHdcFailureDiagnostic(install) || /\bverify pkcs7\b/i.test(install) || !/success/i.test(install)) fail('the phone did not confirm the signed HAP installation');
     packageAbsent = false;
     const manifest = await jsonFileForDevice(join(resourcesDirectory, 'harmony-mirror-manifest.json'));
     const installed = clean(hdc(tools.hdc, serial, ['shell', 'bm', 'dump', '-n', MIRROR_BUNDLE], { label: 'installed package verification' }));
@@ -307,7 +345,7 @@ export async function verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirect
       fail('installed package identity or version was not verified');
     }
     const launch = clean(hdc(tools.hdc, serial, ['shell', 'aa', 'start', '-a', 'EntryAbility', '-b', MIRROR_BUNDLE], { label: 'mirror launch' }));
-    if (/\b(?:fail|error)\b/i.test(launch) || !/success/i.test(launch)) fail('the phone did not confirm the foreground launch');
+    if (hasHdcFailureDiagnostic(launch) || !/success/i.test(launch)) fail('the phone did not confirm the foreground launch');
 
     const start = await waitForNode(tools.hdc, serial, temporary, 'owned start button', node => node.id === 'piora-mirror-start'
       && node.clickable && typeof node.text === 'string' && /开始共享屏幕|start (?:screen )?sharing|share (?:the )?screen/i.test(node.text));
@@ -364,6 +402,8 @@ export async function verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirect
     passed: true,
     acceptedAt: new Date().toISOString(),
     serialSha256: hash(Buffer.from(serial, 'utf8')),
+    udidSha256: hash(Buffer.from(acceptedDeviceUdid.toLocaleLowerCase(), 'utf8')),
+    acceptedHapSha256: frozenAccepted.sha256,
     installVerified: true,
     launchVerified: true,
     consentVerified: true,
@@ -378,10 +418,11 @@ async function jsonFileForDevice(path) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const [resourcesDirectory, serialArgument, ...extra] = process.argv.slice(2);
-  const serial = serialArgument === '--serial' ? extra.shift() : undefined;
-  if (!resourcesDirectory || !serial || extra.length) throw new Error('Usage: node scripts/verify-harmony-mirror-device.mjs <resource-directory> --serial <serial>');
+  const [resourcesDirectory, hapArgument, acceptedHapPath, serialArgument, serial, ...extra] = process.argv.slice(2);
+  if (!resourcesDirectory || hapArgument !== '--accepted-hap' || !acceptedHapPath || serialArgument !== '--serial' || !serial || extra.length) {
+    throw new Error('Usage: node scripts/verify-harmony-mirror-device.mjs <resource-directory> --accepted-hap <private-signed-hap> --serial <serial>');
+  }
   const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-  await verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirectory: resolve(resourcesDirectory), serial });
-  console.log('Real phone accepted the signed HAP and produced native video plus a fresh screenshot; owned resources were removed.');
+  await verifyHarmonyMirrorOnDevice({ projectRoot, resourcesDirectory: resolve(resourcesDirectory), acceptedHapPath, serial });
+  console.log('Real phone accepted the private signed HAP and produced native video plus a fresh screenshot; owned resources were removed.');
 }

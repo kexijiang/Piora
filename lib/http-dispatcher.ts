@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import * as undici from "undici";
+import { hasDesktopNetworkBridge, resolveDesktopSystemProxy, systemProxyUrl } from "./desktop-network-proxy";
 import { getRuntimeAgentDataDirectory } from "./runtime-home";
 import {
   networkProxyNoProxy,
@@ -15,6 +16,7 @@ type DispatcherGlobal = typeof globalThis & {
   __piWebHttpDispatcherConfigured?: boolean;
   __piWebHttpDispatcher?: undici.Dispatcher;
   __piWebHttpProxySignature?: string;
+  __piWebHttpInheritedProxyEnvironment?: Map<string, string | undefined>;
 };
 
 const dispatcherGlobal = globalThis as DispatcherGlobal;
@@ -24,7 +26,7 @@ const PROXY_ENV_KEYS = [
   "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY", "ALL_PROXY",
   "http_proxy", "https_proxy", "no_proxy", "all_proxy",
 ] as const;
-const inheritedProxyEnvironment = new Map(PROXY_ENV_KEYS.map((key) => [key, process.env[key]]));
+const inheritedProxyEnvironment = dispatcherGlobal.__piWebHttpInheritedProxyEnvironment ??= new Map(PROXY_ENV_KEYS.map((key) => [key, process.env[key]]));
 
 function parseHttpIdleTimeoutMs(value: unknown): number | undefined {
   if (typeof value === "string") {
@@ -85,11 +87,19 @@ function createHttpDispatcher(settings: NetworkProxySettings, timeoutMs: number)
   if (normalizedTimeoutMs === undefined) {
     throw new Error(`Invalid HTTP idle timeout: ${String(timeoutMs)}`);
   }
+  if (settings.mode === "system" && hasDesktopNetworkBridge()
+    && !process.env.HTTP_PROXY && !process.env.HTTPS_PROXY && !process.env.http_proxy && !process.env.https_proxy && !process.env.ALL_PROXY && !process.env.all_proxy) {
+    return new DesktopSystemProxyDispatcher(normalizedTimeoutMs);
+  }
   const proxyOptions = settings.mode === "manual"
     ? { httpProxy: settings.proxyUrl, httpsProxy: settings.proxyUrl, noProxy: networkProxyNoProxy(settings) }
     : settings.mode === "direct"
       ? { httpProxy: "", httpsProxy: "", noProxy: "*" }
-      : {};
+      : {
+          httpProxy: process.env.http_proxy || process.env.HTTP_PROXY || process.env.all_proxy || process.env.ALL_PROXY,
+          httpsProxy: process.env.https_proxy || process.env.HTTPS_PROXY || process.env.all_proxy || process.env.ALL_PROXY,
+          noProxy: networkProxyNoProxy({ ...settings, bypass: process.env.no_proxy || process.env.NO_PROXY || settings.bypass }),
+        };
   return withUndiciErrorListener(new undici.EnvHttpProxyAgent({
     ...proxyOptions,
     allowH2: false,
@@ -98,6 +108,47 @@ function createHttpDispatcher(settings: NetworkProxySettings, timeoutMs: number)
     clientFactory: createUndiciClient,
     factory: createUndiciOriginDispatcher,
   }));
+}
+
+class DesktopSystemProxyDispatcher extends undici.Dispatcher {
+  private readonly agents = new Map<string, undici.Dispatcher>();
+  private readonly resolving = new Set<Promise<void>>();
+  private closing = false;
+  private destroying = false;
+  constructor(private readonly timeoutMs: number) { super(); }
+  dispatch(options: undici.Dispatcher.DispatchOptions, handler: undici.Dispatcher.DispatchHandler): boolean {
+    const url = new URL(options.path, options.origin);
+    if (this.closing) {
+      handler.onResponseError?.(null as unknown as undici.Dispatcher.DispatchController, new Error("Network dispatcher is closed"));
+      return false;
+    }
+    const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    const pending = (local ? Promise.resolve("DIRECT") : resolveDesktopSystemProxy(url.href)).then(result => {
+      if (this.destroying) throw new Error("Network dispatcher is destroyed");
+      const proxy = systemProxyUrl(result);
+      const key = proxy ?? "DIRECT";
+      let agent = this.agents.get(key);
+      if (!agent) {
+        const config = { bodyTimeout: this.timeoutMs, headersTimeout: this.timeoutMs, allowH2: false, factory: createUndiciOriginDispatcher };
+        agent = withUndiciErrorListener(proxy ? new undici.ProxyAgent({ ...config, uri: proxy, clientFactory: createUndiciClient }) : new undici.Agent(config));
+        this.agents.set(key, agent);
+      }
+      agent.dispatch(options, handler);
+    }).catch(error => handler.onResponseError?.(null as unknown as undici.Dispatcher.DispatchController, error));
+    this.resolving.add(pending);
+    void pending.finally(() => this.resolving.delete(pending));
+    return true;
+  }
+  async close(): Promise<void> {
+    this.closing = true;
+    await Promise.all(this.resolving);
+    await Promise.all([...this.agents.values()].map(agent => agent.close()));
+  }
+  async destroy(): Promise<void> {
+    this.closing = true;
+    this.destroying = true;
+    await Promise.all([...this.agents.values()].map(agent => agent.destroy()));
+  }
 }
 
 function applyProxyEnvironment(settings: NetworkProxySettings): void {

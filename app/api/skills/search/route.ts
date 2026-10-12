@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { runNpx } from "@/lib/npx";
 import type { SkillSearchResult } from "@/lib/api-types";
+import { apiError, body as readBody } from "@/lib/skill-sources/api";
+import { catalogPage } from "@/lib/skill-sources/catalog";
+import { listSources } from "@/lib/skill-sources/store";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +93,14 @@ function parseInstallCount(installs: string): number {
 // POST /api/skills/search  body: { query: string, limit?: number }
 export async function POST(req: Request) {
   try {
-    const { query, limit: rawLimit } = await req.json() as { query?: string; limit?: unknown };
+    const data = await readBody(req);
+    if (data.catalog === true || typeof data.sourceId === "string") {
+      const query = typeof data.query === "string" ? data.query.trim() : "";
+      const sources = typeof data.sourceId === "string" ? [data.sourceId] : listSources().map(s => s.id);
+      const pages = await Promise.all(sources.map(id => catalogPage(id, query, typeof data.cursor === "string" ? data.cursor : undefined, data.refresh === true)));
+      return NextResponse.json({ pages });
+    }
+    const { query, limit: rawLimit } = data as { query?: string; limit?: unknown };
     if (!query?.trim()) return NextResponse.json({ error: "query required" }, { status: 400 });
     const limit = parseLimit(rawLimit);
 
@@ -107,6 +117,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ results });
     }
   } catch (e: unknown) {
+    if (e instanceof Error && "status" in e) return apiError(e);
     const err = e as { stdout?: string; stderr?: string; message?: string };
     const raw = (err.stdout ?? "") + (err.stderr ?? "");
     const results = raw ? parseSearchOutput(raw) : [];

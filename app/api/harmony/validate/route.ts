@@ -4,7 +4,7 @@ import { DevelopmentReportStore } from "@/lib/harmony/development/report-store";
 import { getHarmonyDeviceManager } from "@/lib/harmony";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
-import { runHarmonyCheck, sourceFingerprint } from "@/lib/harmony/check-runtime";
+import { sourceFingerprint } from "@/lib/harmony/check-runtime";
 import { validateDevelopmentOnDevice, type DevelopmentValidationOptions } from "@/lib/harmony/development/validation-chain";
 import { HarmonyError } from "@/lib/harmony/errors";
 import { hasJsonContentType } from "@/lib/request-security";
@@ -17,7 +17,6 @@ export async function POST(request: Request) {
     const roots = await getAllowedFileRoots();
     if (!body || typeof body.projectRoot !== "string" || typeof body.hapPath !== "string" || !isExistingFilePathAllowed(body.projectRoot, roots) || !isExistingFilePathAllowed(body.hapPath, roots)) throw new HarmonyError("INVALID_ARGUMENT", "Select a project and artifact within allowed workspace roots");
     const result = await validateDevelopmentOnDevice({ ...body, signal: request.signal }, { manager: getHarmonyDeviceManager(), fingerprint: sourceFingerprint,
-      check: (projectRoot, signal) => runHarmonyCheck({ projectRoot, checks: ["arkts", "lint"], fix: false, signal }),
     });
     return noStoreJson({ result: await new DevelopmentReportStore(join(dirname(defaultHarmonyConfigPath()), "harmony-development-reports")).save(result) });
   } catch (error) { return harmonyErrorResponse(error); }

@@ -208,7 +208,7 @@ export function ScenarioWorkbench({ serial, active, canControl, ensureControl, c
       {steps.length ? <ol className={styles.scenarioSummary}>{steps.map((step, index) => <li key={step.id ?? index}>{scenarioActionLabels[step.action][chinese ? 0 : 1]}{"bundleName" in step ? ` · ${step.bundleName}` : "selector" in step ? ` · ${step.selector.text || step.selector.id || step.selector.type || ""}` : "name" in step ? ` · ${step.name}` : ""}</li>)}</ol> : null}
       <p>{copy("当前工程", "Current project")}: {cwd || copy("请先选择工程", "Select a project first")}</p>
       <label>{copy("该工程的 HAP 完整路径", "Full HAP path from this project")}<input value={hap} onChange={event => setHap(event.target.value)} /></label>
-      <p>{copy("先检查 ArkTS 与 lint，再安装所选 HAP，执行场景并收集日志。", "Checks ArkTS and lint, installs the selected HAP, then runs the scenario and collects logs.")}</p>
+      <p>{copy("安装所选 HAP，执行场景并收集日志；不会检查 ArkTS 或代码规范。", "Installs the selected HAP, runs the scenario, and collects logs. ArkTS and code style are not checked.")}</p>
       <button disabled={busy || !cwd || !canControl || !ready || !hap || !bundle} onClick={() => void run(async () => {
         const compiled = await compile(); const leaseToken = await ensureControl();
         const data = await request("/api/harmony/validate", { projectRoot: cwd, hapPath: hap, bundleName: bundle, serial, leaseToken, steps: compiled }); setResult(data.result);

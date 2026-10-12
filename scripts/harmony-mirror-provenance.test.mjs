@@ -27,7 +27,7 @@ async function fixture(t) {
   await cp(sourceDirectory, workspace, { recursive: true });
   await mkdir(resourcesDirectory);
   await writeMirrorPreparation(workspace, sourceDirectory, origin);
-  const hapPath = join(workspace, 'entry/build/default/outputs/default/entry-default-signed.hap');
+  const hapPath = join(workspace, 'entry/build/default/outputs/default/entry-default-unsigned.hap');
   await mkdir(join(workspace, 'entry/build/default/outputs/default'), { recursive: true });
   const app = JSON.parse(await readFile(join(sourceDirectory, 'AppScope/app.json5'), 'utf8')).app;
   const moduleInfo = JSON.parse(await readFile(join(sourceDirectory, 'entry/src/main/module.json5'), 'utf8')).module;
@@ -37,7 +37,7 @@ async function fixture(t) {
     const current = structuredClone(metadata); update(current);
     const zip = new JSZip();
     zip.file('module.json', JSON.stringify(current));
-    // Deliberately a metadata/hash contract fixture, never an SDK/signing proof.
+    // Deliberately a metadata/hash and unsigned-package fixture, never an SDK trust proof.
     zip.file('libs/arm64-v8a/libscrcpy_capture.so', 'synthetic ordinary capture payload');
     for (const [name, bytes] of Object.entries(extras)) zip.file(name, bytes);
     await writeFile(hapPath, await zip.generateAsync({ type: 'nodebuffer' }));
@@ -62,7 +62,8 @@ test('prepare measures exact copied source and records provenance without claimi
   assert.deepEqual(receipt.origin, origin);
   const result = await f.record();
   assert.deepEqual(await f.verify(), result);
-  assert.equal(result.signature, 'unverified');
+  assert.equal(result.signature, 'absent');
+  assert.match(result.scope, /verified absence of a Harmony signing block/);
   assert.match(result.scope, /does not prove SDK compilation/);
   await assert.rejects(f.record(), error => error.code === 'EEXIST');
 });
@@ -145,7 +146,7 @@ test('same-run identity fences repository, commit, workflow, run and rerun attem
 test('real old bundled 1.0.3 cannot be assigned ordinary-source provenance', async t => {
   const f = await fixture(t);
   await cp(fileURLToPath(new URL('../third_party/harmony-tools/windows-x64/OHScrcpyServer.hap', import.meta.url)), f.hapPath);
-  await assert.rejects(f.record(), /unsupported ordinary package|not the ordinary capture/);
+  await assert.rejects(f.record(), /Harmony signing block|unsupported ordinary package|not the ordinary capture/);
 });
 
 test('a same-version HAP with altered API, mode, entry, permissions, background contract or version is rejected', async t => {
@@ -188,21 +189,33 @@ test('known debug acceptance payload and oversized root metadata fail before rec
   await assert.rejects(f.record(), /metadata is invalid or exceeds limit/);
 });
 
-test('recording only accepts the prepared entry/default output and keeps unsigned artifacts out', async t => {
+test('recording only accepts the prepared public unsigned output and keeps signed artifacts out', async t => {
   const f = await fixture(t);
-  const unsigned = join(f.workspace, 'entry/build/default/outputs/default/entry-default-unsigned.hap');
-  await cp(f.hapPath, unsigned);
-  for (const hapPath of [unsigned, join(f.root, 'foreign-signed.hap')]) {
-    if (hapPath.endsWith('foreign-signed.hap')) await cp(f.hapPath, hapPath);
+  const signed = join(f.workspace, 'entry/build/default/outputs/default/entry-default-signed.hap');
+  await cp(f.hapPath, signed);
+  for (const hapPath of [signed, join(f.root, 'foreign-unsigned.hap')]) {
+    if (hapPath.endsWith('foreign-unsigned.hap')) await cp(f.hapPath, hapPath);
     await assert.rejects(recordHarmonyMirrorArtifact({ workspace: f.workspace, sourceDirectory: f.sourceDirectory,
-      hapPath, manifestPath: f.manifestPath, origin }), /current workspace entry\/default signed output/);
+      hapPath, manifestPath: f.manifestPath, origin }), /current workspace entry\/default unsigned output/);
   }
+});
+
+test('public artifacts reject signing blocks, profile entries and embedded device profiles', async t => {
+  const f = await fixture(t);
+  await f.writeHap(() => {}, { 'signing-marker.bin': '<hap sign block>' });
+  await assert.rejects(f.record(), /contains a Harmony signing block/);
+
+  await f.writeHap(() => {}, { 'META-INF/profile.p7b': 'private profile bytes' });
+  await assert.rejects(f.record(), /contains a signing profile or signature entry/);
+
+  await f.writeHap(() => {}, { 'assets/private.json': '{"device-ids":["private-device"]}' });
+  await assert.rejects(f.record(), /embedded signing profile material/);
 });
 
 test('source junctions and a build-output junction resolving outside the workspace are rejected', async t => {
   const f = await fixture(t);
   const outside = join(f.root, 'outside'); await mkdir(outside);
-  await cp(f.hapPath, join(outside, 'entry-default-signed.hap'));
+  await cp(f.hapPath, join(outside, 'entry-default-unsigned.hap'));
   await symlink(outside, join(f.sourceDirectory, 'unexpected-linked-source'), process.platform === 'win32' ? 'junction' : 'dir');
   await assert.rejects(snapshotHarmonyMirrorSource(f.sourceDirectory), /symlink/);
   await rm(join(f.sourceDirectory, 'unexpected-linked-source'));

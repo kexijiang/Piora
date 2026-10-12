@@ -6,6 +6,7 @@ import { loadSkillsWithInstallInfo } from "@/lib/skills-service";
 import { invalidateServicesCache } from "@/lib/rpc-manager";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
 import { getRuntimeHomeDirectory } from "@/lib/runtime-home";
+import { guard, apiError, allowedCwd } from "@/lib/skill-sources/api";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +16,14 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const cwd = searchParams.get("cwd");
-  if (!cwd) return NextResponse.json({ error: "cwd required" }, { status: 400 });
 
   try {
-    const allowedRoots = await getAllowedFileRoots();
-    if (!isExistingFilePathAllowed(cwd, allowedRoots)) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
-    }
-    return NextResponse.json(await loadSkillsWithInstallInfo(cwd));
+    guard(req);
+    if (cwd) await allowedCwd(cwd, true);
+    const data = await loadSkillsWithInstallInfo(cwd || getRuntimeHomeDirectory());
+    return NextResponse.json(cwd ? data : { ...data, skills: data.skills.filter(s => s.sourceInfo?.scope !== "project"), projectResourcesLoaded: false });
   } catch (e) {
+    if (e instanceof Error && "status" in e) return apiError(e);
     return NextResponse.json({ error: String(e) }, { status: 500 });
   }
 }
@@ -31,6 +31,7 @@ export async function GET(req: Request) {
 // PATCH /api/skills — toggle disable-model-invocation on a SKILL.md file
 export async function PATCH(req: Request) {
   try {
+    guard(req);
     const body = await req.json() as { filePath: string; disableModelInvocation: boolean };
     const { filePath, disableModelInvocation } = body;
     if (!filePath) return NextResponse.json({ error: "filePath required" }, { status: 400 });

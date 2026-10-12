@@ -1,4 +1,4 @@
-import { WebSocket } from "undici";
+import { getGlobalDispatcher, WebSocket } from "undici";
 import type { SessionCommandEvent } from "./session-message-types";
 
 interface ConnectorSocket {
@@ -81,7 +81,7 @@ export class RemoteControlConnector {
     if (this.stopped) return;
     this.state = "connecting";
     try {
-      const socket = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` }, dispatcher: undefined }) as unknown as ConnectorSocket;
+      const socket = new WebSocket(url, { headers: { Authorization: `Bearer ${token}` }, dispatcher: getGlobalDispatcher() }) as unknown as ConnectorSocket;
       this.socket = socket;
       socket.addEventListener("open", () => {
         this.reconnectAttempt = 0;

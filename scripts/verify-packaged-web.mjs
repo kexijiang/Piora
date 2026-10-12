@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -40,6 +41,7 @@ const expectedBackgroundCount = 37;
 const safeBackgroundAsset = /^\/themes\/dream-backgrounds\/[A-Za-z0-9][A-Za-z0-9._-]*\.webp$/;
 const bundledPetRelativeRoot = "companion-pets/bundled";
 const generatedBuiltinPetAsset = "companion-pets/piora-bot.webp";
+const nodeForgeRsaPatchedSha256 = "18ae286c1ef8e00fc6359ffe3280416946c1dfd6684c98c1c6af1590d7f7e9f4";
 const expectedBundledPetIds = Object.freeze([
   "azure",
   "corgi-scout",
@@ -56,8 +58,8 @@ const execFileAsync = promisify(execFile);
 let activeServerStderr = "";
 
 export function verifyPackagedCoreTools(tools) {
-  const required = ["browser", "harmony_control", "piora_harmony_check", "piora_room"];
-  const optional = ["piora_goal", "piora_plan", "piora_plan_execution", "computer_control"];
+  const required = ["browser", "harmony_control", "piora_room"];
+  const optional = ["computer_control"];
   const inspect = (name) => {
     const tool = tools.find((entry) => entry.name === name);
     return { name, loaded: Boolean(tool), active: tool?.active === true };
@@ -65,7 +67,7 @@ export function verifyPackagedCoreTools(tools) {
   const core = required.map(inspect);
   if (core.some((tool) => !tool.loaded)) throw new Error(`Packaged first-party tools failed to load: ${JSON.stringify(core)}`);
   if (core.some((tool) => tool.active !== (
-    tool.name === "browser" || tool.name === "harmony_control" || tool.name === "piora_harmony_check"
+    tool.name === "browser" || tool.name === "harmony_control"
   ))) {
     throw new Error(`Packaged first-party tools do not match the compact coding preset: ${JSON.stringify(core)}`);
   }
@@ -115,17 +117,13 @@ const requiredPaths = [
   "extensions/piora-vision-agent.ts",
   "extensions/piora-automations.ts",
   "extensions/piora-user-input.ts",
-  "extensions/piora-goal.ts",
-  "extensions/piora-plan.ts",
   "extensions/piora-room.ts",
-  "lib/plan-artifact-registry.ts",
   "lib/team-agent-templates.ts",
   "lib/team-prompt-context.ts",
   "lib/team-run-store.ts",
   "lib/team-tool-service.ts",
   ".next/server/app/desktop-pet/page_client-reference-manifest.js",
   ".next/server/app/desktop-clipboard/page_client-reference-manifest.js",
-  ".next/server/app/desktop-screenshot/page_client-reference-manifest.js",
   "node_modules/next/package.json",
   "node_modules/@modelcontextprotocol/sdk/package.json",
   "node_modules/@deveco/deveco-cli/package.json",
@@ -138,6 +136,10 @@ const requiredPaths = [
   "node_modules/@earendil-works/pi-mcp/package.json",
   "node_modules/quickjs-wasi/quickjs.wasm",
   "node_modules/@aws-sdk/client-bedrock-runtime/package.json",
+  "node_modules/jiti/package.json",
+  "node_modules/jiti/lib/jiti.cjs",
+  "node_modules/jiti/dist/jiti.cjs",
+  "node_modules/jiti/dist/babel.cjs",
   "node_modules/@earendil-works/pi-tui/package.json",
   "node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/dark.json",
   "node_modules/rrule/package.json",
@@ -145,6 +147,7 @@ const requiredPaths = [
   "node_modules/node-pty/package.json",
   "node_modules/hypium-driver/package.json",
   "node_modules/mediabunny/package.json",
+  "node_modules/jszip/package.json",
   "node_modules/@sqlite.org/sqlite-wasm/package.json",
   "node_modules/hypium-driver/build/lib/resource/uitest_agent_v1.2.2.so",
   "node_modules/xmldom/package.json",
@@ -666,13 +669,6 @@ async function inspectElectronShell(webRoot, required) {
       throw new Error(`Packaged OpenPets attribution is stale or modified: ${fileName}`);
     }
   }
-  const screenshotAttributionRoot = join(projectRoot, "third_party", "react-screenshots");
-  const packagedScreenshotAttributionRoot = join(resourcesRoot, "licenses", "react-screenshots");
-  for (const fileName of ["LICENSE", "SOURCE.md"]) {
-    const sourceBytes = await readFile(join(screenshotAttributionRoot, fileName));
-    const packagedBytes = await readFile(join(packagedScreenshotAttributionRoot, fileName));
-    if (!sourceBytes.equals(packagedBytes)) throw new Error(`Packaged screenshot attribution is stale: ${fileName}`);
-  }
   for (const fileName of ["LICENSE", "SOURCE.md"]) {
     const source = await readFile(join(projectRoot, "third_party", "mediabunny", fileName));
     const packaged = await readFile(join(resourcesRoot, "licenses", "mediabunny", fileName));
@@ -846,6 +842,19 @@ export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
       throw new Error(`Packaged Pi runtime must contain the reviewed ${expected.name}@${expected.version}.`);
     }
   }
+  const nodeForgeRoot = join(runtimeWebRoot, "node_modules", "node-forge");
+  const nodeForgeManifestPath = join(nodeForgeRoot, "package.json");
+  const nodeForgeRsaPath = join(nodeForgeRoot, "lib", "rsa.js");
+  await Promise.all([assertFile(nodeForgeManifestPath), assertFile(nodeForgeRsaPath)]);
+  const [nodeForgeManifest, nodeForgeRsa] = await Promise.all([
+    readFile(nodeForgeManifestPath, "utf8").then(JSON.parse),
+    readFile(nodeForgeRsaPath),
+  ]);
+  const nodeForgeRsaSha256 = createHash("sha256").update(nodeForgeRsa).digest("hex");
+  if (nodeForgeManifest?.name !== "node-forge" || nodeForgeManifest?.version !== "1.4.0"
+    || nodeForgeRsaSha256 !== nodeForgeRsaPatchedSha256) {
+    throw new Error("Packaged runtime must contain the reviewed node-forge DigestAlgorithm patch.");
+  }
   await verifyPiEmbeddedDependencies(runtimeWebRoot);
   return patchedBundledDependencies;
 }
@@ -866,12 +875,13 @@ export async function verifyPackagedHarmonyHapPreview(runtimeWebRoot) {
   const probe = join(runtimeWebRoot, ".piora-hap-preview-smoke.cjs");
   const fixture = join(runtimeWebRoot, ".piora-hap-preview-fixture.hap");
   await writeFile(probe, `
-const { createJiti } = require("jiti");
 const { createRequire } = require("node:module");
 const { createHash } = require("node:crypto");
 const { readFile, writeFile } = require("node:fs/promises");
 const { join } = require("node:path");
 (async () => {
+  const requireFromPi = createRequire(join(__dirname, "node_modules", "@earendil-works", "pi-coding-agent", "package.json"));
+  const { createJiti } = requireFromPi("jiti");
   const { previewHapArtifact } = await createJiti(__filename, { fsCache: false, moduleCache: false })
     .import("./lib/harmony/runtime/hap-preview.ts");
   const JSZip = require("jszip");
@@ -887,6 +897,7 @@ const { join } = require("node:path");
   process.stdout.write(JSON.stringify({
     preview, originalSha256: createHash("sha256").update(bytes).digest("hex"),
     unchanged: bytes.equals(await readFile(path)),
+    jitiPath: requireFromPi.resolve("jiti"),
     jszipPath: require.resolve("jszip"),
     pakoPath: createRequire(require.resolve("jszip")).resolve("pako"),
   }));
@@ -898,7 +909,7 @@ const { join } = require("node:path");
       env: { ...process.env, NODE_PATH: "" },
     });
     const result = JSON.parse(stdout.trim());
-    for (const dependencyPath of [result.jszipPath, result.pakoPath]) {
+    for (const dependencyPath of [result.jitiPath, result.jszipPath, result.pakoPath]) {
       const path = relative(runtimeWebRoot, dependencyPath);
       if (!path || path === ".." || path.startsWith("../") || path.startsWith("..\\") || isAbsolute(path)) {
         throw new Error("Packaged HAP preview resolved a dependency outside its runtime");
@@ -920,6 +931,20 @@ const { join } = require("node:path");
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
+  await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "PioraHapSigner.java"));
+  for (const relativePath of [
+    "build-profile.json5",
+    "oh-package.json5",
+    "hvigorfile.ts",
+    "hvigor/hvigor-config.json5",
+    "AppScope/app.json5",
+    "entry/build-profile.json5",
+    "entry/oh-package.json5",
+    "entry/hvigorfile.ts",
+    "entry/src/main/module.json5",
+  ]) {
+    await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "signing-project", relativePath));
+  }
   const packagedWebEntries = (await readdir(packagedWebRoot)).sort();
   if (JSON.stringify(packagedWebEntries) !== JSON.stringify(["runtime.asar", "runtime.asar.unpacked", "server.js"])) {
     throw new Error(`Packaged web container must contain the launcher, runtime archive and native sidecar: ${packagedWebEntries.join(", ")}`);
@@ -1009,6 +1034,11 @@ async function main() {
       force: true,
     });
     if (process.platform === "win32") {
+      const { verifyStagedPortableExtractor } = await import("./stage-portable-extractor.mjs");
+      await verifyStagedPortableExtractor(join(dirname(packagedWebRoot), "portable-extractor"));
+      const { verifyPayload } = createRequire(import.meta.url)("./portable-payload.cjs");
+      const expectedVersion = JSON.parse(await readFile(join(projectRoot, "desktop/package.json"), "utf8")).version;
+      await verifyPayload(dirname(dirname(packagedWebRoot)), join(projectRoot, "desktop/build/portable-payload-x64.json"), expectedVersion);
       const { verifyStagedPowerShell } = await import("./stage-powershell.mjs");
       const shellRoot = join(temporaryDirectory, "powershell");
       await cp(join(dirname(packagedWebRoot), "powershell"), shellRoot, { recursive: true });
@@ -1107,12 +1137,6 @@ async function main() {
     });
     if (!companionPageResponse.ok) {
       throw new Error(`Packaged companion page returned ${companionPageResponse.status}`);
-    }
-    const screenshotPageResponse = await fetch(`${origin}/desktop-screenshot`, {
-      headers: { "X-Pi-Desktop-Token": token },
-    });
-    if (!screenshotPageResponse.ok) {
-      throw new Error(`Packaged screenshot page returned ${screenshotPageResponse.status}`);
     }
     if (process.platform === "win32") {
       const headers = { "X-Pi-Desktop-Token": token };

@@ -40,7 +40,7 @@ const SHORTCUT_GROUPS = [
     titleKey: "shortcuts.group.system",
     descriptionKey: "shortcuts.group.systemDescription",
     icon: "sparkles",
-    includes: (id: ApplicationShortcutId) => id.startsWith("companion.") || id === "settings.general" || id === "capture.screenshot",
+    includes: (id: ApplicationShortcutId) => id.startsWith("companion.") || id === "settings.general",
   },
 ] as const;
 
@@ -55,7 +55,6 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
     return () => window.removeEventListener("piora:keyboard-shortcut-registration-error", failed);
   }, []);
   const mac = isMacPlatform(window.piDesktop?.platform);
-  const hasScreenshot = Boolean(window.piDesktop?.screenshot);
 
   const capture = (id: ApplicationShortcutId, event: ReactKeyboardEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -110,7 +109,7 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
       </section> : null}
       <div className={styles.groups}>
         {SHORTCUT_GROUPS.map((group) => {
-          const items = APPLICATION_SHORTCUTS.filter((item) => group.includes(item.id) && (item.id !== "capture.screenshot" || hasScreenshot));
+          const items = APPLICATION_SHORTCUTS.filter((item) => group.includes(item.id));
           return (
             <section className={styles.group} key={group.id} aria-labelledby={`shortcut-group-${group.id}`}>
               <div className={styles.groupHeading}>
@@ -128,7 +127,7 @@ export function ShortcutSettings({ globalShortcutEnabled, onGlobalShortcutToggle
                   const formatted = formatShortcutBinding(bindings[item.id], mac);
                   const keys = formatted ? formatted.split("+") : [];
                   return (
-                    <div data-settings-id={item.id === "harmony.screenshot" ? "shortcuts.deviceScreenshot" : item.id === "capture.screenshot" ? "shortcuts.screenshot" : item.titleKey === "shortcuts.commandPalette" ? "shortcuts.palette" : item.titleKey === "commands.searchChats" ? "shortcuts.search" : item.id === "composer.voiceInput" ? "shortcuts.voice" : undefined} className={styles.row} data-modified={isChanged || undefined} key={item.id}>
+                    <div data-settings-id={item.id === "harmony.screenshot" ? "shortcuts.deviceScreenshot" : item.titleKey === "shortcuts.commandPalette" ? "shortcuts.palette" : item.titleKey === "commands.searchChats" ? "shortcuts.search" : item.id === "composer.voiceInput" ? "shortcuts.voice" : undefined} className={styles.row} data-modified={isChanged || undefined} key={item.id}>
                       <div className={styles.copy}>
                         <strong>{t(item.titleKey)}{isChanged ? <span className={styles.modifiedDot} aria-label={t("shortcuts.modified")} /> : null}</strong>
                         <span>{t(item.descriptionKey)}</span>

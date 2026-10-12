@@ -7,4 +7,4 @@ if (extra.length) throw new Error('Usage: node scripts/verify-harmony-mirror-art
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 await verifyStagedHarmonyMirrorRelease({ projectRoot,
   resourcesDirectory: resolve(resources ?? resolve(projectRoot, 'third_party/harmony-tools/windows-x64')) });
-console.log('Verified ordinary HAP source, same-run provenance, official signature receipt, real-device acceptance and SOURCE.md.');
+console.log('Verified the public unsigned HAP source, private acceptance receipt, real-device evidence and SOURCE.md.');

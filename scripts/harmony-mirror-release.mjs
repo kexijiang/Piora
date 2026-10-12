@@ -1,7 +1,9 @@
-import { createHash, randomUUID, X509Certificate } from 'node:crypto';
+import { createHash, X509Certificate } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { copyFile, lstat, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { basename, dirname, join, resolve } from 'node:path';
+import { copyFile, lstat, mkdir, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+
+import { decryptDevEcoProtectedPassword, signHapWithJava } from '../lib/harmony/runtime/deveco-password.mjs';
 
 import {
   ARTIFACT_FILE,
@@ -15,18 +17,12 @@ export const MIRROR_HAP_FILE = 'OHScrcpyServer.hap';
 export const MIRROR_SIGNATURE_FILE = 'harmony-mirror-signature-verification.json';
 export const MIRROR_SOURCE_FILE = 'SOURCE.md';
 export const MIRROR_BUNDLE = 'com.ohos.scrcpy.server';
-const OFFICIAL_SAMPLE_ALIAS = 'openharmony application release';
-const OFFICIAL_PROFILE_ALIAS = 'openharmony application profile release';
-const OFFICIAL_APP_CA_ALIAS = 'openharmony application ca';
-const OFFICIAL_ROOT_CA_CERT_ALIAS = 'rootcacert';
-const OFFICIAL_SUB_CA_CERT_ALIAS = 'cacert';
-const OFFICIAL_APP_CA_SUBJECT = 'C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN=OpenHarmony Application CA';
-const OFFICIAL_APP_SUBJECT = 'C=CN,O=OpenHarmony,OU=OpenHarmony Team,CN=OpenHarmony Application Release';
-const APPLICATION_CERT_VALIDITY_DAYS = 3650;
-// This is the documented password for the public OpenHarmony SDK sample key.
-// It is not a project or user credential. The key itself is loaded from the
-// installed SDK and is never copied into the repository or workflow artifact.
-const OFFICIAL_SAMPLE_PASSWORD = '123456';
+const DEVICE_SIGNING_DESCRIPTOR_ENV = 'PIORA_HARMONY_SIGNING_CONFIG_PATH';
+const DEVICE_SIGNING_NAME = 'pioraHarmonyDevice';
+const DEVICE_SIGNING_ALIAS = 'debugKey';
+const DEVICE_SIGNING_ALGORITHM = 'SHA256withECDSA';
+const HUAWEI_DEVELOPER_CA = 'CN=Huawei CBG Developer Relations CA G2';
+const HUAWEI_ROOT_CA = 'CN=Huawei CBG Root CA G2';
 const MAX_TOOL_OUTPUT = 4 * 1024 * 1024;
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = message => { throw new Error(`Harmony mirror release: ${message}`); };
@@ -41,6 +37,35 @@ async function regularFile(path, maximum = 256 * 1024 * 1024) {
   const after = await lstat(path);
   if (before.size !== bytes.length || after.size !== before.size || after.mtimeMs !== before.mtimeMs || after.ino !== before.ino) fail(`${basename(path)} changed while being measured`);
   return bytes;
+}
+
+export async function freezeRegularFile(source, target, maximum = 256 * 1024 * 1024) {
+  let sourceBytes;
+  let frozenBytes;
+  try {
+    sourceBytes = await regularFile(source, maximum);
+    await writeFile(target, sourceBytes, { flag: 'wx', mode: 0o600 });
+    frozenBytes = await regularFile(target, maximum);
+    if (!sourceBytes.equals(frozenBytes)) fail(`frozen ${basename(target)} differs from its measured input`);
+    return { size: frozenBytes.length, sha256: hash(frozenBytes) };
+  } finally {
+    sourceBytes?.fill(0);
+    frozenBytes?.fill(0);
+  }
+}
+
+export async function verifyFrozenRegularFile(path, expected, maximum = 256 * 1024 * 1024) {
+  let bytes;
+  try {
+    bytes = await regularFile(path, maximum);
+    const actual = { size: bytes.length, sha256: hash(bytes) };
+    if (!expected || actual.size !== expected.size || actual.sha256 !== expected.sha256) {
+      fail(`frozen ${basename(path)} changed after measurement`);
+    }
+    return actual;
+  } finally {
+    bytes?.fill(0);
+  }
 }
 
 async function replaceRegularFile(source, target) {
@@ -71,10 +96,28 @@ function runTool(label, command, args, options = {}) {
   });
   const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`.trim();
   if (result.error || result.status !== 0) {
-    const detail = output.slice(-8_000).replaceAll(OFFICIAL_SAMPLE_PASSWORD, '<sdk-sample-password>');
+    let detail = output.slice(-8_000)
+      .replace(/(-keystorePwd|-keyPwd)\s+\S+/gi, '$1 <redacted>');
+    if (options.sensitiveOutput) detail = detail.replace(/[A-Za-z0-9_+/=-]{24,}/g, '<redacted>');
+    for (const secret of options.redact ?? []) {
+      if (typeof secret === 'string' && secret.length >= 8) detail = detail.replaceAll(secret, '<redacted>');
+    }
     fail(`${label} failed${result.status === null ? '' : ` with exit ${result.status}`}${detail ? `\n${detail}` : ''}`);
   }
   return output;
+}
+
+export function isDevEcoProtectedPassword(value) {
+  if (typeof value !== 'string' || value.length < 66 || value.length > 544
+    || value.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(value)) return false;
+  const bytes = Buffer.from(value, 'hex');
+  if (bytes.length < 33) return false;
+  const encryptedLength = bytes.readUInt32BE(0);
+  return encryptedLength >= 17 && encryptedLength <= 272 && bytes.length - 4 - encryptedLength === 12;
+}
+
+export function extractHarmonyUdids(output) {
+  return [...new Set(String(output).match(/(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])/gi) ?? [])];
 }
 
 function pathFromEnvironment(environment, name) {
@@ -96,14 +139,10 @@ export async function resolveHarmonyReleaseTools(environment = process.env) {
     sdkDefault,
     node: pathFromEnvironment(environment, 'HARMONY_NODE_PATH') ?? join(studioRoot, 'tools', 'node', 'node.exe'),
     java: pathFromEnvironment(environment, 'HARMONY_JAVA_PATH') ?? join(studioRoot, 'jbr', 'bin', 'java.exe'),
-    keytool: pathFromEnvironment(environment, 'HARMONY_KEYTOOL_PATH') ?? join(studioRoot, 'jbr', 'bin', 'keytool.exe'),
     hvigor: pathFromEnvironment(environment, 'HARMONY_HVIGOR_PATH') ?? join(studioRoot, 'tools', 'hvigor', 'bin', 'hvigorw.js'),
     ohpm: pathFromEnvironment(environment, 'HARMONY_OHPM_PATH') ?? join(studioRoot, 'tools', 'ohpm', 'bin', 'pm-cli.js'),
     hdc: pathFromEnvironment(environment, 'HARMONY_HDC_PATH') ?? join(toolchains, 'hdc.exe'),
     signTool: join(library, 'hap-sign-tool.jar'),
-    keyStore: join(library, 'OpenHarmony.p12'),
-    profileCertificate: join(library, 'OpenHarmonyProfileRelease.pem'),
-    profileTemplate: join(library, 'UnsgnedReleasedProfileTemplate.json'),
     sdkMetadata: join(sdkDefault, 'sdk-pkg.json'),
   };
   for (const [name, path] of Object.entries(tools)) {
@@ -113,11 +152,6 @@ export async function resolveHarmonyReleaseTools(environment = process.env) {
   }
   const metadata = await jsonFile(tools.sdkMetadata);
   if (metadata.data?.apiVersion !== '26' || metadata.data?.platformVersion !== '26.0.0') fail('runner must provide the reviewed HarmonyOS API 26 SDK');
-  const profileCertificates = pemCertificates(await regularFile(tools.profileCertificate, 1024 * 1024));
-  const profileLeaves = profileCertificates.filter(certificate => certificate.subject.includes('CN=OpenHarmony Application Profile Release'));
-  const now = Date.now();
-  if (profileLeaves.length !== 1 || new Date(profileLeaves[0].validFrom).getTime() > now
-    || new Date(profileLeaves[0].validTo).getTime() <= now) fail('SDK example profile certificate is missing, ambiguous or not currently valid');
   return { ...tools, metadata };
 }
 
@@ -133,44 +167,6 @@ function releaseEnvironment(tools, environment = process.env) {
   };
 }
 
-export function createApplicationCertificateArguments({ signTool, keyStore, rootCertificate, subCertificate, outputCertificate }) {
-  return ['-jar', signTool, 'generate-app-cert',
-    '-keyAlias', OFFICIAL_SAMPLE_ALIAS, '-keyPwd', OFFICIAL_SAMPLE_PASSWORD,
-    '-issuer', OFFICIAL_APP_CA_SUBJECT, '-issuerKeyAlias', OFFICIAL_APP_CA_ALIAS,
-    '-issuerKeyPwd', OFFICIAL_SAMPLE_PASSWORD, '-subject', OFFICIAL_APP_SUBJECT,
-    '-validity', String(APPLICATION_CERT_VALIDITY_DAYS), '-signAlg', 'SHA256withECDSA',
-    '-rootCaCertFile', rootCertificate, '-subCaCertFile', subCertificate,
-    '-keystoreFile', keyStore, '-keystorePwd', OFFICIAL_SAMPLE_PASSWORD,
-    '-outForm', 'certChain', '-outFile', outputCertificate, '-pwdInputMode', '0'];
-}
-
-export function createOrdinaryReleaseProfile({ distributionCertificate, now = Date.now(), uuid = randomUUID() }) {
-  const notBefore = Math.floor(now / 1000) - 60 * 60;
-  const notAfter = notBefore + 5 * 365 * 24 * 60 * 60;
-  const normalizedDistributionCertificate = distributionCertificate
-    .replaceAll('\r\n', '\n')
-    .replaceAll('\r', '\n')
-    .replace(/\n*$/, '\n');
-  return {
-    'version-name': '2.0.0',
-    'version-code': 2,
-    'app-distribution-type': 'os_integration',
-    uuid,
-    validity: { 'not-before': notBefore, 'not-after': notAfter },
-    type: 'release',
-    'bundle-info': {
-      'developer-id': 'OpenHarmony',
-      'distribution-certificate': normalizedDistributionCertificate,
-      'bundle-name': MIRROR_BUNDLE,
-      apl: 'normal',
-      'app-feature': 'hos_normal_app',
-    },
-    acls: { 'allowed-acls': [] },
-    permissions: { 'restricted-permissions': [] },
-    issuer: 'pki_internal',
-  };
-}
-
 function pemCertificateBlocks(bytes) {
   return bytes.toString('utf8').match(/-----BEGIN CERTIFICATE-----[\s\S]+?-----END CERTIFICATE-----/g) ?? [];
 }
@@ -179,71 +175,161 @@ function pemCertificates(bytes) {
   return pemCertificateBlocks(bytes).map(value => new X509Certificate(value));
 }
 
+function insideDirectory(root, candidate) {
+  const path = relative(root, candidate);
+  return path === '' || (!path.startsWith('..') && !isAbsolute(path));
+}
+
+function certificateIsCurrent(certificate, now) {
+  return new Date(certificate.validFrom).getTime() <= now && new Date(certificate.validTo).getTime() > now;
+}
+
+function validateHuaweiDeveloperChain(certificates, now = Date.now()) {
+  const leaves = certificates.filter(certificate => !certificate.ca && certificate.issuer.includes(HUAWEI_DEVELOPER_CA));
+  const intermediates = certificates.filter(certificate => certificate.ca && certificate.subject.includes(HUAWEI_DEVELOPER_CA));
+  const roots = certificates.filter(certificate => certificate.ca && certificate.subject.includes(HUAWEI_ROOT_CA)
+    && certificate.issuer === certificate.subject);
+  const [leaf] = leaves;
+  const [intermediate] = intermediates;
+  const [root] = roots;
+  if (certificates.length !== 3 || leaves.length !== 1 || intermediates.length !== 1 || roots.length !== 1
+    || leaf.issuer !== intermediate.subject || intermediate.issuer !== root.subject
+    || !leaf.verify(intermediate.publicKey) || !intermediate.verify(root.publicKey) || !root.verify(root.publicKey)
+    || !certificates.every(certificate => certificateIsCurrent(certificate, now))) {
+    fail('DevEco application certificate is not a current Huawei developer certificate chain');
+  }
+  return { leaf, intermediate, root };
+}
+
+export async function loadDeviceSigningConfig(environment = process.env, now = Date.now()) {
+  const descriptorPath = pathFromEnvironment(environment, DEVICE_SIGNING_DESCRIPTOR_ENV);
+  const userProfile = pathFromEnvironment(environment, 'USERPROFILE');
+  if (!descriptorPath || !userProfile) fail(`${DEVICE_SIGNING_DESCRIPTOR_ENV} and USERPROFILE are required on the dedicated runner`);
+  const configRoot = await realpath(join(userProfile, '.ohos', 'config'));
+  const actualDescriptorPath = await realpath(descriptorPath);
+  if (!insideDirectory(configRoot, actualDescriptorPath)) fail('DevEco signing descriptor must stay inside the runner user profile');
+  const descriptor = await jsonFile(actualDescriptorPath, 64 * 1024);
+  const materialKeys = ['certpath', 'keyAlias', 'keyPassword', 'profile', 'signAlg', 'storeFile', 'storePassword'];
+  if (!exactKeys(descriptor, ['schemaVersion', 'name', 'type', 'material']) || descriptor.schemaVersion !== 1
+    || descriptor.name !== DEVICE_SIGNING_NAME || descriptor.type !== 'HarmonyOS'
+    || !exactKeys(descriptor.material, materialKeys) || descriptor.material.keyAlias !== DEVICE_SIGNING_ALIAS
+    || descriptor.material.signAlg !== DEVICE_SIGNING_ALGORITHM) fail('DevEco signing descriptor has an unsupported shape');
+  for (const field of ['keyPassword', 'storePassword']) {
+    const value = descriptor.material[field];
+    if (!isDevEcoProtectedPassword(value)) {
+      fail('DevEco signing descriptor contains an invalid protected password');
+    }
+  }
+  const resolvedMaterial = { ...descriptor.material };
+  for (const [field, maximum] of [['certpath', 1024 * 1024], ['profile', 2 * 1024 * 1024], ['storeFile', 2 * 1024 * 1024]]) {
+    if (typeof descriptor.material[field] !== 'string' || !isAbsolute(descriptor.material[field])) {
+      fail(`DevEco signing descriptor ${field} must be absolute`);
+    }
+    const path = await realpath(descriptor.material[field]);
+    if (!insideDirectory(configRoot, path)) fail(`DevEco signing descriptor ${field} leaves the runner user profile`);
+    await regularFile(path, maximum);
+    resolvedMaterial[field] = path;
+  }
+  const certificates = pemCertificates(await regularFile(resolvedMaterial.certpath, 1024 * 1024));
+  const chain = validateHuaweiDeveloperChain(certificates, now);
+  return {
+    descriptorPath: actualDescriptorPath,
+    signingConfig: { name: descriptor.name, type: descriptor.type, material: resolvedMaterial },
+    certificate: chain.leaf,
+    secrets: [resolvedMaterial.keyPassword, resolvedMaterial.storePassword],
+  };
+}
+
 function validateVerifiedProfile(result, expectedCertificate, now = Date.now()) {
   if (result?.verifiedPassed !== true || result.message !== 'OK') fail('official verify-profile did not pass');
   const profile = result.content;
   const info = profile?.['bundle-info'];
-  if (profile?.type !== 'release' || profile?.['app-distribution-type'] !== 'os_integration'
+  if (profile?.type !== 'debug' || profile?.issuer !== 'app_gallery' || profile?.['app-distribution-type'] !== undefined
     || info?.['bundle-name'] !== MIRROR_BUNDLE || info?.apl !== 'normal' || info?.['app-feature'] !== 'hos_normal_app') {
-    fail('verified profile is not the ordinary release identity');
+    fail('verified profile is not the expected ordinary debug identity');
   }
   const acls = profile.acls?.['allowed-acls'];
   if ((acls !== undefined && (!Array.isArray(acls) || acls.length !== 0))
-    || !Array.isArray(profile.permissions?.['restricted-permissions'])
-    || profile.permissions['restricted-permissions'].length !== 0
+    || (profile.permissions?.['restricted-permissions'] !== undefined
+      && (!Array.isArray(profile.permissions['restricted-permissions']) || profile.permissions['restricted-permissions'].length !== 0))
     || profile['app-privilege-capabilities'] !== undefined) fail('verified profile contains privileges or ACLs');
+  const debug = profile['debug-info'];
+  if (debug?.['device-id-type'] !== 'udid' || !Array.isArray(debug?.['device-ids'])
+    || debug['device-ids'].length < 1 || debug['device-ids'].length > 256
+    || debug['device-ids'].some(value => typeof value !== 'string' || !/^[0-9a-f]{64}$/i.test(value))
+    || new Set(debug['device-ids']).size !== debug['device-ids'].length) fail('verified profile has no bounded device allow-list');
   if (!Number.isSafeInteger(profile.validity?.['not-before']) || !Number.isSafeInteger(profile.validity?.['not-after'])
-    || profile.validity['not-before'] * 1000 > now || profile.validity['not-after'] * 1000 <= now) fail('verified profile is not currently valid');
+    || profile.validity['not-before'] * 1000 > now || profile.validity['not-after'] * 1000 <= now
+    || profile.validity['not-before'] * 1000 < new Date(expectedCertificate.validFrom).getTime()
+    || profile.validity['not-after'] * 1000 > new Date(expectedCertificate.validTo).getTime()) {
+    fail('verified profile is not currently valid or exceeds its development certificate');
+  }
   let embedded;
-  try { embedded = new X509Certificate(info['distribution-certificate']); } catch { fail('verified profile has an invalid distribution certificate'); }
-  if (!embedded.raw.equals(expectedCertificate.raw)) fail('profile distribution certificate differs from the application signing leaf');
+  try { embedded = new X509Certificate(info['development-certificate']); } catch { fail('verified profile has an invalid development certificate'); }
+  if (!embedded.raw.equals(expectedCertificate.raw)) fail('profile development certificate differs from the application signing leaf');
+  if (typeof info['developer-id'] !== 'string' || info['developer-id'].length < 1 || info['developer-id'].length > 256) {
+    fail('verified profile has no bounded developer identity');
+  }
   return profile;
 }
 
 export async function readAndVerifySignatureReceipt(resourcesDirectory, expectedOrigin, options = {}) {
   const receipt = await jsonFile(join(resourcesDirectory, MIRROR_SIGNATURE_FILE));
-  const expectedKeys = ['schemaVersion', 'kind', 'origin', 'artifact', 'sdk', 'signing', 'verification', 'deviceAcceptance'].sort();
+  const expectedKeys = ['schemaVersion', 'kind', 'origin', 'artifact', 'acceptanceArtifact', 'sdk', 'signing', 'verification', 'deviceAcceptance'].sort();
   if (JSON.stringify(Object.keys(receipt).sort()) !== JSON.stringify(expectedKeys)
-    || receipt.schemaVersion !== 1 || receipt.kind !== 'ordinary-mirror-signature-verification'
+    || receipt.schemaVersion !== 2 || receipt.kind !== 'private-device-acceptance-verification'
     || JSON.stringify(receipt.origin) !== JSON.stringify(expectedOrigin)) fail('signature receipt has an unsupported shape or CI identity');
   const hap = await regularFile(join(resourcesDirectory, MIRROR_HAP_FILE));
   if (!exactKeys(receipt.artifact, ['filename', 'size', 'sha256'])
-    || receipt.artifact.filename !== MIRROR_HAP_FILE || receipt.artifact.size !== hap.length || receipt.artifact.sha256 !== hash(hap)) fail('signature receipt does not bind the staged HAP');
+    || receipt.artifact.filename !== MIRROR_HAP_FILE || receipt.artifact.size !== hap.length || receipt.artifact.sha256 !== hash(hap)) fail('signature receipt does not bind the public unsigned HAP');
+  if (!exactKeys(receipt.acceptanceArtifact, ['size', 'sha256', 'sourceSha256'])
+    || !boundedInteger(receipt.acceptanceArtifact.size, 1, 256 * 1024 * 1024)
+    || !/^[0-9a-f]{64}$/.test(receipt.acceptanceArtifact.sha256 ?? '')
+    || receipt.acceptanceArtifact.sourceSha256 !== receipt.artifact.sha256
+    || receipt.acceptanceArtifact.sha256 === receipt.artifact.sha256) {
+    fail('signature receipt does not bind a separate private acceptance HAP to the public unsigned HAP');
+  }
   if (!exactKeys(receipt.sdk, ['apiVersion', 'platformVersion', 'toolVersion', 'releaseType', 'signToolSha256'])
     || receipt.sdk.apiVersion !== '26' || receipt.sdk.platformVersion !== '26.0.0'
     || !/^26\.0\.0\.\d+$/.test(receipt.sdk.toolVersion ?? '') || typeof receipt.sdk.releaseType !== 'string'
     || receipt.sdk.releaseType.length < 1 || receipt.sdk.releaseType.length > 32
     || !/^[0-9a-f]{64}$/.test(receipt.sdk.signToolSha256 ?? '')) fail('signature receipt does not identify the reviewed API 26 tool');
-  if (!exactKeys(receipt.signing, ['mode', 'material', 'alias', 'profileAlias', 'compatibleVersion', 'signCode'])
-    || receipt.signing.mode !== 'localSign' || receipt.signing.material !== 'OpenHarmony SDK release example'
-    || receipt.signing.alias !== OFFICIAL_SAMPLE_ALIAS || receipt.signing.profileAlias !== OFFICIAL_PROFILE_ALIAS
-    || receipt.signing.compatibleVersion !== 26 || receipt.signing.signCode !== true) fail('signature receipt describes an unsupported signing flow');
+  if (!exactKeys(receipt.signing, ['mode', 'material', 'alias', 'profileType', 'compatibleVersion', 'signCode', 'distribution'])
+    || receipt.signing.mode !== 'localSign' || receipt.signing.material !== 'private DevEco acceptance identity'
+    || receipt.signing.alias !== DEVICE_SIGNING_ALIAS || receipt.signing.profileType !== 'debug'
+    || receipt.signing.compatibleVersion !== 26 || receipt.signing.signCode !== true
+    || receipt.signing.distribution !== 'public artifact remains unsigned') fail('signature receipt describes an unsupported signing flow');
   const certificate = receipt.verification?.certificate;
   const certificateFrom = typeof certificate?.validFrom === 'string' ? new Date(certificate.validFrom) : new Date(Number.NaN);
   const certificateTo = typeof certificate?.validTo === 'string' ? new Date(certificate.validTo) : new Date(Number.NaN);
   const profile = receipt.verification?.profile;
   const now = Date.now();
   if (!exactKeys(receipt.verification, ['verifyApp', 'verifyProfile', 'certificate', 'profile'])
-    || !exactKeys(certificate, ['subject', 'issuer', 'sha256Fingerprint', 'validFrom', 'validTo', 'currentlyValid', 'chainLength', 'chainSha256'])
-    || !exactKeys(profile, ['type', 'distributionType', 'bundleName', 'apl', 'appFeature', 'notBefore', 'notAfter', 'aclCount', 'restrictedPermissionCount'])
+    || !exactKeys(certificate, ['issuer', 'trustRoot', 'sha256Fingerprint', 'validFrom', 'validTo', 'currentlyValid', 'chainLength', 'chainSha256'])
+    || !exactKeys(profile, ['type', 'issuer', 'bundleName', 'apl', 'appFeature', 'notBefore', 'notAfter', 'aclCount',
+      'restrictedPermissionCount', 'developerIdSha256', 'deviceIdType', 'deviceCount', 'boundDeviceSha256'])
     || receipt.verification.verifyApp !== true || receipt.verification.verifyProfile !== true
-    || profile.type !== 'release' || profile.distributionType !== 'os_integration'
+    || profile.type !== 'debug' || profile.issuer !== 'app_gallery'
+    || profile.deviceIdType !== 'udid' || !boundedInteger(profile.deviceCount, 1, 256)
     || receipt.verification?.profile?.bundleName !== MIRROR_BUNDLE || receipt.verification?.profile?.apl !== 'normal'
     || receipt.verification?.profile?.appFeature !== 'hos_normal_app' || receipt.verification?.profile?.aclCount !== 0
     || profile.restrictedPermissionCount !== 0 || !boundedInteger(profile.notBefore, 0, 9_007_199_254_740)
     || !boundedInteger(profile.notAfter, profile.notBefore + 1, 9_007_199_254_740)
     || profile.notBefore * 1000 > now || profile.notAfter * 1000 <= now
-    || certificate.currentlyValid !== true || typeof certificate.subject !== 'string'
-    || !certificate.subject.includes('CN=OpenHarmony Application Release') || typeof certificate.issuer !== 'string'
+    || !/^[0-9a-f]{64}$/.test(profile.developerIdSha256 ?? '') || !/^[0-9a-f]{64}$/.test(profile.boundDeviceSha256 ?? '')
+    || certificate.currentlyValid !== true || certificate.issuer !== 'Huawei CBG Developer Relations CA G2'
+    || certificate.trustRoot !== 'Huawei CBG Root CA G2'
     || !/^[0-9A-F:]{95}$/.test(certificate.sha256Fingerprint ?? '')
-    || !/^[0-9a-f]{64}$/.test(certificate.chainSha256 ?? '') || !boundedInteger(certificate.chainLength, 2, 16)
+    || !/^[0-9a-f]{64}$/.test(certificate.chainSha256 ?? '') || certificate.chainLength !== 3
     || Number.isNaN(certificateFrom.getTime()) || Number.isNaN(certificateTo.getTime())
     || certificateFrom.toISOString() !== certificate.validFrom || certificateTo.toISOString() !== certificate.validTo
-    || certificateFrom.getTime() > now || certificateTo.getTime() <= now) fail('official signature verification receipt is incomplete');
+    || certificateFrom.getTime() > now || certificateTo.getTime() <= now
+    || profile.notBefore * 1000 < certificateFrom.getTime()
+    || profile.notAfter * 1000 > certificateTo.getTime()) fail('official signature verification receipt is incomplete');
   if (options.requireDevice) {
     const device = receipt.deviceAcceptance;
     const acceptedAt = typeof device?.acceptedAt === 'string' ? new Date(device.acceptedAt) : new Date(Number.NaN);
-    if (!exactKeys(device, ['passed', 'acceptedAt', 'serialSha256', 'installVerified', 'launchVerified', 'consentVerified', 'video', 'screenshot', 'cleanup'])
+    if (!exactKeys(device, ['passed', 'acceptedAt', 'serialSha256', 'udidSha256', 'acceptedHapSha256', 'installVerified', 'launchVerified', 'consentVerified', 'video', 'screenshot', 'cleanup'])
       || !exactKeys(device?.video, ['codec', 'width', 'height', 'fps', 'configurationPackets', 'frames', 'keyframes', 'bytes'])
       || !exactKeys(device?.screenshot, ['png', 'size', 'sha256', 'width', 'height'])
       || !exactKeys(device?.cleanup, ['forwardRemoved', 'packageAbsent'])
@@ -258,7 +344,10 @@ export async function readAndVerifySignatureReceipt(resourcesDirectory, expected
       || !/^[0-9a-f]{64}$/.test(device.screenshot.sha256 ?? '')
       || !boundedInteger(device.screenshot.width, 100, 32_768) || !boundedInteger(device.screenshot.height, 100, 32_768)
       || device.cleanup.forwardRemoved !== true || device.cleanup.packageAbsent !== true
-      || !/^[0-9a-f]{64}$/.test(device.serialSha256 ?? '')) fail('real-device acceptance is missing or incomplete');
+      || !/^[0-9a-f]{64}$/.test(device.serialSha256 ?? '') || device.udidSha256 !== profile.boundDeviceSha256
+      || device.acceptedHapSha256 !== receipt.acceptanceArtifact.sha256) {
+      fail('real-device acceptance is missing or incomplete');
+    }
   } else if (receipt.deviceAcceptance !== null) fail('pre-device signature receipt must not claim hardware acceptance');
   return receipt;
 }
@@ -267,15 +356,16 @@ export function createHarmonyMirrorSourceNote(manifest, receipt) {
   const lines = [
     '# Piora Harmony mirror release resource',
     '',
-    'This directory was staged by the tagged GitHub Actions run recorded below. The HAP was built from `third_party/harmony-mirror` in an isolated workspace, signed with the public OpenHarmony SDK release example identity, verified with the same API 26 SDK `verify-app` and `verify-profile` commands, and accepted on the dedicated HDC development phone before desktop packaging.',
+    'This directory was staged by the tagged GitHub Actions run recorded below. The public release-mode HAP was built from `third_party/harmony-mirror` in an isolated workspace and intentionally remains unsigned. The same job created a separate private DevEco-signed copy, verified it with the API 26 SDK, accepted it on the registered HDC phone, and deleted it without uploading or packaging it.',
     '',
     `- Repository: \`${manifest.origin.repository}\``,
     `- Commit: \`${manifest.origin.commit}\``,
     `- Workflow: \`${manifest.origin.workflowRef}\``,
     `- Run: \`${manifest.origin.runId}\` (attempt \`${manifest.origin.runAttempt}\`)`,
     `- Source tree SHA-256: \`${manifest.sourceTreeSha256}\``,
-    `- HAP SHA-256: \`${manifest.artifact.sha256}\``,
-    `- HAP size: \`${manifest.artifact.size}\` bytes`,
+    `- Public unsigned HAP SHA-256: \`${manifest.artifact.sha256}\``,
+    `- Public unsigned HAP size: \`${manifest.artifact.size}\` bytes`,
+    `- Private acceptance HAP SHA-256: \`${receipt.acceptanceArtifact.sha256}\``,
     `- Component: \`${manifest.artifact.component.bundleName}\` \`${manifest.artifact.component.versionName}\` (\`${manifest.artifact.component.versionCode}\`)`,
     `- SDK: \`${receipt.sdk.toolVersion}\``,
     `- Signing receipt: \`${MIRROR_SIGNATURE_FILE}\``,
@@ -283,7 +373,7 @@ export function createHarmonyMirrorSourceNote(manifest, receipt) {
     `- Native H.264 video evidence: \`${receipt.deviceAcceptance.video.width}x${receipt.deviceAcceptance.video.height}@${receipt.deviceAcceptance.video.fps}\`, \`${receipt.deviceAcceptance.video.configurationPackets}\` configuration packet(s), \`${receipt.deviceAcceptance.video.frames}\` frame(s), \`${receipt.deviceAcceptance.video.keyframes}\` IDR frame(s), \`${receipt.deviceAcceptance.video.bytes}\` bytes`,
     `- Screenshot evidence: \`${receipt.deviceAcceptance.screenshot.width}x${receipt.deviceAcceptance.screenshot.height}\`, \`${receipt.deviceAcceptance.screenshot.size}\` bytes, SHA-256 \`${receipt.deviceAcceptance.screenshot.sha256}\``,
     '',
-    'The SDK example identity is intended for HDC development devices and is not an AppGallery distribution identity. No keystore, private key, password, certificate output, signed profile output, device serial, or runner path is included. The checked receipt contains only public fingerprints, hashes, bounded metadata, and the hashed device identity.',
+    'The public HAP contains no signing profile or device allow-list. Piora signs a private local copy with the user\'s DevEco-managed profile before installation and keeps that copy in the user data directory. The CI private acceptance HAP, profile extraction, signing descriptor, keystore, passwords, raw developer id, device ids, device serial and runner paths are never staged or uploaded. The receipt contains only certificate fingerprints, hashes, bounded metadata, counts and hashed device identity.',
     '',
     'The retained HongJing-derived editable source and MIT notice are in `third_party/harmony-mirror`. The same-run provenance manifest binds the exact source, artifact, repository, commit, workflow, run and attempt; it does not infer provenance for any previously bundled binary.',
     '',
@@ -306,147 +396,173 @@ export async function readAndVerifySourceNote(resourcesDirectory, manifest, rece
 
 /** Build/sign/verify/record in one GitHub Actions job on the dedicated runner. */
 export async function buildHarmonyMirrorRelease({ projectRoot, workspace, outputDirectory, environment = process.env, now = Date.now() }) {
+  if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-beta\.(?:0|[1-9]\d*)$/.test(environment.GITHUB_REF_NAME ?? '')) {
+    fail('device-bound DevEco signing is preview-only; stable releases require an AGC release certificate and profile');
+  }
   const origin = readGitHubBuildOrigin(projectRoot, environment);
   const tools = await resolveHarmonyReleaseTools(environment);
+  const signing = await loadDeviceSigningConfig(environment, now);
+  const acceptedDeviceTarget = typeof environment.HARMONY_SERIAL === 'string' ? environment.HARMONY_SERIAL.trim() : '';
+  if (acceptedDeviceTarget.length < 8 || acceptedDeviceTarget.length > 256 || /\s/.test(acceptedDeviceTarget)) {
+    fail('HARMONY_SERIAL must identify the registered acceptance device during signing');
+  }
   await prepareHarmonyMirror(workspace, { origin });
   await mkdir(outputDirectory, { recursive: false });
   const env = releaseEnvironment(tools, environment);
   runTool('ohpm dependency resolution', tools.node, [tools.ohpm, 'install', '--all'], { cwd: workspace, env, timeout: 5 * 60_000 });
-  runTool('Hvigor API 26 release build', tools.node,
-    [tools.hvigor, 'clean', '--mode', 'module', '-p', 'product=default', '-p', 'buildMode=release', 'assembleHap', '--no-daemon', '--no-parallel'],
-    { cwd: workspace, env, timeout: 20 * 60_000 });
+  try {
+    runTool('Hvigor API 26 unsigned release build', tools.node,
+      [tools.hvigor, 'clean', '--mode', 'module', '-p', 'product=default', '-p', 'buildMode=release', 'assembleHap', '--no-daemon', '--no-parallel'],
+      { cwd: workspace, env, timeout: 20 * 60_000 });
+  } finally {
+    await rm(join(workspace, '.hvigor'), { recursive: true, force: true });
+  }
 
   const outputRoot = join(workspace, 'entry', 'build', 'default', 'outputs', 'default');
   const unsignedHap = join(outputRoot, 'entry-default-unsigned.hap');
-  const signedHap = join(outputRoot, 'entry-default-signed.hap');
-  await regularFile(unsignedHap);
-  const signingDirectory = join(workspace, '.signing');
-  await mkdir(signingDirectory, { recursive: false });
-  const template = await jsonFile(tools.profileTemplate);
-  const templateDistributionCertificate = template?.['bundle-info']?.['distribution-certificate'];
-  let templateCertificate;
-  try { templateCertificate = new X509Certificate(templateDistributionCertificate); } catch { fail('SDK release template lacks a valid application certificate'); }
-  if (!templateCertificate.subject.includes('CN=OpenHarmony Application Release')
-    || new Date(templateCertificate.validFrom).getTime() > now || new Date(templateCertificate.validTo).getTime() <= now) fail('SDK example application certificate is not currently valid');
-  const applicationCertificate = join(signingDirectory, 'application-release.cer');
-  const rootCertificatePath = join(signingDirectory, 'application-root-ca.cer');
-  const subCertificatePath = join(signingDirectory, 'application-ca.cer');
-  const unsignedProfile = join(signingDirectory, 'ordinary-release-profile.json');
-  const signedProfile = join(signingDirectory, 'ordinary-release-profile.p7b');
-
-  const certificateExport = alias => ['-exportcert', '-rfc', '-alias', alias, '-keystore', tools.keyStore,
-    '-storetype', 'PKCS12', '-storepass', OFFICIAL_SAMPLE_PASSWORD, '-noprompt'];
-  runTool('SDK application root certificate export', tools.keytool,
-    [...certificateExport(OFFICIAL_ROOT_CA_CERT_ALIAS), '-file', rootCertificatePath], { cwd: workspace, env });
-  runTool('SDK application CA certificate export', tools.keytool,
-    [...certificateExport(OFFICIAL_SUB_CA_CERT_ALIAS), '-file', subCertificatePath], { cwd: workspace, env });
-  const rootCertificates = pemCertificates(await regularFile(rootCertificatePath, 1024 * 1024));
-  const subCertificates = pemCertificates(await regularFile(subCertificatePath, 1024 * 1024));
-  const rootCertificate = rootCertificates[0];
-  const subCertificate = subCertificates[0];
-  const certificateNow = Date.now();
-  if (rootCertificates.length !== 1 || subCertificates.length !== 1
-    || !rootCertificate?.ca || !subCertificate?.ca
-    || !rootCertificate.subject.includes('CN=OpenHarmony Application Root CA')
-    || !subCertificate.subject.includes('CN=OpenHarmony Application CA')
-    || subCertificate.issuer !== rootCertificate.subject || rootCertificate.issuer !== rootCertificate.subject
-    || !subCertificate.verify(rootCertificate.publicKey) || !rootCertificate.verify(rootCertificate.publicKey)
-    || new Date(rootCertificate.validFrom).getTime() > certificateNow || new Date(rootCertificate.validTo).getTime() <= certificateNow
-    || new Date(subCertificate.validFrom).getTime() > certificateNow || new Date(subCertificate.validTo).getTime() <= certificateNow) {
-    fail('SDK application certificate authorities are missing, invalid or expired');
-  }
-  runTool('official application certificate chain generation', tools.java,
-    createApplicationCertificateArguments({ signTool: tools.signTool, keyStore: tools.keyStore,
-      rootCertificate: rootCertificatePath, subCertificate: subCertificatePath, outputCertificate: applicationCertificate }),
-    { cwd: workspace, env });
-  const applicationCertificateBytes = await regularFile(applicationCertificate, 1024 * 1024);
-  const applicationCertificateBlocks = pemCertificateBlocks(applicationCertificateBytes);
-  const applicationCertificates = applicationCertificateBlocks.map(value => new X509Certificate(value));
-  const [expectedCertificate, generatedSubCertificate, generatedRootCertificate] = applicationCertificates;
-  if (applicationCertificates.length !== 3 || !expectedCertificate || expectedCertificate.ca
-    || !expectedCertificate.subject.includes('CN=OpenHarmony Application Release')
-    || expectedCertificate.issuer !== subCertificate.subject
-    || !generatedSubCertificate?.raw.equals(subCertificate.raw) || !generatedRootCertificate?.raw.equals(rootCertificate.raw)
-    || !expectedCertificate.verify(subCertificate.publicKey)
-    || new Date(expectedCertificate.validFrom).getTime() > Date.now()
-    || new Date(expectedCertificate.validTo).getTime() <= Date.now()) {
-    fail('official application certificate generation did not return the expected three-certificate chain');
-  }
-  const ordinaryProfile = createOrdinaryReleaseProfile({ distributionCertificate: applicationCertificateBlocks[0], now });
-  if (ordinaryProfile.validity['not-after'] * 1000 > new Date(expectedCertificate.validTo).getTime()) {
-    fail('generated application certificate expires before the ordinary release profile');
-  }
-  await writeFile(unsignedProfile, `${JSON.stringify(ordinaryProfile, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
-
-  const commonSigning = ['-keystoreFile', tools.keyStore, '-keystorePwd', OFFICIAL_SAMPLE_PASSWORD, '-keyPwd', OFFICIAL_SAMPLE_PASSWORD, '-pwdInputMode', '0'];
-  runTool('official profile signing', tools.java, ['-jar', tools.signTool, 'sign-profile', '-mode', 'localSign',
-    '-keyAlias', OFFICIAL_PROFILE_ALIAS, '-profileCertFile', tools.profileCertificate, '-inFile', unsignedProfile,
-    '-signAlg', 'SHA256withECDSA', ...commonSigning, '-outFile', signedProfile], { cwd: workspace, env });
-  runTool('official application signing', tools.java, ['-jar', tools.signTool, 'sign-app', '-mode', 'localSign',
-    '-keyAlias', OFFICIAL_SAMPLE_ALIAS, '-appCertFile', applicationCertificate, '-profileFile', signedProfile, '-profileSigned', '1',
-    '-inFile', unsignedHap, '-signAlg', 'SHA256withECDSA', ...commonSigning, '-outFile', signedHap,
-    '-compatibleVersion', '26', '-signCode', '1'], { cwd: workspace, env });
-
-  const verifiedCertificatePath = join(signingDirectory, 'verified-cert-chain.cer');
-  const verifiedProfilePath = join(signingDirectory, 'verified-profile.p7b');
-  const verifiedProfileJson = join(signingDirectory, 'verified-profile.json');
-  runTool('official verify-app', tools.java, ['-jar', tools.signTool, 'verify-app', '-inFile', signedHap,
-    '-outCertChain', verifiedCertificatePath, '-outProfile', verifiedProfilePath], { cwd: workspace, env });
-  runTool('official verify-profile', tools.java, ['-jar', tools.signTool, 'verify-profile', '-inFile', verifiedProfilePath,
-    '-outFile', verifiedProfileJson], { cwd: workspace, env });
-  const chainBytes = await regularFile(verifiedCertificatePath, 1024 * 1024);
-  const certificates = pemCertificates(chainBytes);
-  const matchingCertificates = certificates.filter(certificate => certificate.raw.equals(expectedCertificate.raw));
-  if (certificates.length < 2 || matchingCertificates.length !== 1) fail('verify-app returned an unexpected application certificate chain');
-  const signingCertificate = matchingCertificates[0];
-  const profile = validateVerifiedProfile(await jsonFile(verifiedProfileJson), expectedCertificate, now);
-
   const manifestPath = join(outputDirectory, ARTIFACT_FILE);
   const manifest = await recordHarmonyMirrorArtifact({
     workspace,
     sourceDirectory: join(projectRoot, 'third_party', 'harmony-mirror'),
-    hapPath: signedHap,
+    hapPath: unsignedHap,
     manifestPath,
     origin,
   });
-  const hapBytes = await regularFile(signedHap);
-  await copyFile(signedHap, join(outputDirectory, MIRROR_HAP_FILE), 1);
-  const sdkBytes = await regularFile(tools.signTool, 64 * 1024 * 1024);
-  const receipt = {
-    schemaVersion: 1,
-    kind: 'ordinary-mirror-signature-verification',
-    origin,
-    artifact: { filename: MIRROR_HAP_FILE, size: hapBytes.length, sha256: hash(hapBytes) },
-    sdk: { apiVersion: tools.metadata.data.apiVersion, platformVersion: tools.metadata.data.platformVersion,
-      toolVersion: tools.metadata.data.version, releaseType: tools.metadata.data.releaseType, signToolSha256: hash(sdkBytes) },
-    signing: { mode: 'localSign', material: 'OpenHarmony SDK release example', alias: OFFICIAL_SAMPLE_ALIAS,
-      profileAlias: OFFICIAL_PROFILE_ALIAS, compatibleVersion: 26, signCode: true },
-    verification: {
-      verifyApp: true,
-      verifyProfile: true,
-      certificate: { subject: signingCertificate.subject, issuer: signingCertificate.issuer,
-        sha256Fingerprint: signingCertificate.fingerprint256, validFrom: new Date(signingCertificate.validFrom).toISOString(),
-        validTo: new Date(signingCertificate.validTo).toISOString(), currentlyValid: true, chainLength: certificates.length,
-        chainSha256: hash(chainBytes) },
-      profile: { type: profile.type, distributionType: profile['app-distribution-type'],
-        bundleName: profile['bundle-info']['bundle-name'], apl: profile['bundle-info'].apl,
-        appFeature: profile['bundle-info']['app-feature'], notBefore: profile.validity['not-before'],
-        notAfter: profile.validity['not-after'], aclCount: profile.acls?.['allowed-acls']?.length ?? 0,
-        restrictedPermissionCount: profile.permissions['restricted-permissions'].length },
-    },
-    deviceAcceptance: null,
-  };
-  const receiptPath = join(outputDirectory, MIRROR_SIGNATURE_FILE);
-  await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
-  await readAndVerifySignatureReceipt(outputDirectory, origin);
-  await verifyHarmonyMirrorArtifact({ sourceDirectory: join(projectRoot, 'third_party', 'harmony-mirror'), resourcesDirectory: outputDirectory, expectedOrigin: origin });
-  return { manifest, receipt, tools };
+  const privateDirectory = join(workspace, '.private-acceptance');
+  let retainPrivateAcceptance = false;
+  try {
+    await mkdir(privateDirectory, { recursive: false });
+    const frozenUnsignedHap = join(privateDirectory, 'OHScrcpyServer.unsigned.hap');
+    const frozenUnsigned = await freezeRegularFile(unsignedHap, frozenUnsignedHap);
+    if (manifest.artifact.size !== frozenUnsigned.size || manifest.artifact.sha256 !== frozenUnsigned.sha256) {
+      fail('measured public HAP differs from the frozen signing input');
+    }
+    const signerOutput = join(privateDirectory, 'OHScrcpyServer.signer-output.hap');
+    const signedHap = join(privateDirectory, 'OHScrcpyServer.acceptance.hap');
+    let keyPassword;
+    let storePassword;
+    try {
+      const materialDirectory = dirname(signing.signingConfig.material.storeFile);
+      [keyPassword, storePassword] = await Promise.all([
+        decryptDevEcoProtectedPassword(materialDirectory, signing.signingConfig.material.keyPassword),
+        decryptDevEcoProtectedPassword(materialDirectory, signing.signingConfig.material.storePassword),
+      ]);
+      const material = signing.signingConfig.material;
+      await signHapWithJava({
+        javaPath: tools.java,
+        signToolPath: tools.signTool,
+        signerSourcePath: join(projectRoot, 'lib', 'harmony', 'runtime', 'PioraHapSigner.java'),
+        keyAlias: material.keyAlias,
+        keyPassword,
+        certificatePath: material.certpath,
+        profilePath: material.profile,
+        inputPath: frozenUnsignedHap,
+        signAlgorithm: material.signAlg,
+        storePath: material.storeFile,
+        storePassword,
+        outputPath: signerOutput,
+        compatibleVersion: 26,
+        cwd: workspace,
+        env,
+        timeoutMs: 120_000,
+      });
+    } finally {
+      keyPassword = undefined;
+      storePassword = undefined;
+    }
+    const frozenAcceptance = await freezeRegularFile(signerOutput, signedHap);
+    await rm(signerOutput, { force: true });
+    const signingDirectory = join(workspace, '.signing');
+    await mkdir(signingDirectory, { recursive: false });
+    const verifiedCertificatePath = join(signingDirectory, 'verified-cert-chain.cer');
+    const verifiedProfilePath = join(signingDirectory, 'verified-profile.p7b');
+    const verifiedProfileJson = join(signingDirectory, 'verified-profile.json');
+    let chainBytes, certificates, signingCertificate, profile, acceptedDeviceUdid;
+    try {
+      runTool('official verify-app', tools.java, ['-jar', tools.signTool, 'verify-app', '-inFile', signedHap,
+        '-outCertChain', verifiedCertificatePath, '-outProfile', verifiedProfilePath], {
+        cwd: workspace, env, sensitiveOutput: true, redact: signing.secrets,
+      });
+      runTool('official verify-profile', tools.java, ['-jar', tools.signTool, 'verify-profile', '-inFile', verifiedProfilePath,
+        '-outFile', verifiedProfileJson], { cwd: workspace, env, sensitiveOutput: true, redact: signing.secrets });
+      chainBytes = await regularFile(verifiedCertificatePath, 1024 * 1024);
+      certificates = pemCertificates(chainBytes);
+      validateHuaweiDeveloperChain(certificates, now);
+      const matchingCertificates = certificates.filter(certificate => certificate.raw.equals(signing.certificate.raw));
+      if (matchingCertificates.length !== 1) fail('verify-app returned a different application signing identity');
+      [signingCertificate] = matchingCertificates;
+      profile = validateVerifiedProfile(await jsonFile(verifiedProfileJson), signing.certificate, now);
+      const profileDeviceIds = profile['debug-info']['device-ids'];
+      const udidOutput = runTool('registered device UDID query', tools.hdc,
+        ['-t', acceptedDeviceTarget, 'shell', 'bm', 'get', '--udid'], {
+          cwd: workspace,
+          env,
+          sensitiveOutput: true,
+          redact: [...signing.secrets, acceptedDeviceTarget, ...profileDeviceIds],
+        });
+      const udidTokens = new Set(extractHarmonyUdids(udidOutput).map(value => value.toLocaleLowerCase()));
+      if (udidTokens.size !== 1) fail('dedicated acceptance device returned an ambiguous UDID');
+      acceptedDeviceUdid = profileDeviceIds.find(value => udidTokens.has(value.toLocaleLowerCase()));
+      if (!acceptedDeviceUdid) fail('DevEco debug profile does not include the dedicated acceptance device');
+      await verifyFrozenRegularFile(signedHap, frozenAcceptance);
+    } finally {
+      await rm(signingDirectory, { recursive: true, force: true });
+    }
+
+    await verifyFrozenRegularFile(frozenUnsignedHap, frozenUnsigned);
+    await verifyFrozenRegularFile(signedHap, frozenAcceptance);
+    const publicHapPath = join(outputDirectory, MIRROR_HAP_FILE);
+    await copyFile(frozenUnsignedHap, publicHapPath, 1);
+    await verifyFrozenRegularFile(publicHapPath, frozenUnsigned);
+    const sdkBytes = await regularFile(tools.signTool, 64 * 1024 * 1024);
+    const receipt = {
+      schemaVersion: 2,
+      kind: 'private-device-acceptance-verification',
+      origin,
+      artifact: { filename: MIRROR_HAP_FILE, ...frozenUnsigned },
+      acceptanceArtifact: { ...frozenAcceptance, sourceSha256: frozenUnsigned.sha256 },
+      sdk: { apiVersion: tools.metadata.data.apiVersion, platformVersion: tools.metadata.data.platformVersion,
+        toolVersion: tools.metadata.data.version, releaseType: tools.metadata.data.releaseType, signToolSha256: hash(sdkBytes) },
+      signing: { mode: 'localSign', material: 'private DevEco acceptance identity', alias: DEVICE_SIGNING_ALIAS,
+        profileType: 'debug', compatibleVersion: 26, signCode: true, distribution: 'public artifact remains unsigned' },
+      verification: {
+        verifyApp: true,
+        verifyProfile: true,
+        certificate: { issuer: 'Huawei CBG Developer Relations CA G2', trustRoot: 'Huawei CBG Root CA G2',
+          sha256Fingerprint: signingCertificate.fingerprint256, validFrom: new Date(signingCertificate.validFrom).toISOString(),
+          validTo: new Date(signingCertificate.validTo).toISOString(), currentlyValid: true, chainLength: certificates.length,
+          chainSha256: hash(chainBytes) },
+        profile: { type: profile.type, issuer: profile.issuer, bundleName: profile['bundle-info']['bundle-name'], apl: profile['bundle-info'].apl,
+          appFeature: profile['bundle-info']['app-feature'], notBefore: profile.validity['not-before'],
+          notAfter: profile.validity['not-after'], aclCount: profile.acls?.['allowed-acls']?.length ?? 0,
+          restrictedPermissionCount: profile.permissions?.['restricted-permissions']?.length ?? 0,
+          developerIdSha256: hash(Buffer.from(profile['bundle-info']['developer-id'])),
+          deviceIdType: profile['debug-info']['device-id-type'], deviceCount: profile['debug-info']['device-ids'].length,
+          boundDeviceSha256: hash(Buffer.from(acceptedDeviceUdid.toLocaleLowerCase())) },
+      },
+      deviceAcceptance: null,
+    };
+    const receiptPath = join(outputDirectory, MIRROR_SIGNATURE_FILE);
+    await writeFile(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
+    await readAndVerifySignatureReceipt(outputDirectory, origin);
+    await verifyHarmonyMirrorArtifact({ sourceDirectory: join(projectRoot, 'third_party', 'harmony-mirror'), resourcesDirectory: outputDirectory, expectedOrigin: origin });
+    retainPrivateAcceptance = true;
+    return { manifest, receipt, tools };
+  } finally {
+    if (!retainPrivateAcceptance) await rm(privateDirectory, { recursive: true, force: true });
+  }
 }
 
 export async function attachDeviceAcceptance(resourcesDirectory, expectedOrigin, acceptance) {
   const receiptPath = join(resourcesDirectory, MIRROR_SIGNATURE_FILE);
   const receipt = await readAndVerifySignatureReceipt(resourcesDirectory, expectedOrigin);
   if (receipt.deviceAcceptance !== null) fail('device acceptance is already recorded');
+  if (acceptance?.udidSha256 !== receipt.verification.profile.boundDeviceSha256) {
+    fail('device acceptance does not match the DevEco profile binding');
+  }
+  if (acceptance?.acceptedHapSha256 !== receipt.acceptanceArtifact.sha256) {
+    fail('device acceptance does not match the private signed HAP');
+  }
   const updated = { ...receipt, deviceAcceptance: acceptance };
   const temporary = `${receiptPath}.${process.pid}.tmp`;
   await writeFile(temporary, `${JSON.stringify(updated, null, 2)}\n`, { flag: 'wx' });
@@ -468,10 +584,15 @@ export async function verifyStagedHarmonyMirrorRelease({ projectRoot, resourcesD
 
 export async function stageHarmonyMirrorRelease({ projectRoot, resourcesDirectory, targetDirectory, environment = process.env }) {
   await verifyStagedHarmonyMirrorRelease({ projectRoot, resourcesDirectory, environment });
+  const publicFiles = [MIRROR_HAP_FILE, ARTIFACT_FILE, MIRROR_SIGNATURE_FILE, MIRROR_SOURCE_FILE];
+  const sourceEntries = await readdir(resourcesDirectory);
+  if (sourceEntries.length !== publicFiles.length || publicFiles.some(name => !sourceEntries.includes(name))) {
+    fail('accepted resource directory must contain only the four public mirror files');
+  }
   await mkdir(targetDirectory, { recursive: true });
   const targetStatus = await lstat(targetDirectory);
   if (!targetStatus.isDirectory() || targetStatus.isSymbolicLink()) fail('staging target must be a real directory');
-  for (const name of [MIRROR_HAP_FILE, ARTIFACT_FILE, MIRROR_SIGNATURE_FILE, MIRROR_SOURCE_FILE]) {
+  for (const name of publicFiles) {
     await replaceRegularFile(join(resourcesDirectory, name), join(targetDirectory, name));
   }
   await verifyStagedHarmonyMirrorRelease({ projectRoot, resourcesDirectory: targetDirectory, environment });

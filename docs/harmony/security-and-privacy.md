@@ -4,7 +4,15 @@
 
 手机通过 HDC 连接后视为用户已在手机端完成调试授权，Piora 不再要求任务应用授权或逐次批准。手动与 Agent 均可操作设备支持的功能。桌面请求认证、设备在线状态、租约互斥、取消和当前设备代次校验仍自动执行，防止外部网页或已结束的任务向设备派发指令。
 
-HAP 计算 SHA-256 并复制到私有不可变制品区；每次安装使用本次选中的字节，校验失败的副本不能执行。投屏服务来源和许可保留在 third_party，不在被动预览中安装。投屏始终不自动解锁。
+普通用户选择安装的 HAP 会计算 SHA-256 并复制到私有不可变制品区；每次安装使用本次选中的字节，校验失败的副本不能执行。随 Piora 分发的投屏 HAP 另有更严格的边界：安装包只携带由同次 provenance 与真机验收 receipt 绑定的 public unsigned 字节，不含签名 Profile、设备 allow-list、私钥或密码。
+
+beta CI 从这份完全相同的 unsigned 输入生成独立的 private DevEco device-signed acceptance HAP，用于官方验签和专用手机门禁。无论门禁成功或失败都会清理私有副本与临时验签文件；上传清单只有 unsigned HAP、manifest、脱敏 receipt 和来源说明。receipt 只保留散列、证书指纹、计数与有界媒体元数据，不保存原始开发者身份、设备身份、序列号、截图、签名描述文件或密码。
+
+只有用户明确执行“初始化投屏服务”时，桌面端才会访问签名能力。若没有专用描述文件，Piora 在自己的私有缓存中复制随包的最小工程模板，调用随包 DevEco CLI 的 `signature generate --product default`，再从标准 `build-profile.json5` 导入生成结果。CLI 仍把证书、Profile、keystore 和受保护密码保存在用户的 `.ohos/config` 中；Piora 要求所有材料解析后的真实路径都位于该目录，命令参数和日志不包含设备 UDID 或密码。随后程序确认连接手机在有效 debug Profile 的 allow-list 中，为已验证的 unsigned HAP 创建并官方验签本机私有缓存副本。
+
+旧组件不匹配时先卸载并确认缺席，再用普通 install 安装，不使用 `-r`。DevEco 未登录、手机未连接或锁定、API 26 工具链或适用签名材料缺失时会清晰报错并保持 `dispatchState: not-sent`；被动预览不会生成签名配置、签名、安装或启动服务。投屏始终不自动唤醒或解锁。
+
+运行时私有副本与元数据工程保存在当前品牌的用户数据根，并由 public HAP、DevEco 材料与设备身份的单向散列隔离缓存；证书、Profile、keystore 和受保护密码继续留在 DevEco 私有配置目录，不会上传。`PIORA_HARMONY_SIGNING_CONFIG_PATH` 仍可供受控 CI 或既有高级配置显式选择描述文件；配置该路径后不会回退到自动生成。stable 在接入同一 bundle 的 AGC release identity 前失败关闭，不能复用 beta 的 device debug 身份发布。
 
 支持包默认只含脱敏设备/owner标识、版本、状态和队列，不含原始日志、音频、聊天和截图。包含 UI 文本和截图需要分别勾选；文件保存在本机，最多保留最近 10 个，单包 8 MiB。分享前检查内容。
 

@@ -15,7 +15,6 @@ export const APPLICATION_SHORTCUTS = [
   { id: "composer.voiceInput", titleKey: "commands.voiceInput", descriptionKey: "shortcuts.voiceInputDescription", defaultBinding: "Mod+Shift+M" },
   { id: "companion.togglePanel", titleKey: "commands.openCompanionPanel", descriptionKey: "shortcuts.companionPanelDescription", defaultBinding: "Ctrl+Space" },
   { id: "companion.clipboard", titleKey: "commands.openClipboard", descriptionKey: "shortcuts.clipboardDescription", defaultBinding: "Mod+Alt+V" },
-  { id: "capture.screenshot", titleKey: "commands.screenshot", descriptionKey: "shortcuts.screenshotDescription", defaultBinding: "Ctrl+Alt+A" },
   { id: "settings.general", titleKey: "commands.settings", descriptionKey: "shortcuts.settingsDescription", defaultBinding: "Mod+," },
 ] as const;
 

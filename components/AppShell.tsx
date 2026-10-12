@@ -98,7 +98,6 @@ import {
   shouldPreserveApplicationShortcut,
 } from "@/lib/keyboard-shortcuts";
 import { filterGuiCommands, type Command, type CommandContext, type PiSlashCommand } from "@/lib/commands";
-import { appendCapturedImageToDraft } from "@/lib/draft-store";
 import { SETTINGS_REOPEN_STORAGE_KEY } from "@/lib/settings-portability";
 import {
   findReopenableFileTab,
@@ -1143,9 +1142,6 @@ export function AppShell() {
           setRightPanelTab("browser");
           setRightPanelOpen(true);
           break;
-        case "screenshot":
-          void window.piDesktop?.screenshot?.start();
-          break;
         case "search-chats":
           sessionSidebarRef.current?.openConversationSearch();
           break;
@@ -1185,28 +1181,6 @@ export function AppShell() {
     });
     return unsubscribe;
   }, [handleOpenDesktopUpdate, handleOpenProjectPicker, handleRequestNewSession, handleSidebarToggle, openSettings, setCompanionOpen, toggleCompanion]);
-
-  useEffect(() => {
-    const bridge = window.piDesktop?.screenshot;
-    if (!bridge) return;
-    let active = true;
-    const busy = new Set<string>();
-    const receive = async (attachment: import("@/desktop/src/screenshot-types").PendingScreenshotAttachment) => {
-      if (!active || busy.has(attachment.captureId)) return;
-      busy.add(attachment.captureId);
-      try {
-        await appendCapturedImageToDraft(attachment.targetDraftKey, attachment.captureId, attachment.data);
-        await bridge.ack(attachment.captureId, true);
-      } catch (error) {
-        await bridge.ack(attachment.captureId, false, error instanceof Error ? error.message : String(error)).catch(() => {});
-      } finally {
-        busy.delete(attachment.captureId);
-      }
-    };
-    const off = bridge.onAttachment((attachment) => { void receive(attachment); });
-    void bridge.pending().then((attachment) => { if (attachment) void receive(attachment); }).catch(() => {});
-    return () => { active = false; off(); };
-  }, []);
 
   // Electron's titleBarOverlay does not make the browser-only
   // `(display-mode: window-controls-overlay)` media query true. Use the
@@ -1774,7 +1748,6 @@ export function AppShell() {
     "composer.voiceInput": () => { chatInputRef.current?.focus(); chatInputRef.current?.toggleVoiceInput(); },
     "companion.togglePanel": () => { void window.piDesktop?.companionAction?.("open-panel"); },
     "companion.clipboard": () => { void window.piDesktop?.clipboard?.historyV2?.open("quick"); },
-    "capture.screenshot": () => { void window.piDesktop?.screenshot?.start(); },
     "panel.toggleSidebar": () => setSidebarOpen((open) => !open),
     "panel.close": () => setRightPanelOpen(false),
     "settings.general": () => openSettings("general"),
@@ -1809,7 +1782,6 @@ export function AppShell() {
       if (shortcut.id === "composer.voiceInput") return;
       // Device capture belongs to the visible Harmony panel, never a global command.
       if (shortcut.id === "harmony.screenshot") return;
-      if (shortcut.id === "capture.screenshot" && window.piDesktop?.screenshot) return;
       if (historyDialogOpen && shortcut.id.startsWith("session.")) return;
       event.preventDefault();
       if (shortcut.id === "palette.open") setCommandPaletteOpen(true);
@@ -1859,7 +1831,7 @@ export function AppShell() {
     enabled: () => selectedSession ? true : { reason: "commands.needsSession" },
     run: () => { chatInputRef.current?.insertText(`/${item.name} `); chatInputRef.current?.focus(); },
   })), [piSlashCommands, selectedSession]);
-  const paletteCommands = useMemo(() => [...guiCommands.filter((item) => item.id !== "capture.screenshot" || (typeof window !== "undefined" && Boolean(window.piDesktop?.screenshot))), ...piPaletteCommands], [guiCommands, piPaletteCommands]);
+  const paletteCommands = useMemo(() => [...guiCommands, ...piPaletteCommands], [guiCommands, piPaletteCommands]);
   const searchPaletteCommands = useCallback((query: string) => filterGuiCommands(paletteCommands, query, (item) => item.id.startsWith("pi:") ? item.title : translate(item.title)), [paletteCommands, translate]);
   const runPaletteCommand = useCallback(async (item: Command, argument?: string) => { if (item.id.startsWith("pi:")) await item.run(commandContext, argument); else await runGuiCommand(item, argument); }, [commandContext, runGuiCommand]);
 
@@ -1998,7 +1970,7 @@ export function AppShell() {
           <RemoteControlSettings sessionId={selectedSession?.id ?? null} />
         ),
         harmony: (
-          <HarmonyStorageSettings cwd={currentProjectPath ?? settingsProjectCwd ?? activeCwd ?? undefined} />
+          <HarmonyStorageSettings />
         ),
         speech: (
           <SpeechSettings />

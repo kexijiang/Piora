@@ -2,6 +2,7 @@
 
 import { cp, lstat, mkdir, readFile, readdir, rm, stat } from "node:fs/promises";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { patchBundledBraceExpansion, patchBundledUndici } from "./patch-bundled-dependencies.mjs";
 
@@ -22,13 +23,6 @@ const assets = [
     name: "desktop clipboard client reference manifest",
     source: join(nextDirectory, "server", "app", "desktop-clipboard", "page_client-reference-manifest.js"),
     destination: join(standaloneDirectory, ".next", "server", "app", "desktop-clipboard", "page_client-reference-manifest.js"),
-    required: true,
-    rejectSymlinks: true,
-  },
-  {
-    name: "desktop screenshot client reference manifest",
-    source: join(nextDirectory, "server", "app", "desktop-screenshot", "page_client-reference-manifest.js"),
-    destination: join(standaloneDirectory, ".next", "server", "app", "desktop-screenshot", "page_client-reference-manifest.js"),
     required: true,
     rejectSymlinks: true,
   },
@@ -75,8 +69,6 @@ const assets = [
     ["Piora visual-agent extension", "extensions/piora-vision-agent.ts"],
     ["Piora scheduled-task extension", "extensions/piora-automations.ts"],
     ["Piora user-input extension", "extensions/piora-user-input.ts"],
-    ["Optional Piora Goals extension", "extensions/piora-goal.ts"],
-    ["Optional Piora Plans extension", "extensions/piora-plan.ts"],
     ["Piora collaboration-room extension", "extensions/piora-room.ts"],
     // First-party extensions execute from source at runtime and resolve their
     // relative imports through this tree. Stage the complete Piora library so
@@ -375,6 +367,7 @@ async function main() {
   // Opaque Pi providers and the lazy Hypium driver can add dependencies or
   // native agents without becoming visible to Next's static output trace.
   const piAiProviderRuntimeRoot = join(projectRoot, "node_modules", "@earendil-works", "pi-ai");
+  const piCodingAgentJitiRuntimeRoot = dirname(createRequire(join(projectRoot, "node_modules", "@earendil-works", "pi-coding-agent", "package.json")).resolve("jiti/package.json"));
   const hypiumRuntimeRoot = join(projectRoot, "node_modules", "hypium-driver");
   const devecoCliRuntimeRoot = join(projectRoot, "node_modules", "@deveco", "deveco-cli");
   const dependencyAssets = await collectRuntimeDependencyAssets([
@@ -382,6 +375,10 @@ async function main() {
     // computed paths even when the host keeps built-in extensions disabled.
     join(projectRoot, "node_modules", "@earendil-works", "pi-coding-agent"),
     piAiProviderRuntimeRoot,
+    // First-party extensions execute from source through Pi coding-agent's
+    // resolved Jiti loader. Next may trace only its manifest, so stage the full
+    // conditional-export package used by createRequire at runtime.
+    piCodingAgentJitiRuntimeRoot,
     hypiumRuntimeRoot,
     // Next traces the ESM entry while source-loaded extensions use Jiti's
     // CommonJS entry. Preserve both conditional exports and their dependencies.

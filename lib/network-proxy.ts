@@ -103,3 +103,24 @@ export function writeNetworkProxySettings(input: unknown): NetworkProxySettings 
 export function networkProxyNoProxy(settings: NetworkProxySettings): string {
   return normalizeBypass(settings.bypass);
 }
+
+export function browserNetworkProxyOptions(settings = readNetworkProxySettings()): {
+  args: string[];
+  proxy?: { server: string; bypass: string; username?: string; password?: string };
+} {
+  if (settings.mode === "direct") return { args: ["--no-proxy-server"] };
+  const proxyUrl = settings.mode === "manual" ? settings.proxyUrl
+    : process.env.https_proxy || process.env.HTTPS_PROXY || process.env.http_proxy || process.env.HTTP_PROXY || process.env.all_proxy || process.env.ALL_PROXY;
+  if (!proxyUrl) return { args: [] };
+  const url = new URL(proxyUrl);
+  if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("Only HTTP and HTTPS browser proxies are supported");
+  return {
+    args: [],
+    proxy: {
+      server: `${url.protocol}//${url.host}`,
+      bypass: settings.mode === "manual" ? networkProxyNoProxy(settings) : normalizeBypass(process.env.no_proxy || process.env.NO_PROXY),
+      ...(url.username ? { username: decodeURIComponent(url.username) } : {}),
+      ...(url.password ? { password: decodeURIComponent(url.password) } : {}),
+    },
+  };
+}
