@@ -81,9 +81,9 @@ export function RunElapsedStatus({
 
   useEffect(() => {
     if (schedulerRef.current === null) {
-      schedulerRef.current = createRunStatusPhraseScheduler((key) => {
+      schedulerRef.current = createRunStatusPhraseScheduler((key, signal) => {
         const parsed = parseRunStatusPhraseRequestKey(key);
-        return parsed ? requestRunStatusPhrase(parsed) : Promise.resolve(null);
+        return parsed ? requestRunStatusPhrase(parsed, fetch, signal) : Promise.resolve(null);
       });
     }
     const scheduler = schedulerRef.current;
@@ -103,6 +103,9 @@ export function RunElapsedStatus({
     else scheduler.noteIdleKey(requestKey);
     wasRunningRef.current = false;
   }, [liveTurnId, requestKey, running]);
+
+  // Cancel an unclaimed next-turn prefetch when the conversation view goes away.
+  useEffect(() => () => schedulerRef.current?.dispose(), []);
 
   useEffect(() => {
     if (!running) return;

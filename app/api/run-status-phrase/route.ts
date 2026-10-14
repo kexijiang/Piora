@@ -11,20 +11,28 @@ import {
   ModelRequestCwdError,
   resolveModelRequestCwd,
 } from "@/lib/model-runtime-context";
-import { RUN_STATUS_PHRASE_PROMPT_MAX_LENGTH, type RunStatusPhraseLocale } from "@/lib/run-status-phrase-prompts";
+import {
+  buildRunStatusPhraseMessages,
+  isRunStatusPhraseStyle,
+  RUN_STATUS_PHRASE_CUSTOM_MAX_LENGTH,
+  type RunStatusPhraseLocale,
+  type RunStatusPhraseStyle,
+} from "@/lib/run-status-phrase-prompts";
 import { RUN_STATUS_PHRASE_TIMEOUT_MS, sanitizeRunStatusPhrase } from "@/lib/run-status-phrase";
 import { hasJsonContentType, isApiRequestAllowed } from "@/lib/request-security";
 
 export const dynamic = "force-dynamic";
 
-const MAX_REQUEST_BYTES = 32 * 1024;
+const MAX_REQUEST_BYTES = 8 * 1024;
 
 interface PhraseRequest {
   provider: string;
   modelId: string;
   cwd?: string;
   locale: RunStatusPhraseLocale;
-  prompt: string;
+  style: RunStatusPhraseStyle;
+  systemPrompt: string;
+  userMessage: string;
 }
 
 function assistantText(message: AssistantMessage): string {
@@ -60,14 +68,22 @@ function readPhraseRequest(body: unknown): PhraseRequest | null {
   const record = body as Record<string, unknown>;
   const provider = typeof record.provider === "string" ? record.provider.trim() : "";
   const modelId = typeof record.modelId === "string" ? record.modelId.trim() : "";
-  const prompt = typeof record.prompt === "string" ? record.prompt.trim() : "";
   const locale = record.locale === "zh-CN" || record.locale === "en" ? record.locale : null;
-  if (!provider || !modelId || !prompt || !locale) return null;
+  const style = isRunStatusPhraseStyle(record.style) ? record.style : null;
+  if (!provider || !modelId || !locale || !style) return null;
   if (provider.length > 200 || modelId.length > 200) return null;
-  if (Array.from(prompt).length > RUN_STATUS_PHRASE_PROMPT_MAX_LENGTH) return null;
+  // Only the custom style takes client text, and only into the user message.
+  let customPrompt = "";
+  if (style === "custom") {
+    if (typeof record.customPrompt !== "string") return null;
+    customPrompt = record.customPrompt.trim();
+    if (Array.from(customPrompt).length > RUN_STATUS_PHRASE_CUSTOM_MAX_LENGTH) return null;
+  }
+  const messages = buildRunStatusPhraseMessages(style, locale, customPrompt);
+  if (!messages) return null;
   const cwd = typeof record.cwd === "string" ? record.cwd.trim() : "";
   if (cwd.length > 1_024) return null;
-  return { provider, modelId, locale, prompt, ...(cwd ? { cwd } : {}) };
+  return { provider, modelId, locale, style, ...messages, ...(cwd ? { cwd } : {}) };
 }
 
 /**
@@ -102,8 +118,8 @@ export async function POST(request: Request) {
 
     try {
       const message = await modelRuntime.completeSimple(model, {
-        systemPrompt: parsed.prompt,
-        messages: [{ role: "user", content: parsed.prompt, timestamp: Date.now() }],
+        systemPrompt: parsed.systemPrompt,
+        messages: [{ role: "user", content: parsed.userMessage, timestamp: Date.now() }],
       }, {
         reasoning: utilityReasoning(model),
         maxTokens: 256,

@@ -1,6 +1,8 @@
 import {
   RUN_STATUS_PHRASE_OUTPUT_RULE,
+  RUN_STATUS_PHRASE_SYSTEM_PROMPT,
   RUN_STATUS_PHRASE_PROMPTS,
+  isRunStatusPhraseStyle,
   selectRunStatusPhrasePrompt,
   type RunStatusPhraseLocale,
   type RunStatusPhraseStyle,
@@ -40,11 +42,33 @@ const INSTRUCTION_ECHOES = [
 const INSTRUCTION_LINES = [
   ...Object.values(RUN_STATUS_PHRASE_PROMPTS).flatMap((prompts) => Object.values(prompts)),
   ...Object.values(RUN_STATUS_PHRASE_OUTPUT_RULE),
+  ...Object.values(RUN_STATUS_PHRASE_SYSTEM_PROMPT),
 ].flatMap((prompt) => prompt.split(/\r?\n/)).map((line) => line.trim()).filter(Boolean);
 
-function isInstructionEcho(value: string): boolean {
+/** Shorter lines are judged by exact match only, so brief real phrases survive. */
+const ECHO_PREFIX_MIN_CHARS = 12;
+
+function normalizeEcho(value: string): string {
+  return value.toLowerCase().replace(/[\s\p{P}\p{S}]+/gu, "");
+}
+
+const NORMALIZED_INSTRUCTION_LINES = INSTRUCTION_LINES.map(normalizeEcho).filter(Boolean);
+
+/**
+ * True when the model repeated the instruction: an echo fragment, an exact
+ * instruction line (ignoring spacing and punctuation), or a long stretch
+ * (>= 12 characters) copied from the start of one.
+ */
+export function isInstructionEcho(value: string): boolean {
   if (INSTRUCTION_ECHOES.some((fragment) => value.includes(fragment))) return true;
-  return INSTRUCTION_LINES.some((line) => line.startsWith(value) || value.startsWith(line.slice(0, Math.min(12, line.length))));
+  const normalized = normalizeEcho(value);
+  if (!normalized) return false;
+  return NORMALIZED_INSTRUCTION_LINES.some((line) => {
+    if (line === normalized) return true;
+    const head = Math.min(line.length, normalized.length);
+    if (head < ECHO_PREFIX_MIN_CHARS) return false;
+    return line.slice(0, head) === normalized.slice(0, head);
+  });
 }
 
 function stripWrappingQuotes(value: string): string {
@@ -119,7 +143,9 @@ export interface RunStatusPhraseRequest {
   modelId: string;
   cwd?: string;
   locale: RunStatusPhraseLocale;
-  prompt: string;
+  style: RunStatusPhraseStyle;
+  /** Only for the custom style; the server puts it in the user message. */
+  customPrompt?: string;
 }
 
 export function buildRunStatusPhraseRequest(input: {
@@ -133,15 +159,16 @@ export function buildRunStatusPhraseRequest(input: {
   const provider = input.provider.trim();
   const modelId = input.modelId.trim();
   if (!provider || !modelId) return null;
-  const prompt = selectRunStatusPhrasePrompt(input.style, input.locale, input.customPrompt);
-  if (!prompt) return null;
+  const text = selectRunStatusPhrasePrompt(input.style, input.locale, input.customPrompt);
+  if (!text) return null;
   const cwd = input.cwd?.trim();
   return {
     provider,
     modelId,
     ...(cwd ? { cwd } : {}),
     locale: input.locale,
-    prompt,
+    style: input.style,
+    ...(input.style === "custom" ? { customPrompt: text } : {}),
   };
 }
 
@@ -156,11 +183,20 @@ export function parseRunStatusPhraseRequestKey(key: string): RunStatusPhraseRequ
     const record = value as Record<string, unknown>;
     const provider = typeof record.provider === "string" ? record.provider.trim() : "";
     const modelId = typeof record.modelId === "string" ? record.modelId.trim() : "";
-    const prompt = typeof record.prompt === "string" ? record.prompt.trim() : "";
     const locale = record.locale === "zh-CN" || record.locale === "en" ? record.locale : null;
-    if (!provider || !modelId || !prompt || !locale) return null;
+    const style = isRunStatusPhraseStyle(record.style) ? record.style : null;
+    if (!provider || !modelId || !locale || !style) return null;
+    const customPrompt = typeof record.customPrompt === "string" ? record.customPrompt.trim() : "";
+    if (style === "custom" && !customPrompt) return null;
     const cwd = typeof record.cwd === "string" ? record.cwd.trim() : "";
-    return { provider, modelId, prompt, locale, ...(cwd ? { cwd } : {}) };
+    return {
+      provider,
+      modelId,
+      locale,
+      style,
+      ...(style === "custom" ? { customPrompt } : {}),
+      ...(cwd ? { cwd } : {}),
+    };
   } catch {
     return null;
   }
@@ -173,6 +209,8 @@ export interface RunStatusPhraseScheduler {
   prefetchNext(requestKey: string | null): void;
   /** Retarget a prefetch that is already waiting. Does not start one while idle. */
   noteIdleKey(requestKey: string | null): void;
+  /** Abort an unclaimed prefetch, e.g. on unmount. */
+  dispose(): void;
 }
 
 /**
@@ -180,33 +218,42 @@ export interface RunStatusPhraseScheduler {
  * can start after this turn starts, or after it ends if that slot is empty.
  */
 export function createRunStatusPhraseScheduler(
-  generate: (requestKey: string) => Promise<string | null>,
+  generate: (requestKey: string, signal?: AbortSignal) => Promise<string | null>,
 ): RunStatusPhraseScheduler {
-  let next: { key: string; promise: Promise<string | null> } | null = null;
+  let next: { key: string; promise: Promise<string | null>; controller: AbortController } | null = null;
   const claims = new Map<string, Promise<string | null>>();
 
-  function run(key: string): Promise<string | null> {
+  function run(key: string, controller?: AbortController): Promise<string | null> {
     return Promise.resolve()
-      .then(() => generate(key))
+      .then(() => (controller?.signal.aborted ? null : generate(key, controller?.signal)))
       .then((value) => (typeof value === "string" && value.trim() ? value : null))
       .catch(() => null);
   }
 
+  /** Drop the unclaimed prefetch and cancel its request so it costs nothing more. */
+  function dropNext(): void {
+    next?.controller.abort();
+    next = null;
+  }
+
   function ensurePrefetch(key: string): void {
     if (next?.key === key) return;
-    next = { key, promise: run(key) };
+    dropNext();
+    const controller = new AbortController();
+    next = { key, promise: run(key, controller), controller };
   }
 
   return {
     claimTurn(turnId, requestKey) {
       if (!requestKey) {
-        next = null;
+        dropNext();
         return null;
       }
       const existing = claims.get(turnId);
       if (existing) return existing;
       const promise = next?.key === requestKey ? next.promise : run(requestKey);
-      next = null;
+      if (next?.key === requestKey) next = null;
+      else dropNext();
       claims.set(turnId, promise);
       if (claims.size > 12) {
         const oldest = claims.keys().next().value;
@@ -217,7 +264,7 @@ export function createRunStatusPhraseScheduler(
     },
     prefetchNext(requestKey) {
       if (!requestKey) {
-        next = null;
+        dropNext();
         return;
       }
       ensurePrefetch(requestKey);
@@ -226,7 +273,10 @@ export function createRunStatusPhraseScheduler(
       // Drop a stale prefetch without starting another. Typing a custom prompt
       // must not call the model once per keystroke.
       if (!next) return;
-      if (!requestKey || next.key !== requestKey) next = null;
+      if (!requestKey || next.key !== requestKey) dropNext();
+    },
+    dispose() {
+      dropNext();
     },
   };
 }
@@ -234,8 +284,11 @@ export function createRunStatusPhraseScheduler(
 export async function requestRunStatusPhrase(
   input: RunStatusPhraseRequest,
   fetchImpl: typeof fetch = fetch,
+  cancel?: AbortSignal,
 ): Promise<string | null> {
-  const timeout = AbortSignal.timeout(RUN_STATUS_PHRASE_TIMEOUT_MS);
+  const timeout = cancel
+    ? AbortSignal.any([AbortSignal.timeout(RUN_STATUS_PHRASE_TIMEOUT_MS), cancel])
+    : AbortSignal.timeout(RUN_STATUS_PHRASE_TIMEOUT_MS);
   try {
     const response = await fetchImpl("/api/run-status-phrase", {
       method: "POST",
