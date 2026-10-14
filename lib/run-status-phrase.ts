@@ -222,6 +222,13 @@ export function createRunStatusPhraseScheduler(
 ): RunStatusPhraseScheduler {
   let next: { key: string; promise: Promise<string | null>; controller: AbortController } | null = null;
   const claims = new Map<string, Promise<string | null>>();
+  /** Claimed requests still in flight, so dispose() can cancel them too. */
+  const inflight = new Set<AbortController>();
+
+  function track(controller: AbortController, promise: Promise<string | null>): Promise<string | null> {
+    inflight.add(controller);
+    return promise.finally(() => inflight.delete(controller));
+  }
 
   function run(key: string, controller?: AbortController): Promise<string | null> {
     return Promise.resolve()
@@ -251,9 +258,15 @@ export function createRunStatusPhraseScheduler(
       }
       const existing = claims.get(turnId);
       if (existing) return existing;
-      const promise = next?.key === requestKey ? next.promise : run(requestKey);
-      if (next?.key === requestKey) next = null;
-      else dropNext();
+      let promise: Promise<string | null>;
+      if (next?.key === requestKey) {
+        promise = track(next.controller, next.promise);
+        next = null;
+      } else {
+        dropNext();
+        const controller = new AbortController();
+        promise = track(controller, run(requestKey, controller));
+      }
       claims.set(turnId, promise);
       if (claims.size > 12) {
         const oldest = claims.keys().next().value;
@@ -277,6 +290,8 @@ export function createRunStatusPhraseScheduler(
     },
     dispose() {
       dropNext();
+      for (const controller of inflight) controller.abort();
+      inflight.clear();
     },
   };
 }
