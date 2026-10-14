@@ -36,6 +36,7 @@ import { findVisionAgentStatus, VisionAgentStatus } from "./VisionAgentStatus";
 import { getVisionRetryPayload } from "@/lib/message-images";
 import type { CommandExecutionData } from "@/lib/command-execution";
 import { CommandExecutionDialog } from "./CommandExecutionView";
+import { RunElapsedStatus } from "./RunElapsedStatus";
 
 interface Props {
   historyVisible?: boolean;
@@ -843,6 +844,11 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
                 onOpenCommandExecution={setCommandExecutionDialog}
               />
             )}
+
+            <RunElapsedStatus
+              running={agentRunning}
+              runStartedAt={statusClock?.runStartedAt ?? null}
+            />
 
             {agentRunning && (
               <div

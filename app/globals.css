@@ -1815,6 +1815,47 @@ select:focus-visible,
   }
 }
 
+/* One fixed line under the live turn. Ticks change the clock, not the height. */
+.run-elapsed-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  margin: 0;
+  padding: 6px 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--text-base);
+  line-height: 1.4;
+}
+
+.run-elapsed-status-mark {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.run-elapsed-status[data-state="running"] .run-elapsed-status-mark {
+  background: var(--accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.run-elapsed-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .run-elapsed-status[data-state="running"] .run-elapsed-status-mark {
+    animation: none;
+  }
+}
+
 .chat-composer-footer {
   display: flex;
   flex-basis: 100%;

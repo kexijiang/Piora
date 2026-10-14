@@ -5,6 +5,7 @@ import { smartShellEn } from "./smart-shell";
 import { sshEn } from "./ssh";
 import { nativeMcpEn } from "./native-mcp";
 import { skillSourcesEn } from "./skill-sources";
+import { runStatusMessagesEn } from "../../run-status-phrases";
 
 /** Pi Web 内置英语语言包。 */
 export const enLocale: LocalePlugin = {
@@ -15,6 +16,7 @@ export const enLocale: LocalePlugin = {
     ...skillSourcesEn,
     ...sshEn,
     ...replySuggestionsEn,
+    ...runStatusMessagesEn,
     "input.imageContextHint": "Images are sent for this turn only. Attach them again to inspect them in a later turn.",
     "chat.deleteMessage": "Delete message",
     "chat.deletingMessage": "Deleting…",

@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 聊天
+
+- 代理运行一轮时，主聊天区在消息列表底部显示一句 Piora 语气的状态和本轮总用时；结束后停在「已完成，用时 …」，下一轮重新计时并换一句，避免与上一轮重复。
+
 ## [0.5.5-beta.20] - 2026-10-13
 
 ### 发布准备
