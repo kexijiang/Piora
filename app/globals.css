@@ -5817,3 +5817,10 @@ span.linenumber {
 .nested-tool-calls ul { list-style: none; padding: 0; margin: 8px 0; max-height: 320px; overflow: auto; }
 .nested-tool-calls li { padding: 5px 0; overflow-wrap: anywhere; }
 .nested-tool-calls pre { white-space: pre-wrap; overflow-wrap: anywhere; margin: 4px 0; color: var(--text); }
+
+.user-message-link {
+  color: var(--accent, inherit);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}

@@ -1,8 +1,9 @@
 "use client";
 
-import { lazy, memo, Suspense, useDeferredValue, useMemo, type MouseEvent } from "react";
+import { lazy, memo, Suspense, useDeferredValue, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { resolveLocalFileHref } from "@/lib/file-links";
+import { createLocalFileLinkClickHandler } from "@/lib/file-link-click";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import { parseAnsiLine } from "@/lib/ansi";
 import { markdownRemarkPlugins, normalizeDisplayMath, normalizeTextHighlights } from "@/lib/markdown";
@@ -130,14 +131,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
         );
       }
 
-      const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
-        if (event.defaultPrevented || event.button !== 0) return;
-        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-        const target = event.currentTarget.getAttribute("target");
-        if (target && target !== "_self") return;
-        event.preventDefault();
-        openFile(filePath);
-      };
+      const handleClick = createLocalFileLinkClickHandler(filePath, openFile);
 
       return (
         <a href={href} {...props} onClick={handleClick}>

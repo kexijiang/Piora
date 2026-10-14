@@ -167,13 +167,14 @@ test("renders user messages as escaped plain text and keeps assistant Markdown",
   for (const rendered of [html, history]) {
     assert.match(rendered, /class="user-message-text"/);
     assert.match(rendered, /a {2}b\n\n\*not bold\* _not italic_ # not a heading `not code`/);
-    assert.match(rendered, /- not a list\n\[not\]\(https:\/\/example\.com\) &lt;b&gt;not html&lt;\/b&gt; A &amp; B \| cell \| ~not strike~\n@src\/file_name\.ts:1-3/);
+    assert.match(rendered, /- not a list\n\[not\]\(<a class="user-message-link" href="https:\/\/example\.com" target="_blank" rel="noopener noreferrer">https:\/\/example\.com<\/a>\) &lt;b&gt;not html&lt;\/b&gt; A &amp; B \| cell \| ~not strike~\n@src\/file_name\.ts:1-3/);
     assert.match(rendered, /class="message-image-thumbnail"/);
-    assert.doesNotMatch(rendered, /<(?:strong|em|h1|h2|code|blockquote|del|table|script|a)\b|markdown-user-message|markdown-body|dangerouslySetInnerHTML/);
+    assert.equal((rendered.match(/<a\b/g) ?? []).length, 1);
+    assert.doesNotMatch(rendered, /<(?:strong|em|h1|h2|code|blockquote|del|table|script)\b|markdown-user-message|markdown-body|dangerouslySetInnerHTML/);
   }
   assert.match(html, /复制/);
   assert.doesNotMatch(history, /复制|从这里编辑|重新发送/);
-  assert.match(userSource, /<UserMessageText text=\{displayedContent\} \/>/);
+  assert.match(userSource, /<UserMessageText text=\{displayedContent\} cwd=\{cwd\} onOpenFile=\{onOpenFile\} \/>/);
   assert.match(userSource, /copyContent/);
   assert.doesNotMatch(userSource, /MarkdownBody|dangerouslySetInnerHTML/);
   assert.doesNotMatch(userMessageTextSource, /dangerouslySetInnerHTML|MarkdownBody/);
