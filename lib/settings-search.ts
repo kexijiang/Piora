@@ -87,6 +87,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "conversation.streamingSend", section: "conversation", labelKey: "settings.streamingSendDefault", descriptionKey: "settings.streamingSendDefaultDescription", keywords: ["queue", "steer", "排队", "引导"] },
   { id: "conversation.autoScroll", section: "conversation", labelKey: "settings.liveOutputAutoScroll", descriptionKey: "settings.liveOutputAutoScrollDescription", keywords: ["scroll", "follow", "滚动", "跟随"] },
   { id: "conversation.notifications", section: "conversation", labelKey: "taskControls.notifications", descriptionKey: "taskControls.notificationsDescription", keywords: ["notify", "notification", "通知", "完成"] },
+  { id: "conversation.runStatusPhrase", section: "conversation", labelKey: "settings.runStatusPhrase.title", descriptionKey: "settings.runStatusPhrase.description", keywords: ["status", "phrase", "poetry", "quote", "meme", "运行状态", "古诗", "名言", "梗", "用语"] },
   { id: "prompts", section: "prompts", labelKey: "settings.page.prompts", descriptionKey: "settings.page.promptsDescription", keywords: ["prompt", "title", "提示词", "标题"] },
   { id: "conversation.promptOptimizer", section: "prompts", labelKey: "settings.promptOptimizerTitle", descriptionKey: "settings.promptOptimizerDescription", keywords: ["prompt", "rewrite", "提示词", "优化"] },
   { id: "conversation.titleModel", section: "prompts", labelKey: "settings.sessionTitleModelTitle", descriptionKey: "settings.sessionTitleModelDescription", keywords: ["title", "model", "标题", "模型"] },

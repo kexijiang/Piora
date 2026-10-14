@@ -7,6 +7,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useSendShortcut } from "@/hooks/useSendShortcut";
 import { useStreamingSendPreference } from "@/hooks/useStreamingSendPreference";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
+import { useRunStatusPhrasePreference } from "@/hooks/useRunStatusPhrasePreference";
 import { AliIcon, type AliIconName } from "./AliIcon";
 import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
 import { RuntimeLogSettings } from "./RuntimeLogSettings";
@@ -26,6 +27,7 @@ import {
   writePromptOptimizerModel,
   writePromptOptimizerSystemPrompt,
 } from "@/lib/prompt-optimizer-settings";
+import { RUN_STATUS_PHRASE_CUSTOM_MAX_LENGTH, RUN_STATUS_PHRASE_STYLES } from "@/lib/run-status-phrase-prompts";
 import { SESSION_TITLE_PROMPT_MAX_LENGTH } from "@/lib/session-title-prompt";
 import { filterSettingsSearchItems, SETTINGS_GROUPS, type SettingsKey } from "@/lib/settings-search";
 import {
@@ -115,6 +117,12 @@ export function SettingsDialog({
     enabled: liveOutputAutoScrollEnabled,
     setEnabled: setLiveOutputAutoScrollEnabled,
   } = useLiveOutputAutoScrollPreference();
+  const {
+    preference: runStatusPhrasePreference,
+    setEnabled: setRunStatusPhraseEnabled,
+    setStyle: setRunStatusPhraseStyle,
+    setCustomPrompt: setRunStatusPhraseCustomPrompt,
+  } = useRunStatusPhrasePreference();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [targetItem, setTargetItem] = useState<{ id: string } | null>(null);
@@ -681,6 +689,56 @@ export function SettingsDialog({
                     >
                       <span />
                     </button>
+                  </div>
+
+                  <div className={styles.conversationRowStacked}>
+                    <div className={styles.preferenceHeader}>
+                      <div className={styles.conversationCopy}>
+                        <div data-settings-id="conversation.runStatusPhrase" className={styles.rowTitle}>{t("settings.runStatusPhrase.title")}</div>
+                        <div className={styles.rowDescription}>{t("settings.runStatusPhrase.description")}</div>
+                      </div>
+                      <button
+                        className={styles.switch}
+                        type="button"
+                        role="switch"
+                        aria-checked={runStatusPhrasePreference.enabled}
+                        aria-label={t("settings.runStatusPhrase.title")}
+                        onClick={() => setRunStatusPhraseEnabled(!runStatusPhrasePreference.enabled)}
+                      >
+                        <span />
+                      </button>
+                    </div>
+                    <label className={styles.modelSelectField}>
+                      <span>{t("settings.runStatusPhrase.style")}</span>
+                      <select
+                        aria-label={t("settings.runStatusPhrase.style")}
+                        value={runStatusPhrasePreference.style}
+                        onChange={(event) => {
+                          const style = RUN_STATUS_PHRASE_STYLES.find((item) => item === event.target.value);
+                          if (style) setRunStatusPhraseStyle(style);
+                        }}
+                      >
+                        {RUN_STATUS_PHRASE_STYLES.map((style) => (
+                          <option key={style} value={style}>{t(`settings.runStatusPhrase.style.${style}`)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    {runStatusPhrasePreference.style === "custom" ? (
+                      <label className={styles.promptTextField}>
+                        <span>{t("settings.runStatusPhrase.customPrompt")}</span>
+                        <small>{t("settings.runStatusPhrase.customPromptDescription")}</small>
+                        <textarea
+                          className={`${styles.promptEditor} ${styles.runStatusPrompt}`}
+                          value={runStatusPhrasePreference.customPrompt}
+                          maxLength={RUN_STATUS_PHRASE_CUSTOM_MAX_LENGTH}
+                          aria-label={t("settings.runStatusPhrase.customPrompt")}
+                          onChange={(event) => setRunStatusPhraseCustomPrompt(event.target.value)}
+                        />
+                        {!runStatusPhrasePreference.customPrompt.trim() ? (
+                          <small role="status">{t("settings.runStatusPhrase.customEmpty")}</small>
+                        ) : null}
+                      </label>
+                    ) : null}
                   </div>
 
                 </section>

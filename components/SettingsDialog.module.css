@@ -752,6 +752,10 @@
     0 0 0 3px color-mix(in srgb, var(--accent) 9%, transparent);
 }
 
+.promptEditor.runStatusPrompt {
+  min-height: 96px;
+}
+
 .promptEditorFooter,
 .promptEditorFooter > div {
   display: flex;

@@ -848,6 +848,8 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
             <RunElapsedStatus
               running={agentRunning}
               runStartedAt={statusClock?.runStartedAt ?? null}
+              model={displayModelValue}
+              cwd={messageCwd}
             />
 
             {agentRunning && (

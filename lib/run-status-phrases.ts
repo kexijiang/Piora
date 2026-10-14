@@ -1,7 +1,8 @@
 /**
  * One status line per agent turn, in Piora's own voice:
  * π unrolling, ora / aurora light, the carry-pod (随身舱), the companion pet,
- * and the pastel skins and wallpapers. These are fixed copy, never model output.
+ * and the pastel skins and wallpapers. This catalog is fixed copy. An optional
+ * setting may replace the visible line with model output; failures stay here.
  */
 
 export interface RunStatusPhrase {
@@ -45,6 +46,17 @@ function phraseMessages(language: "zh" | "en"): Record<string, string> {
 export const runStatusMessagesZh: Record<string, string> = {
   "runStatus.live": "{phrase}，用时 {duration}",
   "runStatus.done": "已完成，用时 {duration}",
+  "settings.runStatusPhrase.title": "用模型生成运行状态用语",
+  "settings.runStatusPhrase.description": "默认关闭。开启后使用当前对话的模型，按所选风格写一行短句。固定用语会先显示，生成成功后再换上；超时或失败时仍用固定用语。",
+  "settings.runStatusPhrase.style": "用语风格",
+  "settings.runStatusPhrase.style.poetry": "随机古诗词名句",
+  "settings.runStatusPhrase.style.quote": "随机名人名言",
+  "settings.runStatusPhrase.style.meme": "随机网络梗",
+  "settings.runStatusPhrase.style.piora": "Piora 品牌语气",
+  "settings.runStatusPhrase.style.custom": "自定义提示词",
+  "settings.runStatusPhrase.customPrompt": "自定义提示词",
+  "settings.runStatusPhrase.customPromptDescription": "仅当风格为自定义时发送给模型。应用仍要求只返回一行，并跟随界面语言。",
+  "settings.runStatusPhrase.customEmpty": "自定义提示词为空时，继续使用固定用语。",
   ...phraseMessages("zh"),
 };
 
@@ -52,6 +64,17 @@ export const runStatusMessagesZh: Record<string, string> = {
 export const runStatusMessagesEn: Record<string, string> = {
   "runStatus.live": "{phrase} · {duration}",
   "runStatus.done": "Done in {duration}",
+  "settings.runStatusPhrase.title": "Generate the run status line",
+  "settings.runStatusPhrase.description": "Off by default. When on, the current conversation model writes one short line in the selected style. A fixed line shows immediately and is replaced when generation succeeds. Timeouts and failures keep the fixed line.",
+  "settings.runStatusPhrase.style": "Phrase style",
+  "settings.runStatusPhrase.style.poetry": "Classical Chinese poetry",
+  "settings.runStatusPhrase.style.quote": "Famous quotation",
+  "settings.runStatusPhrase.style.meme": "Internet meme",
+  "settings.runStatusPhrase.style.piora": "Piora",
+  "settings.runStatusPhrase.style.custom": "Custom prompt",
+  "settings.runStatusPhrase.customPrompt": "Custom prompt",
+  "settings.runStatusPhrase.customPromptDescription": "Sent only when the style is Custom. The app still asks for one line in the interface language.",
+  "settings.runStatusPhrase.customEmpty": "An empty custom prompt keeps the fixed lines.",
   ...phraseMessages("en"),
 };
 
@@ -75,10 +98,19 @@ export function pickRunStatusPhraseId(
 }
 
 export interface RunElapsedView {
+  /** Stable for one turn, including a later server start time. */
+  turnId: string;
   phraseId: string;
   startedAt: number;
   /** Null while the turn is running. Frozen milliseconds after it ends. */
   elapsedMs: number | null;
+}
+
+let runStatusTurnSerial = 0;
+
+function createTurnId(now: number, phraseId: string): string {
+  runStatusTurnSerial += 1;
+  return `${now}:${runStatusTurnSerial}:${phraseId}`;
 }
 
 export interface RunElapsedMemory {
@@ -104,14 +136,17 @@ export function settleRunElapsedView(input: {
   if (running) {
     if (view && view.elapsedMs === null) {
       const startedAt = runStartedAt ?? view.startedAt;
-      if (startedAt === view.startedAt) return { view, previousPhraseId };
-      return { view: { ...view, startedAt }, previousPhraseId };
+      const turnId = view.turnId || createTurnId(startedAt, view.phraseId);
+      if (startedAt === view.startedAt && turnId === view.turnId) return { view, previousPhraseId };
+      return { view: { ...view, startedAt, turnId }, previousPhraseId };
     }
     const phraseId = pickRunStatusPhraseId(previousPhraseId, random);
+    const startedAt = runStartedAt ?? now;
     return {
       view: {
+        turnId: createTurnId(startedAt, phraseId),
         phraseId,
-        startedAt: runStartedAt ?? now,
+        startedAt,
         elapsedMs: null,
       },
       previousPhraseId: phraseId,
