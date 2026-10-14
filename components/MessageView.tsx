@@ -6,6 +6,7 @@ import { createContext, useContext, memo, useState, useRef, useEffect, useMemo, 
 import { useVirtualRowToggle } from "./VirtualRowState";
 import dynamic from "next/dynamic";
 import { LazyMarkdownBody as MarkdownBody } from "./LazyMarkdownBody";
+import { UserMessageText } from "./UserMessageText";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/hooks/useI18n";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
@@ -213,7 +214,7 @@ export const MessageView = memo(function MessageView(props: Props) {
 
 const MessageContent = memo(function MessageContent({ mode, messageActions, message, isStreaming, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
   if (message.role === "user") {
-    return <UserMessageView messageActions={messageActions} message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
+    return <UserMessageView messageActions={messageActions} message={message as UserMessage} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
   }
   if (message.role === "assistant") {
     return <AssistantMessageView messageActions={messageActions} message={message as AssistantMessage} isStreaming={isStreaming} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} responseStartedAt={responseStartedAt} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
@@ -268,11 +269,9 @@ const MessageContent = memo(function MessageContent({ mode, messageActions, mess
     && prev.onOpenCommandExecution === next.onOpenCommandExecution;
 });
 
-function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, sessionId }: {
+function UserMessageView({ messageActions, message, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onRetry, retryDisabled, sessionId }: {
   messageActions?: ReactNode;
   message: UserMessage;
-  cwd?: string;
-  onOpenFile?: (filePath: string) => void;
   entryId?: string;
   onFork?: (entryId: string) => void;
   forking?: boolean;
@@ -416,7 +415,7 @@ function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, on
           )}
           {content && (
             <>
-              <MarkdownBody className="markdown-user-message" cwd={cwd} onOpenFile={onOpenFile}>{displayedContent}</MarkdownBody>
+              <UserMessageText text={displayedContent} />
               {contentPreview.collapsible && (
                 <button
                   type="button"

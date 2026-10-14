@@ -348,6 +348,37 @@ test("renders queued guidance as a compact composer tray", () => {
   assert.doesNotMatch(html, /class="composer-shell" title="Adjust the spacing/);
 });
 
+test("renders queued steer and follow-up text literally", () => {
+  const html = renderToStaticMarkup(
+    React.createElement(
+      I18nProvider,
+      null,
+      React.createElement(ChatInput, {
+        onSend() {},
+        onAbort() {},
+        onRecallQueue() {},
+        isStreaming: true,
+        queuedMessages: {
+          steering: ["*steer* <b>html</b> @file_name.ts"],
+          followUp: ["line one\n# follow-up"],
+        },
+      }),
+    ),
+  );
+  const queueSource = chatInputSource.slice(
+    chatInputSource.indexOf("function QueuedMessageRow"),
+    chatInputSource.indexOf("function ModelNoticeBanner"),
+  );
+
+  assert.match(html, /class="composer-queue-row is-steer"/);
+  assert.match(html, /class="composer-queue-text">\*steer\* &lt;b&gt;html&lt;\/b&gt; @file_name\.ts</);
+  assert.match(html, /title="\*steer\* &lt;b&gt;html&lt;\/b&gt; @file_name\.ts"/);
+  assert.match(html, /class="composer-queue-text">line one\n# follow-up</);
+  assert.doesNotMatch(html, /<b>html<\/b>|<strong|# follow-up<\/h1>|<h1/);
+  assert.match(queueSource, /\{text\}/);
+  assert.doesNotMatch(queueSource, /MarkdownBody|dangerouslySetInnerHTML/);
+});
+
 test("keeps an unknown context ring visible before runtime usage is available", () => {
   const html = renderToStaticMarkup(
     React.createElement(

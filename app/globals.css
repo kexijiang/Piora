@@ -4455,8 +4455,9 @@ pre, code {
 .markdown-body .katex {
   font-size: 1.05em;
 }
-.markdown-user-message p {
+.user-message-text {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .message-user-expand {

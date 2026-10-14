@@ -4,6 +4,7 @@ import test from "node:test";
 
 const appShell = readFileSync(new URL("./AppShell.tsx", import.meta.url), "utf8");
 const workbench = readFileSync(new URL("./SessionHistoryWorkbench.tsx", import.meta.url), "utf8");
+const historyCard = readFileSync(new URL("./history/HistoryEntryCard.tsx", import.meta.url), "utf8");
 const globalStyles = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const exportRoute = readFileSync(new URL("../app/api/sessions/[id]/export/route.ts", import.meta.url), "utf8");
 
@@ -15,6 +16,11 @@ test("opens complete session history inside the current application window", () 
   assert.match(appShell, /inert=\{historyDialogOpen/);
   assert.match(workbench, /data-history-workbench/);
   assert.doesNotMatch(workbench, /<iframe|createPortal\(/);
+  assert.match(workbench, /\{hit\.snippet\}/);
+  assert.doesNotMatch(workbench, /MarkdownBody|dangerouslySetInnerHTML/);
+  assert.match(historyCard, /<MessageView mode="history"/);
+  assert.match(historyCard, /onClick=\{\(\) => onCopy\(node\.id, "entry"\)\}/);
+  assert.doesNotMatch(historyCard, /dangerouslySetInnerHTML/);
 });
 
 test("retains standalone HTML export while reading through the native workbench", () => {

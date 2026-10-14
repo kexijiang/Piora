@@ -10,6 +10,8 @@ test("room message navigation lists only user prompts and exposes clickable jump
   const source = await readFile(new URL("./RoomMessageNavigator.tsx", import.meta.url), "utf8");
   const base = { id: "m1", createdAt: 1, content: "  完成\n验证  " };
   assert.equal(getRoomMessagePreview({ ...base, author: { kind: "user", id: "u", name: "你" } }), "你：完成 验证");
+  assert.equal(getRoomMessagePreview({ ...base, author: { kind: "user", id: "u", name: "你" }, content: "*bold* <tag> @dev_name\nnext" }), "你：*bold* <tag> @dev_name next");
+  assert.doesNotMatch(source, /MarkdownBody|dangerouslySetInnerHTML/);
   assert.match(source, /author\.kind === "user"/);
   assert.match(source, /userMessages\.map\(\(message, index\)/);
   assert.match(source, /群聊记录/);
