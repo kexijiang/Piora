@@ -54,8 +54,8 @@ export class HarmonyRequestError extends Error {
       ? "无法确认手机系统录屏已停止，也没找到录屏文件。请在手机上检查并手动停止录屏，录好的视频会保存在手机图库。"
       : "Piora could not confirm that the phone's system recording stopped, and the file was not found. Check the phone and stop the recording there; the video is kept in the phone gallery.";
     if (this.reason === "system-recording-start-unconfirmed") return chinese
-      ? "已向手机发送系统录屏指令，但无法确认录屏是否开始。请在手机上检查录屏状态，如果正在录制请手动停止。"
-      : "The system recording command was sent, but Piora could not confirm that recording started. Check the phone and stop any recording there.";
+      ? "已向手机发送系统录屏指令，但无法确认录屏是否开始。请在手机上手动停止录屏，然后点击“我已停止，取回录屏”。"
+      : "The system recording command was sent, but Piora could not confirm that recording started. Stop the recording on the phone, then select “I stopped it, retrieve recording”.";
     if (this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "mirror-component-missing") return chinese
       ? "实时视频组件尚未初始化；正在尝试兼容投屏。需要实时视频时，请点击“启用实时视频”。"
       : "The live video component is not initialized; trying compatible mirroring. Select Enable live video when you need it.";

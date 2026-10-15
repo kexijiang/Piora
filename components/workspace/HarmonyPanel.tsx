@@ -42,7 +42,7 @@ type HarmonyState = {
   controls: Array<{ serial: string; status: "stopping" | "recovering" }>;
   snapshots: Array<{ serial: string; generation: number; revision: number; capturedAt: string; hasTree: boolean; hasScreenshot: boolean }>;
 };
-type RecordingState = { serial: string; recordingId: string; startedAt: string; ownerId: string; method?: "system-recorder" | "stream" };
+type RecordingState = { serial: string; recordingId: string; startedAt: string; ownerId: string; method?: "system-recorder" | "stream"; systemRecorderStateUnknown?: boolean };
 type MediaArtifact = { kind: "screenshot" | "recording"; path: string; filename: string; size: number; serial?: string; createdAt?: string; width?: number; height?: number };
 type MediaNotice = {
   message: string;
@@ -528,19 +528,21 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
     requestFrame();
   };
 
-  const mediaAction = useCallback((mediaActionName: "capture_screenshot" | "start_recording" | "stop_recording") => {
+  const mediaAction = useCallback((mediaActionName: "capture_screenshot" | "start_recording" | "stop_recording" | "retrieve_recording") => {
     if (!selectedSerial) return;
     const execute = async () => {
       return jsonRequest<{ artifact?: MediaArtifact; recording?: RecordingState }>("/api/harmony/media", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: mediaActionName, serial: selectedSerial, ownerId,
-          ...(mediaActionName === "stop_recording" && recording?.serial === selectedSerial ? { recordingId: recording.recordingId } : {}) }),
+          ...((mediaActionName === "stop_recording" || mediaActionName === "retrieve_recording") && recording?.serial === selectedSerial ? { recordingId: recording.recordingId } : {}) }),
       });
     };
     const complete = async (payload: { artifact?: MediaArtifact; recording?: RecordingState }) => {
       if (payload.recording) {
         setRecording(payload.recording);
-        setMediaNotice({ message: copy("录屏已开始", "Recording started") });
+        setMediaNotice({ message: payload.recording.systemRecorderStateUnknown
+          ? copy("无法确认手机系统录屏是否已开始。请在手机上手动停止录屏，然后点击“我已停止，取回录屏”。", "Piora could not confirm that the phone's system recording started. Stop the recording on the phone, then select “I stopped it, retrieve recording”.")
+          : copy("录屏已开始", "Recording started") });
       } else if (payload.artifact) {
         if (payload.artifact.kind === "recording") setRecording(null);
         await copyMediaArtifact(payload.artifact);
@@ -555,7 +557,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       }).catch((failure) => {
         setError(messageOf(failure, copy("截图失败", "Screenshot failed"), chinese));
       }).finally(() => setScreenshotBusy(false));
-    } else if (mediaActionName === "stop_recording") {
+    } else if (mediaActionName === "stop_recording" || mediaActionName === "retrieve_recording") {
       // A system recording is copied from the phone gallery after it stops; show that transfer.
       setRecordingStopping(true);
       void run(execute, complete).finally(() => setRecordingStopping(false));
@@ -884,7 +886,12 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         </div> : null}
         <div className={styles.actionBar}>
           <button type="button" title={`${copy("截图", "Screenshot")}${screenshotShortcutLabel ? ` · ${screenshotShortcutLabel}` : ""}`} disabled={!canScreenshot || screenshotBusy} onClick={() => mediaAction("capture_screenshot")}><AliIcon name="save" size={15} />{screenshotBusy ? copy("截图中…", "Capturing…") : copy("截图", "Screenshot")}</button>
-          {recording ? <button className={styles.recordingButton} type="button" disabled={busy || !ownsRecording} onClick={() => mediaAction("stop_recording")}><AliIcon name="stop" size={15} />{recordingStopping ? recording.method === "system-recorder" ? copy("正在从手机传输录屏…", "Transferring recording from phone…") : copy("正在保存录屏…", "Saving recording…") : ownsRecording ? copy(`停止录屏 · ${formatRecordingElapsed(recordingElapsed)}`, `Stop recording · ${formatRecordingElapsed(recordingElapsed)}`) : copy("AI 正在录屏", "AI recording")}</button>
+          {recording?.systemRecorderStateUnknown && ownsRecording ? <>
+            <span role="status">{recordingStopping ? copy("正在从手机传输录屏…", "Transferring recording from phone…") : copy("无法确认系统录屏状态，请在手机上手动停止录屏", "Recording state unknown. Stop the recording on the phone")}</span>
+            {/* Retrieval only: this never sends a start/stop toggle to the phone. */}
+            <button className={styles.recordingButton} type="button" disabled={busy} onClick={() => mediaAction("retrieve_recording")}><AliIcon name="save" size={15} />{copy("我已停止，取回录屏", "I stopped it, retrieve recording")}</button>
+          </>
+          : recording ? <button className={styles.recordingButton} type="button" disabled={busy || !ownsRecording} onClick={() => mediaAction("stop_recording")}><AliIcon name="stop" size={15} />{recordingStopping ? recording.method === "system-recorder" ? copy("正在从手机传输录屏…", "Transferring recording from phone…") : copy("正在保存录屏…", "Saving recording…") : ownsRecording ? copy(`停止录屏 · ${formatRecordingElapsed(recordingElapsed)}`, `Stop recording · ${formatRecordingElapsed(recordingElapsed)}`) : copy("AI 正在录屏", "AI recording")}</button>
             : <button type="button" aria-label={copy("开始录屏", "Start recording")} disabled={!canControl || busy} onClick={() => mediaAction("start_recording")}><AliIcon name="play" size={15} />{copy("录屏", "Record")}</button>}
           {lease || holder || busy ? <button className={styles.stopButton} type="button" disabled={!selectedOnline} onClick={stopDevice} aria-label={copy("停止当前设备操作", "Stop this device")} title={copy("停止当前设备操作", "Stop this device")}><AliIcon name="stop" size={15} /></button> : null}
         </div>

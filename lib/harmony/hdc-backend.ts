@@ -136,11 +136,34 @@ export interface HdcBackendOptions {
   prepareMirrorHap?: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
   /** Poll timing for the Huawei system recorder (tests shorten these). */
   systemRecorder?: { pollIntervalMs?: number; retrieveTimeoutMs?: number; confirmTimeoutMs?: number; transferTimeoutMs?: number };
+  /** Receives one `[harmony-system-recorder] {json}` line per raw system-recorder command (defaults to stdout, which the desktop writes to piora.log). */
+  systemRecorderLog?: (line: string) => void;
 }
 
 type OwnedRecording =
   | { kind: "stream"; name: string; recording: Awaited<ReturnType<typeof startOwnedRecording>> }
-  | { kind: "system"; name: string; fileName: string };
+  | { kind: "system"; name: string; fileName: string; stateUnknown?: boolean };
+
+const SYSTEM_RECORDER_LOG_PREFIX = "[harmony-system-recorder]";
+const RAW_LOG_LIMIT = 4 * 1024;
+
+function rawText(value: Buffer): string {
+  const text = value.toString("utf8").replace(/\0/g, "").trim();
+  return text.length > RAW_LOG_LIMIT ? `${text.slice(0, RAW_LOG_LIMIT)}…[${text.length - RAW_LOG_LIMIT} more chars]` : text;
+}
+
+/** Raw replies are capped at 4 KiB each; `aa dump -a` also keeps every recorder line with context. */
+function rawRecorderOutput(operation: string, stdout: Buffer, stderr: Buffer): Record<string, unknown> {
+  const output: Record<string, unknown> = { stdout: rawText(stdout), stderr: rawText(stderr) };
+  if (operation === "system_recorder_state") {
+    const lines = stdout.toString("utf8").replace(/\0/g, "").split(/\r?\n/);
+    const keep = new Set<number>();
+    lines.forEach((line, index) => { if (line.includes(SYSTEM_RECORDER_BUNDLE)) for (let i = Math.max(0, index - 3); i <= Math.min(lines.length - 1, index + 3); i++) keep.add(i); });
+    output.stdoutBytes = stdout.length;
+    output.recorderLines = rawText(Buffer.from([...keep].sort((a, b) => a - b).map(index => lines[index]).join("\n")));
+  }
+  return output;
+}
 
 function delay(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise((resolveDelay, rejectDelay) => {
@@ -368,6 +391,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private readonly deviceInfoBySerial = new Map<string, { device: Omit<BackendDevice, "state">; expiresAt: number }>();
   private readonly ownedRecordings = new Map<string, OwnedRecording>();
   private readonly systemRecorderTiming: Required<NonNullable<HdcBackendOptions["systemRecorder"]>>;
+  private readonly systemRecorderLog: (line: string) => void;
   private readonly recordingStarts = new Set<string>();
   private readonly liveScreenshotPaths = new Map<string, { directory: string; localPath: string; remotePath: string }>();
   private readonly screenshotTails = new Map<string, Promise<void>>();
@@ -392,6 +416,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     this.hdcPath = resolution.hdcPath;
     this.execute = options.execute ?? runCommand;
     this.commandTimeoutMs = options.commandTimeoutMs ?? 15_000;
+    this.systemRecorderLog = options.systemRecorderLog ?? (line => { try { console.info(line); } catch { /* Logging never changes recording behavior. */ } });
     this.systemRecorderTiming = { pollIntervalMs: 3_000, retrieveTimeoutMs: 30_000, confirmTimeoutMs: 4_000, transferTimeoutMs: 120_000, ...options.systemRecorder };
     this.prepareMirrorHap = options.prepareMirrorHap ?? (async (serial, sourceHapPath, signal) => {
       const result = await this.shell(serial, ["bm", "get", "--udid"], "mirror_device_identity", signal, 8_000);
@@ -1150,7 +1175,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (this.ownedRecordings.has(serial) || this.recordingStarts.has(serial)) throw new HarmonyError("DEVICE_BUSY", "This runtime already owns a recording on the device");
     this.recordingStarts.add(serial);
     try {
-      const fileName = await this.startSystemRecording(serial, signal);
+      const fileName = await this.startSystemRecording(serial, remoteName, signal);
       if (fileName) {
         this.ownedRecordings.set(serial, { kind: "system", name: remoteName, fileName });
         return { method: "system-recorder" };
@@ -1173,9 +1198,32 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
+  /**
+   * Runs one system-recorder device command and logs its raw reply, so real-device behavior
+   * (state probe, toggle replies, mediatool formats) can be checked from the packaged app's log.
+   */
+  private async systemRecorderShell(serial: string, args: readonly string[], operation: string, signal?: AbortSignal, timeoutMs?: number): Promise<CommandResult> {
+    const startedAt = Date.now();
+    try {
+      const result = await this.shell(serial, args, operation, signal, timeoutMs);
+      this.logSystemRecorder(operation, args, { exitCode: result.exitCode, durationMs: Date.now() - startedAt,
+        ...rawRecorderOutput(operation, result.stdout, result.stderr) });
+      return result;
+    } catch (error) {
+      this.logSystemRecorder(operation, args, { durationMs: Date.now() - startedAt,
+        error: error instanceof Error ? `${isHarmonyError(error) ? `${error.code}: ` : ""}${error.message}`.slice(0, RAW_LOG_LIMIT) : String(error).slice(0, RAW_LOG_LIMIT) });
+      throw error;
+    }
+  }
+
+  private logSystemRecorder(operation: string, args: readonly string[], details: Record<string, unknown>): void {
+    try { this.systemRecorderLog(`${SYSTEM_RECORDER_LOG_PREFIX} ${JSON.stringify({ operation, command: args.join(" "), ...details })}`); }
+    catch { /* Logging never changes recording behavior. */ }
+  }
+
   private async systemRecorderAvailable(serial: string, signal?: AbortSignal): Promise<boolean> {
     try {
-      const result = await this.shell(serial, ["bm", "dump", "-n", SYSTEM_RECORDER_BUNDLE], "system_recorder_check", signal, 8_000);
+      const result = await this.systemRecorderShell(serial, ["bm", "dump", "-n", SYSTEM_RECORDER_BUNDLE], "system_recorder_check", signal, 8_000);
       return result.exitCode === 0 && systemRecorderInstalled(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
     } catch (error) {
       if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
@@ -1189,7 +1237,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
    */
   private async probeSystemRecorderState(serial: string, signal?: AbortSignal): Promise<SystemRecorderState> {
     try {
-      const result = await this.shell(serial, ["aa", "dump", "-a"], "system_recorder_state", signal, 8_000);
+      const result = await this.systemRecorderShell(serial, ["aa", "dump", "-a"], "system_recorder_state", signal, 8_000);
       if (result.exitCode !== 0) return "unknown";
       return parseSystemRecorderState(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
     } catch (error) {
@@ -1209,7 +1257,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
   }
 
   /** Returns the gallery file name when the system recorder is confirmed recording; undefined means "use the stream path". */
-  private async startSystemRecording(serial: string, signal?: AbortSignal): Promise<string | undefined> {
+  private async startSystemRecording(serial: string, remoteName: string, signal?: AbortSignal): Promise<string | undefined> {
     if (!await this.systemRecorderAvailable(serial, signal)) return undefined;
     // The documented constraint: a locked phone cannot start or stop the recorder cleanly.
     await this.requireUnlockedScreen(serial, signal);
@@ -1219,7 +1267,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const fileName = generateSystemRecordingName();
     let accepted = false;
     try {
-      const result = await this.shell(serial, systemRecorderToggleArgs(fileName), "system_recorder_start", signal, 10_000);
+      const result = await this.systemRecorderShell(serial, systemRecorderToggleArgs(fileName), "system_recorder_start", signal, 10_000);
       accepted = result.exitCode === 0 && systemRecorderStartAccepted(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
     } catch (error) {
       if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
@@ -1228,8 +1276,11 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (state === "recording") return fileName;
     // An explicitly rejected start that left the recorder observably idle is safe to replace.
     if (!accepted && state === "idle") return undefined;
-    throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The system recorder start was sent but could not be confirmed; check the phone and stop any recording there", {
-      details: { reason: "system-recording-start-unconfirmed", dispatchState: "sent", recordingStopped: true },
+    // The phone may be recording. Keep ownership of the generated name so the user can stop it on
+    // the phone and retrieve the file; no further toggle is ever sent for this recording.
+    this.ownedRecordings.set(serial, { kind: "system", name: remoteName, fileName, stateUnknown: true });
+    throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The system recorder start was sent but could not be confirmed; stop the recording on the phone, then retrieve it", {
+      details: { reason: "system-recording-start-unconfirmed", dispatchState: "sent", recordingStopped: false, systemRecorderStateUnknown: true, pendingRetrieval: true },
     });
   }
 
@@ -1239,10 +1290,16 @@ export class HdcBackend implements HarmonyAutomationBackend {
     let stopUnconfirmed = before === "unknown";
     if (before === "recording") {
       // Same toggle without --ps stops the recording that this runtime confirmed it started.
-      try { await this.shell(serial, systemRecorderToggleArgs(), "system_recorder_stop", undefined, 10_000); }
+      try { await this.systemRecorderShell(serial, systemRecorderToggleArgs(), "system_recorder_stop", undefined, 10_000); }
       catch { stopUnconfirmed = true; }
       if (await this.waitForSystemRecorderState(serial, "idle") !== "idle") stopUnconfirmed = true;
     }
+    return await this.transferSystemRecording(serial, fileName, destinationPath, stopUnconfirmed);
+  }
+
+  /** Retrieval only: finds Piora's generated file in the gallery and copies it. Never sends a recorder toggle. */
+  private async transferSystemRecording(serial: string, fileName: string, destinationPath: string, stopUnconfirmed = false): Promise<number> {
+    assertSystemRecordingName(fileName);
     const location = await this.findSystemRecording(serial, fileName);
     if (!location) {
       throw new HarmonyError("COMMAND_TIMEOUT", stopUnconfirmed
@@ -1255,7 +1312,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     let staged: string | undefined;
     try {
       if (location.kind === "uri") {
-        const result = await this.shell(serial, ["mediatool", "recv", location.uri, SYSTEM_RECORDING_STAGING_DIRECTORY], "system_recording_stage", undefined, this.systemRecorderTiming.transferTimeoutMs);
+        const result = await this.systemRecorderShell(serial, ["mediatool", "recv", location.uri, SYSTEM_RECORDING_STAGING_DIRECTORY], "system_recording_stage", undefined, this.systemRecorderTiming.transferTimeoutMs);
         staged = parseMediatoolRecv(Buffer.concat([result.stdout, result.stderr]).toString("utf8"), fileName);
         remotePath = staged;
       }
@@ -1280,7 +1337,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     const deadline = Date.now() + this.systemRecorderTiming.retrieveTimeoutMs;
     for (;;) {
       try {
-        const result = await this.shell(serial, ["mediatool", "query", fileName, "-u"], "system_recording_query", undefined, 8_000);
+        const result = await this.systemRecorderShell(serial, ["mediatool", "query", fileName, "-u"], "system_recording_query", undefined, 8_000);
         const location = parseMediatoolQuery(Buffer.concat([result.stdout, result.stderr]).toString("utf8"), fileName);
         if (location) return location;
       } catch { /* The media library may not have indexed the file yet. */ }
@@ -1289,11 +1346,27 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
-  private async discardSystemRecording(serial: string): Promise<void> {
+  private async discardSystemRecording(serial: string, owned: Extract<OwnedRecording, { kind: "system" }>): Promise<void> {
+    // An unconfirmed start is left to the user on the phone; it never receives another toggle.
+    if (owned.stateUnknown) return;
     // Shutdown never retrieves; it only stops a recording still observably running.
     if (await this.probeSystemRecorderState(serial).catch(() => "unknown" as const) === "recording") {
-      await this.shell(serial, systemRecorderToggleArgs(), "system_recorder_stop", undefined, 10_000).catch(() => undefined);
+      await this.systemRecorderShell(serial, systemRecorderToggleArgs(), "system_recorder_stop", undefined, 10_000).catch(() => undefined);
     }
+  }
+
+  /**
+   * "我已停止，取回录屏": for a system recording whose state could not be confirmed, the user stops
+   * it on the phone and Piora only looks up and copies its generated file. No toggle is sent.
+   */
+  async retrieveRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {
+    void signal; // Retrieval must clean its staging copy even after caller cancellation.
+    validateSerial(serial);
+    const owned = this.ownedRecordings.get(serial);
+    if (!owned || owned.name !== remoteName || owned.kind !== "system") throw new HarmonyError("INVALID_ARGUMENT", "No system recording owned by this runtime matches the requested retrieval");
+    try { return await this.transferSystemRecording(serial, owned.fileName, destinationPath); }
+    catch (error) { throw new HarmonyError(isHarmonyError(error) ? error.code : "COMMAND_FAILED", error instanceof Error ? error.message : "System recording retrieval failed", { cause: error, details: { ...(isHarmonyError(error) ? error.details : {}), recordingStopped: true } }); }
+    finally { this.ownedRecordings.delete(serial); }
   }
 
   async stopRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {
@@ -1301,7 +1374,11 @@ export class HdcBackend implements HarmonyAutomationBackend {
     validateSerial(serial);
     const owned = this.ownedRecordings.get(serial);
     if (!owned || owned.name !== remoteName) throw new HarmonyError("INVALID_ARGUMENT", "No recording owned by this runtime matches the requested operation");
-    try { return owned.kind === "system" ? await this.stopSystemRecording(serial, owned.fileName, destinationPath) : await owned.recording.stop(destinationPath); }
+    try {
+      if (owned.kind === "stream") return await owned.recording.stop(destinationPath);
+      // An unconfirmed system recording is retrieval-only: sending the toggle could start a new one.
+      return owned.stateUnknown ? await this.transferSystemRecording(serial, owned.fileName, destinationPath) : await this.stopSystemRecording(serial, owned.fileName, destinationPath);
+    }
     catch (error) { throw new HarmonyError(isHarmonyError(error) ? error.code : "COMMAND_FAILED", error instanceof Error ? error.message : "Owned recording failed", { cause: error, details: { ...(isHarmonyError(error) ? error.details : {}), recordingStopped: true } }); }
     finally { this.ownedRecordings.delete(serial); }
   }
@@ -1580,7 +1657,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
   async dispose(): Promise<void> {
     const cleanup = await Promise.allSettled([...this.videoClosers].map(close => close()));
-    await Promise.all([...this.ownedRecordings.entries()].map(([serial, owned]) => owned.kind === "system" ? this.discardSystemRecording(serial) : owned.recording.discard()));
+    await Promise.all([...this.ownedRecordings.entries()].map(([serial, owned]) => owned.kind === "system" ? this.discardSystemRecording(serial, owned) : owned.recording.discard()));
     this.ownedRecordings.clear();
     const entries = [...this.liveScreenshotPaths.entries()];
     this.liveScreenshotPaths.clear();

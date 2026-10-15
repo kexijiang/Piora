@@ -181,6 +181,8 @@ export interface HarmonyRecordingState {
   startedAt: string;
   ownerId: string;
   method?: HarmonyRecordingMethod;
+  /** The system recorder start was sent but not confirmed: the user stops it on the phone, then Piora only retrieves the file. */
+  systemRecorderStateUnknown?: boolean;
 }
 
 export interface HarmonyRuntimeCandidate {
@@ -477,6 +479,8 @@ export interface HarmonyAutomationBackend {
   ): Promise<BackendSnapshot>;
   startRecording?(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: import("./errors").HarmonyError) => void): Promise<HarmonyRecordingStartResult | void>;
   stopRecording?(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number>;
+  /** Retrieval only, for a system recording the user stopped on the phone; never toggles the recorder. */
+  retrieveRecording?(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number>;
   openVideoStream?(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection>;
   mirrorPackagePath?(): string;
   displayGeometry?(serial: string, signal?: AbortSignal): Promise<import("./observation/geometry").NativeDisplayGeometry>;
