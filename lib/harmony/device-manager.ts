@@ -1485,6 +1485,43 @@ export class HarmonyDeviceManager {
     }, options.signal, options.ownerId, options.serial, undefined, "media");
   }
 
+  /**
+   * "放弃取回": forgets an unconfirmed system recording on this computer. The backend removes only
+   * its /data/local/tmp relay copy; no recorder toggle is sent and the gallery original stays.
+   */
+  async abandonRecording(options: {
+    serial: string;
+    leaseToken?: string;
+    ownerId: string;
+    recordingId?: string;
+    signal?: AbortSignal;
+  }): Promise<void> {
+    validateSerial(options.serial);
+    await this.enqueue("abandon_recording", async (_signal, operationId) => {
+      if (options.leaseToken) {
+        const lease = this.requireLease(options.serial, options.leaseToken);
+        if (lease.owner.id !== options.ownerId) throw new HarmonyError("LEASE_REQUIRED", "The recording owner does not hold this device lease");
+      }
+      const state = this.recordings.get(options.serial);
+      if (!state) throw new HarmonyError("INVALID_ARGUMENT", "This Harmony device is not recording");
+      if (state.ownerId !== options.ownerId) throw new HarmonyError("DEVICE_BUSY", "The recording belongs to another controller");
+      if (options.recordingId !== undefined && options.recordingId !== state.recordingId)
+        throw new HarmonyError("STALE_SNAPSHOT", "The recording changed; refresh its state before giving up");
+      if (!state.systemRecorderStateUnknown) throw new HarmonyError("INVALID_ARGUMENT", "Only an unconfirmed system recording can be abandoned");
+      const backend = this.requireBackend();
+      if (!backend.abandonRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "System recording abandonment is unavailable on this device runtime");
+      if (this.recordingFinishes.has(state.recordingId)) throw new HarmonyError("DEVICE_BUSY", "The recording is being retrieved; wait for it to finish");
+      await backend.abandonRecording(options.serial, state.remoteName);
+      if (this.recordings.get(options.serial) === state) this.recordings.delete(options.serial);
+      clearTimeout(this.recordingTimers.get(options.serial)); this.recordingTimers.delete(options.serial);
+      this.clearRecordingRecovery(options.serial);
+      const taskId = this.recordingTasks.get(state.recordingId);
+      if (taskId) this.operationTasks.failed(taskId, new HarmonyError("COMMAND_ABORTED", "Retrieval abandoned; the recording remains in the phone gallery", { details: { reason: "system-recording-abandoned", recordingStopped: true } }));
+      this.recordingTasks.delete(state.recordingId); this.recordingFailures.delete(state.recordingId);
+      this.emit({ type: "operation", timestamp: iso(this.now()), serial: options.serial, operation: "abandon_recording", operationId });
+    }, options.signal, options.ownerId, options.serial, undefined, "media");
+  }
+
   private recordingFailed(state: HarmonyRecordingState, error: HarmonyError): void {
     if (this.recordings.get(state.serial) !== state) return;
     this.recordingFailures.set(state.recordingId, error);
@@ -1535,6 +1572,12 @@ export class HarmonyDeviceManager {
       return artifact;
     }
       catch (error) {
+        // A retrieval-only attempt that found or copied nothing keeps the session: the user can
+        // retry "我已停止，取回录屏" or explicitly give up. Nothing on the phone was toggled.
+        if (!stopped && mode === "retrieve" && isHarmonyError(error) && error.details?.pendingRetrieval === true && error.details?.recordingStopped === false) {
+          if (taskId) this.operationTasks.started(taskId, "recording");
+          throw error;
+        }
         if (stopped || (isHarmonyError(error) && error.details?.recordingStopped)) {
           if (this.recordings.get(serial) === state) this.recordings.delete(serial);
           clearTimeout(this.recordingTimers.get(serial)); this.recordingTimers.delete(serial);

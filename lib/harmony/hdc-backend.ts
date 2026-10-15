@@ -1298,9 +1298,15 @@ export class HdcBackend implements HarmonyAutomationBackend {
   }
 
   /** Retrieval only: finds Piora's generated file in the gallery and copies it. Never sends a recorder toggle. */
-  private async transferSystemRecording(serial: string, fileName: string, destinationPath: string, stopUnconfirmed = false): Promise<number> {
+  private async transferSystemRecording(serial: string, fileName: string, destinationPath: string, stopUnconfirmed = false, retrieveOnly = false): Promise<number> {
     assertSystemRecordingName(fileName);
     const location = await this.findSystemRecording(serial, fileName);
+    if (!location && retrieveOnly) {
+      // The user may not have stopped the phone recording yet; nothing proves the file is in the gallery.
+      throw new HarmonyError("COMMAND_TIMEOUT", "The recording file was not found; make sure the recording is stopped on the phone, then try again", {
+        details: { reason: "system-recording-retrieval-not-found" },
+      });
+    }
     if (!location) {
       throw new HarmonyError("COMMAND_TIMEOUT", stopUnconfirmed
         ? "The system recording could not be confirmed as stopped or found; stop it on the phone and copy it from the gallery"
@@ -1364,9 +1370,32 @@ export class HdcBackend implements HarmonyAutomationBackend {
     validateSerial(serial);
     const owned = this.ownedRecordings.get(serial);
     if (!owned || owned.name !== remoteName || owned.kind !== "system") throw new HarmonyError("INVALID_ARGUMENT", "No system recording owned by this runtime matches the requested retrieval");
-    try { return await this.transferSystemRecording(serial, owned.fileName, destinationPath); }
-    catch (error) { throw new HarmonyError(isHarmonyError(error) ? error.code : "COMMAND_FAILED", error instanceof Error ? error.message : "System recording retrieval failed", { cause: error, details: { ...(isHarmonyError(error) ? error.details : {}), recordingStopped: true } }); }
-    finally { this.ownedRecordings.delete(serial); }
+    let size: number;
+    try { size = await this.transferSystemRecording(serial, owned.fileName, destinationPath, false, true); }
+    catch (error) {
+      // A failed retrieval keeps ownership so the user can retry or explicitly give up; only
+      // a successful transfer or abandonRecording clears it.
+      throw new HarmonyError(isHarmonyError(error) ? error.code : "COMMAND_FAILED", error instanceof Error ? error.message : "System recording retrieval failed", { cause: error,
+        details: { ...(isHarmonyError(error) ? error.details : {}), recordingStopped: false, systemRecorderStateUnknown: true, pendingRetrieval: true } });
+    }
+    this.ownedRecordings.delete(serial);
+    return size;
+  }
+
+  /**
+   * "放弃取回": forgets this runtime's unconfirmed system recording. Removes only Piora's
+   * /data/local/tmp relay copy if one exists; never sends a recorder toggle and never touches
+   * the gallery original, which stays on the phone for manual export.
+   */
+  async abandonRecording(serial: string, remoteName: string): Promise<void> {
+    validateSerial(serial);
+    const owned = this.ownedRecordings.get(serial);
+    if (!owned || owned.name !== remoteName || owned.kind !== "system" || !owned.stateUnknown) throw new HarmonyError("INVALID_ARGUMENT", "No unconfirmed system recording owned by this runtime matches the requested operation");
+    const relay = `${SYSTEM_RECORDING_STAGING_DIRECTORY}/${assertSystemRecordingName(owned.fileName)}`;
+    this.ownedRecordings.delete(serial);
+    if (isStagedSystemRecording(relay, owned.fileName)) {
+      await this.shell(serial, ["rm", "-f", relay], "system_recording_cleanup", undefined, 5_000).catch(() => undefined);
+    }
   }
 
   async stopRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {

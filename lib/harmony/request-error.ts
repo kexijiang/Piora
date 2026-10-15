@@ -50,6 +50,9 @@ export class HarmonyRequestError extends Error {
     if (this.reason === "system-recording-not-transferred") return chinese
       ? "录屏已保存在手机图库，但没能传到电脑。请在手机图库中查看，或重新连接设备后再试。"
       : "The recording was saved in the phone gallery but could not be transferred to this computer. Check the phone gallery, or reconnect the device and try again.";
+    if (this.reason === "system-recording-retrieval-not-found") return chinese
+      ? "没有找到录屏文件，请确认手机上已停止录屏后再试。"
+      : "The recording file was not found. Make sure the recording is stopped on the phone, then try again.";
     if (this.reason === "system-recording-stop-unconfirmed") return chinese
       ? "无法确认手机系统录屏已停止，也没找到录屏文件。请在手机上检查并手动停止录屏，录好的视频会保存在手机图库。"
       : "Piora could not confirm that the phone's system recording stopped, and the file was not found. Check the phone and stop the recording there; the video is kept in the phone gallery.";

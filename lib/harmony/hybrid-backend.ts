@@ -108,6 +108,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.retrieveRecording(serial, remoteName, destinationPath, signal);
   }
 
+  async abandonRecording(serial: string, remoteName: string): Promise<void> {
+    await this.hdc.abandonRecording(serial, remoteName);
+  }
+
   async openVideoStream(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection> {
     return await this.hdc.openVideoStream(serial, signal);
   }

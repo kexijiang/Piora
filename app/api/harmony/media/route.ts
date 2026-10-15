@@ -85,6 +85,13 @@ export async function POST(request: Request) {
         ...(recordingId ? { recordingId } : {}), signal: request.signal });
       return noStoreJson({ artifact });
     }
+    if (body.action === "abandon_recording") {
+      // PC-side only: forgets the unconfirmed recording; the phone gallery copy stays untouched.
+      const recordingId = optionalString(body, "recordingId", 64);
+      await manager.abandonRecording({ serial, ownerId, ...(leaseToken ? { leaseToken } : {}),
+        ...(recordingId ? { recordingId } : {}), signal: request.signal });
+      return noStoreJson({ abandoned: true });
+    }
     throw new HarmonyError("INVALID_ARGUMENT", "Unsupported Harmony media action");
   } catch (error) {
     if (error instanceof JsonBodyTooLargeError) return noStoreJson({ error: "Request body is too large" }, { status: 413 });
