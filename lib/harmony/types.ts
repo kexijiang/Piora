@@ -167,12 +167,20 @@ export interface HarmonyMediaArtifact {
   mimeType: "image/png" | "video/mp4";
 }
 
+/** "system-recorder": Huawei's built-in recorder (gallery file copied to this computer); "stream": Piora's own mirror H.264 subscription. */
+export type HarmonyRecordingMethod = "system-recorder" | "stream";
+
+export interface HarmonyRecordingStartResult {
+  method: HarmonyRecordingMethod;
+}
+
 export interface HarmonyRecordingState {
   serial: string;
   recordingId: string;
   remoteName: string;
   startedAt: string;
   ownerId: string;
+  method?: HarmonyRecordingMethod;
 }
 
 export interface HarmonyRuntimeCandidate {
@@ -467,7 +475,7 @@ export interface HarmonyAutomationBackend {
     serial: string,
     options: { includeTree: boolean; includeScreenshot: boolean; signal?: AbortSignal },
   ): Promise<BackendSnapshot>;
-  startRecording?(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: import("./errors").HarmonyError) => void): Promise<void>;
+  startRecording?(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: import("./errors").HarmonyError) => void): Promise<HarmonyRecordingStartResult | void>;
   stopRecording?(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number>;
   openVideoStream?(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection>;
   mirrorPackagePath?(): string;

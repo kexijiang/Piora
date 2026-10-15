@@ -44,6 +44,18 @@ export class HarmonyRequestError extends Error {
     if (this.reason === "hap-preview-invalid") return chinese ? "无法读取此 HAP 的应用信息，请选择有效的 HAP 安装包。" : "Cannot read this HAP's application metadata. Select a valid HAP package.";
     if (chinese && this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "inaccessible") return "无法读取这个设备目录：当前调试连接没有访问权限。请使用可访问的目录；调试应用沙箱需要调试签名且应用已启动。";
     if (chinese && this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "missing") return "设备路径不存在，请检查完整路径。";
+    if (this.reason === "recording-stream-unavailable") return chinese
+      ? "手机端视频服务未运行，请在手机上打开 Piora 投屏并点开始共享，然后重新录屏。"
+      : "The phone video service is not running. Open Piora screen sharing on the phone, tap Start sharing, then record again.";
+    if (this.reason === "system-recording-not-transferred") return chinese
+      ? "录屏已保存在手机图库，但没能传到电脑。请在手机图库中查看，或重新连接设备后再试。"
+      : "The recording was saved in the phone gallery but could not be transferred to this computer. Check the phone gallery, or reconnect the device and try again.";
+    if (this.reason === "system-recording-stop-unconfirmed") return chinese
+      ? "无法确认手机系统录屏已停止，也没找到录屏文件。请在手机上检查并手动停止录屏，录好的视频会保存在手机图库。"
+      : "Piora could not confirm that the phone's system recording stopped, and the file was not found. Check the phone and stop the recording there; the video is kept in the phone gallery.";
+    if (this.reason === "system-recording-start-unconfirmed") return chinese
+      ? "已向手机发送系统录屏指令，但无法确认录屏是否开始。请在手机上检查录屏状态，如果正在录制请手动停止。"
+      : "The system recording command was sent, but Piora could not confirm that recording started. Check the phone and stop any recording there.";
     if (this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "mirror-component-missing") return chinese
       ? "实时视频组件尚未初始化；正在尝试兼容投屏。需要实时视频时，请点击“启用实时视频”。"
       : "The live video component is not initialized; trying compatible mirroring. Select Enable live video when you need it.";

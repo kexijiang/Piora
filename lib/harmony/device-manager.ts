@@ -1394,7 +1394,10 @@ export class HarmonyDeviceManager {
       this.recordingTasks.set(recordingId, taskId);
       // Register ownership before dispatch so a concurrent stop can reclaim it.
       dispatched = true;
-      try { await backend.startRecording(options.serial, state.remoteName, signal, error => this.recordingFailed(state, error)); }
+      try {
+        const started = await backend.startRecording(options.serial, state.remoteName, signal, error => this.recordingFailed(state, error));
+        state.method = started?.method ?? "stream";
+      }
       catch (error) {
         if (isHarmonyError(error) && (error.details?.recordingStopped || error.details?.dispatchState === "not-sent")) {
           this.recordings.delete(options.serial); this.recordingTasks.delete(recordingId);

@@ -37,6 +37,7 @@ export async function GET(request: Request) {
         recordingId: recording.recordingId,
         startedAt: recording.startedAt,
         ownerId: recording.ownerId,
+        method: recording.method ?? "stream",
       } : null,
       storage: resolveHarmonyStorage(manager.getConfig()),
     });
@@ -66,6 +67,7 @@ export async function POST(request: Request) {
         recordingId: recording.recordingId,
         startedAt: recording.startedAt,
         ownerId: recording.ownerId,
+        method: recording.method ?? "stream",
       } });
     }
     if (body.action === "stop_recording") {

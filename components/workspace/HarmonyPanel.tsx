@@ -42,7 +42,7 @@ type HarmonyState = {
   controls: Array<{ serial: string; status: "stopping" | "recovering" }>;
   snapshots: Array<{ serial: string; generation: number; revision: number; capturedAt: string; hasTree: boolean; hasScreenshot: boolean }>;
 };
-type RecordingState = { serial: string; recordingId: string; startedAt: string; ownerId: string };
+type RecordingState = { serial: string; recordingId: string; startedAt: string; ownerId: string; method?: "system-recorder" | "stream" };
 type MediaArtifact = { kind: "screenshot" | "recording"; path: string; filename: string; size: number; serial?: string; createdAt?: string; width?: number; height?: number };
 type MediaNotice = {
   message: string;
@@ -235,6 +235,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
   const visibleError = error ?? deviceError;
   const [frameSize, setFrameSize] = useState<{ width: number; height: number } | null>(null);
   const [recording, setRecording] = useState<RecordingState | null>(null);
+  const [recordingStopping, setRecordingStopping] = useState(false);
   const [mediaNotice, setMediaNotice] = useState<MediaNotice | null>(null);
   const frameRef = useRef<HTMLCanvasElement>(null);
   const frameViewportRef = useRef<HTMLDivElement>(null);
@@ -554,6 +555,10 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
       }).catch((failure) => {
         setError(messageOf(failure, copy("截图失败", "Screenshot failed"), chinese));
       }).finally(() => setScreenshotBusy(false));
+    } else if (mediaActionName === "stop_recording") {
+      // A system recording is copied from the phone gallery after it stops; show that transfer.
+      setRecordingStopping(true);
+      void run(execute, complete).finally(() => setRecordingStopping(false));
     } else {
       void run(execute, complete);
     }
@@ -879,7 +884,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, ses
         </div> : null}
         <div className={styles.actionBar}>
           <button type="button" title={`${copy("截图", "Screenshot")}${screenshotShortcutLabel ? ` · ${screenshotShortcutLabel}` : ""}`} disabled={!canScreenshot || screenshotBusy} onClick={() => mediaAction("capture_screenshot")}><AliIcon name="save" size={15} />{screenshotBusy ? copy("截图中…", "Capturing…") : copy("截图", "Screenshot")}</button>
-          {recording ? <button className={styles.recordingButton} type="button" disabled={busy || !ownsRecording} onClick={() => mediaAction("stop_recording")}><AliIcon name="stop" size={15} />{ownsRecording ? copy(`停止录屏 · ${formatRecordingElapsed(recordingElapsed)}`, `Stop recording · ${formatRecordingElapsed(recordingElapsed)}`) : copy("AI 正在录屏", "AI recording")}</button>
+          {recording ? <button className={styles.recordingButton} type="button" disabled={busy || !ownsRecording} onClick={() => mediaAction("stop_recording")}><AliIcon name="stop" size={15} />{recordingStopping ? recording.method === "system-recorder" ? copy("正在从手机传输录屏…", "Transferring recording from phone…") : copy("正在保存录屏…", "Saving recording…") : ownsRecording ? copy(`停止录屏 · ${formatRecordingElapsed(recordingElapsed)}`, `Stop recording · ${formatRecordingElapsed(recordingElapsed)}`) : copy("AI 正在录屏", "AI recording")}</button>
             : <button type="button" aria-label={copy("开始录屏", "Start recording")} disabled={!canControl || busy} onClick={() => mediaAction("start_recording")}><AliIcon name="play" size={15} />{copy("录屏", "Record")}</button>}
           {lease || holder || busy ? <button className={styles.stopButton} type="button" disabled={!selectedOnline} onClick={stopDevice} aria-label={copy("停止当前设备操作", "Stop this device")} title={copy("停止当前设备操作", "Stop this device")}><AliIcon name="stop" size={15} /></button> : null}
         </div>

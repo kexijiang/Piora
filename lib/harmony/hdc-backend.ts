@@ -13,6 +13,11 @@ import { parseUiObservation } from "./ui-tree";
 import { parseDisplayGeometry, type NativeDisplayGeometry } from "./observation/geometry";
 import { ForwardOwnershipStore } from "./runtime/forward-store";
 import { startOwnedRecording } from "./media/owned-recording";
+import {
+  SYSTEM_RECORDER_BUNDLE, SYSTEM_RECORDING_STAGING_DIRECTORY, assertSystemRecordingName, generateSystemRecordingName, isStagedSystemRecording,
+  parseMediatoolQuery, parseMediatoolRecv, parseSystemRecorderState, systemRecorderInstalled, systemRecorderStartAccepted, systemRecorderToggleArgs,
+  type SystemRecorderState,
+} from "./media/system-recorder";
 import { previewHapArtifact } from "./runtime/hap-preview";
 import { prepareLocalMirrorHap } from "./runtime/mirror-signing";
 import { streamHdcLines } from "./log-stream";
@@ -36,6 +41,7 @@ import type {
   HarmonyLogEntry,
   HarmonyLogLevel,
   HarmonyProcess,
+  HarmonyRecordingStartResult,
   HarmonyScreenshot,
   HarmonyVideoConnection,
 } from "./types";
@@ -128,6 +134,21 @@ export interface HdcBackendOptions {
   commandTimeoutMs?: number;
   forwardJournalDirectory?: string;
   prepareMirrorHap?: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
+  /** Poll timing for the Huawei system recorder (tests shorten these). */
+  systemRecorder?: { pollIntervalMs?: number; retrieveTimeoutMs?: number; confirmTimeoutMs?: number; transferTimeoutMs?: number };
+}
+
+type OwnedRecording =
+  | { kind: "stream"; name: string; recording: Awaited<ReturnType<typeof startOwnedRecording>> }
+  | { kind: "system"; name: string; fileName: string };
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolveDelay, rejectDelay) => {
+    if (signal?.aborted) { rejectDelay(new HarmonyError("COMMAND_ABORTED", "Device operation was cancelled", { details: { dispatchState: "not-sent" } })); return; }
+    const abort = () => { clearTimeout(timer); rejectDelay(new HarmonyError("COMMAND_ABORTED", "Device operation was cancelled")); };
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", abort); resolveDelay(); }, ms);
+    signal?.addEventListener("abort", abort, { once: true });
+  });
 }
 
 function validateSerial(serial: string): void {
@@ -345,7 +366,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private readonly prepareMirrorHap: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
   private readonly capabilitiesBySerial = new Map<string, HarmonyCapabilities>();
   private readonly deviceInfoBySerial = new Map<string, { device: Omit<BackendDevice, "state">; expiresAt: number }>();
-  private readonly ownedRecordings = new Map<string, { name: string; recording: Awaited<ReturnType<typeof startOwnedRecording>> }>();
+  private readonly ownedRecordings = new Map<string, OwnedRecording>();
+  private readonly systemRecorderTiming: Required<NonNullable<HdcBackendOptions["systemRecorder"]>>;
   private readonly recordingStarts = new Set<string>();
   private readonly liveScreenshotPaths = new Map<string, { directory: string; localPath: string; remotePath: string }>();
   private readonly screenshotTails = new Map<string, Promise<void>>();
@@ -370,6 +392,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     this.hdcPath = resolution.hdcPath;
     this.execute = options.execute ?? runCommand;
     this.commandTimeoutMs = options.commandTimeoutMs ?? 15_000;
+    this.systemRecorderTiming = { pollIntervalMs: 3_000, retrieveTimeoutMs: 30_000, confirmTimeoutMs: 4_000, transferTimeoutMs: 120_000, ...options.systemRecorder };
     this.prepareMirrorHap = options.prepareMirrorHap ?? (async (serial, sourceHapPath, signal) => {
       const result = await this.shell(serial, ["bm", "get", "--udid"], "mirror_device_identity", signal, 8_000);
       const udids = [...new Set(Buffer.concat([result.stdout, result.stderr]).toString("utf8")
@@ -1116,30 +1139,169 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
-  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<void> {
+  /**
+   * Huawei phones record with the built-in system recorder (saved to the gallery, then copied to
+   * this computer). Every other device, or any system-recorder start that is unavailable or
+   * explicitly rejected, records this runtime's own mirror H.264 subscription instead.
+   */
+  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<HarmonyRecordingStartResult> {
     validateSerial(serial);
     if (!/^piora-recording-[0-9A-Za-z-]{8,96}\.mp4$/.test(remoteName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony recording name");
     if (this.ownedRecordings.has(serial) || this.recordingStarts.has(serial)) throw new HarmonyError("DEVICE_BUSY", "This runtime already owns a recording on the device");
     this.recordingStarts.add(serial);
+    try {
+      const fileName = await this.startSystemRecording(serial, signal);
+      if (fileName) {
+        this.ownedRecordings.set(serial, { kind: "system", name: remoteName, fileName });
+        return { method: "system-recorder" };
+      }
+      await this.startStreamRecording(serial, remoteName, signal, onFailure);
+      return { method: "stream" };
+    } finally { this.recordingStarts.delete(serial); }
+  }
+
+  private async startStreamRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<void> {
     let connection: HarmonyVideoConnection | undefined;
     try {
       connection = await this.openVideoStream(serial, signal);
       const recording = await startOwnedRecording(connection, signal, onFailure);
-      this.ownedRecordings.set(serial, { name: remoteName, recording });
+      this.ownedRecordings.set(serial, { kind: "stream", name: remoteName, recording });
     } catch (error) {
       try { await connection?.close(); }
       catch (cause) { throw new HarmonyError("DEVICE_BUSY", "Recording startup forward cleanup is uncertain", { cause, details: { recordingStopped: true, cleanup: "uncertain" } }); }
       throw new HarmonyError(isHarmonyError(error) ? error.code : "COMMAND_FAILED", error instanceof Error ? error.message : "Recording startup failed", { cause: error, details: { ...(isHarmonyError(error) ? error.details : {}), recordingStopped: true, dispatchState: "not-sent" } });
     }
-    finally { this.recordingStarts.delete(serial); }
+  }
+
+  private async systemRecorderAvailable(serial: string, signal?: AbortSignal): Promise<boolean> {
+    try {
+      const result = await this.shell(serial, ["bm", "dump", "-n", SYSTEM_RECORDER_BUNDLE], "system_recorder_check", signal, 8_000);
+      return result.exitCode === 0 && systemRecorderInstalled(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
+    } catch (error) {
+      if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
+      return false;
+    }
+  }
+
+  /**
+   * NEEDS REAL-DEVICE VALIDATION: whether `aa dump -a` reliably shows an active system recording.
+   * Kept isolated so the probe can be replaced once verified on a phone. "unknown" never toggles.
+   */
+  private async probeSystemRecorderState(serial: string, signal?: AbortSignal): Promise<SystemRecorderState> {
+    try {
+      const result = await this.shell(serial, ["aa", "dump", "-a"], "system_recorder_state", signal, 8_000);
+      if (result.exitCode !== 0) return "unknown";
+      return parseSystemRecorderState(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
+    } catch (error) {
+      if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
+      return "unknown";
+    }
+  }
+
+  private async waitForSystemRecorderState(serial: string, wanted: SystemRecorderState, signal?: AbortSignal): Promise<SystemRecorderState> {
+    const deadline = Date.now() + this.systemRecorderTiming.confirmTimeoutMs;
+    let state = await this.probeSystemRecorderState(serial, signal);
+    while (state !== wanted && Date.now() < deadline) {
+      await delay(Math.min(500, this.systemRecorderTiming.pollIntervalMs), signal);
+      state = await this.probeSystemRecorderState(serial, signal);
+    }
+    return state;
+  }
+
+  /** Returns the gallery file name when the system recorder is confirmed recording; undefined means "use the stream path". */
+  private async startSystemRecording(serial: string, signal?: AbortSignal): Promise<string | undefined> {
+    if (!await this.systemRecorderAvailable(serial, signal)) return undefined;
+    // The documented constraint: a locked phone cannot start or stop the recorder cleanly.
+    await this.requireUnlockedScreen(serial, signal);
+    // Start and stop are one toggle. Only an observed idle recorder may receive "start";
+    // a manual recording or an unreadable state falls back without touching the recorder.
+    if (await this.probeSystemRecorderState(serial, signal) !== "idle") return undefined;
+    const fileName = generateSystemRecordingName();
+    let accepted = false;
+    try {
+      const result = await this.shell(serial, systemRecorderToggleArgs(fileName), "system_recorder_start", signal, 10_000);
+      accepted = result.exitCode === 0 && systemRecorderStartAccepted(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
+    } catch (error) {
+      if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
+    }
+    const state = await this.waitForSystemRecorderState(serial, "recording");
+    if (state === "recording") return fileName;
+    // An explicitly rejected start that left the recorder observably idle is safe to replace.
+    if (!accepted && state === "idle") return undefined;
+    throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The system recorder start was sent but could not be confirmed; check the phone and stop any recording there", {
+      details: { reason: "system-recording-start-unconfirmed", dispatchState: "sent", recordingStopped: true },
+    });
+  }
+
+  private async stopSystemRecording(serial: string, fileName: string, destinationPath: string): Promise<number> {
+    assertSystemRecordingName(fileName);
+    const before = await this.probeSystemRecorderState(serial);
+    let stopUnconfirmed = before === "unknown";
+    if (before === "recording") {
+      // Same toggle without --ps stops the recording that this runtime confirmed it started.
+      try { await this.shell(serial, systemRecorderToggleArgs(), "system_recorder_stop", undefined, 10_000); }
+      catch { stopUnconfirmed = true; }
+      if (await this.waitForSystemRecorderState(serial, "idle") !== "idle") stopUnconfirmed = true;
+    }
+    const location = await this.findSystemRecording(serial, fileName);
+    if (!location) {
+      throw new HarmonyError("COMMAND_TIMEOUT", stopUnconfirmed
+        ? "The system recording could not be confirmed as stopped or found; stop it on the phone and copy it from the gallery"
+        : "The recording was saved in the phone gallery but could not be transferred to this computer", {
+        details: { reason: stopUnconfirmed ? "system-recording-stop-unconfirmed" : "system-recording-not-transferred", recordingStopped: true },
+      });
+    }
+    let remotePath = location.kind === "path" ? location.path : undefined;
+    let staged: string | undefined;
+    try {
+      if (location.kind === "uri") {
+        const result = await this.shell(serial, ["mediatool", "recv", location.uri, SYSTEM_RECORDING_STAGING_DIRECTORY], "system_recording_stage", undefined, this.systemRecorderTiming.transferTimeoutMs);
+        staged = parseMediatoolRecv(Buffer.concat([result.stdout, result.stderr]).toString("utf8"), fileName);
+        remotePath = staged;
+      }
+      await this.run(["-t", serial, "file", "recv", remotePath!, destinationPath], "system_recording_pull", undefined, this.systemRecorderTiming.transferTimeoutMs);
+      const size = (await stat(destinationPath)).size;
+      if (!size) throw new Error("empty recording");
+      return size;
+    } catch (cause) {
+      await rm(destinationPath, { force: true }).catch(() => undefined);
+      throw new HarmonyError("COMMAND_FAILED", "The recording was saved in the phone gallery but could not be transferred to this computer", {
+        cause, details: { reason: "system-recording-not-transferred", recordingStopped: true },
+      });
+    } finally {
+      // Only Piora's staging copy is removed; the gallery copy belongs to the user.
+      if (staged && isStagedSystemRecording(staged, fileName)) {
+        await this.shell(serial, ["rm", "-f", staged], "system_recording_cleanup", undefined, 5_000).catch(() => undefined);
+      }
+    }
+  }
+
+  private async findSystemRecording(serial: string, fileName: string) {
+    const deadline = Date.now() + this.systemRecorderTiming.retrieveTimeoutMs;
+    for (;;) {
+      try {
+        const result = await this.shell(serial, ["mediatool", "query", fileName, "-u"], "system_recording_query", undefined, 8_000);
+        const location = parseMediatoolQuery(Buffer.concat([result.stdout, result.stderr]).toString("utf8"), fileName);
+        if (location) return location;
+      } catch { /* The media library may not have indexed the file yet. */ }
+      if (Date.now() + this.systemRecorderTiming.pollIntervalMs > deadline) return undefined;
+      await delay(this.systemRecorderTiming.pollIntervalMs);
+    }
+  }
+
+  private async discardSystemRecording(serial: string): Promise<void> {
+    // Shutdown never retrieves; it only stops a recording still observably running.
+    if (await this.probeSystemRecorderState(serial).catch(() => "unknown" as const) === "recording") {
+      await this.shell(serial, systemRecorderToggleArgs(), "system_recorder_stop", undefined, 10_000).catch(() => undefined);
+    }
   }
 
   async stopRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {
-    void signal; // Stopping an owned read subscription must finish even after caller cancellation.
+    void signal; // Stopping an owned recording must finish even after caller cancellation.
     validateSerial(serial);
     const owned = this.ownedRecordings.get(serial);
     if (!owned || owned.name !== remoteName) throw new HarmonyError("INVALID_ARGUMENT", "No recording owned by this runtime matches the requested operation");
-    try { return await owned.recording.stop(destinationPath); }
+    try { return owned.kind === "system" ? await this.stopSystemRecording(serial, owned.fileName, destinationPath) : await owned.recording.stop(destinationPath); }
     catch (error) { throw new HarmonyError(isHarmonyError(error) ? error.code : "COMMAND_FAILED", error instanceof Error ? error.message : "Owned recording failed", { cause: error, details: { ...(isHarmonyError(error) ? error.details : {}), recordingStopped: true } }); }
     finally { this.ownedRecordings.delete(serial); }
   }
@@ -1418,7 +1580,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
   async dispose(): Promise<void> {
     const cleanup = await Promise.allSettled([...this.videoClosers].map(close => close()));
-    await Promise.all([...this.ownedRecordings.values()].map(owned => owned.recording.discard()));
+    await Promise.all([...this.ownedRecordings.entries()].map(([serial, owned]) => owned.kind === "system" ? this.discardSystemRecording(serial) : owned.recording.discard()));
     this.ownedRecordings.clear();
     const entries = [...this.liveScreenshotPaths.entries()];
     this.liveScreenshotPaths.clear();

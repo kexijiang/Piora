@@ -3,6 +3,7 @@ import { HarmonyError } from "./errors";
 import { createHdcBackend, type HdcBackend, type HdcBackendOptions } from "./hdc-backend";
 import { HypiumAutomationDriver, type HypiumAutomationStatus } from "./hypium-backend";
 import type {
+  HarmonyRecordingStartResult,
   BackendDevice,
   BackendSnapshot,
   HarmonyAutomationBackend,
@@ -95,8 +96,8 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.snapshot(serial, options);
   }
 
-  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<void> {
-    await this.hdc.startRecording(serial, remoteName, signal, onFailure);
+  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<HarmonyRecordingStartResult> {
+    return await this.hdc.startRecording(serial, remoteName, signal, onFailure);
   }
 
   async stopRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {

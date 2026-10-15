@@ -21,7 +21,9 @@ function lengthPrefixed(data: Buffer): Buffer {
   return Buffer.concat(units(data).map(unit => { const size = Buffer.alloc(4); size.writeUInt32BE(unit.length); return Buffer.concat([size, unit]); }));
 }
 function configuration(payload: Buffer) {
-  if (payload.length < 17 || payload[0] !== 0) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Owned MP4 recording requires the mirror's H.264 stream; no system recorder will be toggled", { details: { dispatchState: "not-sent" } });
+  // This stream path never toggles Huawei's system recorder; HdcBackend chooses that path
+  // separately, before any mirror stream is opened (see media/system-recorder.ts).
+  if (payload.length < 17 || payload[0] !== 0) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Owned MP4 recording requires the mirror's H.264 stream", { details: { dispatchState: "not-sent" } });
   const width = payload.readUInt32BE(1), height = payload.readUInt32BE(5), fps = payload.readUInt32BE(9);
   if (!width || !height || width > 8192 || height > 8192 || fps < 1 || fps > 120) throw new HarmonyError("INVALID_RESPONSE", "Invalid recording geometry or frame rate");
   const sl = payload.readUInt16BE(13), pp = 15 + sl;
@@ -34,6 +36,30 @@ function configuration(payload: Buffer) {
   description.set([1, sps[1], sps[2], sps[3], 255, 225]); description.writeUInt16BE(sps.length, 6); description.set(sps, 8);
   description[8 + sps.length] = 1; description.writeUInt16BE(pps.length, 9 + sps.length); description.set(pps, 11 + sps.length);
   return { width, height, fps, description, codec: `avc1.${sps.subarray(1, 4).toString("hex")}` };
+}
+
+const STREAM_RESET_CODES = new Set(["ECONNRESET", "EPIPE", "ECONNABORTED", "ECONNREFUSED"]);
+
+/** True for a transport that the phone side closed or reset, e.g. `read ECONNRESET` through `hdc fport`. */
+export function isRecordingStreamReset(error: unknown): boolean {
+  for (let current = error, depth = 0; current && depth < 4; depth++) {
+    const value = current as { code?: unknown; message?: unknown; cause?: unknown };
+    if (typeof value.code === "string" && STREAM_RESET_CODES.has(value.code)) return true;
+    if (typeof value.message === "string" && /\b(?:ECONNRESET|EPIPE|ECONNABORTED|socket hang up)\b/.test(value.message)) return true;
+    current = value.cause;
+  }
+  return false;
+}
+
+/**
+ * `hdc fport` accepts the local connection even when nothing listens on the phone, then resets it
+ * on the first read. A reset or EOF before the first video packet therefore means the phone's video
+ * service is not running; report that instead of a raw `read ECONNRESET`.
+ */
+export function recordingStreamUnavailable(cause?: unknown): HarmonyError {
+  return new HarmonyError("CAPABILITY_UNAVAILABLE", "The phone video service is not running. Open Piora screen sharing on the phone and tap Start sharing", {
+    cause, details: { reason: "recording-stream-unavailable", dispatchState: "not-sent" },
+  });
 }
 
 /** Records only this subscriber's encoded stream. No global recorder, process kill or device media deletion. */
@@ -80,12 +106,17 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
   const abort = () => { failure = new HarmonyError("COMMAND_ABORTED", "Recording startup was cancelled", { details: { dispatchState: "not-sent" } }); rejectReady(failure); void close().catch(() => undefined); };
   signal?.addEventListener("abort", abort, { once: true });
   const startup = setTimeout(() => { failure = new HarmonyError("COMMAND_TIMEOUT", "No H.264 keyframe arrived for recording", { details: { dispatchState: "not-sent" } }); rejectReady(failure); void close().catch(() => undefined); }, 15000);
-  let pending = Buffer.alloc(0);
+  let pending = Buffer.alloc(0), received = false;
   const pump = (async () => {
     try {
       while (!stopping && !failure) {
         const { done, value } = await reader.read();
-        if (done) { if (!stopping) throw new HarmonyError("DEVICE_OFFLINE", "Recording stream ended before stop"); break; }
+        if (done) {
+          if (!stopping && !received) throw recordingStreamUnavailable();
+          if (!stopping) throw new HarmonyError("DEVICE_OFFLINE", "Recording stream ended before stop");
+          break;
+        }
+        if (value.length) received = true;
         if (pending.length + value.length > MAX_PACKET + 8) throw new HarmonyError("COMMAND_OUTPUT_LIMIT", "Recording packet buffer exceeded limit");
         pending = Buffer.concat([pending, value]);
         while (pending.length >= 8) {
@@ -109,7 +140,11 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
           }
         }
       }
-    } catch (error) { failure ??= error; rejectReady(error); }
+    } catch (error) {
+      // Only a reset before the first packet means "service not running"; later resets keep their cause.
+      failure ??= !received && !stopping && isRecordingStreamReset(error) ? recordingStreamUnavailable(error) : error;
+      rejectReady(failure);
+    }
     finally {
       await close().catch(error => {
         const original = failure ? asHarmonyError(failure) : asHarmonyError(error);
