@@ -1,5 +1,6 @@
 import { brandText } from "../../branding";
 import { nativeMcpZh } from "./native-mcp";
+import { modelSamplingZh } from "./model-sampling";
 import { skillSourcesZh } from "./skill-sources";
 import { replySuggestionsZh } from "./reply-suggestions";
 import type { LocalePlugin } from "../types";
@@ -13,6 +14,7 @@ export const zhCNLocale: LocalePlugin = {
   label: "简体中文",
   messages: {
     ...nativeMcpZh,
+    ...modelSamplingZh,
     ...skillSourcesZh,
     ...sshZh,
     ...runStatusMessagesZh,

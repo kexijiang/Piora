@@ -4,6 +4,9 @@ import { tmpdir } from "os";
 import { join } from "path";
 import type { AssistantMessage } from "@earendil-works/pi-ai/compat";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { clampThinkingLevel, getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
+import { resolveSamplingParams } from "@earendil-works/pi-ai/api/simple-options";
+import { modelSamplingError, samplingParamsError, SAMPLING_APIS, SAMPLING_THINKING_LEVELS, type SamplingThinkingLevel } from "@/lib/model-sampling";
 import { hasJsonContentType, isApiRequestAllowed } from "@/lib/request-security";
 import {
   createTrustedModelServices,
@@ -50,7 +53,16 @@ export async function POST(req: Request) {
       model?: unknown;
       modelId?: unknown;
       cwd?: unknown;
+      previewOnly?: boolean;
+      thinkingLevel?: unknown;
+      requestSamplingParams?: unknown;
     };
+    const thinkingLevel = body.thinkingLevel ?? "off";
+    if (!SAMPLING_THINKING_LEVELS.includes(thinkingLevel as SamplingThinkingLevel)) {
+      return NextResponse.json({ ok: false, error: "thinkingLevel must be a Pi thinking level" }, { status: 400 });
+    }
+    const requestError = samplingParamsError(body.requestSamplingParams, "requestSamplingParams");
+    if (requestError) return NextResponse.json({ ok: false, error: requestError }, { status: 400 });
     const providerName = typeof body.providerName === "string" ? body.providerName.trim() : "";
     if (!providerName) return NextResponse.json({ ok: false, error: "providerName is required" }, { status: 400 });
     const testingDraftConfig = body.provider !== undefined || body.model !== undefined;
@@ -60,6 +72,8 @@ export async function POST(req: Request) {
     if (testingDraftConfig) {
       if (!isRecord(body.provider)) return NextResponse.json({ ok: false, error: "provider is required" }, { status: 400 });
       if (!isRecord(body.model)) return NextResponse.json({ ok: false, error: "model is required" }, { status: 400 });
+      const samplingError = modelSamplingError(body.model);
+      if (samplingError) return NextResponse.json({ ok: false, error: samplingError }, { status: 400 });
       modelId = typeof body.model.id === "string" ? body.model.id.trim() : "";
       if (!modelId) return NextResponse.json({ ok: false, error: "Model ID is required" }, { status: 400 });
 
@@ -87,6 +101,19 @@ export async function POST(req: Request) {
     const model = modelRuntime.getModel(providerName, modelId);
     if (!model) return NextResponse.json({ ok: false, error: `Model not found: ${providerName}/${modelId}` });
 
+    const effectiveThinkingLevel = clampThinkingLevel(model, thinkingLevel as SamplingThinkingLevel);
+    const applicable = SAMPLING_APIS.includes(model.api);
+    const requestSamplingParams = body.requestSamplingParams as Record<string, unknown> | undefined;
+    const samplingPreview = {
+      api: model.api,
+      applicable,
+      requestedThinkingLevel: thinkingLevel,
+      effectiveThinkingLevel,
+      supportedThinkingLevels: getSupportedThinkingLevels(model),
+      params: applicable ? resolveSamplingParams(model, effectiveThinkingLevel, requestSamplingParams) ?? {} : null,
+    };
+    if (body.previewOnly) return NextResponse.json({ ok: true, samplingPreview });
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TEST_TIMEOUT_MS);
     let status: number | undefined;
@@ -109,6 +136,8 @@ export async function POST(req: Request) {
         maxRetries: 0,
         cacheRetention: "none",
         signal: controller.signal,
+        reasoning: effectiveThinkingLevel === "off" ? undefined : effectiveThinkingLevel,
+        samplingParams: requestSamplingParams,
         onResponse: (response) => { status = response.status; },
       });
 
@@ -119,6 +148,7 @@ export async function POST(req: Request) {
           error: message.errorMessage ?? (controller.signal.aborted ? "Test timed out" : "Model returned an error"),
           latencyMs,
           status,
+          samplingPreview,
         });
       }
 
@@ -127,6 +157,7 @@ export async function POST(req: Request) {
         latencyMs,
         status,
         responseText: getAssistantText(message).slice(0, 300),
+        samplingPreview,
       });
     } finally {
       clearTimeout(timeout);

@@ -21,4 +21,7 @@ test("unified search combines recent chats, message matches, and settings in a c
   assert.ok(dialog, "search dialog styles must exist");
   assert.doesNotMatch(backdrop, /backdrop-filter\s*:/, "the overlay must not blur the page before the dialog samples it");
   assert.match(dialog, /backdrop-filter:\s*var\(--floating-filter\)/, "search must use the shared adjustable glass filter");
+  assert.match(source, /\{result\.snippet\.slice\(0, start\)\}/);
+  assert.match(source, /<mark>\{result\.snippet\.slice\(start, end\)\}<\/mark>/);
+  assert.doesNotMatch(source, /MarkdownBody|dangerouslySetInnerHTML/);
 });

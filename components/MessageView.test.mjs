@@ -17,8 +17,10 @@ const { VirtualRowStateContext } = await jiti.import("./VirtualRowState");
 const { createVirtualRowState } = await jiti.import("@/lib/virtual-row-state");
 const messageImageSource = readFileSync(new URL("./MessageImage.tsx", import.meta.url), "utf8");
 const messageViewSource = readFileSync(new URL("./MessageView.tsx", import.meta.url), "utf8");
+const userMessageTextSource = readFileSync(new URL("./UserMessageText.tsx", import.meta.url), "utf8");
 const commandViewSource = readFileSync(new URL("./CommandExecutionView.tsx", import.meta.url), "utf8");
 const commandLogSource = readFileSync(new URL("./CommandLogViewer.tsx", import.meta.url), "utf8");
+const globalCss = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 
 function renderMessage(message, props = {}) {
   return renderToStaticMarkup(
@@ -139,6 +141,44 @@ test("fresh message mounts restore the virtual row's expanded and collapsed choi
   assert.match(mount(), /aria-expanded="true"/);
   rowState.set("user-content", false);
   assert.match(mount(), /aria-expanded="false"/);
+});
+
+test("renders user messages as escaped plain text and keeps assistant Markdown", () => {
+  const content = "a  b\n\n*not bold* _not italic_ # not a heading `not code`\n> not a quote\n- not a list\n[not](https://example.com) <b>not html</b> A & B | cell | ~not strike~\n@src/file_name.ts:1-3";
+  const message = {
+    role: "user",
+    content: [
+      { type: "text", text: content },
+      { type: "image", data: "aGVsbG8=", mimeType: "image/png" },
+    ],
+    timestamp: Date.now(),
+  };
+  const html = renderMessage(message);
+  const history = renderMessage(message, { mode: "history" });
+  const userSource = messageViewSource.slice(
+    messageViewSource.indexOf("function UserMessageView"),
+    messageViewSource.indexOf("function AssistantMessageView"),
+  );
+  const textBlockSource = messageViewSource.slice(
+    messageViewSource.indexOf("function TextBlock"),
+    messageViewSource.indexOf("function ThinkingBlock"),
+  );
+
+  for (const rendered of [html, history]) {
+    assert.match(rendered, /class="user-message-text"/);
+    assert.match(rendered, /a {2}b\n\n\*not bold\* _not italic_ # not a heading `not code`/);
+    assert.match(rendered, /- not a list\n\[not\]\(https:\/\/example\.com\) &lt;b&gt;not html&lt;\/b&gt; A &amp; B \| cell \| ~not strike~\n@src\/file_name\.ts:1-3/);
+    assert.match(rendered, /class="message-image-thumbnail"/);
+    assert.doesNotMatch(rendered, /<(?:strong|em|h1|h2|code|blockquote|del|table|script|a)\b|markdown-user-message|markdown-body|dangerouslySetInnerHTML/);
+  }
+  assert.match(html, /复制/);
+  assert.doesNotMatch(history, /复制|从这里编辑|重新发送/);
+  assert.match(userSource, /<UserMessageText text=\{displayedContent\} \/>/);
+  assert.match(userSource, /copyContent/);
+  assert.doesNotMatch(userSource, /MarkdownBody|dangerouslySetInnerHTML/);
+  assert.doesNotMatch(userMessageTextSource, /dangerouslySetInnerHTML|MarkdownBody/);
+  assert.match(textBlockSource, /<MarkdownBody className="markdown-assistant-message"[^>]*>\{block\.text\}<\/MarkdownBody>/);
+  assert.match(globalCss, /\.user-message-text\s*\{[^}]*white-space:\s*pre-wrap/s);
 });
 
 test("renders short user queries without an expand control", () => {

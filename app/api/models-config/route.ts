@@ -6,6 +6,7 @@ import { writePrivateFileAtomicSync } from "@/lib/atomic-file";
 import { invalidateModelsCache } from "@/lib/models-cache";
 import { invalidateServicesCache } from "@/lib/rpc-manager";
 import { normalizeModelConfigCosts } from "@/lib/model-config-cost";
+import { validateModelSamplingConfig } from "@/lib/model-sampling";
 import { stripJsonComments } from "@/lib/mcp-capabilities";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,7 @@ export async function PUT(req: Request) {
   let body: Record<string, unknown>;
   try {
     body = normalizeModelConfigCosts(await req.json());
+    validateModelSamplingConfig(body);
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 400 });
   }

@@ -224,7 +224,7 @@ export const RoomMessageList = memo(function RoomMessageList({
             </div>
             <div className={isUser ? styles.bubble : "message-assistant-blocks"}>
               {isUser
-                ? <CollapsibleUserContent message={message} cwd={room.projectRoot} sessionId={actorSessionId} onRetry={onRetry} retryDisabled={retryDisabled} />
+                ? <CollapsibleUserContent message={message} sessionId={actorSessionId} onRetry={onRetry} retryDisabled={retryDisabled} />
                 : <MarkdownBody cwd={room.projectRoot} className="markdown-assistant-message">{message.content}</MarkdownBody>}
             </div>
           </div>

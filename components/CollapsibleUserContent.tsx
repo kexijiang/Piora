@@ -3,10 +3,10 @@
 import { useMemo, useState } from "react";
 import type { RoomMessage } from "@/lib/room-types";
 import { previewUserContent, shouldCollapseUserContent } from "@/lib/collapsible-content";
-import { LazyMarkdownBody as MarkdownBody } from "./LazyMarkdownBody";
+import { UserMessageText } from "./UserMessageText";
 import styles from "./RoomWorkspace.module.css";
 
-export function CollapsibleUserContent({ message, cwd, sessionId, onRetry, retryDisabled }: { message: RoomMessage; cwd?: string; sessionId: string; onRetry?: (content: string) => Promise<void>; retryDisabled?: boolean }) {
+export function CollapsibleUserContent({ message, sessionId, onRetry, retryDisabled }: { message: RoomMessage; sessionId: string; onRetry?: (content: string) => Promise<void>; retryDisabled?: boolean }) {
   const initiallyCollapsed = shouldCollapseUserContent(message.payload);
   const [expanded, setExpanded] = useState(!initiallyCollapsed);
   const [fullContent, setFullContent] = useState(message.payload.truncated ? null : message.content);
@@ -54,7 +54,7 @@ export function CollapsibleUserContent({ message, cwd, sessionId, onRetry, retry
 
   return (
     <div className={styles.collapsibleContent}>
-      <MarkdownBody cwd={cwd}>{visibleContent}</MarkdownBody>
+      <UserMessageText text={visibleContent} />
       {initiallyCollapsed ? (
         <div className={styles.contentActions}>
           <button type="button" aria-expanded={expanded} disabled={loading} onClick={() => { void toggle(); }}>{loading ? "加载中…" : expanded ? "收起" : "展开全文"}</button>

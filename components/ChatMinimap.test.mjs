@@ -23,7 +23,8 @@ test("chat timeline lists only user prompts and keeps both jump targets clickabl
   assert.match(component, /previewOpen \|\| previewPinned/);
   assert.match(component, /onClick=\{\(\) => scrollToNode\(index\)\}/);
   assert.match(component, /onRevealHistory\(target\)/);
-  assert.doesNotMatch(component, /ReactMarkdown|AssistantOutline|assistantPreviews|data-minimap-preview-assistant/);
+  assert.doesNotMatch(component, /ReactMarkdown|MarkdownBody|dangerouslySetInnerHTML|AssistantOutline|assistantPreviews|data-minimap-preview-assistant/);
+  assert.match(component, /<span className=\{styles\.previewText\}>\{users\[index\] \|\| t\("chat\.timelineAttachmentOnly"\)\}<\/span>/);
   assert.doesNotMatch(chatWindow, /streamingMessage=\{streamState\.streamingMessage\}/);
   assert.match(styles, /\.previewText[\s\S]*white-space:\s*nowrap/);
 });
