@@ -1,0 +1,15 @@
+.editor { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.editor h4, .editor p { margin: 0; }
+.editor p { color: var(--text-muted); font-size: var(--text-xs); line-height: 1.6; }
+.editor label, .params { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.editor label { font-size: var(--text-xs); }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.editor input, .editor textarea, .editor select { width: 100%; box-sizing: border-box; min-width: 0; padding: 7px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); color: var(--text); }
+.editor textarea { resize: vertical; font-family: var(--font-mono); }
+.editor button { align-self: flex-start; padding: 5px 9px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-control); cursor: pointer; font-size: var(--text-xs); }
+.editor button:disabled { opacity: .5; cursor: not-allowed; }
+.editor summary { cursor: pointer; font-size: var(--text-xs); }
+.editor details > :not(summary) { margin-top: 10px; }
+.editor pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs); }
+.editor p.error { color: #ef4444; overflow-wrap: anywhere; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -1,5 +1,6 @@
 import { brandText } from "../../branding";
 import { nativeMcpZh } from "./native-mcp";
+import { modelSamplingZh } from "./model-sampling";
 import { skillSourcesZh } from "./skill-sources";
 import { replySuggestionsZh } from "./reply-suggestions";
 import type { LocalePlugin } from "../types";
@@ -12,6 +13,7 @@ export const zhCNLocale: LocalePlugin = {
   label: "简体中文",
   messages: {
     ...nativeMcpZh,
+    ...modelSamplingZh,
     ...skillSourcesZh,
     ...sshZh,
     "input.imageContextHint": "图片仅随本轮任务发送，原图保留在聊天中；后续需重新看图时请再次附加。",

@@ -4,6 +4,7 @@ import type { LocalePlugin } from "../types";
 import { smartShellEn } from "./smart-shell";
 import { sshEn } from "./ssh";
 import { nativeMcpEn } from "./native-mcp";
+import { modelSamplingEn } from "./model-sampling";
 import { skillSourcesEn } from "./skill-sources";
 
 /** Pi Web 内置英语语言包。 */
@@ -12,6 +13,7 @@ export const enLocale: LocalePlugin = {
   label: "English",
   messages: {
     ...nativeMcpEn,
+    ...modelSamplingEn,
     ...skillSourcesEn,
     ...sshEn,
     ...replySuggestionsEn,

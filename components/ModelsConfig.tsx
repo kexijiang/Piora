@@ -1,6 +1,8 @@
 "use client";
 
 import { ModelErrorText } from "./ModelErrorText";
+import { ModelSamplingEditor } from "./ModelSamplingEditor";
+import { modelSamplingError, type ModelSamplingConfig } from "@/lib/model-sampling";
 import styles from "./ModelsConfig.module.css";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -47,7 +49,7 @@ type OAuthLoginState =
   | { phase: "success" }
   | { phase: "error"; message: string };
 
-interface ModelEntry {
+interface ModelEntry extends ModelSamplingConfig {
   id: string;
   name?: string;
   api?: string;
@@ -1275,6 +1277,8 @@ function ModelDetail({
 
           <Check label={t("models.form.reasoning")} checked={model.reasoning ?? false} onChange={(v) => set("reasoning", v || undefined)} />
 
+          <ModelSamplingEditor providerName={providerName} provider={provider} model={model} onChange={onChange} />
+
           {model.reasoning && (
         <>
           <Check
@@ -2314,6 +2318,13 @@ export function ModelsConfig({
   const handleSave = useCallback(async () => {
     if (configMutationRef.current) return;
     for (const [providerName, provider] of Object.entries(config.providers ?? {})) {
+      const samplingIndex = (provider.models ?? []).findIndex(model => modelSamplingError(model));
+      if (samplingIndex >= 0) {
+        setSelection({ type: "model", providerName, index: samplingIndex });
+        setDetailTab("connection");
+        setSaveError(t("models.sampling.invalid", { error: modelSamplingError(provider.models![samplingIndex])! }));
+        return;
+      }
       const invalidIndex = (provider.models ?? []).findIndex((model) => !model.id.trim());
       if (invalidIndex >= 0) {
         setSelection({ type: "model", providerName, index: invalidIndex });

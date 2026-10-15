@@ -4,6 +4,11 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 模型采样设置
+
+- 模型高级设置新增默认采样参数和按 Pi 思考等级的覆盖，支持常用参数控件、高级 JSON、恢复继承及有效值预览；按 SDK 规则收敛等级并逐键合并，请求级预览参数不写入配置。
+- 可使用当前草稿实际测试采样配置，保留端点返回的错误；对不适用 API 明确提示参数不生效，无效 JSON 或参数阻止保存，编辑其他字段时保留未知配置。
+
 ## [0.5.5-beta.20] - 2026-10-13
 
 ### 发布准备
