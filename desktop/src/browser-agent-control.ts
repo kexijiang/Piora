@@ -213,13 +213,22 @@ export class BrowserAgentControl {
 
   heldTabs(): Array<{ id: string; bounds: { x: number; y: number; width: number; height: number } }> {
     const held: Array<{ id: string; bounds: { x: number; y: number; width: number; height: number } }> = [];
+    const seen = new Set<string>();
+    const consider = (tabId: string) => {
+      if (seen.has(tabId) || this.host.isShowing(tabId)) return;
+      const tab = this.tab(tabId);
+      if (!tab || tab.closed || tab.unloaded) return;
+      seen.add(tabId);
+      held.push({ id: tabId, bounds: { ...AGENT_OFFSCREEN_BOUNDS } });
+    };
     for (const [sessionId, tabId] of this.agentTabs) {
       if (this.sessionActive.get(sessionId) !== true || this.paused.has(sessionId)) continue;
-      const tab = this.tab(tabId);
-      if (!tab || tab.closed || tab.unloaded) continue;
-      if (this.host.isShowing(tabId)) continue;
-      held.push({ id: tabId, bounds: { ...AGENT_OFFSCREEN_BOUNDS } });
+      consider(tabId);
     }
+    // A one-off action may briefly override a non-current tab. Keep it attached
+    // until that action releases the override, or the next visibility pass
+    // would detach it before capture and input can finish.
+    for (const tabId of this.metrics) consider(tabId);
     return held;
   }
 
@@ -489,108 +498,115 @@ export class BrowserAgentControl {
   }
 
   private async snapshot(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
-    const tab = await this.requireTab(request, signal);
-    const raw = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, SNAPSHOT_COLLECT_SCRIPT);
-    this.throwIfAborted(signal);
-    const parsed = parseSnapshot(raw);
-    const meta = this.metaOf(tab.id);
-    const notice = meta.reloadedNotice ? RELOAD_NOTICE : undefined;
-    meta.reloadedNotice = false;
-    meta.refsInvalid = false;
-    const text = formatSnapshot({ ...parsed, ...(notice ? { notice } : {}) });
-    const loaded = this.tab(tab.id);
-    return { action: "snapshot", tabId: tab.id, url: loaded?.url ?? parsed.url, title: loaded?.title ?? parsed.title, text, truncated: parsed.truncated, passwordField: parsed.passwordField };
+    return this.withOwnedTab(request, signal, async (tab) => {
+      const raw = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, SNAPSHOT_COLLECT_SCRIPT);
+      this.throwIfAborted(signal);
+      const parsed = parseSnapshot(raw);
+      const meta = this.metaOf(tab.id);
+      const notice = meta.reloadedNotice ? RELOAD_NOTICE : undefined;
+      meta.reloadedNotice = false;
+      meta.refsInvalid = false;
+      const text = formatSnapshot({ ...parsed, ...(notice ? { notice } : {}) });
+      const loaded = this.tab(tab.id);
+      return { action: "snapshot", tabId: tab.id, url: loaded?.url ?? parsed.url, title: loaded?.title ?? parsed.title, text, truncated: parsed.truncated, passwordField: parsed.passwordField };
+    });
   }
 
   private async screenshot(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
-    const tab = await this.requireTab(request, signal);
-    const image = await this.host.capturePage(tab.id, { stayHidden: true, stayAwake: true });
-    this.throwIfAborted(signal);
-    if (!image.byteLength) throw new Error("Screenshot was empty.");
-    const loaded = this.tab(tab.id);
-    return {
-      action: "screenshot",
-      tabId: tab.id,
-      url: loaded?.url ?? "",
-      title: loaded?.title ?? "",
-      text: `${loaded?.title || "Untitled"}\n${loaded?.url ?? ""}`,
-      imageBase64: image.base64,
-      byteLength: image.byteLength,
-      fullPage: false,
-    };
+    return this.withOwnedTab(request, signal, async (tab) => {
+      const image = await this.host.capturePage(tab.id, { stayHidden: true, stayAwake: true });
+      this.throwIfAborted(signal);
+      if (!image.byteLength) throw new Error("Screenshot was empty.");
+      const loaded = this.tab(tab.id);
+      return {
+        action: "screenshot",
+        tabId: tab.id,
+        url: loaded?.url ?? "",
+        title: loaded?.title ?? "",
+        text: `${loaded?.title || "Untitled"}\n${loaded?.url ?? ""}`,
+        imageBase64: image.base64,
+        byteLength: image.byteLength,
+        fullPage: false,
+      };
+    });
   }
 
   private async click(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
-    const tab = await this.requireTab(request, signal);
-    this.assertRefs(tab.id, request);
-    const point = await this.elementPoint(tab.id, request);
-    this.throwIfAborted(signal);
-    await this.inputCommand(tab.id, "Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y, button: "none", clickCount: 0 });
-    await this.inputCommand(tab.id, "Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
-    await this.inputCommand(tab.id, "Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
-    this.throwIfAborted(signal);
-    return this.pageResult(request, tab.id);
+    return this.withOwnedTab(request, signal, async (tab) => {
+      this.assertRefs(tab.id, request);
+      const point = await this.elementPoint(tab.id, request);
+      this.throwIfAborted(signal);
+      await this.inputCommand(tab.id, "Input.dispatchMouseEvent", { type: "mouseMoved", x: point.x, y: point.y, button: "none", clickCount: 0 });
+      await this.inputCommand(tab.id, "Input.dispatchMouseEvent", { type: "mousePressed", x: point.x, y: point.y, button: "left", clickCount: 1 });
+      await this.inputCommand(tab.id, "Input.dispatchMouseEvent", { type: "mouseReleased", x: point.x, y: point.y, button: "left", clickCount: 1 });
+      this.throwIfAborted(signal);
+      return this.pageResult(request, tab.id);
+    });
   }
 
   private async type(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
     if (request.text === undefined) throw new Error("type requires text");
-    const tab = await this.requireTab(request, signal);
-    this.assertRefs(tab.id, request);
-    if (request.ref || request.selector) {
-      const focused = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, focusInvocation({
-        ...(request.ref ? { ref: request.ref } : {}),
-        ...(request.selector ? { selector: request.selector } : {}),
-      }));
-      const result = focused as { ok?: boolean; error?: string };
-      if (result && result.ok === false) throw new Error(result.error || "Element ref was not found. Take a new snapshot.");
-    }
-    await this.inputCommand(tab.id, "Input.insertText", { text: request.text });
-    if (request.submit) {
-      for (const event of buildKeyDispatchEvents("Enter")) await this.inputCommand(tab.id, "Input.dispatchKeyEvent", eventRecord(event));
-    }
-    this.throwIfAborted(signal);
-    return this.pageResult(request, tab.id);
+    return this.withOwnedTab(request, signal, async (tab) => {
+      this.assertRefs(tab.id, request);
+      if (request.ref || request.selector) {
+        const focused = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, focusInvocation({
+          ...(request.ref ? { ref: request.ref } : {}),
+          ...(request.selector ? { selector: request.selector } : {}),
+        }));
+        const result = focused as { ok?: boolean; error?: string };
+        if (result && result.ok === false) throw new Error(result.error || "Element ref was not found. Take a new snapshot.");
+      }
+      await this.inputCommand(tab.id, "Input.insertText", { text: request.text });
+      if (request.submit) {
+        for (const event of buildKeyDispatchEvents("Enter")) await this.inputCommand(tab.id, "Input.dispatchKeyEvent", eventRecord(event));
+      }
+      this.throwIfAborted(signal);
+      return this.pageResult(request, tab.id);
+    });
   }
 
   private async press(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
-    const tab = await this.requireTab(request, signal);
-    const events = buildKeyDispatchEvents(request.key || "Enter");
-    for (const event of events) {
-      this.throwIfAborted(signal);
-      await this.inputCommand(tab.id, "Input.dispatchKeyEvent", eventRecord(event));
-    }
-    return this.pageResult(request, tab.id);
+    return this.withOwnedTab(request, signal, async (tab) => {
+      const events = buildKeyDispatchEvents(request.key || "Enter");
+      for (const event of events) {
+        this.throwIfAborted(signal);
+        await this.inputCommand(tab.id, "Input.dispatchKeyEvent", eventRecord(event));
+      }
+      return this.pageResult(request, tab.id);
+    });
   }
 
   private async scroll(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
-    const tab = await this.requireTab(request, signal);
-    this.assertRefs(tab.id, request);
-    const intoView = Boolean(request.ref || request.selector) && request.deltaY === undefined && request.deltaX === undefined;
-    const script = scrollInvocation({
-      ...(request.ref ? { ref: request.ref } : {}),
-      ...(request.selector ? { selector: request.selector } : {}),
-      ...(request.x !== undefined ? { x: request.x } : {}),
-      ...(request.y !== undefined ? { y: request.y } : {}),
-      deltaX: request.deltaX ?? 0,
-      deltaY: intoView ? 0 : request.deltaY ?? 720,
-      intoView,
+    return this.withOwnedTab(request, signal, async (tab) => {
+      this.assertRefs(tab.id, request);
+      const intoView = Boolean(request.ref || request.selector) && request.deltaY === undefined && request.deltaX === undefined;
+      const script = scrollInvocation({
+        ...(request.ref ? { ref: request.ref } : {}),
+        ...(request.selector ? { selector: request.selector } : {}),
+        ...(request.x !== undefined ? { x: request.x } : {}),
+        ...(request.y !== undefined ? { y: request.y } : {}),
+        deltaX: request.deltaX ?? 0,
+        deltaY: intoView ? 0 : request.deltaY ?? 720,
+        intoView,
+      });
+      const raw = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, script);
+      this.throwIfAborted(signal);
+      const result = raw as { ok?: boolean; error?: string };
+      if (result && result.ok === false) throw new Error(result.error || "Scroll failed.");
+      return this.pageResult(request, tab.id);
     });
-    const raw = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, script);
-    this.throwIfAborted(signal);
-    const result = raw as { ok?: boolean; error?: string };
-    if (result && result.ok === false) throw new Error(result.error || "Scroll failed.");
-    return this.pageResult(request, tab.id);
   }
 
   private async navigateHistory(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
-    const tab = await this.requireTab(request, signal);
-    if (request.action === "back") await this.host.goBack(tab.id);
-    else if (request.action === "forward") await this.host.goForward(tab.id);
-    else await this.host.reload(tab.id);
-    this.metaOf(tab.id).refsInvalid = true;
-    this.metaOf(tab.id).reloadedNotice = true;
-    this.throwIfAborted(signal);
-    return this.pageResult(request, tab.id, RELOAD_NOTICE);
+    return this.withOwnedTab(request, signal, async (tab) => {
+      if (request.action === "back") await this.host.goBack(tab.id);
+      else if (request.action === "forward") await this.host.goForward(tab.id);
+      else await this.host.reload(tab.id);
+      this.metaOf(tab.id).refsInvalid = true;
+      this.metaOf(tab.id).reloadedNotice = true;
+      this.throwIfAborted(signal);
+      return this.pageResult(request, tab.id, RELOAD_NOTICE);
+    });
   }
 
   private idle(sessionId: string): unknown {
@@ -628,11 +644,30 @@ export class BrowserAgentControl {
       mainWebContentsId: this.host.mainWebContentsId,
     });
     if (!owned.ok) throw new Error(owned.error);
-    await this.prepare(owned.tab.id, request.sessionId, signal);
-    this.throwIfAborted(signal);
-    const tab = this.tab(owned.tab.id);
-    if (!tab || tab.closed) throw new Error("Browser tab is closed.");
-    return tab;
+    try {
+      await this.prepare(owned.tab.id, request.sessionId, signal);
+      this.throwIfAborted(signal);
+      const tab = this.tab(owned.tab.id);
+      if (!tab || tab.closed) throw new Error("Browser tab is closed.");
+      return tab;
+    } catch (error) {
+      await this.releaseBorrowed(request.sessionId, owned.tab.id).catch(() => undefined);
+      throw error;
+    }
+  }
+
+  private async withOwnedTab<T>(request: BrowserAgentRequest, signal: AbortSignal, run: (tab: BrowserAgentTabState) => Promise<T>): Promise<T> {
+    const tab = await this.requireTab(request, signal);
+    try {
+      return await run(tab);
+    } finally {
+      await this.releaseBorrowed(request.sessionId, tab.id);
+    }
+  }
+
+  private async releaseBorrowed(sessionId: string, tabId: string): Promise<void> {
+    if (this.agentTabs.get(sessionId) === tabId) return;
+    await this.releaseHold(tabId);
   }
 
   private async prepare(tabId: string, sessionId: string, signal: AbortSignal): Promise<string | undefined> {

@@ -333,7 +333,7 @@ export function buildKeyDispatchEvents(combo: string): KeyDispatchEvent[] {
   const parts = combo.split("+").map((part) => part.trim()).filter(Boolean);
   if (!parts.length) throw new Error("press requires a key");
   const modifiers = [];
-  let main = parts[parts.length - 1] ?? "";
+  const main = parts[parts.length - 1] ?? "";
   for (const part of parts.slice(0, -1)) {
     const modifier = MODIFIER_KEYS[part];
     if (!modifier) throw new Error(`Unsupported modifier: ${part}`);
