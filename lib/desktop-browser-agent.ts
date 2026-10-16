@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 export const DESKTOP_AGENT_BRIDGE_UNAVAILABLE = "Desktop browser bridge unavailable.";
 export const DESKTOP_EVALUATE_DISABLED = "evaluate is disabled on the desktop browser and needs user confirmation.";
+export const EVALUATE_SENSITIVE_REFUSAL = "evaluate is refused on pages with password fields, login, payment, or account-security content. Use snapshot/click/type, or call wait_for_user.";
+export const EVALUATE_PAGE_CHANGED_ERROR = "The page changed while waiting for confirmation. evaluate was not run; take a new snapshot and try again.";
 export const EVALUATE_UNKNOWN_PAGE = "unknown page";
 export const EVALUATE_SCRIPT_PREVIEW_CHARS = 500;
 const SERVER_TIMEOUT_MS = 45_000;
@@ -112,12 +114,42 @@ export interface DesktopAgentCall {
   fullPage?: boolean;
   reason?: string;
   confirmed?: boolean;
+  navigationToken?: string;
 }
 
 /** The server sets confirmed only after the user accepts this call. */
 export function desktopEvaluateRequest(input: { hasUI: boolean; userConfirmed: boolean }): { confirmed: true } | { error: string } {
   if (input.hasUI === true && input.userConfirmed === true) return { confirmed: true };
   return { error: DESKTOP_EVALUATE_DISABLED };
+}
+
+export interface DesktopEvaluateCheck {
+  allowed?: boolean;
+  url?: string;
+  navigationToken?: string;
+}
+
+/**
+ * Sensitive pages refuse before confirm runs. A matching navigation token is
+ * required so a page change during the dialog cannot be confirmed.
+ */
+export async function gateDesktopEvaluate(input: {
+  check: DesktopEvaluateCheck;
+  hasUI: boolean;
+  confirm: () => boolean | Promise<boolean>;
+}): Promise<{ confirmed: true; navigationToken: string; url: string } | { error: string }> {
+  if (input.check.allowed !== true) return { error: EVALUATE_SENSITIVE_REFUSAL };
+  const navigationToken = input.check.navigationToken?.trim() ?? "";
+  if (!navigationToken) return { error: EVALUATE_PAGE_CHANGED_ERROR };
+  if (input.hasUI !== true) return { error: DESKTOP_EVALUATE_DISABLED };
+  const userConfirmed = await input.confirm();
+  const gate = desktopEvaluateRequest({
+    hasUI: true,
+    userConfirmed: userConfirmed === true,
+  });
+  if ("error" in gate) return gate;
+  const url = input.check.url?.trim() ? input.check.url.trim() : EVALUATE_UNKNOWN_PAGE;
+  return { confirmed: true, navigationToken, url };
 }
 
 export async function runBrowserBackend<T>(input: {
@@ -149,7 +181,7 @@ export function callDesktopAgentBrowser(input: DesktopAgentCall): Promise<unknow
     sessionId: input.sessionId,
     action: input.action,
   };
-  for (const key of ["tabId", "url", "selector", "ref", "text", "key", "submit", "deltaX", "deltaY", "x", "y", "tabIndex", "fullPage", "reason", "confirmed"] as const) {
+  for (const key of ["tabId", "url", "selector", "ref", "text", "key", "submit", "deltaX", "deltaY", "x", "y", "tabIndex", "fullPage", "reason", "confirmed", "navigationToken"] as const) {
     const value = input[key];
     if (value !== undefined) payload[key] = value;
   }

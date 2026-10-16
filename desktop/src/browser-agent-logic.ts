@@ -13,6 +13,8 @@ export const REQUEST_TIMEOUT_MS = 40_000;
 
 export const PAUSED_BY_USER_ERROR = "Browser agent is paused by user.";
 export const EVALUATE_DISABLED_ERROR = "evaluate is disabled on the desktop browser and needs user confirmation.";
+export const EVALUATE_SENSITIVE_REFUSAL = "evaluate is refused on pages with password fields, login, payment, or account-security content. Use snapshot/click/type, or call wait_for_user.";
+export const EVALUATE_PAGE_CHANGED_ERROR = "The page changed while waiting for confirmation. evaluate was not run; take a new snapshot and try again.";
 export const MAX_AGENT_TABS_ERROR = "This session already has 5 agent browser tabs. Close unused tabs before opening another.";
 export const REFS_INVALID_ERROR = "Element refs are invalid after the tab was reloaded. Take a new snapshot before interacting.";
 export const RENDERER_CRASHED_ERROR = "Browser tab renderer crashed.";
@@ -52,6 +54,20 @@ export function sensitivePageNotice(input: { url?: string; title?: string; visib
   if (input.passwordField) return undefined;
   const haystack = `${input.url ?? ""}\n${input.title ?? ""}\n${input.visibleText ?? ""}`;
   return SENSITIVE_PAGE_PATTERN.test(haystack) ? SENSITIVE_PAGE_HINT : undefined;
+}
+
+/** Refuse evaluate when the snapshot saw a password field or a sensitive page. */
+export function evaluateAllowance(input: { url?: string; title?: string; visibleText?: string; passwordField?: boolean }): { allowed: true } | { allowed: false; reason: string } {
+  if (input.passwordField === true || sensitivePageNotice(input)) {
+    return { allowed: false, reason: EVALUATE_SENSITIVE_REFUSAL };
+  }
+  return { allowed: true };
+}
+
+/** Identifies one main-frame document. The epoch changes even when the URL stays the same. */
+export function formatNavigationToken(epoch: number, url: string): string {
+  const count = Number.isFinite(epoch) ? Math.max(0, Math.floor(epoch)) : 0;
+  return `${count}:${url}`;
 }
 
 const USER_INPUT_EVENT_TYPES = new Set([
