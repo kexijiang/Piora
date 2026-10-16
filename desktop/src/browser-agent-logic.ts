@@ -18,6 +18,39 @@ export const RENDERER_CRASHED_ERROR = "Browser tab renderer crashed.";
 export const BRIDGE_UNAVAILABLE_ERROR = "Desktop browser bridge unavailable.";
 export const RELOAD_NOTICE = "This tab was unloaded while idle and has been reloaded. Previous element refs are invalid; take a snapshot before clicking or typing.";
 export const PASSWORD_HINT = "A password field is present. Call wait_for_user instead of typing a password.";
+export const PASSWORD_TYPE_ERROR = "Refusing to type into a password field. Call wait_for_user so the user can enter it.";
+export const NAVIGATION_TIMEOUT_MS = 30_000;
+export const GLOBAL_BROWSER_TAB_CAP = 20;
+export const AGENT_GLOBAL_TAB_CAP_ERROR = "The browser tab limit of 20 has been reached. Close a tab before the agent opens another.";
+export const SENSITIVE_PAGE_HINT = "This page looks like a login, captcha, verification, payment, or account-security page. Call wait_for_user and do not type secrets or payment details.";
+export const WAITING_FOR_USER_ERROR = "The browser is waiting for the user. Other browser actions are rejected until the user continues or cancels.";
+
+const SENSITIVE_PAGE_PATTERN = /login|sign[\s-]?in|captcha|verify|2fa|otp|checkout|payment|billing|security|登录|验证码|支付|账号安全/i;
+
+export function rejectAgentCreateAtCapacity(openTabs: number, cap = GLOBAL_BROWSER_TAB_CAP): void {
+  if (openTabs >= cap) throw new Error(AGENT_GLOBAL_TAB_CAP_ERROR);
+}
+
+export function isNonFatalNavigationError(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { errorCode?: unknown; errno?: unknown; code?: unknown; message?: unknown };
+  if (candidate.errorCode === -3 || candidate.errno === -3) return true;
+  if (candidate.code === "ERR_ABORTED" || candidate.code === -3) return true;
+  return typeof candidate.message === "string" && (/ERR_ABORTED/.test(candidate.message) || /\(-3\)/.test(candidate.message));
+}
+
+export function navigationFailure(error: unknown): Error {
+  if (error instanceof Error && /timed out|crashed|closed|aborted/i.test(error.message) && !isNonFatalNavigationError(error)) return error;
+  const message = error instanceof Error && error.message ? error.message : "Page failed to load.";
+  if (/^Page failed to load\b/i.test(message)) return error instanceof Error ? error : new Error(message);
+  return new Error(`Page failed to load: ${message}`);
+}
+
+export function sensitivePageNotice(input: { url?: string; title?: string; visibleText?: string; passwordField?: boolean }): string | undefined {
+  if (input.passwordField) return undefined;
+  const haystack = `${input.url ?? ""}\n${input.title ?? ""}\n${input.visibleText ?? ""}`;
+  return SENSITIVE_PAGE_PATTERN.test(haystack) ? SENSITIVE_PAGE_HINT : undefined;
+}
 
 const USER_INPUT_EVENT_TYPES = new Set([
   "mouseDown",
@@ -190,9 +223,22 @@ export function formatSnapshot(input: {
   return text;
 }
 
+export const REF_NOT_FOUND_ERROR = "Element ref was not found. Take a new snapshot.";
+
+/** Isolated-world only. The page cannot see or forge this map. */
+export const REF_LOOKUP_SOURCE = `function pioraRefElement(ref) {
+  const map = globalThis.__pioraRefs;
+  const held = map && typeof map.get === "function" ? map.get(ref) : undefined;
+  const element = held && typeof held.deref === "function" ? held.deref() : held;
+  if (!element || element.nodeType !== 1 || element.isConnected === false) return null;
+  return element;
+}`;
+
 export const SNAPSHOT_COLLECT_SCRIPT = `(() => {
   const maxNodes = ${MAX_SNAPSHOT_NODES};
   const selectors = "a, button, input, textarea, select, summary, [role], [contenteditable='true']";
+  const refs = new Map();
+  globalThis.__pioraRefs = refs;
   const nodes = [];
   let passwordField = false;
   let truncated = false;
@@ -211,7 +257,7 @@ export const SNAPSHOT_COLLECT_SCRIPT = `(() => {
     const password = type === "password";
     if (password) passwordField = true;
     const ref = "e" + (nodes.length + 1);
-    element.setAttribute("data-piora-ref", ref);
+    refs.set(ref, typeof WeakRef === "function" ? new WeakRef(element) : element);
     const role = element.getAttribute("role") || "";
     const name = password ? "" : String(
       element.getAttribute("aria-label")
@@ -222,7 +268,8 @@ export const SNAPSHOT_COLLECT_SCRIPT = `(() => {
     ).replace(/\\s+/g, " ").trim().slice(0, 180);
     nodes.push({ ref, tag, role, type, name, password });
   }
-  return { title: document.title || "", url: String(location.href || ""), nodes, truncated, passwordField };
+  const visibleText = String((document.body && document.body.innerText) || "").replace(/\\s+/g, " ").trim().slice(0, 4000);
+  return { title: document.title || "", url: String(location.href || ""), nodes, truncated, passwordField, visibleText };
 })()`;
 
 export const SCROLL_FUNCTION_SOURCE = `function pioraScroll(args) {
@@ -245,10 +292,10 @@ export const SCROLL_FUNCTION_SOURCE = `function pioraScroll(args) {
     return document.scrollingElement || document.documentElement;
   };
   let target = null;
-  if (args.ref) target = document.querySelector('[data-piora-ref="' + args.ref + '"]');
+  if (args.ref) target = pioraRefElement(args.ref);
   else if (args.selector) target = document.querySelector(args.selector);
   else if (typeof args.x === "number" && typeof args.y === "number") target = document.elementFromPoint(args.x, args.y);
-  if ((args.ref || args.selector) && !target) return { ok: false, error: "Element ref was not found. Take a new snapshot." };
+  if ((args.ref || args.selector) && !target) return { ok: false, error: ${JSON.stringify(REF_NOT_FOUND_ERROR)} };
   if (args.intoView && target && target.scrollIntoView) {
     target.scrollIntoView({ block: "nearest", inline: "nearest" });
     return { ok: true, mode: "intoView" };
@@ -267,11 +314,11 @@ export function scrollInvocation(args: {
   deltaY?: number;
   intoView?: boolean;
 }): string {
-  return `(() => {\nconst args = ${JSON.stringify(args)};\n${SCROLL_FUNCTION_SOURCE}\nreturn pioraScroll(args);\n})()`;
+  return `(() => {\nconst args = ${JSON.stringify(args)};\n${REF_LOOKUP_SOURCE}\n${SCROLL_FUNCTION_SOURCE}\nreturn pioraScroll(args);\n})()`;
 }
 
 export function focusInvocation(args: { ref?: string; selector?: string }): string {
-  return `(() => {\nconst args = ${JSON.stringify(args)};\nconst target = args.ref ? document.querySelector('[data-piora-ref="' + args.ref + '"]') : args.selector ? document.querySelector(args.selector) : null;\nif (!target) return { ok: false, error: "Element ref was not found. Take a new snapshot." };\nif (target.focus) target.focus();\nif (typeof target.select === "function") target.select();\nconst rect = target.getBoundingClientRect();\nreturn { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height };\n})()`;
+  return `(() => {\nconst args = ${JSON.stringify(args)};\n${REF_LOOKUP_SOURCE}\nconst target = args.ref ? pioraRefElement(args.ref) : args.selector ? document.querySelector(args.selector) : null;\nif (!target) return { ok: false, error: ${JSON.stringify(REF_NOT_FOUND_ERROR)} };\nconst type = String((target.getAttribute && target.getAttribute("type")) || "").toLowerCase();\nconst password = type === "password";\nif (target.focus) target.focus();\nif (!password && typeof target.select === "function") target.select();\nconst rect = target.getBoundingClientRect();\nreturn { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height, type: type, password: password };\n})()`;
 }
 
 export function elementCenterInvocation(args: { ref?: string; selector?: string }): string {

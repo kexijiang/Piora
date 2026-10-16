@@ -8,6 +8,8 @@ import {
   ISOLATED_WORLD_ID,
   InFlightCounter,
   MANUAL_BROWSER_SESSION_ID,
+  NAVIGATION_TIMEOUT_MS,
+  PASSWORD_TYPE_ERROR,
   PAUSED_BY_USER_ERROR,
   REFS_INVALID_ERROR,
   RELOAD_NOTICE,
@@ -22,7 +24,9 @@ import {
   focusInvocation,
   formatSnapshot,
   httpUrl,
+  isNonFatalNavigationError,
   isPausedAction,
+  navigationFailure,
   resolveOwnedTab,
   scrollInvocation,
   SNAPSHOT_COLLECT_SCRIPT,
@@ -41,6 +45,8 @@ export interface BrowserAgentActivity {
   tabId: string | null;
   operating: boolean;
   paused: boolean;
+  waiting?: boolean;
+  reason?: string;
 }
 
 export interface BrowserAgentHost {
@@ -68,6 +74,8 @@ export interface BrowserAgentHost {
   setBackgroundThrottling(tabId: string, allowed: boolean): void;
   capturePage(tabId: string, options: { stayHidden: boolean; stayAwake: boolean }): Promise<{ byteLength: number; base64: string }>;
   executeIsolated(tabId: string, worldId: number, code: string): Promise<unknown>;
+  executeMain?(tabId: string, code: string): Promise<unknown>;
+  activateSessionTab?(sessionId: string, tabId: string): void;
   debuggerAttach(tabId: string, version: string): void;
   debuggerDetach(tabId: string): void;
   debuggerIsAttached(tabId: string): boolean;
@@ -97,6 +105,8 @@ export interface BrowserAgentRequest {
   y?: number;
   tabIndex?: number;
   fullPage?: boolean;
+  reason?: string;
+  confirmed?: boolean;
 }
 
 export interface BrowserAgentResponse {
@@ -110,6 +120,7 @@ export interface BrowserAgentResponse {
 export interface BrowserAgentControlOptions {
   cdpTimeoutMs?: number;
   requestTimeoutMs?: number;
+  navigationTimeoutMs?: number;
   idleUnloadMs?: number;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
@@ -150,6 +161,7 @@ function limited(value: unknown, max: number): string | undefined {
 export class BrowserAgentControl {
   private readonly host: BrowserAgentHost;
   private readonly cdpTimeoutMs: number;
+  private readonly navigationTimeoutMs: number;
   private readonly idleUnloadMs: number;
   private readonly clearTimer: (handle: unknown) => void;
   private readonly pending: ReturnType<typeof createPendingRequestTable>;
@@ -157,6 +169,7 @@ export class BrowserAgentControl {
   private readonly agentTabs = new Map<string, string>();
   private readonly sessionActive = new Map<string, boolean>();
   private readonly paused = new Set<string>();
+  private readonly waiting = new Map<string, string>();
   private readonly meta = new Map<string, TabMeta>();
   private readonly lastUsed = new Map<string, number>();
   private readonly metrics = new Set<string>();
@@ -172,6 +185,7 @@ export class BrowserAgentControl {
   constructor(host: BrowserAgentHost, options: BrowserAgentControlOptions = {}) {
     this.host = host;
     this.cdpTimeoutMs = options.cdpTimeoutMs ?? CDP_TIMEOUT_MS;
+    this.navigationTimeoutMs = options.navigationTimeoutMs ?? NAVIGATION_TIMEOUT_MS;
     this.idleUnloadMs = options.idleUnloadMs ?? IDLE_UNLOAD_MS;
     this.clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
     this.pending = createPendingRequestTable({
@@ -350,6 +364,7 @@ export class BrowserAgentControl {
     if (request.action === "evaluate") throw new Error(EVALUATE_DISABLED_ERROR);
     if (request.action === "idle") return this.idle(request.sessionId);
     if (request.action === "session_closed") return this.closeSession(request.sessionId);
+    if (this.waiting.has(request.sessionId)) throw new Error("The browser is waiting for the user. Other browser actions are rejected until the user continues or cancels.");
     if (this.paused.has(request.sessionId) && isPausedAction(request.action)) throw new Error(PAUSED_BY_USER_ERROR);
     this.sweepIdle();
     switch (request.action) {
@@ -388,17 +403,11 @@ export class BrowserAgentControl {
     if (!request.url) throw new Error("open requires url");
     const url = httpUrl(request.url);
     let tab = this.currentTab(request.sessionId);
-    let created = false;
-    if (!tab) {
-      tab = this.createAgentTab(request.sessionId, url);
-      created = true;
-    }
+    if (!tab) tab = this.createAgentTab(request.sessionId, url);
     this.rememberAgentTab(request.sessionId, tab.id);
     const notice = await this.prepare(tab.id, request.sessionId, signal);
-    if (!created) {
-      await this.host.loadURL(tab.id, url);
-      this.metaOf(tab.id).refsInvalid = false;
-    }
+    await this.finishNavigation(tab.id, () => this.host.loadURL(tab.id, url));
+    this.metaOf(tab.id).refsInvalid = false;
     this.throwIfAborted(signal);
     this.publish(request.sessionId);
     const loaded = this.tab(tab.id);
@@ -419,6 +428,7 @@ export class BrowserAgentControl {
     if (previous && previous !== tab.id) await this.releaseHold(previous);
     this.rememberAgentTab(request.sessionId, tab.id);
     await this.prepare(tab.id, request.sessionId, signal);
+    if (request.url) await this.finishNavigation(tab.id, () => this.host.loadURL(tab.id, url));
     this.throwIfAborted(signal);
     this.publish(request.sessionId);
     const loaded = this.tab(tab.id);
@@ -499,7 +509,7 @@ export class BrowserAgentControl {
 
   private async snapshot(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
     return this.withOwnedTab(request, signal, async (tab) => {
-      const raw = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, SNAPSHOT_COLLECT_SCRIPT);
+      const raw = await this.isolated(tab.id, SNAPSHOT_COLLECT_SCRIPT);
       this.throwIfAborted(signal);
       const parsed = parseSnapshot(raw);
       const meta = this.metaOf(tab.id);
@@ -514,7 +524,7 @@ export class BrowserAgentControl {
 
   private async screenshot(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
     return this.withOwnedTab(request, signal, async (tab) => {
-      const image = await this.host.capturePage(tab.id, { stayHidden: true, stayAwake: true });
+      const image = await this.capture(tab.id);
       this.throwIfAborted(signal);
       if (!image.byteLength) throw new Error("Screenshot was empty.");
       const loaded = this.tab(tab.id);
@@ -549,12 +559,13 @@ export class BrowserAgentControl {
     return this.withOwnedTab(request, signal, async (tab) => {
       this.assertRefs(tab.id, request);
       if (request.ref || request.selector) {
-        const focused = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, focusInvocation({
+        const focused = await this.isolated(tab.id, focusInvocation({
           ...(request.ref ? { ref: request.ref } : {}),
           ...(request.selector ? { selector: request.selector } : {}),
         }));
-        const result = focused as { ok?: boolean; error?: string };
+        const result = focused as { ok?: boolean; error?: string; password?: boolean; type?: string };
         if (result && result.ok === false) throw new Error(result.error || "Element ref was not found. Take a new snapshot.");
+        if (result && (result.password === true || result.type === "password")) throw new Error(PASSWORD_TYPE_ERROR);
       }
       await this.inputCommand(tab.id, "Input.insertText", { text: request.text });
       if (request.submit) {
@@ -589,7 +600,7 @@ export class BrowserAgentControl {
         deltaY: intoView ? 0 : request.deltaY ?? 720,
         intoView,
       });
-      const raw = await this.host.executeIsolated(tab.id, ISOLATED_WORLD_ID, script);
+      const raw = await this.isolated(tab.id, script);
       this.throwIfAborted(signal);
       const result = raw as { ok?: boolean; error?: string };
       if (result && result.ok === false) throw new Error(result.error || "Scroll failed.");
@@ -599,9 +610,11 @@ export class BrowserAgentControl {
 
   private async navigateHistory(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
     return this.withOwnedTab(request, signal, async (tab) => {
-      if (request.action === "back") await this.host.goBack(tab.id);
-      else if (request.action === "forward") await this.host.goForward(tab.id);
-      else await this.host.reload(tab.id);
+      await this.finishNavigation(tab.id, async () => {
+        if (request.action === "back") await this.host.goBack(tab.id);
+        else if (request.action === "forward") await this.host.goForward(tab.id);
+        else await this.host.reload(tab.id);
+      });
       this.metaOf(tab.id).refsInvalid = true;
       this.metaOf(tab.id).reloadedNotice = true;
       this.throwIfAborted(signal);
@@ -609,11 +622,11 @@ export class BrowserAgentControl {
     });
   }
 
-  private idle(sessionId: string): unknown {
+  private async idle(sessionId: string): Promise<unknown> {
     this.assertSession(sessionId);
     this.sessionActive.set(sessionId, false);
     const tabId = this.agentTabs.get(sessionId);
-    if (tabId) void this.releaseHold(tabId).catch(() => undefined);
+    if (tabId) await this.releaseHold(tabId);
     this.publish(sessionId);
     return { action: "idle", tabId: tabId ?? null, text: "Agent browser tab restored to the background." };
   }
@@ -630,6 +643,7 @@ export class BrowserAgentControl {
     this.agentTabs.delete(sessionId);
     this.sessionActive.delete(sessionId);
     this.paused.delete(sessionId);
+    this.waiting.delete(sessionId);
     this.publish(sessionId);
     return { action: "session_closed", closed: tabs.length, text: `Closed ${tabs.length} browser tabs for this session.` };
   }
@@ -679,7 +693,7 @@ export class BrowserAgentControl {
     const meta = this.metaOf(tabId);
     const tab = this.tab(tabId);
     if (tab?.unloaded) {
-      await this.host.restoreTab(tabId);
+      await this.runTabOp(tabId, () => this.host.restoreTab(tabId), this.navigationTimeoutMs, "Navigation timed out after 30 seconds.");
       meta.refsInvalid = true;
       meta.reloadedNotice = true;
       this.metrics.delete(tabId);
@@ -712,7 +726,7 @@ export class BrowserAgentControl {
     if (this.metrics.has(tabId) || !this.presented.has(tabId)) {
       await this.command(tabId, "Emulation.clearDeviceMetricsOverride", {});
       this.metrics.delete(tabId);
-      const inner = await this.host.executeIsolated(tabId, ISOLATED_WORLD_ID, "innerWidth");
+      const inner = await this.isolated(tabId, "innerWidth");
       if (typeof inner === "number" && inner !== bounds.width) {
         this.host.setBounds(tabId, { x: bounds.x, y: bounds.y, width: bounds.width + 1, height: bounds.height });
         this.host.setBounds(tabId, bounds);
@@ -740,14 +754,14 @@ export class BrowserAgentControl {
       this.selfChecked.add(tabId);
       let visibilityState = "unknown";
       try {
-        const value = await this.host.executeIsolated(tabId, ISOLATED_WORLD_ID, "document.visibilityState");
+        const value = await this.isolated(tabId, "document.visibilityState");
         visibilityState = typeof value === "string" ? value : "unknown";
       } catch (error) {
         this.host.log.warn("Browser agent offscreen visibility check failed", error);
       }
       let byteLength = 0;
       try {
-        const image = await this.host.capturePage(tabId, { stayHidden: true, stayAwake: true });
+        const image = await this.capture(tabId);
         byteLength = image.byteLength;
       } catch (error) {
         this.host.log.warn("Browser agent offscreen capture check failed", error);
@@ -817,7 +831,7 @@ export class BrowserAgentControl {
       if (request.x !== undefined && request.y !== undefined) return { x: request.x, y: request.y };
       throw new Error("This browser action requires selector or ref.");
     }
-    const raw = await this.host.executeIsolated(tabId, ISOLATED_WORLD_ID, elementCenterInvocation({
+    const raw = await this.isolated(tabId, elementCenterInvocation({
       ...(request.ref ? { ref: request.ref } : {}),
       ...(request.selector ? { selector: request.selector } : {}),
     }));
@@ -851,29 +865,52 @@ export class BrowserAgentControl {
   }
 
   private command(tabId: string, method: string, params: Record<string, unknown>): Promise<unknown> {
+    return this.runTabOp(tabId, () => this.host.debuggerSend(tabId, method, params), this.cdpTimeoutMs, `CDP command timed out: ${method}`);
+  }
+
+  private isolated(tabId: string, code: string): Promise<unknown> {
+    return this.runTabOp(tabId, () => this.host.executeIsolated(tabId, ISOLATED_WORLD_ID, code), this.cdpTimeoutMs, "Browser tab script timed out");
+  }
+
+  private capture(tabId: string): Promise<{ byteLength: number; base64: string }> {
+    return this.runTabOp(tabId, () => this.host.capturePage(tabId, { stayHidden: true, stayAwake: true }), this.cdpTimeoutMs, "Screenshot timed out");
+  }
+
+  private async finishNavigation(tabId: string, op: () => Promise<unknown>): Promise<void> {
+    try {
+      await this.runTabOp(tabId, async () => { await op(); }, this.navigationTimeoutMs, "Navigation timed out after 30 seconds.");
+    } catch (error) {
+      if (isNonFatalNavigationError(error)) return;
+      throw navigationFailure(error);
+    }
+  }
+
+  private runTabOp<T>(tabId: string, op: () => Promise<T>, timeoutMs: number, timeoutMessage: string): Promise<T> {
     const id = ++this.commandSeq;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         if (!this.commands.has(id)) return;
         this.commands.delete(id);
-        reject(new Error(`CDP command timed out: ${method}`));
-      }, this.cdpTimeoutMs);
+        reject(new Error(timeoutMessage));
+      }, timeoutMs);
       const handle = timer as { unref?: () => void };
       handle.unref?.();
       this.commands.set(id, { tabId, timer, reject });
-      this.host.debuggerSend(tabId, method, params).then((value) => {
-        const entry = this.commands.get(id);
-        if (!entry) return;
-        this.clearTimer(entry.timer);
-        this.commands.delete(id);
-        resolve(value);
-      }, (error: unknown) => {
-        const entry = this.commands.get(id);
-        if (!entry) return;
-        this.clearTimer(entry.timer);
-        this.commands.delete(id);
-        reject(error instanceof Error ? error : new Error(String(error)));
-      });
+      Promise.resolve()
+        .then(op)
+        .then((value) => {
+          const entry = this.commands.get(id);
+          if (!entry) return;
+          this.clearTimer(entry.timer);
+          this.commands.delete(id);
+          resolve(value);
+        }, (error: unknown) => {
+          const entry = this.commands.get(id);
+          if (!entry) return;
+          this.clearTimer(entry.timer);
+          this.commands.delete(id);
+          reject(error instanceof Error ? error : new Error(String(error)));
+        });
     });
   }
 
@@ -920,6 +957,8 @@ export class BrowserAgentControl {
     if (classifyInputEvent(type, this.inflight.count(tabId)) !== "user") return;
     const sessionId = this.tab(tabId)?.sessionId ?? this.sessionForTab(tabId);
     if (!sessionId || sessionId === MANUAL_BROWSER_SESSION_ID) return;
+    if (this.waiting.has(sessionId)) return;
+    if (this.sessionActive.get(sessionId) !== true) return;
     this.pauseSession(sessionId);
   }
 

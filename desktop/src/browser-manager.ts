@@ -20,6 +20,12 @@ import {
 } from "electron";
 import { BrowserCookieStore } from "./browser-cookie-store.js";
 import type { Logger } from "./logger.js";
+import {
+  NAVIGATION_TIMEOUT_MS,
+  RENDERER_CRASHED_ERROR,
+  isNonFatalNavigationError,
+  rejectAgentCreateAtCapacity,
+} from "./browser-agent-logic.js";
 
 export const BROWSER_STATE_CHANNEL = "pi:browser-state";
 export const BROWSER_DOWNLOAD_CHANNEL = "pi:browser-download";
@@ -117,6 +123,11 @@ type BrowserTab = {
   title: string;
   unloaded?: boolean;
   view: WebContentsView;
+  navigationWait?: {
+    resolve: () => void;
+    reject: (error: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  };
 };
 
 type ChromeBookmarkNode = {
@@ -338,6 +349,7 @@ export class DesktopBrowserManager {
     this.browserSession.off("will-download", this.handleDownload);
     this.browserSession.cookies.off("changed", this.handleCookieChanged);
     for (const tab of this.tabs.splice(0)) {
+      this.settleNavigation(tab, new Error("Browser tab is closed."));
       if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
       if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
     }
@@ -444,7 +456,7 @@ export class DesktopBrowserManager {
     ipcMain.removeHandler(BROWSER_AGENT_BACKEND_GET_CHANNEL);
   }
 
-  private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }): BrowserTab {
+  private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }, deferLoad = false): BrowserTab {
     if (this.tabs.length >= MAX_TABS) {
       const existing = this.activeTab(sessionId);
       if (existing) return existing;
@@ -457,7 +469,9 @@ export class DesktopBrowserManager {
     this.installTabEvents(tab);
     if (activate || !this.activeTabIds.has(sessionId)) this.activeTabIds.set(sessionId, id);
     const targetUrl = normalizeAddress(rawUrl);
-    if (targetUrl !== "about:blank") {
+    // Agent opens defer the load so the request can wait for did-stop-loading
+    // instead of returning while the tab is still about:blank.
+    if (!deferLoad && targetUrl !== "about:blank") {
       void this.storageReady.then(() => view.webContents.isDestroyed() ? undefined : view.webContents.loadURL(targetUrl)).catch((error) => {
         this.log.warn("Browser tab failed to load", error);
       });
@@ -465,6 +479,47 @@ export class DesktopBrowserManager {
     this.updateVisibility();
     this.sendState();
     return tab;
+  }
+
+  private armNavigation(tab: BrowserTab): Promise<void> {
+    this.settleNavigation(tab, new Error("Navigation was replaced."));
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.settleNavigation(tab, new Error("Navigation timed out after 30 seconds."));
+      }, NAVIGATION_TIMEOUT_MS);
+      timer.unref?.();
+      tab.navigationWait = { resolve, reject, timer };
+    });
+  }
+
+  private settleNavigation(tab: BrowserTab, error?: Error): void {
+    const wait = tab.navigationWait;
+    if (!wait) return;
+    delete tab.navigationWait;
+    clearTimeout(wait.timer);
+    if (error) wait.reject(error);
+    else wait.resolve();
+  }
+
+  private async loadTabUrl(tab: BrowserTab, url: string): Promise<void> {
+    await this.storageReady;
+    const contents = tab.view.webContents;
+    if (contents.isDestroyed()) throw new Error("Browser tab is closed.");
+    const waited = this.armNavigation(tab);
+    try {
+      await contents.loadURL(url);
+    } catch (error) {
+      if (!isNonFatalNavigationError(error)) {
+        this.settleNavigation(tab, error instanceof Error ? error : new Error(String(error)));
+      }
+    }
+    await waited;
+  }
+
+  private async waitForHistoryNavigation(tab: BrowserTab, start: () => void): Promise<void> {
+    const waited = this.armNavigation(tab);
+    start();
+    await waited;
   }
 
   private installTabEvents(tab: BrowserTab): void {
@@ -491,6 +546,7 @@ export class DesktopBrowserManager {
       return { action: "deny" };
     });
     contents.on("destroyed", () => {
+      if (tab.view.webContents === contents) this.settleNavigation(tab, new Error("Browser tab is closed."));
       if (this.destroyed || tab.view.webContents !== contents || tab.discarding) return;
       if (!this.tabs.includes(tab)) return;
       if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
@@ -514,6 +570,7 @@ export class DesktopBrowserManager {
     });
     contents.on("did-stop-loading", () => {
       tab.loading = false;
+      this.settleNavigation(tab);
       this.scheduleStorageFlush();
       this.sendState();
     });
@@ -529,6 +586,12 @@ export class DesktopBrowserManager {
     contents.on("did-fail-load", (_event, errorCode, errorDescription, validatedUrl, isMainFrame) => {
       if (isMainFrame && errorCode !== -3) {
         this.log.warn("Browser navigation failed", { errorCode, errorDescription, validatedUrl });
+        tab.loading = false;
+        const failure = new Error(`Page failed to load (${errorCode}): ${errorDescription}`);
+        (failure as Error & { errorCode: number }).errorCode = errorCode;
+        this.settleNavigation(tab, failure);
+        this.sendState();
+        return;
       }
       tab.loading = false;
       this.sendState();
@@ -553,6 +616,7 @@ export class DesktopBrowserManager {
     contents.on("render-process-gone", (_event, details) => {
       this.log.warn("Browser tab renderer exited", details);
       tab.loading = false;
+      this.settleNavigation(tab, new Error(RENDERER_CRASHED_ERROR));
       this.sendState();
     });
   }
@@ -900,8 +964,7 @@ export class DesktopBrowserManager {
     tab.loading = url !== "about:blank";
     this.installTabEvents(tab);
     if (url === "about:blank") return;
-    await this.storageReady;
-    if (!view.webContents.isDestroyed()) await view.webContents.loadURL(url);
+    await this.loadTabUrl(tab, url);
   }
 
   private showingTab(tabId: string): boolean {
@@ -924,26 +987,28 @@ export class DesktopBrowserManager {
       platform: process.platform,
       log: this.log,
       listTabs: () => this.tabs.map((tab) => this.tabState(tab)),
-      createTab: (sessionId: string, url: string) => this.tabState(this.createTab(url, false, sessionId)),
+      createTab: (sessionId: string, url: string) => {
+        rejectAgentCreateAtCapacity(this.tabs.length, MAX_TABS);
+        return this.tabState(this.createTab(url, false, sessionId, undefined, true));
+      },
       closeTab: (tabId: string) => {
         const tab = this.findTab(tabId);
         if (tab) this.closeTab(tabId, tab.sessionId, true);
       },
-      loadURL: async (tabId: string, url: string) => {
+      loadURL: (tabId: string, url: string) => this.loadTabUrl(this.requireLiveTab(tabId), url),
+      goBack: async (tabId: string) => {
         const tab = this.requireLiveTab(tabId);
-        await this.storageReady;
-        await tab.view.webContents.loadURL(url);
+        if (!tab.view.webContents.navigationHistory.canGoBack()) return;
+        await this.waitForHistoryNavigation(tab, () => tab.view.webContents.navigationHistory.goBack());
       },
-      goBack: (tabId: string) => {
-        const contents = this.requireLiveTab(tabId).view.webContents;
-        if (contents.navigationHistory.canGoBack()) contents.navigationHistory.goBack();
+      goForward: async (tabId: string) => {
+        const tab = this.requireLiveTab(tabId);
+        if (!tab.view.webContents.navigationHistory.canGoForward()) return;
+        await this.waitForHistoryNavigation(tab, () => tab.view.webContents.navigationHistory.goForward());
       },
-      goForward: (tabId: string) => {
-        const contents = this.requireLiveTab(tabId).view.webContents;
-        if (contents.navigationHistory.canGoForward()) contents.navigationHistory.goForward();
-      },
-      reload: (tabId: string) => {
-        this.requireLiveTab(tabId).view.webContents.reload();
+      reload: async (tabId: string) => {
+        const tab = this.requireLiveTab(tabId);
+        await this.waitForHistoryNavigation(tab, () => tab.view.webContents.reload());
       },
       discardTab: (tabId: string) => this.discardTab(tabId),
       restoreTab: (tabId: string) => this.restoreTab(tabId),
