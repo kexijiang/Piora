@@ -20,6 +20,7 @@ import { acquireSessionMutation, assertSessionNotMutating, collectSessionSubtree
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { isMissingSessionFileError, resolveSessionDetailSource } from "@/lib/session-detail-source";
 import { purgeExpiredTrash, trashSession } from "@/lib/session-trash";
+import { notifyDesktopAgentSessionClosed } from "@/lib/desktop-browser-agent";
 
 // BranchNavigator still traverses recursively, so keep the response tree shallow.
 const MAX_PROJECTED_TREE_DEPTH = 200;
@@ -446,7 +447,10 @@ export async function DELETE(
       purgeExpiredTrash();
       const root = subtree.find((session) => session.id === id);
       trashSession(id, subtreePaths, { title: root?.name || root?.firstMessage?.slice(0, 120), cwd: root?.cwd });
-      for (const sessionId of ids) invalidateSessionPathCache(sessionId);
+      for (const sessionId of ids) {
+        invalidateSessionPathCache(sessionId);
+        notifyDesktopAgentSessionClosed(sessionId);
+      }
       invalidateSessionListCache();
       return NextResponse.json({ ok: true, trashedCount: subtreePaths.length, sessionIds: ids });
     } finally {

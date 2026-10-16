@@ -34,6 +34,7 @@ export interface StandaloneServerOptions {
   runtimeProfile?: RuntimeProfile;
   desktopDataDirectory?: string;
   onMessage?: (message: unknown) => unknown | Promise<unknown>;
+  onProcessExit?: (exit: ServerExit) => void;
   onUnexpectedExit?: (exit: ServerExit) => void;
 }
 
@@ -359,6 +360,7 @@ export class StandaloneServer {
     child.once("exit", (code, signal) => {
       this.options.logger.info("Web server exited", { code, signal });
       if (this.child === child) this.child = undefined;
+      this.options.onProcessExit?.({ code, signal });
       if (this.ready && !this.stopping) {
         this.ready = false;
         this.serverUrl = undefined;

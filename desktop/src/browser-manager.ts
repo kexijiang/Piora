@@ -28,6 +28,9 @@ export const BROWSER_ACTION_CHANNEL = "pi:browser-action";
 export const BROWSER_VIEWPORT_CHANNEL = "pi:browser-viewport";
 export const BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL = "pi:browser-import-chrome-bookmarks";
 export const BROWSER_BOOKMARK_MENU_CHANNEL = "pi:browser-bookmark-menu";
+export const BROWSER_AGENT_ACTIVITY_CHANNEL = "pi:browser-agent-activity";
+export const BROWSER_AGENT_BACKEND_CHANNEL = "pi:browser-agent-backend";
+export const BROWSER_AGENT_BACKEND_GET_CHANNEL = "pi:browser-get-agent-backend";
 
 export const BROWSER_PARTITION = "persist:piora-browser";
 const MAX_TABS = 20;
@@ -42,6 +45,9 @@ export interface DesktopBrowserState {
   tabs: Array<{ id: string; title: string; url: string }>;
   title: string;
   url: string;
+  agentTabId?: string | null;
+  agentOperating?: boolean;
+  agentPaused?: boolean;
 }
 
 export interface ImportedChromeBookmark {
@@ -72,10 +78,24 @@ export interface ChromeBookmarkImportResult {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login";
+  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;
+}
+
+interface BrowserAgentBinding {
+  heldTabs(): Array<{ id: string; bounds: { x: number; y: number; width: number; height: number } }>;
+  afterVisibilityChange(): void;
+  failAll(message: string): void;
+  destroy(): void;
+  cancel(requestId: string): void;
+  handleRequest(message: unknown): Promise<unknown>;
+  pauseSession(sessionId: string): void;
+  resumeSession(sessionId: string): void;
+  agentTabId(sessionId: string): string | null;
+  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean };
+  noteUsed(tabId: string): void;
 }
 
 export interface DesktopBrowserDownload {
@@ -88,10 +108,14 @@ export interface DesktopBrowserDownload {
 type BrowserTab = {
   authHost?: string;
   attached: boolean;
+  discarding?: boolean;
   id: string;
   loading: boolean;
+  savedTitle?: string;
+  savedUrl?: string;
   sessionId: string;
   title: string;
+  unloaded?: boolean;
   view: WebContentsView;
 };
 
@@ -235,6 +259,8 @@ export class DesktopBrowserManager {
   private readonly cookieStore: BrowserCookieStore;
   private readonly storageReady: Promise<void>;
   private destroyed = false;
+  private agentControl: BrowserAgentBinding | null = null;
+  private reportedAgentBackend: "desktop" | "playwright" | null = null;
   private storageFlushTimer: NodeJS.Timeout | undefined;
   private storageFlushChain: Promise<void> = Promise.resolve();
   private readonly handleCookieChanged = (): void => this.scheduleStorageFlush();
@@ -259,6 +285,7 @@ export class DesktopBrowserManager {
     private readonly window: BrowserWindow,
     private readonly log: Logger,
     private readonly isTrustedSender: (event: IpcMainInvokeEvent) => boolean,
+    private readonly startup: { agentDirectory?: () => string | undefined } = {},
   ) {
     this.browserSession = session.fromPartition(BROWSER_PARTITION, { cache: true });
     this.cookieStore = new BrowserCookieStore(join(app.getPath("userData"), "browser-session-cookies.enc"), this.browserSession.cookies, safeStorage);
@@ -276,9 +303,35 @@ export class DesktopBrowserManager {
     });
   }
 
+  bindAgentControl(control: BrowserAgentBinding): void {
+    this.agentControl?.destroy();
+    this.agentControl = control;
+  }
+
+  handleAgentRequest(message: unknown): Promise<unknown> {
+    if (!this.agentControl) return Promise.resolve({ type: "pi-desktop:browser-agent-response", requestId: "", ok: false, error: "Desktop browser bridge unavailable." });
+    return this.agentControl.handleRequest(message);
+  }
+
+  cancelAgentRequest(requestId: string): void {
+    this.agentControl?.cancel(requestId);
+  }
+
+  failAgentRequests(message: string): void {
+    this.agentControl?.failAll(message);
+  }
+
+  setReportedAgentBackend(backend: "desktop" | "playwright"): void {
+    this.reportedAgentBackend = backend;
+    this.publishAgentBackend();
+  }
+
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.agentControl?.failAll("Browser manager was closed");
+    this.agentControl?.destroy();
+    this.agentControl = null;
     if (this.storageFlushTimer) clearTimeout(this.storageFlushTimer);
     this.storageFlushTimer = undefined;
     void this.flushStorage().catch((error) => this.log.warn("Unable to persist browser state while closing", error));
@@ -361,6 +414,10 @@ export class DesktopBrowserManager {
       if (!this.isTrustedSender(event)) return null;
       return readChromeBookmarks();
     });
+    ipcMain.handle(BROWSER_AGENT_BACKEND_GET_CHANNEL, (event): "desktop" | "playwright" => {
+      if (!this.isTrustedSender(event)) return "playwright";
+      return this.resolvedAgentBackend();
+    });
     ipcMain.handle(BROWSER_BOOKMARK_MENU_CHANNEL, (event, nodes: unknown, position: unknown): Promise<string | null> | null => {
       if (!this.isTrustedSender(event)) return null;
       const point = position as { x?: number; y?: number } | null;
@@ -384,6 +441,7 @@ export class DesktopBrowserManager {
     ipcMain.removeHandler(BROWSER_ACTION_CHANNEL);
     ipcMain.removeHandler(BROWSER_IMPORT_CHROME_BOOKMARKS_CHANNEL);
     ipcMain.removeHandler(BROWSER_BOOKMARK_MENU_CHANNEL);
+    ipcMain.removeHandler(BROWSER_AGENT_BACKEND_GET_CHANNEL);
   }
 
   private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }): BrowserTab {
@@ -393,24 +451,7 @@ export class DesktopBrowserManager {
       throw new Error(`The browser tab limit of ${MAX_TABS} has been reached.`);
     }
     const id = `tab-${this.nextTabId++}`;
-    const view = new WebContentsView({
-      ...(popupOptions?.webContents ? { webContents: popupOptions.webContents } : {}),
-      webPreferences: {
-        ...popupOptions?.webPreferences,
-        partition: BROWSER_PARTITION,
-        sandbox: true,
-        contextIsolation: true,
-        nodeIntegration: false,
-        nodeIntegrationInWorker: false,
-        webSecurity: true,
-        allowRunningInsecureContent: false,
-        navigateOnDragDrop: false,
-        safeDialogs: true,
-        devTools: !app.isPackaged || process.env.PI_DESKTOP_DEVTOOLS === "1",
-      },
-    });
-    view.setBackgroundColor("#ffffff");
-    view.setVisible(false);
+    const view = this.createBrowserView(popupOptions);
     const tab: BrowserTab = { attached: false, id, loading: false, sessionId, title: "", view };
     this.tabs.push(tab);
     this.installTabEvents(tab);
@@ -450,7 +491,8 @@ export class DesktopBrowserManager {
       return { action: "deny" };
     });
     contents.on("destroyed", () => {
-      if (this.destroyed || !this.tabs.includes(tab)) return;
+      if (this.destroyed || tab.view.webContents !== contents || tab.discarding) return;
+      if (!this.tabs.includes(tab)) return;
       if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
       this.tabs.splice(this.tabs.indexOf(tab), 1);
       this.updateVisibility();
@@ -527,20 +569,23 @@ export class DesktopBrowserManager {
 
   private getState(sessionId = this.displayedSessionId): DesktopBrowserState {
     const active = this.ensureSession(sessionId);
-    const url = browserUrl(active.view.webContents.getURL());
+    const contents = this.liveContents(active);
+    const url = this.tabUrl(active);
+    const agent = this.agentControl?.status(sessionId);
     return {
       sessionId,
       activeTabId: active.id,
-      canGoBack: active.view.webContents.navigationHistory.canGoBack(),
-      canGoForward: active.view.webContents.navigationHistory.canGoForward(),
+      canGoBack: contents ? contents.navigationHistory.canGoBack() : false,
+      canGoForward: contents ? contents.navigationHistory.canGoForward() : false,
       loading: active.loading,
       tabs: this.tabs.filter((tab) => tab.sessionId === sessionId).map((tab) => ({
         id: tab.id,
-        title: tab.title,
-        url: browserUrl(tab.view.webContents.getURL()),
+        title: this.tabTitle(tab),
+        url: this.tabUrl(tab),
       })),
-      title: active.title,
+      title: this.tabTitle(active),
       url,
+      ...(agent ? { agentTabId: agent.tabId, agentOperating: agent.operating, agentPaused: agent.paused } : {}),
     };
   }
 
@@ -561,13 +606,24 @@ export class DesktopBrowserManager {
       this.requestedVisible
       && this.bounds
       && active
-      && browserUrl(active.view.webContents.getURL()) !== "about:blank"
+      && !active.unloaded
+      && this.tabUrl(active) !== "about:blank"
       && this.window.isVisible()
       && !this.window.isMinimized(),
     );
+    const held = new Map((this.agentControl?.heldTabs() ?? []).map((entry) => [entry.id, entry.bounds]));
     let attachmentChanged = false;
     for (const tab of this.tabs) {
+      if (tab.unloaded) {
+        if (tab.attached && !this.window.isDestroyed()) {
+          this.window.contentView.removeChildView(tab.view);
+          tab.attached = false;
+          attachmentChanged = true;
+        }
+        continue;
+      }
       const visible = shouldShow && tab === active && tab.sessionId === this.displayedSessionId;
+      const hold = !visible ? held.get(tab.id) : undefined;
       if (visible && this.bounds) {
         tab.view.setBounds(this.bounds);
         if (!tab.attached) {
@@ -575,9 +631,18 @@ export class DesktopBrowserManager {
           tab.attached = true;
           attachmentChanged = true;
         }
+      } else if (hold) {
+        // A hidden agent tab stays attached offscreen. Detached or 0x0 views
+        // stop producing frames, so CDP input and capturePage would time out.
+        tab.view.setBounds(hold);
+        if (!tab.attached) {
+          this.window.contentView.addChildView(tab.view);
+          tab.attached = true;
+          attachmentChanged = true;
+        }
       }
-      tab.view.setVisible(visible);
-      if (!visible && tab.attached) {
+      tab.view.setVisible(visible || Boolean(hold));
+      if (!visible && !hold && tab.attached) {
         // Native Chromium surfaces (including cross-origin login frames) are
         // outside React/CSS clipping. Remove the entire view from the host,
         // but keep its WebContents alive so sign-in and navigation survive.
@@ -592,6 +657,7 @@ export class DesktopBrowserManager {
         attachedViews: this.tabs.filter((tab) => tab.attached).length,
       });
     }
+    this.agentControl?.afterVisibilityChange();
   }
 
   private async performAction(value: unknown): Promise<void> {
@@ -604,22 +670,51 @@ export class DesktopBrowserManager {
       this.sendState();
       return;
     }
+    if (input.action === "pause_agent") {
+      this.agentControl?.pauseSession(this.displayedSessionId);
+      this.sendState();
+      return;
+    }
+    if (input.action === "resume_agent") {
+      this.agentControl?.resumeSession(this.displayedSessionId);
+      this.updateVisibility();
+      this.sendState();
+      return;
+    }
+    if (input.action === "show_agent_tab") {
+      const agentTabId = this.agentControl?.agentTabId(this.displayedSessionId);
+      if (agentTabId && this.tabs.some((tab) => tab.id === agentTabId && tab.sessionId === this.displayedSessionId && !tab.unloaded)) {
+        this.activeTabIds.set(this.displayedSessionId, agentTabId);
+        this.agentControl?.noteUsed(agentTabId);
+      }
+      this.updateVisibility();
+      this.sendState();
+      return;
+    }
     const active = this.activeTab(this.displayedSessionId);
-    if (!active) return;
+    if (!active || active.unloaded) {
+      if (input.action === "new_tab") this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
+      return;
+    }
     if (input.action === "configure_login") { this.showLoginMenu(active); return; }
     if (input.action === "navigate" && typeof input.url === "string") {
       await this.storageReady;
       await active.view.webContents.loadURL(normalizeAddress(input.url));
+      this.noteTabUsed(active);
     } else if (input.action === "back" && active.view.webContents.navigationHistory.canGoBack()) {
       active.view.webContents.navigationHistory.goBack();
+      this.noteTabUsed(active);
     } else if (input.action === "forward" && active.view.webContents.navigationHistory.canGoForward()) {
       active.view.webContents.navigationHistory.goForward();
+      this.noteTabUsed(active);
     } else if (input.action === "reload") {
       active.view.webContents.reload();
+      this.noteTabUsed(active);
     } else if (input.action === "new_tab") {
-      this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId);
+      this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
     } else if (input.action === "switch_tab" && typeof input.tabId === "string" && this.tabs.some((tab) => tab.id === input.tabId && tab.sessionId === this.displayedSessionId)) {
       this.activeTabIds.set(this.displayedSessionId, input.tabId);
+      this.noteTabUsed(this.tabs.find((tab) => tab.id === input.tabId));
       this.updateVisibility();
       this.sendState();
     } else if (input.action === "close_tab" && typeof input.tabId === "string") {
@@ -661,26 +756,286 @@ export class DesktopBrowserManager {
     menu.popup({ window: this.window });
   }
 
-  private closeTab(tabId: string, sessionId: string): void {
+  private closeTab(tabId: string, sessionId: string, force = false): void {
     const sessionTabs = this.tabs.filter((tab) => tab.sessionId === sessionId);
     const index = this.tabs.findIndex((tab) => tab.id === tabId && tab.sessionId === sessionId);
     if (index < 0) return;
-    if (sessionTabs.length === 1) {
+    if (sessionTabs.length === 1 && !force) {
       const tab = sessionTabs[0]!;
+      if (tab.unloaded || tab.view.webContents.isDestroyed()) return;
       tab.title = "";
+      tab.savedUrl = "about:blank";
       tab.view.webContents.navigationHistory.clear();
       void tab.view.webContents.loadURL("about:blank");
       return;
     }
     const [tab] = this.tabs.splice(index, 1);
     if (!tab) return;
-    if (tab.attached) this.window.contentView.removeChildView(tab.view);
-    if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
+    if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
+    tab.attached = false;
+    if (!tab.unloaded && !tab.view.webContents.isDestroyed()) tab.view.webContents.close();
     if (this.activeTabIds.get(sessionId) === tabId) {
       const remaining = this.tabs.filter((candidate) => candidate.sessionId === sessionId);
-      this.activeTabIds.set(sessionId, remaining[Math.min(sessionTabs.indexOf(tab), remaining.length - 1)]!.id);
+      const next = remaining[Math.min(Math.max(sessionTabs.indexOf(tab), 0), Math.max(0, remaining.length - 1))];
+      if (next) this.activeTabIds.set(sessionId, next.id);
+      else this.activeTabIds.delete(sessionId);
     }
     this.updateVisibility();
     this.sendState();
+  }
+
+  private createBrowserView(popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }): WebContentsView {
+    const view = new WebContentsView({
+      ...(popupOptions?.webContents ? { webContents: popupOptions.webContents } : {}),
+      webPreferences: {
+        ...popupOptions?.webPreferences,
+        partition: BROWSER_PARTITION,
+        sandbox: true,
+        contextIsolation: true,
+        nodeIntegration: false,
+        nodeIntegrationInWorker: false,
+        webSecurity: true,
+        allowRunningInsecureContent: false,
+        navigateOnDragDrop: false,
+        safeDialogs: true,
+        devTools: !app.isPackaged || process.env.PI_DESKTOP_DEVTOOLS === "1",
+      },
+    });
+    view.setBackgroundColor("#ffffff");
+    view.setVisible(false);
+    return view;
+  }
+
+  private liveContents(tab: BrowserTab): WebContents | null {
+    if (tab.unloaded) return null;
+    try {
+      if (tab.view.webContents.isDestroyed()) return null;
+    } catch {
+      return null;
+    }
+    return tab.view.webContents;
+  }
+
+  private tabUrl(tab: BrowserTab): string {
+    const contents = this.liveContents(tab);
+    return contents ? browserUrl(contents.getURL()) : (tab.savedUrl || "about:blank");
+  }
+
+  private tabTitle(tab: BrowserTab): string {
+    return this.liveContents(tab) ? tab.title : (tab.savedTitle || tab.title || "");
+  }
+
+  private noteTabUsed(tab: BrowserTab | undefined): void {
+    if (tab) this.agentControl?.noteUsed(tab.id);
+  }
+
+  private findTab(tabId: string): BrowserTab | undefined {
+    return this.tabs.find((tab) => tab.id === tabId);
+  }
+
+  private agentBrowserMode(): "builtin" | "background" {
+    const directory = this.startup.agentDirectory?.();
+    if (!directory) return "builtin";
+    try {
+      const parsed = JSON.parse(readFileSync(join(directory, "piora", "browser.json"), "utf8")) as { mode?: unknown };
+      return parsed.mode === "background" ? "background" : "builtin";
+    } catch {
+      return "builtin";
+    }
+  }
+
+  private resolvedAgentBackend(): "desktop" | "playwright" {
+    if (this.agentBrowserMode() === "background") return "playwright";
+    if (this.reportedAgentBackend === "playwright") return "playwright";
+    return "desktop";
+  }
+
+  private publishAgentBackend(): void {
+    if (this.window.isDestroyed() || this.window.webContents.isDestroyed()) return;
+    this.window.webContents.send(BROWSER_AGENT_BACKEND_CHANNEL, this.resolvedAgentBackend());
+  }
+
+  private requireLiveTab(tabId: string): BrowserTab {
+    const tab = this.findTab(tabId);
+    if (!tab || tab.unloaded || tab.view.webContents.isDestroyed()) throw new Error("Browser tab is closed.");
+    return tab;
+  }
+
+  private tabState(tab: BrowserTab) {
+    return {
+      id: tab.id,
+      sessionId: tab.sessionId,
+      webContentsId: this.liveContents(tab)?.id ?? -1,
+      closed: false,
+      url: this.tabUrl(tab),
+      title: this.tabTitle(tab),
+      unloaded: Boolean(tab.unloaded),
+    };
+  }
+
+  private discardTab(tabId: string): void {
+    const tab = this.findTab(tabId);
+    if (!tab || tab.unloaded) return;
+    const contents = tab.view.webContents;
+    if (!contents.isDestroyed()) {
+      tab.savedUrl = browserUrl(contents.getURL());
+      tab.savedTitle = tab.title;
+    }
+    tab.unloaded = true;
+    tab.discarding = true;
+    if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
+    tab.attached = false;
+    if (!contents.isDestroyed()) contents.close();
+  }
+
+  private async restoreTab(tabId: string): Promise<void> {
+    const tab = this.findTab(tabId);
+    if (!tab || !tab.unloaded) return;
+    const url = tab.savedUrl && tab.savedUrl !== "about:blank" ? tab.savedUrl : "about:blank";
+    const view = this.createBrowserView();
+    tab.view = view;
+    tab.unloaded = false;
+    tab.discarding = false;
+    tab.attached = false;
+    tab.loading = url !== "about:blank";
+    this.installTabEvents(tab);
+    if (url === "about:blank") return;
+    await this.storageReady;
+    if (!view.webContents.isDestroyed()) await view.webContents.loadURL(url);
+  }
+
+  private showingTab(tabId: string): boolean {
+    if (this.destroyed || this.window.isDestroyed()) return false;
+    const active = this.activeTab(this.displayedSessionId);
+    if (!active || active.id !== tabId || active.unloaded) return false;
+    return Boolean(
+      this.requestedVisible
+      && this.bounds
+      && this.tabUrl(active) !== "about:blank"
+      && this.window.isVisible()
+      && !this.window.isMinimized(),
+    );
+  }
+
+  createAgentHost() {
+    return {
+      mainWebContentsId: this.window.webContents.id,
+      now: () => Date.now(),
+      platform: process.platform,
+      log: this.log,
+      listTabs: () => this.tabs.map((tab) => this.tabState(tab)),
+      createTab: (sessionId: string, url: string) => this.tabState(this.createTab(url, false, sessionId)),
+      closeTab: (tabId: string) => {
+        const tab = this.findTab(tabId);
+        if (tab) this.closeTab(tabId, tab.sessionId, true);
+      },
+      loadURL: async (tabId: string, url: string) => {
+        const tab = this.requireLiveTab(tabId);
+        await this.storageReady;
+        await tab.view.webContents.loadURL(url);
+      },
+      goBack: (tabId: string) => {
+        const contents = this.requireLiveTab(tabId).view.webContents;
+        if (contents.navigationHistory.canGoBack()) contents.navigationHistory.goBack();
+      },
+      goForward: (tabId: string) => {
+        const contents = this.requireLiveTab(tabId).view.webContents;
+        if (contents.navigationHistory.canGoForward()) contents.navigationHistory.goForward();
+      },
+      reload: (tabId: string) => {
+        this.requireLiveTab(tabId).view.webContents.reload();
+      },
+      discardTab: (tabId: string) => this.discardTab(tabId),
+      restoreTab: (tabId: string) => this.restoreTab(tabId),
+      isShowing: (tabId: string) => this.showingTab(tabId),
+      panelBounds: () => (this.bounds ? { ...this.bounds } : null),
+      setBounds: (tabId: string, bounds: { x: number; y: number; width: number; height: number }) => {
+        const tab = this.findTab(tabId);
+        if (!tab || tab.unloaded) return;
+        tab.view.setBounds(bounds);
+      },
+      attach: (tabId: string) => {
+        const tab = this.findTab(tabId);
+        if (!tab || tab.unloaded || this.destroyed || this.window.isDestroyed() || tab.attached) return;
+        this.window.contentView.addChildView(tab.view);
+        tab.attached = true;
+      },
+      detach: (tabId: string) => {
+        const tab = this.findTab(tabId);
+        if (!tab || !tab.attached || this.window.isDestroyed()) return;
+        this.window.contentView.removeChildView(tab.view);
+        tab.attached = false;
+      },
+      setBackgroundThrottling: (tabId: string, allowed: boolean) => {
+        this.requireLiveTab(tabId).view.webContents.setBackgroundThrottling(allowed);
+      },
+      capturePage: async (tabId: string, options: { stayHidden: boolean; stayAwake: boolean }) => {
+        const image = await this.requireLiveTab(tabId).view.webContents.capturePage(undefined, options);
+        const png = image.toPNG();
+        return { byteLength: png.length, base64: png.toString("base64") };
+      },
+      executeIsolated: (tabId: string, worldId: number, code: string) => (
+        this.requireLiveTab(tabId).view.webContents.executeJavaScriptInIsolatedWorld(worldId, [{ code }])
+      ),
+      debuggerAttach: (tabId: string, version: string) => {
+        this.requireLiveTab(tabId).view.webContents.debugger.attach(version);
+      },
+      debuggerDetach: (tabId: string) => {
+        const contents = this.requireLiveTab(tabId).view.webContents;
+        if (contents.debugger.isAttached()) contents.debugger.detach();
+      },
+      debuggerIsAttached: (tabId: string) => {
+        const tab = this.findTab(tabId);
+        if (!tab || tab.unloaded || tab.view.webContents.isDestroyed()) return false;
+        return tab.view.webContents.debugger.isAttached();
+      },
+      debuggerSend: (tabId: string, method: string, params?: Record<string, unknown>) => (
+        this.requireLiveTab(tabId).view.webContents.debugger.sendCommand(method, params)
+      ),
+      onTabEvent: (tabId: string, event: "render-process-gone" | "debugger-detach" | "input-event" | "destroyed", handler: (payload?: unknown) => void) => {
+        const tab = this.findTab(tabId);
+        if (!tab || tab.unloaded) return () => undefined;
+        const contents = tab.view.webContents;
+        if (event === "render-process-gone") {
+          const listener = () => handler();
+          contents.on("render-process-gone", listener);
+          return () => { if (!contents.isDestroyed()) contents.off("render-process-gone", listener); };
+        }
+        if (event === "destroyed") {
+          const listener = () => handler();
+          contents.on("destroyed", listener);
+          return () => { if (!contents.isDestroyed()) contents.off("destroyed", listener); };
+        }
+        if (event === "input-event") {
+          const listener = (_ipcEvent: Event, input: Electron.InputEvent) => handler({ type: input.type });
+          contents.on("input-event", listener);
+          return () => { if (!contents.isDestroyed()) contents.off("input-event", listener); };
+        }
+        const listener = (_ipcEvent: Event, reason: string) => {
+          const closed = tab.unloaded || contents.isDestroyed() || /closed/i.test(reason);
+          if (!closed) {
+            // DevTools takes the only debugger session. Reattach instead of
+            // treating the tab as closed so the agent can continue.
+            try {
+              if (!contents.isDestroyed() && !contents.debugger.isAttached()) contents.debugger.attach("1.3");
+            } catch (error) {
+              const message = error instanceof Error ? error.message : String(error);
+              if (!/already attached/i.test(message)) this.log.warn("Browser agent debugger reattach failed", error);
+            }
+            return;
+          }
+          handler({ reason });
+        };
+        contents.debugger.on("detach", listener);
+        return () => {
+          try { contents.debugger.off("detach", listener); } catch { /* The tab is already gone. */ }
+        };
+      },
+      pushActivity: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean }) => {
+        if (this.window.isDestroyed() || this.window.webContents.isDestroyed()) return;
+        this.window.webContents.send(BROWSER_AGENT_ACTIVITY_CHANNEL, activity);
+        this.sendState();
+      },
+    };
   }
 }

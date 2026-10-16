@@ -102,6 +102,9 @@ declare global {
         showBookmarkMenu: (nodes: ImportedChromeBookmarkNode[], position: { x: number; y: number }) => Promise<string | null>;
         onState: (listener: (state: DesktopBrowserState) => void) => () => void;
         onDownload: (listener: (download: DesktopBrowserDownload) => void) => () => void;
+        getAgentBackend?: () => Promise<DesktopBrowserAgentBackend>;
+        onAgentBackend?: (listener: (backend: DesktopBrowserAgentBackend) => void) => () => void;
+        onAgentActivity?: (listener: (activity: DesktopBrowserAgentActivity) => void) => () => void;
       };
     };
   }
@@ -129,10 +132,22 @@ export interface DesktopBrowserState {
   tabs: Array<{ id: string; title: string; url: string }>;
   title: string;
   url: string;
+  agentTabId?: string | null;
+  agentOperating?: boolean;
+  agentPaused?: boolean;
 }
 
+export interface DesktopBrowserAgentActivity {
+  sessionId: string;
+  tabId: string | null;
+  operating: boolean;
+  paused: boolean;
+}
+
+export type DesktopBrowserAgentBackend = "desktop" | "playwright";
+
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login";
+  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;
