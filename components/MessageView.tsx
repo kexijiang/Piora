@@ -37,6 +37,7 @@ import type {
 } from "@/lib/types";
 import { AliIcon, type AliIconName } from "./AliIcon";
 import { MessageImage, MessageImageViewer } from "./MessageImage";
+import { BrowserUserWaitCard } from "./BrowserUserWaitCard";
 import { CommandExecutionCard } from "./CommandExecutionView";
 import { ChatDisclosure, DisclosureChevron, DisclosurePath } from "./ChatDisclosure";
 
@@ -934,6 +935,15 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
       diagnostics,
     };
     return <CommandExecutionCard data={data} onOpen={onOpenCommandExecution} />;
+  }
+
+  if (block.toolName === "browser" && block.input.action === "wait_for_user") {
+    return <BrowserUserWaitCard
+      sessionId={sessionId}
+      reason={typeof block.input.reason === "string" ? block.input.reason : ""}
+      result={result}
+      historical={historyMode}
+    />;
   }
 
   if (automationDetails && !historyMode) {

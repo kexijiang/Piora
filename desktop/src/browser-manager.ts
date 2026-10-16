@@ -54,6 +54,8 @@ export interface DesktopBrowserState {
   agentTabId?: string | null;
   agentOperating?: boolean;
   agentPaused?: boolean;
+  agentWaiting?: boolean;
+  agentWaitReason?: string;
 }
 
 export interface ImportedChromeBookmark {
@@ -100,7 +102,7 @@ interface BrowserAgentBinding {
   pauseSession(sessionId: string): void;
   resumeSession(sessionId: string): void;
   agentTabId(sessionId: string): string | null;
-  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean };
+  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string };
   noteUsed(tabId: string): void;
 }
 
@@ -649,7 +651,13 @@ export class DesktopBrowserManager {
       })),
       title: this.tabTitle(active),
       url,
-      ...(agent ? { agentTabId: agent.tabId, agentOperating: agent.operating, agentPaused: agent.paused } : {}),
+      ...(agent ? {
+        agentTabId: agent.tabId,
+        agentOperating: agent.operating,
+        agentPaused: agent.paused,
+        agentWaiting: agent.waiting,
+        ...(agent.waiting && agent.reason ? { agentWaitReason: agent.reason } : {}),
+      } : {}),
     };
   }
 
@@ -1042,6 +1050,17 @@ export class DesktopBrowserManager {
       executeIsolated: (tabId: string, worldId: number, code: string) => (
         this.requireLiveTab(tabId).view.webContents.executeJavaScriptInIsolatedWorld(worldId, [{ code }])
       ),
+      executeMain: (tabId: string, code: string) => (
+        this.requireLiveTab(tabId).view.webContents.executeJavaScript(`globalThis.eval(${JSON.stringify(code)})`)
+      ),
+      activateSessionTab: (sessionId: string, tabId: string) => {
+        const tab = this.findTab(tabId);
+        if (!tab || tab.sessionId !== sessionId || tab.unloaded) return;
+        this.activeTabIds.set(sessionId, tabId);
+        this.noteTabUsed(tab);
+        this.updateVisibility();
+        this.sendState();
+      },
       debuggerAttach: (tabId: string, version: string) => {
         this.requireLiveTab(tabId).view.webContents.debugger.attach(version);
       },
@@ -1096,7 +1115,7 @@ export class DesktopBrowserManager {
           try { contents.debugger.off("detach", listener); } catch { /* The tab is already gone. */ }
         };
       },
-      pushActivity: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean }) => {
+      pushActivity: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean; waiting?: boolean; reason?: string }) => {
         if (this.window.isDestroyed() || this.window.webContents.isDestroyed()) return;
         this.window.webContents.send(BROWSER_AGENT_ACTIVITY_CHANNEL, activity);
         this.sendState();

@@ -32,6 +32,26 @@ function renderMessage(message, props = {}) {
   );
 }
 
+test("a running browser wait card shows the reason and resolve buttons", () => {
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "wait-1", toolName: "browser", input: { action: "wait_for_user", reason: "请完成登录" } }] };
+  const running = renderMessage(message, { sessionId: "550e8400-e29b-41d4-a716-446655440000" });
+  assert.match(running, /请完成登录/);
+  assert.match(running, /我已完成，继续/);
+  assert.match(running, /取消/);
+  assert.doesNotMatch(running, /打开浏览器/);
+  const finished = renderMessage(message, { toolResults: new Map([["wait-1", {
+    role: "toolResult",
+    toolCallId: "wait-1",
+    content: [{ type: "text", text: "User reported done. Take a new snapshot before continuing." }],
+    details: { status: "continued", backend: "desktop" },
+  }]]) });
+  assert.match(finished, /你已完成/);
+  assert.doesNotMatch(finished, /我已完成，继续/);
+  const card = readFileSync(new URL("./BrowserUserWaitCard.tsx", import.meta.url), "utf8");
+  assert.match(card, /backend === "desktop"/);
+  assert.match(card, /piora:open-agent-browser/);
+});
+
 test("nested tool history restores bounded summaries without inventing child output or success", () => {
   const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "parent", toolName: "codemode", input: {} }] };
   const row = createVirtualRowState(); row.set("tool:parent", true);

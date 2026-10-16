@@ -232,18 +232,22 @@ const runtime = Object.freeze({
       ipcRenderer.on("pi:browser-agent-backend", handler);
       return () => ipcRenderer.removeListener("pi:browser-agent-backend", handler);
     },
-    onAgentActivity(listener: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean }) => void) {
+    onAgentActivity(listener: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean; waiting?: boolean; reason?: string }) => void) {
       const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
         if (!payload || typeof payload !== "object") return;
-        const candidate = payload as { sessionId?: unknown; tabId?: unknown; operating?: unknown; paused?: unknown };
+        const candidate = payload as { sessionId?: unknown; tabId?: unknown; operating?: unknown; paused?: unknown; waiting?: unknown; reason?: unknown };
         if (typeof candidate.sessionId !== "string") return;
         if (candidate.tabId !== null && typeof candidate.tabId !== "string") return;
         if (typeof candidate.operating !== "boolean" || typeof candidate.paused !== "boolean") return;
+        const waiting = candidate.waiting === true;
+        const reason = typeof candidate.reason === "string" ? candidate.reason : undefined;
         listener({
           sessionId: candidate.sessionId,
           tabId: typeof candidate.tabId === "string" ? candidate.tabId : null,
           operating: candidate.operating,
           paused: candidate.paused,
+          waiting,
+          ...(waiting && reason !== undefined ? { reason } : {}),
         });
       };
       ipcRenderer.on("pi:browser-agent-activity", handler);

@@ -436,7 +436,7 @@ export function httpUrl(raw: string): string {
   return parsed.href;
 }
 
-export const INPUT_ACTIONS = new Set(["open", "back", "forward", "reload", "click", "type", "press", "scroll", "new_tab", "switch_tab", "close_tab"]);
+export const INPUT_ACTIONS = new Set(["open", "back", "forward", "reload", "click", "type", "press", "scroll", "new_tab", "switch_tab", "close_tab", "evaluate"]);
 
 export function isPausedAction(action: string): boolean {
   return INPUT_ACTIONS.has(action);
