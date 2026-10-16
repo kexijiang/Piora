@@ -13,7 +13,6 @@ import {
   isDesktopBridgeUnavailable,
   notifyDesktopAgentBackend,
   notifyDesktopAgentIdle,
-  notifyDesktopAgentSessionClosed,
 } from "../lib/desktop-browser-agent.ts";
 import { browserNetworkProxyOptions } from "../lib/network-proxy.ts";
 
@@ -740,12 +739,11 @@ The \`browser\` tool uses ${APP_DISPLAY_NAME}'s background Chrome/Edge profile. 
     const sessionId = ctx.sessionManager.getSessionId();
     if (sessionId) notifyDesktopAgentIdle(sessionId);
   });
-  api.on?.("session_shutdown", (event, ctx) => {
-    if (event.reason === "reload") return;
-    if (!desktopBackendSelected()) return;
+  api.on?.("session_shutdown", async (event, ctx) => {
+    if (event.reason === "reload" || !desktopBackendSelected()) return;
     const sessionId = ctx.sessionManager.getSessionId();
     if (!sessionId) return;
-    notifyDesktopAgentSessionClosed(sessionId);
+    await callDesktopAgentBrowser({ sessionId, action: "session_closed" }).catch(() => undefined);
   });
 }
 
