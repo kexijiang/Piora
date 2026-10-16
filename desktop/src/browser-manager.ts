@@ -20,6 +20,12 @@ import {
 } from "electron";
 import { BrowserCookieStore } from "./browser-cookie-store.js";
 import type { Logger } from "./logger.js";
+import {
+  NAVIGATION_TIMEOUT_MS,
+  RENDERER_CRASHED_ERROR,
+  isNonFatalNavigationError,
+  rejectAgentCreateAtCapacity,
+} from "./browser-agent-logic.js";
 
 export const BROWSER_STATE_CHANNEL = "pi:browser-state";
 export const BROWSER_DOWNLOAD_CHANNEL = "pi:browser-download";

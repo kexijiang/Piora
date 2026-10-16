@@ -251,7 +251,7 @@
 .browserModeBar > button[role="switch"]:focus-visible { outline: 2px solid #3567f7; outline-offset: 2px; }
 .browserAgentOperating { min-height: 36px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 11px; border-bottom: 1px solid #d5e1fb; background: #eef3ff; color: #1f3f8a; font-size: var(--text-xs); }
 .browserAgentOperating button { border: 1px solid #c5d4f7; background: #fff; color: #1f3f8a; border-radius: 6px; padding: 3px 10px; cursor: pointer; font: inherit; font-size: var(--text-xs); }
-.browserAgentMarker { margin-left: auto; padding: 0 4px; border-radius: 4px; background: #e7eeff; color: #1f3f8a; font-size: 10px; line-height: 16px; white-space: nowrap; }
+.browserAgentMarker { margin-left: auto; padding: 0 4px; border-radius: 4px; background: #e7eeff; color: #1f3f8a; font-size: var(--text-xs); line-height: 16px; white-space: nowrap; }
 .browserTabs { min-height: 39px; display: flex; align-items: center; gap: 2px; overflow-x: auto; padding: 4px 7px; border-bottom: 1px solid #eceff3; background: #f8f9fb; scrollbar-width: none; }
 .browserTabs::-webkit-scrollbar { display: none; }
 .browserTabs > button { min-width: 0; height: 29px; display: inline-flex; align-items: center; gap: 6px; flex: 0 1 180px; padding: 0 8px; border: 0; border-radius: var(--radius-control); background: transparent; color: #6f737b; cursor: pointer; font: inherit; font-size: var(--text-xs); }
