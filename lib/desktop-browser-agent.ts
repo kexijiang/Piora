@@ -2,7 +2,42 @@ import { randomUUID } from "node:crypto";
 
 export const DESKTOP_AGENT_BRIDGE_UNAVAILABLE = "Desktop browser bridge unavailable.";
 export const DESKTOP_EVALUATE_DISABLED = "evaluate is disabled on the desktop browser and needs user confirmation.";
+export const EVALUATE_UNKNOWN_PAGE = "unknown page";
+export const EVALUATE_SCRIPT_PREVIEW_CHARS = 500;
 const SERVER_TIMEOUT_MS = 45_000;
+
+export function pageUrlFromTabList(value: unknown, tabId?: string): string {
+  const tabs = value && typeof value === "object" && Array.isArray((value as { tabs?: unknown }).tabs)
+    ? (value as { tabs: unknown[] }).tabs
+    : [];
+  const rows = tabs.flatMap((tab) => {
+    if (!tab || typeof tab !== "object") return [];
+    const row = tab as { tabId?: unknown; url?: unknown; active?: unknown };
+    return [{
+      tabId: typeof row.tabId === "string" ? row.tabId : "",
+      url: typeof row.url === "string" ? row.url.trim() : "",
+      active: row.active === true,
+    }];
+  });
+  const match = tabId
+    ? rows.find((row) => row.tabId === tabId)
+    : rows.find((row) => row.active) ?? rows[0];
+  return match?.url || EVALUATE_UNKNOWN_PAGE;
+}
+
+export function evaluateConfirmText(script: string, pageUrl: string | null | undefined): string {
+  const page = pageUrl && pageUrl.trim() ? pageUrl.trim() : EVALUATE_UNKNOWN_PAGE;
+  const source = script.length > EVALUATE_SCRIPT_PREVIEW_CHARS
+    ? `${script.slice(0, EVALUATE_SCRIPT_PREVIEW_CHARS)}…`
+    : script;
+  return `The agent wants to run JavaScript on ${page}. Allow this once?\n\n${source}`;
+}
+
+/** Same notice the accessibility snapshot uses when its text exceeds the cap. */
+export function capSnapshotText(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  return `${text.slice(0, limit)}\n… snapshot truncated`;
+}
 
 export class DesktopAgentBridgeUnavailable extends Error {
   constructor(message = DESKTOP_AGENT_BRIDGE_UNAVAILABLE) {

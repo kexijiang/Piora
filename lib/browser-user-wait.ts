@@ -11,6 +11,9 @@ export const BROWSER_USER_WAIT_TEXT: Record<BrowserUserWaitStatus, string> = {
   aborted: "The wait was aborted because the session stopped. The user did not complete the requested step. Do not assume the user is signed in.",
 };
 
+/** Playwright (and a desktop bridge that falls back to it) cannot hand the page to the user. */
+export const BROWSER_USER_WAIT_UNSUPPORTED_TEXT = "The user cannot take over the browser in this mode. Do not assume the user is signed in. Explain the situation to the user in chat.";
+
 export interface BrowserUserWaitSnapshot {
   sessionId: string;
   toolCallId: string;
@@ -63,9 +66,9 @@ export function noteBrowserUserWaitBackend(sessionId: string, backend: "desktop"
   if (entry) entry.backend = backend;
 }
 
-export function resolveBrowserUserWait(sessionId: string, decision: "continue" | "cancel"): boolean {
+export function resolveBrowserUserWait(sessionId: string, decision: "continue" | "cancel", toolCallId: string): boolean {
   const entry = state().waits.get(sessionId);
-  if (!entry) return false;
+  if (!entry || entry.toolCallId !== toolCallId) return false;
   settle(entry, decision === "continue" ? "continued" : "cancelled");
   return true;
 }

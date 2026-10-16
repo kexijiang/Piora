@@ -1259,6 +1259,7 @@ export const enLocale: LocalePlugin = {
     "browser.waitCancelled": "Cancelled. You did not complete this step, so the agent will not assume you are signed in.",
     "browser.waitTimeout": "Timed out. You did not complete this step, so the agent will not assume you are signed in.",
     "browser.waitAborted": "Stopped. You did not complete this step, so the agent will not assume you are signed in.",
+    "browser.waitUnsupported": "You can't sign in inside the browser in this mode.",
     "browser.agentResume": "Continue",
     "browser.agentMarker": "Agent is working",
     "browser.agentNoSession": "Select a task to follow its browser",

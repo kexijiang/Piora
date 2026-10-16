@@ -47,9 +47,21 @@ test("a running browser wait card shows the reason and resolve buttons", () => {
   }]]) });
   assert.match(finished, /你已完成/);
   assert.doesNotMatch(finished, /我已完成，继续/);
+  const unsupported = renderMessage(message, { toolResults: new Map([["wait-1", {
+    role: "toolResult",
+    toolCallId: "wait-1",
+    content: [{ type: "text", text: "The user cannot take over the browser in this mode." }],
+    details: { status: "unsupported", backend: "playwright" },
+  }]]) });
+  assert.match(unsupported, /当前模式下无法在浏览器里登录/);
+  assert.doesNotMatch(unsupported, /我已完成，继续/);
+  assert.doesNotMatch(unsupported, /取消/);
+  assert.doesNotMatch(unsupported, /打开浏览器/);
   const card = readFileSync(new URL("./BrowserUserWaitCard.tsx", import.meta.url), "utf8");
   assert.match(card, /backend === "desktop"/);
   assert.match(card, /piora:open-agent-browser/);
+  assert.match(card, /JSON\.stringify\(\{ decision, toolCallId \}\)/);
+  assert.match(card, /status === "unsupported"/);
 });
 
 test("nested tool history restores bounded summaries without inventing child output or success", () => {

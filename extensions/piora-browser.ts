@@ -9,15 +9,20 @@ import { selectBrowserBackend } from "../lib/browser-backend.ts";
 import { readAgentBrowserMode } from "../lib/browser-mode.ts";
 import {
   BROWSER_USER_WAIT_TEXT,
+  BROWSER_USER_WAIT_UNSUPPORTED_TEXT,
   waitForUser,
 } from "../lib/browser-user-wait.ts";
 import {
   callDesktopAgentBrowser,
+  capSnapshotText,
   desktopEvaluateRequest,
+  EVALUATE_UNKNOWN_PAGE,
+  evaluateConfirmText,
   hasDesktopAgentBridge,
   isDesktopBridgeUnavailable,
   notifyDesktopAgentBackend,
   notifyDesktopAgentIdle,
+  pageUrlFromTabList,
 } from "../lib/desktop-browser-agent.ts";
 import { browserNetworkProxyOptions } from "../lib/network-proxy.ts";
 
@@ -348,36 +353,56 @@ async function snapshotPage(page: Page): Promise<string> {
     ? "\nA password field is present. Call wait_for_user instead of typing a password."
     : "";
   const output = `${summary}\n\nAccessibility snapshot:\n${accessibility}\n\nInteractive elements:\n${elements.join("\n")}${passwordHint}`;
-  return output.length > MAX_SNAPSHOT_CHARS
-    ? `${output.slice(0, MAX_SNAPSHOT_CHARS)}\n… snapshot truncated`
-    : output;
+  return capSnapshotText(output, MAX_SNAPSHOT_CHARS);
 }
 
-async function waitForBrowserUser(sessionId: string, toolCallId: string, reason: string | undefined, signal?: AbortSignal) {
+function unsupportedWaitResult() {
+  return textResult(BROWSER_USER_WAIT_UNSUPPORTED_TEXT, { action: "wait_for_user", status: "unsupported", backend: "playwright" });
+}
+
+async function desktopEvaluatePageUrl(sessionId: string, tabId: string | undefined, signal?: AbortSignal): Promise<string> {
+  try {
+    const value = await callDesktopAgentBrowser({
+      sessionId,
+      action: "tabs",
+      ...(tabId ? { tabId } : {}),
+      ...(signal ? { signal } : {}),
+    });
+    return pageUrlFromTabList(value, tabId);
+  } catch (error) {
+    if (signal?.aborted || (error instanceof Error && error.message === "Browser action aborted")) {
+      throw error instanceof Error ? error : new Error("Browser action aborted");
+    }
+    return EVALUATE_UNKNOWN_PAGE;
+  }
+}
+
+export async function waitForBrowserUser(sessionId: string, toolCallId: string, reason: string | undefined, signal?: AbortSignal) {
   const text = typeof reason === "string" ? reason.trim() : "";
   if (!text) throw new Error("wait_for_user requires reason");
   if (text.length > 2000) throw new Error("Browser argument is too long.");
+  // Headless Playwright has no page the user can operate. Do not register a 15-minute wait.
+  if (!desktopBackendSelected()) return unsupportedWaitResult();
   let backend: "desktop" | "playwright" = "playwright";
-  if (desktopBackendSelected()) {
-    let desktopNotified = false;
-    try {
-      notifyDesktopAgentBackend("desktop");
-      desktopNotified = true;
-      await callDesktopAgentBrowser({
-        sessionId,
-        action: "wait_begin",
-        reason: text,
-        ...(signal ? { signal } : {}),
-      });
-      backend = "desktop";
-    } catch (error) {
-      if (desktopNotified && !isDesktopBridgeUnavailable(error)) {
-        await callDesktopAgentBrowser({ sessionId, action: "wait_end" }).catch(() => undefined);
-      }
-      if (!isDesktopBridgeUnavailable(error)) throw error;
-      notifyDesktopAgentBackend("playwright");
+  let desktopNotified = false;
+  try {
+    notifyDesktopAgentBackend("desktop");
+    desktopNotified = true;
+    await callDesktopAgentBrowser({
+      sessionId,
+      action: "wait_begin",
+      reason: text,
+      ...(signal ? { signal } : {}),
+    });
+    backend = "desktop";
+  } catch (error) {
+    if (desktopNotified && !isDesktopBridgeUnavailable(error)) {
+      await callDesktopAgentBrowser({ sessionId, action: "wait_end" }).catch(() => undefined);
     }
+    if (!isDesktopBridgeUnavailable(error)) throw error;
+    notifyDesktopAgentBackend("playwright");
   }
+  if (backend !== "desktop") return unsupportedWaitResult();
   try {
     const status = await waitForUser({ sessionId, toolCallId, reason: text, backend, ...(signal ? { signal } : {}) });
     return textResult(BROWSER_USER_WAIT_TEXT[status], { action: "wait_for_user", status, backend });
@@ -437,11 +462,12 @@ const browserTool = defineTool({
       if (signal?.aborted) throw new Error("Browser action aborted");
       if (params.action === "wait_for_user") return await waitForBrowserUser(sessionId, toolCallId, params.reason, signal);
       if (params.action === "evaluate" && desktopBackendSelected()) {
+        const pageUrl = await desktopEvaluatePageUrl(sessionId, params.tabId, signal);
         const gate = desktopEvaluateRequest({
           hasUI: ctx.hasUI === true,
           userConfirmed: ctx.hasUI === true && await ctx.ui.confirm(
             "Run page script",
-            "The agent wants to run JavaScript in the current browser page. Allow this once?",
+            evaluateConfirmText(params.text ?? "", pageUrl),
             signal ? { signal } : undefined,
           ),
         });
@@ -846,7 +872,8 @@ async function executeDesktopBrowser(sessionId: string, params: {
     ...(params.confirmed === true ? { confirmed: true } : {}),
   });
   const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
-  const text = typeof record.text === "string" ? record.text : "";
+  let text = typeof record.text === "string" ? record.text : "";
+  if (params.action === "evaluate") text = capSnapshotText(text, MAX_SNAPSHOT_CHARS);
   const details: Record<string, unknown> = { backend: "desktop" };
   for (const key of ["action", "url", "title", "tabId", "notice", "truncated", "passwordField", "count", "fullPage", "tabs", "closed", "status", "waiting", "reason"] as const) {
     if (key in record) details[key] = record[key];

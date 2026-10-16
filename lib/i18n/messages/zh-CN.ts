@@ -1259,6 +1259,7 @@ export const zhCNLocale: LocalePlugin = {
     "browser.waitCancelled": "已取消。这一步没有完成，Agent 不会假设你已登录。",
     "browser.waitTimeout": "等待超时。这一步没有完成，Agent 不会假设你已登录。",
     "browser.waitAborted": "等待已中止。这一步没有完成，Agent 不会假设你已登录。",
+    "browser.waitUnsupported": "当前模式下无法在浏览器里登录",
     "browser.agentResume": "继续",
     "browser.agentMarker": "Agent 正在操作",
     "browser.agentNoSession": "先选择一个任务，才能查看它的浏览器",

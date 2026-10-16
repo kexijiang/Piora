@@ -20,6 +20,7 @@ export const BRIDGE_UNAVAILABLE_ERROR = "Desktop browser bridge unavailable.";
 export const RELOAD_NOTICE = "This tab was unloaded while idle and has been reloaded. Previous element refs are invalid; take a snapshot before clicking or typing.";
 export const PASSWORD_HINT = "A password field is present. Call wait_for_user instead of typing a password.";
 export const PASSWORD_TYPE_ERROR = "Refusing to type into a password field. Call wait_for_user so the user can enter it.";
+export const PASSWORD_FOCUS_UNCONFIRMED_ERROR = "Cannot confirm the focused element is not a password field. Use a ref from snapshot, or call wait_for_user.";
 export const NAVIGATION_TIMEOUT_MS = 30_000;
 export const GLOBAL_BROWSER_TAB_CAP = 20;
 export const AGENT_GLOBAL_TAB_CAP_ERROR = "The browser tab limit of 20 has been reached. Close a tab before the agent opens another.";
@@ -318,7 +319,11 @@ export function scrollInvocation(args: {
   return `(() => {\nconst args = ${JSON.stringify(args)};\n${REF_LOOKUP_SOURCE}\n${SCROLL_FUNCTION_SOURCE}\nreturn pioraScroll(args);\n})()`;
 }
 
-/** Isolated-world check used when type has no ref or selector. */
+/**
+ * Isolated-world check used when type has no ref or selector.
+ * `{ password: false }` only after a readable non-password element (or no focus).
+ * A frame whose document throws or is null stays unconfirmed (`password: null`).
+ */
 export const ACTIVE_ELEMENT_PASSWORD_SCRIPT = `(() => {
   const isPasswordInput = (element) => {
     if (!element || element.nodeType !== 1) return false;
@@ -326,7 +331,17 @@ export const ACTIVE_ELEMENT_PASSWORD_SCRIPT = `(() => {
     const type = String((element.getAttribute && element.getAttribute("type")) || element.type || "").toLowerCase();
     return type === "password";
   };
+  const frameFocus = (frame) => {
+    try {
+      const doc = frame.contentDocument;
+      if (!doc) return { ok: false };
+      return { ok: true, child: doc.activeElement || null };
+    } catch (error) {
+      return { ok: false };
+    }
+  };
   let current = document.activeElement || null;
+  if (!current) return { password: false };
   for (let depth = 0; current && depth < 8; depth += 1) {
     const shadow = current.shadowRoot;
     if (shadow && shadow.activeElement && shadow.activeElement !== current) {
@@ -335,20 +350,39 @@ export const ACTIVE_ELEMENT_PASSWORD_SCRIPT = `(() => {
     }
     const tag = String(current.tagName || "").toLowerCase();
     if (tag === "iframe" || tag === "frame") {
-      let child = null;
-      try { child = current.contentDocument && current.contentDocument.activeElement; } catch (error) { child = null; }
-      if (child && child !== current) {
-        current = child;
+      const nested = frameFocus(current);
+      if (!nested.ok) return { password: null, reason: "inaccessible-frame" };
+      if (nested.child && nested.child !== current) {
+        current = nested.child;
         continue;
       }
+      return { password: false };
     }
     break;
   }
+  if (!current || current.nodeType !== 1) return { password: null, reason: "unconfirmed" };
   return { password: isPasswordInput(current) };
 })()`;
 
+/** No-ref type may insert text only when the probe positively says the focus is not a password. */
+export function unreferencedTypeFocus(result: unknown): "ok" | "password" | "unconfirmed" {
+  if (!result || typeof result !== "object") return "unconfirmed";
+  const password = (result as { password?: unknown }).password;
+  if (password === true) return "password";
+  if (password === false) return "ok";
+  return "unconfirmed";
+}
+
+export function referencedTypeTargetIsFrame(result: unknown): boolean {
+  if (!result || typeof result !== "object") return false;
+  const tag = (result as { tag?: unknown }).tag;
+  if (typeof tag !== "string") return false;
+  const normalized = tag.toLowerCase();
+  return normalized === "iframe" || normalized === "frame";
+}
+
 export function focusInvocation(args: { ref?: string; selector?: string }): string {
-  return `(() => {\nconst args = ${JSON.stringify(args)};\n${REF_LOOKUP_SOURCE}\nconst target = args.ref ? pioraRefElement(args.ref) : args.selector ? document.querySelector(args.selector) : null;\nif (!target) return { ok: false, error: ${JSON.stringify(REF_NOT_FOUND_ERROR)} };\nconst type = String((target.getAttribute && target.getAttribute("type")) || "").toLowerCase();\nconst password = type === "password";\nif (target.focus) target.focus();\nif (!password && typeof target.select === "function") target.select();\nconst rect = target.getBoundingClientRect();\nreturn { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height, type: type, password: password };\n})()`;
+  return `(() => {\nconst args = ${JSON.stringify(args)};\n${REF_LOOKUP_SOURCE}\nconst target = args.ref ? pioraRefElement(args.ref) : args.selector ? document.querySelector(args.selector) : null;\nif (!target) return { ok: false, error: ${JSON.stringify(REF_NOT_FOUND_ERROR)} };\nconst tag = String(target.tagName || "").toLowerCase();\nconst type = String((target.getAttribute && target.getAttribute("type")) || "").toLowerCase();\nconst password = type === "password";\nif (target.focus) target.focus();\nif (!password && typeof target.select === "function") target.select();\nconst rect = target.getBoundingClientRect();\nreturn { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height, type: type, password: password, tag: tag };\n})()`;
 }
 
 export function elementCenterInvocation(args: { ref?: string; selector?: string }): string {

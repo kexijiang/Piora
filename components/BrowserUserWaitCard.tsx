@@ -14,29 +14,38 @@ function resultText(result?: ToolResultMessage): string {
     .join("\n");
 }
 
-function statusKey(result?: ToolResultMessage): string | null {
+function resultStatus(result?: ToolResultMessage): string | null {
   const details = result?.details;
   const status = details && typeof details === "object" ? (details as { status?: unknown }).status : undefined;
+  return typeof status === "string" ? status : null;
+}
+
+function statusKey(result?: ToolResultMessage): string | null {
+  const status = resultStatus(result);
   if (status === "continued") return "browser.waitContinued";
   if (status === "cancelled") return "browser.waitCancelled";
   if (status === "timeout") return "browser.waitTimeout";
   if (status === "aborted") return "browser.waitAborted";
+  if (status === "unsupported") return "browser.waitUnsupported";
   return null;
 }
 
 export function BrowserUserWaitCard({
   sessionId,
+  toolCallId,
   reason,
   result,
   historical,
 }: {
   sessionId?: string;
+  toolCallId?: string;
   reason: string;
   result?: ToolResultMessage;
   historical: boolean;
 }) {
   const { t } = useI18n();
-  const running = !historical && (!result || result.isStreaming === true);
+  const unsupported = resultStatus(result) === "unsupported";
+  const running = !unsupported && !historical && (!result || result.isStreaming === true);
   const [backend, setBackend] = useState<"desktop" | "playwright" | null>(null);
   const [busy, setBusy] = useState<"continue" | "cancel" | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -68,14 +77,14 @@ export function BrowserUserWaitCard({
   }, [running, sessionId]);
 
   const decide = async (decision: "continue" | "cancel") => {
-    if (!sessionId || busy) return;
+    if (!sessionId || !toolCallId || busy) return;
     setBusy(decision);
     setNote(null);
     try {
       const response = await fetch(`/api/agent/${encodeURIComponent(sessionId)}/browser-wait`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision }),
+        body: JSON.stringify({ decision, toolCallId }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { error?: string } | null;
@@ -97,8 +106,8 @@ export function BrowserUserWaitCard({
         if (!sessionId) return;
         window.dispatchEvent(new CustomEvent(OPEN_AGENT_BROWSER_EVENT, { detail: { sessionId } }));
       }}>{t("browser.waitOpenBrowser")}</button> : null}
-      <button type="button" disabled={!sessionId || busy !== null} onClick={() => void decide("continue")}>{t("browser.waitContinue")}</button>
-      <button type="button" disabled={!sessionId || busy !== null} onClick={() => void decide("cancel")}>{t("browser.waitCancel")}</button>
+      <button type="button" disabled={!sessionId || !toolCallId || busy !== null} onClick={() => void decide("continue")}>{t("browser.waitContinue")}</button>
+      <button type="button" disabled={!sessionId || !toolCallId || busy !== null} onClick={() => void decide("cancel")}>{t("browser.waitCancel")}</button>
     </div> : null}
     {note ? <p className="browser-user-wait-status">{note}</p> : null}
   </section>;

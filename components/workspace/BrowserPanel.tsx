@@ -14,6 +14,7 @@ import type {
   ImportedChromeBookmarkProfile,
 } from "@/components/sidebar/sidebar-types";
 import { useI18n } from "@/hooks/useI18n";
+import { nextFollowState } from "@/lib/browser-follow";
 import { createBrowserViewportSync } from "@/lib/browser-viewport-sync";
 import { pollVisibleDocument } from "@/lib/visible-poller";
 import { AliIcon } from "../AliIcon";
@@ -501,10 +502,17 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
   const decideWait = async (decision: "continue" | "cancel") => {
     if (!sessionId) return;
     try {
+      const lookup = await fetch(`/api/agent/${encodeURIComponent(sessionId)}/browser-wait`, { cache: "no-store" });
+      const current = await lookup.json().catch(() => null) as { wait?: { toolCallId?: unknown } | null; error?: string } | null;
+      const toolCallId = current?.wait && typeof current.wait.toolCallId === "string" ? current.wait.toolCallId : "";
+      if (!lookup.ok || !toolCallId) {
+        setError(current?.error || t("browser.actionFailed"));
+        return;
+      }
       const response = await fetch(`/api/agent/${encodeURIComponent(sessionId)}/browser-wait`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ decision }),
+        body: JSON.stringify({ decision, toolCallId }),
       });
       if (!response.ok) {
         const payload = await response.json().catch(() => null) as { error?: string } | null;
@@ -538,8 +546,9 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
         title={tab.url}
         onClick={() => {
           if (linkAgent) {
-            setFollowingAgent(false);
-            followingRef.current = false;
+            const follow = nextFollowState(tab.id, agentTabId);
+            setFollowingAgent(follow);
+            followingRef.current = follow;
           }
           void act({ action: "switch_tab", tabId: tab.id });
         }}

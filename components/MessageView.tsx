@@ -940,6 +940,7 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
   if (block.toolName === "browser" && block.input.action === "wait_for_user") {
     return <BrowserUserWaitCard
       sessionId={sessionId}
+      toolCallId={block.toolCallId}
       reason={typeof block.input.reason === "string" ? block.input.reason : ""}
       result={result}
       historical={historyMode}

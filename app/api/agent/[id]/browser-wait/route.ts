@@ -29,13 +29,27 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const decision = body && typeof body === "object" ? (body as { decision?: unknown }).decision : undefined;
+  const record = body && typeof body === "object" ? body as { decision?: unknown; toolCallId?: unknown } : {};
+  const decision = record.decision;
+  const toolCallId = record.toolCallId;
   if (decision !== "continue" && decision !== "cancel") {
     return Response.json({ error: "decision must be continue or cancel" }, { status: 400 });
   }
+  if (typeof toolCallId !== "string" || toolCallId.length === 0) {
+    return Response.json({ error: "toolCallId is required" }, { status: 400 });
+  }
   const invalid = await requireSession(id);
   if (invalid) return invalid;
-  if (!resolveBrowserUserWait(id, decision)) {
+  const active = readBrowserUserWait(id);
+  if (!active) return Response.json({ error: "No browser wait is active" }, { status: 404 });
+  if (active.toolCallId !== toolCallId) {
+    return Response.json({ error: "This browser wait is no longer active" }, { status: 409 });
+  }
+  if (!resolveBrowserUserWait(id, decision, toolCallId)) {
+    const latest = readBrowserUserWait(id);
+    if (latest && latest.toolCallId !== toolCallId) {
+      return Response.json({ error: "This browser wait is no longer active" }, { status: 409 });
+    }
     return Response.json({ error: "No browser wait is active" }, { status: 404 });
   }
   return Response.json({ ok: true, status: decision === "continue" ? "continued" : "cancelled" });

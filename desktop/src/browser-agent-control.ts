@@ -11,6 +11,7 @@ import {
   InFlightCounter,
   MANUAL_BROWSER_SESSION_ID,
   NAVIGATION_TIMEOUT_MS,
+  PASSWORD_FOCUS_UNCONFIRMED_ERROR,
   PASSWORD_TYPE_ERROR,
   PAUSED_BY_USER_ERROR,
   REFS_INVALID_ERROR,
@@ -29,9 +30,11 @@ import {
   isNonFatalNavigationError,
   isPausedAction,
   navigationFailure,
+  referencedTypeTargetIsFrame,
   resolveOwnedTab,
   scrollInvocation,
   sensitivePageNotice,
+  unreferencedTypeFocus,
   SNAPSHOT_COLLECT_SCRIPT,
   WAITING_FOR_USER_ERROR,
   type OwnedTabCandidate,
@@ -699,13 +702,20 @@ export class BrowserAgentControl {
           ...(request.ref ? { ref: request.ref } : {}),
           ...(request.selector ? { selector: request.selector } : {}),
         }));
-        const result = focused as { ok?: boolean; error?: string; password?: boolean; type?: string };
+        const result = focused as { ok?: boolean; error?: string; password?: boolean; type?: string; tag?: string };
         if (result && result.ok === false) throw new Error(result.error || "Element ref was not found. Take a new snapshot.");
+        if (referencedTypeTargetIsFrame(result)) throw new Error(PASSWORD_FOCUS_UNCONFIRMED_ERROR);
         if (result && (result.password === true || result.type === "password")) throw new Error(PASSWORD_TYPE_ERROR);
       } else {
-        const active = await this.isolated(tab.id, ACTIVE_ELEMENT_PASSWORD_SCRIPT);
-        const result = active as { password?: boolean } | null;
-        if (result && result.password === true) throw new Error(PASSWORD_TYPE_ERROR);
+        let active: unknown;
+        try {
+          active = await this.isolated(tab.id, ACTIVE_ELEMENT_PASSWORD_SCRIPT);
+        } catch {
+          throw new Error(PASSWORD_FOCUS_UNCONFIRMED_ERROR);
+        }
+        const focus = unreferencedTypeFocus(active);
+        if (focus === "password") throw new Error(PASSWORD_TYPE_ERROR);
+        if (focus !== "ok") throw new Error(PASSWORD_FOCUS_UNCONFIRMED_ERROR);
       }
       await this.inputCommand(tab.id, "Input.insertText", { text: request.text });
       if (request.submit) {
