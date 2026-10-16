@@ -432,9 +432,10 @@ const browserTool = defineTool({
   }),
 
   async execute(toolCallId, params, signal, _onUpdate, ctx) {
-    if (signal?.aborted) throw new Error("Browser action aborted");
     const sessionId = ctx.sessionManager.getSessionId();
-    if (params.action === "wait_for_user") return waitForBrowserUser(sessionId, toolCallId, params.reason, signal);
+    try {
+    if (signal?.aborted) throw new Error("Browser action aborted");
+    if (params.action === "wait_for_user") return await waitForBrowserUser(sessionId, toolCallId, params.reason, signal);
     if (params.action === "evaluate" && desktopBackendSelected()) {
       const gate = desktopEvaluateRequest({
         hasUI: ctx.hasUI === true,
@@ -566,6 +567,9 @@ const browserTool = defineTool({
       return textResult(await pageSummary(page), { action: params.action, url: page.url() });
     } finally {
       runtime.activeActions = Math.max(0, (runtime.activeActions ?? 1) - 1);
+    }
+    } finally {
+      if (signal?.aborted && sessionId && desktopBackendSelected()) notifyDesktopAgentIdle(sessionId);
     }
   },
 });
@@ -798,11 +802,14 @@ The \`browser\` tool uses ${APP_DISPLAY_NAME}'s background Chrome/Edge profile. 
     const sessionId = ctx.sessionManager.getSessionId();
     if (sessionId) notifyDesktopAgentIdle(sessionId);
   });
-  api.on?.("session_shutdown", async (event, ctx) => {
-    if (event.reason === "reload" || !desktopBackendSelected()) return;
+  api.on?.("session_shutdown", async (_event, ctx) => {
+    // Pi emits this for quit, reload, new, resume, and fork — not for deleting a session.
+    // Piora's wrapper also emits reason "shutdown" when the runtime is recycled.
+    // Only the session DELETE route closes tabs.
+    if (!desktopBackendSelected()) return;
     const sessionId = ctx.sessionManager.getSessionId();
     if (!sessionId) return;
-    await callDesktopAgentBrowser({ sessionId, action: "session_closed" }).catch(() => undefined);
+    notifyDesktopAgentIdle(sessionId);
   });
 }
 

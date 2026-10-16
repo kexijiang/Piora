@@ -6,6 +6,7 @@ export const ISOLATED_WORLD_ID = 1001;
 export const MAX_AGENT_TABS = 5;
 export const MAX_SNAPSHOT_NODES = 400;
 export const IDLE_UNLOAD_MS = 10 * 60 * 1000;
+export const AUTO_IDLE_MS = 3 * 60 * 1000;
 export const MANUAL_BROWSER_SESSION_ID = "__piora_browser_manual__";
 export const CDP_TIMEOUT_MS = 10_000;
 export const REQUEST_TIMEOUT_MS = 40_000;
@@ -316,6 +317,35 @@ export function scrollInvocation(args: {
 }): string {
   return `(() => {\nconst args = ${JSON.stringify(args)};\n${REF_LOOKUP_SOURCE}\n${SCROLL_FUNCTION_SOURCE}\nreturn pioraScroll(args);\n})()`;
 }
+
+/** Isolated-world check used when type has no ref or selector. */
+export const ACTIVE_ELEMENT_PASSWORD_SCRIPT = `(() => {
+  const isPasswordInput = (element) => {
+    if (!element || element.nodeType !== 1) return false;
+    if (String(element.tagName || "").toLowerCase() !== "input") return false;
+    const type = String((element.getAttribute && element.getAttribute("type")) || element.type || "").toLowerCase();
+    return type === "password";
+  };
+  let current = document.activeElement || null;
+  for (let depth = 0; current && depth < 8; depth += 1) {
+    const shadow = current.shadowRoot;
+    if (shadow && shadow.activeElement && shadow.activeElement !== current) {
+      current = shadow.activeElement;
+      continue;
+    }
+    const tag = String(current.tagName || "").toLowerCase();
+    if (tag === "iframe" || tag === "frame") {
+      let child = null;
+      try { child = current.contentDocument && current.contentDocument.activeElement; } catch (error) { child = null; }
+      if (child && child !== current) {
+        current = child;
+        continue;
+      }
+    }
+    break;
+  }
+  return { password: isPasswordInput(current) };
+})()`;
 
 export function focusInvocation(args: { ref?: string; selector?: string }): string {
   return `(() => {\nconst args = ${JSON.stringify(args)};\n${REF_LOOKUP_SOURCE}\nconst target = args.ref ? pioraRefElement(args.ref) : args.selector ? document.querySelector(args.selector) : null;\nif (!target) return { ok: false, error: ${JSON.stringify(REF_NOT_FOUND_ERROR)} };\nconst type = String((target.getAttribute && target.getAttribute("type")) || "").toLowerCase();\nconst password = type === "password";\nif (target.focus) target.focus();\nif (!password && typeof target.select === "function") target.select();\nconst rect = target.getBoundingClientRect();\nreturn { ok: true, x: rect.left + rect.width / 2, y: rect.top + rect.height / 2, width: rect.width, height: rect.height, type: type, password: password };\n})()`;

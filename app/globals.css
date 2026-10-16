@@ -2701,6 +2701,34 @@ select:focus-visible,
 .message-delete-button:hover { color: var(--status-failed); }
 .message-delete-button:disabled { cursor: not-allowed; opacity: .45; }
 
+.browser-user-wait {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  color: var(--text);
+}
+.browser-user-wait-title { margin: 0; font-size: var(--text-sm); font-weight: 650; }
+.browser-user-wait-reason,
+.browser-user-wait-status { margin: 0; font-size: var(--text-sm); line-height: 1.45; overflow-wrap: anywhere; }
+.browser-user-wait-reason { white-space: pre-wrap; }
+.browser-user-wait-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.browser-user-wait-actions button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: inherit;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--text-xs);
+}
+.browser-user-wait-actions button:disabled { cursor: default; opacity: 0.6; }
+
 /* Shared chat disclosures: state and data loading remain in the calling component. */
 .chat-disclosure {
   min-width: 0;

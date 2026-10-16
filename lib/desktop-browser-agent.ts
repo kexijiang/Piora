@@ -120,6 +120,7 @@ export function callDesktopAgentBrowser(input: DesktopAgentCall): Promise<unknow
   }
   return new Promise((resolve, reject) => {
     if (input.signal?.aborted) {
+      notifyIdleAfterAbort(input);
       reject(new Error("Browser action aborted"));
       return;
     }
@@ -136,6 +137,7 @@ export function callDesktopAgentBrowser(input: DesktopAgentCall): Promise<unknow
     };
     const onAbort = () => {
       try { process.send?.({ type: "pi-desktop:browser-agent-cancel", requestId }); } catch { /* The bridge is already gone. */ }
+      notifyIdleAfterAbort(input);
       finish(new Error("Browser action aborted"));
     };
     const timer = setTimeout(() => {
@@ -169,4 +171,10 @@ export function notifyDesktopAgentSessionClosed(sessionId: string): void {
 export function notifyDesktopAgentIdle(sessionId: string): void {
   if (!hasDesktopAgentBridge() || !sessionId.trim()) return;
   void callDesktopAgentBrowser({ sessionId, action: "idle" }).catch(() => undefined);
+}
+
+function notifyIdleAfterAbort(input: { sessionId: string; action: string }): void {
+  // wait_begin must finish wait_end before idle, or the main process rejects idle while still waiting.
+  if (input.action === "idle" || input.action === "session_closed" || input.action === "wait_begin" || input.action === "wait_end") return;
+  notifyDesktopAgentIdle(input.sessionId);
 }

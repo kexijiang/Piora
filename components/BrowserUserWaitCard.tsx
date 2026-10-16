@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { ToolResultMessage } from "@/lib/types";
-import styles from "./BrowserUserWaitCard.module.css";
 
 const OPEN_AGENT_BROWSER_EVENT = "piora:open-agent-browser";
 
@@ -90,10 +89,10 @@ export function BrowserUserWaitCard({
   };
 
   const finishedKey = statusKey(result);
-  return <section className={styles.card} aria-live="polite">
-    <p className={styles.title}>{t("browser.waitTitle")}</p>
-    {running ? <p className={styles.reason}>{reason}</p> : <p className={styles.status}>{finishedKey ? t(finishedKey) : (resultText(result) || reason)}</p>}
-    {running ? <div className={styles.actions}>
+  return <section className="browser-user-wait" aria-live="polite">
+    <p className="browser-user-wait-title">{t("browser.waitTitle")}</p>
+    {running ? <p className="browser-user-wait-reason">{reason}</p> : <p className="browser-user-wait-status">{finishedKey ? t(finishedKey) : (resultText(result) || reason)}</p>}
+    {running ? <div className="browser-user-wait-actions">
       {backend === "desktop" ? <button type="button" onClick={() => {
         if (!sessionId) return;
         window.dispatchEvent(new CustomEvent(OPEN_AGENT_BROWSER_EVENT, { detail: { sessionId } }));
@@ -101,6 +100,6 @@ export function BrowserUserWaitCard({
       <button type="button" disabled={!sessionId || busy !== null} onClick={() => void decide("continue")}>{t("browser.waitContinue")}</button>
       <button type="button" disabled={!sessionId || busy !== null} onClick={() => void decide("cancel")}>{t("browser.waitCancel")}</button>
     </div> : null}
-    {note ? <p className={styles.status}>{note}</p> : null}
+    {note ? <p className="browser-user-wait-status">{note}</p> : null}
   </section>;
 }
