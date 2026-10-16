@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 export const DESKTOP_AGENT_BRIDGE_UNAVAILABLE = "Desktop browser bridge unavailable.";
+export const DESKTOP_EVALUATE_DISABLED = "evaluate is disabled on the desktop browser and needs user confirmation.";
 const SERVER_TIMEOUT_MS = 45_000;
 
 export class DesktopAgentBridgeUnavailable extends Error {
@@ -74,6 +75,33 @@ export interface DesktopAgentCall {
   y?: number;
   tabIndex?: number;
   fullPage?: boolean;
+  reason?: string;
+  confirmed?: boolean;
+}
+
+/** The server sets confirmed only after the user accepts this call. */
+export function desktopEvaluateRequest(input: { hasUI: boolean; userConfirmed: boolean }): { confirmed: true } | { error: string } {
+  if (input.hasUI === true && input.userConfirmed === true) return { confirmed: true };
+  return { error: DESKTOP_EVALUATE_DISABLED };
+}
+
+export async function runBrowserBackend<T>(input: {
+  desktop: boolean;
+  runDesktop: () => Promise<T>;
+  runPlaywright: () => Promise<T>;
+  onBackend?: (backend: "desktop" | "playwright") => void;
+}): Promise<{ backend: "desktop" | "playwright"; value: T }> {
+  if (input.desktop) {
+    try {
+      const value = await input.runDesktop();
+      input.onBackend?.("desktop");
+      return { backend: "desktop", value };
+    } catch (error) {
+      if (!isDesktopBridgeUnavailable(error)) throw error;
+    }
+  }
+  input.onBackend?.("playwright");
+  return { backend: "playwright", value: await input.runPlaywright() };
 }
 
 export function callDesktopAgentBrowser(input: DesktopAgentCall): Promise<unknown> {
@@ -86,7 +114,7 @@ export function callDesktopAgentBrowser(input: DesktopAgentCall): Promise<unknow
     sessionId: input.sessionId,
     action: input.action,
   };
-  for (const key of ["tabId", "url", "selector", "ref", "text", "key", "submit", "deltaX", "deltaY", "x", "y", "tabIndex", "fullPage"] as const) {
+  for (const key of ["tabId", "url", "selector", "ref", "text", "key", "submit", "deltaX", "deltaY", "x", "y", "tabIndex", "fullPage", "reason", "confirmed"] as const) {
     const value = input[key];
     if (value !== undefined) payload[key] = value;
   }

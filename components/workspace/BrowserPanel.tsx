@@ -427,6 +427,19 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
     });
   }, [linkAgent, bridge, sessionId, act]);
 
+  useEffect(() => {
+    if (!linkAgent) return;
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ sessionId?: string }>).detail;
+      if (!sessionId || detail?.sessionId !== sessionId) return;
+      setFollowingAgent(true);
+      followingRef.current = true;
+      void act({ action: "show_agent_tab" });
+    };
+    window.addEventListener("piora:open-agent-browser", onOpen);
+    return () => window.removeEventListener("piora:open-agent-browser", onOpen);
+  }, [linkAgent, sessionId, act]);
+
   const finishOnboarding = () => {
     window.localStorage.setItem(BROWSER_ONBOARDING_KEY, "done");
     setShowOnboarding(false);
@@ -483,12 +496,34 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
   const agentTabId = agentActivity?.sessionId === sessionId ? agentActivity.tabId : (state?.agentTabId ?? null);
   const agentOperating = agentActivity?.sessionId === sessionId ? agentActivity.operating : Boolean(state?.agentOperating);
   const agentPaused = agentActivity?.sessionId === sessionId ? agentActivity.paused : Boolean(state?.agentPaused);
+  const agentWaiting = agentActivity?.sessionId === sessionId ? agentActivity.waiting === true : Boolean(state?.agentWaiting);
+  const agentWaitReason = agentActivity?.sessionId === sessionId ? (agentActivity.reason || "") : (state?.agentWaitReason || "");
+  const decideWait = async (decision: "continue" | "cancel") => {
+    if (!sessionId) return;
+    try {
+      await fetch(`/api/agent/${encodeURIComponent(sessionId)}/browser-wait`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+    } catch (decideError) {
+      setError(decideError instanceof Error ? decideError.message : t("browser.actionFailed"));
+    }
+  };
   return <div className={styles.browserRoot} data-native-browser="true">
-    {linkAgent && (agentOperating || agentPaused) ? <div className={styles.browserAgentOperating} role="status">
-      <span>{agentPaused ? t("browser.agentPausedHint") : t("browser.agentOperating")}</span>
-      <button type="button" onClick={() => void act({ action: agentPaused ? "resume_agent" : "pause_agent" })}>
-        {agentPaused ? t("browser.agentResume") : t("browser.agentPause")}
-      </button>
+    {linkAgent && (agentOperating || agentPaused || agentWaiting) ? <div className={styles.browserAgentOperating} role="status">
+      {agentWaiting ? <>
+        <span>{agentWaitReason || t("browser.waitTitle")}</span>
+        <span className={styles.browserAgentActions}>
+          <button type="button" onClick={() => void decideWait("continue")}>{t("browser.waitContinue")}</button>
+          <button type="button" onClick={() => void decideWait("cancel")}>{t("browser.waitCancel")}</button>
+        </span>
+      </> : <>
+        <span>{agentPaused ? t("browser.agentPausedHint") : t("browser.agentOperating")}</span>
+        <button type="button" onClick={() => void act({ action: agentPaused ? "resume_agent" : "pause_agent" })}>
+          {agentPaused ? t("browser.agentResume") : t("browser.agentPause")}
+        </button>
+      </>}
     </div> : null}
     <div className={styles.browserTabs} role="tablist" aria-label={t("browser.tabs")}>
       {state?.tabs.map((tab) => <button

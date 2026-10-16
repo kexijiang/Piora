@@ -135,6 +135,8 @@ export interface DesktopBrowserState {
   agentTabId?: string | null;
   agentOperating?: boolean;
   agentPaused?: boolean;
+  agentWaiting?: boolean;
+  agentWaitReason?: string;
 }
 
 export interface DesktopBrowserAgentActivity {
@@ -142,6 +144,8 @@ export interface DesktopBrowserAgentActivity {
   tabId: string | null;
   operating: boolean;
   paused: boolean;
+  waiting?: boolean;
+  reason?: string;
 }
 
 export type DesktopBrowserAgentBackend = "desktop" | "playwright";

@@ -32,3 +32,13 @@ either profile or its tabs.
 platform-specific Chrome/Edge discovery order is retained. This mode does not
 attach to the user's visible Chrome instance or copy Chrome's profile databases.
 Unknown or obsolete mode values fall back to the current built-in browser.
+
+## Agent linkage
+
+In the desktop app, built-in mode lets the current session's agent operate that
+session's real right-side browser, including while the panel stays closed.
+Background mode and the web app keep using the Playwright browser. Sign-ins
+stored in the previous Playwright profile are not copied into the desktop
+built-in browser. Sign in once in the right-side browser when a site asks for
+it. Login, captcha, two-factor, payment, and account-security pages ask the
+user to take over with `wait_for_user` instead of the agent typing secrets.

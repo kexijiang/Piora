@@ -1728,6 +1728,18 @@ export function AppShell() {
     return () => window.removeEventListener("keydown", cycleWorkspaceFocus);
   }, [rightPanelOpen, settingsDialogOpen, sidebarOpen]);
 
+  useEffect(() => {
+    const onOpenAgentBrowser = (event: Event) => {
+      const sessionId = (event as CustomEvent<{ sessionId?: string }>).detail?.sessionId;
+      if (!sessionId) return;
+      setRightPanelTab("browser");
+      setRightPanelOpen(true);
+      requestAnimationFrame(() => rightPanelRef.current?.focusActiveTab());
+    };
+    window.addEventListener("piora:open-agent-browser", onOpenAgentBrowser);
+    return () => window.removeEventListener("piora:open-agent-browser", onOpenAgentBrowser);
+  }, []);
+
   const commandActions = useMemo<CommandContext["actions"]>(() => ({
     "navigate.newSession": handleNewSessionInCurrentProject,
     "navigate.chooseProject": handleOpenProjectPicker,

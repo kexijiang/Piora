@@ -29,7 +29,9 @@ import {
   navigationFailure,
   resolveOwnedTab,
   scrollInvocation,
+  sensitivePageNotice,
   SNAPSHOT_COLLECT_SCRIPT,
+  WAITING_FOR_USER_ERROR,
   type OwnedTabCandidate,
   type SnapshotNode,
 } from "./browser-agent-logic.js";
@@ -141,6 +143,7 @@ interface TabMeta {
 const ACTIONS = new Set([
   "open", "back", "forward", "reload", "snapshot", "click", "type", "press", "scroll",
   "screenshot", "tabs", "new_tab", "switch_tab", "close_tab", "idle", "session_closed", "evaluate",
+  "wait_begin", "wait_end",
 ]);
 
 function safeRef(value: string | undefined): string | undefined {
@@ -213,11 +216,14 @@ export class BrowserAgentControl {
     return this.agentTabs.get(sessionId) ?? null;
   }
 
-  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean } {
+  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string } {
+    const waiting = this.waiting.has(sessionId);
     return {
       tabId: this.agentTabId(sessionId),
       operating: this.sessionActive.get(sessionId) === true,
       paused: this.paused.has(sessionId),
+      waiting,
+      ...(waiting ? { reason: this.waiting.get(sessionId) ?? "" } : {}),
     };
   }
 
@@ -361,10 +367,11 @@ export class BrowserAgentControl {
   private async dispatch(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
     this.throwIfAborted(signal);
     if (!ACTIONS.has(request.action)) throw new Error(`Unsupported browser action: ${request.action}`);
-    if (request.action === "evaluate") throw new Error(EVALUATE_DISABLED_ERROR);
-    if (request.action === "idle") return this.idle(request.sessionId);
     if (request.action === "session_closed") return this.closeSession(request.sessionId);
-    if (this.waiting.has(request.sessionId)) throw new Error("The browser is waiting for the user. Other browser actions are rejected until the user continues or cancels.");
+    if (request.action === "wait_end") return this.endWait(request);
+    if (request.action === "wait_begin") return this.beginWait(request);
+    if (this.waiting.has(request.sessionId)) throw new Error(WAITING_FOR_USER_ERROR);
+    if (request.action === "idle") return this.idle(request.sessionId);
     if (this.paused.has(request.sessionId) && isPausedAction(request.action)) throw new Error(PAUSED_BY_USER_ERROR);
     this.sweepIdle();
     switch (request.action) {
@@ -382,6 +389,8 @@ export class BrowserAgentControl {
         return this.snapshot(request, signal);
       case "screenshot":
         return this.screenshot(request, signal);
+      case "evaluate":
+        return this.evaluate(request, signal);
       case "click":
         return this.click(request, signal);
       case "type":
@@ -516,10 +525,63 @@ export class BrowserAgentControl {
       const notice = meta.reloadedNotice ? RELOAD_NOTICE : undefined;
       meta.reloadedNotice = false;
       meta.refsInvalid = false;
-      const text = formatSnapshot({ ...parsed, ...(notice ? { notice } : {}) });
       const loaded = this.tab(tab.id);
-      return { action: "snapshot", tabId: tab.id, url: loaded?.url ?? parsed.url, title: loaded?.title ?? parsed.title, text, truncated: parsed.truncated, passwordField: parsed.passwordField };
+      const url = loaded?.url ?? parsed.url;
+      const title = loaded?.title ?? parsed.title;
+      const sensitive = sensitivePageNotice({ url, title, visibleText: parsed.visibleText, passwordField: parsed.passwordField });
+      let text = formatSnapshot({ title: parsed.title, url: parsed.url, nodes: parsed.nodes, truncated: parsed.truncated, passwordField: parsed.passwordField, ...(notice ? { notice } : {}) });
+      if (sensitive) text += `\n${sensitive}`;
+      return { action: "snapshot", tabId: tab.id, url, title, text, truncated: parsed.truncated, passwordField: parsed.passwordField };
     });
+  }
+
+  private async evaluate(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
+    if (request.confirmed !== true) throw new Error(EVALUATE_DISABLED_ERROR);
+    if (request.text === undefined || !request.text.trim()) throw new Error("evaluate requires a JavaScript expression in text");
+    if (!this.host.executeMain) throw new Error(EVALUATE_DISABLED_ERROR);
+    const expression = request.text;
+    return this.withOwnedTab(request, signal, async (tab) => {
+      const value = await this.runTabOp(
+        tab.id,
+        () => this.host.executeMain!(tab.id, expression),
+        this.cdpTimeoutMs,
+        "Browser tab script timed out",
+      );
+      this.throwIfAborted(signal);
+      const loaded = this.tab(tab.id);
+      let text = "undefined";
+      if (value !== undefined) {
+        try {
+          text = JSON.stringify(value, null, 2) ?? "undefined";
+        } catch {
+          text = String(value);
+        }
+      }
+      return { action: "evaluate", tabId: tab.id, url: loaded?.url ?? "", title: loaded?.title ?? "", text };
+    });
+  }
+
+  private beginWait(request: BrowserAgentRequest): unknown {
+    this.assertSession(request.sessionId);
+    const reason = request.reason?.trim();
+    if (!reason) throw new Error("wait_for_user requires reason");
+    this.waiting.set(request.sessionId, reason);
+    const tabId = this.agentTabs.get(request.sessionId) ?? null;
+    if (tabId) {
+      this.host.activateSessionTab?.(request.sessionId, tabId);
+      this.noteUsed(tabId);
+    }
+    this.publish(request.sessionId);
+    return { action: "wait_begin", tabId, waiting: true, reason, text: reason };
+  }
+
+  private endWait(request: BrowserAgentRequest): unknown {
+    this.assertSession(request.sessionId);
+    const wasWaiting = this.waiting.delete(request.sessionId);
+    const tabId = this.agentTabs.get(request.sessionId) ?? null;
+    if (wasWaiting && tabId) this.metaOf(tabId).refsInvalid = true;
+    this.publish(request.sessionId);
+    return { action: "wait_end", tabId, waiting: false, text: "Browser wait ended. Take a new snapshot before continuing." };
   }
 
   private async screenshot(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
@@ -622,11 +684,11 @@ export class BrowserAgentControl {
     });
   }
 
-  private idle(sessionId: string): unknown {
+  private async idle(sessionId: string): Promise<unknown> {
     this.assertSession(sessionId);
     this.sessionActive.set(sessionId, false);
     const tabId = this.agentTabs.get(sessionId);
-    if (tabId) void this.releaseHold(tabId).catch(() => undefined);
+    if (tabId) await this.releaseHold(tabId);
     this.publish(sessionId);
     return { action: "idle", tabId: tabId ?? null, text: "Agent browser tab restored to the background." };
   }
@@ -977,11 +1039,14 @@ export class BrowserAgentControl {
   }
 
   private publish(sessionId: string): void {
+    const waiting = this.waiting.has(sessionId);
     this.host.pushActivity({
       sessionId,
       tabId: this.agentTabs.get(sessionId) ?? null,
       operating: this.sessionActive.get(sessionId) === true,
       paused: this.paused.has(sessionId),
+      waiting,
+      ...(waiting ? { reason: this.waiting.get(sessionId) ?? "" } : {}),
     });
   }
 
@@ -1032,13 +1097,14 @@ function eventRecord(event: ReturnType<typeof buildKeyDispatchEvents>[number]): 
   };
 }
 
-function parseSnapshot(raw: unknown): { title: string; url: string; nodes: SnapshotNode[]; truncated: boolean; passwordField: boolean } {
+function parseSnapshot(raw: unknown): { title: string; url: string; nodes: SnapshotNode[]; truncated: boolean; passwordField: boolean; visibleText: string } {
   const value = raw as {
     title?: unknown;
     url?: unknown;
     nodes?: unknown;
     truncated?: unknown;
     passwordField?: unknown;
+    visibleText?: unknown;
   } | null;
   if (!value || typeof value !== "object" || !Array.isArray(value.nodes)) throw new Error("Snapshot failed.");
   const nodes: SnapshotNode[] = [];
@@ -1061,6 +1127,7 @@ function parseSnapshot(raw: unknown): { title: string; url: string; nodes: Snaps
     nodes,
     truncated: value.truncated === true,
     passwordField: value.passwordField === true,
+    visibleText: typeof value.visibleText === "string" ? value.visibleText.slice(0, 4000) : "",
   };
 }
 
@@ -1092,6 +1159,9 @@ function normalizeRequest(message: unknown): BrowserAgentRequest | null {
   if (typeof candidate.y === "number" && Number.isFinite(candidate.y)) request.y = candidate.y;
   if (typeof candidate.tabIndex === "number" && Number.isFinite(candidate.tabIndex)) request.tabIndex = candidate.tabIndex;
   if (candidate.fullPage === true) request.fullPage = true;
+  const reason = limited(typeof candidate.reason === "string" ? candidate.reason : undefined, 2000);
+  if (reason) request.reason = reason;
+  if (candidate.confirmed === true) request.confirmed = true;
   return request;
 }
 
