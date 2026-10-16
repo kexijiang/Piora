@@ -1225,7 +1225,7 @@ type AgentDataDirectoryInfo = {
 
 type AgentDataDirectoryApplyResult = {
   ok: boolean;
-  code?: "busy" | "environment-override" | "invalid-path" | "migration-required" | "same-path" | "overlapping-path" | "target-not-empty" | "migration-failed" | "persist-failed";
+  code?: "busy" | "environment-override" | "invalid-path" | "same-path" | "overlapping-path" | "target-not-empty" | "migration-failed" | "persist-failed";
   error?: string;
   sourceDirectory?: string;
   currentDirectory?: string;
@@ -1345,7 +1345,6 @@ function registerAgentDataDirectoryHandlers(): void {
       if (typeof candidate.directory !== "string" || typeof candidate.migrate !== "boolean") {
         return { ok: false, code: "invalid-path" };
       }
-      if (!candidate.migrate) return { ok: false, code: "migration-required" };
 
       const sourceDirectory = piAgentDirectoryPath;
       let runtimeSuspended = false;

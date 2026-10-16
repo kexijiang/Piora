@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### Pi 数据存储位置
+
+- 关闭数据迁移时也可修改、选择和应用数据目录，直接使用目标目录中的已有数据并重启，方便接入手动复制的数据；开启迁移时仍复制并校验当前数据，原目录保留。
+
 ## [0.5.5-beta.22] - 2026-10-16
 
 ### 发布准备

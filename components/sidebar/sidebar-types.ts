@@ -32,7 +32,7 @@ declare global {
       selectAgentDataDirectory?: (defaultPath?: string) => Promise<string | null>;
       applyAgentDataDirectory?: (input: { directory: string; migrate: boolean }) => Promise<{
         ok: boolean;
-        code?: "busy" | "environment-override" | "invalid-path" | "migration-required" | "same-path" | "overlapping-path" | "target-not-empty" | "migration-failed" | "persist-failed";
+        code?: "busy" | "environment-override" | "invalid-path" | "same-path" | "overlapping-path" | "target-not-empty" | "migration-failed" | "persist-failed";
         error?: string;
         sourceDirectory?: string;
         currentDirectory?: string;
