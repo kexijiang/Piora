@@ -15,14 +15,13 @@ import {
 import {
   callDesktopAgentBrowser,
   capSnapshotText,
-  desktopEvaluateRequest,
   EVALUATE_UNKNOWN_PAGE,
   evaluateConfirmText,
+  gateDesktopEvaluate,
   hasDesktopAgentBridge,
   isDesktopBridgeUnavailable,
   notifyDesktopAgentBackend,
   notifyDesktopAgentIdle,
-  pageUrlFromTabList,
 } from "../lib/desktop-browser-agent.ts";
 import { browserNetworkProxyOptions } from "../lib/network-proxy.ts";
 
@@ -360,21 +359,19 @@ function unsupportedWaitResult() {
   return textResult(BROWSER_USER_WAIT_UNSUPPORTED_TEXT, { action: "wait_for_user", status: "unsupported", backend: "playwright" });
 }
 
-async function desktopEvaluatePageUrl(sessionId: string, tabId: string | undefined, signal?: AbortSignal): Promise<string> {
-  try {
-    const value = await callDesktopAgentBrowser({
-      sessionId,
-      action: "tabs",
-      ...(tabId ? { tabId } : {}),
-      ...(signal ? { signal } : {}),
-    });
-    return pageUrlFromTabList(value, tabId);
-  } catch (error) {
-    if (signal?.aborted || (error instanceof Error && error.message === "Browser action aborted")) {
-      throw error instanceof Error ? error : new Error("Browser action aborted");
-    }
-    return EVALUATE_UNKNOWN_PAGE;
-  }
+async function desktopEvaluateCheck(sessionId: string, tabId: string | undefined, signal?: AbortSignal): Promise<{ allowed: boolean; url: string; navigationToken: string }> {
+  const value = await callDesktopAgentBrowser({
+    sessionId,
+    action: "evaluate_check",
+    ...(tabId ? { tabId } : {}),
+    ...(signal ? { signal } : {}),
+  });
+  const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
+  return {
+    allowed: record.allowed === true,
+    url: typeof record.url === "string" && record.url.trim() ? record.url.trim() : EVALUATE_UNKNOWN_PAGE,
+    navigationToken: typeof record.navigationToken === "string" ? record.navigationToken.trim() : "",
+  };
 }
 
 export async function waitForBrowserUser(sessionId: string, toolCallId: string, reason: string | undefined, signal?: AbortSignal) {
@@ -462,22 +459,41 @@ const browserTool = defineTool({
       if (signal?.aborted) throw new Error("Browser action aborted");
       if (params.action === "wait_for_user") return await waitForBrowserUser(sessionId, toolCallId, params.reason, signal);
       if (params.action === "evaluate" && desktopBackendSelected()) {
-        const pageUrl = await desktopEvaluatePageUrl(sessionId, params.tabId, signal);
-        const gate = desktopEvaluateRequest({
-          hasUI: ctx.hasUI === true,
-          userConfirmed: ctx.hasUI === true && await ctx.ui.confirm(
-            "Run page script",
-            evaluateConfirmText(params.text ?? "", pageUrl),
-            signal ? { signal } : undefined,
-          ),
-        });
-        if ("error" in gate) throw new Error(gate.error);
+        if (!params.text?.trim()) throw new Error("evaluate requires a JavaScript expression in text");
+        let check: { allowed: boolean; url: string; navigationToken: string } | undefined;
         try {
           notifyDesktopAgentBackend("desktop");
-          return await executeDesktopBrowser(sessionId, { ...params, confirmed: true }, signal);
+          check = await desktopEvaluateCheck(sessionId, params.tabId, signal);
         } catch (error) {
+          if (signal?.aborted || (error instanceof Error && error.message === "Browser action aborted")) {
+            throw error instanceof Error ? error : new Error("Browser action aborted");
+          }
           if (!isDesktopBridgeUnavailable(error)) throw error;
           notifyDesktopAgentBackend("playwright");
+        }
+        if (check) {
+          const pageCheck = check;
+          const outcome = await gateDesktopEvaluate({
+            check: pageCheck,
+            hasUI: ctx.hasUI === true,
+            confirm: () => ctx.ui.confirm(
+              "Run page script",
+              evaluateConfirmText(params.text ?? "", pageCheck.url),
+              signal ? { signal } : undefined,
+            ),
+          });
+          if ("error" in outcome) throw new Error(outcome.error);
+          try {
+            notifyDesktopAgentBackend("desktop");
+            return await executeDesktopBrowser(sessionId, {
+              ...params,
+              confirmed: true,
+              navigationToken: outcome.navigationToken,
+            }, signal);
+          } catch (error) {
+            if (!isDesktopBridgeUnavailable(error)) throw error;
+            notifyDesktopAgentBackend("playwright");
+          }
         }
       } else if (desktopBackendSelected()) {
         try {
@@ -853,6 +869,7 @@ async function executeDesktopBrowser(sessionId: string, params: {
   tabId?: string;
   reason?: string;
   confirmed?: boolean;
+  navigationToken?: string;
 }, signal?: AbortSignal) {
   const value = await callDesktopAgentBrowser({
     sessionId,
@@ -870,6 +887,7 @@ async function executeDesktopBrowser(sessionId: string, params: {
     ...(params.fullPage ? { fullPage: true } : {}),
     ...(params.reason ? { reason: params.reason } : {}),
     ...(params.confirmed === true ? { confirmed: true } : {}),
+    ...(params.navigationToken ? { navigationToken: params.navigationToken } : {}),
   });
   const record = value && typeof value === "object" ? value as Record<string, unknown> : {};
   let text = typeof record.text === "string" ? record.text : "";

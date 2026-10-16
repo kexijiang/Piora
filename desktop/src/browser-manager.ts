@@ -23,6 +23,7 @@ import type { Logger } from "./logger.js";
 import {
   NAVIGATION_TIMEOUT_MS,
   RENDERER_CRASHED_ERROR,
+  formatNavigationToken,
   isNonFatalNavigationError,
   rejectAgentCreateAtCapacity,
 } from "./browser-agent-logic.js";
@@ -120,6 +121,7 @@ type BrowserTab = {
   discarding?: boolean;
   id: string;
   loading: boolean;
+  navigationEpoch?: number;
   savedTitle?: string;
   savedUrl?: string;
   sessionId: string;
@@ -497,6 +499,10 @@ export class DesktopBrowserManager {
     });
   }
 
+  private noteMainFrameNavigation(tab: BrowserTab): void {
+    tab.navigationEpoch = (tab.navigationEpoch ?? 0) + 1;
+  }
+
   private settleNavigation(tab: BrowserTab, error?: Error): void {
     const wait = tab.navigationWait;
     if (!wait) return;
@@ -538,6 +544,7 @@ export class DesktopBrowserManager {
       this.log.info("Browser integrated authentication requires site configuration", { host: tab.authHost, scheme: authInfo.scheme });
     });
     contents.on("did-start-navigation", (_event, _url, isInPlace, isMainFrame) => {
+      if (isMainFrame) this.noteMainFrameNavigation(tab);
       if (isMainFrame && !isInPlace) delete tab.authHost;
     });
     contents.setWindowOpenHandler(({ url }) => {
@@ -580,11 +587,13 @@ export class DesktopBrowserManager {
       this.sendState();
     });
     contents.on("did-navigate", () => {
+      this.noteMainFrameNavigation(tab);
       this.scheduleStorageFlush();
       this.updateVisibility();
       this.sendState();
     });
-    contents.on("did-navigate-in-page", () => {
+    contents.on("did-navigate-in-page", (_event, _url, isMainFrame) => {
+      if (isMainFrame === true) this.noteMainFrameNavigation(tab);
       this.scheduleStorageFlush();
       this.sendState();
     });
@@ -1056,6 +1065,11 @@ export class DesktopBrowserManager {
       executeMain: (tabId: string, code: string) => (
         this.requireLiveTab(tabId).view.webContents.executeJavaScript(`globalThis.eval(${JSON.stringify(code)})`)
       ),
+      navigationToken: (tabId: string) => {
+        const tab = this.findTab(tabId);
+        if (!tab) return formatNavigationToken(0, "");
+        return formatNavigationToken(tab.navigationEpoch ?? 0, this.tabUrl(tab));
+      },
       activateSessionTab: (sessionId: string, tabId: string) => {
         const tab = this.findTab(tabId);
         if (!tab || tab.sessionId !== sessionId || tab.unloaded) return;
