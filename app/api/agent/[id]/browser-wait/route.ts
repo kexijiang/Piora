@@ -22,8 +22,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const invalid = await requireSession(id);
-  if (invalid) return invalid;
+  if (!isValidSessionId(id)) return Response.json({ error: "Invalid session id" }, { status: 400 });
   let body: unknown;
   try {
     body = await request.json();
@@ -34,6 +33,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (decision !== "continue" && decision !== "cancel") {
     return Response.json({ error: "decision must be continue or cancel" }, { status: 400 });
   }
+  const invalid = await requireSession(id);
+  if (invalid) return invalid;
   if (!resolveBrowserUserWait(id, decision)) {
     return Response.json({ error: "No browser wait is active" }, { status: 404 });
   }

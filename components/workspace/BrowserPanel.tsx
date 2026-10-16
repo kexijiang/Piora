@@ -501,11 +501,15 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
   const decideWait = async (decision: "continue" | "cancel") => {
     if (!sessionId) return;
     try {
-      await fetch(`/api/agent/${encodeURIComponent(sessionId)}/browser-wait`, {
+      const response = await fetch(`/api/agent/${encodeURIComponent(sessionId)}/browser-wait`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ decision }),
       });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        setError(payload?.error || t("browser.actionFailed"));
+      }
     } catch (decideError) {
       setError(decideError instanceof Error ? decideError.message : t("browser.actionFailed"));
     }

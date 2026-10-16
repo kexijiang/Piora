@@ -242,6 +242,10 @@ export class BrowserAgentControl {
       held.push({ id: tabId, bounds: { ...AGENT_OFFSCREEN_BOUNDS } });
     };
     for (const [sessionId, tabId] of this.agentTabs) {
+      if (this.waiting.has(sessionId)) {
+        consider(tabId);
+        continue;
+      }
       if (this.sessionActive.get(sessionId) !== true || this.paused.has(sessionId)) continue;
       consider(tabId);
     }
@@ -309,6 +313,7 @@ export class BrowserAgentControl {
       if (now - seen < this.idleUnloadMs) continue;
       if (this.host.isShowing(tab.id)) continue;
       const sessionId = tab.sessionId;
+      if (this.waiting.has(sessionId) && this.agentTabs.get(sessionId) === tab.id) continue;
       if (this.sessionActive.get(sessionId) === true && this.agentTabs.get(sessionId) === tab.id && !this.paused.has(sessionId)) continue;
       this.detachQuiet(tab.id);
       this.host.discardTab(tab.id);
@@ -565,6 +570,9 @@ export class BrowserAgentControl {
     this.assertSession(request.sessionId);
     const reason = request.reason?.trim();
     if (!reason) throw new Error("wait_for_user requires reason");
+    // The wait can outlast an idle sweep. Keep this tab rendering offscreen
+    // until the user finishes, even if the previous turn already went idle.
+    this.sessionActive.set(request.sessionId, true);
     this.waiting.set(request.sessionId, reason);
     const tabId = this.agentTabs.get(request.sessionId) ?? null;
     if (tabId) {
@@ -854,7 +862,7 @@ export class BrowserAgentControl {
 
   private async syncHolds(): Promise<void> {
     for (const [sessionId, tabId] of this.agentTabs) {
-      if (this.sessionActive.get(sessionId) !== true || this.paused.has(sessionId)) continue;
+      if (!this.waiting.has(sessionId) && (this.sessionActive.get(sessionId) !== true || this.paused.has(sessionId))) continue;
       const tab = this.tab(tabId);
       if (!tab || tab.closed || tab.unloaded) continue;
       await this.prepareSurface(tabId);

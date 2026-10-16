@@ -359,8 +359,10 @@ async function waitForBrowserUser(sessionId: string, toolCallId: string, reason:
   if (text.length > 2000) throw new Error("Browser argument is too long.");
   let backend: "desktop" | "playwright" = "playwright";
   if (desktopBackendSelected()) {
+    let desktopNotified = false;
     try {
       notifyDesktopAgentBackend("desktop");
+      desktopNotified = true;
       await callDesktopAgentBrowser({
         sessionId,
         action: "wait_begin",
@@ -369,6 +371,9 @@ async function waitForBrowserUser(sessionId: string, toolCallId: string, reason:
       });
       backend = "desktop";
     } catch (error) {
+      if (desktopNotified && !isDesktopBridgeUnavailable(error)) {
+        await callDesktopAgentBrowser({ sessionId, action: "wait_end" }).catch(() => undefined);
+      }
       if (!isDesktopBridgeUnavailable(error)) throw error;
       notifyDesktopAgentBackend("playwright");
     }
@@ -447,8 +452,7 @@ const browserTool = defineTool({
         if (!isDesktopBridgeUnavailable(error)) throw error;
         notifyDesktopAgentBackend("playwright");
       }
-    }
-    if (desktopBackendSelected()) {
+    } else if (desktopBackendSelected()) {
       try {
         notifyDesktopAgentBackend("desktop");
         return await executeDesktopBrowser(sessionId, params, signal);

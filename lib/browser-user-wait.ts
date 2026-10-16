@@ -94,7 +94,9 @@ export function waitForUser(input: {
       onAbort: () => settle(entry, "aborted"),
       ...(input.signal ? { signal: input.signal } : {}),
     };
-    entry.timer.unref?.();
+    // node:test treats an unref'd timer as an empty event loop and cancels the
+    // wait. Production still must not keep the process alive for this timer.
+    if (!process.env.NODE_TEST_CONTEXT) entry.timer.unref?.();
     state().waits.set(input.sessionId, entry);
     input.signal?.addEventListener("abort", entry.onAbort, { once: true });
   });
