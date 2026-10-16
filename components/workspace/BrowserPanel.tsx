@@ -6,6 +6,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type {
   DesktopBrowserAction,
+  DesktopBrowserAgentActivity,
+  DesktopBrowserAgentBackend,
   DesktopBrowserDownload,
   DesktopBrowserState,
   ImportedChromeBookmarkNode,
@@ -146,17 +148,36 @@ export function BrowserPanel({ active, maximized, sessionId, navigationRequest, 
   const { t } = useI18n();
   const [desktopBridge, setDesktopBridge] = useState<DesktopBrowserBridge | null | undefined>(undefined);
   const [followAgent, setFollowAgent] = useState<boolean | null>(null);
+  const [agentBackend, setAgentBackend] = useState<DesktopBrowserAgentBackend | null>(null);
 
   useEffect(() => {
-    setDesktopBridge(window.piDesktop?.browser ?? null);
+    const browser = window.piDesktop?.browser ?? null;
+    setDesktopBridge(browser);
     try {
       setFollowAgent(window.localStorage.getItem(BROWSER_FOLLOW_AGENT_KEY) === "true");
     } catch {
       setFollowAgent(false);
     }
+    if (!browser?.getAgentBackend) {
+      setAgentBackend("playwright");
+      return;
+    }
+    let cancelled = false;
+    void browser.getAgentBackend().then((value) => {
+      if (!cancelled) setAgentBackend(value === "desktop" ? "desktop" : "playwright");
+    }).catch(() => {
+      if (!cancelled) setAgentBackend("playwright");
+    });
+    const unsubscribe = browser.onAgentBackend?.((value) => {
+      setAgentBackend(value === "desktop" ? "desktop" : "playwright");
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
 
-  if (desktopBridge === undefined || followAgent === null) {
+  if (desktopBridge === undefined || followAgent === null || agentBackend === null) {
     return <div className={styles.browserLoading}>{t("browser.starting")}</div>;
   }
   const toggleFollowAgent = () => {
@@ -168,8 +189,9 @@ export function BrowserPanel({ active, maximized, sessionId, navigationRequest, 
       // The mode still changes for this panel when browser storage is unavailable.
     }
   };
+  const desktopLinked = agentBackend === "desktop" && desktopBridge !== null;
   return <div className={styles.browserRoot}>
-    <div className={styles.browserModeBar}>
+    {desktopLinked ? null : <div className={styles.browserModeBar}>
       <div className={styles.browserModeCopy}>
         <strong>{t("browser.followAgent")}</strong>
         <span>{t("browser.followAgentDescription")}</span>
@@ -177,9 +199,11 @@ export function BrowserPanel({ active, maximized, sessionId, navigationRequest, 
       <button type="button" role="switch" aria-checked={followAgent} aria-label={t("browser.followAgent")} title={t("browser.followAgentDescription")} onClick={toggleFollowAgent}>
         <span aria-hidden="true" />
       </button>
-    </div>
+    </div>}
     <div className={styles.browserModeContent}>
-      {followAgent
+      {desktopLinked
+        ? <DesktopBrowserPanel linkAgent active={active} bridge={desktopBridge} maximized={maximized} sessionId={sessionId} navigationRequest={navigationRequest} onNavigationConsumed={onNavigationConsumed} />
+        : followAgent
         ? <AgentBrowserPanel active={active} sessionId={sessionId} />
         : desktopBridge
         ? <DesktopBrowserPanel active={active} bridge={desktopBridge} maximized={maximized} sessionId={sessionId} navigationRequest={navigationRequest} onNavigationConsumed={onNavigationConsumed} />
@@ -243,7 +267,7 @@ function AgentBrowserPanel({ active, sessionId }: { active: boolean; sessionId: 
   </div>;
 }
 
-function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationRequest, onNavigationConsumed }: { active: boolean; bridge: DesktopBrowserBridge; maximized: boolean; sessionId: string | null } & BrowserNavigationProps) {
+function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationRequest, onNavigationConsumed, linkAgent = false }: { active: boolean; bridge: DesktopBrowserBridge; maximized: boolean; sessionId: string | null; linkAgent?: boolean } & BrowserNavigationProps) {
   const { t } = useI18n();
   const [state, setState] = useState<DesktopBrowserState | null>(null);
   const [address, setAddress] = useState("");
@@ -253,6 +277,10 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [importing, setImporting] = useState(false);
   const [download, setDownload] = useState<DesktopBrowserDownload | null>(null);
+  const [followingAgent, setFollowingAgent] = useState(true);
+  const [agentActivity, setAgentActivity] = useState<DesktopBrowserAgentActivity | null>(null);
+  const followingRef = useRef(true);
+  followingRef.current = followingAgent;
   const viewportRef = useRef<HTMLDivElement>(null);
   const addressRef = useRef<HTMLInputElement>(null);
   const viewportSyncRef = useRef<ReturnType<typeof createBrowserViewportSync> | null>(null);
@@ -378,6 +406,27 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
 
   useRequestedNavigation(navigationRequest, active && Boolean(state), act, onNavigationConsumed);
 
+  useEffect(() => {
+    if (!linkAgent) return;
+    setFollowingAgent(true);
+    followingRef.current = true;
+    setAgentActivity(null);
+  }, [linkAgent, active, sessionId]);
+
+  useEffect(() => {
+    if (!linkAgent || !active) return;
+    void act({ action: "show_agent_tab" });
+  }, [linkAgent, active, sessionId, act]);
+
+  useEffect(() => {
+    if (!linkAgent || !bridge.onAgentActivity) return;
+    return bridge.onAgentActivity((event) => {
+      if (!sessionId || event.sessionId !== sessionId) return;
+      setAgentActivity(event);
+      if (followingRef.current && event.tabId) void act({ action: "switch_tab", tabId: event.tabId });
+    });
+  }, [linkAgent, bridge, sessionId, act]);
+
   const finishOnboarding = () => {
     window.localStorage.setItem(BROWSER_ONBOARDING_KEY, "done");
     setShowOnboarding(false);
@@ -431,7 +480,16 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
           ? t("browser.downloading", { filename: download.filename, percent: download.percent })
           : null;
 
+  const agentTabId = agentActivity?.sessionId === sessionId ? agentActivity.tabId : (state?.agentTabId ?? null);
+  const agentOperating = agentActivity?.sessionId === sessionId ? agentActivity.operating : Boolean(state?.agentOperating);
+  const agentPaused = agentActivity?.sessionId === sessionId ? agentActivity.paused : Boolean(state?.agentPaused);
   return <div className={styles.browserRoot} data-native-browser="true">
+    {linkAgent && (agentOperating || agentPaused) ? <div className={styles.browserAgentOperating} role="status">
+      <span>{agentPaused ? t("browser.agentPausedHint") : t("browser.agentOperating")}</span>
+      <button type="button" onClick={() => void act({ action: agentPaused ? "resume_agent" : "pause_agent" })}>
+        {agentPaused ? t("browser.agentResume") : t("browser.agentPause")}
+      </button>
+    </div> : null}
     <div className={styles.browserTabs} role="tablist" aria-label={t("browser.tabs")}>
       {state?.tabs.map((tab) => <button
         key={tab.id}
@@ -439,9 +497,25 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
         role="tab"
         aria-selected={state.activeTabId === tab.id}
         title={tab.url}
-        onClick={() => void act({ action: "switch_tab", tabId: tab.id })}
+        onClick={() => {
+          if (linkAgent) {
+            setFollowingAgent(false);
+            followingRef.current = false;
+          }
+          void act({ action: "switch_tab", tabId: tab.id });
+        }}
       >
         <AliIcon name="earth" size={13} /><b>{tab.title || t("browser.newTab")}</b>
+        {linkAgent && !followingAgent && agentTabId === tab.id ? <span
+          className={styles.browserAgentMarker}
+          role="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            setFollowingAgent(true);
+            followingRef.current = true;
+            void act({ action: "switch_tab", tabId: tab.id });
+          }}
+        >{t("browser.agentMarker")}</span> : null}
         <span
           className={styles.browserTabClose}
           role="button"

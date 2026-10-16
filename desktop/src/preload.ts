@@ -222,6 +222,33 @@ const runtime = Object.freeze({
       ipcRenderer.on("pi:browser-download", handler);
       return () => ipcRenderer.removeListener("pi:browser-download", handler);
     },
+    getAgentBackend() {
+      return ipcRenderer.invoke("pi:browser-get-agent-backend") as Promise<"desktop" | "playwright">;
+    },
+    onAgentBackend(listener: (backend: "desktop" | "playwright") => void) {
+      const handler = (_event: Electron.IpcRendererEvent, backend: unknown) => {
+        if (backend === "desktop" || backend === "playwright") listener(backend);
+      };
+      ipcRenderer.on("pi:browser-agent-backend", handler);
+      return () => ipcRenderer.removeListener("pi:browser-agent-backend", handler);
+    },
+    onAgentActivity(listener: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean }) => void) {
+      const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        if (!payload || typeof payload !== "object") return;
+        const candidate = payload as { sessionId?: unknown; tabId?: unknown; operating?: unknown; paused?: unknown };
+        if (typeof candidate.sessionId !== "string") return;
+        if (candidate.tabId !== null && typeof candidate.tabId !== "string") return;
+        if (typeof candidate.operating !== "boolean" || typeof candidate.paused !== "boolean") return;
+        listener({
+          sessionId: candidate.sessionId,
+          tabId: typeof candidate.tabId === "string" ? candidate.tabId : null,
+          operating: candidate.operating,
+          paused: candidate.paused,
+        });
+      };
+      ipcRenderer.on("pi:browser-agent-activity", handler);
+      return () => ipcRenderer.removeListener("pi:browser-agent-activity", handler);
+    },
   }),
   onMenuAction(listener: (action: string) => void) {
     const handler = (_event: Electron.IpcRendererEvent, action: unknown) => {

@@ -63,6 +63,8 @@ import {
   validateAgentDataDirectory,
 } from "./agent-data-directory.js";
 import { BROWSER_PARTITION, DesktopBrowserManager } from "./browser-manager.js";
+import { createBrowserAgentControl, type BrowserAgentHost } from "./browser-agent-control.js";
+import { BRIDGE_UNAVAILABLE_ERROR } from "./browser-agent-logic.js";
 import { FileLogger, type Logger } from "./logger.js";
 import { runOptionalStartupTask } from "./startup-tasks.js";
 import { ensurePortableDesktopShortcut, type PortableShortcutResult } from "./portable-shortcut.js";
@@ -234,7 +236,11 @@ let automaticUpdateCheckTimer: NodeJS.Timeout | undefined;
 function attachDesktopBrowserManager(window: BrowserWindow, log: Logger): void {
   void desktopBrowserManager?.flushStorage().catch((error) => log.warn("Unable to persist the previous browser session", error));
   desktopBrowserManager?.destroy();
-  desktopBrowserManager = new DesktopBrowserManager(window, log, isTrustedMainWindowSender);
+  desktopBrowserManager = new DesktopBrowserManager(window, log, isTrustedMainWindowSender, {
+    agentDirectory: () => piAgentDirectoryPath,
+  });
+  const host: BrowserAgentHost = desktopBrowserManager.createAgentHost();
+  desktopBrowserManager.bindAgentControl(createBrowserAgentControl(host));
 }
 
 async function handleStandaloneMessage(message: unknown): Promise<unknown> {
@@ -279,6 +285,20 @@ async function handleStandaloneMessage(message: unknown): Promise<unknown> {
     } catch (error) {
       return { type: "pi-desktop:ssh-vault-response", requestId, ok: false, error: error instanceof Error ? error.message : "System encryption failed" };
     }
+  }
+  if (candidate.type === "pi-desktop:browser-agent-cancel") {
+    if (typeof candidate.requestId === "string") desktopBrowserManager?.cancelAgentRequest(candidate.requestId);
+    return undefined;
+  }
+  if (candidate.type === "pi-desktop:browser-agent-backend") {
+    const backend = (candidate as { backend?: unknown }).backend;
+    if (backend === "desktop" || backend === "playwright") desktopBrowserManager?.setReportedAgentBackend(backend);
+    return undefined;
+  }
+  if (candidate.type === "pi-desktop:browser-agent-request") {
+    const requestId = typeof candidate.requestId === "string" ? candidate.requestId : "";
+    if (!desktopBrowserManager) return { type: "pi-desktop:browser-agent-response", requestId, ok: false, error: BRIDGE_UNAVAILABLE_ERROR };
+    return desktopBrowserManager.handleAgentRequest(message);
   }
   if (candidate.type === "pi-desktop:clipboard-backup-request" && typeof candidate.requestId === "string" && /^[a-f0-9-]{36}$/.test(candidate.requestId)) {
     const requestId = candidate.requestId;
@@ -2197,6 +2217,9 @@ function createStandaloneForProfile(profile: RuntimeProfile): {
     desktopDataDirectory: dataDirectory,
     onMessage: handleStandaloneMessage,
     ...(preferredPort === undefined ? {} : { preferredPort }),
+    onProcessExit: () => {
+      desktopBrowserManager?.failAgentRequests("Web server process exited");
+    },
     onUnexpectedExit: handleUnexpectedServerExit,
   });
   return { instance, dataDirectory };
