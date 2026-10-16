@@ -33,6 +33,7 @@ import {
   isNonFatalNavigationError,
   isPausedAction,
   navigationFailure,
+  navigationTokenTabId,
   referencedTypeTargetIsFrame,
   resolveOwnedTab,
   scrollInvocation,
@@ -85,7 +86,7 @@ export interface BrowserAgentHost {
   capturePage(tabId: string, options: { stayHidden: boolean; stayAwake: boolean }): Promise<{ byteLength: number; base64: string }>;
   executeIsolated(tabId: string, worldId: number, code: string): Promise<unknown>;
   executeMain?(tabId: string, code: string): Promise<unknown>;
-  /** URL plus the main-frame navigation epoch. Changes on same-URL navigations. */
+  /** Tab id, main-frame navigation epoch, and URL. Different for each tab, including same-URL navigations. */
   navigationToken(tabId: string): string;
   activateSessionTab?(sessionId: string, tabId: string): void;
   debuggerAttach(tabId: string, version: string): void;
@@ -643,7 +644,9 @@ export class BrowserAgentControl {
     return this.withOwnedTab(request, signal, async (tab) => {
       const decision = await this.inspectEvaluateTarget(tab.id);
       this.throwIfAborted(signal);
-      if (this.host.navigationToken(tab.id) !== token) throw new Error(EVALUATE_PAGE_CHANGED_ERROR);
+      if (navigationTokenTabId(token) !== tab.id || this.host.navigationToken(tab.id) !== token) {
+        throw new Error(EVALUATE_PAGE_CHANGED_ERROR);
+      }
       if (!decision.allowed) throw new Error(decision.reason ?? EVALUATE_SENSITIVE_REFUSAL);
       const value = await this.runTabOp(
         tab.id,

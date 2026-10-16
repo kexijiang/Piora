@@ -359,7 +359,7 @@ function unsupportedWaitResult() {
   return textResult(BROWSER_USER_WAIT_UNSUPPORTED_TEXT, { action: "wait_for_user", status: "unsupported", backend: "playwright" });
 }
 
-async function desktopEvaluateCheck(sessionId: string, tabId: string | undefined, signal?: AbortSignal): Promise<{ allowed: boolean; url: string; navigationToken: string }> {
+async function desktopEvaluateCheck(sessionId: string, tabId: string | undefined, signal?: AbortSignal): Promise<{ allowed: boolean; url: string; navigationToken: string; tabId: string }> {
   const value = await callDesktopAgentBrowser({
     sessionId,
     action: "evaluate_check",
@@ -371,6 +371,7 @@ async function desktopEvaluateCheck(sessionId: string, tabId: string | undefined
     allowed: record.allowed === true,
     url: typeof record.url === "string" && record.url.trim() ? record.url.trim() : EVALUATE_UNKNOWN_PAGE,
     navigationToken: typeof record.navigationToken === "string" ? record.navigationToken.trim() : "",
+    tabId: typeof record.tabId === "string" ? record.tabId.trim() : "",
   };
 }
 
@@ -460,7 +461,7 @@ const browserTool = defineTool({
       if (params.action === "wait_for_user") return await waitForBrowserUser(sessionId, toolCallId, params.reason, signal);
       if (params.action === "evaluate" && desktopBackendSelected()) {
         if (!params.text?.trim()) throw new Error("evaluate requires a JavaScript expression in text");
-        let check: { allowed: boolean; url: string; navigationToken: string } | undefined;
+        let check: { allowed: boolean; url: string; navigationToken: string; tabId: string } | undefined;
         try {
           notifyDesktopAgentBackend("desktop");
           check = await desktopEvaluateCheck(sessionId, params.tabId, signal);
@@ -489,6 +490,7 @@ const browserTool = defineTool({
               ...params,
               confirmed: true,
               navigationToken: outcome.navigationToken,
+              ...(pageCheck.tabId ? { tabId: pageCheck.tabId } : {}),
             }, signal);
           } catch (error) {
             if (!isDesktopBridgeUnavailable(error)) throw error;

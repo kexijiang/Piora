@@ -1067,8 +1067,8 @@ export class DesktopBrowserManager {
       ),
       navigationToken: (tabId: string) => {
         const tab = this.findTab(tabId);
-        if (!tab) return formatNavigationToken(0, "");
-        return formatNavigationToken(tab.navigationEpoch ?? 0, this.tabUrl(tab));
+        if (!tab) return formatNavigationToken(tabId, 0, "");
+        return formatNavigationToken(tab.id, tab.navigationEpoch ?? 0, this.tabUrl(tab));
       },
       activateSessionTab: (sessionId: string, tabId: string) => {
         const tab = this.findTab(tabId);

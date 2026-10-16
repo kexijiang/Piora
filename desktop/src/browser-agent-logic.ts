@@ -64,10 +64,16 @@ export function evaluateAllowance(input: { url?: string; title?: string; visible
   return { allowed: true };
 }
 
-/** Identifies one main-frame document. The epoch changes even when the URL stays the same. */
-export function formatNavigationToken(epoch: number, url: string): string {
+/** Binds one tab to one main-frame document. The epoch changes even when the URL stays the same. */
+export function formatNavigationToken(tabId: string, epoch: number, url: string): string {
   const count = Number.isFinite(epoch) ? Math.max(0, Math.floor(epoch)) : 0;
-  return `${count}:${url}`;
+  return `${tabId}:${count}:${url}`;
+}
+
+/** Tab id bound into a navigation token, or "" when the token is not tab:epoch:url. */
+export function navigationTokenTabId(token: string): string {
+  const match = /^([^:]+):(\d+):/.exec(token);
+  return match?.[1] ?? "";
 }
 
 const USER_INPUT_EVENT_TYPES = new Set([
