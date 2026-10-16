@@ -9,6 +9,7 @@ import { createJiti } from "jiti";
 
 const { NestedToolCallsStore } = await createJiti(import.meta.url).import("../lib/nested-tool-calls.ts");
 const { buildLocalFilePrompt } = await createJiti(import.meta.url).import("../lib/file-attachments.ts");
+const { normalizeToolCalls } = await createJiti(import.meta.url).import("../lib/normalize.ts");
 
 const source = await readFile(new URL("./useAgentSession.ts", import.meta.url), "utf8");
 
@@ -369,7 +370,7 @@ function promptSubmissionHarness(overrides = {}) {
     savePendingPrompt: async record => { h.env.saved = structuredClone(record); },
     setMessages: update => { h.env.messages = typeof update === "function" ? update(h.env.messages) : update; },
     reduceAgentPhase: (_phase, event) => ({ kind: event.type }), isRunProgressEvent: () => true,
-    handleExtensionUiRequest() {}, refreshContextUsage() {},
+    handleExtensionUiRequest() {}, refreshContextUsage() {}, normalizeToolCalls,
     sendAgentCommand: async () => ({ accepted: true, sessionId: "session-a", commandId: "cmd-current", status: "queued" }),
     response: { running: true, state: { runtime: "idle", isStreaming: false, isPromptRunning: false, isCompacting: false }, promptCommand: { commandId: "cmd-current", status: "queued" } },
     ...overrides,
@@ -1024,4 +1025,23 @@ test("whole-session stats reject delayed responses across refreshes and run boun
   const oldRun = refresh("session"); env.promptRunIdRef.current++;
   requests[2](response(3)); await oldRun;
   assert.deepEqual(snapshots, [{ cost: 2 }]);
+});
+
+
+test("shell progress replaces cumulative snapshots and final result settles the same card", () => {
+  const h = promptSubmissionHarness();
+  h.env.agentRunningRef.current = true;
+  h.env.messages = [];
+  for (const text of ["first line", "first line\nsecond line"]) {
+    h.handleAgentEvent({ type: "tool_execution_update", toolCallId: "shell-live", toolName: "powershell",
+      partialResult: { content: [{ type: "text", text }] } });
+    assert.equal(h.env.messages.length, 1);
+    assert.equal(h.env.messages[0].content[0].text, text);
+    assert.equal(h.env.messages[0].isStreaming, true);
+  }
+  h.handleAgentEvent({ type: "message_end", message: { role: "toolResult", toolCallId: "shell-live", toolName: "powershell",
+    content: [{ type: "text", text: "first line\nsecond line\ndone" }] } });
+  assert.equal(h.env.messages.length, 1);
+  assert.equal(h.env.messages[0].content[0].text, "first line\nsecond line\ndone");
+  assert.notEqual(h.env.messages[0].isStreaming, true);
 });

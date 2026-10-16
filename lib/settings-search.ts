@@ -85,6 +85,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "conversation.replySuggestions", section: "conversation", labelKey: "reply.title", descriptionKey: "reply.description", keywords: ["chips", "quick replies", "提取", "快捷回复", "选项", "提示词"] },
   { id: "conversation.sendShortcut", section: "conversation", labelKey: "settings.sendShortcut", descriptionKey: "settings.sendShortcutDescription", keywords: ["enter", "ctrl enter", "发送", "换行"] },
   { id: "conversation.streamingSend", section: "conversation", labelKey: "settings.streamingSendDefault", descriptionKey: "settings.streamingSendDefaultDescription", keywords: ["queue", "steer", "排队", "引导"] },
+  { id: "conversation.compactProcess", section: "conversation", labelKey: "settings.compactProcess", descriptionKey: "settings.compactProcessDescription", keywords: ["process", "thinking", "shell", "compact", "思考", "步骤", "轻量", "日志"] },
   { id: "conversation.autoScroll", section: "conversation", labelKey: "settings.liveOutputAutoScroll", descriptionKey: "settings.liveOutputAutoScrollDescription", keywords: ["scroll", "follow", "滚动", "跟随"] },
   { id: "conversation.notifications", section: "conversation", labelKey: "taskControls.notifications", descriptionKey: "taskControls.notificationsDescription", keywords: ["notify", "notification", "通知", "完成"] },
   { id: "prompts", section: "prompts", labelKey: "settings.page.prompts", descriptionKey: "settings.page.promptsDescription", keywords: ["prompt", "title", "提示词", "标题"] },

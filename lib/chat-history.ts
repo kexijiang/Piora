@@ -13,6 +13,9 @@ export interface ChatHistoryRow {
   process?: { count: number; toolCalls: number; expanded: boolean };
   attachRef?: boolean;
   showTimestamp?: boolean;
+  secondary?: boolean;
+  isStreaming?: boolean;
+  compactProcess?: import("./compact-chat-history").CompactProcessGroup;
 }
 
 function withBlocks(message: AssistantMessage, content: AssistantContentBlock[], omitUsage = false): AssistantMessage {

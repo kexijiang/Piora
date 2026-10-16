@@ -84,9 +84,9 @@ test("nested tool history restores bounded summaries without inventing child out
   assert.doesNotMatch(html, /is-running/);
 });
 
-test("mounting a live message immediately displays the server rate without restarting a timer", () => {
+test("live message metadata stays hidden even when the server supplies a generation rate", () => {
   const message = { role: "assistant", model: "model", content: [{ type: "text", text: "already generated ".repeat(1000) }], streamingMetrics: { generation: 3, tokensPerSecond: 42.5 } };
-  for (let view = 0; view < 3; view++) assert.match(renderMessage(message, { isStreaming: true }), /≈42\.5/);
+  for (let view = 0; view < 3; view++) assert.doesNotMatch(renderMessage(message, { isStreaming: true }), /≈42\.5|t\/s/);
   assert.doesNotMatch(renderMessage({ ...message, streamingMetrics: undefined }, { isStreaming: true }), /t\/s/);
   assert.doesNotMatch(renderMessage(message), /t\/s/);
 });
@@ -105,18 +105,34 @@ test("history rendering keeps disclosure and copy while suppressing conversation
   assert.doesNotMatch(command, /is-running/);
 });
 
-test("shell output stays collapsed by default, including live chunks", () => {
+test("running shell cards expand live output while completed commands stay collapsed", () => {
   const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "shell", toolName: "bash", input: { command: "echo hello" } }] };
   for (const isStreaming of [true, false]) {
     const html = renderMessage(message, { toolResults: new Map([["shell", {
       role: "toolResult", toolCallId: "shell", isStreaming,
       content: [{ type: "text", text: "hello from shell" }],
     }]]) });
-    assert.doesNotMatch(html, /hello from shell/);
-    assert.match(html, /aria-expanded="false"/);
+    assert.match(html, new RegExp(`aria-expanded="${isStreaming}"`));
+    assert.equal(html.includes("command-output-section"), isStreaming);
   }
   const local = renderMessage({ role: "bashExecution", command: "echo hello", output: "local live output", excludeFromContext: true });
-  assert.doesNotMatch(local, /local live output/);
+  assert.match(local, /aria-expanded="true"/);
+  assert.match(local, /command-output-section/);
+  const rowState = createVirtualRowState();
+  rowState.set("command:shell", false);
+  const collapsed = renderToStaticMarkup(React.createElement(I18nProvider, null,
+    React.createElement(VirtualRowStateContext.Provider, { value: rowState }, React.createElement(MessageView, { message }))));
+  assert.match(collapsed, /aria-expanded="false"/);
+  assert.doesNotMatch(collapsed, /command-output-section/);
+});
+
+test("assistant messages omit repeated model and usage metadata", () => {
+  for (const isStreaming of [true, false]) {
+    const html = renderMessage({ role: "assistant", provider: "test", model: "test-model",
+      usage: { input: 674, output: 257, cacheRead: 481280, cacheWrite: 0, cost: { total: 0.0022 } },
+      content: [{ type: "text", text: "answer" }] }, { isStreaming });
+    assert.doesNotMatch(html, /test-model|cache R|674 in|257 out|0\.0022|message-model-label/);
+  }
 });
 
 test("shell cards reveal commands and errors only after expanding", () => {

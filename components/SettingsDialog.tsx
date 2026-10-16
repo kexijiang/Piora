@@ -6,6 +6,7 @@ import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useI18n } from "@/hooks/useI18n";
 import { useSendShortcut } from "@/hooks/useSendShortcut";
 import { useStreamingSendPreference } from "@/hooks/useStreamingSendPreference";
+import { useCompactProcessPreference } from "@/hooks/useCompactProcessPreference";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
 import { AliIcon, type AliIconName } from "./AliIcon";
 import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
@@ -115,6 +116,7 @@ export function SettingsDialog({
     enabled: liveOutputAutoScrollEnabled,
     setEnabled: setLiveOutputAutoScrollEnabled,
   } = useLiveOutputAutoScrollPreference();
+  const { enabled: compactProcessEnabled, setEnabled: setCompactProcessEnabled } = useCompactProcessPreference();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [targetItem, setTargetItem] = useState<{ id: string } | null>(null);
@@ -572,6 +574,16 @@ export function SettingsDialog({
                 </div>
 
                 <section className={styles.conversationSection}>
+                  <div className={styles.conversationRow}>
+                    <div className={styles.conversationCopy}>
+                      <div data-settings-id="conversation.compactProcess" className={styles.rowTitle}>{t("settings.compactProcess")}</div>
+                      <div className={styles.rowDescription}>{t("settings.compactProcessDescription")}</div>
+                    </div>
+                    <button className={styles.switch} type="button" role="switch"
+                      aria-checked={compactProcessEnabled} aria-label={t("settings.compactProcess")}
+                      onClick={() => setCompactProcessEnabled(!compactProcessEnabled)}><span /></button>
+                  </div>
+
                   <div className={styles.conversationRow}>
                     <div className={styles.conversationCopy}>
                       <div data-settings-id="conversation.autoScroll" className={styles.rowTitle}>{t("settings.liveOutputAutoScroll")}</div>

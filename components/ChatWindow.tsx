@@ -9,6 +9,8 @@ import { prepareMessageRetry } from "@/lib/message-retry";
 import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { messageFingerprint } from "@/lib/chat-history";
+import { CompactProcessContext } from "./CompactProcessContext";
+import { useCompactProcessPreference } from "@/hooks/useCompactProcessPreference";
 import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
@@ -95,16 +97,17 @@ function phaseLabel(phase: AgentPhase, t: (key: string, params?: Record<string, 
 /** No output/tool/stream event for this long means the run is probably stuck. */
 const STATUS_STALL_AFTER_MS = 45_000;
 
-function StatusPulse({ label, elapsedMs, idleMs, retryInfo, t }: {
+function StatusPulse({ label, elapsedMs, idleMs, retryInfo, t, compact = false }: {
   label: string;
   elapsedMs: number;
   idleMs: number;
   retryInfo: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
   t: (key: string, params?: Record<string, string | number>) => string;
+  compact?: boolean;
 }) {
   const stalled = idleMs >= STATUS_STALL_AFTER_MS;
   return (
-    <div className="py-2 text-text-muted" style={{ fontSize: "var(--text-base)" }} role="status" aria-live="polite">
+    <div className="py-2 text-text-muted" style={{ fontSize: compact ? "var(--text-sm)" : "var(--text-base)" }} role="status" aria-live="polite">
       <span className={stalled ? undefined : "animate-[pulse_1.5s_infinite]"}>{label}</span>
       {elapsedMs >= 1_000 ? (
         <span style={{ marginLeft: 8, opacity: 0.75 }}>{t("chat.statusElapsed", { duration: formatStatusDuration(elapsedMs) })}</span>
@@ -155,6 +158,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
   // drafts: two new chats in the same project must never restore each other.
   const [newChatDraftKey] = useState(() => `new:${crypto.randomUUID()}`);
   const { t } = useI18n();
+  const { enabled: compactProcess } = useCompactProcessPreference();
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
   const chatColumnWidthRef = useRef(CHAT_COLUMN_DEFAULT_WIDTH);
@@ -793,7 +797,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               <ExtensionWidgets widgets={aboveEditorWidgets} />
 
             <ChatHistory
-              messages={messages} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
+              messages={messages} compactProcess={compactProcess} streamingMessage={compactProcess && streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}
@@ -802,7 +806,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               onDeleteMessage={handleDeleteMessage} deleteDisabled={sessionBusy || deletingMessage || isCompacting || preparingRetry}
               sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={setCommandExecutionDialog}
             />
-            {streamState.isStreaming && streamState.streamingMessage && (
+            {!compactProcess && streamState.isStreaming && streamState.streamingMessage && (
               <RenderErrorBoundary resetKey={messageFingerprint(streamState.streamingMessage as AgentMessage)} fallbackLabel={t("chat.messageRenderFailed")}>
                 <MessageView message={streamState.streamingMessage as AgentMessage} isStreaming modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile} sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={setCommandExecutionDialog} />
               </RenderErrorBoundary>
@@ -812,7 +816,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               visionStatus && agentPhase?.kind !== "stopping" ? (
                 <VisionAgentStatus status={visionStatus} t={t} />
               ) : (
-                <StatusPulse label={phaseLabel(agentPhase, t)} elapsedMs={statusElapsedMs} idleMs={statusIdleMs} retryInfo={retryInfo} t={t} />
+                <StatusPulse compact={compactProcess} label={phaseLabel(agentPhase, t)} elapsedMs={statusElapsedMs} idleMs={statusIdleMs} retryInfo={retryInfo} t={t} />
               )
             )}
 
@@ -827,11 +831,11 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
             )}
 
             {bashRunning && !pendingBash && (
-              <StatusPulse label={t("chat.runningCommand")} elapsedMs={statusElapsedMs} idleMs={statusIdleMs} retryInfo={null} t={t} />
+              <StatusPulse compact={compactProcess} label={t("chat.runningCommand")} elapsedMs={statusElapsedMs} idleMs={statusIdleMs} retryInfo={null} t={t} />
             )}
 
             {pendingBash && (
-              <MessageView
+              <CompactProcessContext.Provider value={compactProcess}><MessageView
                 message={{
                   role: "bashExecution",
                   command: pendingBash.command,
@@ -841,7 +845,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
                 sessionId={session?.id ?? sessionIdRef.current ?? undefined}
                 cwd={messageCwd}
                 onOpenCommandExecution={setCommandExecutionDialog}
-              />
+              /></CompactProcessContext.Provider>
             )}
 
             {agentRunning && (

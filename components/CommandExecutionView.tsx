@@ -2,13 +2,15 @@
 
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { copyText } from "@/lib/clipboard";
 import { commandDisplayName, commandErrorExcerpt, type CommandExecutionData } from "@/lib/command-execution";
 import { useVirtualRowToggle } from "./VirtualRowState";
 import { AliIcon } from "./AliIcon";
 import { ChatDisclosure } from "./ChatDisclosure";
+import { RevealProcessCommandContext, useCompactProcess } from "./CompactProcessContext";
+import { commandPreviewTail } from "@/lib/compact-chat-history";
 
 const CommandLogViewer = dynamic(
   () => import("./CommandLogViewer").then((module) => module.CommandLogViewer),
@@ -60,7 +62,7 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
   const [following, setFollowing] = useState(data.isStreaming);
   const [outputCopied, setOutputCopied] = useState(false);
   const fullUrl = commandOutputUrl(data);
-  const output = fullOutput ?? data.output;
+  const output = data.isStreaming ? data.output : fullOutput ?? data.output;
   const isEmpty = !output.trim() || output.trim() === "(no output)";
 
   useEffect(() => {
@@ -69,7 +71,7 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
   }, [initialSearch]);
 
   async function loadFullOutput() {
-    if (!fullUrl || loadingFull) return;
+    if (!fullUrl || loadingFull || data.isStreaming) return;
     setLoadingFull(true);
     setFullError(null);
     try {
@@ -110,7 +112,7 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
         <div className="command-truncation-notice" role="status">
           <AliIcon name="alert" size={13} />
           <span>{t("command.partialOutput")}</span>
-          {fullUrl ? <button type="button" onClick={() => void loadFullOutput()} disabled={loadingFull}>{loadingFull ? t("command.loadingFullOutput") : t("command.viewFullOutput")}</button> : null}
+          {fullUrl && !data.isStreaming ? <button type="button" onClick={() => void loadFullOutput()} disabled={loadingFull}>{loadingFull ? t("command.loadingFullOutput") : t("command.viewFullOutput")}</button> : null}
           {fullUrl ? <a href={`${fullUrl}&download=1`}>{t("command.downloadFullOutput")}</a> : null}
           {!fullUrl ? <span>{t("command.fullOutputReferenceMissing")}</span> : null}
         </div>
@@ -130,7 +132,12 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
 
 export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandExecutionData; onOpen?: (data: CommandExecutionData) => void; actions?: ReactNode }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useVirtualRowToggle(`command:${data.id}`);
+  const compact = useCompactProcess();
+  const [expanded, setExpanded] = useVirtualRowToggle(`command:${data.id}`, !compact && data.isStreaming && !data.historical);
+  const inspectCommand = useContext(RevealProcessCommandContext);
+  useEffect(() => {
+    if (inspectCommand === data.id) setExpanded(true);
+  }, [inspectCommand, data.id, setExpanded]);
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`command-diagnostics:${data.id}`);
   const [errorSearch, setErrorSearch] = useState("");
   const errorExcerpt = useMemo(() => data.status === "failed" || data.status === "cancelled" || data.status === "timed_out" ? commandErrorExcerpt(data.output) : "", [data.output, data.status]);
@@ -144,6 +151,7 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
   }, [data]);
 
   return (
+    <div className={compact ? "compact-command-card" : undefined}>
     <ChatDisclosure className={`command-execution-card is-${data.historical && data.status === "running" ? "unknown" : data.status}`}
       expanded={expanded} onExpandedChange={setExpanded} label={commandDisplayName(data.toolName)} icon="code"
       triggerClassName="command-execution-toggle"
@@ -178,6 +186,12 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
         </ChatDisclosure> : null}
       </div>
     </ChatDisclosure>
+    {compact && !expanded && data.isStreaming && !data.historical ? <div className="compact-command-preview">
+      <pre className="compact-command-tail">{commandPreviewTail(data.output) || t("command.waitingForOutput")}</pre>
+      <button type="button" className="compact-command-expand" onClick={() => setExpanded(true)}>{t("chat.processExpandLog")}</button>
+    </div> : null}
+    {compact && !expanded && errorExcerpt ? <div className="compact-command-error" role="status">{errorExcerpt}</div> : null}
+    </div>
   );
 }
 
