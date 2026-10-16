@@ -432,140 +432,144 @@ const browserTool = defineTool({
   }),
 
   async execute(toolCallId, params, signal, _onUpdate, ctx) {
-    if (signal?.aborted) throw new Error("Browser action aborted");
     const sessionId = ctx.sessionManager.getSessionId();
-    if (params.action === "wait_for_user") return waitForBrowserUser(sessionId, toolCallId, params.reason, signal);
-    if (params.action === "evaluate" && desktopBackendSelected()) {
-      const gate = desktopEvaluateRequest({
-        hasUI: ctx.hasUI === true,
-        userConfirmed: ctx.hasUI === true && await ctx.ui.confirm(
-          "Run page script",
-          "The agent wants to run JavaScript in the current browser page. Allow this once?",
-          signal ? { signal } : undefined,
-        ),
-      });
-      if ("error" in gate) throw new Error(gate.error);
-      try {
-        notifyDesktopAgentBackend("desktop");
-        return await executeDesktopBrowser(sessionId, { ...params, confirmed: true }, signal);
-      } catch (error) {
-        if (!isDesktopBridgeUnavailable(error)) throw error;
-        notifyDesktopAgentBackend("playwright");
-      }
-    } else if (desktopBackendSelected()) {
-      try {
-        notifyDesktopAgentBackend("desktop");
-        return await executeDesktopBrowser(sessionId, params, signal);
-      } catch (error) {
-        if (!isDesktopBridgeUnavailable(error)) throw error;
-        notifyDesktopAgentBackend("playwright");
-      }
-    }
-    if (params.action === "close") {
-      const existing = runtime.sessions.get(sessionId);
-      runtime.sessions.delete(sessionId);
-      if (existing) await Promise.all(sessionPages(existing).map((page) => page.close().catch(() => undefined)));
-      runtime.revision += 1;
-      return textResult("Browser tab closed. The browser profile and sign-in state were preserved.", { action: params.action });
-    }
-
-    const session = await getSession(sessionId);
-    runtime.activeActions = (runtime.activeActions ?? 0) + 1;
     try {
-      markActive(sessionId, session);
-      let page = session.page;
-      switch (params.action) {
-        case "open": {
-          if (!params.url) throw new Error("open requires url");
-          await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
-          break;
+      if (signal?.aborted) throw new Error("Browser action aborted");
+      if (params.action === "wait_for_user") return await waitForBrowserUser(sessionId, toolCallId, params.reason, signal);
+      if (params.action === "evaluate" && desktopBackendSelected()) {
+        const gate = desktopEvaluateRequest({
+          hasUI: ctx.hasUI === true,
+          userConfirmed: ctx.hasUI === true && await ctx.ui.confirm(
+            "Run page script",
+            "The agent wants to run JavaScript in the current browser page. Allow this once?",
+            signal ? { signal } : undefined,
+          ),
+        });
+        if ("error" in gate) throw new Error(gate.error);
+        try {
+          notifyDesktopAgentBackend("desktop");
+          return await executeDesktopBrowser(sessionId, { ...params, confirmed: true }, signal);
+        } catch (error) {
+          if (!isDesktopBridgeUnavailable(error)) throw error;
+          notifyDesktopAgentBackend("playwright");
         }
-        case "snapshot":
-          return textResult(await snapshotPage(page), { action: params.action, url: page.url() });
-        case "click":
-          await targetLocator(page, params.selector, params.ref).click();
-          break;
-        case "type": {
-          if (params.text === undefined) throw new Error("type requires text");
-          const target = targetLocator(page, params.selector, params.ref);
-          await target.fill(params.text).catch(async () => {
-            await target.click();
-            await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
-            await page.keyboard.type(params.text as string);
-          });
-          if (params.submit) await target.press("Enter");
-          break;
-        }
-        case "press":
-          await page.keyboard.press(params.key || "Enter");
-          break;
-        case "scroll":
-          await page.mouse.wheel(0, params.deltaY ?? 720);
-          break;
-        case "screenshot": {
-          const bytes = await page.screenshot({ type: "png", fullPage: params.fullPage ?? false });
-          return {
-            content: [
-              { type: "text" as const, text: await pageSummary(page) },
-              { type: "image" as const, data: bytes.toString("base64"), mimeType: "image/png" },
-            ],
-            details: { backend: "playwright", action: params.action, url: page.url(), fullPage: params.fullPage ?? false },
-          };
-        }
-        case "evaluate": {
-          if (!params.text) throw new Error("evaluate requires a JavaScript expression in text");
-          const value = await page.evaluate((expression) => globalThis.eval(expression), params.text);
-          return textResult(JSON.stringify(value, null, 2) ?? "undefined", { action: params.action, url: page.url() });
-        }
-        case "back":
-          await page.goBack({ waitUntil: "domcontentloaded" });
-          break;
-        case "forward":
-          await page.goForward({ waitUntil: "domcontentloaded" });
-          break;
-        case "reload":
-          await page.reload({ waitUntil: "domcontentloaded" });
-          break;
-        case "tabs": {
-          const tabs = sessionPages(session);
-          const lines = await Promise.all(tabs.map(async (tab, index) => `${index}: ${await tab.title()} — ${tab.url()}${tab === page ? " (active)" : ""}`));
-          return textResult(lines.join("\n") || "No tabs", { action: params.action, count: tabs.length });
-        }
-        case "new_tab": {
-          page = await session.context.newPage();
-          addSessionPage(session, page);
-          session.page = page;
-          if (params.url) await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
-          break;
-        }
-        case "switch_tab": {
-          const tabs = sessionPages(session);
-          const index = Math.floor(params.tabIndex ?? -1);
-          if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
-          page = tabs[index];
-          session.page = page;
-          await page.bringToFront();
-          break;
-        }
-        case "close_tab": {
-          const tabs = sessionPages(session);
-          const index = params.tabIndex === undefined ? tabs.indexOf(page) : Math.floor(params.tabIndex);
-          if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
-          await tabs[index].close();
-          const remaining = sessionPages(session);
-          page = remaining[0] ?? await session.context.newPage();
-          if (!remaining[0]) addSessionPage(session, page);
-          session.page = page;
-          break;
+      } else if (desktopBackendSelected()) {
+        try {
+          notifyDesktopAgentBackend("desktop");
+          return await executeDesktopBrowser(sessionId, params, signal);
+        } catch (error) {
+          if (!isDesktopBridgeUnavailable(error)) throw error;
+          notifyDesktopAgentBackend("playwright");
         }
       }
-      if (signal?.aborted) throw new Error("Browser action aborted");
-      await page.waitForTimeout(120);
-      await persistBrowserState(session.context);
-      markActive(sessionId, session);
-      return textResult(await pageSummary(page), { action: params.action, url: page.url() });
+      if (params.action === "close") {
+        const existing = runtime.sessions.get(sessionId);
+        runtime.sessions.delete(sessionId);
+        if (existing) await Promise.all(sessionPages(existing).map((page) => page.close().catch(() => undefined)));
+        runtime.revision += 1;
+        return textResult("Browser tab closed. The browser profile and sign-in state were preserved.", { action: params.action });
+      }
+
+      const session = await getSession(sessionId);
+      runtime.activeActions = (runtime.activeActions ?? 0) + 1;
+      try {
+        markActive(sessionId, session);
+        let page = session.page;
+        switch (params.action) {
+          case "open": {
+            if (!params.url) throw new Error("open requires url");
+            await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
+            break;
+          }
+          case "snapshot":
+            return textResult(await snapshotPage(page), { action: params.action, url: page.url() });
+          case "click":
+            await targetLocator(page, params.selector, params.ref).click();
+            break;
+          case "type": {
+            if (params.text === undefined) throw new Error("type requires text");
+            const target = targetLocator(page, params.selector, params.ref);
+            await target.fill(params.text).catch(async () => {
+              await target.click();
+              await page.keyboard.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+              await page.keyboard.type(params.text as string);
+            });
+            if (params.submit) await target.press("Enter");
+            break;
+          }
+          case "press":
+            await page.keyboard.press(params.key || "Enter");
+            break;
+          case "scroll":
+            await page.mouse.wheel(0, params.deltaY ?? 720);
+            break;
+          case "screenshot": {
+            const bytes = await page.screenshot({ type: "png", fullPage: params.fullPage ?? false });
+            return {
+              content: [
+                { type: "text" as const, text: await pageSummary(page) },
+                { type: "image" as const, data: bytes.toString("base64"), mimeType: "image/png" },
+              ],
+              details: { backend: "playwright", action: params.action, url: page.url(), fullPage: params.fullPage ?? false },
+            };
+          }
+          case "evaluate": {
+            if (!params.text) throw new Error("evaluate requires a JavaScript expression in text");
+            const value = await page.evaluate((expression) => globalThis.eval(expression), params.text);
+            return textResult(JSON.stringify(value, null, 2) ?? "undefined", { action: params.action, url: page.url() });
+          }
+          case "back":
+            await page.goBack({ waitUntil: "domcontentloaded" });
+            break;
+          case "forward":
+            await page.goForward({ waitUntil: "domcontentloaded" });
+            break;
+          case "reload":
+            await page.reload({ waitUntil: "domcontentloaded" });
+            break;
+          case "tabs": {
+            const tabs = sessionPages(session);
+            const lines = await Promise.all(tabs.map(async (tab, index) => `${index}: ${await tab.title()} — ${tab.url()}${tab === page ? " (active)" : ""}`));
+            return textResult(lines.join("\n") || "No tabs", { action: params.action, count: tabs.length });
+          }
+          case "new_tab": {
+            page = await session.context.newPage();
+            addSessionPage(session, page);
+            session.page = page;
+            if (params.url) await page.goto(requireHttpUrl(params.url), { waitUntil: "domcontentloaded" });
+            break;
+          }
+          case "switch_tab": {
+            const tabs = sessionPages(session);
+            const index = Math.floor(params.tabIndex ?? -1);
+            if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
+            page = tabs[index];
+            session.page = page;
+            await page.bringToFront();
+            break;
+          }
+          case "close_tab": {
+            const tabs = sessionPages(session);
+            const index = params.tabIndex === undefined ? tabs.indexOf(page) : Math.floor(params.tabIndex);
+            if (index < 0 || index >= tabs.length) throw new Error(`tabIndex must be between 0 and ${Math.max(0, tabs.length - 1)}`);
+            await tabs[index].close();
+            const remaining = sessionPages(session);
+            page = remaining[0] ?? await session.context.newPage();
+            if (!remaining[0]) addSessionPage(session, page);
+            session.page = page;
+            break;
+          }
+        }
+        if (signal?.aborted) throw new Error("Browser action aborted");
+        await page.waitForTimeout(120);
+        await persistBrowserState(session.context);
+        markActive(sessionId, session);
+        return textResult(await pageSummary(page), { action: params.action, url: page.url() });
+      } finally {
+        runtime.activeActions = Math.max(0, (runtime.activeActions ?? 1) - 1);
+      }
     } finally {
-      runtime.activeActions = Math.max(0, (runtime.activeActions ?? 1) - 1);
+      if (signal?.aborted && sessionId && desktopBackendSelected()) notifyDesktopAgentIdle(sessionId);
     }
   },
 });
@@ -798,11 +802,14 @@ The \`browser\` tool uses ${APP_DISPLAY_NAME}'s background Chrome/Edge profile. 
     const sessionId = ctx.sessionManager.getSessionId();
     if (sessionId) notifyDesktopAgentIdle(sessionId);
   });
-  api.on?.("session_shutdown", async (event, ctx) => {
-    if (event.reason === "reload" || !desktopBackendSelected()) return;
+  api.on?.("session_shutdown", async (_event, ctx) => {
+    // Pi emits this for quit, reload, new, resume, and fork — not for deleting a session.
+    // Piora's wrapper also emits reason "shutdown" when the runtime is recycled.
+    // Only the session DELETE route closes tabs.
+    if (!desktopBackendSelected()) return;
     const sessionId = ctx.sessionManager.getSessionId();
     if (!sessionId) return;
-    await callDesktopAgentBrowser({ sessionId, action: "session_closed" }).catch(() => undefined);
+    notifyDesktopAgentIdle(sessionId);
   });
 }
 

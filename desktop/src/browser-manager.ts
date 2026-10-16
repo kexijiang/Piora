@@ -96,6 +96,7 @@ interface BrowserAgentBinding {
   heldTabs(): Array<{ id: string; bounds: { x: number; y: number; width: number; height: number } }>;
   afterVisibilityChange(): void;
   failAll(message: string): void;
+  idleAll(): Promise<unknown> | void;
   destroy(): void;
   cancel(requestId: string): void;
   handleRequest(message: unknown): Promise<unknown>;
@@ -332,6 +333,7 @@ export class DesktopBrowserManager {
 
   failAgentRequests(message: string): void {
     this.agentControl?.failAll(message);
+    void this.agentControl?.idleAll();
   }
 
   setReportedAgentBackend(backend: "desktop" | "playwright"): void {
@@ -343,6 +345,7 @@ export class DesktopBrowserManager {
     if (this.destroyed) return;
     this.destroyed = true;
     this.agentControl?.failAll("Browser manager was closed");
+    void this.agentControl?.idleAll();
     this.agentControl?.destroy();
     this.agentControl = null;
     if (this.storageFlushTimer) clearTimeout(this.storageFlushTimer);

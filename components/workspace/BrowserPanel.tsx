@@ -524,7 +524,7 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
         </span>
       </> : <>
         <span>{agentPaused ? t("browser.agentPausedHint") : t("browser.agentOperating")}</span>
-        <button type="button" onClick={() => void act({ action: agentPaused ? "resume_agent" : "pause_agent" })}>
+        <button type="button" title={agentPaused ? undefined : t("browser.agentPauseEffect")} onClick={() => void act({ action: agentPaused ? "resume_agent" : "pause_agent" })}>
           {agentPaused ? t("browser.agentResume") : t("browser.agentPause")}
         </button>
       </>}

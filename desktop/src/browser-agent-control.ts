@@ -1,6 +1,8 @@
 import {
+  ACTIVE_ELEMENT_PASSWORD_SCRIPT,
   AGENT_OFFSCREEN_BOUNDS,
   AGENT_VIEWPORT,
+  AUTO_IDLE_MS,
   BRIDGE_UNAVAILABLE_ERROR,
   CDP_TIMEOUT_MS,
   EVALUATE_DISABLED_ERROR,
@@ -124,8 +126,11 @@ export interface BrowserAgentControlOptions {
   requestTimeoutMs?: number;
   navigationTimeoutMs?: number;
   idleUnloadMs?: number;
+  autoIdleMs?: number;
   setTimer?: (fn: () => void, ms: number) => unknown;
   clearTimer?: (handle: unknown) => void;
+  setIntervalTimer?: (fn: () => void, ms: number) => unknown;
+  clearIntervalTimer?: (handle: unknown) => void;
 }
 
 interface CommandEntry {
@@ -166,7 +171,9 @@ export class BrowserAgentControl {
   private readonly cdpTimeoutMs: number;
   private readonly navigationTimeoutMs: number;
   private readonly idleUnloadMs: number;
+  private readonly autoIdleMs: number;
   private readonly clearTimer: (handle: unknown) => void;
+  private readonly clearIntervalTimer: (handle: unknown) => void;
   private readonly pending: ReturnType<typeof createPendingRequestTable>;
   private readonly inflight = new InFlightCounter();
   private readonly agentTabs = new Map<string, string>();
@@ -175,6 +182,8 @@ export class BrowserAgentControl {
   private readonly waiting = new Map<string, string>();
   private readonly meta = new Map<string, TabMeta>();
   private readonly lastUsed = new Map<string, number>();
+  private readonly lastRequestAt = new Map<string, number>();
+  private readonly requestDepth = new Map<string, number>();
   private readonly metrics = new Set<string>();
   private readonly presented = new Set<string>();
   private readonly selfChecked = new Set<string>();
@@ -182,7 +191,7 @@ export class BrowserAgentControl {
   private readonly unsubscribers = new Map<string, Array<() => void>>();
   private readonly commands = new Map<number, CommandEntry>();
   private commandSeq = 0;
-  private readonly idleTimer: NodeJS.Timeout;
+  private readonly idleTimer: unknown;
   private stopped = false;
 
   constructor(host: BrowserAgentHost, options: BrowserAgentControlOptions = {}) {
@@ -190,18 +199,27 @@ export class BrowserAgentControl {
     this.cdpTimeoutMs = options.cdpTimeoutMs ?? CDP_TIMEOUT_MS;
     this.navigationTimeoutMs = options.navigationTimeoutMs ?? NAVIGATION_TIMEOUT_MS;
     this.idleUnloadMs = options.idleUnloadMs ?? IDLE_UNLOAD_MS;
+    this.autoIdleMs = options.autoIdleMs ?? AUTO_IDLE_MS;
     this.clearTimer = options.clearTimer ?? ((handle) => clearTimeout(handle as ReturnType<typeof setTimeout>));
+    this.clearIntervalTimer = options.clearIntervalTimer ?? ((handle) => clearInterval(handle as ReturnType<typeof setInterval>));
     this.pending = createPendingRequestTable({
       timeoutMs: options.requestTimeoutMs ?? REQUEST_TIMEOUT_MS,
       ...(options.setTimer ? { setTimer: options.setTimer } : {}),
       clearTimer: this.clearTimer,
     });
-    this.idleTimer = setInterval(() => {
+    const setIntervalTimer = options.setIntervalTimer ?? ((fn: () => void, ms: number) => {
+      const timer = setInterval(fn, ms);
+      timer.unref?.();
+      return timer;
+    });
+    this.idleTimer = setIntervalTimer(() => {
       try { this.sweepIdle(); } catch (error) {
         this.host.log.warn("Browser agent idle sweep failed", error);
       }
+      void this.sweepAutoIdle().catch((error) => {
+        this.host.log.warn("Browser agent auto-idle failed", error);
+      });
     }, 60_000);
-    this.idleTimer.unref();
   }
 
   inFlight(tabId: string): number {
@@ -290,11 +308,33 @@ export class BrowserAgentControl {
     }
   }
 
+  /** Drop every session back to idle. Does not reject in-flight requests. */
+  async idleAll(): Promise<string[]> {
+    const sessions = new Set<string>([
+      ...this.sessionActive.keys(),
+      ...this.agentTabs.keys(),
+      ...this.waiting.keys(),
+    ]);
+    const idled: string[] = [];
+    for (const sessionId of sessions) {
+      if (!sessionId || sessionId === MANUAL_BROWSER_SESSION_ID) continue;
+      this.waiting.delete(sessionId);
+      try {
+        await this.restoreSession(sessionId);
+      } catch (error) {
+        this.host.log.warn("Browser agent idle failed", error);
+      }
+      idled.push(sessionId);
+    }
+    return idled;
+  }
+
   destroy(): void {
     if (this.stopped) return;
     this.stopped = true;
-    clearInterval(this.idleTimer);
+    this.clearIntervalTimer(this.idleTimer);
     this.failAll("Browser agent control stopped");
+    void this.idleAll();
     for (const unsubs of this.unsubscribers.values()) {
       for (const unsubscribe of unsubs) unsubscribe();
     }
@@ -305,6 +345,8 @@ export class BrowserAgentControl {
     const unloaded: string[] = [];
     for (const tab of this.host.listTabs()) {
       if (tab.closed || tab.unloaded) continue;
+      if (tab.sessionId === MANUAL_BROWSER_SESSION_ID) continue;
+      if (!this.metaOf(tab.id).agentOpened) continue;
       const seen = this.lastUsed.get(tab.id);
       if (seen === undefined) {
         this.lastUsed.set(tab.id, now);
@@ -322,6 +364,27 @@ export class BrowserAgentControl {
       unloaded.push(tab.id);
     }
     return unloaded;
+  }
+
+  /** Idle sessions that stayed active with no browser request and are not waiting on the user. */
+  async sweepAutoIdle(now = this.host.now()): Promise<string[]> {
+    const idled: string[] = [];
+    for (const sessionId of [...this.sessionActive.keys()]) {
+      if (this.sessionActive.get(sessionId) !== true) continue;
+      if (this.waiting.has(sessionId)) continue;
+      if ((this.requestDepth.get(sessionId) ?? 0) > 0) continue;
+      const last = this.lastRequestAt.get(sessionId);
+      if (last === undefined || now - last < this.autoIdleMs) continue;
+      this.host.log.info(`[browser-agent] auto-idle sessionId=${sessionId}`);
+      try {
+        await this.idle(sessionId);
+      } catch (error) {
+        this.host.log.warn("Browser agent auto-idle failed", error);
+        continue;
+      }
+      idled.push(sessionId);
+    }
+    return idled;
   }
 
   async handleRequest(message: unknown): Promise<BrowserAgentResponse> {
@@ -348,6 +411,7 @@ export class BrowserAgentControl {
     const controller = new AbortController();
     this.pending.track(request.requestId, controller);
     const signal = controller.signal;
+    this.bumpRequests(request.sessionId, 1);
     try {
       return await new Promise((resolve, reject) => {
         const onAbort = () => reject(abortReason(signal, "Browser action aborted"));
@@ -365,6 +429,8 @@ export class BrowserAgentControl {
         });
       });
     } finally {
+      this.bumpRequests(request.sessionId, -1);
+      this.lastRequestAt.set(request.sessionId, this.host.now());
       this.pending.finish(request.requestId);
     }
   }
@@ -636,6 +702,10 @@ export class BrowserAgentControl {
         const result = focused as { ok?: boolean; error?: string; password?: boolean; type?: string };
         if (result && result.ok === false) throw new Error(result.error || "Element ref was not found. Take a new snapshot.");
         if (result && (result.password === true || result.type === "password")) throw new Error(PASSWORD_TYPE_ERROR);
+      } else {
+        const active = await this.isolated(tab.id, ACTIVE_ELEMENT_PASSWORD_SCRIPT);
+        const result = active as { password?: boolean } | null;
+        if (result && result.password === true) throw new Error(PASSWORD_TYPE_ERROR);
       }
       await this.inputCommand(tab.id, "Input.insertText", { text: request.text });
       if (request.submit) {
@@ -694,11 +764,22 @@ export class BrowserAgentControl {
 
   private async idle(sessionId: string): Promise<unknown> {
     this.assertSession(sessionId);
+    await this.restoreSession(sessionId);
+    const tabId = this.agentTabs.get(sessionId);
+    return { action: "idle", tabId: tabId ?? null, text: "Agent browser tab restored to the background." };
+  }
+
+  private async restoreSession(sessionId: string): Promise<void> {
     this.sessionActive.set(sessionId, false);
     const tabId = this.agentTabs.get(sessionId);
     if (tabId) await this.releaseHold(tabId);
     this.publish(sessionId);
-    return { action: "idle", tabId: tabId ?? null, text: "Agent browser tab restored to the background." };
+  }
+
+  private bumpRequests(sessionId: string, delta: number): void {
+    const next = (this.requestDepth.get(sessionId) ?? 0) + delta;
+    if (next <= 0) this.requestDepth.delete(sessionId);
+    else this.requestDepth.set(sessionId, next);
   }
 
   private async closeSession(sessionId: string): Promise<unknown> {
