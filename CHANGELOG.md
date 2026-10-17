@@ -9,6 +9,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - 升级 Pi 运行时至 1.3.0，并重新核验官方 npm 安装包、源码与入口完整性；同步 Undici 8.12.2 的运行时审计和打包检查。
 - 更新应用、桌面与官网依赖，包括 Next.js 16.4.2、React 19.3.1、Electron 44.9.0、KaTeX 0.19、Mermaid 12 和 ESLint 10；TypeScript 使用保留旧编译器 API 的最新兼容版本 6.0.3。
 - 适配 Electron 新版异步剪贴板接口，复制操作等待系统写入完成；文本、富文本、图片与鸿蒙媒体复制继续可用，采集期间保留来源排除与锁屏保护。
+- 更新 SQLite WASM 新版资源路径与隔离打包校验，继续验证 SQL 错误定位不会改写源数据库。
 
 ## [0.5.5-beta.26] - 2026-10-17
 

@@ -1000,7 +1000,7 @@ async function main() {
   }
   await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "harmony", "runtime", "sqlite-inspector.cjs"));
   await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "lib", "harmony", "runtime", "sqlite-error-location.cjs"));
-  for (const asset of ["node.mjs", "sqlite-wasm/jswasm/sqlite3-node.mjs", "sqlite-wasm/jswasm/sqlite3.wasm"]) {
+  for (const asset of ["dist/node.mjs", "dist/sqlite3.wasm"]) {
     await assertFile(join(`${packagedRuntimeArchive}.unpacked`, "node_modules", "@sqlite.org", "sqlite-wasm", asset));
   }
   const launcherSource = await readFile(join(packagedWebRoot, "server.js"), "utf8");
