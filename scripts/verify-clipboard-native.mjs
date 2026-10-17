@@ -22,7 +22,7 @@ const ui = `<!doctype html><meta charset="utf-8"><style>${clipboardTheme}${css}<
 const testTarget = '<!doctype html><meta charset="utf-8"><title>Clipboard acceptance target</title><textarea id="target" autofocus style="width:90%;height:160px"></textarea><script>window.keys=[];document.addEventListener("keydown",e=>window.keys.push(e.key));</script>';
 const script = path.join(directory, "main.cjs");
 await writeFile(script, `
-const {app,BrowserWindow,protocol,clipboard,nativeImage,globalShortcut}=require('electron');
+const {app,BrowserWindow,protocol,clipboard,ClipboardItem,nativeImage,globalShortcut}=require('electron');
 const {createServer}=require('node:http'); const {readFileSync,writeFileSync,unlinkSync}=require('node:fs');const {join}=require('node:path');
 const {ClipboardController}=require(${JSON.stringify(path.resolve("desktop/dist/clipboard-controller.js"))});
 app.setPath('userData',${JSON.stringify(path.join(directory, "profile"))});
@@ -37,18 +37,22 @@ app.whenReady().then(async()=>{
  const controller=new ClipboardController({directory:${JSON.stringify(path.join(directory, "history"))},origin,partition,host,trusted:event=>event.sender===host.webContents&&event.senderFrame===host.webContents.mainFrame,openManager:()=>host,onError:error=>global.failures.push(String(error))});
  await controller.start();
  global.controller=controller;global.host=host;global.origin=origin.href;global.partition=partition;
- global.originalFormats=clipboard.availableFormats();
- global.canRestoreText=global.originalFormats.every(format=>/^(text\\/(plain|html|rtf)|HTML Format|Rich Text Format|CF_UNICODETEXT|CF_TEXT|CF_LOCALE)$/i.test(format))&&!controller.runtime.native.hasFiles();
- global.originalData={};
- if(global.canRestoreText){
-   if(global.originalFormats.some(format=>/plain|CF_UNICODETEXT|CF_TEXT/i.test(format)))global.originalData.text=clipboard.readText();
-   if(global.originalFormats.some(format=>/html/i.test(format)))global.originalData.html=clipboard.readHTML();
-   if(global.originalFormats.some(format=>/rtf|Rich Text Format/i.test(format)))global.originalData.rtf=clipboard.readRTF();
- }
+ const originalSequence=controller.runtime.native.currentSequence();
+ const originalItems=await clipboard.read();
+ global.originalFormats=originalItems.flatMap(item=>item.types);
+ global.canRestoreText=global.originalFormats.every(format=>{
+   const raw=/^electron application\\/osclipboard;format="([^"]+)"$/.exec(format);
+   return /^(text\\/(plain|html|rtf)|HTML Format|Rich Text Format|CF_UNICODETEXT|CF_TEXT|CF_LOCALE)$/i.test(raw?raw[1]:format);
+ })&&!controller.runtime.native.hasFiles();
+ global.originalData=global.canRestoreText?await Promise.all(originalItems.map(async item=>{
+   const data={};for(const type of item.types)data[type]=await item.getType(type);
+   return new ClipboardItem(data);
+ })):[];
+ if(originalSequence!==controller.runtime.native.currentSequence()){global.canRestoreText=false;global.originalData=[];}
  global.ownedSequence=null;
  const operate=controller.runtime.operate.bind(controller.runtime);
- controller.runtime.operate=async(...args)=>{try{return await operate(...args)}finally{if(clipboard.readText()===global.fixtureText)global.ownedSequence=controller.runtime.native.currentSequence()}};
- global.restore=()=>{if(global.ownedSequence!==null&&controller.runtime.native.currentSequence()===global.ownedSequence){if(global.originalFormats.length)clipboard.write(global.originalData);else clipboard.clear();global.ownedSequence=null;}};
+ controller.runtime.operate=async(...args)=>{try{return await operate(...args)}finally{if(await clipboard.readText()===global.fixtureText)global.ownedSequence=controller.runtime.native.currentSequence()}};
+ global.restore=async()=>{if(global.ownedSequence!==null&&controller.runtime.native.currentSequence()===global.ownedSequence){if(global.originalFormats.length)await clipboard.write(global.originalData);else clipboard.clear();global.ownedSequence=null;}};
  const koffi=require(${JSON.stringify(require.resolve("koffi", { paths: [path.resolve("desktop")] }))});
  const sendInput=koffi.load('user32.dll').func('uint32_t __stdcall SendInput(uint32_t count,const void *input,int size)');
  global.raiseTarget=()=>new Promise((resolve,reject)=>{
@@ -81,7 +85,7 @@ app.whenReady().then(async()=>{
  global.imageId=await controller.runtime.store.capture({image:image.toPNG()});
  global.newAttacker=async()=>{const win=new BrowserWindow({show:false,webPreferences:{preload:${JSON.stringify(path.resolve("desktop/dist/preload.js"))},partition,sandbox:true,contextIsolation:true}});await win.loadURL(origin.href+'attacker');global.attacker=win;return win.webContents.id;};
  global.removeDragFixture=()=>unlinkSync(global.dragFixtureFiles[0]);
- global.shutdown=async()=>{global.testCtrl(false);global.restore();global.prepareRequests?.forEach(request=>request.resolve([]));globalShortcut.unregister('F23');globalShortcut.unregister('F24');await controller.stop();host.destroy();if(global.attacker&&!global.attacker.isDestroyed())global.attacker.destroy();await new Promise(resolve=>server.close(resolve));};
+ global.shutdown=async()=>{global.testCtrl(false);await global.restore();global.prepareRequests?.forEach(request=>request.resolve([]));globalShortcut.unregister('F23');globalShortcut.unregister('F24');await controller.stop();host.destroy();if(global.attacker&&!global.attacker.isDestroyed())global.attacker.destroy();await new Promise(resolve=>server.close(resolve));};
  global.ready=true;
 }).catch(error=>{global.setupError=String(error);console.error(error)});
 `);
@@ -223,10 +227,10 @@ try {
     const native = await application.evaluate(async ({ clipboard }) => {
       const runtime = global.controller.runtime;
       await runtime.mutate({ type: 'settings', value: { enabled: true } });
-      clipboard.writeText('Piora event capture fixture');global.ownedSequence=runtime.native.currentSequence();
+      await clipboard.writeText('Piora event capture fixture');global.ownedSequence=runtime.native.currentSequence();
       await new Promise(resolve=>setTimeout(resolve,150));
       const first=await runtime.store.query({text:'Piora event capture fixture'});
-      clipboard.writeText('Piora event capture fixture');global.ownedSequence=runtime.native.currentSequence();
+      await clipboard.writeText('Piora event capture fixture');global.ownedSequence=runtime.native.currentSequence();
       await new Promise(resolve=>setTimeout(resolve,150));
       const second=await runtime.store.query({text:'Piora event capture fixture'});
       await runtime.mutate({type:'settings',value:{enabled:false}});
