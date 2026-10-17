@@ -12,6 +12,7 @@ import {
   app,
   BrowserWindow,
   clipboard,
+  ClipboardItem,
   dialog,
   ipcMain,
   Menu,
@@ -1106,39 +1107,41 @@ function registerFileShellHandlers(): void {
     if (!response.ok) throw new Error("Harmony media storage is unavailable");
     const { storage } = await response.json() as { storage: { screenshotDirectory: string; recordingDirectory: string } };
     await copyHarmonyMedia(value, storage, {
-      writeImage: (png) => {
+      writeImage: async (png) => {
         const picture = nativeImage.createFromBuffer(png);
         if (picture.isEmpty()) throw new Error("Invalid Harmony screenshot");
-        clipboard.writeImage(picture);
+        await clipboard.write([new ClipboardItem({ "image/png": new Blob([Uint8Array.from(picture.toPNG())], { type: "image/png" }) })]);
       },
-      writeFile: (path) => {
+      writeFile: async (path) => {
         if (process.platform === "win32") {
           const native = clipboardController?.runtime.native;
           if (!native || !mainWindow || mainWindow.isDestroyed()) throw new Error("Native file clipboard is unavailable");
           native.writeFiles([path], mainWindow);
         } else if (process.platform === "linux") {
-          clipboard.writeBuffer("text/uri-list", Buffer.from(`${pathToFileURL(path).href}\r\n`));
+          await clipboard.write([new ClipboardItem({ "text/uri-list": `${pathToFileURL(path).href}\r\n` })]);
         } else throw new Error("File clipboard is unavailable on this platform");
       },
     });
   });
-  ipcMain.handle("pi:clipboard-read", (event, image: unknown) => {
+  ipcMain.handle("pi:clipboard-read", async (event, image: unknown) => {
     if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted clipboard request");
     if (image === true) {
-      const value = clipboard.readImage();
+      const item = (await clipboard.read()).find(item => item.types.includes("image/png"));
+      if (!item) return null;
+      const value = nativeImage.createFromBuffer(Buffer.from(await (await item.getType("image/png")).arrayBuffer()));
       return value.isEmpty() ? null : value.toDataURL();
     }
     return clipboard.readText();
   });
-  ipcMain.handle("pi:clipboard-write", (event, value: unknown, image: unknown) => {
+  ipcMain.handle("pi:clipboard-write", async (event, value: unknown, image: unknown) => {
     if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted clipboard request");
     if (typeof value !== "string" || value.length > 12 * 1024 * 1024) throw new Error("Invalid clipboard content");
     if (image === true) {
       if (!/^data:image\/(png|jpeg|webp|gif);base64,/.test(value)) throw new Error("Invalid clipboard image");
       const picture = nativeImage.createFromDataURL(value);
       if (picture.isEmpty()) throw new Error("Invalid clipboard image");
-      clipboard.writeImage(picture);
-    } else clipboard.writeText(value);
+      await clipboard.write([new ClipboardItem({ "image/png": new Blob([Uint8Array.from(picture.toPNG())], { type: "image/png" }) })]);
+    } else await clipboard.writeText(value);
   });
   ipcMain.removeHandler(REVEAL_PATH_CHANNEL);
   ipcMain.removeHandler(OPEN_PATH_CHANNEL);
@@ -2979,7 +2982,7 @@ if (!hasSingleInstanceLock) {
           : (chinese ? ["关闭", "复制错误信息"] : ["Close", "Copy error details"]),
         defaultId: 1, cancelId: 0, noLink: true,
       });
-      if (result.response === 1) clipboard.writeText(detail);
+      if (result.response === 1) await clipboard.writeText(detail);
       if (result.response === 2 && logger?.fileLoggingAvailable) shell.showItemInFolder(logger.filePath);
     } catch (dialogError) {
       logger?.error("Unable to display startup diagnostics", dialogError);

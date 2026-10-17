@@ -2,7 +2,7 @@ import { lstat, readFile, realpath } from "node:fs/promises";
 import { dirname, extname, isAbsolute, resolve } from "node:path";
 
 type MediaStorage = { screenshotDirectory: string; recordingDirectory: string };
-type ClipboardOutput = { writeImage: (png: Buffer) => void; writeFile: (path: string) => void };
+type ClipboardOutput = { writeImage: (png: Buffer) => void | Promise<void>; writeFile: (path: string) => void | Promise<void> };
 
 /** Only saved media in the server's configured directories may cross this bridge. */
 export async function copyHarmonyMedia(value: unknown, storage: MediaStorage, output: ClipboardOutput): Promise<void> {
@@ -24,7 +24,7 @@ export async function copyHarmonyMedia(value: unknown, storage: MediaStorage, ou
   }
   if (media.kind === "recording") {
     // Copy the file reference, never load a potentially large video into memory.
-    output.writeFile(canonicalPath);
+    await output.writeFile(canonicalPath);
     return;
   }
   if (info.size > 32 * 1024 * 1024) throw new Error("Harmony screenshot is too large to copy");
@@ -33,5 +33,5 @@ export async function copyHarmonyMedia(value: unknown, storage: MediaStorage, ou
     || png.readUInt32BE(16) * png.readUInt32BE(20) > 32_000_000) {
     throw new Error("Invalid Harmony screenshot");
   }
-  output.writeImage(png);
+  await output.writeImage(png);
 }

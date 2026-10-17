@@ -423,8 +423,8 @@ async function resolveDevEcoCli(environment: NodeJS.ProcessEnv, explicit?: strin
   const runtimeRoot = environment.PIORA_WEB_RUNTIME_ROOT?.trim();
   return await firstRegularFile([
     runtimeRoot && isAbsolute(runtimeRoot)
-      ? join(runtimeRoot, "node_modules", "@deveco", "deveco-cli", "dist", "cli.js") : undefined,
-    join(process.cwd(), "node_modules", "@deveco", "deveco-cli", "dist", "cli.js"),
+      ? join(runtimeRoot, "node_modules", "@deveco", "deveco-cli", "cli.js") : undefined,
+    join(process.cwd(), "node_modules", "@deveco", "deveco-cli", "cli.js"),
   ], 64 * 1024 * 1024);
 }
 

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { clipboard, nativeImage, powerMonitor, type BrowserWindow } from "electron";
+import { clipboard, ClipboardItem, nativeImage, powerMonitor, type BrowserWindow } from "electron";
 import { ClipboardStore } from "./clipboard-store.js";
 import { WindowsClipboard } from "./clipboard-windows.js";
 import { ClipboardDragFiles } from "./clipboard-drag-files.js";
@@ -30,6 +30,8 @@ export class ClipboardRuntime {
   private admittedBytes = 0;
   private pending = new Set<Promise<unknown>>();
   private operationTail: Promise<unknown> = Promise.resolve();
+  private captureTail: Promise<void> | null = null;
+  private writing = false;
   private mutationTail: Promise<unknown> = Promise.resolve();
   private listeners = new Set<(change: ClipboardChange) => void>();
   private timer: ReturnType<typeof setInterval> | undefined;
@@ -117,8 +119,9 @@ export class ClipboardRuntime {
       shortcut: this.shortcut, target: this.native?.targetName(targetToken) ?? null, canPaste: storage === "ready" && Boolean(this.native), canDrag: storage === "ready",
       budgetState: this.full || stored.budgetState === "full" ? "full" : stored.budgetState };
   }
-  private snapshot(): ClipboardCapture | null {
-    const formats = clipboard.availableFormats();
+  private async snapshot(): Promise<ClipboardCapture | null> {
+    const items = await clipboard.read();
+    const formats = items.flatMap(item => item.types);
     if (formats.some(f => /password|concealed|transient|excludeclipboardcontentfrommonitorprocessing/i.test(f))) return null;
     const source = this.native?.clipboardSource() ?? { name: "", executable: "" };
     // Unknown provenance cannot establish that an application exclusion is
@@ -128,13 +131,18 @@ export class ClipboardRuntime {
     const fileFormat = this.native?.hasFiles() || formats.some(f => /hdrop|filenamew|cf_hdrop|text\/uri-list/i.test(f));
     if (fileFormat && !this.settings.captureFiles) return null;
     const input: ClipboardCapture = { source };
+    const readText = async (format: "text/plain" | "text/html" | "text/rtf") => {
+      const item = items.find(item => item.types.includes(format));
+      return item ? (await item.getType(format)).text() : "";
+    };
     if (this.settings.captureFiles && this.native) { const files = this.native.readFiles(); if (files.length) input.files = files; }
     if (this.settings.captureText) {
-      const text = clipboard.readText(), html = clipboard.readHTML(), rtf = clipboard.readRTF();
+      const [text, html, rtf] = await Promise.all([readText("text/plain"), readText("text/html"), readText("text/rtf")]);
       if (text) input.text = text; if (html) input.html = html; if (rtf) input.rtf = rtf;
     }
     if (this.settings.captureImages && formats.some(f => /image|bitmap|dib|png/i.test(f))) {
-      const image = clipboard.readImage();
+      const item = items.find(item => item.types.includes("image/png"));
+      const image = item ? nativeImage.createFromBuffer(Buffer.from(await (await item.getType("image/png")).arrayBuffer())) : nativeImage.createEmpty();
       if (!image.isEmpty()) {
         const size = image.getSize();
         if (size.width * size.height > 100_000_000) throw new Error("图片尺寸超过采集上限，已跳过。");
@@ -143,7 +151,16 @@ export class ClipboardRuntime {
     }
     return input.text || input.html || input.rtf || input.image || input.files?.length ? input : null;
   }
-  async capture(manual: boolean, initial = false): Promise<void> {
+  capture(manual: boolean, initial = false): Promise<void> {
+    if (this.captureTail && !manual) return Promise.resolve();
+    const operation = (this.captureTail ?? Promise.resolve()).catch(() => {}).then(() => this.captureNow(manual, initial));
+    this.captureTail = operation;
+    const clear = () => { if (this.captureTail === operation) this.captureTail = null; };
+    void operation.then(clear, clear);
+    return operation;
+  }
+  private async captureNow(manual: boolean, initial: boolean): Promise<void> {
+    if (this.writing) { if (manual) throw new Error("正在写入剪贴板，请稍后再试。"); return; }
     if (this.store.failure || this.reconnecting) { if (manual) throw this.store.failure ?? new Error("正在重新连接剪贴板存储，请稍后再试。"); return; }
     if (this.stopped || this.locked) { if (manual) throw new Error("请解锁后再收录。"); return; }
     if (!manual && (!this.settings.enabled || this.full)) return;
@@ -154,7 +171,7 @@ export class ClipboardRuntime {
       try {
         const sequence = this.native?.currentSequence() ?? -1;
         if (!manual && !initial && this.native && sequence === this.lastSequence) return;
-        const input = this.snapshot();
+        const input = await this.snapshot();
         if (this.native && sequence !== this.native.currentSequence()) { await delay(10); continue; }
         if (epoch !== this.captureEpoch || this.stopped || this.locked) return;
         this.lastSequence = sequence;
@@ -257,27 +274,31 @@ export class ClipboardRuntime {
     };
     if (value.plain) {
       if (entries.some(e => e.text === null)) throw new Error("所选内容没有纯文本表示。");
-      clipboard.writeText(mergedText());
+      await clipboard.writeText(mergedText());
     } else if (entries.length === 1 && first.kind !== "files") {
-      const data: Electron.Data = {};
-      if (first.text !== null) data.text = first.text;
-      if (first.html !== null) data.html = first.html;
-      if (first.rtf !== null) data.rtf = first.rtf;
-      if (first.image) { const asset = await this.store.asset(first.id); data.image = nativeImage.createFromPath(asset.path); if (data.image.isEmpty()) throw new Error("图片内容损坏。"); }
-      clipboard.write(data);
+      const data: Record<string, string | Blob> = {};
+      if (first.text !== null) data["text/plain"] = first.text;
+      if (first.html !== null) data["text/html"] = first.html;
+      if (first.rtf !== null) data["text/rtf"] = first.rtf;
+      if (first.image) {
+        const asset = await this.store.asset(first.id), image = nativeImage.createFromPath(asset.path);
+        if (image.isEmpty()) throw new Error("图片内容损坏。");
+        data["image/png"] = new Blob([Uint8Array.from(image.toPNG())], { type: "image/png" });
+      }
+      await clipboard.write([new ClipboardItem(data)]);
     } else if (entries.every(e => e.kind === "text" || e.kind === "link")) {
-      clipboard.writeText(mergedText());
+      await clipboard.writeText(mergedText());
     } else {
       if (!this.native || !this.host) throw new Error("当前平台不支持文件集合写入剪贴板，可以拖出文件使用。");
       this.native.writeFiles(await this.dragFiles(entries), this.host);
     }
     this.lastSequence = this.native?.currentSequence() ?? -1;
-    // Native events caused by the write cannot run until this turn yields.
-    if (!this.native) { try { const input = this.snapshot(); this.lastFingerprint = input ? fingerprint(input) : ""; } catch { this.lastFingerprint = ""; } }
+    if (!this.native) { try { const input = await this.snapshot(); this.lastFingerprint = input ? fingerprint(input) : ""; } catch { this.lastFingerprint = ""; } }
   }
   operate(value: ClipboardOperation, paste: boolean, hide: () => void): Promise<ClipboardOperationResult> {
     const operation = this.operationTail.then(async () => {
-      await this.write(value);
+      this.captureEpoch++; this.writing = true;
+      try { await this.write(value); } finally { this.writing = false; this.captureEpoch++; }
       if (!paste) return { status: "copied" as const, message: "已复制。" };
       if (!this.native) return { status: "no-target" as const, message: "已复制；当前平台请手动粘贴。" };
       return this.native.paste(value.targetToken, hide);

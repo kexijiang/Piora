@@ -34,13 +34,13 @@
     "dist:linux": "node ../scripts/run-electron-builder.mjs --linux AppImage --x64"
   },
   "devDependencies": {
-    "@types/node": "25.0.10",
-    "electron": "43.7.7",
+    "@types/node": "26.6.5",
+    "electron": "44.9.0",
     "electron-builder": "26.15.3",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   },
   "dependencies": {
     "electron-updater": "6.8.9",
-    "koffi": "3.2.1"
+    "koffi": "3.3.3"
   }
 }

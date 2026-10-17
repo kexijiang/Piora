@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": [
       "./node_modules/@deveco/deveco-cli/**/*",
+      "./node_modules/@deveco/deveco-cli-common/**/*",
+      "./node_modules/@deveco/deveco-cli-knowledgebase/**/*",
       "./.harmony-worker/**/*",
       "./lib/harmony/runtime/deveco-password.mjs",
     ],

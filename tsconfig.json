@@ -37,6 +37,7 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
+    ".verification",
     "node_modules",
     "node_modules.broken",
     "node_modules.broken/**",

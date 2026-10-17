@@ -13,7 +13,7 @@ const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const NODE_FORGE_RSA_PATCHED_SHA256 = "18ae286c1ef8e00fc6359ffe3280416946c1dfd6684c98c1c6af1590d7f7e9f4";
 const reviewedReplacements = [
   { name: "brace-expansion", lockedVersion: "5.0.9", installedVersion: "5.0.12" },
-  { name: "undici", lockedVersion: "8.10.2", installedVersion: "8.11.2" },
+  { name: "undici", lockedVersion: "8.10.2", installedVersion: "8.12.2" },
 ];
 
 async function fingerprint(directory) {
