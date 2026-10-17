@@ -197,7 +197,7 @@ async function main() {
   });
 
   log("tsc", "watching desktop/src");
-  typeScriptProcess = spawn(process.execPath, [join(root, "node_modules", "typescript", "bin", "tsc"), "-p", join(root, "desktop", "tsconfig.json"), "--watch", "--preserveWatchOutput"], {
+  typeScriptProcess = spawn(process.execPath, [join(root, "node_modules", "@typescript", "native", "lib", "tsc.js"), "-p", join(root, "desktop", "tsconfig.json"), "--watch", "--preserveWatchOutput"], {
     cwd: root,
     detached: process.platform !== "win32",
     env: sharedEnvironment,

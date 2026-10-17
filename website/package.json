@@ -38,10 +38,11 @@
     "eslint-config-next": "16.4.2",
     "react-server-dom-webpack": "19.3.1",
     "tailwindcss": "4.3.3",
-    "typescript": "6.0.3",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
     "vinext": "1.2.1",
     "vite": "8.3.4",
-    "wrangler": "4.151.1"
+    "wrangler": "4.151.1",
+    "@typescript/native": "npm:typescript@7.0.2"
   },
   "type": "module"
 }

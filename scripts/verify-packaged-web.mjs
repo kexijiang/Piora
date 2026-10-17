@@ -147,6 +147,8 @@ const requiredPaths = [
   "node_modules/@earendil-works/pi-coding-agent/dist/modes/interactive/theme/dark.json",
   "node_modules/rrule/package.json",
   "node_modules/tslib/package.json",
+  "node_modules/typescript/lib/typescript.js",
+  "node_modules/@typescript/old/lib/typescript.js",
   "node_modules/node-pty/package.json",
   "node_modules/hypium-driver/package.json",
   "node_modules/mediabunny/package.json",
@@ -1018,6 +1020,11 @@ async function main() {
     await assertFile(join(runtimeWebRoot, requiredPath));
   }
   const requirePackagedRuntime = createRequire(join(runtimeWebRoot, "package.json"));
+  const packagedTypeScript = requirePackagedRuntime("typescript");
+  if (typeof packagedTypeScript.createLanguageService !== "function"
+    || typeof packagedTypeScript.ScriptSnapshot?.fromString !== "function") {
+    throw new Error("Packaged TypeScript compatibility package cannot load its language service");
+  }
   const packagedMedia = requirePackagedRuntime("mediabunny");
   if (typeof packagedMedia.Output !== "function" || typeof packagedMedia.EncodedVideoPacketSource !== "function") throw new Error("Packaged owned-recording muxer is unavailable");
   const packagedHypium = requirePackagedRuntime("hypium-driver");

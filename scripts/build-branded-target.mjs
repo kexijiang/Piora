@@ -12,7 +12,7 @@ const before = await brandBuildFingerprint(root);
 const require = createRequire(import.meta.url);
 const commands = target === "web"
   ? [[require.resolve("next/dist/bin/next"), "build", "--webpack"], [resolve(root, "scripts/stage-standalone.mjs")]]
-  : [[require.resolve("typescript/bin/tsc"), "-p", "desktop/tsconfig.json"]];
+  : [[resolve(require.resolve("@typescript/native/package.json"), "../lib/tsc.js"), "-p", "desktop/tsconfig.json"]];
 for (const args of commands) {
   const result = spawnSync(process.execPath, args, { cwd: root, stdio: "inherit", windowsHide: true });
   if (result.error) throw result.error;

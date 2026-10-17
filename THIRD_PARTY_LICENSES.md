@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `1ed45bcc89fd9751b88ddde49dd41b24a0fee1407560a04aa7bc9fc5be7caef5`
+Lockfile SHA-256: `e801d7da290b0018c6816d8f7707a239000fd009617aaeafdf620c79e02c5c75`
 
-Unique locked packages: **1362**. Runtime packages: **901**. Build/development-only packages: **461**.
+Unique locked packages: **1384**. Runtime packages: **902**. Build/development-only packages: **482**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -272,6 +272,7 @@ Every locked package declares a license.
 | `@types/trusted-types` | `2.0.7` | MIT | Yes |
 | `@types/unist` | `2.0.11` | MIT | No |
 | `@types/unist` | `3.0.3` | MIT | No |
+| `@typescript/old` | `6.0.3` | Apache-2.0 | No |
 | `@ungap/structured-clone` | `1.3.0` | ISC | No |
 | `@upsetjs/venn.js` | `2.0.0` | MIT | No |
 | `@xmldom/xmldom` | `0.8.15` | MIT | No |
@@ -860,7 +861,7 @@ Every locked package declares a license.
 | `type-fest` | `0.20.2` | (MIT OR CC0-1.0) | Yes |
 | `type-is` | `2.1.0` | MIT | No |
 | `typebox` | `1.3.27` | MIT | No |
-| `typescript` | `6.0.3` | Apache-2.0 | No |
+| `typescript` | `6.0.2` | Apache-2.0 | No |
 | `ufo` | `1.6.4` | MIT | No |
 | `ui-verification-mcp` | `0.0.18` | MIT | Yes |
 | `underscore` | `1.13.8` | MIT | No |
@@ -1040,6 +1041,27 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@typescript-eslint/typescript-estree` | `8.57.1` | MIT | No |
 | `@typescript-eslint/utils` | `8.57.1` | MIT | No |
 | `@typescript-eslint/visitor-keys` | `8.57.1` | MIT | No |
+| `@typescript/native` | `7.0.2` | Apache-2.0 | No |
+| `@typescript/typescript-aix-ppc64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-darwin-arm64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-darwin-x64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-freebsd-arm64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-freebsd-x64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-arm` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-arm64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-loong64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-mips64el` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-ppc64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-riscv64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-s390x` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-linux-x64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-netbsd-arm64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-netbsd-x64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-openbsd-arm64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-openbsd-x64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-sunos-x64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-win32-arm64` | `7.0.2` | Apache-2.0 | Yes |
+| `@typescript/typescript-win32-x64` | `7.0.2` | Apache-2.0 | Yes |
 | `@unrs/resolver-binding-android-arm-eabi` | `1.11.1` | MIT | Yes |
 | `@unrs/resolver-binding-android-arm64` | `1.11.1` | MIT | Yes |
 | `@unrs/resolver-binding-darwin-arm64` | `1.11.1` | MIT | Yes |

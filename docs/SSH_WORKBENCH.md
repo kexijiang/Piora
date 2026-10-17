@@ -35,7 +35,7 @@ SSH 面板沿用工作区的放大入口和项目主题。连接页直接显示�
 ## 验证入口
 
 ```powershell
-node node_modules/typescript/bin/tsc --noEmit
+node_modules/.bin/tsc --noEmit
 npm run lint
 node --test lib/ssh-session.test.mjs
 node --test lib/ssh-vault.test.mjs

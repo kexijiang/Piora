@@ -181,7 +181,7 @@
     "three": "^0.186.1",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
-    "typescript": "6.0.3",
+    "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.2",
     "unified": "^11.0.5",
     "vscode-jsonrpc": "^9.0.3",
@@ -203,7 +203,8 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "jiti": "^2.7.0",
     "postcss": "^8.5.30",
-    "tailwindcss": "^4.3.3"
+    "tailwindcss": "^4.3.3",
+    "@typescript/native": "npm:typescript@7.0.2"
   },
   "optionalDependencies": {
     "@microsoft/winappcli": "0.7.1"
