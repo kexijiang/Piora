@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `e801d7da290b0018c6816d8f7707a239000fd009617aaeafdf620c79e02c5c75`
+Lockfile SHA-256: `fa0756db490567fbe98f02d14bad0399ec018f33ef6e66b635fe99f1a242633c`
 
-Unique locked packages: **1384**. Runtime packages: **902**. Build/development-only packages: **482**.
+Unique locked packages: **1382**. Runtime packages: **902**. Build/development-only packages: **480**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -1019,8 +1019,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@types/json-schema` | `7.0.15` | MIT | No |
 | `@types/json5` | `0.0.29` | MIT | No |
 | `@types/keyv` | `3.1.4` | MIT | No |
-| `@types/node` | `24.13.3` | MIT | No |
-| `@types/node` | `25.0.10` | MIT | No |
+| `@types/node` | `24.19.2` | MIT | No |
 | `@types/proper-lockfile` | `4.1.4` | MIT | No |
 | `@types/react` | `19.3.0` | MIT | No |
 | `@types/react-dom` | `19.3.0` | MIT | No |
@@ -1388,8 +1387,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `unbox-primitive` | `1.1.0` | MIT | No |
 | `undici` | `6.29.0` | MIT | No |
 | `undici` | `7.30.0` | MIT | Yes |
-| `undici-types` | `7.16.0` | MIT | No |
-| `undici-types` | `7.18.2` | MIT | No |
+| `undici-types` | `7.24.6` | MIT | No |
 | `universalify` | `0.1.2` | MIT | No |
 | `unrs-resolver` | `1.11.1` | MIT | No |
 | `unzipper` | `0.12.5` | MIT | No |
