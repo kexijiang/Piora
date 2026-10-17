@@ -94,7 +94,7 @@ async function fixture(options = {}) {
     '@kit.ArkUI': {}, '@kit.BasicServicesKit': {},
     '@kit.BackgroundTasksKit': { backgroundTaskManager: manager },
     '@kit.PerformanceAnalysisKit': { hilog: { info() {}, error() {} } },
-    '@ohos.display': { default: display },
+    '@ohos.display': { __esModule: true, default: display },
     'libscrcpy_capture.so': native
   };
   const write = (key, value) => {

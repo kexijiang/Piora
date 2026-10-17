@@ -256,6 +256,15 @@ export class AgentSessionWrapper {
       nativeMcp?: NativeMcpController;
     } = {},
   ) {
+    // Fence late starts inside the SDK's agent.prompt try/finally, so its
+    // active-run state and idle waiters also settle after preflight cancellation.
+    const agentPrompt = inner.agent.prompt;
+    if (agentPrompt) inner.agent.prompt = new Proxy(agentPrompt, {
+      apply: (target, receiver, args) => {
+        if (!this._alive || this.stopping) throw new Error("Prompt cancelled");
+        return Reflect.apply(target, receiver, args);
+      },
+    });
     this.nativeMcp = capabilityOptions.nativeMcp;
     for (const delivery of ["steer", "followUp"] as const) {
       const enqueue = inner.agent[delivery]?.bind(inner.agent);
@@ -1211,7 +1220,13 @@ export class AgentSessionWrapper {
               // SDK abort() only sees an active model run, not asynchronous auth,
               // input hooks or pre-prompt compaction. Fence that late model start.
               preflightResult: (disposition) => {
-                if (!this._alive || abortGeneration !== this.abortGeneration) this.inner.clearQueue();
+                if (!this._alive || abortGeneration !== this.abortGeneration) {
+                  this.inner.clearQueue();
+                  // Pi 1.3 calls this callback after setting its active flag but
+                  // before entering the run's finally. Throw at agent admission
+                  // instead, where the SDK can unwind that flag and idle waiters.
+                  if (disposition === "started" && this.inner.agent.prompt) return;
+                }
                 assertNotAborted();
                 // Only a started model request can later need a continuation.
                 // Handled input belongs to its extension; queued input belongs

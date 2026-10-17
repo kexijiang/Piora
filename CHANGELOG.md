@@ -10,6 +10,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - 更新应用、桌面与官网依赖，包括 Next.js 16.4.2、React 19.3.1、Electron 44.9.0、KaTeX 0.19、Mermaid 12 和 ESLint 10；TypeScript 使用保留旧编译器 API 的最新兼容版本 6.0.3。
 - 适配 Electron 新版异步剪贴板接口，复制操作等待系统写入完成；文本、富文本、图片与鸿蒙媒体复制继续可用，采集期间保留来源排除与锁屏保护。
 - 更新 SQLite WASM 新版资源路径与隔离打包校验，继续验证 SQL 错误定位不会改写源数据库。
+- 同步 winapp 0.7.1 的启动与打包版本校验，并让鸿蒙采集测试的模块模拟兼容新版 TypeScript 默认导入规则，保留旋转、停止与断连状态断言。
+- 修复 Pi 1.3 预检阶段取消后会话持续忙碌的问题：在模型实际启动前阻止迟到请求，并让 SDK 正常清理状态，停止后可继续发送新消息。
 
 ## [0.5.5-beta.26] - 2026-10-17
 

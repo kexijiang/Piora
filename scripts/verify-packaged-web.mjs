@@ -624,7 +624,7 @@ async function inspectElectronShell(webRoot, required) {
     if (!sourceLicense.equals(packagedLicense)) throw new Error("Packaged winapp CLI license differs from locked dependency");
     const options = { windowsHide: true, timeout: 15_000, maxBuffer: 1024 * 1024, env: { ...process.env, WINAPP_CLI_TELEMETRY_OPTOUT: "1" } };
     const { stdout: version } = await execFileAsync(join(winappRoot, "winapp.exe"), ["--version"], options);
-    if (version.trim().split(/\s+/).at(-1) !== "0.7.0") throw new Error(`Packaged winapp CLI version mismatch: ${version.slice(-100)}`);
+    if (version.trim().split(/\s+/).at(-1) !== "0.7.1") throw new Error(`Packaged winapp CLI version mismatch: ${version.slice(-100)}`);
     const { stdout: windows } = await execFileAsync(join(winappRoot, "winapp.exe"), ["ui", "list-windows", "--json"], options);
     if (!Array.isArray(JSON.parse(windows))) throw new Error("Packaged winapp CLI could not list Windows windows");
   }

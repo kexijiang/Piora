@@ -162,6 +162,7 @@ export interface AgentSessionLike {
   readonly sessionManager: SessionManager;
   readonly settingsManager: SettingsManager;
   readonly agent: {
+    prompt?: Agent["prompt"];
     steer?: Agent["steer"];
     followUp?: Agent["followUp"];
     transformContext?: Agent["transformContext"];

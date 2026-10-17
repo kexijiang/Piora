@@ -2,7 +2,7 @@ import { spawn, execFile, type ChildProcessWithoutNullStreams } from "node:child
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-export const WINAPP_VERSION = "0.7.0";
+export const WINAPP_VERSION = "0.7.1";
 const MAX_OUTPUT = 1024 * 1024;
 const MAX_TEXT = 12_000;
 const ACTIONS = ["invoke", "select", "toggle", "toggle-on", "toggle-off", "expand", "collapse"] as const;
