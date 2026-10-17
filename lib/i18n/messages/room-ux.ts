@@ -1,4 +1,5 @@
 const copy = {
+  resizeDetails: ["调整群聊正文与详情面板宽度", "Resize conversation and details panel"],
   groups: ["群聊", "Groups"], create: ["新建群聊", "New group"], createHint: ["选好成员，直接开始协作", "Choose teammates and start working"],
   loadEarlier: ["加载更早消息", "Load earlier messages"],
   questionResolved: ["已处理", "Resolved"],

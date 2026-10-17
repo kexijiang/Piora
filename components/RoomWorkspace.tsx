@@ -47,6 +47,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
   const viewport = useRef<HTMLDivElement>(null);
   const messageRefs = useRef(new Map<string, HTMLElement>());
   const conversationRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const detailsRef = useRef<HTMLElement>(null);
   const pinned = useRef(true);
   const currentRoomId = useRef(room.id);
@@ -57,6 +58,12 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
   const resizer = useResizablePanel({ ariaLabel: "调整群聊正文宽度", cssVariable: "--room-column-width", defaultWidth: 840,
     getDefaultWidth, getMaxWidth, growthDirection: "left", dragScale: 2, followDefaultWidth: true,
     maxWidth: 3200, minWidth: 260, panelRef: conversationRef, storageKey: "pi-room-column-width", widthRef: columnWidth });
+  const detailsWidth = useRef(324);
+  const getDetailsMaxWidth = useCallback(() => (contentRef.current?.clientWidth ?? 1000) - 400, []);
+  const detailsResizer = useResizablePanel({ ariaLabel: t("roomUx.resizeDetails"), cssVariable: "--room-details-width", defaultWidth: 324,
+    getMaxWidth: getDetailsMaxWidth, growthDirection: "left", maxWidth: 800, minWidth: 260,
+    panelRef: contentRef, storageKey: "pi-room-details-width", widthRef: detailsWidth });
+  const reclampDetailsWidth = detailsResizer.reclampWidth;
   useFocusTrap(detailsRef, overlay && panel !== null, { onEscape: () => setPanel(null) });
 
   const activeRun = runs.find((run) => !terminal.has(run.phase));
@@ -84,9 +91,17 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
 
   useEffect(() => {
     const media = window.matchMedia("(max-width: 1000px)");
-    const update = () => setOverlay(media.matches);
-    update(); media.addEventListener("change", update); return () => media.removeEventListener("change", update);
-  }, []);
+    const update = () => {
+      const width = contentRef.current?.clientWidth ?? 0;
+      if (width === 0) return; // A hidden workspace must not replace its layout preference.
+      setOverlay(media.matches || width < 700);
+      reclampDetailsWidth();
+    };
+    const observer = new ResizeObserver(update);
+    if (contentRef.current) observer.observe(contentRef.current);
+    update(); media.addEventListener("change", update);
+    return () => { observer.disconnect(); media.removeEventListener("change", update); };
+  }, [reclampDetailsWidth]);
   useEffect(() => {
     setPanel(null); setSettingsOpen(false); setThreadId(null); setSelectedRunId(null); setError(null); setPendingAction(false); pinned.current = true; messageRefs.current.clear();
   }, [initialRoom.id]);
@@ -251,12 +266,15 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
 
   const renderPinnedGoal = () => room.description?.trim() || activeRun ? (<div className={styles.pinnedGoal}><AliIcon name="bookmark" size={15} /><span>{t("roomUx.goal")}：{room.description?.trim() || activeRun?.objective.split("\n")[0]}</span></div>) : null;
 
+  const renderDetailsResizeHandle = () => overlay ? null : <div {...detailsResizer.separatorProps}
+    className={`${styles.detailsResizeHandle}${detailsResizer.isResizing ? ` ${styles.resizing}` : ""}`}
+    data-resize-handle="room-details" title={t("layout.resizeHint")} />;
   const renderWorkspace = () => <section className={`${styles.workspace} room-workspace`} aria-label={`${t("roomUx.groups")}：${room.name}`}>
     {renderHeader()}
     {renderPinnedGoal()}
-    <div className={styles.content}>
+    <div className={styles.content} ref={contentRef}>
       <div className={styles.conversation} ref={conversationRef}>
-        {!overlay ? <div {...resizer.separatorProps} className={styles.columnResizeHandle} data-resize-handle="room-column" data-resize-growth-direction="left" /> : null}
+        {!overlay && !panel ? <div {...resizer.separatorProps} className={styles.columnResizeHandle} data-resize-handle="room-column" data-resize-growth-direction="left" /> : null}
         <div className={styles.messageViewport}>
           <div ref={viewport} className={styles.messages} data-room-message-list="" onScroll={() => {
             const element = viewport.current!; const away = shouldShowScrollToBottom({ scrollHeight: element.scrollHeight, scrollTop: element.scrollTop, clientHeight: element.clientHeight, threshold: 80 }); pinned.current = !away; setShowLatest(away);
@@ -278,7 +296,8 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
       {!overlay && messages.length > 4 ? <RoomMessageNavigator messages={messages.filter((message) => !message.threadRootId)} scrollContainer={viewport} messageRefs={messageRefs} /> : null}
       {panel ? <>
         {overlay ? <div className={styles.detailsBackdrop} aria-hidden="true" onClick={() => setPanel(null)} /> : null}
-        <aside ref={detailsRef} className={`${styles.details} room-workspace-details`} role={overlay ? "dialog" : undefined} aria-modal={overlay ? true : undefined} aria-label={t(`roomUx.${panel === "tasks" ? "taskDetails" : panel}`)}>
+        {renderDetailsResizeHandle()}
+        <aside ref={detailsRef} className={`${styles.details}${overlay ? ` ${styles.detailsOverlay}` : ""} room-workspace-details`} role={overlay ? "dialog" : undefined} aria-modal={overlay ? true : undefined} aria-label={t(`roomUx.${panel === "tasks" ? "taskDetails" : panel}`)}>
           <div className={styles.detailsHeader}><h2>{t(`roomUx.${panel === "tasks" ? "taskDetails" : panel}`)}</h2><button type="button" className={styles.iconButton} aria-label={t("roomUx.close")} onClick={() => setPanel(null)}><AliIcon name="close" size={20} /></button></div>
           <div className={styles.detailsScroll}>
             {panel === "members" ? renderMembers() : null}

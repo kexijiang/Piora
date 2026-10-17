@@ -5892,6 +5892,7 @@ span.linenumber {
 }
 .compact-process-detail { margin: 0 0 6px 16px; padding-left: 14px; border-left: 1px solid var(--border); }
 .compact-process-detail .message-row-assistant { margin-bottom: 6px !important; }
+.compact-process-detail .message-response-meta { display: none !important; }
 .compact-process-detail .message-assistant-blocks { font-size: var(--text-sm); color: var(--text-muted); }
 .compact-process-detail .chat-disclosure--surface,
 .compact-command-card .chat-disclosure--surface { border: 0; background: transparent; backdrop-filter: none; }

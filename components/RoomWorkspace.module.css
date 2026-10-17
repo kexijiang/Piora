@@ -154,7 +154,11 @@
 .recoveryRow small { margin-top: 4px; color: var(--text-muted); }
 .scrollToBottom { position: absolute; z-index: 4; bottom: 15px; left: 50%; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: 50%; background: var(--bg); color: var(--text-muted); box-shadow: 0 2px 8px color-mix(in srgb, var(--text) 8%, transparent); }
 .loadOlder { display: block; margin: 0 auto 20px; border: 0; background: transparent; color: var(--text-muted); font-size: var(--text-sm) !important; }
-.details { display: flex; flex-direction: column; flex: 0 0 324px; width: 324px; max-width: 100%; min-height: 0; border-left: 1px solid var(--border); background: var(--bg); }
+.details { display: flex; flex-direction: column; flex: 0 0 var(--room-details-width, 324px); width: var(--room-details-width, 324px); max-width: 100%; min-width: 0; min-height: 0; background: var(--bg); }
+.detailsResizeHandle { position: relative; flex: 0 0 8px; align-self: stretch; cursor: col-resize; touch-action: none; outline: none; }
+.detailsResizeHandle::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: var(--border); }
+.detailsResizeHandle:hover::after, .detailsResizeHandle:focus-visible::after, .detailsResizeHandle.resizing::after { left: 2px; width: 3px; background: var(--accent); }
+.detailsOverlay { position: absolute; z-index: 20; top: 0; right: 0; bottom: 0; width: min(380px, 94%); border-left: 1px solid var(--border); box-shadow: -8px 0 30px color-mix(in srgb, var(--text) 8%, transparent); }
 .detailsHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 66px; padding: 17px 20px; border-bottom: 1px solid var(--border); }
 .detailsHeader h2 { margin: 0; font-size: var(--text-lg); font-weight: 600; }
 .detailsScroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 22px 20px; }
