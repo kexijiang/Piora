@@ -1126,9 +1126,11 @@ function registerFileShellHandlers(): void {
   ipcMain.handle("pi:clipboard-read", async (event, image: unknown) => {
     if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted clipboard request");
     if (image === true) {
-      const item = (await clipboard.read()).find(item => item.types.includes("image/png"));
+      const items = await clipboard.read();
+      const imageType = items.some(item => item.types.includes("image/png")) ? "image/png" : "image/jpeg";
+      const item = items.find(item => item.types.includes(imageType));
       if (!item) return null;
-      const value = nativeImage.createFromBuffer(Buffer.from(await (await item.getType("image/png")).arrayBuffer()));
+      const value = nativeImage.createFromBuffer(Buffer.from(await (await item.getType(imageType)).arrayBuffer()));
       return value.isEmpty() ? null : value.toDataURL();
     }
     return clipboard.readText();

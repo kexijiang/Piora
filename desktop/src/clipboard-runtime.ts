@@ -141,8 +141,9 @@ export class ClipboardRuntime {
       if (text) input.text = text; if (html) input.html = html; if (rtf) input.rtf = rtf;
     }
     if (this.settings.captureImages && formats.some(f => /image|bitmap|dib|png/i.test(f))) {
-      const item = items.find(item => item.types.includes("image/png"));
-      const image = item ? nativeImage.createFromBuffer(Buffer.from(await (await item.getType("image/png")).arrayBuffer())) : nativeImage.createEmpty();
+      const imageType = formats.includes("image/png") ? "image/png" : "image/jpeg";
+      const item = items.find(item => item.types.includes(imageType));
+      const image = item ? nativeImage.createFromBuffer(Buffer.from(await (await item.getType(imageType)).arrayBuffer())) : nativeImage.createEmpty();
       if (!image.isEmpty()) {
         const size = image.getSize();
         if (size.width * size.height > 100_000_000) throw new Error("图片尺寸超过采集上限，已跳过。");
