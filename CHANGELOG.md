@@ -12,6 +12,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - 更新 SQLite WASM 新版资源路径与隔离打包校验，继续验证 SQL 错误定位不会改写源数据库。
 - 同步 winapp 0.7.1 的启动与打包版本校验，并让鸿蒙采集测试的模块模拟兼容新版 TypeScript 默认导入规则，保留旋转、停止与断连状态断言。
 - 修复 Pi 1.3 预检阶段取消后会话持续忙碌的问题：在模型实际启动前阻止迟到请求，并让 SDK 正常清理状态，停止后可继续发送新消息。
+- 让图片隔离打包测试与实际暂存流程一致，排除 npm 命令链接，兼容新版 ASAR 对越界链接的检查；同步许可证替换断言到新的 Undici 安全版本。
 
 ## [0.5.5-beta.26] - 2026-10-17
 
