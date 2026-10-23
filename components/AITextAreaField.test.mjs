@@ -13,6 +13,6 @@ test("team settings text fields explain their purpose and preview AI optimizatio
   assert.match(field, /readPromptOptimizerModel/);
   assert.match(field, /fetch\("\/api\/prompts\/optimize"/);
   assert.match(settings, /help="说明团队要解决什么/);
-  assert.match(settings, /help="写清这个智能体负责什么/);
+  assert.match(settings, /label="成员设定（可选）" help="自由定义擅长领域、性格、说话风格或工作方式；留空也能正常交流。"/);
   assert.match(settings, /help="约定文件放哪里/);
 });

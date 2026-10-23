@@ -36,7 +36,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
   const actor = roomActor(room);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [overlay, setOverlay] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState<false | "overview" | "agents">(false);
   const [threadId, setThreadId] = useState<string | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState(false);
@@ -225,7 +225,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
       tabIndex={-1} className={styles.message} data-room-message={message.id} data-room-author={isUser ? "user" : "assistant"}>
       <RoomAvatar member={member} name={name} user={isUser} />
       <div className={styles.messageColumn}>
-        <div className={styles.messageMeta}><strong>{name}</strong>{member ? <span className={styles.roleBadge}>{t(`roomUx.${member.profile.role === "coordinator" ? "lead" : member.profile.role}`)}</span> : null}<time dateTime={new Date(message.createdAt).toISOString()}>{new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(message.createdAt)}</time></div>
+        <div className={styles.messageMeta}><strong>{name}</strong>{member && room.coordination.mode === "team" ? <span className={styles.roleBadge}>{t(`roomUx.${member.profile.role === "coordinator" ? "lead" : member.profile.role}`)}</span> : null}<time dateTime={new Date(message.createdAt).toISOString()}>{new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(message.createdAt)}</time></div>
         {parent && (isUser || insideThread) ? <button type="button" className={styles.quote} onClick={() => jumpToMessage(parent.id)}><AliIcon name="messages" size={13} /><span>{parent.author.name ?? t("roomUx.participant")}：{parent.content.slice(0, 130)}</span></button> : null}
         {renderMessageBody(message, member, name, run)}
         {message.attachments?.length ? <div className={styles.messageAttachments}>{message.attachments.map((file, index) => <a key={`${file.path}:${index}`} href={`/api/rooms/${room.id}/messages/${message.id}/attachments/${index}?sessionId=${encodeURIComponent(actor)}`} target="_blank" rel="noreferrer"><AliIcon name="file" size={16} />{file.name}</a>)}</div> : null}
@@ -243,8 +243,8 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
 
   const renderMembers = () => (<div className={styles.memberList}>{room.members.map((member) => {
               const activity = working.find((item) => item.sessionId === member.binding.sessionId);
-              return <details key={member.memberId} className={styles.memberCard}><summary><RoomAvatar member={member} /><span><strong>{member.profile.name}</strong><small>{t(`roomUx.${member.profile.role === "coordinator" ? "lead" : member.profile.role}`)} · {activity?.phase ?? t(`roomUx.${member.binding.status === "ready" ? "ready" : member.binding.status === "provisioning" ? "preparing" : member.binding.status === "missing" ? "missing" : "needsRestart"}`)}</small></span><AliIcon name="chevron-right" size={15} /></summary><p>{member.profile.roleDescription}</p><div className={styles.memberMetadata}><code>{member.profile.modelPolicy.mode === "pinned" ? `${member.profile.modelPolicy.provider}/${member.profile.modelPolicy.modelId}` : t("roomUx.inheritModel")}</code><code>{member.binding.cwd}</code></div><div className={styles.inlineActions}><button type="button" onClick={() => { composer.current?.mention(member.memberId); if (overlay) setPanel(null); }}>{t("roomUx.guide")}</button><button type="button" onClick={() => setSettingsOpen(true)}>{t("roomUx.settings")}</button></div></details>;
-            })}<button type="button" className={styles.textButton} onClick={() => setSettingsOpen(true)}><AliIcon name="plus" size={15} />{t("roomUx.addMember")}</button></div>);
+              return <details key={member.memberId} className={styles.memberCard}><summary><RoomAvatar member={member} /><span><strong>{member.profile.name}</strong><small>{room.coordination.mode === "team" ? `${t(`roomUx.${member.profile.role === "coordinator" ? "lead" : member.profile.role}`)} · ` : ""}{activity?.phase ?? t(`roomUx.${member.binding.status === "ready" ? "ready" : member.binding.status === "provisioning" ? "preparing" : member.binding.status === "missing" ? "missing" : "needsRestart"}`)}</small></span><AliIcon name="chevron-right" size={15} /></summary><p>{member.profile.roleDescription}</p><div className={styles.memberMetadata}><code>{member.profile.modelPolicy.mode === "pinned" ? `${member.profile.modelPolicy.provider}/${member.profile.modelPolicy.modelId}` : t("roomUx.inheritModel")}</code><code>{member.binding.cwd}</code></div><div className={styles.inlineActions}><button type="button" onClick={() => { composer.current?.mention(member.memberId); if (overlay) setPanel(null); }}>{t("roomUx.guide")}</button><button type="button" onClick={() => setSettingsOpen("overview")}>{t("roomUx.settings")}</button></div></details>;
+            })}<button type="button" className={styles.textButton} onClick={() => setSettingsOpen("agents")}><AliIcon name="plus" size={15} />{t("roomUx.addMember")}</button></div>);
 
   const renderTasks = () => (<>
               {selectedRun ? <section className={styles.runDetails}><h3>{selectedRun.objective.length > 90 ? `${selectedRun.objective.slice(0, 90)}…` : selectedRun.objective}</h3>{selectedRun.objective.length > 90 ? <details className={styles.evidence}><summary>{t("roomUx.fullObjective")}</summary><p>{selectedRun.objective}</p></details> : null}<p className={styles.detailHint}>{t("roomUx.ownedBy", { name: coordinator?.profile.name ?? t("roomUx.lead") })}</p><span className={styles.badge} data-phase={selectedRun.phase}>{t(selectedRun.stopRequested ? "roomUx.stopping" : `roomUx.phase.${selectedRun.phase}`)}</span>
@@ -264,7 +264,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
   const renderHeader = () => (<header className={`${styles.header} room-workspace-header`}>
       <div className={styles.headerIdentity}><h1>{room.name}</h1><p>{t("roomUx.ownedBy", { name: coordinator?.profile.name ?? t("roomUx.lead") })}<span>·</span>{selectingCount ? <span role="status">{t("roomUx.selectingHandler", { count: selectingCount })}</span> : working.length ? t("roomUx.workingCount", { count: working.length }) : t("roomUx.memberCount", { count: room.members.length })}{data.connection !== "connected" ? <><span>·</span><span role="status">{t(`roomUx.${data.connection}`)}</span></> : null}</p></div>
       <nav className={styles.headerTabs} aria-label={t("roomUx.viewDetails")}>{(["members", "tasks", "artifacts"] as const).map((tab) => <button key={tab} type="button" aria-label={t(`roomUx.${tab}`)} aria-expanded={panel === tab} className={panel === tab ? styles.active : ""} onClick={() => openPanel(tab)}><AliIcon name={tab === "members" ? "user" : tab === "tasks" ? "activity" : "file"} size={17} /><span>{t(`roomUx.${tab}`)}</span>{tab === "tasks" && activeRun?.phase === "waiting_user" ? <i className={styles.attentionDot} /> : null}</button>)}</nav>
-      <button type="button" className={styles.iconButton} title={t("roomUx.settings")} aria-label={t("roomUx.settings")} onClick={() => setSettingsOpen(true)}><AliIcon name="ellipsis" size={20} /></button>
+      <button type="button" className={styles.iconButton} title={t("roomUx.settings")} aria-label={t("roomUx.settings")} onClick={() => setSettingsOpen("overview")}><AliIcon name="ellipsis" size={20} /></button>
     </header>);
 
   const renderPinnedGoal = () => room.description?.trim() || activeRun ? (<div className={styles.pinnedGoal}><AliIcon name="bookmark" size={15} /><span>{t("roomUx.goal")}：{room.description?.trim() || activeRun?.objective.split("\n")[0]}</span></div>) : null;
@@ -311,7 +311,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
         </aside>
       </> : null}
     </div>
-    {settingsOpen ? <RoomSettingsDialog room={room} onClose={() => setSettingsOpen(false)} onRoomChange={data.acceptRoom} onRoomDeleted={onRoomDeleted} /> : null}
+    {settingsOpen ? <RoomSettingsDialog initialSection={settingsOpen} room={room} onClose={() => setSettingsOpen(false)} onRoomChange={data.acceptRoom} onRoomDeleted={onRoomDeleted} /> : null}
   </section>;
   return renderWorkspace();
 }

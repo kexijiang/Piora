@@ -49,7 +49,20 @@ const ROLE_DESCRIPTIONS: Record<TeamAgentRole, string> = {
   participant: "Contributes when explicitly assigned or invited.",
 };
 
+/** A conversational identity; workflow roles are an independent, opt-in concern. */
+export function createRoomChatProfile(input: Partial<TeamAgentProfile> = {}): TeamAgentProfile {
+  return createTeamAgentProfile(input.role ?? "participant", {
+    ...input,
+    roleDescription: input.roleDescription ?? "",
+    systemPrompt: input.systemPrompt ?? "",
+    capabilities: input.capabilities ?? [],
+    toolPolicy: input.toolPolicy ?? { mode: "inherit" },
+    workspacePolicy: input.workspacePolicy ?? { mode: "shared", integration: "artifact_only" },
+  });
+}
+
 export function createTeamAgentProfile(role: TeamAgentRole, input: Partial<TeamAgentProfile> = {}): TeamAgentProfile {
+  if (!Object.hasOwn(ROLE_PROMPTS, role)) throw new TeamError("TEAM_INVALID_INPUT", "Invalid Team Agent role.");
   const readOnly = role === "planner";
   const dedicated = role === "worker" || role === "reviewer";
   return validateTeamAgentProfile({

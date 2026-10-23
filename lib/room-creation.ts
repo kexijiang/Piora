@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync
 import { basename, join, resolve } from "node:path";
 import lockfile from "proper-lockfile";
 import { addManagedRoomMember, configureRoomCoordination, createRoom, getRoom, getRoomsRoot, updateRoomAgentBinding } from "./room-store";
-import { createTeamAgentProfile } from "./team-agent-templates";
+import { createRoomChatProfile, createTeamAgentProfile } from "./team-agent-templates";
 import { provisionTeamAgentSession, resolveProvisionableTeamAgentProfile } from "./team-agent-provisioner";
 import { allowFileRoot } from "./file-access";
 import { resolveProject } from "./worktree";
@@ -22,7 +22,7 @@ export interface ManagedRoomInput {
   description?: string;
   cwd: string;
   template: "project" | "custom";
-  agents?: Array<{ name: string; role: TeamAgentRole }>;
+  agents?: Array<{ name: string; role?: TeamAgentRole; roleDescription?: string }>;
 }
 
 /** The creation receipt survives reloads and partially provisioned teams. */
@@ -35,9 +35,16 @@ export async function createManagedRoom(input: ManagedRoomInput, dependencies = 
   if (typeof input.cwd !== "string" || !existsSync(input.cwd) || !statSync(input.cwd).isDirectory()) throw new TeamError("TEAM_INVALID_INPUT", "请选择存在的项目目录。");
   const cwd = realpathSync(resolve(input.cwd));
   const agents = input.template === "custom" ? input.agents : ROOM_TEAM_TEMPLATE;
-  if (!Array.isArray(agents) || agents.some((agent) => !agent) || agents.length < 1 || agents.length > 12 || agents.filter((agent) => agent.role === "coordinator").length !== 1
-    || agents.some((agent) => typeof agent.name !== "string" || !agent.name.trim() || agent.name.length > 120)) throw new TeamError("TEAM_INVALID_INPUT", "团队需要一位负责人，以及 1–12 位有效成员。");
-  const normalized = agents.map((agent) => createTeamAgentProfile(agent.role, { name: agent.name }));
+  if (!Array.isArray(agents) || agents.some((agent) => !agent) || agents.length < 1 || agents.length > 12
+    || agents.filter((agent) => agent.role === "coordinator").length > 1
+    || agents.some((agent) => agent.role !== undefined && !["coordinator", "planner", "worker", "reviewer", "participant"].includes(agent.role))
+    || agents.some((agent) => typeof agent.name !== "string" || !agent.name.trim() || agent.name.length > 120)) throw new TeamError("TEAM_INVALID_INPUT", "请填写 1–12 位成员的名称。");
+  // Keep one internal administration identity without making users assign jobs.
+  const coordinatorIndex = Math.max(0, agents.findIndex((agent) => agent.role === "coordinator"));
+  const normalized = agents.map((agent, index) => input.template === "project"
+    ? createTeamAgentProfile(agent.role!, { name: agent.name })
+    : createRoomChatProfile({ name: agent.name, role: index === coordinatorIndex ? "coordinator" : agent.role ?? "participant",
+      roleDescription: "roleDescription" in agent ? agent.roleDescription : "" }));
   const root = join(getRoomsRoot(), ".creation", createHash("sha256").update(input.clientCreationId).digest("hex"));
   mkdirSync(root, { recursive: true, mode: 0o700 });
   const release = await lockfile.lock(root, { realpath: false, stale: 120_000, retries: { retries: 100, minTimeout: 50, maxTimeout: 200 } });
@@ -86,6 +93,6 @@ export async function createManagedRoom(input: ManagedRoomInput, dependencies = 
       room = updateRoomAgentBinding(room.id, actor, member.memberId, binding);
     }
     const actor = room.members.find((member) => member.memberId === room!.coordination.coordinatorMemberId)!.binding.sessionId;
-    return configureRoomCoordination(room.id, { mode: "team", coordinatorSessionId: actor, requestedBy: actor });
+    return configureRoomCoordination(room.id, { mode: input.template === "project" ? "team" : "manual", coordinatorSessionId: actor, requestedBy: actor });
   } finally { await release(); }
 }

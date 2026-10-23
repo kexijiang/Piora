@@ -680,6 +680,8 @@ export function updateRoomMember(roomId: string, requestedBy: string, memberId: 
       }
     }
     if (room.coordination.coordinatorSessionId === previousSessionId) room.coordination.coordinatorSessionId = nextSessionId;
+    // Rebinding a managed member to an existing chat does not transfer ownership.
+    member.binding.managedByPiora = false;
   }
   member.sessionId = nextSessionId;
   member.name = input.name?.trim().slice(0, 120) || member.name || nextSessionId.slice(0, 8);
@@ -881,8 +883,10 @@ export function appendRoomMessage(roomId: string, input: {
       ...(input.kind ? { kind: input.kind } : {}),
       ...(input.targetMemberIds?.length ? { targetMemberIds: input.targetMemberIds } : {}),
       ...(input.attachments?.length ? { attachments: input.attachments } : {}),
-      ...(input.forwardDepth !== undefined ? { forwardDepth: Math.max(0, Math.min(8, Math.floor(input.forwardDepth))) } : {}),
-      ...(input.autoRound !== undefined ? { autoRound: Math.max(0, Math.min(8, Math.floor(input.autoRound))) } : {}),
+      // Nine is the exhausted sentinel: clamping at eight would keep the final
+      // allowed round dispatchable forever after each subsequent reply.
+      ...(input.forwardDepth !== undefined ? { forwardDepth: Math.max(0, Math.min(9, Math.floor(input.forwardDepth))) } : {}),
+      ...(input.autoRound !== undefined ? { autoRound: Math.max(0, Math.min(9, Math.floor(input.autoRound))) } : {}),
       ...(input.maxAutoRounds !== undefined ? { maxAutoRounds: Math.max(0, Math.min(8, Math.floor(input.maxAutoRounds))) } : {}),
     };
     mkdirSync(paths.shared, { recursive: true });
