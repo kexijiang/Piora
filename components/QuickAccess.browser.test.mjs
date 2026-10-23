@@ -135,6 +135,7 @@ test("quick access integrates with the real cabin navigation, launcher, editing,
     await add.getByRole("button", { name: "保存", exact: true }).click();
     await add.waitFor({ state: "detached" });
     await page.getByRole("tab", { name: "工具台", exact: true }).click();
+    await pins.getByRole("button", { name, exact: true }).waitFor();
     await search.fill(term);
     assert.match(await page.getByRole("option").first().innerText(), /启动入口|工作目录/);
     if (target.endsWith(".lnk")) assert.match(await page.getByRole("option").first().innerText(), /快捷方式/);
@@ -201,6 +202,13 @@ test("quick access integrates with the real cabin navigation, launcher, editing,
   await page.keyboard.press("Enter");
   await page.waitForFunction(() => window.calls.some(call => call.mutation?.type === "reorder"));
   assert.notDeepEqual(await list.getByRole("listitem").allTextContents(), before);
+  assert.equal(await page.getByText("已更新顺序", { exact: true }).count(), 0);
+  await page.getByRole("tab", { name: "工具台", exact: true }).click();
+  assert.equal(await page.getByText("已更新顺序", { exact: true }).count(), 0);
+  const homeOrder = await pins.locator("button[title]").evaluateAll(buttons => buttons.map(button => button.title));
+  const savedOrder = await page.evaluate(() => JSON.parse(localStorage.getItem("test-quick-access")).sort((a, b) => Number(b.pinned) - Number(a.pinned)).map(item => item.path));
+  assert.deepEqual(homeOrder, savedOrder);
+  await navigation.click();
   const filesFilter = page.getByRole("button", { name: "文件", exact: true });
   await filesFilter.click();
   assert.equal(await list.getByRole("listitem").count(), 2);
@@ -272,7 +280,7 @@ test("quick access integrates with the real cabin navigation, launcher, editing,
     localStorage.setItem("test-quick-access", JSON.stringify(items));
   });
   await page.reload();
-  assert.equal(await page.getByRole("region", { name: "Quick access" }).locator('button[title]').count(), 6);
+  assert.equal(await page.getByRole("region", { name: "Quick access" }).locator('button[title]').count(), await page.evaluate(() => JSON.parse(localStorage.getItem("test-quick-access")).length));
   await page.goto("http://quick-access.test/?web");
   await page.getByRole("tab", { name: "Quick access", exact: true }).click();
   assert.equal(await page.getByRole("button", { name: "Add", exact: true }).isDisabled(), true);

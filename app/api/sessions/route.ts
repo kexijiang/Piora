@@ -10,6 +10,8 @@ import {
   readAgentProfileStore,
 } from "@/lib/agent-profile-store";
 import { isProjectlessChatCwd } from "@/lib/projectless-chat-path";
+import { listRooms } from "@/lib/room-store";
+import { getManagedRoomSessionIds } from "@/lib/room-session-visibility";
 
 // pi only writes a session file once an assistant message exists, so a
 // brand-new session is missing from the disk scan until its first turn
@@ -52,8 +54,9 @@ export async function GET() {
     const runtimeProfile = getAgentRuntimeProfile();
     const profileStore = readAgentProfileStore();
     const allSessions = await withUnpersistedSessions(await listAllSessions());
+    const roomSessions = getManagedRoomSessionIds(listRooms());
     const sessions = allSessions.filter((session) =>
-      isSessionVisibleInAgentRuntimeProfile(session.id, runtimeProfile, profileStore)
+      !roomSessions.has(session.id) && isSessionVisibleInAgentRuntimeProfile(session.id, runtimeProfile, profileStore)
     );
     const visibleIds = new Set(sessions.map((session) => session.id));
     const runningSessionIds = getRunningRpcSessionIds().filter((id) => visibleIds.has(id));

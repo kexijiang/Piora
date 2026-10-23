@@ -103,8 +103,8 @@ export async function resolveProject(cwd: string): Promise<ProjectInfo> {
     // cwd is a subdirectory of a repo keeps its own project identity —
     // grouping subdirs under the repo root would change where new sessions
     // are created for existing users.
-    const isTopLevel = toplevel === realCwd;
-    const isWorktreeTopLevel = gitDir !== commonDir && isTopLevel;
+    const isTopLevel = worktreePathsEqual(toplevel, realCwd);
+    const isWorktreeTopLevel = !worktreePathsEqual(gitDir, commonDir) && isTopLevel;
     info = {
       projectRoot: isWorktreeTopLevel ? dirname(commonDir) : cwd,
       branch: ref && ref !== "HEAD" ? ref : null,
@@ -223,9 +223,9 @@ export async function addWorktree(cwd: string, branch: string): Promise<{ path: 
 
   try {
     if (branchExists) {
-      await git(repoRoot, ["worktree", "add", "--quiet", "--", worktreePath, trimmed], GIT_WORKTREE_TIMEOUT_MS);
+      await git(repoRoot, ["-c", "core.longpaths=true", "worktree", "add", "--quiet", "--", worktreePath, trimmed], GIT_WORKTREE_TIMEOUT_MS);
     } else {
-      await git(repoRoot, ["worktree", "add", "--quiet", "-b", trimmed, "--", worktreePath], GIT_WORKTREE_TIMEOUT_MS);
+      await git(repoRoot, ["-c", "core.longpaths=true", "worktree", "add", "--quiet", "-b", trimmed, "--", worktreePath], GIT_WORKTREE_TIMEOUT_MS);
     }
   } catch (error) {
     invalidateProjectCache();
@@ -244,7 +244,7 @@ export async function removeWorktree(cwd: string, worktreePath: string, force = 
   if (target.isMain) throw new Error("Cannot remove the main worktree");
 
   try {
-    await git(cwd, ["worktree", "remove", ...(force ? ["--force"] : []), target.path], GIT_WORKTREE_TIMEOUT_MS);
+    await git(cwd, ["-c", "core.longpaths=true", "worktree", "remove", ...(force ? ["--force"] : []), target.path], GIT_WORKTREE_TIMEOUT_MS);
   } catch (error) {
     throw new Error(extractGitError(error, "移除独立工作目录"));
   }
@@ -261,6 +261,9 @@ function extractGitError(error: unknown, operation: string): string {
   }
   const stderr = details?.stderr;
   if (typeof stderr === "string" && stderr.trim()) {
+    if (/filename too long|file name too long/iu.test(stderr)) {
+      return `${operation}失败：文件路径过长。群聊成员可使用共享工作区；如需独立工作树，请将项目移至更短的目录后重试。`;
+    }
     // Carriage-return progress output is not a failure reason. Keep actual
     // fatal/error lines, including dirty-worktree diagnostics used by callers.
     const diagnostic = stderr.split(/[\r\n]+/u)
