@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
-import { createTeamAgentProfile, validateTeamAgentProfile } from "@/lib/team-agent-templates";
+import { createRoomChatProfile, validateTeamAgentProfile } from "@/lib/team-agent-templates";
 import { requireRoomCoordinatorBySession, requireRoomMemberBySession } from "@/lib/team-agent-api";
 import { provisionTeamAgentSession, resolveProvisionableTeamAgentProfile, rollbackProvisionedTeamAgentSession } from "@/lib/team-agent-provisioner";
 import { teamApiError } from "@/lib/team-api";
@@ -23,11 +23,12 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const { id } = await params;
     const body = await parseJsonWithinLimit(request, 256 * 1024) as { sessionId?: unknown; role?: unknown; name?: unknown; roleDescription?: unknown; profile?: unknown };
     const { room, member: requester } = requireRoomCoordinatorBySession(id, body.sessionId);
-    const role = typeof body.role === "string" ? body.role as TeamAgentRole : "worker";
+    const role = typeof body.role === "string" ? body.role as TeamAgentRole : undefined;
     const requestedProfile = body.profile
-      ? validateTeamAgentProfile({ ...body.profile as TeamAgentProfile, role })
-      : createTeamAgentProfile(role, {
-        name: typeof body.name === "string" && body.name.trim() ? body.name : `${role} Agent`,
+      ? validateTeamAgentProfile({ ...body.profile as TeamAgentProfile, ...(role ? { role } : {}) })
+      : createRoomChatProfile({
+        role: role ?? "participant",
+        name: typeof body.name === "string" && body.name.trim() ? body.name : "新成员",
         roleDescription: typeof body.roleDescription === "string" ? body.roleDescription : undefined,
       });
     const profile = await resolveProvisionableTeamAgentProfile(room, requestedProfile);

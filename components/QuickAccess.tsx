@@ -23,12 +23,12 @@ export function QuickAccessNotice({ controller }: { controller: QuickAccessContr
 
 export function QuickAccessHome({ controller, onViewAll }: { controller: QuickAccessController; onViewAll: () => void }) {
   const { t } = useI18n();
-  const pins = controller.items.filter(item => item.pinned).slice(0, 6);
+  const entries = controller.items;
   return <section className={`${styles.root} ${styles.home}`} aria-label={t("quickAccess.title")}>
     <div className={styles.sectionHeading}><span>{t("quickAccess.title")}</span><button type="button" onClick={onViewAll}>{t("quickAccess.viewAll")}<AliIcon name="chevron-right" size={12} /></button></div>
-    {controller.loading ? <p className={styles.hint} role="status">{t("quickAccess.loading")}</p> : !controller.supported ? <p className={styles.hint}>{t("quickAccess.desktopOnly")}</p> : pins.length ? <div className={styles.pins}>{pins.map(item => <button key={item.id} type="button" className={styles.pin} title={item.path} disabled={controller.busy} onClick={() => void controller.open(item)}>
+    {controller.loading ? <p className={styles.hint} role="status">{t("quickAccess.loading")}</p> : !controller.supported ? <p className={styles.hint}>{t("quickAccess.desktopOnly")}</p> : entries.length ? <div className={styles.pins}>{entries.map(item => <button key={item.id} type="button" className={styles.pin} title={item.path} disabled={controller.busy} onClick={() => void controller.open(item)}>
       <AliIcon name={item.kind === "folder" ? "folder" : quickAccessIsShortcut(item) ? "external-link" : "file"} size={17} className={styles.icon} /><span><b>{quickAccessName(item, t)}</b>{item.availability !== "available" ? <small>{t(`quickAccess.${item.availability}`)}</small> : null}</span>
-    </button>)}</div> : <p className={styles.hint}>{t("quickAccess.noPins")}</p>}
+    </button>)}</div> : <p className={styles.hint}>{t("quickAccess.emptyHint")}</p>}
   </section>;
 }
 

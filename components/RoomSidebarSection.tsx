@@ -12,8 +12,9 @@ import { RoomAvatar } from "./RoomUi";
 import styles from "./RoomSidebarSection.module.css";
 
 type RoomWithSummary = CollaborationRoom & { summary?: { lastMessage?: { content: string; author: string; seq: number }; phase?: string; pending?: boolean } };
-type AgentDraft = { name: string; role: TeamAgentRole };
-const initialAgents: AgentDraft[] = [{ name: "阿策", role: "coordinator" }, { name: "小研", role: "worker" }, { name: "小审", role: "reviewer" }];
+type AgentDraft = { name: string; role?: TeamAgentRole; roleDescription?: string };
+const initialAgents: AgentDraft[] = [{ name: "成员 1" }, { name: "成员 2" }];
+const projectAgents: AgentDraft[] = [{ name: "阿策", role: "coordinator" }, { name: "小研", role: "worker" }, { name: "小审", role: "reviewer" }];
 const basename = (path: string) => path.replace(/[\\/]+$/u, "").split(/[\\/]/u).at(-1) ?? path;
 const creationKey = "piora-room-creation-draft";
 const pinKey = "piora-room-pins";
@@ -28,7 +29,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [cwd, setCwd] = useState("");
-  const [template, setTemplate] = useState<"project" | "custom">("project");
+  const [template, setTemplate] = useState<"project" | "custom">("custom");
   const [agents, setAgents] = useState<AgentDraft[]>(initialAgents);
   const [reuse, setReuse] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -79,7 +80,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
     try { saved = JSON.parse(localStorage.getItem(creationKey) ?? "null") ?? undefined; } catch { /* Start a fresh form. */ }
     creationId.current = saved?.clientCreationId ?? crypto.randomUUID();
     setCwd(saved?.cwd ?? project); setName(saved?.name ?? (project ? `${basename(project)} 协作群` : "")); setDescription(saved?.description ?? "");
-    setTemplate(saved?.template ?? "project"); setAgents(saved?.agents ?? initialAgents.map((agent) => ({ ...agent })));
+    setTemplate(saved?.template ?? "custom"); setAgents(saved?.agents ?? initialAgents.map((agent) => ({ ...agent })));
     setSelectedIds(selected ? [selected.id] : []); setReuse(false); setError(null); setOpen(true);
   };
   const edit = () => { creationId.current = crypto.randomUUID(); setError(null); };
@@ -110,8 +111,8 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
     } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); void load().then(setRooms).catch(() => {}); }
     finally { setBusy(false); }
   };
-  const validAgents = agents.length > 0 && agents.length <= 12 && agents.every((agent) => agent.name.trim()) && agents.filter((agent) => agent.role === "coordinator").length === 1;
-  const roleLabel = (role: TeamAgentRole) => t(`roomUx.${role === "coordinator" ? "lead" : role}`);
+  const validAgents = agents.length > 0 && agents.length <= 12 && agents.every((agent) => agent.name.trim());
+  const roleLabel = (role?: TeamAgentRole) => t(`roomUx.${role === "coordinator" ? "lead" : role ?? "participant"}`);
   const togglePin = (id: string) => {
     const next = pins.includes(id) ? pins.filter((item) => item !== id) : [...pins, id];
     setPins(next); try { localStorage.setItem(pinKey, JSON.stringify(next)); } catch { /* Session-only pinning. */ }
@@ -138,7 +139,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="room-create-title">
         <header className={styles.dialogHeader}><div><h2 id="room-create-title">{t("roomUx.create")}</h2><p>{t("roomUx.createHint")}</p></div><button type="button" className={styles.closeButton} aria-label={t("roomUx.close")} disabled={busy} onClick={() => setOpen(false)}><AliIcon name="close" size={20} /></button></header>
         <div className={styles.dialogBody}>
-          <div className={styles.templates} role="group" aria-label={t("roomUx.projectTeam")}>{(["project", "custom"] as const).map((value) => <button key={value} type="button" aria-pressed={template === value} disabled={busy} onClick={() => { edit(); setTemplate(value); if (value === "project") setAgents(initialAgents.map((agent) => ({ ...agent }))); }}><span className={styles.templateIcon}><AliIcon name={value === "project" ? "messages" : "plus"} size={23} /></span><span><strong>{t(value === "project" ? "roomUx.projectTeam" : "roomUx.custom")}</strong><small>{t(value === "project" ? "roomUx.projectTeamHint" : "roomUx.customHint")}</small></span><i /></button>)}</div>
+          <div className={styles.templates} role="group" aria-label={t("roomUx.projectTeam")}>{(["custom", "project"] as const).map((value) => <button key={value} type="button" aria-pressed={template === value} disabled={busy} onClick={() => { edit(); setTemplate(value); setAgents((value === "project" ? projectAgents : initialAgents).map((agent) => ({ ...agent }))); }}><span className={styles.templateIcon}><AliIcon name={value === "project" ? "messages" : "plus"} size={23} /></span><span><strong>{t(value === "project" ? "roomUx.projectTeam" : "roomUx.custom")}</strong><small>{t(value === "project" ? "roomUx.projectTeamHint" : "roomUx.customHint")}</small></span><i /></button>)}</div>
           <div className={styles.createColumns}>
             <div className={styles.createFields}>
               <label className={styles.field}><span>{t("roomUx.name")}</span><input ref={nameRef} value={name} disabled={busy} maxLength={120} placeholder="Piora 协作群" onChange={(event) => { edit(); setName(event.target.value); }} /></label>
@@ -148,9 +149,9 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
             </div>
             <section className={styles.createMembers}><div className={styles.memberHeading}><h3>{t("roomUx.initialMembers")}</h3><span>{agents.length}</span></div>{agents.map((agent, index) => <div key={index} className={styles.agentRow}>
               <RoomAvatar name={agent.name} role={agent.role} />
-              <div className={styles.agentCopy}>{template === "custom" ? <><input aria-label={`${t("roomUx.memberName")} ${index + 1}`} value={agent.name} maxLength={120} disabled={busy} onChange={(event) => { edit(); setAgents((previous) => previous.map((item, i) => i === index ? { ...item, name: event.target.value } : item)); }} /><select aria-label={`${t("roomUx.role")} ${index + 1}`} value={agent.role} disabled={busy} onChange={(event) => { edit(); const role = event.target.value as TeamAgentRole; setAgents((previous) => previous.map((item, i) => i === index ? { ...item, role } : role === "coordinator" && item.role === "coordinator" ? { ...item, role: "worker" } : item)); }}>{(["coordinator", "worker", "reviewer", "planner", "participant"] as const).map((role) => <option key={role} value={role}>{roleLabel(role)}</option>)}</select></> : <><div><strong>{agent.name}</strong><span className={styles.roleBadge}>{roleLabel(agent.role)}</span></div><small>{t(`roomUx.${agent.role === "coordinator" ? "leadHint" : agent.role === "reviewer" ? "reviewerHint" : "workerHint"}`)}</small></>}</div>
-              {template === "custom" ? <button type="button" className={styles.closeButton} disabled={busy || agent.role === "coordinator"} aria-label={`${t("roomUx.removeMember")} ${agent.name}`} onClick={() => { edit(); setAgents((previous) => previous.filter((_, i) => i !== index)); }}><AliIcon name="close" size={15} /></button> : null}
-            </div>)}<button type="button" className={styles.addMember} disabled={busy || agents.length >= 12} onClick={() => { edit(); setTemplate("custom"); setAgents((previous) => [...previous, { name: `${t("roomUx.participant")}${previous.length + 1}`, role: "worker" }]); }}><AliIcon name="plus" size={19} />{t("roomUx.addMember")}</button><p className={styles.memberHint}><AliIcon name="info" size={14} />{t("roomUx.autoSessions")}</p>{!validAgents ? <p className={styles.error}>{t("roomUx.coordinatorRequired")}</p> : null}</section>
+              <div className={styles.agentCopy}>{template === "custom" ? <><input aria-label={`${t("roomUx.memberName")} ${index + 1}`} value={agent.name} maxLength={120} disabled={busy} onChange={(event) => { edit(); setAgents((previous) => previous.map((item, i) => i === index ? { ...item, name: event.target.value } : item)); }} /><textarea aria-label={`${t("roomUx.customIdentity")} ${index + 1}`} placeholder={t("roomUx.customIdentityHint")} rows={2} value={agent.roleDescription ?? ""} maxLength={4000} disabled={busy} onChange={(event) => { edit(); setAgents((previous) => previous.map((item, i) => i === index ? { ...item, roleDescription: event.target.value } : item)); }} /></> : <><div><strong>{agent.name}</strong><span className={styles.roleBadge}>{roleLabel(agent.role)}</span></div><small>{t(`roomUx.${agent.role === "coordinator" ? "leadHint" : agent.role === "reviewer" ? "reviewerHint" : "workerHint"}`)}</small></>}</div>
+              {template === "custom" ? <button type="button" className={styles.closeButton} disabled={busy || agents.length === 1} aria-label={`${t("roomUx.removeMember")} ${agent.name}`} onClick={() => { edit(); setAgents((previous) => previous.filter((_, i) => i !== index)); }}><AliIcon name="close" size={15} /></button> : null}
+            </div>)}<button type="button" className={styles.addMember} disabled={busy || agents.length >= 12} onClick={() => { edit(); setTemplate("custom"); setAgents((previous) => [...previous.map(({ name, roleDescription }) => ({ name, roleDescription })), { name: `${t("roomUx.participant")}${previous.length + 1}` }]); }}><AliIcon name="plus" size={19} />{t("roomUx.addMember")}</button><p className={styles.memberHint}><AliIcon name="info" size={14} />{t("roomUx.autoSessions")}</p>{!validAgents ? <p className={styles.error}>{t("roomUx.coordinatorRequired")}</p> : null}</section>
           </div>
           {busy ? <p className={styles.creating} role="status"><span />{t("roomUx.creating")}</p> : null}{error ? <div className={styles.error} role="alert">{error}</div> : null}
         </div>

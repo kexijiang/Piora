@@ -61,18 +61,38 @@ function actorSessionId(room: CollaborationRoom): string | undefined {
   return coordinator ? getRoomMemberSessionId(coordinator) : room.members[0] ? getRoomMemberSessionId(room.members[0]) : undefined;
 }
 
+function initialSettingsSection(section?: Section): Section {
+  return section ?? "overview";
+}
+
+function MemberSessionSelect({ room, member, sessions, value, onChange }: {
+  room: CollaborationRoom; member: RoomMember; sessions: SessionInfo[]; value: string; onChange: (value: string) => void;
+}) {
+  return <label className={`${styles.field} ${styles.full}`}><span>绑定会话</span>
+    <select aria-label="绑定会话" value={value} onChange={(event) => onChange(event.target.value)}>
+      {!sessions.some((session) => session.id === member.binding.sessionId)
+        ? <option value={member.binding.sessionId}>{member.profile.name} · 群内会话</option> : null}
+      {sessions.filter((session) => session.id === getRoomMemberSessionId(member)
+        || !room.members.some((candidate) => getRoomMemberSessionId(candidate) === session.id))
+        .map((session) => <option key={session.id} value={session.id}>{sessionLabel(session)}</option>)}
+    </select>
+  </label>;
+}
+
 export function RoomSettingsDialog({
   room,
   onClose,
   onRoomChange,
   onRoomDeleted,
+  initialSection,
 }: {
   room: CollaborationRoom;
   onClose: () => void;
   onRoomChange: (room: CollaborationRoom) => void;
   onRoomDeleted: (roomId: string) => void;
+  initialSection?: Section;
 }) {
-  const [section, setSection] = useState<Section>("overview");
+  const [section, setSection] = useState<Section>(initialSettingsSection(initialSection));
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [audit, setAudit] = useState<RoomAuditEntry[]>([]);
   const [name, setName] = useState(room.name);
@@ -83,7 +103,7 @@ export function RoomSettingsDialog({
   const [workspaceInstructions, setWorkspaceInstructions] = useState(room.workspace.instructions ?? "");
   const [memberDrafts, setMemberDrafts] = useState<Record<string, MemberDraft>>({});
   const [newSessionId, setNewSessionId] = useState("");
-  const [newRole, setNewRole] = useState<RoomMemberRole>("worker");
+  const [newRole, setNewRole] = useState<RoomMemberRole>("participant");
   const [newName, setNewName] = useState("");
   const [newInstructions, setNewInstructions] = useState("");
   const [coordinationMode, setCoordinationMode] = useState(room.coordination.mode);
@@ -301,7 +321,7 @@ export function RoomSettingsDialog({
       setNewSessionId("");
       setNewName("");
       setNewInstructions("");
-      setSaved("托管智能体与独立会话已创建");
+      setSaved("成员已加入，会话保留在群聊内");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
@@ -409,12 +429,12 @@ export function RoomSettingsDialog({
                         <div className={styles.agentIdentity}><span>{(draft.name || "智").slice(0, 1).toLocaleUpperCase()}</span><div><strong>{draft.name || "未命名智能体"}</strong><small>{selected?.worktreeBranch ?? selected?.cwd ?? member.binding.cwd ?? draft.sessionId} · {member.binding.managedByPiora ? `托管/${bindingStatusLabel(member.binding.status)}` : "复用会话"}</small></div></div>
                         <div className={styles.agentGrid}>
                           <label className={styles.field}><span>显示名称</span><input value={draft.name ?? ""} onChange={(event) => updateDraft(member.memberId, { name: event.target.value })} /></label>
-                          <label className={styles.field}><span>团队角色</span><select value={draft.role} onChange={(event) => updateDraft(member.memberId, { role: event.target.value as RoomMemberRole })}>{roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label>
-                          <label className={`${styles.field} ${styles.full}`}><span>绑定会话</span><select value={draft.sessionId} onChange={(event) => updateDraft(member.memberId, { sessionId: event.target.value })}>{sessions.filter((session) => session.id === getRoomMemberSessionId(member) || !room.members.some((candidate) => getRoomMemberSessionId(candidate) === session.id)).map((session) => <option key={session.id} value={session.id}>{sessionLabel(session)}</option>)}</select></label>
-                          <AITextAreaField className={styles.full} label="角色职责" help="写清这个智能体负责什么、交付什么、遇到什么情况需要交给别人；简短描述后可用 AI 补全。" purpose={`${draft.name || "智能体"}的角色职责`} value={draft.roleDescription} onChange={(value) => updateDraft(member.memberId, { roleDescription: value })} cwd={room.projectRoot} rows={3} placeholder="例如：实现功能并补测试，完成后交给审查者复核" />
+                          <AITextAreaField className={styles.full} label="成员设定（可选）" help="自由定义擅长领域、性格、说话风格或工作方式；留空也能正常交流。" purpose={`${draft.name || "成员"}的自定义设定`} value={draft.roleDescription} onChange={(value) => updateDraft(member.memberId, { roleDescription: value })} cwd={room.projectRoot} rows={3} placeholder="例如：一位善于追问的写作搭档，回答简洁，有不同意见就直说" />
                           <div className={`${styles.cardActions} ${styles.full}`}><button type="button" onClick={() => setAdvancedMemberIds((current) => { const next = new Set(current); if (next.has(member.memberId)) next.delete(member.memberId); else next.add(member.memberId); return next; })}>{advancedMemberIds.has(member.memberId) ? "收起高级设置" : "显示高级设置"}</button></div>
                           {advancedMemberIds.has(member.memberId) ? <>
-                          <AITextAreaField className={styles.full} label="智能体系统提示词" help="仅追加到该智能体的团队任务中，用于约束长期行为；普通会话不受影响。" purpose={`${draft.name || "智能体"}的系统提示词`} value={draft.systemPrompt} onChange={(value) => updateDraft(member.memberId, { systemPrompt: value })} cwd={room.projectRoot} rows={5} placeholder="例如：优先阅读项目规范，修改后必须运行相关测试" />
+                          <label className={styles.field}><span>任务编排职责</span><select value={draft.role} onChange={(event) => updateDraft(member.memberId, { role: event.target.value as RoomMemberRole })}>{roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select><small>用于高级任务编排，不限制自由群聊的身份。</small></label>
+                          <MemberSessionSelect room={room} member={member} sessions={sessions} value={draft.sessionId} onChange={(sessionId) => updateDraft(member.memberId, { sessionId })} />
+                          <AITextAreaField className={styles.full} label="智能体系统提示词" help="用于该成员的群聊回复和团队任务，约束长期行为。" purpose={`${draft.name || "智能体"}的系统提示词`} value={draft.systemPrompt} onChange={(value) => updateDraft(member.memberId, { systemPrompt: value })} cwd={room.projectRoot} rows={5} placeholder="例如：优先阅读项目规范，修改后必须运行相关测试" />
                           <label className={`${styles.field} ${styles.full}`}><span>擅长能力（逗号分隔）</span><input value={draft.capabilitiesText} onChange={(event) => updateDraft(member.memberId, { capabilitiesText: event.target.value })} /></label>
                           <AITextAreaField className={styles.full} label="工作风格（每行一项）" help="描述沟通和执行偏好，例如先验证再修改、结论附证据；每行一项。" purpose={`${draft.name || "智能体"}的工作风格列表`} value={draft.personalityText} onChange={(value) => updateDraft(member.memberId, { personalityText: value })} cwd={room.projectRoot} rows={3} placeholder="例如：结论先行\n每个修改附测试证据" />
                           <AITextAreaField className={styles.full} label="限制条件（每行一项）" help="写出明确不可违反的边界，例如禁止改某目录、不得跳过测试；每行一项。" purpose={`${draft.name || "智能体"}的限制条件列表`} value={draft.constraintsText} onChange={(value) => updateDraft(member.memberId, { constraintsText: value })} cwd={room.projectRoot} rows={3} placeholder="例如：不要覆盖用户已有修改\n不得未经验证宣称完成" />
@@ -433,15 +453,15 @@ export function RoomSettingsDialog({
                   })}
                 </div>
                 <section className={styles.addAgent}>
-                  <div><h4>添加智能体</h4><p>只需填写名称即可创建，其余设置会使用稳妥的默认值。</p></div>
-                  <label className={styles.field}><span>显示名称</span><input value={newName} onChange={(event) => setNewName(event.target.value)} placeholder="例如：代码实现" /></label>
-                  <div className={styles.actions}><button type="button" className={styles.primary} disabled={Boolean(busy) || !newName.trim()} onClick={() => { void createManagedAgent(); }}>创建智能体</button></div>
-                  {busy === "provision_agent" ? <p role="status">正在准备工作目录与会话，项目文件较多时可能需要几分钟。</p> : null}
+                  <div><h4>添加成员</h4><p>成员共享当前工作目录，会话保留在群聊内。</p></div>
+                  <label className={styles.field}><span>显示名称</span><input value={newName} maxLength={120} onChange={(event) => setNewName(event.target.value)} placeholder="例如：小林" /></label>
+                  <AITextAreaField label="成员设定（可选）" help="自由定义擅长领域、性格或说话风格，也可以留空。" purpose="新成员的自定义设定" value={newInstructions} onChange={setNewInstructions} cwd={room.projectRoot} rows={3} placeholder="例如：脑洞搭档，善于提出不同观点" />
+                  <div className={styles.actions}><button type="button" className={styles.primary} disabled={Boolean(busy) || !newName.trim()} onClick={() => { void createManagedAgent(); }}>添加成员</button></div>
+                  {busy === "provision_agent" ? <p role="status">正在创建群内会话…</p> : null}
                   <details className={styles.advancedAdd}>
                     <summary>更多选项</summary>
                     <div className={styles.advancedAddBody}>
-                      <label className={styles.field}><span>团队角色</span><select value={newRole} onChange={(event) => setNewRole(event.target.value as RoomMemberRole)}>{roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label>
-                      <AITextAreaField label="职责与约束" help="概括新智能体负责的工作、交付物和边界；只写几个关键词也可以。" purpose="新智能体的职责与约束" value={newInstructions} onChange={setNewInstructions} cwd={room.projectRoot} rows={3} placeholder="例如：测试与质量门禁" />
+                      <label className={styles.field}><span>任务编排职责</span><select value={newRole} onChange={(event) => setNewRole(event.target.value as RoomMemberRole)}>{roleOptions.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label>
                       <label className={styles.field}><span>复用已有会话</span><select value={newSessionId} onChange={(event) => { const id = event.target.value; setNewSessionId(id); const session = sessions.find((candidate) => candidate.id === id); if (session) setNewName(sessionName(session)); }}><option value="">选择会话</option>{availableSessions.map((session) => <option key={session.id} value={session.id}>{sessionLabel(session)}</option>)}</select></label>
                       <div className={styles.actions}><button type="button" disabled={Boolean(busy) || !newSessionId || !newName.trim()} onClick={addAgent}>复用所选会话</button></div>
                     </div>
@@ -464,7 +484,7 @@ export function RoomSettingsDialog({
             {section === "coordination" ? (
               <div className={styles.page}>
                 <div className={styles.pageHeading}><h3>任务编排</h3><p>控制谁负责协调、同时运行多少任务，以及失联任务何时自动释放。</p></div>
-                <label className={styles.field}><span>运行模式</span><select value={coordinationMode} onChange={(event) => setCoordinationMode(event.target.value as "manual" | "team")}><option value="manual">手动协作</option><option value="team">协调者编排</option></select></label>
+                <label className={styles.field}><span>运行模式</span><select value={coordinationMode} onChange={(event) => setCoordinationMode(event.target.value as "manual" | "team")}><option value="manual">自由群聊</option><option value="team">协调者编排</option></select></label>
                 <label className={styles.field}><span>协调智能体</span><select value={coordinatorId} onChange={(event) => setCoordinatorId(event.target.value)}>{room.members.map((member) => <option key={member.memberId} value={getRoomMemberSessionId(member)}>{getRoomMemberName(member)}</option>)}</select></label>
                 <div className={styles.agentGrid}><label className={styles.field}><span>最大并发</span><input type="number" min={1} max={16} value={maxConcurrency} onChange={(event) => setMaxConcurrency(Number(event.target.value))} /></label><label className={styles.field}><span>任务租约（分钟）</span><input type="number" min={1} max={60} value={leaseMinutes} onChange={(event) => setLeaseMinutes(Number(event.target.value))} /></label></div>
                 <div className={styles.roleGuide}>{roleOptions.map((role) => <div key={role.value}><strong>{role.label}</strong><span>{role.detail}</span></div>)}</div>

@@ -104,3 +104,4 @@
   .dialogActions > span { font-size: var(--text-xs); line-height: 1.5; }
   .dialogActions > button { padding: 8px 10px; }
 }
+.agentCopy textarea { width: 100%; min-width: 0; resize: vertical; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); padding: 7px 9px; font: inherit; font-size: var(--text-sm); }

@@ -60,7 +60,7 @@ export function useQuickAccess() {
     const result = await perform(bridge => bridge.mutate(input));
     if (!result || !mounted.current) return false;
     nextRevision(); setData(result.value); setLoading(false);
-    setNotice(t(input.type === "remove" ? "quickAccess.removed" : input.type === "reorder" ? "quickAccess.reordered" : "quickAccess.saved"));
+    setNotice(input.type === "reorder" ? "" : t(input.type === "remove" ? "quickAccess.removed" : "quickAccess.saved"));
     return true;
   }, [nextRevision, perform, t]);
 
