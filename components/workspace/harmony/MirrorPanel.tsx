@@ -68,8 +68,13 @@ export function MirrorPanel({ active, maximized, onMaximizedChange, onSnapshot }
   if (scope.current.key !== contextKey) { scope.current.key = contextKey; scope.current.epoch++; }
   const context = `${contextKey}:${scope.current.epoch}`;
   const current = useRef(context); current.current = context;
-  const screenshotPending = useRef(false);
+  const deviceKey = `${serial}:${selected?.generation}:${active}`;
+  const deviceScope = useRef({ key: deviceKey, epoch: 0 });
+  if (deviceScope.current.key !== deviceKey) { deviceScope.current.key = deviceKey; deviceScope.current.epoch++; }
+  const currentDevice = useRef(""); currentDevice.current = `${deviceKey}:${deviceScope.current.epoch}`;
+  const screenshotPending = useRef<{ context: string } | null>(null);
   const recordingPending = useRef(false);
+  const recordingMutation = useRef(0);
   const controlPending = useRef(false);
   const gesture = useRef<{ x: number; y: number; started: number; context: string } | null>(null);
   const { ensureControl, clearControl, canControl } = useHarmonyManualControl({ active, serial, online: Boolean(online),
@@ -88,7 +93,7 @@ export function MirrorPanel({ active, maximized, onMaximizedChange, onSnapshot }
   const live = useHarmonyLiveFrame({ active, enabled: Boolean(online), serial, generation: selected?.generation,
     canvasRef: canvas, chinese, preferFrames: quality === "frames", fallbackError: text("请检查设备授权与连接", "Check device authorization and connection") });
   const frameMatches = live.status === "live" && live.frame?.serial === serial && live.frame.generation === selected?.generation;
-  useEffect(() => { setCapturing(false); gesture.current = null; }, [quality]);
+  useEffect(() => { gesture.current = null; }, [quality]);
 
   useEffect(() => {
     if (!active) return;
@@ -116,9 +121,10 @@ export function MirrorPanel({ active, maximized, onMaximizedChange, onSnapshot }
     let disposed = false, timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
     const poll = async () => {
+      const expectedMutation = recordingMutation.current;
       try {
         const payload = await request<{ recording: Recording | null; recordingOutcome?: Outcome | null }>(`media?serial=${encodeURIComponent(serial)}`, controller.signal);
-        if (!disposed && !recordingPending.current) {
+        if (!disposed && !recordingPending.current && expectedMutation === recordingMutation.current) {
           const outcome = payload.recordingOutcome;
           setRecording(payload.recording);
           if (payload.recording) setError(value => value.startsWith("Recording request timed out.") ? "" : value);
@@ -146,15 +152,21 @@ export function MirrorPanel({ active, maximized, onMaximizedChange, onSnapshot }
   const media = useCallback(async (action: string) => {
     if (!serial || !ownerId) return;
     const capture = action === "capture_screenshot";
-    const pending = capture ? screenshotPending : recordingPending;
-    if (pending.current) return;
-    pending.current = true;
-    const expected = current.current;
+    const expected = capture ? currentDevice.current : current.current;
+    const operation = { context: expected };
+    if (capture) {
+      if (screenshotPending.current?.context === expected) return;
+      screenshotPending.current = operation;
+    } else {
+      if (recordingPending.current) return;
+      recordingPending.current = true;
+      recordingMutation.current++;
+    }
     if (capture) setCapturing(true); else setRecordPhase(action === "start_recording" ? "starting" : "saving");
     try {
       const payload = await request<{ artifact?: Artifact; recording?: Recording }>("media", undefined,
         { action, serial, ownerId, ...(recording ? { recordingId: recording.recordingId } : {}) });
-      if (current.current !== expected) return;
+      if ((capture ? currentDevice.current : current.current) !== expected) return;
       if (payload.recording) { setRecording(payload.recording); setRecordPhase("recording"); }
       if (payload.artifact) {
         setSavedPath(payload.artifact.path); setNotice(text("已保存：", "Saved: ") + payload.artifact.path);
@@ -162,13 +174,23 @@ export function MirrorPanel({ active, maximized, onMaximizedChange, onSnapshot }
       }
       setError("");
     } catch (failure) {
-      if (current.current !== expected) return;
+      if ((capture ? currentDevice.current : current.current) !== expected) return;
       setError(failure instanceof Error ? failure.message : String(failure));
       if (!capture) setRecordPhase(recording ? "recording" : "idle");
       // No automatic start/stop retry: a lost reply may have dispatched a system toggle.
     } finally {
-      pending.current = false;
-      if (current.current === expected && capture) setCapturing(false);
+      if (capture) {
+        // An old device's completion cannot release a newer screenshot guard.
+        if (screenshotPending.current === operation) {
+          screenshotPending.current = null;
+          if (currentDevice.current === expected) setCapturing(false);
+        }
+      } else {
+        recordingPending.current = false;
+        // Also invalidate reads issued during the mutation. Fresh reads after
+        // timeout/settlement remain free to reconcile an uncertain result.
+        recordingMutation.current++;
+      }
     }
   }, [serial, ownerId, recording, text]);
 
