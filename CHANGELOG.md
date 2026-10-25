@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### Desktop dependencies
+
+- Update Electron to 44.9.1, keep the desktop workspace and root lockfile aligned, use the official npm registry, and refresh the third-party license inventory.
+
 ## [0.5.5-beta.37] - 2026-10-25
 
 ### 发布准备

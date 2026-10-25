@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `d0c3fd54e7076450d8a53d036832f0cf7498a60a586bdcdd26bc8fb8f4271791`
+Lockfile SHA-256: `55ffc31d0a9978ba41f4a86897f9efc6caacbd406eb8a2d58cc5b81e222d9f16`
 
 Unique locked packages: **1382**. Runtime packages: **902**. Build/development-only packages: **480**.
 
@@ -1135,7 +1135,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `dotenv-expand` | `11.0.7` | BSD-2-Clause | No |
 | `duplexer2` | `0.1.4` | BSD-3-Clause | No |
 | `ejs` | `3.1.10` | Apache-2.0 | No |
-| `electron` | `44.9.0` | MIT | No |
+| `electron` | `44.9.1` | MIT | No |
 | `electron-builder` | `26.15.3` | MIT | No |
 | `electron-publish` | `26.15.3` | MIT | No |
 | `electron-to-chromium` | `1.5.399` | ISC | No |
