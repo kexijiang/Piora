@@ -76,6 +76,7 @@ export interface ChatInputOptions {
 
 export interface ChatCommandView {
   revision?: number;
+  queuePaused?: boolean;
   commandId: string;
   idempotencyKey: string;
   targetSessionId: string;

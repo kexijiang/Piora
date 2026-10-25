@@ -10,14 +10,14 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("Harmony workspace keeps the mirror view-only with a responsive drawer and fenced tool control", { timeout: 180000 }, async () => {
+test("Retained Harmony workbench keeps its view-only mirror, responsive drawer and fenced tool control", { timeout: 180000 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "piora-harmony-panel-"));
   let browser;
   try {
     await writeFile(path.join(root, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root, "css.cjs"), 'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
     await writeFile(path.join(root, "stubs.tsx"), `import {useEffect,useMemo,useState} from "react";import {zhCNLocale} from "@/lib/i18n/messages/zh-CN";import {interpolateMessage} from "@/lib/i18n/format";export const useI18n=()=>({locale:"zh-CN",t:(key,params)=>interpolateMessage(zhCNLocale.messages[key]??key,params)});export const useHarmonyLiveFrame=options=>{const[geometryId,setGeometryId]=useState("geometry");window.setFixtureGeometry=setGeometryId;const[frameMode,setFrameMode]=useState("video");window.setFixtureFrameMode=setFrameMode;useEffect(()=>{if(!options.enabled)return;const canvas=options.canvasRef.current;if(!canvas)return;canvas.width=1080;canvas.height=2400;const context=canvas.getContext("2d");context.fillStyle="#f7f8fa";context.fillRect(0,0,1080,2400);context.fillStyle="#15181d";context.font="600 92px sans-serif";context.fillText("设置",80,230);context.fillStyle="#e8ebef";for(let y=340;y<2100;y+=250)context.fillRect(65,y,950,180);context.fillStyle="#333942";context.font="48px sans-serif";["无线网络","蓝牙","移动网络","显示和亮度","声音和振动","通知和状态栏","应用和服务"].forEach((text,index)=>context.fillText(text,105,445+index*250));},[options.canvasRef,options.enabled,options.serial]);return useMemo(()=>({status:"live",mode:frameMode,frame:{width:1080,height:2400,serial:options.serial,generation:options.generation,geometryId},refresh:()=>{}}),[options.serial,options.generation,geometryId,frameMode])};export const AliIcon=({name})=><span aria-hidden="true" style={{display:"inline-block",fontSize:10,lineHeight:1}}>{name==="mobile"?"▯":"◆"}</span>;export const HarmonyLogViewer=()=>null;export const HarmonyCheckPanel=()=>null;`);
-    await writeFile(path.join(root, "entry.tsx"), `import React,{useState} from "react";import {createRoot} from "react-dom/client";import {flushSync} from "react-dom";import {AppTooltip} from "@/components/AppTooltip";import {ShortcutSettings} from "@/components/ShortcutSettings";import {SafeHarmonyPanel as HarmonyPanel} from "@/components/workspace/HarmonyPanel";function Fixture(){const[maximized,setMaximized]=useState(false);const[active,setActive]=useState(true);const[tooltips,setTooltips]=useState(false);const[shortcuts,setShortcuts]=useState(false);window.setFixtureShortcuts=setShortcuts;window.setFixtureTooltips=setTooltips;window.setFixtureActive=value=>flushSync(()=>setActive(value));window.maximized=maximized;return <>{shortcuts?<div role="dialog" aria-modal="true" style={{position:"fixed",inset:0,zIndex:2000,overflow:"auto",background:"white"}}><ShortcutSettings/></div>:null}{tooltips?<AppTooltip/>:null}<HarmonyPanel active={active} maximized={maximized} onMaximizedChange={setMaximized}/></>};createRoot(document.getElementById("root")).render(<Fixture/>);`);
+    await writeFile(path.join(root, "entry.tsx"), `import React,{useState} from "react";import {createRoot} from "react-dom/client";import {flushSync} from "react-dom";import {AppTooltip} from "@/components/AppTooltip";import {ShortcutSettings} from "@/components/ShortcutSettings";import {LegacyHarmonyPanel as HarmonyPanel} from "@/components/workspace/HarmonyPanel";function Fixture(){const[maximized,setMaximized]=useState(false);const[active,setActive]=useState(true);const[tooltips,setTooltips]=useState(false);const[shortcuts,setShortcuts]=useState(false);window.setFixtureShortcuts=setShortcuts;window.setFixtureTooltips=setTooltips;window.setFixtureActive=value=>flushSync(()=>setActive(value));window.maximized=maximized;return <>{shortcuts?<div role="dialog" aria-modal="true" style={{position:"fixed",inset:0,zIndex:2000,overflow:"auto",background:"white"}}><ShortcutSettings/></div>:null}{tooltips?<AppTooltip/>:null}<HarmonyPanel active={active} maximized={maximized} onMaximizedChange={setMaximized}/></>};createRoot(document.getElementById("root")).render(<Fixture/>);`);
     const aliases = Object.fromEntries(["@/hooks/useI18n", "@/hooks/useHarmonyLiveFrame", "./HarmonyLogViewer", "./HarmonyCheckPanel"].map(name => [name, path.join(root, "stubs.tsx")]));
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
       entry: path.join(root, "entry.tsx"), output: { path: root, filename: "bundle.js" },
@@ -828,8 +828,19 @@ test("Harmony workspace keeps the mirror view-only with a responsive drawer and 
     assert.equal(holder.owner.kind, "agent", "capture keeps the AI holder unchanged");
     await page.waitForTimeout(100);
     assert.equal(requests.filter(r => ["tap", "swipe", "long_press", "takeover"].includes(r.action)).length, actionsBeforeAgentMirrorClick);
-    holder = null;
+    // Keep the Agent lease until stop_device handles it. Clearing it before the
+    // click lets a device poll legitimately remove the button mid-action.
+    const refreshedHolder = page.waitForResponse(response => new URL(response.url()).pathname === "/api/harmony/devices");
+    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
+    assert.equal((await (await refreshedHolder).json()).state.leases[0].owner.id, "agent:one");
+    const stoppedDevice = page.waitForResponse(response => new URL(response.url()).pathname === "/api/harmony/action"
+      && response.request().postDataJSON()?.action === "stop_device");
     await page.getByRole("button", { name: "停止当前设备操作", exact: true }).click();
+    const stopped = await stoppedDevice;
+    assert.equal(stopped.status(), 200);
+    assert.equal(stopped.request().postDataJSON().serial, "phone", "stop targets the selected Agent-owned phone");
+    assert.equal(holder, null, "the stop handler releases the Agent lease");
+    await page.getByRole("button", { name: "停止当前设备操作", exact: true }).waitFor({ state: "hidden" });
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
     await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone2");
     assert.equal(requests.some(r => /unlock|wake/.test(r.action ?? "")), false, "passive viewing never wakes or unlocks the phone");

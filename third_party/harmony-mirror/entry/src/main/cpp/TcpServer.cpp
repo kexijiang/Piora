@@ -44,7 +44,7 @@ TcpServer &TcpServer::Instance() {
 }
 
 TcpServer::FramePtr TcpServer::EncodeFrame(uint32_t type, const uint8_t *payload, size_t size) {
-    auto out = std::make_shared<std::vector<uint8_t>>(8 + size);
+    auto out = std::make_shared<VideoPacket>(8 + size);
     auto &v = *out;
     v[0] = static_cast<uint8_t>((type >> 24) & 0xFF);
     v[1] = static_cast<uint8_t>((type >> 16) & 0xFF);
@@ -235,7 +235,15 @@ void TcpServer::EnqueueAll(FramePtr frame) {
 
 void TcpServer::EnqueueFor(ClientState &c, FramePtr frame) {
     if (c.closing) return;
-    const auto result = EnqueueVideoPacket(c.txQueue, c.txOffset, c.awaitingKeyframe, c.latestConfig, frame);
+    const auto now = std::chrono::steady_clock::now();
+    const bool wasAwaiting = c.awaitingKeyframe;
+    bool expired = false;
+    for (const auto &packet : c.txQueue) {
+        if (QueuedPacketType(packet) == kPktVideoFrame && now - packet->createdAt >= std::chrono::milliseconds(500)) {
+            expired = !wasAwaiting; break;
+        }
+    }
+    const auto result = EnqueueVideoPacket(c.txQueue, c.txOffset, c.awaitingKeyframe, c.latestConfig, frame, expired, c.recording);
     if (result == kVideoQueueClose) {
         c.closing = true;
         // Never silently discard status/heartbeat acknowledgements or splice
@@ -245,6 +253,7 @@ void TcpServer::EnqueueFor(ClientState &c, FramePtr frame) {
         return;
     }
     if (result == kVideoQueueRecovered) {
+        if (!wasAwaiting) NotifyControl(0x43, nullptr, 0);
         OH_LOG_WARN(LOG_APP, "client fd=%{public}d backpressure; preserving partial packet and restoring current config before IDR", c.fd);
     }
 }
@@ -463,6 +472,14 @@ void TcpServer::OnPacket(ClientState &c, uint32_t type, const uint8_t *payload, 
         EnqueueFor(c, EncodeFrame(kPktHeartbeat, payload, size));
         UpdateInterest(c.fd, true);
     } else if (type == kPktControl && size >= 1) {
+        if (payload[0] == 0x44) {
+            c.recording = true;
+            const uint8_t version = 1;
+            EnqueueFor(c, EncodeFrame(0x21, &version, 1));
+            UpdateInterest(c.fd, true);
+            NotifyControl(0x43, nullptr, 0);
+            return;
+        }
         NotifyControl(payload[0], payload + 1, size - 1);
     }
 }
@@ -477,7 +494,7 @@ void TcpServer::NotifyControl(uint8_t sub, const uint8_t *body, size_t size) {
     if (!tsControl_) return;
     auto *m = new ControlMsg();
     m->sub = sub;
-    m->body.assign(body, body + size);
+    if (size > 0) m->body.assign(body, body + size);
     if (napi_call_threadsafe_function(tsControl_, m, napi_tsfn_nonblocking) != napi_ok) delete m;
 }
 

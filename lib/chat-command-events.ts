@@ -2,7 +2,7 @@ import { getSessionMessageRouter } from "./session-message-router";
 import type { SessionCommandEvent, SessionCommandRecord } from "./session-message-types";
 
 export function commandOperationView(record: SessionCommandRecord) {
-  return { commandId: record.commandId, idempotencyKey: record.idempotencyKey, targetSessionId: record.targetSessionId, status: record.status, revision: record.revision,
+  return { commandId: record.commandId, idempotencyKey: record.idempotencyKey, targetSessionId: record.targetSessionId, status: record.status, revision: record.revision, queuePaused: record.queuePaused ?? false,
     acceptedAt: record.acceptedAt, operation: record.operation, errorCode: record.errorCode, errorMessage: record.errorMessage,
     preview: record.content.slice(0, 180), attachments: (record.images?.length ?? 0) + (record.materials?.length ?? 0) + (record.localFiles?.length ?? 0) };
 }

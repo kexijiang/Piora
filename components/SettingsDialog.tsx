@@ -5,8 +5,7 @@ import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode 
 import { createPortal } from "react-dom";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { useI18n } from "@/hooks/useI18n";
-import { useSendShortcut } from "@/hooks/useSendShortcut";
-import { useStreamingSendPreference } from "@/hooks/useStreamingSendPreference";
+import { ChatShortcutSettings } from "./ChatShortcutSettings";
 import { useCompactProcessPreference } from "@/hooks/useCompactProcessPreference";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
 import { AliIcon, type AliIconName } from "./AliIcon";
@@ -107,12 +106,6 @@ export function SettingsDialog({
   desktop,
 }: Props) {
   const { t } = useI18n();
-  const { shortcut: sendShortcut, setShortcut: setSendShortcut } = useSendShortcut();
-  const {
-    preference: streamingSendPreference,
-    setEnabled: setStreamingSendDefaultEnabled,
-    setBehavior: setStreamingSendDefaultBehavior,
-  } = useStreamingSendPreference();
   const {
     enabled: liveOutputAutoScrollEnabled,
     setEnabled: setLiveOutputAutoScrollEnabled,
@@ -603,73 +596,7 @@ export function SettingsDialog({
                     </button>
                   </div>
 
-                  <div className={`${styles.conversationRow} ${styles.sendShortcutRow}`}>
-                    <div className={styles.conversationCopy}>
-                      <div data-settings-id="conversation.sendShortcut" className={styles.rowTitle}>{t("settings.sendShortcut")}</div>
-                      <div className={styles.rowDescription}>{t("settings.sendShortcutDescription")}</div>
-                    </div>
-                    <div className={styles.shortcutOptionGroup} role="radiogroup" aria-label={t("settings.sendShortcut")}>
-                      <button
-                        className={styles.shortcutOption}
-                        type="button"
-                        role="radio"
-                        aria-checked={sendShortcut === "enter"}
-                        onClick={() => setSendShortcut("enter")}
-                      >
-                        <kbd>{t("settings.sendShortcutEnter")}</kbd>
-                      </button>
-                      <button
-                        className={styles.shortcutOption}
-                        type="button"
-                        role="radio"
-                        aria-checked={sendShortcut === "ctrl-enter"}
-                        onClick={() => setSendShortcut("ctrl-enter")}
-                      >
-                        <kbd>{t("settings.sendShortcutCtrlEnter")}</kbd>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className={styles.conversationRowStacked}>
-                    <div className={styles.preferenceHeader}>
-                      <div className={styles.conversationCopy}>
-                        <div data-settings-id="conversation.streamingSend" className={styles.rowTitle}>{t("settings.streamingSendDefault")}</div>
-                        <div className={styles.rowDescription}>{t("settings.streamingSendDefaultDescription")}</div>
-                      </div>
-                      <button
-                        className={styles.switch}
-                        type="button"
-                        role="switch"
-                        aria-checked={streamingSendPreference.enabled}
-                        aria-label={t("settings.streamingSendDefault")}
-                        onClick={() => setStreamingSendDefaultEnabled(!streamingSendPreference.enabled)}
-                      >
-                        <span />
-                      </button>
-                    </div>
-                    {streamingSendPreference.enabled ? (
-                      <div className={styles.shortcutOptionGroup} role="radiogroup" aria-label={t("settings.streamingSendDefaultBehavior")}>
-                        <button
-                          className={styles.shortcutOption}
-                          type="button"
-                          role="radio"
-                          aria-checked={streamingSendPreference.behavior === "steer"}
-                          onClick={() => setStreamingSendDefaultBehavior("steer")}
-                        >
-                          {t("chat.steer")}
-                        </button>
-                        <button
-                          className={styles.shortcutOption}
-                          type="button"
-                          role="radio"
-                          aria-checked={streamingSendPreference.behavior === "followup"}
-                          onClick={() => setStreamingSendDefaultBehavior("followup")}
-                        >
-                          {t("chat.followUp")}
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
+                  <ChatShortcutSettings />
 
                   <div className={styles.conversationRow}>
                     <div className={styles.conversationCopy}>

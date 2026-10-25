@@ -1212,24 +1212,52 @@ export class HarmonyDeviceManager {
     let dimensions: { width: number; height: number } | undefined;
     const current = () => !closed && !options.signal?.aborted && this.devices.get(options.serial)?.state === "online"
       && this.generations.get(options.serial) === device.generation;
-    const tracked: HarmonyVideoConnection = {
-      stream: connection.stream.pipeThrough(videoMetadataTransform((width, height) => {
+    const observed = connection.stream.pipeThrough(videoMetadataTransform((width, height) => {
         if (!current()) return;
-        if (dimensions?.width !== width || dimensions?.height !== height) this.videoConnectionFrames.delete(tracked);
+        // A new SPS/PPS can change the codec without changing pixel dimensions.
+        this.videoConnectionFrames.delete(tracked);
         dimensions = { width, height };
         this.recordFrameDimensions(options.serial, "video", width, height);
+        const remaining = [...(this.videoConnections.get(options.serial) ?? [])]
+          .filter(viewer => viewer !== tracked && this.videoConnectionCurrent.get(viewer)?.())
+          .map(viewer => this.videoConnectionFrames.get(viewer))
+          .filter(observation => observation?.width === width && observation?.height === height)
+          .sort((left, right) => right!.capturedAt - left!.capturedAt)[0];
+        if (remaining) this.frameCapturedAt.set(`${options.serial}:video`, remaining);
+        else { this.frameCapturedAt.delete(`${options.serial}:video`); this.geometries.delete(`${options.serial}:video`); }
       }, () => {
         if (!current()) return;
         const observation = { capturedAt: this.now(), generation: device.generation, ...dimensions };
         this.recordFrameDimensions(options.serial, "video", dimensions?.width ?? 0, dimensions?.height ?? 0);
         this.videoConnectionFrames.set(tracked, observation);
         this.frameCapturedAt.set(`${options.serial}:video`, observation);
-      })),
+      }));
+    const reader = observed.getReader();
+    let downstream: ReadableStreamDefaultController<Uint8Array> | undefined;
+    const tracked: HarmonyVideoConnection = {
+      stream: new ReadableStream<Uint8Array>({
+        start(controller) { downstream = controller; },
+        async pull(controller) {
+          if (closed) { await closing?.catch(() => undefined); return; }
+          try {
+            const next = await reader.read();
+            if (closed) return;
+            if (next.done) await tracked.close();
+            else controller.enqueue(next.value);
+          } catch (error) {
+            if (closed) return;
+            try { controller.error(error); } catch { /* Already cancelled. */ }
+            await tracked.close().catch(() => undefined);
+          }
+        },
+        async cancel() { await tracked.close(); },
+      }, { highWaterMark: 0 }),
       // A failed read-only video forward cleanup is not an unreleased key/touch.
       // The backend retains its exact port journal and close error for diagnosis.
       close: () => {
         if (closing) return closing;
         closed = true;
+        options.signal?.removeEventListener("abort", abort);
         const viewers = this.videoConnections.get(options.serial);
         viewers?.delete(tracked);
         this.videoConnectionFrames.delete(tracked);
@@ -1247,11 +1275,26 @@ export class HarmonyDeviceManager {
             this.frameDimensions.delete(`${options.serial}:video`);
           }
         }
-        return closing = Promise.resolve().then(() => connection.close());
+        // A backend close may itself wait for reader cancellation. Start both
+        // before awaiting either; invoke backend close first for EOF-only sources.
+        return closing = Promise.allSettled([
+          Promise.resolve().then(() => connection.close()),
+          Promise.resolve().then(() => reader.cancel().catch(() => undefined)),
+        ]).then(results => {
+          reader.releaseLock();
+          if (results[0].status === "rejected") {
+            try { downstream?.error(results[0].reason); } catch { /* Consumer cancelled. */ }
+            throw results[0].reason;
+          }
+          try { downstream?.close(); } catch { /* Already cancelled or errored. */ }
+        });
       },
     };
     this.videoConnectionCurrent.set(tracked, current);
     const set = this.videoConnections.get(options.serial) ?? new Set<HarmonyVideoConnection>(); set.add(tracked); this.videoConnections.set(options.serial, set);
+    const abort = () => { void tracked.close().catch(() => undefined); };
+    options.signal?.addEventListener("abort", abort, { once: true });
+    if (options.signal?.aborted) abort();
     return tracked;
   }
 

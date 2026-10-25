@@ -1,4 +1,5 @@
 "use client";
+import type { ChatCommandQueueActions } from "./ChatCommandCard";
 import { NestedToolCallsContext } from "./NestedToolCalls";
 import { latestReplySource } from "@/lib/reply-suggestions";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
@@ -24,6 +25,7 @@ import { ChatMinimap } from "./ChatMinimap";
 import { ChatScrollRail } from "./ChatScrollRail";
 import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
+import { ToolReviewStatus } from "./ToolReviewStatus";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -202,7 +204,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
 
   const {
     nestedCallsStore, loading, error, messages, entryIds, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
-    toolPermission, permissionSaving, handleToolPermission,
+    toolPermission, permissionSaving, handleToolPermission, toolReviews,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactionStartedAt, compactError, compactResult, displayModel: displayModelValue, sessionStats,
@@ -628,16 +630,30 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     </>
   ), [isEmptyNew, newSessionProjectLabel, isProjectlessChat, messageCwd, systemPromptSelection, systemPromptBinding, sessionBusy, systemPromptSaving, handleSystemPromptSelection]);
 
+  const { queueAction, edit: editQueuedDraft } = chatCommands;
+  const queueActions = useMemo<ChatCommandQueueActions>(() => ({
+    recover: commandActions.restore,
+    cancel: async record => { await queueAction(record, "cancel"); },
+    steer: async record => { await queueAction(record, "steer"); },
+    edit: editQueuedDraft,
+    save: async (record, text) => { await queueAction(record, "edit", text); },
+    resume: async record => { await queueAction(record, "resume"); },
+  }), [queueAction, editQueuedDraft, commandActions.restore]);
+  const composerQueueContent = useMemo(() => (
+    <ChatCommandQueue records={chatCommands.records} actions={queueActions} pendingMessages={queuedMessages} onRecall={handleRecallQueue} />
+  ), [chatCommands.records, queueActions, queuedMessages, handleRecallQueue]);
+
   const chatInputElement = (
     <>
+    <ToolReviewStatus reviews={toolReviews} />
     {chatCommands.connectionError && <div role="status" style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "6px 10px" }}>{chatCommands.connectionError}</div>}
-    <ChatCommandQueue records={chatCommands.records} onCancel={chatCommands.cancel} />
     <ChatInput
       ref={chatInputRef}
       replySource={replySource}
       variant={isEmptyNew ? "launcher" : "conversation"}
       placeholder={isEmptyNew ? t("newSession.placeholder") : undefined}
       contextControl={composerContextControl}
+      queueContent={composerQueueContent}
       onSend={handleComposerSend}
       onQueueInput={chatCommands.submit}
       commandCatalog={commandCatalog}
@@ -669,9 +685,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
       availableThinkingLevels={availableThinkingLevels}
       thinkingLevelMap={currentThinkingLevelMap}
       retryInfo={retryInfo}
-      queuedMessages={queuedMessages}
       inputHistory={inputHistory}
-      onRecallQueue={handleRecallQueue}
       slashCommands={slashCommands}
       slashCommandsLoading={slashCommandsLoading}
       onLoadSlashCommands={loadSlashCommands}

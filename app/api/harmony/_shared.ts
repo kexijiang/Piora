@@ -4,6 +4,7 @@ import { isApiRequestAllowed } from "@/lib/request-security";
 import { isValidDesktopToken, PI_DESKTOP_TOKEN_HEADER } from "@/lib/web-auth";
 import { asHarmonyError, HarmonyError, type HarmonyErrorCode } from "@/lib/harmony/errors";
 import type { HarmonyManagerEvent, HarmonyManagerState } from "@/lib/harmony/types";
+import { harmonyWorkbenchEnabled, mirrorRouteAllowed } from "@/lib/harmony/mirror-mode";
 
 const ERROR_STATUS: Partial<Record<HarmonyErrorCode, number>> = {
   HDC_NOT_FOUND: 503,
@@ -43,7 +44,12 @@ export function requireHarmonyDesktopAccess(request: Request): NextResponse | nu
 }
 
 export function requireHarmonyAccess(request: Request): NextResponse | null {
-  return requireHarmonyDesktopAccess(request);
+  const denied = requireHarmonyDesktopAccess(request);
+  if (denied) return denied;
+  if (!harmonyWorkbenchEnabled() && !mirrorRouteAllowed(new URL(request.url).pathname)) {
+    return noStoreJson({ error: { code: "CAPABILITY_UNAVAILABLE", message: "Device tools are disabled in mirror mode" } }, { status: 403 });
+  }
+  return null;
 }
 
 export function harmonyErrorResponse(error: unknown): NextResponse {

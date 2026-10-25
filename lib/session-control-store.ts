@@ -48,7 +48,7 @@ async function serializeWrite<T>(path: string, operation: () => T | Promise<T>):
   }
 }
 
-async function appendLocked(path: string, line: string): Promise<void> {
+async function appendLocked(path: string, line: string, commit?: (persist: () => void) => void): Promise<void> {
   mkdirSync(resolve(path, ".."), { recursive: true, mode: 0o700 });
   await serializeWrite(path, async () => {
     const directory = resolve(path, "..");
@@ -58,8 +58,11 @@ async function appendLocked(path: string, line: string): Promise<void> {
       retries: { retries: 50, factor: 1.15, minTimeout: 4, maxTimeout: 50 },
     });
     try {
-      appendFileSync(path, `${line}\n`, { encoding: "utf8", mode: 0o600, flush: true });
-      chmodSync(path, 0o600);
+      const persist = () => {
+        appendFileSync(path, `${line}\n`, { encoding: "utf8", mode: 0o600, flush: true });
+        chmodSync(path, 0o600);
+      };
+      if (commit) commit(persist); else persist();
     } finally {
       await release();
     }
@@ -154,6 +157,12 @@ export class SessionControlStore {
       }
     }
     return [...commands.values()];
+  }
+
+  async appendRecalledCommands(commands: SessionCommandRecord[], commit: (persist: () => void) => void): Promise<void> {
+    if (!commands.length) return;
+    if (commands.some(command => command.targetSessionId !== commands[0].targetSessionId || !command.queuePaused)) throw new Error("Invalid recalled queue batch");
+    await appendLocked(this.commandsPath(commands[0].targetSessionId), commands.map(command => JSON.stringify({ kind: "command", command })).join("\n"), commit);
   }
 
   async appendCommand(command: SessionCommandRecord): Promise<void> {

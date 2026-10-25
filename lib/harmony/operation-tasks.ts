@@ -23,6 +23,8 @@ export interface HarmonyOperationTask {
   errorCode?: string;
   deviceErrorCode?: string;
   signatureRejected?: boolean;
+  recoveryPath?: string;
+  recoveryFinalized?: boolean;
 }
 
 type TaskInput = Pick<HarmonyOperationTask, "serial" | "kind" | "title" | "target">;
@@ -64,6 +66,7 @@ export class HarmonyOperationTasks {
       ...(typeof task.errorCode === "string" ? { errorCode: task.errorCode.slice(0, 64) } : {}),
       ...(typeof task.deviceErrorCode === "string" && /^\d{1,12}$/.test(task.deviceErrorCode) ? { deviceErrorCode: task.deviceErrorCode } : {}),
       ...(task.signatureRejected === true ? { signatureRejected: true } : {}),
+      ...(task.kind === "recording" && typeof task.recoveryPath === "string" && task.recoveryPath.length <= 4096 ? { recoveryPath: task.recoveryPath, recoveryFinalized: task.recoveryFinalized === true } : {}),
     }));
     if (this.records.some(active)) this.commit(this.records.map(task => active(task) ? { ...task, status: "interrupted",
       updatedAt: this.timestamp(), error: "The previous process ended before confirmation. Check the device; no automatic replay." } : task));
@@ -128,6 +131,8 @@ export class HarmonyOperationTasks {
         || (task.kind === "recording" && !notSent && error.details?.recordingStopped !== true));
     this.update(id, { status: uncertainInstall || uncertainMedia ? "interrupted" : error.code === "COMMAND_ABORTED" ? "cancelled" : "failed",
       completedAt: this.timestamp(), error: error.message.slice(0, 512), errorCode: error.code,
+      ...(task.kind === "recording" && typeof error.details?.recoveryPath === "string" && error.details.recoveryPath.length <= 4096
+        ? { recoveryPath: error.details.recoveryPath, recoveryFinalized: error.details.finalized === true || error.details.recordingIncomplete === true } : {}),
       ...(error.details?.reason === "signature-rejected" ? { signatureRejected: true } : {}),
       ...(typeof error.details?.deviceErrorCode === "string" && /^\d{1,12}$/.test(error.details.deviceErrorCode)
         ? { deviceErrorCode: error.details.deviceErrorCode } : {}),

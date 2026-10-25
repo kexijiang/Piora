@@ -1,5 +1,5 @@
 .card { margin: 10px 0 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); color: var(--text); overflow: hidden; font-size: var(--text-sm, 13px); }
-.header, .footer, .actions, .resources, .queueTitle, .queueRow { display: flex; align-items: center; gap: 10px; }
+.header, .footer, .actions, .resources, .queueRow { display: flex; align-items: center; gap: 10px; }
 .header { min-width: 0; padding: 0 12px; }
 .card button, .queue button { border: 0; background: transparent; color: var(--text-muted); font: inherit; cursor: pointer; }
 .card button:hover, .queue button:hover { color: var(--text); }
@@ -39,11 +39,26 @@
 .query p { margin: 4px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .query button { padding: 4px 0; }
 .actionError { padding: 9px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.queue { margin: 0 8px; padding: 8px 12px; border: 1px solid var(--border); border-bottom: 0; border-radius: 9px 9px 0 0; background: var(--bg-panel); font-size: var(--text-sm, 13px); }
-.queueTitle { color: var(--text-muted); margin-bottom: 5px; }
-.queueRow { padding: 5px 0; }
-.queueRow > span:first-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-.queueRow .meta { flex-shrink: 0; }
-@media (max-width: 560px) { .duration, .queueRow .meta { display: none; } .summary { flex-wrap: wrap; } .preview { flex-basis: 60px; } .status { max-width: 40%; white-space: normal; text-align: right; } }
+.queue { position: relative; margin: 0 12px -14px; padding: 3px 10px 14px; border: 1px solid var(--border); border-bottom: 0; border-radius: 16px 16px 0 0; background: color-mix(in srgb, var(--bg-panel) 94%, var(--text) 6%); color: var(--text); font-size: var(--text-sm, 13px); }
+.queueList { max-height: 180px; overflow-y: auto; scrollbar-width: thin; }
+.queueItem + .queueItem { border-top: 1px solid var(--border); }
+.queueRow { min-width: 0; min-height: 32px; gap: 7px; }
+.queueIcon { display: inline-flex; flex-shrink: 0; color: var(--text-dim); }
+.queuePreview { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.queueMode { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; color: var(--text-muted); font-size: var(--text-xs, 12px); }
+.queue .queueAction { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 26px; height: 26px; padding: 0; border-radius: 6px; }
+.queue .queueAction:hover { background: var(--bg-hover); }
+.queueError { margin: 0; padding: 4px 0 8px 20px; color: var(--danger, #dc2626); overflow-wrap: anywhere; }
+@media (max-width: 560px) { .duration { display: none; } .summary { flex-wrap: wrap; } .preview { flex-basis: 60px; } .status { max-width: 40%; white-space: normal; text-align: right; } }
 @media (pointer: coarse) { .card button, .queue button { min-height: 44px; } }
 @media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }
+
+.queue .queuePreview { text-align: left; color: var(--text); }
+.queueEditor { padding: 6px 0 8px; }
+.queueEditor textarea { display: block; width: 100%; min-height: 72px; max-height: 240px; resize: vertical; border: 1px solid var(--border); border-radius: 8px; padding: 8px; background: var(--bg); color: var(--text); font: inherit; }
+.queueEditor > div { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 5px; }
+.queueEditor span { margin-right: auto; font-size: var(--text-xs, 12px); color: var(--text-muted); }
+.queueMenu { overflow-y: auto; position: fixed; z-index: 1100; width: 190px; max-width: calc(100vw - 16px); padding: 5px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-panel); color: var(--text); box-shadow: 0 6px 24px #0003; }
+.queueMenu button { display: block; width: 100%; border: 0; border-radius: 7px; padding: 9px 10px; text-align: left; background: transparent; color: inherit; font: inherit; font-size: var(--text-sm, 13px); cursor: pointer; }
+.queueMenu button:hover, .queueMenu button:focus-visible { background: var(--bg-hover); outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (pointer: coarse) { .queueMenu button { min-height: 44px; } }

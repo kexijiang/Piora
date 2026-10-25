@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { useDefaultToolPermission } from "@/hooks/useDefaultToolPermission";
 import { useI18n } from "@/hooks/useI18n";
 import { PERMISSION_MODES, type PermissionMode, type ToolPermissionState } from "@/lib/tool-permission-policy";
 import styles from "./ToolPermissionControl.module.css";
@@ -63,12 +64,13 @@ export function ToolPermissionControl({ state, saving, onChange }: {
       const next = event.key === "Home" ? 0 : event.key === "End" ? options.length - 1 : (current + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length;
       options[next]?.focus();
     }}>
+    <p className={styles.legacy}>{t("permission.rememberHelp")}</p>
     {state?.legacy && <p className={styles.legacy}>{t("permission.legacyHelp")}</p>}
     {PERMISSION_MODES.map(mode => <button key={mode} type="button" role="menuitemradio" data-mode={mode}
       aria-checked={!state?.legacy && state?.mode === mode}
       className={`model-settings-row ${styles.option}${mode === "full" ? ` ${styles.full}` : ""}`}
       onClick={() => { setOpen(false); trigger.current?.focus(); onChange(mode); }}>
-      <span className={styles.copy}><span>{t(`permission.${mode}`)}</span><small>{t(`permission.${mode}Help`)}</small></span>
+      <span className={styles.copy}><span>{t(`permission.${mode}`)}{mode === "ask" && ` · ${t("permission.compatibility")}`}</span><small>{t(`permission.${mode}Help`)}</small></span>
       <span className={styles.check} aria-hidden="true">{!state?.legacy && state?.mode === mode ? "✓" : ""}</span>
     </button>)}
   </div>, document.body)}
@@ -77,28 +79,7 @@ export function ToolPermissionControl({ state, saving, onChange }: {
 
 export function DefaultToolPermissionSetting() {
   const { t } = useI18n();
-  const [state, setState] = useState<ToolPermissionState | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetch("/api/tool-permissions", { signal: controller.signal }).then(async res => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const value = await res.json();
-      setState({ mode: value.mode, revision: 0 });
-    }).catch(error => { if (!controller.signal.aborted) setError(String(error)); });
-    return () => controller.abort();
-  }, []);
-  const save = async (mode: PermissionMode) => {
-    setSaving(true); setError("");
-    try {
-      const res = await fetch("/api/tool-permissions", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode }) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const value = await res.json();
-      setState({ mode: value.mode, revision: 0 });
-    } catch (error) { setError(String(error)); }
-    finally { setSaving(false); }
-  };
+  const { state, saving, error, save } = useDefaultToolPermission();
   return <section className={styles.setting}>
     <strong>{t("permission.default")}</strong>
     <p>{t("permission.defaultHelp")}</p>

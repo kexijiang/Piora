@@ -5,14 +5,17 @@ import { AgentCommandError, sendAgentCommand } from "@/lib/agent-client";
 import { createChatCommandOperation, parseChatInput, persistentChatInputOptions } from "@/lib/chat-command-input";
 import type { ChatCommandCatalog, ChatCommandView, ChatInputOptions } from "@/lib/chat-command-types";
 import type { DispatchReceipt, SessionCommandEvent } from "@/lib/session-message-types";
-import { confirmPendingPrompts, readPendingPrompts, savePendingPrompt, PROMPT_RECOVERY_CONFIRMED_EVENT, type PendingPrompt } from "@/lib/prompt-recovery";
-import { buildLocalFilePrompt, type AttachedFile } from "@/lib/file-attachments";
+import { dismissPendingPrompt, confirmPendingPrompts, readPendingPrompts, savePendingPrompt, PROMPT_RECOVERY_CONFIRMED_EVENT, type PendingPrompt } from "@/lib/prompt-recovery";
+import { type AttachedFile } from "@/lib/file-attachments";
 import type { AttachedImage } from "./useAgentSession";
 import type { PromptMaterialReference } from "@/lib/prompt-material-format";
+import { hydrateDraft } from "@/lib/draft-store";
 import { useI18n } from "./useI18n";
 import { isTerminalCommandStatus as terminal, mergeChatCommandViews, recoverChatCommandViews } from "@/lib/chat-command-views";
 
 interface Options {
+  /** Stable for the lifetime of this chat, including new-session promotion. */
+  conversationKey: string;
   sessionId: string | null;
   scope: string;
   catalog: ChatCommandCatalog;
@@ -30,10 +33,13 @@ export function useChatCommandOperations(options: Options) {
   latest.current = options;
   const [localSessionId, setLocalSessionId] = useState<string | null>(null);
   const [records, setRecords] = useState<ChatCommandView[]>([]);
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [nextOffset, setNextOffset] = useState<number | null>(null);
   const notified = useRef(new Set<string>());
   const generation = useRef(0);
+  const submitting = useRef(new Set<string>());
   const sessionId = options.sessionId ?? localSessionId;
   const sessionRef = useRef(sessionId);
   sessionRef.current = sessionId;
@@ -50,12 +56,16 @@ export function useChatCommandOperations(options: Options) {
   const refresh = useCallback(async (offset = 0) => {
     const sid = sessionRef.current;
     if (!sid) return;
-    const response = await fetch(`/api/sessions/${encodeURIComponent(sid)}/submissions?view=operations&offset=${offset}`, { cache: "no-store" });
+    const query = new URLSearchParams({ view: "operations", offset: String(offset) });
+    for (const record of recordsRef.current.filter(record => record.targetSessionId === sid && !record.operation && !record.local && !terminal(record.status)).slice(0, 100)) query.append("trackedCommandId", record.commandId);
+    for (const record of recordsRef.current.filter(record => record.targetSessionId === sid && record.local).slice(0, 100)) query.append("trackedPromptId", record.idempotencyKey);
+    const response = await fetch(`/api/sessions/${encodeURIComponent(sid)}/submissions?${query}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const body = await response.json() as { items: ChatCommandView[]; nextOffset: number | null };
     if (sessionRef.current !== sid) return;
-    setRecords(current => mergeChatCommandViews(current.filter(record => record.targetSessionId === sid), body.items));
+    setRecords(current => mergeChatCommandViews(current.filter(record => record.targetSessionId === sid || record.local && submitting.current.has(record.idempotencyKey)), body.items));
     setNextOffset(body.nextOffset);
+    await Promise.all(body.items.filter(record => !record.operation && record.status === "cancelled").map(record => dismissPendingPrompt(record.idempotencyKey)));
     const completed = body.items.filter(record => record.status === "completed");
     await confirmPendingPrompts(completed.map(record => record.idempotencyKey));
     for (const record of body.items.filter(record => terminal(record.status))) {
@@ -66,20 +76,21 @@ export function useChatCommandOperations(options: Options) {
   }, []);
 
   useEffect(() => {
-    generation.current++;
+    const activeGeneration = ++generation.current;
     setLocalSessionId(null);
     setRecords([]);
     setNextOffset(null);
     setConnectionError(null);
     notified.current.clear();
-  }, [options.scope]);
+    return () => { generation.current = activeGeneration + 1; };
+  }, [options.conversationKey]);
 
   useEffect(() => {
     let disposed = false;
     const scope = sessionId ?? options.scope;
     void readPendingPrompts(scope).then(pending => {
       if (disposed) return;
-      const recovered = recoverChatCommandViews(pending, latest.current.catalog, sessionId);
+      const recovered = recoverChatCommandViews(pending.filter(record => !submitting.current.has(record.id)), latest.current.catalog, sessionId);
       setRecords(current => mergeChatCommandViews(current, recovered));
     }).catch(() => { if (!disposed) setConnectionError(t("chatCommands.connectionRecovering")); });
     return () => { disposed = true; };
@@ -96,13 +107,13 @@ export function useChatCommandOperations(options: Options) {
       try {
         const data = JSON.parse(event.data) as Omit<SessionCommandEvent, "type"> & { operations?: ChatCommandView[]; type: string; hasMore?: boolean };
         if (data.type === "command_snapshot" && data.operations) {
-          setRecords(current => mergeChatCommandViews(current.filter(record => record.targetSessionId === sid), data.operations!));
+          setRecords(current => mergeChatCommandViews(current.filter(record => record.targetSessionId === sid || record.local && submitting.current.has(record.idempotencyKey)), data.operations!));
           setNextOffset(data.hasMore ? 50 : null);
           setConnectionError(null);
           recover();
         } else if (data.commandId && data.idempotencyKey && data.status) {
           const record: ChatCommandView = { commandId: data.commandId, idempotencyKey: data.idempotencyKey, targetSessionId: sid,
-            acceptedAt: data.acceptedAt ?? data.timestamp, status: data.status, revision: data.revision, operation: data.operation, errorCode: data.errorCode, errorMessage: data.errorMessage, preview: data.preview };
+            acceptedAt: data.acceptedAt ?? data.timestamp, status: data.status, revision: data.revision, queuePaused: data.queuePaused, operation: data.operation, errorCode: data.errorCode, errorMessage: data.errorMessage, preview: data.preview };
           setRecords(current => mergeChatCommandViews(current, [record]));
           if (terminal(data.status)) {
             if (!record.operation && !notified.current.has(record.commandId)) { notified.current.add(record.commandId); latest.current.onFinished(record); }
@@ -135,6 +146,7 @@ export function useChatCommandOperations(options: Options) {
     const draft = { value: message, files: files.map(file => ({ ...file })), images: images.map(({ data, mimeType }) => ({ data, mimeType })), ...(retryOfPromptIds?.length ? { retryOfPromptIds } : {}), commandInput: persistentChatInputOptions(inputOptions) };
     let recovery: PendingPrompt = { id, scope: initial.scope, draft, message: { role: "user", content: message, timestamp, clientPromptId: id, commandSubmission: true, recoveryDraft: draft } };
     const local: ChatCommandView = { commandId: `pending-${id}`, idempotencyKey: id, targetSessionId: initial.sessionId ?? "", acceptedAt: timestamp, status: "accepted", operation, preview: message, local: true };
+    submitting.current.add(id);
     setRecords(current => mergeChatCommandViews(current, [local]));
     try {
       await savePendingPrompt(recovery);
@@ -151,9 +163,9 @@ export function useChatCommandOperations(options: Options) {
       if (operation?.command.source !== "builtin" || operation.afterPrompt || !operation) await initial.connectModelEvents(sid);
       if (generation.current !== currentGeneration) return false;
       const localFiles = files.filter(file => file.path);
-      const effectiveMessage = parsed.kind === "command" ? message : buildLocalFilePrompt(message, localFiles);
+      const effectiveMessage = message;
       const receipt = await sendAgentCommand<DispatchReceipt>(sid, { type: "submit_input", message: effectiveMessage, rawText: message, idempotencyKey: id, ...inputOptions,
-        ...(parsed.kind === "command" && localFiles.length ? { localFiles: localFiles.map(({ name, size, path }) => ({ name, size, path })) } : {}),
+        ...(localFiles.length ? { localFiles: localFiles.map(({ name, size, path }) => ({ name, size, path })) } : {}),
         ...(parsed.kind === "command" && parsed.command.source !== "builtin" ? { commandKey: parsed.command.key, catalogRevision: catalog.revision } : {}),
         ...(materials.length ? { materials } : {}), ...(images.length ? { images: images.map(({ data, mimeType }) => ({ type: "image", data, mimeType })) } : {}),
       });
@@ -169,6 +181,8 @@ export function useChatCommandOperations(options: Options) {
         void refresh().catch(() => {});
       }
       throw error;
+    } finally {
+      submitting.current.delete(id);
     }
   }, [refresh, t]);
 
@@ -179,11 +193,40 @@ export function useChatCommandOperations(options: Options) {
 
   const restore = useCallback(async (record: ChatCommandView) => {
     const local = (await readPendingPrompts(record.targetSessionId || latest.current.scope)).find(item => item.id === record.idempotencyKey);
-    if (local) return local.draft;
+    if (record.local && local) return local.draft;
     const response = await fetch(`/api/sessions/${encodeURIComponent(record.targetSessionId)}/submissions?commandId=${encodeURIComponent(record.commandId)}`, { cache: "no-store" });
     if (!response.ok) throw new Error(t("chatCommands.restoreFailed"));
     return await response.json() as PendingPrompt["draft"];
   }, [t]);
+
+  const queueAction = useCallback(async (record: ChatCommandView, action: "pause" | "resume" | "edit" | "steer" | "cancel", text?: string) => {
+    try {
+      const updated = await sendAgentCommand<ChatCommandView>(record.targetSessionId, { type: "queued_input_action", commandId: record.commandId, expectedRevision: record.revision, action, ...(text !== undefined ? { text } : {}) });
+      if (action === "cancel" && updated.status === "cancelled") await dismissPendingPrompt(record.idempotencyKey);
+      if (sessionRef.current === record.targetSessionId) setRecords(current => mergeChatCommandViews(current, [updated]));
+      return updated;
+    } catch (error) {
+      void refresh().catch(() => {});
+      throw new Error(error instanceof AgentCommandError && error.code ? t(`chatCommands.error.${error.code}`) : error instanceof Error ? error.message : String(error));
+    }
+  }, [refresh, t]);
+
+  const edit = useCallback(async (record: ChatCommandView) => {
+    const paused = record.queuePaused ? record : await queueAction(record, "pause");
+    try {
+      const draft = await restore(paused);
+      const saved = await hydrateDraft("queue-edit:" + record.commandId);
+      return saved?.value ?? (paused.operation?.steps[0]?.status === "completed" && paused.operation.afterPrompt
+        ? paused.operation.afterPrompt : draft.value);
+    } catch (error) {
+      // Undo only the pause owned by this attempt. A restored paused item stays paused.
+      if (!record.queuePaused) {
+        try { await queueAction(paused, "resume"); }
+        catch (resumeError) { throw new Error(t("chatCommands.editRecoveryFailed", { error: String(error), resumeError: String(resumeError) })); }
+      }
+      throw error;
+    }
+  }, [queueAction, restore, t]);
 
   const copy = useCallback(async (record: ChatCommandView) => {
     const action = record.operation?.result?.clientAction;
@@ -194,5 +237,5 @@ export function useChatCommandOperations(options: Options) {
     await refresh();
   }, [refresh]);
 
-  return { records, connectionError, submit, cancel, restore, copy, loadMore: nextOffset === null ? null : () => refresh(nextOffset) };
+  return { records, connectionError, submit, cancel, restore, queueAction, edit, copy, loadMore: nextOffset === null ? null : () => refresh(nextOffset) };
 }

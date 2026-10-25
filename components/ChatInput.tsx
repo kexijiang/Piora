@@ -11,7 +11,7 @@ import { CompactionProgress, CompactionResult } from "./CompactionProgress";
 import type { ReplySource } from "@/lib/reply-suggestions";
 import { useAnchoredMenuPosition } from "@/hooks/useAnchoredMenuPosition";
 import { readPromptOptimizerModel, readPromptOptimizerSystemPrompt } from "@/lib/prompt-optimizer-settings";
-import type { AttachedFile, BuiltinSlashCommandResult, CompactResultInfo, QueuedMessages, SlashCommandInfo } from "@/hooks/useAgentSession";
+import type { AttachedFile, BuiltinSlashCommandResult, CompactResultInfo, SlashCommandInfo } from "@/hooks/useAgentSession";
 import type { ChatCommandCatalog, ChatInputOptions } from "@/lib/chat-command-types";
 import { createChatCommandCatalog, parseChatInput } from "@/lib/chat-command-input";
 import commandStyles from "./ChatCommandComposer.module.css";
@@ -81,9 +81,8 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
 import { useApplicationShortcuts } from "@/hooks/useApplicationShortcuts";
 import { useLocalDictation } from "@/hooks/useLocalDictation";
+import { isPlainEnter, matchesSendShortcut, matchesSteerShortcut } from "@/lib/send-shortcut";
 import { useSendShortcut } from "@/hooks/useSendShortcut";
-import { useStreamingSendPreference } from "@/hooks/useStreamingSendPreference";
-import { isPlainEnter, matchesSendShortcut } from "@/lib/send-shortcut";
 import { formatShortcutBinding, isMacPlatform, shortcutMatchesEvent, shouldPreserveApplicationShortcut } from "@/lib/keyboard-shortcuts";
 import { AliIcon } from "./AliIcon";
 import { ModelProviderIcon } from "./ModelProviderIcon";
@@ -147,9 +146,7 @@ interface Props {
   availableThinkingLevels?: string[] | null;
   thinkingLevelMap?: Record<string, string | null> | null;
   retryInfo?: { attempt: number; maxAttempts: number; errorMessage?: string } | null;
-  queuedMessages?: QueuedMessages | null;
   inputHistory?: string[];
-  onRecallQueue?: () => void;
   slashCommands?: SlashCommandInfo[];
   slashCommandsLoading?: boolean;
   onLoadSlashCommands?: () => Promise<SlashCommandInfo[]> | SlashCommandInfo[];
@@ -165,6 +162,8 @@ interface Props {
   placeholder?: string;
   /** Optional project and mode controls rendered above the input surface. */
   contextControl?: React.ReactNode;
+  /** Pending submissions aligned with the input surface below its context controls. */
+  queueContent?: React.ReactNode;
   toolPermission?: ToolPermissionState | null;
   permissionSaving?: boolean;
   onToolPermissionChange?: (mode: PermissionMode) => void;
@@ -290,21 +289,6 @@ function revokeImagePreview(image: AttachedImage): void {
   }
 }
 
-function QueuedMessageRow({ kind, text }: { kind: "steer" | "follow-up"; text: string }) {
-  const { t } = useI18n();
-  const isSteer = kind === "steer";
-
-  return (
-    <div className={`composer-queue-row ${isSteer ? "is-steer" : "is-follow-up"}`} title={text}>
-      <span className="composer-queue-kind">
-        <AliIcon name={isSteer ? "arrowright" : "arrowdown"} size={11} />
-        {isSteer ? t("chat.steer") : t("chat.followUp")}
-      </span>
-      <span className="composer-queue-text">{text}</span>
-    </div>
-  );
-}
-
 function ModelNoticeBanner({ tone, title, body }: { tone: "error" | "warning"; title: string; body: string }) {
   const color = tone === "error" ? "239,68,68" : "234,179,8";
   return (
@@ -344,7 +328,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, onModelChange,
   onCompact, onAbortCompaction, isCompacting, compactionStartedAt = null, compactError, onDismissCompactError, compactResult, onDismissCompactResult,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
-  retryInfo, queuedMessages, inputHistory = [], onRecallQueue,
+  retryInfo, inputHistory = [],
   slashCommands, slashCommandsLoading, onLoadSlashCommands,
   onBuiltinCommand,
   onPromptWithStreamingBehavior,
@@ -356,20 +340,19 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   extensionStatuses = [],
   variant = "conversation",
   placeholder,
-  contextControl,
+  contextControl, queueContent,
   toolPermission, permissionSaving, onToolPermissionChange,
   replySource = null,
 }: Props, ref) {
   const { t, locale } = useI18n();
+  const { shortcut: sendShortcut, steerShortcut, newlineShortcut } = useSendShortcut();
   const isMobile = useIsMobile();
-  const { shortcut: sendShortcut } = useSendShortcut();
   const { bindings: applicationShortcutBindings } = useApplicationShortcuts();
   const voiceInputBinding = applicationShortcutBindings["composer.voiceInput"];
   const voiceInputShortcut = formatShortcutBinding(
     voiceInputBinding,
     isMacPlatform(typeof window === "undefined" ? undefined : window.piDesktop?.platform),
   );
-  const { preference: streamingSendPreference } = useStreamingSendPreference();
   const { draft: replyDraft, current: replyDraftRef, setValue, commit: commitReplyDraft, reset: resetReplyDraft, undo: undoReplyDraft } = useReplyDraft(() => {
     const saved = draftKey ? getDraft(draftKey) : null;
     return { value: saved?.value ?? "", spans: saved?.replySpans ?? [] };
@@ -388,8 +371,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   const [modelMenuSection, setModelMenuSection] = useState<ModelMenuSection>(null);
   const [modelFilter, setModelFilter] = useState("");
   const [promptOptimization, setPromptOptimization] = useState<PromptOptimizationState | null>(null);
-  const [streamingActionMenuOpen, setStreamingActionMenuOpen] = useState(false);
-  const [streamingActionIndex, setStreamingActionIndex] = useState(0);
   const [attachmentMenuOpen, setAttachmentMenuOpen] = useState(false);
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
@@ -426,7 +407,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   const sendingRef = useRef(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const modelDropdownPanelRef = useRef<HTMLDivElement>(null);
-  const streamingActionMenuRef = useRef<HTMLDivElement>(null);
   const attachmentMenuRef = useRef<HTMLDivElement>(null);
   const historyMenuRef = useRef<HTMLDivElement>(null);
   const promptOptimizerAbortRef = useRef<AbortController | null>(null);
@@ -726,7 +706,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     resetReplyDraft({ value: "", spans: [] });
     setAtQuery(null);
     setHistoryMenuOpen(false);
-    setStreamingActionMenuOpen(false);
     setAttachmentMenuOpen(false);
     if (draftKey) clearDraft(draftKey);
     if (draftKeyRef.current && draftKeyRef.current !== draftKey) clearDraft(draftKeyRef.current);
@@ -844,8 +823,10 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     const msg = value.trim();
     const sentCommandOptions = { ...commandInputOptions, ...overrideOptions };
     const commandSubmission = sentCommandOptions.inputMode !== "text" && msg.startsWith("/");
+    // Delivery from a recovered draft must never turn an ordinary send into steering.
+    if (!commandSubmission) sentCommandOptions.delivery = overrideOptions?.delivery ?? "next_turn";
     if (!msg && !attachedImages.length && !attachedFiles.length) return;
-    if ((isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
+    if (permissionSaving || (isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
     if (attachedFiles.some((file) => !file.path && file.text == null)) {
       setAttachmentError(t("chat.attachmentMissingPath"));
       return;
@@ -940,7 +921,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
-  }, [attachedImages, attachedFiles, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions]);
+  }, [attachedImages, attachedFiles, permissionSaving, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions]);
 
   useEffect(() => {
     submitRef.current = () => { void handleSend(); };
@@ -1017,8 +998,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     : t(slashQuery ? "chat.matches" : "chat.commands", { count: filteredSlashCommands.length });
   const hasInputText = Boolean(value.trim());
   const canQueueStreamingMessage = onQueueInput ? hasInputText || attachedImages.length > 0 || attachedFiles.length > 0 : hasInputText && attachedImages.length === 0 && attachedFiles.length === 0;
-  const primaryStreamingMode = streamingSendPreference.enabled ? streamingSendPreference.behavior : "followup";
-  const canSend = !isProcessingImages && !isProcessingFiles
+  const canSend = !permissionSaving && !isProcessingImages && !isProcessingFiles
     && (!isAutoModelSelection || isCommandInput)
     && (hasInputText || attachedImages.length > 0 || attachedFiles.length > 0);
   const canOptimizePrompt = hasInputText
@@ -1028,13 +1008,8 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     && !trimmedValue.startsWith("/")
     && !trimmedValue.startsWith("!")
     && !promptOptimization?.loading;
-  const queuedMessageCount = (queuedMessages?.steering.length ?? 0) + (queuedMessages?.followUp.length ?? 0);
 
-  useEffect(() => {
-    if (!isStreaming || !canQueueStreamingMessage || streamingSendPreference.enabled) {
-      setStreamingActionMenuOpen(false);
-    }
-  }, [canQueueStreamingMessage, isStreaming, streamingSendPreference.enabled]);
+
 
   // ── @ file autocomplete ──────────────────────────────────────────────────
   // Recomputed from the text before the caret on every change/caret move.
@@ -1353,13 +1328,8 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
 
   const submitStreamingMessage = useCallback(() => {
     if (!canQueueStreamingMessage) return;
-    if (streamingSendPreference.enabled) {
-      sendQueued(streamingSendPreference.behavior);
-      return;
-    }
-    setStreamingActionIndex(0);
-    setStreamingActionMenuOpen(true);
-  }, [canQueueStreamingMessage, sendQueued, streamingSendPreference]);
+    sendQueued("followup");
+  }, [canQueueStreamingMessage, sendQueued]);
 
   const getNextSlashIndex = useCallback((direction: "up" | "down" | "left" | "right") => {
     const lastIndex = filteredSlashCommands.length - 1;
@@ -1413,8 +1383,8 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
         nativeEvent.isComposing ||
         nativeEvent.keyCode === 229;
 
-      if (e.key === "Enter" && !e.shiftKey && (isComposing || recentlyComposed)) {
-        if (recentlyComposed) e.preventDefault();
+      if (isComposing || recentlyComposed) {
+        if (e.key === "Enter" && recentlyComposed) e.preventDefault();
         return;
       }
 
@@ -1522,25 +1492,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
         return;
       }
 
-      // Streaming action (steer / queue) menu — full keyboard navigation.
-      if (streamingActionMenuOpen && canQueueStreamingMessage && !isComposing) {
-        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-          e.preventDefault();
-          setStreamingActionIndex((index) => (index + 1) % 2);
-          return;
-        }
-        if (isPlainEnter(e)) {
-          e.preventDefault();
-          sendQueued(streamingActionIndex === 0 ? "steer" : "followup");
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          setStreamingActionMenuOpen(false);
-          return;
-        }
-      }
-
       // Esc stops the agent when no slash/@/history menu or IME composition is active.
       if (e.key === "Escape" && !isComposing && isStreaming && onAbort) {
         e.preventDefault();
@@ -1548,16 +1499,39 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
         return;
       }
 
+      if (matchesSendShortcut(e, newlineShortcut)) {
+        e.preventDefault();
+        const textarea = e.currentTarget;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const nextValue = textarea.value.slice(0, start) + "\n" + textarea.value.slice(end);
+        setValue(nextValue);
+        setHistoryMenuOpen(false);
+        updateAtQuery(nextValue, start + 1);
+        requestAnimationFrame(() => textarea.setSelectionRange(start + 1, start + 1));
+        return;
+      }
+
+      if (matchesSteerShortcut(e, steerShortcut)) {
+        e.preventDefault();
+        if (!e.repeat && isStreaming && !isCommandInput && (onQueueInput || onSteer) && canQueueStreamingMessage) void sendQueued("steer");
+        return;
+      }
+
       if (matchesSendShortcut(e, sendShortcut)) {
         e.preventDefault();
+        if (e.repeat) return;
         if (isStreaming && !isCommandInput && (onQueueInput || onSteer || onFollowUp)) {
           submitStreamingMessage();
         } else {
           handleSend();
         }
+        return;
       }
+      // Only the configured newline binding inserts a line break.
+      if (e.key === "Enter") e.preventDefault();
     },
-    [isStreaming, isCommandInput, onQueueInput, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, canQueueStreamingMessage, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, streamingActionMenuOpen, streamingActionIndex, sendQueued, sendShortcut, submitStreamingMessage, undoReplyDraft]
+    [isStreaming, isCommandInput, onQueueInput, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, canQueueStreamingMessage, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, sendQueued, submitStreamingMessage, undoReplyDraft, sendShortcut, steerShortcut, newlineShortcut, setValue, updateAtQuery]
   );
 
   const handleInput = useCallback(() => {
@@ -1702,9 +1676,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       if (atMenuRef.current && !atMenuRef.current.contains(e.target as Node) && !textareaRef.current?.contains(e.target as Node)) {
         setAtMenuOpen(false);
       }
-      if (streamingActionMenuRef.current && !streamingActionMenuRef.current.contains(e.target as Node)) {
-        setStreamingActionMenuOpen(false);
-      }
       if (attachmentMenuRef.current && !attachmentMenuRef.current.contains(e.target as Node)) {
         setAttachmentMenuOpen(false);
       }
@@ -1757,30 +1728,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       />
       <div className="composer-column">
         <ModelErrorBanner error={modelError} title={t("chat.modelError")} />
-        {/* Queued steering / follow-up messages (delivered by pi on upcoming turns) */}
-        {queuedMessageCount > 0 && (
-          <div className="composer-queue-tray" role="status" aria-label={t("chat.queued", { count: queuedMessageCount })}>
-            <div className="composer-queue-list">
-              {queuedMessages?.steering.map((text, i) => (
-                <QueuedMessageRow key={`steer-${i}`} kind="steer" text={text} />
-              ))}
-              {queuedMessages?.followUp.map((text, i) => (
-                <QueuedMessageRow key={`followup-${i}`} kind="follow-up" text={text} />
-              ))}
-            </div>
-            {onRecallQueue && (
-              <button
-                type="button"
-                className="composer-queue-recall"
-                onClick={onRecallQueue}
-                title={t("chat.recallTitle")}
-                aria-label={t("chat.recall")}
-              >
-                <AliIcon name="history" size={13} />
-              </button>
-            )}
-          </div>
-        )}
         {/* Retry banner */}
         {retryInfo && (
           <div style={{
@@ -2180,9 +2127,11 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
             </div>
           )}
           {contextControl && <div className="chat-composer-context">{contextControl}</div>}
+          {queueContent}
           <div
             className="chat-composer-surface"
             style={{
+              position: "relative",
               display: "flex",
               flexWrap: "wrap",
               gap: 8,
@@ -2707,95 +2656,8 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
               </div>
             )}
             {isStreaming && !isCommandInput ? (
-              <div
-                ref={streamingActionMenuRef}
-                className="streaming-action-control"
-                onKeyDown={(event) => {
-                  if (!streamingActionMenuOpen || !canQueueStreamingMessage) return;
-                  if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setStreamingActionIndex((index) => (index + 1) % 2);
-                    return;
-                  }
-                  if (event.key === "Enter" || event.key === " ") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    sendQueued(streamingActionIndex === 0 ? "steer" : "followup");
-                    return;
-                  }
-                  if (event.key === "Escape") {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    setStreamingActionMenuOpen(false);
-                    return;
-                  }
-                }}
-              >
-                {canQueueStreamingMessage && streamingActionMenuOpen && (
-                  <div
-                    className="streaming-action-menu"
-                    role="menu"
-                    aria-label={t("chat.chooseStreamingAction")}
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="streaming-action-option is-steer"
-                      data-active={streamingActionIndex === 0 ? "true" : "false"}
-                      onMouseEnter={() => setStreamingActionIndex(0)}
-                      onClick={() => sendQueued("steer")}
-                    >
-                      <span className="streaming-action-option-icon"><AliIcon name="arrowright" size={13} /></span>
-                      <span className="streaming-action-option-copy">
-                        <strong>{t("chat.steer")}</strong>
-                        <small>{t("chat.steerDescription")}</small>
-                      </span>
-                    </button>
-                    <div className="streaming-action-divider" />
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className="streaming-action-option"
-                      data-active={streamingActionIndex === 1 ? "true" : "false"}
-                      onMouseEnter={() => setStreamingActionIndex(1)}
-                      onClick={() => sendQueued("followup")}
-                    >
-                      <span className="streaming-action-option-icon"><AliIcon name="arrowdown" size={13} /></span>
-                      <span className="streaming-action-option-copy">
-                        <strong>{t("chat.sendDirectly")}</strong>
-                        <small>{t("chat.sendDirectlyDescription")}</small>
-                      </span>
-                    </button>
-                    <div className="streaming-action-menu-hint" aria-hidden="true">
-                      <span><kbd>↑</kbd><kbd>↓</kbd> {t("chat.commandSwitch")}</span>
-                      <span><kbd>↵</kbd> {t("chat.commandRun")}</span>
-                      <span><kbd>esc</kbd> {t("chat.commandClose")}</span>
-                    </div>
-                  </div>
-                )}
-                {canQueueStreamingMessage ? <div className="streaming-action-split">
-                  <button
-                    type="button"
-                    className="streaming-action-primary"
-                    onClick={() => sendQueued(primaryStreamingMode)}
-                    title={t(primaryStreamingMode === "steer" ? "chat.steerDescription" : "chat.sendDirectlyDescription")}
-                    aria-label={t(primaryStreamingMode === "steer" ? "chat.steer" : "chat.followUp")}
-                  >
-                    <AliIcon name="send" size={15} /><span>{t(primaryStreamingMode === "steer" ? "chat.steer" : "chat.followUp")}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="streaming-action-toggle"
-                    onClick={() => { setStreamingActionIndex(0); setStreamingActionMenuOpen((open) => !open); }}
-                    title={t("chat.chooseStreamingAction")}
-                    aria-label={t("chat.chooseStreamingAction")}
-                    aria-haspopup="menu"
-                    aria-expanded={streamingActionMenuOpen}
-                  >
-                    <AliIcon name="arrowdown" size={11} />
-                  </button>
-                </div> : <button
+              <div className="streaming-action-control">
+                {canQueueStreamingMessage ? <button type="button" className="streaming-action-primary" onClick={submitStreamingMessage} title={t("chat.send")} aria-label={t("chat.send")}><AliIcon name="send" size={15} /></button> : <button
                   type="button"
                   onClick={onAbort}
                   title={t("chat.stopAgent")}

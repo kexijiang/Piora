@@ -47,6 +47,17 @@ npm run verify:backgrounds
 
 CI is configured to run the source checks on Windows and Linux, including deterministic license-inventory freshness, then build and verify the unpacked application on Windows. Release changes should additionally complete the artifact, extension-fixture, license, secret, and clean-machine checks in the [public launch checklist](docs/open-source/LAUNCH_CHECKLIST.md). A workflow configuration is not evidence that a public run has passed.
 
+The test shards and `Quality validation` jobs run concurrently on separate
+runners. The existing `Quality checks (ubuntu-latest)` and
+`Quality checks (windows-latest)` checks are final gates: both require every test
+shard and both platform validation jobs to succeed. Failed, cancelled, or skipped
+dependencies fail the gate. The gates do not reinstall dependencies or repeat
+validation. Browser and native-resource tests retain their serial execution
+within each shard; this CI scheduling change does not speed up local `npm test`.
+Root lint excludes `.worktrees/` to avoid rescanning independent checkouts and
+loading their separate dependency versions. Run checks inside each worktree
+when changing its code.
+
 `audit:runtime` verifies that Pi's two reviewed postinstall dependency replacements
 have the expected locked identities and exactly match the installed source files,
 then asks npm to audit a temporary lock describing those final versions. The

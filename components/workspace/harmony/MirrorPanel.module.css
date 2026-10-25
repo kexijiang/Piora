@@ -1,0 +1,11 @@
+.root { display:flex; flex-direction:column; height:100%; min-height:0; color:var(--text); background:var(--bg-panel); }
+.toolbar,.status { display:flex; align-items:center; gap:8px; padding:8px 12px; flex-wrap:wrap; }
+.toolbar button,.toolbar select,.controls button,.controls input,.controls select { font:inherit; color:var(--text); background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:6px 10px; }
+.root button:disabled { opacity:.45; }
+.viewport { position:relative; flex:1; min-height:0; overflow:auto; display:grid; place-items:center; background:#111; }
+.viewport canvas { display:block; max-width:100%; max-height:100%; object-fit:contain; touch-action:none; }
+.empty { position:absolute; max-width:80%; text-align:center; color:#ddd; pointer-events:none; }
+.status { font-size:var(--text-sm); color:var(--text-muted); justify-content:space-between; }
+.status details { position:relative; }
+.controls { position:absolute; right:0; bottom:24px; z-index:2; display:flex; flex-wrap:wrap; gap:6px; width:300px; padding:12px; background:var(--bg-panel); border:1px solid var(--border); border-radius:8px; }
+.root > p,.root > small { padding:6px 12px; overflow-wrap:anywhere; }

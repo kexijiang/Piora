@@ -63,7 +63,7 @@ export function recordingStreamUnavailable(cause?: unknown): HarmonyError {
 }
 
 /** Records only this subscriber's encoded stream. No global recorder, process kill or device media deletion. */
-export async function startOwnedRecording(connection: HarmonyVideoConnection, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void) {
+export async function startOwnedRecording(connection: HarmonyVideoConnection, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void, requireIsolation = false) {
   const directory = await mkdtemp(join(tmpdir(), "piora-owned-recording-"));
   const path = join(directory, "capture.mp4");
   const handle = await open(path, "wx", 0o600).catch(async error => { await rmdir(directory); await connection.close(); throw error; });
@@ -94,6 +94,9 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
   };
   let resolveReady!: () => void, rejectReady!: (error: unknown) => void;
   const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+  let isolated = !requireIsolation;
+  const isolationError = () => new HarmonyError("CAPABILITY_UNAVAILABLE", "The phone capture component has not confirmed recording-isolation protocol v1. Manually prepare a compatible Piora component before stream recording. Preview and screenshots remain available", { details: { reason: "recording-isolation-unavailable", requiredProtocolVersion: 1, dispatchState: "not-sent" } });
+  const isolationTimer = requireIsolation ? setTimeout(() => { failure = isolationError(); rejectReady(failure); void close().catch(() => undefined); }, 1_000) : undefined;
   let closing: Promise<void> | undefined;
   // An already errored reader rejects cancel with its original stream error.
   // Await cancellation settlement; forward closure is the owned transport check.
@@ -124,11 +127,14 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
           if (length > MAX_PACKET) throw new HarmonyError("COMMAND_OUTPUT_LIMIT", "Recording packet exceeded limit");
           if (pending.length < length + 8) break;
           const payload = pending.subarray(8, length + 8); pending = pending.subarray(length + 8);
-          if (type === 2) {
+          if (type === 0x21 && payload.length === 1 && payload[0] === 1) {
+            isolated = true; clearTimeout(isolationTimer);
+          } else if (type === 2) {
             const next = configuration(payload);
             if (config && (next.width !== config.width || next.height !== config.height || !next.description.equals(config.description))) throw new HarmonyError("STALE_SNAPSHOT", "Video geometry or codec changed; stop and start a new recording");
             config = next;
           } else if (type === 3 && config && payload.length > 9) {
+            if (!isolated) continue;
             const key = Boolean(payload[0] & 1), timestamp = Number(payload.readBigUInt64BE(1));
             if (!frames && !key) continue;
             if (!Number.isSafeInteger(timestamp) || frames >= 14400) throw new HarmonyError("COMMAND_OUTPUT_LIMIT", "Recording timestamp or frame limit exceeded");
@@ -165,21 +171,38 @@ export async function startOwnedRecording(connection: HarmonyVideoConnection, si
   })();
   try { await ready; }
   catch (error) { await discard(); throw error; }
-  finally { clearTimeout(startup); signal?.removeEventListener("abort", abort); }
+  finally { clearTimeout(startup); clearTimeout(isolationTimer); signal?.removeEventListener("abort", abort); }
   accepted = true; reportFailure();
   const stop = (destination: string) => completion ??= (async () => {
     stopping = true;
+    let saved = false;
     try {
-      await close(); await pump;
-      if (failure) throw failure;
+      await close().catch(error => { failure ??= error; }); await pump;
+      // Keep the complete samples preceding a disconnect/configuration change.
+      // They must be finalized before we can advertise a recoverable MP4.
       source.close(); await output.finalize(); await handle.close();
       await copyFile(path, destination, constants.COPYFILE_EXCL);
+      saved = true;
+      if (failure) {
+        const error = asHarmonyError(failure);
+        throw new HarmonyError(error.code, `Recording interrupted; partial video saved to ${destination}`, {
+          cause: error, details: { ...error.details, recordingStopped: true, recordingIncomplete: true, recoveryPath: destination },
+        });
+      }
       return (await stat(destination)).size;
+    } catch (error) {
+      if (saved) throw error;
+      const cause = asHarmonyError(error);
+      throw new HarmonyError(cause.code, `Recording could not be saved. Recovery file retained at ${path}`, {
+        cause, details: { ...(failure ? asHarmonyError(failure).details : {}), ...cause.details, recordingStopped: true, recoveryPath: path, finalized: output.state === "finalized" },
+      });
     } finally {
       await pump;
       if (output.state !== "finalized") await output.cancel().catch(() => undefined);
       await handle.close().catch(() => undefined);
-      await rm(path, { force: true }); await rmdir(directory);
+      // Failed copy/finalization retains owned bytes; never claim all partial
+      // MP4 files can be repaired. Recovery is explicit, not automatic deletion.
+      if (saved) { await rm(path, { force: true }); await rmdir(directory); }
     }
   })();
   return { stop, discard };

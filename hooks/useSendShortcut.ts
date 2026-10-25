@@ -2,30 +2,40 @@
 
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import {
-  DEFAULT_SEND_SHORTCUT,
+  CHAT_SHORTCUT_STORAGE_KEY,
+  DEFAULT_CHAT_SHORTCUTS,
   SEND_SHORTCUT_STORAGE_KEY,
-  parseStoredSendShortcut,
+  normalizeChatShortcut,
+  parseChatShortcuts,
+  validateChatShortcut,
+  type ChatShortcutAction,
+  type ChatShortcutBindings,
   type SendShortcut,
 } from "@/lib/send-shortcut";
 
 const listeners = new Set<() => void>();
-let currentShortcut: SendShortcut = DEFAULT_SEND_SHORTCUT;
+let currentBindings = DEFAULT_CHAT_SHORTCUTS;
 let storageListenerAttached = false;
 
-function emit(): void {
-  listeners.forEach((listener) => listener());
-}
-
-function commitShortcut(shortcut: SendShortcut, persist: boolean): void {
-  currentShortcut = shortcut;
+function commitBindings(bindings: ChatShortcutBindings, persist: boolean): void {
   if (persist) {
     try {
-      window.localStorage.setItem(SEND_SHORTCUT_STORAGE_KEY, shortcut);
+      window.localStorage.setItem(CHAT_SHORTCUT_STORAGE_KEY, JSON.stringify({ version: 2, bindings }));
     } catch {
       // Keep the preference active for this renderer when storage is unavailable.
     }
   }
-  emit();
+  if (bindings.send === currentBindings.send && bindings.steer === currentBindings.steer && bindings.newline === currentBindings.newline) return;
+  currentBindings = bindings;
+  listeners.forEach((listener) => listener());
+}
+
+function readStorage(): void {
+  try {
+    commitBindings(parseChatShortcuts(window.localStorage.getItem(CHAT_SHORTCUT_STORAGE_KEY), window.localStorage.getItem(SEND_SHORTCUT_STORAGE_KEY)), false);
+  } catch {
+    // Keep the current preference when storage is unavailable.
+  }
 }
 
 function subscribe(listener: () => void): () => void {
@@ -33,37 +43,25 @@ function subscribe(listener: () => void): () => void {
   if (!storageListenerAttached && typeof window !== "undefined") {
     storageListenerAttached = true;
     window.addEventListener("storage", (event) => {
-      if (event.key !== SEND_SHORTCUT_STORAGE_KEY) return;
-      commitShortcut(parseStoredSendShortcut(event.newValue), false);
+      if (event.key === null || event.key === CHAT_SHORTCUT_STORAGE_KEY || event.key === SEND_SHORTCUT_STORAGE_KEY) readStorage();
     });
   }
   return () => listeners.delete(listener);
 }
 
-function getSnapshot(): SendShortcut {
-  return currentShortcut;
-}
-
-function getServerSnapshot(): SendShortcut {
-  return DEFAULT_SEND_SHORTCUT;
-}
+function getSnapshot(): ChatShortcutBindings { return currentBindings; }
+function getServerSnapshot(): ChatShortcutBindings { return DEFAULT_CHAT_SHORTCUTS; }
 
 export function useSendShortcut() {
-  const shortcut = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const bindings = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  useEffect(readStorage, []);
 
-  useEffect(() => {
-    let stored = DEFAULT_SEND_SHORTCUT;
-    try {
-      stored = parseStoredSendShortcut(window.localStorage.getItem(SEND_SHORTCUT_STORAGE_KEY));
-    } catch {
-      // Keep the default when storage is unavailable.
-    }
-    commitShortcut(stored, false);
+  const setBinding = useCallback((action: ChatShortcutAction, value: SendShortcut) => {
+    const error = validateChatShortcut(currentBindings, action, value);
+    if (error) return error;
+    commitBindings({ ...currentBindings, [action]: value === null ? null : normalizeChatShortcut(value) }, true);
+    return null;
   }, []);
-
-  const setShortcut = useCallback((next: SendShortcut) => {
-    commitShortcut(next, true);
-  }, []);
-
-  return { shortcut, setShortcut };
+  const setShortcut = useCallback((value: SendShortcut) => setBinding("send", value), [setBinding]);
+  return { bindings, shortcut: bindings.send, steerShortcut: bindings.steer, newlineShortcut: bindings.newline, setShortcut, setBinding };
 }

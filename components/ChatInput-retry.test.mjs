@@ -15,7 +15,7 @@ function composer(onSend) {
     value: " original\nmessage ",
     attachedImages: [{ data: "YWJj", mimeType: "image/png", previewUrl: "blob:preview" }],
     attachedFiles: [{ name: "notes.txt", text: "full attachment", size: 15 }],
-    isStreaming: false, isProcessingImages: false, isAutoModelSelection: false,
+    permissionSaving: false, isStreaming: false, isProcessingImages: false, isAutoModelSelection: false,
     pendingFileCountRef: { current: 0 },
     onBuiltinCommand: undefined, onQueueInput: undefined, contextUsage: null,
     commandInputOptions: {},
@@ -54,6 +54,19 @@ function composer(onSend) {
   };
   return { env, send: new Function("env", `with (env) { ${js}; return handleSend; }`)(env) };
 }
+
+test("permission saving keeps the draft and prevents submission until the selected mode is saved", async () => {
+  let submissions = 0;
+  const { env, send } = composer(async () => { submissions++; return true; });
+  env.permissionSaving = true;
+  await send();
+  assert.equal(submissions, 0);
+  assert.equal(env.value, " original\nmessage ");
+  assert.equal(env.attachedImages.length, 1);
+  env.permissionSaving = false;
+  await send();
+  assert.equal(submissions, 1);
+});
 
 test("clears text and attachments immediately while model selection and durable storage are pending", async () => {
   const model = Promise.withResolvers();

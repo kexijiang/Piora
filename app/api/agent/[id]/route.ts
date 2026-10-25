@@ -1,3 +1,4 @@
+import { commandOperationView } from "@/lib/chat-command-events";
 import { NextResponse } from "next/server";
 import { getRpcSession } from "@/lib/rpc-manager";
 import { resolveOrStartRpcSession } from "@/lib/session-runtime-resolver";
@@ -55,6 +56,15 @@ export async function POST(
   try {
     const runtimeProfile = getAgentRuntimeProfile();
     const body = await req.json() as { type: string; [key: string]: unknown };
+    if (body.type === "recall_queued_inputs") {
+      const records = await getSessionMessageRouter().recallQueuedInputs(id);
+      return NextResponse.json({ success: true, data: records.map(commandOperationView) });
+    }
+    if (body.type === "queued_input_action") {
+      if (typeof body.commandId !== "string" || !promptCommandIdPattern.test(body.commandId) || !["pause", "resume", "edit", "steer", "cancel"].includes(String(body.action)) || (body.text !== undefined && typeof body.text !== "string") || (body.expectedRevision !== undefined && (!Number.isSafeInteger(body.expectedRevision) || Number(body.expectedRevision) < 0))) return NextResponse.json({ error: "Invalid queue action", code: "INVALID_SESSION_MESSAGE" }, { status: 400 });
+      const record = await getSessionMessageRouter().queuedInputAction(id, body.commandId, body.action as "pause" | "resume" | "edit" | "steer" | "cancel", body.text as string | undefined, typeof body.expectedRevision === "number" ? body.expectedRevision : undefined);
+      return NextResponse.json({ success: true, data: commandOperationView(record) });
+    }
     if (body.type === "submit_input") {
       const result = await dispatchChatInput(id, body);
       return NextResponse.json({ success: true, data: result });

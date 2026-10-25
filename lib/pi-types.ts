@@ -168,6 +168,10 @@ export interface AgentSessionLike {
     prompt?: Agent["prompt"];
     steer?: Agent["steer"];
     followUp?: Agent["followUp"];
+    peekQueuedMessages?: Agent["peekQueuedMessages"];
+    clearSteeringQueue?: Agent["clearSteeringQueue"];
+    steeringMode?: Agent["steeringMode"];
+    followUpMode?: Agent["followUpMode"];
     transformContext?: Agent["transformContext"];
     maxRetryDelayMs?: number;
     state?: {

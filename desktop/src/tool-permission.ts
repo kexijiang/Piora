@@ -6,6 +6,6 @@ export function hasFullToolAccess(root: string | undefined, sessionId: string): 
   if (!root || !/^[a-zA-Z0-9_-]{1,128}$/.test(sessionId)) return false;
   try {
     const value = JSON.parse(readFileSync(join(root, "piora", "tool-permissions", `${sessionId}.json`), "utf8"));
-    return value.mode === "full" && Number.isSafeInteger(value.revision) && value.revision > 0;
+    return (value.schemaVersion === undefined || value.schemaVersion === 2) && value.mode === "full" && Number.isSafeInteger(value.revision) && value.revision > 0;
   } catch { return false; }
 }

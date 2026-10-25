@@ -113,7 +113,7 @@ export function layoutChatResponseRows(rows: ChatHistoryRow[], messages: AgentMe
 
 export function insertCommandHistoryRows(rows: ChatHistoryRow[], messages: AgentMessage[], entryIds: string[], operations: ChatCommandView[]): ChatHistoryRow[] {
   const combined = [...rows];
-  for (const operation of operations.filter(record => record.operation || record.local || ["failed", "cancelled", "expired", "interrupted"].includes(record.status))) {
+  for (const operation of operations.filter(record => record.operation)) {
     const anchor = operation.operation?.anchorEntryId;
     const anchorIndex = anchor ? entryIds.indexOf(anchor) : -1;
     const followingIndex = messages.findIndex(message => (message.timestamp ?? 0) > operation.acceptedAt);
