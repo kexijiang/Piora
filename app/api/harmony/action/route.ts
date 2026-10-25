@@ -5,6 +5,7 @@ import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-acces
 import { HarmonyError } from "@/lib/harmony/errors";
 import { assertHarmonyLocalSourceAllowed } from "@/lib/harmony/runtime/local-file-access";
 import { hasJsonContentType } from "@/lib/request-security";
+import { harmonyWorkbenchEnabled, mirrorActionAllowed } from "@/lib/harmony/mirror-mode";
 import { harmonyErrorResponse, noStoreJson, requireHarmonyAccess } from "../_shared";
 export const dynamic = "force-dynamic";
 export async function POST(request: Request) {
@@ -12,6 +13,9 @@ export async function POST(request: Request) {
   if (!hasJsonContentType(request)) return noStoreJson({ error: "Content-Type must be application/json" }, { status: 415 });
   try {
     const body = await parseJsonWithinLimit(request, 16 * 1024) as Record<string, unknown>;
+    if (!harmonyWorkbenchEnabled() && !mirrorActionAllowed(body?.action)) {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Device tools are disabled in mirror mode");
+    }
     if (body?.action === "install_app" && (typeof body.hapPath !== "string" || !isExistingFilePathAllowed(body.hapPath, await getAllowedFileRoots()))) {
       throw new HarmonyError("INVALID_ARGUMENT", "Select a HAP within an allowed workspace root");
     }

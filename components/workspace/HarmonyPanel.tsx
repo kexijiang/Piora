@@ -18,6 +18,7 @@ import { WorkbenchTools } from "./harmony/WorkbenchTools";
 import { MediaHistory } from "./harmony/MediaHistory";
 import { TcpDeviceConnection } from "./harmony/TcpDeviceConnection";
 import styles from "./HarmonyPanel.module.css";
+import { MirrorPanel } from "./harmony/MirrorPanel";
 
 type RuntimeProfile = "normal" | "device-control";
 type HarmonyDevice = {
@@ -193,7 +194,12 @@ type HarmonyPanelProps = {
 
 type FrameZoom = "fit" | "100" | "150" | "200";
 
-export function HarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenLocalTerminal, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
+export function HarmonyPanel(props: HarmonyPanelProps) {
+  return <MirrorPanel {...props} />;
+}
+
+/** Retained source for the former workbench; not mounted by the mirror page. */
+export function LegacyHarmonyPanel({ active, maximized = false, onMaximizedChange, sessionRunning = false, cwd, onOpenLocalTerminal, onGuideAgent, onSnapshot }: HarmonyPanelProps) {
   const { locale } = useI18n();
   const chinese = locale === "zh-CN";
   const copy = useCallback((zh: string, en: string) => chinese ? zh : en, [chinese]);

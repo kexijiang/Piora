@@ -1,4 +1,5 @@
 import { InvalidJsonBodyError, JsonBodyTooLargeError, parseJsonWithinLimit } from "@/lib/bounded-json";
+import { join } from "node:path";
 import { getHarmonyDeviceManager } from "@/lib/harmony";
 import { resolveHarmonyStorage } from "@/lib/harmony/artifacts";
 import { HarmonyError } from "@/lib/harmony/errors";
@@ -31,7 +32,12 @@ export async function GET(request: Request) {
     const manager = getHarmonyDeviceManager();
     const serial = new URL(request.url).searchParams.get("serial")?.trim();
     const recording = serial ? manager.getRecordingState(serial) : undefined;
+    const outcome = serial ? manager.operationTasks.list(serial).find(task => task.kind === "recording") : undefined;
+    const storage = resolveHarmonyStorage(manager.getConfig());
     return noStoreJson({
+      recordingOutcome: outcome ? { id: outcome.id, status: outcome.status, phase: outcome.phase, error: outcome.error,
+        recoveryPath: outcome.recoveryPath, finalized: outcome.recoveryFinalized,
+        ...(outcome.status === "completed" && outcome.mediaFilename ? { path: join(storage.recordingDirectory, outcome.mediaFilename) } : {}) } : null,
       recording: recording ? {
         serial: recording.serial,
         recordingId: recording.recordingId,
@@ -40,7 +46,7 @@ export async function GET(request: Request) {
         method: recording.method ?? "stream",
         ...(recording.systemRecorderStateUnknown ? { systemRecorderStateUnknown: true } : {}),
       } : null,
-      storage: resolveHarmonyStorage(manager.getConfig()),
+      storage,
     });
   } catch (error) {
     return harmonyErrorResponse(error);

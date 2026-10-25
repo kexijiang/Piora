@@ -1,4 +1,5 @@
 import { observationPage } from "../lib/harmony/observation/page.ts";
+import { harmonyWorkbenchEnabled } from "../lib/harmony/mirror-mode.ts";
 import { assertToolJsonObject } from "../lib/tool-json.ts";
 import { actionCatalog, actionSchema, scenarioStepSchema, selectorSchema } from "../lib/harmony/contracts/actions.ts";
 import { dispatchHarmonyAction } from "../lib/harmony/action-dispatcher.ts";
@@ -1563,6 +1564,7 @@ const harmonyControlTool = defineTool({
 });
 
 export default function pioraHarmony(api: ExtensionAPI) {
+  if (!harmonyWorkbenchEnabled()) return;
   api.registerTool(harmonyControlTool);
   api.on?.("before_agent_start", (event) => {
     const selected = event.systemPromptOptions.selectedTools ?? [];
