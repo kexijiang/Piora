@@ -57,7 +57,7 @@ inline uint32_t QueuedPacketType(const Frame &frame) {
 // video/config packets, and restores the latest config before the next IDR.
 template <typename Queue, typename Frame>
 inline int EnqueueVideoPacket(Queue &queue, size_t &offset, bool &awaitingKeyframe,
-                               Frame &latestConfig, const Frame &frame) {
+                               Frame &latestConfig, const Frame &frame, bool expired = false, bool recording = false) {
     if (!frame || frame->size() < 8 || frame->size() > kVideoQueueHardBytes ||
         !VideoQueueFits(queue, Frame{})) return kVideoQueueClose;
     const auto type = QueuedPacketType(frame);
@@ -73,8 +73,8 @@ inline int EnqueueVideoPacket(Queue &queue, size_t &offset, bool &awaitingKeyfra
         if (packet->size() > limit - queued) { queued = limit + 1; break; }
         queued += packet->size();
     }
-    const bool congested = !queue.empty() &&
-        (queued > limit || frame->size() > limit - queued);
+    const bool congested = !recording && !queue.empty() &&
+        (expired || queued > limit || frame->size() > limit - queued);
     Queue retained;
     Queue *target = &queue;
     bool nextAwaitingKeyframe = awaitingKeyframe;
@@ -141,12 +141,17 @@ private:
     ~TcpServer() { Stop(); }
 
     // 发送队列元素改为 shared_ptr：多客户端共享同一份只读帧缓冲，消除 per-client 拷贝。
-    using FramePtr = std::shared_ptr<const std::vector<uint8_t>>;
+    struct VideoPacket : std::vector<uint8_t> {
+        explicit VideoPacket(size_t count) : std::vector<uint8_t>(count) {}
+        const std::chrono::steady_clock::time_point createdAt = std::chrono::steady_clock::now();
+    };
+    using FramePtr = std::shared_ptr<const VideoPacket>;
 
     struct ClientState {
         int fd;
         bool closing = false;
         bool awaitingKeyframe = true;
+        bool recording = false; // close at the hard cap instead of silently dropping a GOP
         FramePtr latestConfig;
         std::deque<FramePtr> txQueue;
         size_t txOffset = 0; // bytes already sent of txQueue.front()

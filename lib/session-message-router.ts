@@ -1,7 +1,9 @@
+import { buildPromptWithMaterials, resolvePromptMaterialReferences } from "./prompt-materials";
+import { createChatCommandOperation, parseChatInput } from "./chat-command-input";
 import { randomUUID } from "node:crypto";
 import { validateAgentImages } from "./image-attachments";
 import { getSessionCommandEventHub, SessionCommandEventHub } from "./session-command-events";
-import { getSessionInboxRegistry, SESSION_MESSAGE_TEXT_MAX_BYTES, sessionCommandBytes, type SessionInboxState } from "./session-inbox";
+import { getSessionInboxRegistry, SESSION_MESSAGE_TEXT_MAX_BYTES, SESSION_INBOX_LIMIT, SESSION_INBOX_MAX_BYTES, SESSION_COMMAND_MAX_BYTES, sessionCommandBytes, type SessionInboxState } from "./session-inbox";
 import { getRpcSession, type AgentSessionWrapper } from "./rpc-manager";
 import { resolveSessionPath } from "./session-reader";
 import { resolveOrStartRpcSession, SessionRuntimeResolverError } from "./session-runtime-resolver";
@@ -138,6 +140,7 @@ export class SessionMessageRouter {
   private readonly maxConcurrency: number;
   private readonly commandExecutor: typeof executeChatCommandOperation;
   private readonly clientActions = new Map<string, { id: string; text: string; expiresAt: number; resolve: () => void; reject: (error: Error) => void }>();
+  private readonly queueActions = new Set<string>();
   private readonly operationExecutions = new Map<string, Promise<void>>();
   private readonly knownCommands = new Map<string, SessionCommandRecord>();
   private readonly activeCommands = new Map<string, SessionCommandRecord>();
@@ -192,6 +195,10 @@ export class SessionMessageRouter {
         await this.publish({ type: "command_interrupted", sessionId, commandId: command.commandId, runId: command.runId, status: "interrupted", timestamp: Date.now(), errorCode: "RUN_INTERRUPTED" });
         continue;
       }
+      if (command.delivery === "steer") {
+        await this.transition(command, "interrupted", { errorCode: "RUN_INTERRUPTED", errorMessage: "Steering delivery could not be confirmed after restart." });
+        continue;
+      }
       if (command.status === "dispatching") {
         command.status = "queued";
         await this.store.appendStatus(command, "queued", { queuedAt: Date.now() });
@@ -243,6 +250,7 @@ export class SessionMessageRouter {
       acceptedAt: command.acceptedAt,
       source: command.source,
       preview: command.content.slice(0, 180),
+      queuePaused: command.queuePaused ?? false,
     });
     if (TERMINAL_STATUSES.has(status) && command.teamExecution) {
       try { deleteTeamExecutionSecret(command.teamExecution); }
@@ -419,7 +427,7 @@ export class SessionMessageRouter {
     await this.store.appendCommand(command);
     await this.transition(command, "dispatching", { attachedRunId: command.attachedRunId }, "command_dispatching");
     try {
-      await session.send({ type: "steer", message: input.content, images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
+      await session.send({ type: "steer", source: input.source, message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
       await this.transition(command, "delivered", { attachedRunId: command.attachedRunId }, "command_delivered");
       await this.transition(command, "completed", {}, "command_completed");
       return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: "completed", attachedRunId: command.attachedRunId };
@@ -428,6 +436,123 @@ export class SessionMessageRouter {
       command.errorMessage = safeErrorMessage(error);
       await this.transition(command, "failed", {}, "command_failed");
       throw new SessionMessageRouterError(command.errorCode as SessionMessageRouterErrorCode, "Steer could not be delivered.", { cause: error });
+    }
+  }
+
+  private steeringText(input: Pick<SessionMessageInput, "content" | "promptSuffix" | "materials">): string {
+    const message = input.promptSuffix ? input.content + "\n\n" + input.promptSuffix : input.content;
+    return input.materials?.length ? buildPromptWithMaterials(message, resolvePromptMaterialReferences(input.materials)) : message;
+  }
+
+  /** Recall into separate durable, paused queue entries before removing SDK input. */
+  async recallQueuedInputs(sessionId: string): Promise<SessionCommandRecord[]> {
+    const inbox = await this.ensureLoaded(sessionId);
+    const session = await this.getLiveSession(sessionId);
+    const batch = session.prepareQueueRecall();
+    const archived = new Map(this.store.loadCommands(sessionId).map(command => [command.commandId, command]));
+    const commands = batch.messages.map(({ message, commandId }) => {
+      const original = commandId ? archived.get(commandId) : undefined;
+      if (commandId && !original) throw new Error("The original submission is unavailable; nothing was removed.");
+      let content: string;
+      let images: SessionMessageInput["images"];
+      if (original) {
+        content = original.content;
+        images = original.images;
+        // Resolve the complete attachments before committing any removal.
+        if (original.materials?.length) resolvePromptMaterialReferences(original.materials);
+      } else {
+        if (message.role !== "user") throw new Error("Unsupported queued message; nothing was removed.");
+        if (typeof message.content === "string") content = message.content;
+        else {
+          if (message.content.some(block => block.type !== "text" && block.type !== "image")) throw new Error("Unsupported queued attachment; nothing was removed.");
+          content = message.content.filter(block => block.type === "text").map(block => block.text).join("\n");
+          images = message.content.filter(block => block.type === "image");
+        }
+      }
+      const input: SessionMessageInput = { targetSessionId: sessionId, source: "ui", idempotencyKey: randomUUID(), delivery: "next_turn", inputMode: "text", content, images,
+        ...(original?.materials ? { materials: original.materials } : {}),
+        ...(original?.localFiles ? { localFiles: original.localFiles } : {}),
+        ...(original?.promptSuffix ? { promptSuffix: original.promptSuffix } : {}) };
+      validateInput(input, this.maxMessageBytes);
+      return { ...this.makeRecord(input), status: "queued" as const, queuePaused: true };
+    });
+    if (!commands.length) return [];
+    await this.store.appendRecalledCommands(commands, persist => batch.commit(() => {
+      if (inbox.queue.length + commands.length > SESSION_INBOX_LIMIT || inbox.queuedBytes + commands.reduce((sum, command) => sum + sessionCommandBytes(command), 0) > SESSION_INBOX_MAX_BYTES) throw new SessionMessageRouterError("SESSION_QUEUE_FULL", "The queue is full; nothing was removed.");
+      persist();
+      for (const command of commands) {
+        this.knownCommands.set(command.commandId, command);
+        getSessionInboxRegistry().enqueue(command);
+      }
+    }));
+    for (const command of commands) await this.transition(command, "queued");
+    return commands;
+  }
+
+  /** Mutate only waiting UI submissions. Never abort a run that won the dispatch race. */
+  async queuedInputAction(sessionId: string, commandId: string, action: "pause" | "resume" | "edit" | "steer" | "cancel", text?: string, expectedRevision?: number): Promise<SessionCommandRecord> {
+    await this.ensureLoaded(sessionId);
+    const command = this.canonicalCommand(commandId);
+    if (command.targetSessionId !== sessionId || command.source !== "ui") throw new SessionMessageRouterError("COMMAND_NOT_FOUND", "Queued message not found.");
+    if (command.status === "cancelled" && action === "cancel") return { ...command };
+    if (command.delivery === "steer" && action === "steer" && ["dispatching", "delivered", "completed"].includes(command.status)) return { ...command };
+    if (command.delivery !== "next_turn" || !["accepted", "queued"].includes(command.status) || this.queueActions.has(commandId)) throw new SessionMessageRouterError("SESSION_BUSY", "This message is no longer waiting or is being edited.");
+    if (expectedRevision !== undefined && command.revision !== expectedRevision) throw new SessionMessageRouterError("SESSION_BUSY", "The queued message changed. Refresh before editing.");
+    this.queueActions.add(commandId);
+    try {
+      if (action === "cancel") {
+        await this.cancelRecord(command);
+      } else if (action === "steer") {
+        if (command.operation) throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "Slash commands must finish through the command queue.");
+        const session = (await this.resolver(sessionId)).session;
+        if (this.isCancelled(command)) throw new SessionMessageRouterError("SESSION_BUSY", "Message was cancelled.");
+        if (!session.isRunning() || !session.getActivePromptRunId()) throw new SessionMessageRouterError("STEER_REQUIRES_RUNNING_SESSION", "Steer requires a running Session.");
+        const message = this.steeringText(command);
+        getSessionInboxRegistry().removeCommand(sessionId, commandId);
+        try {
+          await this.transition(command, "dispatching", { delivery: "steer", queuePaused: false, attachedRunId: session.getActivePromptRunId() });
+          if (this.isCancelled(command)) throw new Error("Message cancelled");
+          await session.send({ type: "steer", source: command.source, message, images: command.images, commandId, ...(command.inputMode ? { inputMode: command.inputMode } : {}) });
+          await this.transition(command, "completed");
+        } catch (error) {
+          await this.transition(command, "failed", { errorCode: errorCode(error), errorMessage: safeErrorMessage(error) });
+          throw error;
+        }
+      } else {
+        const patch: Partial<SessionCommandRecord> = { queuePaused: action === "pause" };
+        if (action === "edit") {
+          if (typeof text !== "string") throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "Missing text.");
+          patch.content = text;
+          if (!command.operation) patch.inputMode = "text";
+          if (command.operation?.steps[0]?.status === "completed") {
+            if (command.operation.steps[1]?.status !== "pending" || (!text.trim() && !command.images?.length && !command.materials?.length)) throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "The follow-up query must be pending and nonempty.");
+            const invocation = "/" + command.operation.command.name + (command.operation.arguments ? " " + command.operation.arguments : "");
+            patch.content = invocation;
+            patch.operation = { ...structuredClone(command.operation), rawText: invocation, afterPrompt: text, inputOptions: { ...command.operation.inputOptions, afterPrompt: text } };
+          } else if (command.operation) {
+            const catalog = { revision: command.operation.catalogRevision, commands: [command.operation.command], diagnostics: [] };
+            const parsed = parseChatInput(text, catalog, { ...command.operation.inputOptions, hasAttachments: Boolean(command.images?.length || command.materials?.length || command.promptSuffix) });
+            if (parsed.kind !== "command") throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "Edit the pending command without changing its type.");
+            patch.operation = createChatCommandOperation(text, catalog, parsed, command.operation.inputOptions);
+          }
+          validateInput({ ...command, ...patch, teamExecution: undefined }, this.maxMessageBytes);
+        }
+        const previous = { ...command };
+        const candidateBytes = sessionCommandBytes({ ...command, ...patch });
+        if (candidateBytes > SESSION_COMMAND_MAX_BYTES || this.inbox(sessionId).queuedBytes - sessionCommandBytes(command) + candidateBytes > SESSION_INBOX_MAX_BYTES) throw new SessionMessageRouterError("SESSION_QUEUE_FULL", "The edited message exceeds queue capacity.");
+        try { await this.transition(command, "queued", patch); }
+        catch (error) {
+          if (!TERMINAL_STATUSES.has(command.status)) Object.assign(command, previous);
+          throw error;
+        }
+        const inbox = this.inbox(sessionId);
+        inbox.queuedBytes = inbox.queue.reduce((total, item) => total + sessionCommandBytes(item), 0);
+      }
+      return { ...command };
+    } finally {
+      this.queueActions.delete(commandId);
+      const previousDrain = this.inbox(sessionId).drainPromise;
+      void Promise.resolve(previousDrain).then(() => this.drain(sessionId)).catch(error => console.error("[pi-web] queued input wake failed:", safeErrorMessage(error)));
     }
   }
 
@@ -442,7 +567,7 @@ export class SessionMessageRouter {
     await this.store.appendCommand(command);
     await this.transition(command, "dispatching", { attachedRunId: command.attachedRunId }, "command_dispatching");
     try {
-      await session.send({ type: "follow_up", message: input.content, images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
+      await session.send({ type: "follow_up", source: input.source, message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
       await this.transition(command, "delivered", {}, "command_delivered");
       return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: "delivered", attachedRunId: command.attachedRunId };
     } catch (error) {
@@ -519,6 +644,7 @@ export class SessionMessageRouter {
       while (inbox.queue.length > 0) {
         const command = inbox.queue[0];
         if (!command) break;
+        if (command.queuePaused || this.queueActions.has(command.commandId)) return;
         if (this.isCancelled(command)) {
           getSessionInboxRegistry().removeCommand(sessionId, command.commandId);
           await this.cancelRecord(command);
@@ -536,6 +662,8 @@ export class SessionMessageRouter {
           session = (await this.resolver(sessionId)).session;
         } catch (error) {
           if (this.isCancelled(command)) continue;
+          if (command.queuePaused || this.queueActions.has(command.commandId)) return;
+          if (command.status !== "accepted" && command.status !== "queued") continue;
           const code = errorCode(error);
           if (code === "SESSION_BUSY") return;
           getSessionInboxRegistry().shift(inbox);
@@ -545,6 +673,8 @@ export class SessionMessageRouter {
           continue;
         }
         if (this.isCancelled(command)) continue;
+        if (command.queuePaused || this.queueActions.has(command.commandId)) return;
+        if (command.status !== "accepted" && command.status !== "queued") continue;
         if (session.isRunning()) {
           this.watchForIdle(sessionId, session);
           return;

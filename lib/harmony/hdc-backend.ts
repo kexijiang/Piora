@@ -417,7 +417,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     this.hdcPath = resolution.hdcPath;
     this.execute = options.execute ?? runCommand;
     this.commandTimeoutMs = options.commandTimeoutMs ?? 15_000;
-    this.systemRecorderLog = options.systemRecorderLog ?? (line => { try { console.info(line); } catch { /* Logging never changes recording behavior. */ } });
+    this.systemRecorderLog = options.systemRecorderLog ?? (() => { /* Raw device replies are disabled by default. */ });
     this.systemRecorderTiming = { pollIntervalMs: 3_000, retrieveTimeoutMs: 30_000, confirmTimeoutMs: 4_000, transferTimeoutMs: 120_000, ...options.systemRecorder };
     this.prepareMirrorHap = options.prepareMirrorHap ?? (async (serial, sourceHapPath, signal) => {
       const result = await this.shell(serial, ["bm", "get", "--udid"], "mirror_device_identity", signal, 8_000);
@@ -1195,8 +1195,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private async startStreamRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<void> {
     let connection: HarmonyVideoConnection | undefined;
     try {
-      connection = await this.openVideoStream(serial, signal);
-      const recording = await startOwnedRecording(connection, signal, onFailure);
+      connection = await this.openVideoStream(serial, signal, true);
+      const recording = await startOwnedRecording(connection, signal, onFailure, true);
       this.ownedRecordings.set(serial, { kind: "stream", name: remoteName, recording });
     } catch (error) {
       try { await connection?.close(); }
@@ -1585,8 +1585,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
     } catch (cause) { throw new HarmonyError("DEVICE_BUSY", "Owned video forward cleanup is uncertain; inspect the exact forward in device diagnostics", { cause, details: { cleanup: "uncertain", localPort: port, remotePort: MIRROR_DEVICE_PORT } }); }
   }
 
-  async openVideoStream(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection> {
-    if (this.videoPreference?.provider === "hos-scrcpy" && this.videoPreference.packageDirectory && Date.now() >= this.hosRetryAt) {
+  async openVideoStream(serial: string, signal?: AbortSignal, recording = false): Promise<HarmonyVideoConnection> {
+    if (!recording && this.videoPreference?.provider === "hos-scrcpy" && this.videoPreference.packageDirectory && Date.now() >= this.hosRetryAt) {
       try {
         await this.requireUnlockedScreen(serial, signal);
         const connection = await openHosScrcpyVideo({ serial, hdcPath: this.hdcPath,
@@ -1599,10 +1599,10 @@ export class HdcBackend implements HarmonyAutomationBackend {
         this.hosRetryAt = Date.now() + 60_000;
       }
     }
-    return this.openBundledVideoStream(serial, signal);
+    return this.openBundledVideoStream(serial, signal, recording);
   }
 
-  private async openBundledVideoStream(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection> {
+  private async openBundledVideoStream(serial: string, signal?: AbortSignal, recording = false): Promise<HarmonyVideoConnection> {
     validateSerial(serial);
     await this.ensureMirrorServer(serial, signal);
     const localPort = await this.createMirrorForward(serial, signal);
@@ -1633,6 +1633,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
 
     const videoSocket = socket;
+    if (recording) videoSocket.write(encodeMirrorPacket(0x10, Buffer.from([0x44])));
     videoSocket.write(encodeMirrorVideoParameters());
     // A new subscriber needs an IDR from the already-consented encoder.
     videoSocket.write(encodeMirrorPacket(0x10, Buffer.from([0x43])));

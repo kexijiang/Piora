@@ -57,8 +57,10 @@ const packagedRuntimeArchive = join(packagedWebRoot, "runtime.asar");
 const execFileAsync = promisify(execFile);
 let activeServerStderr = "";
 
-export function verifyPackagedCoreTools(tools) {
-  const required = ["browser", "harmony_control", "piora_room"];
+export function verifyPackagedCoreTools(tools, { harmonyWorkbench = false } = {}) {
+  // The isolated packaged service starts in mirror mode. Compatibility tests
+  // must opt in explicitly; a host environment flag cannot weaken this check.
+  const required = ["browser", ...(harmonyWorkbench ? ["harmony_control"] : []), "piora_room"];
   const optional = ["computer_control"];
   const inspect = (name) => {
     const tool = tools.find((entry) => entry.name === name);
@@ -70,6 +72,9 @@ export function verifyPackagedCoreTools(tools) {
     tool.name === "browser" || tool.name === "harmony_control"
   ))) {
     throw new Error(`Packaged first-party tools do not match the compact coding preset: ${JSON.stringify(core)}`);
+  }
+  if (!harmonyWorkbench && tools.some((tool) => tool.name.startsWith("harmony_"))) {
+    throw new Error("Packaged Harmony tools must stay disabled in mirror mode, including inactive registrations");
   }
   if (tools.some((tool) => tool.name.startsWith("harmony_") && tool.name !== "harmony_control")) {
     throw new Error("Packaged Harmony must register one gateway instead of legacy operation tools");
@@ -821,7 +826,7 @@ async function stopChild(child) {
 export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
   const patchedBundledDependencies = [
     { name: "brace-expansion", version: "5.0.12" },
-    { name: "undici", version: "8.12.2" },
+    { name: "undici", version: "8.12.3" },
   ];
   for (const expected of patchedBundledDependencies) {
     const codingAgentRoot = join(runtimeWebRoot, "node_modules", "@earendil-works", "pi-coding-agent");

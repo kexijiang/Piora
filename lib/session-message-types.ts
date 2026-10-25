@@ -45,6 +45,7 @@ export interface SessionMessageInput {
 
 export interface SessionCommandRecord {
   revision?: number;
+  queuePaused?: boolean;
   localFiles?: Array<{ name: string; size: number; path: string }>;
   promptSuffix?: string;
   inputMode?: "text";
@@ -112,6 +113,7 @@ export interface SessionControlState {
 
 export interface SessionCommandEvent {
   revision?: number;
+  queuePaused?: boolean;
   cursor: number;
   type:
     | "prompt_started"

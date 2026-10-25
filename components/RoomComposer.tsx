@@ -6,6 +6,7 @@ import { confirmPendingPrompts, readPendingPrompts, savePendingPrompt, type Pend
 import { storeBrowserFiles } from "@/lib/file-attachments";
 import { adjustRoomMentions } from "@/lib/room-composer";
 import { matchesSendShortcut, isPlainEnter } from "@/lib/send-shortcut";
+import { formatShortcutBinding } from "@/lib/keyboard-shortcuts";
 import type { CollaborationRoom, RoomMessage, RoomSubmission } from "@/lib/room-types";
 import type { RoomSubmissionInput } from "@/lib/room-submissions";
 import { useSendShortcut } from "@/hooks/useSendShortcut";
@@ -50,7 +51,7 @@ export function RoomComposer({ room, actorSessionId, submissions, onSubmit, hand
   onSubmit: (input: RoomSubmissionInput) => Promise<RoomSubmission>; handleRef?: Ref<RoomComposerHandle>;
 }) {
   const { t } = useI18n();
-  const { shortcut } = useSendShortcut();
+  const { shortcut, newlineShortcut } = useSendShortcut();
   const scope = `room:${room.id}`;
   const [draft, updateDraft] = useState<ChatDraft>(() => getDraft(scope) ?? { value: "", images: [], files: [] });
   const [busy, setBusy] = useState(false);
@@ -172,7 +173,18 @@ export function RoomComposer({ room, actorSessionId, submissions, onSubmit, hand
       if (event.key === "Tab" || isPlainEnter(event)) { event.preventDefault(); insertMention(candidates[mentionIndex]?.id ?? candidates[0].id); return; }
       if (event.key === "Escape") { event.preventDefault(); setQuery(null); return; }
     }
-    if (matchesSendShortcut(event, shortcut)) { event.preventDefault(); if (!event.repeat) void send(); }
+    if (matchesSendShortcut(event, newlineShortcut)) {
+      event.preventDefault();
+      const element = event.currentTarget;
+      const start = element.selectionStart;
+      const value = element.value.slice(0, start) + "\n" + element.value.slice(element.selectionEnd);
+      commit({ ...current.current, value, roomInput: { ...roomInput, mentions: adjustRoomMentions(current.current.value, value, roomInput.mentions) } });
+      syncQuery(value, start + 1);
+      window.requestAnimationFrame(() => element.setSelectionRange(start + 1, start + 1));
+      return;
+    }
+    if (matchesSendShortcut(event, shortcut)) { event.preventDefault(); if (!event.repeat) void send(); return; }
+    if (event.key === "Enter") event.preventDefault();
   };
 
   return <div className={`${styles.composerWrap} room-workspace-composer`}>
@@ -192,7 +204,7 @@ export function RoomComposer({ room, actorSessionId, submissions, onSubmit, hand
       <div className={styles.composerFooter}>
         <button type="button" className={styles.iconButton} aria-label={t("roomUx.attach")} disabled={uploading} onClick={() => fileInput.current?.click()}><AliIcon name="plus" size={19} /></button>
         {room.coordination.mode === "team" ? <button type="button" className={styles.newTaskButton} aria-pressed={roomInput.intent === "new_task"} title={t("roomUx.newTaskHint")} onClick={() => { commit({ ...draft, roomInput: { intent: "new_task", mentions: roomInput.mentions } }); focus(); }}>{t("roomUx.newTask")}</button> : null}
-        <span className={styles.sendHint}>{receipt ? <span role="status"><AliIcon name="check" size={13} />{receipt}</span> : t(shortcut === "ctrl-enter" ? "roomUx.sendCtrl" : "roomUx.sendEnter")}</span>
+        <span className={styles.sendHint}>{receipt ? <span role="status"><AliIcon name="check" size={13} />{receipt}</span> : [shortcut && t("settings.sendShortcutHint", { shortcut: formatShortcutBinding(shortcut) }), newlineShortcut && t("settings.newlineShortcutHint", { shortcut: formatShortcutBinding(newlineShortcut) })].filter(Boolean).join(" · ")}</span>
         <button type="button" className={styles.sendButton} aria-label={t("roomUx.send")} disabled={busy || uploading || (!draft.value.trim() && !draft.files.length)} onClick={() => void send()}><AliIcon name="send" size={18} /></button>
       </div>
       <input ref={fileInput} type="file" hidden multiple onChange={(event) => {

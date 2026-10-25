@@ -7,6 +7,7 @@ const eslintConfig = [
     ignores: [
       ".branding/**",
       ".verification/**",
+      ".worktrees/**", // Each Git checkout runs its own lint with its own dependencies.
       ".harmony-worker/**",
       "**/.next/**",
       "local-pets/**",

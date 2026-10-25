@@ -19,7 +19,7 @@ const sidebarCss = await readFile(new URL("./SessionSidebar.module.css", import.
 test("landing commands keep explicit follow-up and durable identity through the handoff without requiring a model", async () => {
   const callbacks = picker.slice(picker.indexOf("  const handleLandingSend = useCallback"), picker.indexOf("  const modelsUnavailable"));
   const calls = [];
-  const env = { permissionOverride: { current: "ask" }, useCallback: callback => callback, selectedProject: null, projectlessCwd: "F:/workspace", selectedModel: null, launchReady: false, systemPromptSelection: null,
+  const env = { toolPermission: { mode: "ask" }, permissionSavingRef: { current: false }, useCallback: callback => callback, selectedProject: null, projectlessCwd: "F:/workspace", selectedModel: null, launchReady: false, systemPromptSelection: null,
     createLaunchId: () => "launch-id", persistentChatInputOptions, savePendingPrompt: async record => calls.push(["saved", record]), onLaunch: request => calls.push(["launch", request]) };
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   const send = new Function("env", `with(env) { ${js}; return handleLandingSend; }`)(env);

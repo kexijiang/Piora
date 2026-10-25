@@ -3,6 +3,7 @@ import type { AgentMessage, UserMessage } from "./types";
 export const PROMPT_RECOVERY_CONFIRMED_EVENT = "piora-prompt-recovery-confirmed";
 
 export interface PendingPrompt {
+  dismissed?: boolean;
   id: string;
   scope: string;
   message: UserMessage;
@@ -52,9 +53,23 @@ export async function readPendingPrompts(scope: string): Promise<PendingPrompt[]
   const db = await openDatabase();
   return await new Promise((resolve, reject) => {
     const request = db.transaction("prompts").objectStore("prompts").index("scope").getAll(scope);
-    request.onsuccess = () => resolve(request.result as PendingPrompt[]);
+    request.onsuccess = () => resolve((request.result as PendingPrompt[]).filter(record => !record.dismissed));
     request.onerror = () => reject(request.error);
   });
+}
+
+/** Keep the original bytes archived, but do not restore an explicitly deleted queue item. */
+export async function dismissPendingPrompt(id: string): Promise<void> {
+  const db = await openDatabase();
+  await new Promise<void>((resolve, reject) => {
+    const transaction = db.transaction("prompts", "readwrite");
+    const store = transaction.objectStore("prompts");
+    const request = store.get(id);
+    request.onsuccess = () => { if (request.result) store.put({ ...request.result, dismissed: true }); };
+    transaction.oncomplete = () => resolve();
+    transaction.onabort = () => reject(transaction.error);
+  });
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(PROMPT_RECOVERY_CONFIRMED_EVENT, { detail: [id] }));
 }
 
 export async function confirmPendingPrompts(ids: string[]): Promise<void> {

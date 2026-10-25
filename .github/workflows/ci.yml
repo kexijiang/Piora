@@ -52,10 +52,9 @@ jobs:
   tests:
     uses: ./.github/workflows/test-suite.yml
 
-  quality:
-    name: Quality checks (${{ matrix.os }})
-    needs: tests
-    if: ${{ !cancelled() }}
+  quality-validation:
+    # These checks use their own checkout and can run alongside the test shards.
+    name: Quality validation (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -66,12 +65,6 @@ jobs:
           - windows-latest
 
     steps:
-      # Keep the existing required check names, and fail instead of reporting a
-      # skipped quality job when any test shard failed.
-      - name: Require complete test suite
-        if: needs.tests.result != 'success'
-        run: exit 1
-
       - name: Check out repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -124,6 +117,30 @@ jobs:
       - name: Verify packaged standalone service in isolation
         if: runner.os == 'Windows'
         run: npm run verify:package
+
+  quality:
+    # Preserve branch-protection check names. This gate needs neither checkout
+    # nor dependencies, and must fail even when an upstream job was skipped.
+    name: Quality checks (${{ matrix.os }})
+    needs: [tests, quality-validation]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    steps:
+      - name: Require complete tests and quality validation
+        env:
+          TEST_RESULT: ${{ needs.tests.result }}
+          QUALITY_RESULT: ${{ needs.quality-validation.result }}
+        run: >-
+          node -e "for (const name of ['TEST_RESULT', 'QUALITY_RESULT']) {
+          const result = process.env[name]; console.log(name + ': ' + result);
+          if (result !== 'success') process.exitCode = 1; }"
 
   harmony-hardware:
     name: Harmony hardware acceptance (opt-in)

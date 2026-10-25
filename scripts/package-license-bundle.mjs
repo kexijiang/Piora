@@ -59,7 +59,7 @@ const REVIEWED_RUNTIME_REPLACEMENTS = Object.freeze([
     lockedName: "undici",
     lockedVersion: "8.10.2",
     installedName: "undici",
-    installedVersion: "8.12.2",
+    installedVersion: "8.12.3",
     mechanism: "scripts/patch-bundled-dependencies.mjs",
   }),
 ]);

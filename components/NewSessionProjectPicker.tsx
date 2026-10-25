@@ -9,7 +9,7 @@ import {
   type RefObject,
 } from "react";
 import { useI18n } from "@/hooks/useI18n";
-import { isPermissionMode, type PermissionMode, type ToolPermissionState } from "@/lib/tool-permission-policy";
+import { useDefaultToolPermission } from "@/hooks/useDefaultToolPermission";
 import type { AttachedFile } from "@/hooks/useAgentSession";
 import { fetchModelCatalog, type ModelCatalogEntry } from "@/lib/model-catalog-client";
 import { buildSessionProjectGroups, getProjectLabel } from "@/lib/session-project-groups";
@@ -59,21 +59,7 @@ export function NewSessionProjectPicker({
   projectPickerRequestKey?: number;
 }) {
   const { t } = useI18n();
-  const [toolPermission, setToolPermission] = useState<ToolPermissionState | null>(null);
-  const permissionOverride = useRef<PermissionMode | undefined>(undefined);
-  useEffect(() => {
-    const controller = new AbortController();
-    const refresh = () => {
-      void fetch("/api/tool-permissions", { signal: controller.signal }).then(async res => {
-        if (!res.ok) return;
-        const value = await res.json();
-        if (!controller.signal.aborted && !permissionOverride.current && isPermissionMode(value.mode)) setToolPermission({ mode: value.mode, revision: 0 });
-      }).catch(() => {});
-    };
-    refresh();
-    window.addEventListener("focus", refresh);
-    return () => { controller.abort(); window.removeEventListener("focus", refresh); };
-  }, []);
+  const { state: toolPermission, saving: permissionSaving, savingRef: permissionSavingRef, error: permissionError, save: handleToolPermission } = useDefaultToolPermission();
   const localChatInputRef = useRef<ChatInputHandle>(null);
   const effectiveChatInputRef = chatInputRef ?? localChatInputRef;
   const draftKey = useRef(`new-task:${createLaunchId()}`).current;
@@ -298,6 +284,7 @@ export function NewSessionProjectPicker({
     retryOfPromptIds?: string[],
     commandInput?: ChatInputOptions,
   ): Promise<boolean> => {
+    if (permissionSavingRef.current) return false;
     const cwd = selectedProject?.cwd ?? projectlessCwd;
     const commandSubmission = commandInput?.inputMode !== "text" && message.trimStart().startsWith("/");
     if (!cwd || !commandSubmission && (!selectedModel || !launchReady)) return false;
@@ -318,13 +305,13 @@ export function NewSessionProjectPicker({
         images,
         files,
         systemPromptSelection,
-        permissionMode: permissionOverride.current,
+        permissionMode: toolPermission?.mode,
         commandInput: { ...persistentChatInputOptions(commandInput), ...(!shell ? { submissionId: id } : {}) },
         retryOfPromptIds,
       },
     });
     return true;
-  }, [launchReady, onLaunch, projectlessCwd, selectedModel, selectedProject, systemPromptSelection]);
+  }, [launchReady, onLaunch, projectlessCwd, selectedModel, selectedProject, systemPromptSelection, toolPermission, permissionSavingRef]);
 
   const modelsUnavailable = !modelsLoading && models.length === 0;
   const modelSelectionBlocked = modelsLoading
@@ -415,6 +402,7 @@ export function NewSessionProjectPicker({
         projectLabel={selectedProject ? getProjectLabel(selectedProject.root) : null}
         onStarterSelect={(prompt) => effectiveChatInputRef.current?.insertIfEmpty(prompt)}
       >
+        {permissionError && <p role="alert">{permissionError}</p>}
         <ChatInput
           ref={effectiveChatInputRef}
           variant="launcher"
@@ -422,7 +410,8 @@ export function NewSessionProjectPicker({
           onAbort={() => {}}
           isStreaming={false}
           toolPermission={toolPermission}
-          onToolPermissionChange={mode => { permissionOverride.current = mode; setToolPermission({ mode, revision: 0 }); }}
+          permissionSaving={permissionSaving}
+          onToolPermissionChange={handleToolPermission}
           model={selectedModel}
           isAutoModelSelection={modelSelectionBlocked}
           modelList={models}

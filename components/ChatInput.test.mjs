@@ -10,6 +10,7 @@ const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
   alias: {
+    "./ChatCommandCard.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ToolPermissionControl.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ReplySuggestionBar.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ChatCommandComposer.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
@@ -26,6 +27,7 @@ const {
 } = await jiti.import("./ChatInput.tsx");
 // Import through the same tsconfig alias used by the component so Jiti reuses
 // the exact context module instead of creating a second provider instance.
+const { ChatCommandQueue } = await jiti.import("./ChatCommandCard.tsx");
 const { I18nProvider } = await jiti.import("@/hooks/useI18n");
 const globalCss = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 const chatInputSource = readFileSync(new URL("./ChatInput.tsx", import.meta.url), "utf8");
@@ -325,62 +327,21 @@ test("renders an icon-only stop control", () => {
   assert.doesNotMatch(html, />Send directly</);
 });
 
-test("renders queued guidance as a compact composer tray", () => {
-  const html = renderToStaticMarkup(
-    React.createElement(
-      I18nProvider,
-      null,
-      React.createElement(ChatInput, {
-        onSend() {},
-        onAbort() {},
-        onRecallQueue() {},
-        isStreaming: true,
-        queuedMessages: {
-          steering: ["Adjust the spacing around the composer"],
-          followUp: ["Run the visual check afterward"],
-        },
-      }),
-    ),
-  );
-
-  assert.match(html, /class="composer-queue-tray"/);
-  assert.match(html, /class="composer-queue-row is-steer"/);
-  assert.match(html, /class="composer-queue-row is-follow-up"/);
+test("renders runtime guidance literally in the unified composer queue", () => {
+  const html = renderToStaticMarkup(React.createElement(I18nProvider, null,
+    React.createElement(ChatInput, { onSend() {}, onAbort() {}, isStreaming: true,
+      queueContent: React.createElement(ChatCommandQueue, { records: [], actions: {}, onRecall() {}, pendingMessages: {
+        steering: ['*steer* <b>html</b> @file_name.ts'], followUp: ['line one\n# follow-up'],
+      } }),
+    })));
+  assert.match(html, /aria-label="接下来执行"/);
   assert.match(html, />引导</);
   assert.match(html, />排队</);
   assert.match(html, /aria-label="移回输入框"/);
-  assert.doesNotMatch(html, /class="composer-shell" title="Adjust the spacing/);
-});
-
-test("renders queued steer and follow-up text literally", () => {
-  const html = renderToStaticMarkup(
-    React.createElement(
-      I18nProvider,
-      null,
-      React.createElement(ChatInput, {
-        onSend() {},
-        onAbort() {},
-        onRecallQueue() {},
-        isStreaming: true,
-        queuedMessages: {
-          steering: ["*steer* <b>html</b> @file_name.ts"],
-          followUp: ["line one\n# follow-up"],
-        },
-      }),
-    ),
-  );
-  const queueSource = chatInputSource.slice(
-    chatInputSource.indexOf("function QueuedMessageRow"),
-    chatInputSource.indexOf("function ModelNoticeBanner"),
-  );
-
-  assert.match(html, /class="composer-queue-row is-steer"/);
-  assert.match(html, /class="composer-queue-text">\*steer\* &lt;b&gt;html&lt;\/b&gt; @file_name\.ts</);
-  assert.match(html, /title="\*steer\* &lt;b&gt;html&lt;\/b&gt; @file_name\.ts"/);
-  assert.match(html, /class="composer-queue-text">line one\n# follow-up</);
-  assert.doesNotMatch(html, /<b>html<\/b>|<strong|# follow-up<\/h1>|<h1/);
-  assert.match(queueSource, /\{text\}/);
-  assert.doesNotMatch(queueSource, /MarkdownBody|dangerouslySetInnerHTML/);
+  assert.match(html, /\*steer\* &lt;b&gt;html&lt;\/b&gt; @file_name.ts/);
+  assert.match(html, /line one\n# follow-up/);
+  assert.doesNotMatch(html, /<b>html<\/b>|<strong|<h1|composer-queue-tray/);
+  assert.ok(html.indexOf('aria-label="接下来执行"') < html.indexOf('chat-composer-surface'));
 });
 
 test("keeps an unknown context ring visible before runtime usage is available", () => {
@@ -454,13 +415,13 @@ test("renders compact errors above the input as a wrapping alert", () => {
 test("does not send text before an attached image finishes loading", () => {
   assert.match(chatInputSource, /const \[isProcessingImages, setIsProcessingImages\] = useState\(false\)/);
   assert.match(chatInputSource, /setIsProcessingImages\(true\)[\s\S]*?pendingImageCountRef\.current <= 0[\s\S]*?setIsProcessingImages\(false\)/);
-  assert.match(chatInputSource, /if \(\(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
-  assert.match(chatInputSource, /const canSend = !isProcessingImages/);
+  assert.match(chatInputSource, /if \(permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
+  assert.match(chatInputSource, /const canSend = !permissionSaving && !isProcessingImages/);
 });
 
 test("new conversations wait only until a default or explicit model resolves", () => {
-  assert.match(chatInputSource, /if \(\(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
-  assert.match(chatInputSource, /const canSend = !isProcessingImages[\s\S]*?&& !isAutoModelSelection/);
+  assert.match(chatInputSource, /if \(permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
+  assert.match(chatInputSource, /const canSend = !permissionSaving && !isProcessingImages[\s\S]*?&& !isAutoModelSelection/);
   assert.match(chatInputSource, /const displayModelName = model && !isAutoModelSelection/);
   assert.match(chatInputSource, /const canOptimizePrompt = hasInputText[\s\S]*?&& !isAutoModelSelection/);
   assert.match(chatInputSource, /onThinkingLevelChange && !isAutoModelSelection/);

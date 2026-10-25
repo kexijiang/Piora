@@ -117,9 +117,9 @@ __declspec(dllexport) int queue_enqueue(unsigned int client, unsigned int id, un
   if (client > 1 || id >= 128 || length < 8) return -1;
   auto &packet = packets[id]; packet.length = length;
   for (unsigned int i = 0; i < 4; ++i) { packet.bytes[i] = (type >> (24 - i * 8)) & 255; packet.bytes[4 + i] = ((length - 8) >> (24 - i * 8)) & 255; }
-  packet.bytes[8] = key ? 1 : 0;
+  packet.bytes[8] = key & 1;
   auto &c = clients[client];
-  return EnqueueVideoPacket(c.queue, c.offset, c.awaiting, c.config, &packet);
+  return EnqueueVideoPacket(c.queue, c.offset, c.awaiting, c.config, &packet, (key & 2) != 0, (key & 4) != 0);
 }
 __declspec(dllexport) int queue_partial(unsigned int client, unsigned int offset) {
   if (client > 1 || clients[client].queue.empty() || offset >= clients[client].queue.items[0]->size()) return -1;
@@ -444,8 +444,24 @@ nativeTest('production hard byte cap preserves statuses and rejects a single pac
   assert.deepEqual(result.slice(-4), [2, 0, 0, 1]);
 });
 
+nativeTest('age expiry drops a small stale GOP and resumes only at the next IDR', async () => {
+  const result = await evaluate([queue('reset'), packet(1, 2), packet(2, 3, 32, 1), queue('drain'),
+    queue('drain'), packet(3, 3), packet(4, 3, 32, 2), packet(5, 3), packet(6, 3, 32, 1), ...inspectQueue(2)]);
+  assert.deepEqual(result.slice(-5), [2, 1, 6, 0, 0]);
+});
+
+nativeTest('recording subscriber retains ordered frames past the preview soft cap but closes at the hard cap', async () => {
+  const result = await evaluate([queue('reset'), packet(1, 2), packet(2, 3, 32, 1),
+    packet(3, 3, 5 * 1024 * 1024, 4), ...inspectQueue(3), packet(4, 3, 24 * 1024 * 1024, 4)]);
+  assert.deepEqual(result.slice(0, 4), [0, 0, 0, 0], "reset, config, IDR and recording delta must all be accepted without compaction");
+  assert.deepEqual(result.slice(4, -1), [3, 1, 2, 3, 0, 0], "queue retains config, IDR and oversized delta in order");
+  assert.equal(result.at(-1), 2);
+});
+
 test('TcpServer uses the production queue policy and initializes cached config for late subscribers', () => {
-  assert.ok(tcpSource.includes('EnqueueVideoPacket(c.txQueue, c.txOffset, c.awaitingKeyframe, c.latestConfig, frame)'));
+  assert.ok(tcpSource.includes('EnqueueVideoPacket(c.txQueue, c.txOffset, c.awaitingKeyframe, c.latestConfig, frame, expired, c.recording)'));
+  assert.ok(tcpSource.includes('std::chrono::milliseconds(500)'));
+  assert.ok(tcpSource.includes('if (size > 0) m->body.assign(body, body + size);'), 'payload-free IDR requests never perform arithmetic on a null body');
   assert.ok(tcpSource.includes('st.latestConfig = lastConfig_'));
   assert.ok(tcpSource.includes('EnqueueFor(st, lastConfig_)'), 'late subscribers must use the same hard queue cap');
   const enqueueStart = tcpSource.indexOf('void TcpServer::EnqueueFor(');

@@ -138,8 +138,8 @@ export async function patchBundledUndici(root = projectRoot, sourceRoot = root) 
     root,
     sourceRoot,
     packageName: "undici",
-    patchedVersion: "8.12.2",
-    acceptedBundledVersions: new Set(["8.5.0", "8.9.0", "8.10.2", "8.12.2"]),
+    patchedVersion: "8.12.3",
+    acceptedBundledVersions: new Set(["8.5.0", "8.9.0", "8.10.2", "8.12.2", "8.12.3"]),
   });
 }
 
