@@ -75,7 +75,8 @@ export function MirrorPanel({ active, maximized, onMaximizedChange, onSnapshot }
   const screenshotPending = useRef<{ context: string } | null>(null);
   const recordingPending = useRef(false);
   const recordingMutation = useRef(0);
-  const controlPending = useRef(false);
+  const pendingInputs = useRef(0);
+  const controlQueue = useRef<{ context: string; cancelled: boolean; tail: Promise<void> } | null>(null);
   const gesture = useRef<{ x: number; y: number; started: number; context: string } | null>(null);
   const { ensureControl, clearControl, canControl } = useHarmonyManualControl({ active, serial, online: Boolean(online),
     holder: state.leases?.find(item => item.serial === serial), chinese, controlStatus: state.controls?.find(item => item.serial === serial)?.status });
@@ -205,24 +206,54 @@ export function MirrorPanel({ active, maximized, onMaximizedChange, onSnapshot }
     return () => window.removeEventListener("keydown", handle);
   }, [active, online, bindings, media]);
 
-  const control = async (body: Record<string, unknown>) => {
-    if (!canControl || controlPending.current) return;
+  const control = (body: Record<string, unknown>) => {
+    if (!canControl) return;
     const expected = current.current;
-    controlPending.current = true;
-    try {
-      const leaseToken = await ensureControl();
-      if (current.current !== expected) return;
-      await request("action", undefined, { action: body.action, serial, leaseToken, ...body });
-      if (current.current === expected) setError("");
-    } catch (failure) { if (current.current === expected) setError(failure instanceof Error ? failure.message : String(failure)); }
-    finally { controlPending.current = false; }
+    if (pendingInputs.current >= 8) {
+      setError(text("待处理操作过多，请等待当前操作完成", "Too many pending inputs; wait for the current operation"));
+      return;
+    }
+    let queue = controlQueue.current;
+    if (!queue || queue.cancelled || queue.context !== expected) {
+      if (queue) queue.cancelled = true;
+      queue = { context: expected, cancelled: false, tail: Promise.resolve() };
+      controlQueue.current = queue;
+    }
+    const ownedQueue = queue;
+    pendingInputs.current++;
+    const run = async () => {
+      try {
+        if (ownedQueue.cancelled || current.current !== expected) return;
+        const leaseToken = await ensureControl();
+        if (ownedQueue.cancelled || current.current !== expected) return;
+        await request("action", undefined, { action: body.action, serial, leaseToken, ...body });
+        if (!ownedQueue.cancelled && current.current === expected) setError("");
+      } catch (failure) {
+        if (!ownedQueue.cancelled && current.current === expected) setError(failure instanceof Error ? failure.message : String(failure));
+        // A failed/timed-out action may already have reached the phone. Never
+        // replay the remaining sequence behind an uncertain result.
+        ownedQueue.cancelled = true;
+      }
+      finally { pendingInputs.current--; }
+    };
+    // Preserve discrete input order without an unbounded queue or silent loss
+    // while the preceding request is waiting for its response.
+    ownedQueue.tail = ownedQueue.tail.then(run, run);
+    return ownedQueue.tail;
   };
   const stopDevice = async () => {
     const expected = current.current;
+    if (controlQueue.current) controlQueue.current.cancelled = true;
+    controlQueue.current = null;
+    gesture.current = null;
     clearControl();
     try { await request("action", undefined, { action: "stop_device", serial }); }
     catch (failure) { if (current.current === expected) setError(failure instanceof Error ? failure.message : String(failure)); }
   };
+  useEffect(() => () => {
+    const queue = controlQueue.current;
+    if (queue?.context === context) queue.cancelled = true;
+  }, [context]);
   const openSaved = async () => {
     const expected = current.current;
     try { if (!await window.piDesktop?.openPath?.(savedPath)) throw new Error(text("文件无法打开，请检查保存路径", "Could not open the file; check the saved path")); }
