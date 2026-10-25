@@ -70,7 +70,7 @@ export function ToolPermissionControl({ state, saving, onChange }: {
       aria-checked={!state?.legacy && state?.mode === mode}
       className={`model-settings-row ${styles.option}${mode === "full" ? ` ${styles.full}` : ""}`}
       onClick={() => { setOpen(false); trigger.current?.focus(); onChange(mode); }}>
-      <span className={styles.copy}><span>{t(`permission.${mode}`)}</span><small>{t(`permission.${mode}Help`)}</small></span>
+      <span className={styles.copy}><span>{t(`permission.${mode}`)}{mode === "ask" && ` · ${t("permission.compatibility")}`}</span><small>{t(`permission.${mode}Help`)}</small></span>
       <span className={styles.check} aria-hidden="true">{!state?.legacy && state?.mode === mode ? "✓" : ""}</span>
     </button>)}
   </div>, document.body)}

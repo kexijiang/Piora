@@ -60,7 +60,7 @@ test("a default read started before saving cannot undo the saved choice", async 
   let cleanup;
   const env = {
     window: new EventTarget(), AbortController, DEFAULT_TOOL_PERMISSION_CHANGED: "default-changed",
-    isPermissionMode: mode => ["ask", "auto", "full"].includes(mode),
+    isPermissionMode: mode => ["ask", "auto", "review", "full"].includes(mode),
     useCallback: fn => fn, useRef: current => ({ current }),
     useState: initial => { const i = states.push(initial) - 1; return [initial, value => { states[i] = value; }]; },
     useEffect: fn => { cleanup = fn(); },
@@ -74,8 +74,8 @@ test("a default read started before saving cannot undo the saved choice", async 
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(states[0].mode, "full");
   env.window.dispatchEvent(new Event("default-changed"));
-  pendingReads.shift()({ ok: true, json: async () => ({ mode: "ask" }) });
+  pendingReads.shift()({ ok: true, json: async () => ({ mode: "review" }) });
   await new Promise(resolve => setImmediate(resolve));
-  assert.equal(states[0].mode, "ask");
+  assert.equal(states[0].mode, "review");
   cleanup();
 });

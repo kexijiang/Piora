@@ -427,7 +427,7 @@ export class SessionMessageRouter {
     await this.store.appendCommand(command);
     await this.transition(command, "dispatching", { attachedRunId: command.attachedRunId }, "command_dispatching");
     try {
-      await session.send({ type: "steer", message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
+      await session.send({ type: "steer", source: input.source, message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
       await this.transition(command, "delivered", { attachedRunId: command.attachedRunId }, "command_delivered");
       await this.transition(command, "completed", {}, "command_completed");
       return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: "completed", attachedRunId: command.attachedRunId };
@@ -512,7 +512,7 @@ export class SessionMessageRouter {
         try {
           await this.transition(command, "dispatching", { delivery: "steer", queuePaused: false, attachedRunId: session.getActivePromptRunId() });
           if (this.isCancelled(command)) throw new Error("Message cancelled");
-          await session.send({ type: "steer", message, images: command.images, commandId, ...(command.inputMode ? { inputMode: command.inputMode } : {}) });
+          await session.send({ type: "steer", source: command.source, message, images: command.images, commandId, ...(command.inputMode ? { inputMode: command.inputMode } : {}) });
           await this.transition(command, "completed");
         } catch (error) {
           await this.transition(command, "failed", { errorCode: errorCode(error), errorMessage: safeErrorMessage(error) });
@@ -567,7 +567,7 @@ export class SessionMessageRouter {
     await this.store.appendCommand(command);
     await this.transition(command, "dispatching", { attachedRunId: command.attachedRunId }, "command_dispatching");
     try {
-      await session.send({ type: "follow_up", message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
+      await session.send({ type: "follow_up", source: input.source, message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
       await this.transition(command, "delivered", {}, "command_delivered");
       return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: "delivered", attachedRunId: command.attachedRunId };
     } catch (error) {

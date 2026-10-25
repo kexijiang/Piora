@@ -414,7 +414,8 @@ function promptSubmissionHarness(overrides = {}) {
   for (const extra of [sendHarness().env, abortHarness().env]) {
     for (const [name, value] of Object.entries(extra)) if (!(name in h.env)) h.env[name] = value;
   }
-  const callbacks = source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
+  const reviewCallback = source.slice(source.indexOf("  const acceptToolReviews = useCallback"), source.indexOf("  useEffect(() => {", source.indexOf("  const acceptToolReviews = useCallback")));
+  const callbacks = reviewCallback + source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
     + source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"))
     + source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
   for (const name of new Set(callbacks.match(/\b\w+Ref\b/g))) if (!(name in h.env)) h.env[name] = { current: null };
@@ -424,6 +425,7 @@ function promptSubmissionHarness(overrides = {}) {
     finishPromptWithoutStream: h.finishPromptWithoutStream, waitForPromptSettlement: h.waitForPromptSettlement,
     savePendingPrompt: async record => { h.env.saved = structuredClone(record); },
     setMessages: update => { h.env.messages = typeof update === "function" ? update(h.env.messages) : update; },
+    reviews: [], setToolReviews: update => { h.env.reviews = typeof update === "function" ? update(h.env.reviews) : update; },
     reduceAgentPhase: (_phase, event) => ({ kind: event.type }), isRunProgressEvent: () => true,
     handleExtensionUiRequest() {}, refreshContextUsage() {},
     normalizeToolCalls,
@@ -434,6 +436,19 @@ function promptSubmissionHarness(overrides = {}) {
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent }; }`)(h.env) };
 }
+
+test("review events settle after cancellation without reviving streaming and reject old or other-session snapshots", () => {
+  const h = promptSubmissionHarness();
+  h.env.cancelledPromptRunIdRef.current = h.env.promptRunIdRef.current;
+  const review = { id: "review", sessionId: "session-a", status: "reviewing", startedAt: 1, updatedAt: 1 };
+  h.handleAgentEvent({ type: "tool_review", review });
+  h.handleAgentEvent({ type: "tool_review", review: { ...review, status: "cancelled", updatedAt: 2 } });
+  h.handleAgentEvent({ type: "tool_review", review });
+  h.handleAgentEvent({ type: "tool_review", review: { ...review, sessionId: "other", updatedAt: 3 } });
+  assert.equal(h.env.reviews.length, 1);
+  assert.equal(h.env.reviews[0].status, "cancelled");
+  assert.equal(h.env.agentRunningRef.current, false);
+});
 
 test("actual send keeps SSE open through a delayed prompt POST in both existing and new sessions", async () => {
   for (const isNew of [false, true]) {

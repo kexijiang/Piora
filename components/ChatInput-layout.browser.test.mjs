@@ -32,17 +32,20 @@ import {useSendShortcut} from "@/hooks/useSendShortcut";
 import {NewSessionProjectPicker} from "@/components/NewSessionProjectPicker";
 import {SystemPromptSelector} from "@/components/SystemPromptSelector";
 import {ChatCommandCard,ChatCommandQueue} from "@/components/ChatCommandCard";
+import {ToolReviewStatus} from "@/components/ToolReviewStatus";
 import {createChatCommandCatalog} from "@/lib/chat-command-input";
 const catalog=createChatCommandCatalog([{name:"workflow",source:"extension",description:"Start a workflow and continue until complete"}]);
 const record={commandId:"sample-command",idempotencyKey:"sample",targetSessionId:"sample",acceptedAt:1792483200000,status:"completed",operation:{version:1,rawText:"/name 项目检查",catalogRevision:catalog.revision,command:catalog.commands.find(c=>c.name==="name"),arguments:"项目检查",phase:"settling",steps:[{id:"command",kind:"command",status:"completed",startedAt:1792483200000,completedAt:1792483200200}],result:{title:"chatCommands.renameCompleted",rename:{before:"新会话",after:"项目检查"}}}};
 import { DefaultToolPermissionSetting } from "${path.join(repo, "components/ToolPermissionControl.tsx").replaceAll("\\", "/")}";
 function App(){
+  const [reviews,setReviews]=useState([]);window.setReviews=setReviews;
   const {shortcut,setShortcut}=useSendShortcut();window.setSendShortcut=setShortcut;
   const [busy,setBusy]=useState(false);window.setBusy=setBusy;
   const [queued,setQueued]=useState([]);window.setQueued=setQueued;
   const [runtimeQueue,setRuntimeQueue]=useState(null);window.setRuntimeQueue=setRuntimeQueue;
   const [permission,setPermission]=useState({mode:"auto",revision:1});
   return <I18nProvider><main>
+    <section id="reviews"><ToolReviewStatus reviews={reviews}/></section>
     <section id="command-results"><ChatCommandCard record={record} actions={{retry:async()=>{},restore:async()=>{},cancel:async()=>{},copy:async()=>{}}}/></section>
     <section id="launcher"><NewSessionProjectPicker activeCwd="/workspace/a-very-long-project-name-for-layout-checks" onLaunch={request=>{window.launched=true;window.launchRequest=request}}/></section>
     <section id="conversation"><ChatInput ref={value=>{window.composer=value}} onSend={(text,...args)=>{window.sent=true;window.submission={text,args};return true}} onAbort={()=>{window.stopped=true;setBusy(false)}}
@@ -131,9 +134,9 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await page.locator("#launcher, #conversation").evaluateAll(sections => sections.forEach(section => { section.style.width = "590px"; }));
       const conversation = page.locator("#conversation");
       const permission = conversation.locator("[data-permission-trigger]");
-      for (const mode of ["full", "ask", "auto"]) {
+      for (const mode of ["full", "ask", "review", "auto"]) {
         await permission.click();
-        assert.equal(await page.getByRole("menuitemradio").count(), 3);
+        assert.equal(await page.getByRole("menuitemradio").count(), 4, "three primary modes plus strict compatibility");
         if (process.env.PIORA_COMPOSER_SCREENSHOTS && mode === "full") {
           await page.getByRole("menu").screenshot({ path: path.join(repo, "test-results/composer-layout", `${locale}-permissions.png`) });
         }
@@ -508,8 +511,30 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       failPermissionSave = false;
       await launcherTrigger.click();
       await page.locator('[role="menuitemradio"][data-mode="auto"]').click();
-      await page.waitForFunction(() => document.querySelector('#permission-settings [data-permission-trigger]').textContent.match(/Ask as needed|按需询问/));
+      await page.waitForFunction(() => document.querySelector('#permission-settings [data-permission-trigger]').textContent.match(/Request approval|请求批准/));
       assert.equal(defaultMode, "auto");
+
+      await launcherTrigger.click();
+      await page.locator('[role="menuitemradio"][data-mode="review"]').click();
+      await page.waitForFunction(() => document.querySelector('#permission-settings [data-permission-trigger]').textContent.match(/Approve for me|帮我批准/));
+      assert.equal(defaultMode, "review", "AI review is an explicit saved choice");
+      await page.evaluate(() => window.setReviews([{ id:"review-one",toolName:"bash",status:"reviewing",reason:"Checking the requested tests",model:"provider/model",startedAt:1,updatedAt:1 }]));
+      const reviewPanel = page.locator('#reviews [data-tool-reviews]');
+      await reviewPanel.waitFor();
+      assert.equal(await reviewPanel.getAttribute('open'), null, "automatic reviews do not open a dialog");
+      await reviewPanel.locator('summary').click();
+      await reviewPanel.getByText('Checking the requested tests').waitFor();
+      await page.evaluate(() => window.setReviews([{ id:"review-one",toolName:"bash",status:"denied",reason:"Target is outside the authorized deletion scope",model:"provider/model",durationMs:450,tokens:50,startedAt:1,updatedAt:2 }]));
+      await reviewPanel.locator('[data-review-status="denied"]').waitFor();
+      assert.match(await reviewPanel.innerText(), /run stopped|本轮已停止/);
+      assert.match(await reviewPanel.innerText(), /provider\/model/);
+      if (process.env.PIORA_COMPOSER_SCREENSHOTS) {
+        const output = path.join(repo, "test-results", "composer-layout");
+        await reviewPanel.screenshot({ path: path.join(output, `${locale}-tool-review.png`) });
+        await launcherTrigger.click();
+        await page.locator('[role="menu"]').screenshot({ path: path.join(output, `${locale}-permission-menu.png`) });
+        await page.keyboard.press("Escape");
+      }
 
       assert.deepEqual(errors, []);
       await context.close();
