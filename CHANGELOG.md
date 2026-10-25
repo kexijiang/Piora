@@ -25,6 +25,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - Retry native video after screenshot fallback, fence stale device/configuration results and reclaim ended video registrations. Keep reconnect backoff within the phone session grace period.
 - Retain recoverable recording files after interrupted capture or save failures and surface durable recording outcomes without scanning media history. Keep the two-minute/256 MiB safety limits.
 - Fence delayed recording-state reads across start/stop completion. Let a new device capture a screenshot independently while keeping same-device screenshot busy state consistent across view-mode changes.
+- Verify the packaged service's default mirror mode without Harmony Agent tools, while retaining strict explicit-workbench registration checks and the existing runtime dependency/license checks.
 - Add source-side preview queue-age recovery and a separately acknowledged recording subscriber policy. These phone-component changes require a separately built and explicitly updated component plus real-device validation; this change does not install or update a phone.
 
 ## [0.5.5-beta.36] - 2026-10-24

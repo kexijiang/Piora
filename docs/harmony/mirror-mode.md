@@ -46,6 +46,8 @@ Automatic limit stops and background failures are surfaced by metadata-only medi
 
 ## Input coverage and remaining acceptance
 
+Packaged verification starts the isolated service in default mirror mode and requires every `harmony_*` Agent tool to be absent, including inactive registrations. Browser/room preset checks, optional-extension exclusions and dependency/license closure checks remain mandatory. The verifier's explicit workbench contract separately retains the single active Harmony gateway requirement; it does not enable compatibility mode in the normal package smoke test.
+
 Implemented host-side: point click, a bounded completed drag gesture, Escape/Enter navigation on the focused canvas, on-demand Back/Home/Recents, capability-dependent calibrated power/volume holds, semantic whole-text submission, zoom, standard/fluent view selection, expand/restore, screenshot shortcut and recording.
 
 Not implemented or not validated: continuous low-level mouse down/move/up streaming, arbitrary desktop keypress injection, full Chinese IME composition on the remote field, uninterrupted long/rotating recordings, device audio, multi-screen concurrent UI, or all emulator combinations. Text submission can send Unicode as one semantic action; this is not full remote IME support. Physical-key controls retain the existing calibration requirements and may explicitly reject an unsupported device.
