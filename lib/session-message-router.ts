@@ -447,7 +447,14 @@ export class SessionMessageRouter {
     let recovery: Promise<void> | undefined;
     const cancelled = () => recovery ??= (async () => {
       await this.transition(command, "queued", { delivery: "next_turn", queuePaused: true, inputMode: "text" });
-      if (command.status === "queued") getSessionInboxRegistry().enqueue(command);
+      if (command.status === "queued" && !this.inbox(command.targetSessionId).queue.some(item => item.commandId === command.commandId)) {
+        try { getSessionInboxRegistry().enqueue(command); }
+        catch (error) {
+          // Paused recovery is already durable and visible. A full execution
+          // inbox must not turn Stop into failure or discard this submission.
+          if (!(error instanceof Error) || error.message !== "SESSION_QUEUE_FULL") throw error;
+        }
+      }
     })();
     try {
       const result = await session.send({ type, source: command.source, message: this.steeringText(command), images: command.images,
@@ -557,15 +564,29 @@ export class SessionMessageRouter {
           validateInput({ ...command, ...patch, teamExecution: undefined }, this.maxMessageBytes);
         }
         const previous = { ...command };
+        const inbox = this.inbox(sessionId);
+        const present = inbox.queue.some(item => item.commandId === commandId);
+        const previousBytes = sessionCommandBytes(command);
         const candidateBytes = sessionCommandBytes({ ...command, ...patch });
-        if (candidateBytes > SESSION_COMMAND_MAX_BYTES || this.inbox(sessionId).queuedBytes - sessionCommandBytes(command) + candidateBytes > SESSION_INBOX_MAX_BYTES) throw new SessionMessageRouterError("SESSION_QUEUE_FULL", "The edited message exceeds queue capacity.");
-        try { await this.transition(command, "queued", patch); }
+        if (action !== "pause" && (candidateBytes > SESSION_COMMAND_MAX_BYTES
+          || inbox.queuedBytes - (present ? previousBytes : 0) + candidateBytes > SESSION_INBOX_MAX_BYTES
+          || !present && inbox.queue.length >= SESSION_INBOX_LIMIT)) throw new SessionMessageRouterError("SESSION_QUEUE_FULL", "The queue is full. Free capacity before resuming this message.");
+        let admitted = false;
+        try {
+          // Reserve execution capacity before publishing an unpaused state.
+          // Recovery may exist only in the journal when Stop found a full inbox.
+          Object.assign(command, patch);
+          if (!present && action !== "pause") { getSessionInboxRegistry().enqueue(command); admitted = true; }
+          else if (present) inbox.queuedBytes += candidateBytes - previousBytes;
+          await this.transition(command, "queued", patch);
+        }
         catch (error) {
+          if (admitted) getSessionInboxRegistry().removeCommand(sessionId, commandId);
           if (!TERMINAL_STATUSES.has(command.status)) Object.assign(command, previous);
           throw error;
+        } finally {
+          inbox.queuedBytes = inbox.queue.reduce((total, item) => total + sessionCommandBytes(item), 0);
         }
-        const inbox = this.inbox(sessionId);
-        inbox.queuedBytes = inbox.queue.reduce((total, item) => total + sessionCommandBytes(item), 0);
       }
       return { ...command };
     } finally {
