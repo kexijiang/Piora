@@ -42,10 +42,11 @@ test("Mermaid retains geometry across remounts and opens a viewport-fitted, stab
         window.virtualSession=session=>flushSync(()=>setVirtual(session));
         window.selectDiagram=(name,remount=true)=>flushSync(()=>setState(s=>({...s,name,key:s.key+Number(remount),visible:true})));
         window.showDiagram=visible=>flushSync(()=>setState(s=>({...s,visible})));
+        window.streamDiagram=streaming=>flushSync(()=>setState(s=>({...s,streaming})));
         window.duplicateDiagram=()=>flushSync(()=>setState(s=>({...s,duplicate:true})));
         window.changeTheme=setTheme;window.themes=THEME_PRESETS.map(p=>p.id);
         return <I18nProvider>{virtual!==null?<VirtualChat session={virtual}/>:<div id="scroll" style={{height:"100vh",overflow:"auto"}}><div style={{height:300}}/><main style={{width:"min(760px,100%)",margin:"auto"}}>
-          {state.visible&&<MermaidBlock key={state.key} code={sources[state.name]}/>}<div id="after">Following message</div>
+          {state.visible&&<MermaidBlock key={state.key} code={sources[state.name]} isStreaming={state.streaming}/>}<div id="after">Following message</div>
           {state.duplicate&&<MermaidBlock code={sources[state.name]}/>}</main><div style={{height:1000}}/></div>}</I18nProvider>}
       createRoot(document.getElementById("root")).render(<App/>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
@@ -93,7 +94,7 @@ test("Mermaid retains geometry across remounts and opens a viewport-fitted, stab
         if (!svg || !viewport) return false;
         const r = svg.getBoundingClientRect(), v = viewport.getBoundingClientRect(), d=dialog.getBoundingClientRect();
         const controls=[...dialog.querySelectorAll("button")].every(button=>{const b=button.getBoundingClientRect();return b.left>=d.left && b.right<=d.right && b.top>=d.top && b.bottom<=d.bottom;});
-        return controls && v.left>=d.left && v.right<=d.right && v.bottom<=d.bottom && r.width > 0 && r.height > 0 && r.left >= v.left && r.top >= v.top && r.right <= v.right+1 && r.bottom <= v.bottom+1;
+        return controls && v.left>=d.left && v.right<=d.right && v.bottom<=d.bottom && r.width > 0 && r.height > 0 && r.width<=svg.viewBox.baseVal.width+1 && r.left >= v.left && r.top >= v.top && r.right <= v.right+1 && r.bottom <= v.bottom+1;
       });
       const values = await page.locator(".mermaid-zoom-canvas svg").evaluate(el => { const r=el.getBoundingClientRect(),b=el.viewBox.baseVal;return {ratio:r.width/r.height,natural:b.width/b.height,width:r.width,naturalWidth:b.width}; });
       assert.ok(Math.abs(values.ratio / values.natural - 1) < 0.01, "preserve aspect ratio");
@@ -117,6 +118,23 @@ test("Mermaid retains geometry across remounts and opens a viewport-fitted, stab
     await preview.waitFor();
     assert.equal(await page.locator(".mermaid-block-loading").count(),0);
     assert.equal(await page.evaluate(() => window.renderCalls),calls);
+    for(const roundTrip of ["code","theme","streaming"]) {
+      await preview.click();
+      await page.locator("dialog[open]").waitFor();
+      await page.evaluate(kind=>{
+        if(kind==="code") window.selectDiagram("small",false);
+        if(kind==="theme") window.changeTheme("dark");
+        if(kind==="streaming") window.streamDiagram(true);
+      },roundTrip);
+      await page.locator("dialog[open]").waitFor({state:"detached"});
+      await page.evaluate(kind=>{
+        if(kind==="code") window.selectDiagram("normal",false);
+        if(kind==="theme") window.changeTheme("light");
+        if(kind==="streaming") window.streamDiagram(false);
+      },roundTrip);
+      await preview.waitFor();
+      assert.equal(await page.locator("dialog[open]").count(),0,`${roundTrip} round trips cannot resurrect an old viewer`);
+    }
     for (const name of ["wide", "tall", "small", "normal", "sequence", "pie"]) {
       await page.evaluate(name => window.selectDiagram(name), name);
       await preview.waitFor();
@@ -144,6 +162,23 @@ test("Mermaid retains geometry across remounts and opens a viewport-fitted, stab
         await page.mouse.move(viewport.x+viewport.width/2, viewport.y+50, { steps: 5 });
         await page.mouse.up();
         assert.ok(await page.locator(".mermaid-zoom-viewport").evaluate(el=>el.scrollTop) > 50, "zoomed diagrams support dragging");
+        const zoomIn=page.getByRole("button",{name:"Zoom in",exact:true});
+        for(let step=0;step<12 && await zoomIn.isEnabled();step++) {
+          const previous=await page.locator(".mermaid-zoom-value").textContent();
+          await zoomIn.click();
+          await page.waitForFunction(previous=>document.querySelector(".mermaid-zoom-value").textContent!==previous,previous);
+        }
+        assert.equal(await page.locator(".mermaid-zoom-value").textContent(),"300%");
+        const manualSize=await page.locator(".mermaid-zoom-canvas").boundingBox();
+        for(const size of [{width:360,height:600},{width:800,height:360},{width:1100,height:800}]) {
+          await page.setViewportSize(size);
+          await page.waitForFunction(({width,height})=>innerWidth===width&&innerHeight===height,size);
+          assert.equal(await page.locator(".mermaid-zoom-value").textContent(),"300%","resize preserves absolute user zoom and the maximum");
+          const resized=await page.locator(".mermaid-zoom-canvas").boundingBox();
+          assert.equal(resized.width,manualSize.width);
+          assert.equal(resized.height,manualSize.height);
+          assert.equal(await zoomIn.isDisabled(),true);
+        }
       }
       await page.getByRole("button", { name: "Fit to view", exact: true }).click();
       await assertFit();

@@ -163,7 +163,9 @@ const diagramCache = createDiagramCache((key) => {
       host.remove();
     }
   });
-  renderQueue = request;
+  // The queue only retains completion, never an oversized result outside the
+  // bounded cache after its last consumer unmounts.
+  renderQueue = request.then(() => {}, () => {});
   return request;
 });
 
@@ -309,7 +311,6 @@ export function MermaidBlock({ code, isStreaming, defaultPreview = true }: Merma
   const { t } = useI18n();
   const [showPreview, setShowPreview] = useState(defaultPreview);
   const [renderState, setRenderState] = useState<RenderState | null>(null);
-  const [zoomKey, setZoomKey] = useState<string | null>(null);
   const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const currentKey = `${isDark ? "dark" : "light"}\n${code}`;
   const previewVisible = showPreview && !isStreaming;
@@ -336,7 +337,7 @@ export function MermaidBlock({ code, isStreaming, defaultPreview = true }: Merma
   const previewButton = (
     <button
       type="button"
-      onClick={() => { setZoomKey(null); setShowPreview((v) => !v); }}
+      onClick={() => setShowPreview((v) => !v)}
       disabled={isStreaming}
       title={isStreaming ? t("i18n.previewAfterStreaming") : (previewVisible ? t("i18n.showMermaidSource") : t("i18n.previewMermaid"))}
       className={["markdown-code-action", previewVisible ? "is-active" : ""].filter(Boolean).join(" ")}
@@ -356,17 +357,7 @@ export function MermaidBlock({ code, isStreaming, defaultPreview = true }: Merma
         {knownSize && <div style={{ width: `min(100%, ${knownSize.width}px)`, aspectRatio: `${knownSize.width} / ${knownSize.height}` }} />}
       </div>
     ) : (
-      <>
-          <button
-            type="button"
-            className="mermaid-block mermaid-preview-button"
-            title={t("i18n.openMermaidViewer")}
-            aria-label={t("i18n.openMermaidViewer")}
-            onClick={() => setZoomKey(currentKey)}
-            dangerouslySetInnerHTML={{ __html: readySvg }}
-          />
-        {zoomKey === currentKey && <MermaidZoomDialog key={currentKey} diagram={diagram} onClose={() => setZoomKey(null)} />}
-      </>
+      <MermaidPreview key={currentKey} diagram={diagram} svg={readySvg} />
     );
 
   return (
@@ -383,6 +374,24 @@ export function MermaidBlock({ code, isStreaming, defaultPreview = true }: Merma
   );
 }
 
+// The key and conditional mount tie viewer state to this exact preview. Returning
+// to old code/theme or ending streaming must never resurrect a previously open dialog.
+function MermaidPreview({ diagram, svg }: { diagram: Diagram; svg: string }) {
+  const { t } = useI18n();
+  const [zoomOpen, setZoomOpen] = useState(false);
+  return <>
+    <button
+      type="button"
+      className="mermaid-block mermaid-preview-button"
+      title={t("i18n.openMermaidViewer")}
+      aria-label={t("i18n.openMermaidViewer")}
+      onClick={() => setZoomOpen(true)}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+    {zoomOpen && <MermaidZoomDialog diagram={diagram} onClose={() => setZoomOpen(false)} />}
+  </>;
+}
+
 function MermaidZoomDialog({ diagram, onClose }: { diagram: Diagram; onClose: () => void }) {
   const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -391,8 +400,11 @@ function MermaidZoomDialog({ diagram, onClose }: { diagram: Diagram; onClose: ()
   const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const svg = useMemo(() => scopeDiagramSvg(diagram.svg, `dialog-${instanceId}`), [diagram, instanceId]);
   const [fit, setFit] = useState(1);
-  const [zoom, setZoom] = useState(1);
-  const maximumZoom = fit ? Math.max(ZOOM_MAX, ZOOM_MAX / fit) : ZOOM_MAX;
+  // null follows the viewport; a user zoom is an absolute SVG scale, so a
+  // resize cannot multiply it beyond the limit or unexpectedly enlarge it.
+  const [manualZoom, setManualZoom] = useState<number | null>(null);
+  const zoom = manualZoom ?? fit;
+  const minimumZoom = Math.min(ZOOM_MIN, fit);
   const hasDesktopChrome = typeof window !== "undefined" && Boolean(window.piDesktop);
 
   useLayoutEffect(() => {
@@ -421,7 +433,7 @@ function MermaidZoomDialog({ diagram, onClose }: { diagram: Diagram; onClose: ()
   }, [diagram]);
 
   const resetZoom = () => {
-    setZoom(1);
+    setManualZoom(null);
     viewportRef.current?.scrollTo(0, 0);
   };
 
@@ -449,18 +461,18 @@ function MermaidZoomDialog({ diagram, onClose }: { diagram: Diagram; onClose: ()
             <div className="mermaid-zoom-stepper">
               <button
                 type="button"
-                onClick={() => setZoom((value) => Math.max(ZOOM_MIN, value - ZOOM_STEP / (fit || 1)))}
-                disabled={zoom <= ZOOM_MIN}
+                onClick={() => setManualZoom((value) => Math.max(minimumZoom, (value ?? fit) - ZOOM_STEP))}
+                disabled={zoom <= minimumZoom}
                 title={t("i18n.zoomOut")}
                 aria-label={t("i18n.zoomOut")}
               >
                 <AliIcon name="minus" size={13} />
               </button>
-              <span className="mermaid-zoom-value">{Math.round(fit * zoom * 100)}%</span>
+              <span className="mermaid-zoom-value">{Math.round(zoom * 100)}%</span>
               <button
                 type="button"
-                onClick={() => setZoom((value) => Math.min(maximumZoom, value + ZOOM_STEP / (fit || 1)))}
-                disabled={zoom >= maximumZoom}
+                onClick={() => setManualZoom((value) => Math.min(ZOOM_MAX, (value ?? fit) + ZOOM_STEP))}
+                disabled={zoom >= ZOOM_MAX}
                 title={t("i18n.zoomIn")}
                 aria-label={t("i18n.zoomIn")}
               >
@@ -507,7 +519,7 @@ function MermaidZoomDialog({ diagram, onClose }: { diagram: Diagram; onClose: ()
         >
           <div
             className="mermaid-zoom-canvas"
-            style={{ width: diagram.width * fit * zoom, height: diagram.height * fit * zoom }}
+            style={{ width: diagram.width * zoom, height: diagram.height * zoom }}
             dangerouslySetInnerHTML={{ __html: svg }}
           />
         </div>
