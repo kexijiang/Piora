@@ -10,7 +10,7 @@ export type NativeMcpConfig = NativeMcpEntry["config"];
 export type NativeMcpExposure = NonNullable<NativeMcpConfig["exposure"]>;
 type LoadedConfig = ReturnType<NonNullable<NativeMcpOptions["loadConfig"]>>;
 type Json = Record<string, unknown>;
-export interface NativeMcpPreferences { enabled: boolean; approvedRegistered: string[] }
+export interface NativeMcpPreferences { enabled: boolean; approvedRegistered: string[]; blockedRegistered?: string[] }
 const SERVER_NAME = /^[A-Za-z0-9_-]{1,100}$/;
 const MAX_CONFIG_BYTES = 1024 * 1024;
 export const NATIVE_MCP_EXPOSURES: readonly NativeMcpExposure[] = ["direct", "deferred", "codemode", "hidden"];
@@ -93,7 +93,9 @@ export function validateNativeMcpConfig(raw: unknown, scope: "global" | "project
 export function nativeMcpPreferencesPath(agentDir: string): string { return join(agentDir, "piora/mcp-native.json"); }
 export function readNativeMcpPreferences(agentDir: string): NativeMcpPreferences {
   const value = readConfig(nativeMcpPreferencesPath(agentDir));
-  return { enabled: value.enabled === true, approvedRegistered: Array.isArray(value.approvedRegistered) ? value.approvedRegistered.filter((id): id is string => typeof id === "string") : [] };
+  return { enabled: value.enabled !== false,
+    approvedRegistered: Array.isArray(value.approvedRegistered) ? value.approvedRegistered.filter((id): id is string => typeof id === "string") : [],
+    blockedRegistered: Array.isArray(value.blockedRegistered) ? value.blockedRegistered.filter((id): id is string => typeof id === "string") : [] };
 }
 export function writeNativeMcpPreferences(agentDir: string, preferences: NativeMcpPreferences): void {
   const path = nativeMcpPreferencesPath(agentDir);

@@ -778,7 +778,7 @@ export const zhCNLocale: LocalePlugin = {
     "harmonyStorage.screenshotDirectory": "截图文件夹",
     "harmonyStorage.screenshotDescription": "PNG 截图会保存到这里，文件名包含设备序列号和截图时间。",
     "harmonyStorage.recordingDirectory": "录屏文件夹",
-    "harmonyStorage.recordingDescription": "停止录屏后，MP4 文件会从设备下载到这个文件夹。",
+    "harmonyStorage.recordingDescription": "MP4 录屏保存到这里；使用手机系统录屏时，停止后自动取回文件。",
     "harmonyStorage.absolutePathHint": "请使用本机绝对路径；首次保存文件时会自动创建文件夹。",
     "harmonyStorage.choose": "选择文件夹",
     "harmonyStorage.save": "保存路径",

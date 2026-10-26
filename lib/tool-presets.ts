@@ -1,6 +1,7 @@
 /** Common workspace tools used by the compact coding preset. */
 export const BUILTIN_AGENT_TOOLS: readonly string[] = [
   "bash",
+  "powershell",
   "read",
   "edit",
   "write",

@@ -64,7 +64,7 @@ test("native MCP configuration shows live ownership, explicit connection actions
   await page.evaluate(() => window.setFixtureOpen(true));
   await page.getByRole("button", { name: "Refresh status", exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Reload task", exact: true }).count(), 0);
-  assert.equal(await page.getByText("Connecting does not authorize model calls. Enable individual tools and server resources in Settings → Project tools.", { exact: true }).count(), 1);
+  assert.equal(await page.getByText("Native MCP connections and tools follow Pi defaults. Settings → Project tools can restrict individual tools and server resources.", { exact: true }).count(), 1);
   await page.getByLabel("Server name", { exact: true }).fill("fixture-private");
   const editor = page.getByLabel("Server definition (strict JSON)", { exact: true });
   await editor.fill('{"url":"https://fixture.invalid/mcp","headers":{"Authorization":"FIXTURE_PRIVATE_HEADER"},"enabled":false}');

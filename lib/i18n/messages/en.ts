@@ -778,7 +778,7 @@ export const enLocale: LocalePlugin = {
     "harmonyStorage.screenshotDirectory": "Screenshot folder",
     "harmonyStorage.screenshotDescription": "PNG screenshots are saved here with the device serial and capture time in the filename.",
     "harmonyStorage.recordingDirectory": "Screen recording folder",
-    "harmonyStorage.recordingDescription": "MP4 screen recordings are downloaded from the device into this folder when recording stops.",
+    "harmonyStorage.recordingDescription": "MP4 recordings are saved here. When using the phone's system recorder, the file is retrieved after recording stops.",
     "harmonyStorage.absolutePathHint": "Use absolute local paths. The folders are created automatically when the first file is saved.",
     "harmonyStorage.choose": "Choose folder",
     "harmonyStorage.save": "Save paths",

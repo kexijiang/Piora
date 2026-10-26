@@ -35,7 +35,8 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
       let state = { serial: "", scale: 75, open: false, minimized: false, alwaysOnTop: false, ownerId: "desktop-media-fixture" }, listeners = [];
       const update = serial => { state = { ...state, serial }; listeners.forEach(fn => fn(state)); return state; };
       window.piDesktop = { messages: { show: async message => { window.messages.push(message); return "done"; } }, harmonyMirror: {
-        getState: async () => state, onStateChange: fn => { listeners.push(fn); return () => { listeners = listeners.filter(item => item !== fn); }; },
+        getState: async () => state, onCommand: () => () => {}, setScale: async scale => { state={...state,scale}; return update(state.serial); }, close: async () => { state={...state,open:false}; update(state.serial); return true; }, onStateChange: fn => { listeners.push(fn); return () => { listeners = listeners.filter(item => item !== fn); }; },
+        setPresentation: async presentation => { state = { ...state, presentation, open: true }; return update(state.serial); },
         selectDevice: async serial => update(serial), open: async serial => { window.mirrorCalls.push(serial); return update(serial); },
       }, files: { getPathForFile: file => file.name === "dragged.txt" ? "C:\\workspace\\dragged.txt" : "" }, clipboard: {
         copyHarmonyMedia: async media => { if (window.failMedia) throw Error("clipboard busy"); window.copies.push(media); },
@@ -55,7 +56,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     const bundle = await readFile(path.join(root, "bundle.js"));
     let screenshotPreview = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=", "base64");
     const exportJobs = [];
-    const css = await readFile(path.join(repo, "components/workspace/HarmonyPanel.module.css"), "utf8");
+    const css = await readFile(path.join(repo, "components/workspace/HarmonyPanel.module.css"), "utf8") + await readFile(path.join(repo, "components/ConfirmDialog.module.css"), "utf8") + await readFile(path.join(repo, "components/workspace/harmony/MirrorWindow.module.css"), "utf8");
     await page.route("https://harmony-panel.test/**", async route => {
       const request = route.request(), url = new URL(request.url());
       if (url.pathname === "/bundle.js") return route.fulfill({ contentType: "text/javascript", body: bundle });
@@ -177,6 +178,40 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     await page.waitForFunction(() => window.mirrorCalls.length === 1);
     assert.deepEqual(await page.evaluate(() => window.mirrorCalls), ["phone"]);
     assert.equal(requests.some(r => r.endpoint === "/api/harmony/manual"), false);
+    await page.locator(".toolbarActions").getByRole("button", { name: "设备设置", exact: true }).click();
+    const deviceSettings = page.getByRole("dialog", { name: "设备设置", exact: true });
+    await deviceSettings.getByRole("button", { name: "保存", exact: true }).waitFor();
+    assert.equal(await deviceSettings.getByRole("option", { name: "自动（HDC 实时视频优先）", exact: true }).count(), 1);
+    assert.ok(await deviceSettings.locator(".settingsPanel").evaluate(panel => {
+      const outer = panel.closest('[role="dialog"]').getBoundingClientRect(); const inner = panel.getBoundingClientRect();
+      return inner.height > 100 && inner.width > 300 && inner.left >= outer.left - 1 && inner.right <= outer.right + 1;
+    }), "settings content stays inside the modal instead of absolute-position clipping");
+    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true}); await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"settings-visible.png")}); }
+    await deviceSettings.getByRole("button", {name:"取消", exact:true}).click();
+    const wideViewport = page.viewportSize();
+    await page.setViewportSize({ width: 380, height: 700 });
+    assert.equal(await page.getByRole("combobox", { name: "投屏位置" }).isVisible(), true, "position selection remains available in a narrow sidebar");
+    await page.getByLabel("设备操作菜单", { exact: true }).click();
+    await page.locator(".compactActions").getByRole("button", { name: "设备设置", exact: true }).click();
+    await deviceSettings.locator("input").first().waitFor();
+    assert.ok(await deviceSettings.evaluate(dialog => {
+      const box = dialog.getBoundingClientRect();
+      return box.height > 200 && box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight && dialog.scrollWidth <= dialog.clientWidth + 1;
+    }), "settings remain visible, scrollable and inside the narrow window");
+    await deviceSettings.getByRole("button", { name: "取消", exact: true }).click();
+    await page.getByLabel("设备操作菜单", { exact: true }).click();
+    await page.setViewportSize(wideViewport);
+    await page.getByRole("combobox", {name:"投屏位置"}).selectOption("sidebar");
+    await page.locator(".toolbarActions").getByRole("button", { name: "打开投屏", exact: true }).click();
+    try { await page.getByRole("region", {name:"侧栏投屏"}).locator("canvas").waitFor(); } catch (error) { console.error("Sidebar diagnosis", errors, await page.locator("#root").innerText(), await page.locator(".embeddedMirror").count()); throw error; }
+    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"sidebar-mirror.png")});
+    assert.deepEqual(await page.evaluate(()=>window.mirrorCalls), ["phone"], "docking reuses the viewer state without opening another floating window");
+    const fullHeight = (await page.locator(".embeddedMirror").boundingBox()).height;
+    await page.getByRole("region",{name:"侧栏投屏"}).getByRole("combobox",{name:"画面缩放"}).selectOption("25");
+    await page.waitForFunction(() => document.querySelector('.embeddedMirror').getBoundingClientRect().height < 250);
+    assert.ok((await page.locator(".embeddedMirror").boundingBox()).height < fullHeight / 2, "sidebar zoom releases workspace space");
+    await page.getByRole("combobox", {name:"投屏位置"}).selectOption("floating");
+    await page.waitForFunction(()=>!document.querySelector('.embeddedMirror canvas'));
     await page.getByText("响应 17 ms", { exact: true }).waitFor();
     assert.match(await page.getByText("响应 17 ms", { exact: true }).getAttribute("title"), /不代表视频延迟/);
     phoneState = "offline";
@@ -575,7 +610,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     await mediaHistory.getByRole("combobox", { name: "显示" }).selectOption("all");
     await page.evaluate(() => { window.copies = []; window.failMedia = true; });
     await captureShortcut("Alt+Shift+S");
-    await page.waitForFunction(() => window.messages.some(m => m.title === "截图已保存" && m.message.includes("未能复制")));
+    await page.waitForFunction(() => window.messages.some(m => m.title === "截图已保存" && m.message.includes("剪贴板复制未完成") && m.presentation === "notice"));
     assert.equal(await page.locator('.captureNotice,.actionBar,.frameFooter').count(), 0, "all media results use common messages");
     await page.evaluate(() => { window.failMedia = false; });
     await page.getByRole("button", { name: "开始录屏", exact: true }).click();

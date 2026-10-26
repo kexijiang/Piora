@@ -18,6 +18,7 @@ import { currentHarmonyResponseSample, normalizeHarmonyResponseSample, type Harm
 import { HarmonyRequestError } from "@/lib/harmony/request-error";
 import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
+const MirrorWindow = dynamic(() => import("./harmony/MirrorWindow").then(module => module.MirrorWindow), { ssr: false });
 const WorkbenchTools = dynamic(() => import("./harmony/WorkbenchTools").then(module => module.WorkbenchTools), { ssr: false });
 import { MediaHistory } from "./harmony/MediaHistory";
 import { TcpDeviceConnection } from "./harmony/TcpDeviceConnection";
@@ -266,6 +267,13 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
     online: Boolean(selectedOnline), holder, chinese, controlStatus,
   });
   const mirror = useHarmonyWindow();
+  const [mirrorPresentation, setMirrorPresentation] = useState<"floating" | "sidebar">("floating");
+  useEffect(() => { if (mirror?.presentation) setMirrorPresentation(mirror.presentation); }, [mirror?.presentation]);
+  const openSelectedMirror = async () => {
+    const bridge = window.piDesktop?.harmonyMirror; if (!bridge || !selectedSerial) return;
+    try { if (mirrorPresentation === "sidebar") { await bridge.selectDevice(selectedSerial); await bridge.setPresentation("sidebar"); } else await bridge.open(selectedSerial); }
+    catch (failure) { setError(String(failure)); }
+  };
   const media = useHarmonyMedia(selectedSerial, mirror?.ownerId ?? ownerId, active && desktopAvailable, chinese);
   const { recording, elapsed: recordingElapsed, ownsRecording } = media;
   const screenshotBusy = media.busy === "capture_screenshot";
@@ -473,7 +481,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
   const initializeMirror = async () => {
     const result = await action({ action: "initialize_mirror" });
     if (result === undefined) return;
-    await showPioraMessage({ title: copy("启用投屏", "Enable mirror"), message: copy("请在手机上开始共享屏幕并确认授权，然后重新打开投屏。", "Start sharing on the phone and confirm consent, then reopen the mirror."), actions: [{ id: "done", label: copy("确定", "OK"), primary: true }] });
+    await showPioraMessage({ title: copy("启用实时投屏", "Enable live video"), message: copy("请在手机上开始共享屏幕并确认授权，然后重新打开投屏。", "Start sharing on the phone and confirm consent, then reopen the mirror."), actions: [{ id: "done", label: copy("确定", "OK"), primary: true }] });
   };
 
   useEffect(() => {
@@ -572,7 +580,11 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
         </div></div>
       </div>
       <div className={styles.toolbarActions}>
-        <button className={styles.primaryButton} type="button" disabled={!selectedOnline} onClick={() => void window.piDesktop?.harmonyMirror?.open(selectedSerial).catch(failure => setError(String(failure)))}>{copy("打开投屏", "Open mirror")}</button>
+        <select aria-label={copy("投屏位置", "Mirror position")} value={mirror?.open ? mirror.presentation ?? mirrorPresentation : mirrorPresentation} onChange={event => {
+          const value = event.target.value as "floating" | "sidebar"; setMirrorPresentation(value);
+          if (mirror?.open) void window.piDesktop?.harmonyMirror?.setPresentation(value).catch(failure => setError(String(failure)));
+        }}><option value="floating">{copy("独立悬浮窗", "Floating window")}</option><option value="sidebar">{copy("侧栏内显示", "Inside sidebar")}</option></select>
+        <button className={styles.primaryButton} type="button" disabled={!selectedOnline} onClick={() => void openSelectedMirror()}>{copy("打开投屏", "Open mirror")}</button>
         <button type="button" disabled={!canScreenshot || Boolean(media.busy)} onClick={() => void mediaAction("capture_screenshot")} title={`${copy("截图", "Screenshot")}${screenshotShortcutLabel ? ` · ${screenshotShortcutLabel}` : ""}`}>{screenshotBusy ? copy("截图中…", "Capturing…") : copy("截图", "Screenshot")}</button>
         <button type="button" className={recording ? styles.recordingButton : undefined} aria-label={recording ? copy("停止录屏", "Stop recording") : copy("开始录屏", "Start recording")} disabled={!selectedOnline || Boolean(controlStatus) || media.transitioning || Boolean(window.piDesktop?.harmonyMirror && !mirror) || Boolean(recording && !ownsRecording)} onClick={() => void mediaAction(recording ? "stop_recording" : "start_recording")} title={copy("最长30分钟", "30 minute limit")}>{media.transitioning && media.busy !== "capture_screenshot" ? copy(recording?.phase === "saving" ? "保存中…" : "处理中…", "Working…") : recording ? `${copy("停止录屏", "Stop")} · ${formatRecordingElapsed(recordingElapsed)}` : copy("录屏", "Record")}</button>
         <div className={styles.secondaryActions}>
@@ -622,9 +634,9 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       </div>
 
       <div className={styles.settingGroup}>
-        <div className={styles.settingCopy}><strong>{copy("投屏来源", "Video provider")}</strong><small>{copy("可选 HOScrcpy；失败后暂时回退内置 HDC 投屏", "Optional HOScrcpy; falls back to bundled HDC video after failure")}</small></div>
+        <div className={styles.settingCopy}><strong>{copy("投屏来源", "Video provider")}</strong><small>{copy("优先使用本机 DevEco 实时视频，无需打开手机共享页面；没有可用 SDK 时保留组件回退", "Prefer the installed DevEco live video service without opening the phone sharing app; retain the component fallback when no SDK is available")}</small></div>
         <select aria-label={copy("投屏来源", "Video provider")} value={videoProvider} onChange={event => setVideoProvider(event.target.value as "bundled" | "hos-scrcpy")}>
-          <option value="bundled">{copy("内置 HDC 投屏", "Bundled HDC video")}</option><option value="hos-scrcpy">HOScrcpy</option>
+          <option value="bundled">{copy("自动（HDC 实时视频优先）", "Automatic (prefer HDC live video)")}</option><option value="hos-scrcpy">HOScrcpy</option>
         </select>
         {videoProvider === "hos-scrcpy" ? <>
           <label>{copy("本地 dsh-hos-scrcpy 包目录", "Local dsh-hos-scrcpy package directory")}<input value={hosPackageDirectory} onChange={event => setHosPackageDirectory(event.target.value)} /></label>
@@ -683,13 +695,14 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       <button type="button" className={styles.tasksButton} onClick={() => changeToolTab("history")}>{copy("任务", "Tasks")}{tasksCount ? ` ${tasksCount}` : ""}</button>
       {lease || holder ? <button type="button" className={styles.stopButton} onClick={stopDevice} aria-label={copy("停止设备任务", "Stop device task")}>{copy("停止", "Stop")}</button> : null}
     </nav>
+    {mirror?.open && mirror.presentation === "sidebar" ? <section className={styles.embeddedMirror} style={{ height: `calc(36px + ${65 * mirror.scale / 100}dvh)` }} aria-label={copy("侧栏投屏", "Sidebar mirror")}><MirrorWindow embedded serial={selectedSerial} active={active} onEnableVideo={() => void initializeMirror()} /></section> : null}
     <main className={styles.workbenchContent} data-tab={toolTab}>
       <div ref={drawerBodyRef} id={drawerId} role="tabpanel" aria-labelledby={`${drawerId}-${toolTab}`} className={styles.workbenchBody} aria-label={copy("工具内容", "Tool content")}>
         {toolTab === "overview" ? <section className={styles.overview}>
           <h2>{selected ? formatHarmonyDeviceLabel(selected) : copy("连接一台鸿蒙设备", "Connect a Harmony device")}</h2>
           <p>{selectedOnline ? copy("设备已连接。打开独立投屏，或使用顶部工具处理设备任务。", "Device connected. Open the mirror or choose a tool above.") : copy("通过 USB 连接手机并确认调试授权，也可以在设备设置中配置 Wi-Fi 连接。", "Connect by USB and allow debugging, or configure Wi-Fi in device settings.")}</p>
           <dl><dt>{copy("连接状态", "Status")}</dt><dd>{deviceStateLabel}</dd><dt>{copy("连接方式", "Transport")}</dt><dd>{connectionLabel}</dd><dt>{copy("系统", "System")}</dt><dd>{selected?.osVersion ?? copy("未获取", "Unavailable")}</dd><dt>{copy("序列号", "Serial")}</dt><dd>{selectedSerial || "—"}</dd></dl>
-          <div className={styles.overviewActions}><button type="button" disabled={!selectedOnline} onClick={() => void window.piDesktop?.harmonyMirror?.open(selectedSerial).catch(failure => setError(String(failure)))}>{copy("打开投屏", "Open mirror")}</button><button type="button" onClick={() => openTools("diagnostics")}>{copy("连接诊断", "Diagnostics")}</button><button type="button" onClick={() => setSettingsOpen(true)}>{copy("设备设置", "Device settings")}</button></div>
+          <div className={styles.overviewActions}><button type="button" disabled={!selectedOnline} onClick={() => void openSelectedMirror()}>{copy("打开投屏", "Open mirror")}</button><button type="button" onClick={() => openTools("diagnostics")}>{copy("连接诊断", "Diagnostics")}</button><button type="button" onClick={() => setSettingsOpen(true)}>{copy("设备设置", "Device settings")}</button></div>
           {controlStatus ? <p>{copy("设备正在停止或恢复，请在诊断中核对状态。", "Device cleanup is pending. Check diagnostics.")}</p> : null}
         </section> : null}
         {recording?.systemRecorderStateUnknown && ownsRecording ? <section><p>{copy("手机系统录屏状态未确认。请在手机上停止后取回文件。", "System recording is unconfirmed. Stop it on the phone, then retrieve.")}</p><button type="button" disabled={Boolean(media.busy)} onClick={() => void mediaAction("retrieve_recording")}>{copy("我已停止，取回录屏", "I stopped it, retrieve recording")}</button></section> : null}
@@ -705,7 +718,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
           {toolTab === "logs" ? <HarmonyLogViewer active={active} serial={selectedSerial} online={Boolean(selectedOnline)} copy={copy} /> : null}
           {toolTab === "diagnostics" || toolTab === "tree" ? <div className={styles.moreBody}>
             <button type="button" disabled={!canControl || busy} onClick={() => void initializeMirror()}>{copy("初始化投屏服务", "Initialize video service")}</button>
-            <button type="button" disabled={!selectedOnline || busy} onClick={() => void window.piDesktop?.harmonyMirror?.open(selectedSerial)}>{copy("打开投屏", "Open mirror")}</button>
+            <button type="button" disabled={!selectedOnline || busy} onClick={() => void openSelectedMirror()}>{copy("打开投屏", "Open mirror")}</button>
             <button type="button" disabled={!selectedOnline || busy || !selected?.capabilities.uiTree} onClick={() => void run(() => jsonRequest<{ snapshot: unknown }>(`/api/harmony/tree?serial=${encodeURIComponent(selectedSerial)}`), payload => setTree(payload.snapshot))}>{copy("读取界面结构", "Read interface structure")}</button>
             <details className={styles.diagnostics}><summary>{copy("开发者信息", "Developer details")}</summary><pre>{JSON.stringify({ selected, holder, snapshot, diagnostics, tree }, null, 2)}</pre></details>
             <button className={styles.stopButton} type="button" disabled={busy} onClick={() => { clearControl(); void run(() => jsonRequest("/api/harmony/action", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "emergency_stop", reason: "desktop-global-stop" }) })); }}>{copy("停止所有设备操作", "Stop all devices")}</button>

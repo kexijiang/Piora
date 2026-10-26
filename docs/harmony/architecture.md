@@ -103,3 +103,18 @@ AI 的 `harmony_control` 中 `database` 操作复用相同快照服务；每个 
 普通权限投屏组件最后一个观看连接断开时保留现有已授权采集五秒。连接恢复取消等待任务，单调 presence epoch 阻止旧任务释放新连接；持续断开才停止采集，能力销毁时立即清理等待任务和全部资源。手机明确点击开始共享时，同一会话边界取消旧停止计时器；尚未连接的请求最多等待三十秒供正常系统授权和首次连接，连接建立后恢复五秒断开清理。计时器不创建采集或请求授权。桌面刷新只重建观看连接，不重新安装组件；真实设备必须验证超过原等待期限后仍收到原生帧，以及持续断开后可明确授权恢复。
 
 投屏组件（`OHScrcpyServer.hap`）随桌面包分发仓库内审阅过的固定副本；tagged 打包在 GitHub 托管 runner 上构建安装包与便携包，不再为每个版本重构建该组件，也不再要求专用 runner、签名材料或真机验收。历史上的同 run 重构建与私有 DevEco device-signed 验收链保留在 `scripts/build-harmony-mirror-release.mjs`、`scripts/verify-harmony-mirror-device.mjs` 与 `scripts/stage-harmony-mirror-artifact.mjs` 中，可由维护者手工执行以生成带来源收据的新组件；随包存在 `harmony-mirror-signature-verification.json` 时运行时仍逐字节校验收据，缺失时跳过来源校验，仅保留 HAP 结构校验（bundle、版本与 `EntryAbility`）。运行时本地签名仍要求用户本机登录 DevEco、API 26 工具链与有效 debug Profile，签名副本继续限定目标手机 UDID。具体历史门禁与边界见 `scripts/README-harmony-mirror-provenance.md`。
+
+## HDC 调试实时视频
+
+`deveco-video.ts` 优先复用用户本机 DevEco Studio 的 `hosScrcpy` SDK 视频扩展，读取其版本化 ARM64 库，通过已授权的 HDC 调试连接启动 `uitest` 采集服务。库来自本机安装目录，不在 Piora 包中重分发；不安装 HAP、不启动手机共享页面、不发送输入、不自动唤醒或解锁手机。设备系统要求的 USB 调试授权保持不变。
+
+- `deveco-video-library.ts` 从 HDC 的上级目录及 DevEco 安装记录发现 SDK，选择不高于设备 UiTest 版本的最新 Unix 通道库；读取与解压均限制大小，输出名由 Piora 随机生成。
+- gRPC 仅经本机 HDC 转发连接 `scrcpy_grpc_socket`，只使用视频开始与关键帧请求接口。其他工具已经占用该 socket 时不替换其服务。
+- `runtime/video-ownership.ts` 使用独立观看锁，不取得输入租约；上传前持久化主机 PID、随机库名、设备与转发身份。只恢复明确已退出的主机进程或本进程已释放的观看会话，逐项核对手机进程命令与转发端点，不按超时时间猜测所有权。主机 PID 仍存在、设备通道被其他工具占用或记录无效时不强制回收。
+- 断连时先撤销主机读取并保留清理记录，MP4 写入器可独立封装有效帧；设备再次连接后再完成有记录的清理。H.264 包时间戳使用主机单调时钟，供相对录制时间计算，不能作为端到端传输延迟。
+- 同一后端、同一设备只建一条采集连接；观看和录屏各有订阅，缓存配置并等待关键帧接入。每个订阅最多缓存 8 MiB，过慢消费者结束并重连，不随时间累积延迟。
+- `HosVideoPacketizer` 读取 SPS 的实际编码尺寸、裁剪与方向，配置变化时重新发配置。缩放不重建编码器。
+- 最后一个订阅退出才关闭采集。新观看等待上一次清理完成，避免浮窗／侧栏切换抢占 socket。清理核对随机扩展名与真正后台子进程 PID，只删除自己的转发和临时文件；不同清理步骤独立执行，设备命令短暂失败重试一次。
+- 录屏优先使用此流，沿用已有 MP4 写入、时长／磁盘限额与文件恢复策略；没有本机 SDK 时仍保留系统录屏与 HAP 回退。系统拒绝采集时不会绕过系统权限，也不宣称所有手机均免提示。
+
+真机结果与未覆盖范围记录在 `docs/design/harmony-live-video-2026-10-26/README.md`。正常短录屏与窗口切换检查不能替代 30 分钟、断连、进程崩溃及跨系统验收。

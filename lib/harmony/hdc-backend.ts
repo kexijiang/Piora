@@ -34,6 +34,8 @@ import { assertUnredirectedPath } from "./runtime/path-safety";
 import { withHdcLocalPath } from "./runtime/hdc-local-path";
 import { validateTcpDeviceAddress } from "./tcp-device";
 import { openHosScrcpyVideo } from "./hos-scrcpy";
+import { DevEcoVideoSession } from "./deveco-video";
+import { findDevEcoVideoJar } from "./runtime/deveco-video-library";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -135,6 +137,8 @@ export interface HdcBackendOptions {
   execute?: CommandExecutor;
   commandTimeoutMs?: number;
   forwardJournalDirectory?: string;
+  /** SDK discovery boundary; injected executors can supply an isolated fixture. */
+  findDebugVideoJar?: (hdcPath: string) => Promise<string | undefined>;
   prepareMirrorHap?: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
   /** Poll timing for the Huawei system recorder (tests shorten these). */
   systemRecorder?: { pollIntervalMs?: number; retrieveTimeoutMs?: number; confirmTimeoutMs?: number; transferTimeoutMs?: number };
@@ -403,10 +407,13 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private readonly videoClosers = new Set<() => Promise<void>>();
   private readonly videoPreference: import("./types").HarmonyConfig["video"];
   private hosRetryAt = 0;
+  private readonly findDebugVideoJar: (hdcPath: string) => Promise<string | undefined>;
+  private readonly debugVideos = new Map<string, Promise<DevEcoVideoSession>>();
 
   interruptedForwards(serial: string) { return this.forwardStore?.interrupted(serial) ?? []; }
 
   constructor(options: HdcBackendOptions = {}) {
+    this.findDebugVideoJar = options.findDebugVideoJar ?? findDevEcoVideoJar;
     if (!options.execute || options.forwardJournalDirectory) this.forwardStore = new ForwardOwnershipStore(options.forwardJournalDirectory ?? join(dirname(defaultHarmonyConfigPath()), "harmony-forwards"));
     const config = readHarmonyConfig();
     this.videoPreference = options.resolve?.config?.video ?? config.video;
@@ -903,7 +910,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
       if (cached && cached.expiresAt > Date.now() && cached.device.transport === transport) return { ...cached.device, state, transport, transportEvidence };
       let responseSample: BackendDevice["responseSample"];
       let channelNotReady = false;
-      const [model, product, userName, persistedName, deviceName, osVersion, apiVersion, uitestVersion] = await Promise.all([
+      const [model, product, userName, persistedName, deviceName, osVersion, apiVersion, uitestVersion, marketName] = await Promise.all([
         this.safeInfo(serial, ["param", "get", "const.product.model"], signal),
         this.safeInfo(serial, ["param", "get", "const.product.name"], signal),
         this.safeInfo(serial, ["settings", "get", "secure", "unified_device_name"], signal),
@@ -916,6 +923,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
           }
         }, error => { if (isHarmonyError(error) && error.details?.reason === "hdc-channel-not-ready") channelNotReady = true; }),
         this.safeInfo(serial, ["uitest", "--version"], signal),
+        this.safeInfo(serial, ["param", "get", "const.product.marketname"], signal),
       ]);
       // Missing parameters or denied optional utilities do not imply an offline
       // phone. Require an explicit channel error and no successful metadata read.
@@ -931,7 +939,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
         transportEvidence,
         responseSample,
         model,
-        product,
+        product: marketName || product,
         name: preferredDeviceName([userName, persistedName, deviceName], model, product),
         osVersion,
         apiVersion,
@@ -1173,9 +1181,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
   }
 
   /**
-   * Huawei phones record with the built-in system recorder (saved to the gallery, then copied to
-   * this computer). Every other device, or any system-recorder start that is unavailable or
-   * explicitly rejected, records this runtime's own mirror H.264 subscription instead.
+   * Prefer the installed SDK's owned H.264 stream, without changing the phone's recorder UI.
+   * Without that SDK, retain the existing Huawei system-recorder and HAP fallbacks.
    */
   async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void, context?: HarmonyRecordingContext): Promise<HarmonyRecordingStartResult> {
     validateSerial(serial);
@@ -1183,6 +1190,10 @@ export class HdcBackend implements HarmonyAutomationBackend {
     if (this.ownedRecordings.has(serial) || this.recordingStarts.has(serial)) throw new HarmonyError("DEVICE_BUSY", "This runtime already owns a recording on the device");
     this.recordingStarts.add(serial);
     try {
+      if (await this.findDebugVideoJar(this.hdcPath)) {
+        await this.startStreamRecording(serial, remoteName, signal, onFailure, context);
+        return { method: "stream" };
+      }
       const fileName = await this.startSystemRecording(serial, remoteName, signal);
       if (fileName) {
         this.ownedRecordings.set(serial, { kind: "system", name: remoteName, fileName });
@@ -1599,6 +1610,7 @@ export class HdcBackend implements HarmonyAutomationBackend {
   }
 
   async openVideoStream(serial: string, signal?: AbortSignal, recording = false): Promise<HarmonyVideoConnection> {
+    validateSerial(serial);
     if (!recording && this.videoPreference?.provider === "hos-scrcpy" && this.videoPreference.packageDirectory && Date.now() >= this.hosRetryAt) {
       try {
         await this.requireUnlockedScreen(serial, signal);
@@ -1610,6 +1622,31 @@ export class HdcBackend implements HarmonyAutomationBackend {
       } catch (error) {
         if (signal?.aborted) throw error;
         this.hosRetryAt = Date.now() + 60_000;
+      }
+    }
+    // Reconnect must discover a newly installed or updated SDK without restarting Piora.
+    const jar = await this.findDebugVideoJar(this.hdcPath);
+    if (jar) {
+      await this.requireUnlockedScreen(serial, signal);
+      let opening = this.debugVideos.get(serial);
+      if (!opening) {
+        opening = DevEcoVideoSession.start(serial, jar, (args, operation, abort, timeout) => this.run(args, operation, abort, timeout), () => {
+          if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
+        });
+        this.debugVideos.set(serial, opening);
+      }
+      try {
+        const session = await opening;
+        if (session.whenClosing) {
+          await session.whenClosing;
+          return this.openVideoStream(serial, signal, recording);
+        }
+        const connection = session.subscribe(signal, recording);
+        this.videoClosers.add(connection.close);
+        return { stream: connection.stream, close: async () => { try { await connection.close(); } finally { this.videoClosers.delete(connection.close); } } };
+      } catch (error) {
+        if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
+        throw error;
       }
     }
     return this.openBundledVideoStream(serial, signal, recording);

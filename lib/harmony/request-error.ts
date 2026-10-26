@@ -22,6 +22,15 @@ export class HarmonyRequestError extends Error {
   }
 
   messageFor(chinese: boolean): string {
+    if (this.reason === "debug-video-busy") return chinese
+      ? "其他开发工具正在使用这台手机的视频通道。请关闭其投屏后重新连接，Piora 不会强行停止其他工具。"
+      : "Another development tool is using this phone's video channel. Close its mirror and reconnect.";
+    if (this.reason === "debug-video-unavailable") return chinese
+      ? "HDC 实时视频通道连接失败。请确认本机 DevEco Studio 为兼容手机系统的新版，然后重新连接；此通道无需在手机上打开 Piora 共享屏幕。"
+      : "The HDC video channel failed. Update DevEco Studio to a version compatible with the phone and reconnect. This channel does not need the phone's Piora sharing app.";
+    if (this.code === "CAPABILITY_UNAVAILABLE" && ["mirror-awaiting-video", "mirror-stream-closed", "mirror-component-missing"].includes(this.reason ?? "")) return chinese
+      ? "实时视频尚未建立。请点击“启用实时投屏”，在手机上确认屏幕共享后重新连接。"
+      : "Live video has not started. Enable live video, confirm screen sharing on the phone, then reconnect.";
     if (this.reason === "local-file-unavailable") return chinese
       ? "设备工具无法读取电脑上的文件。请确认文件仍存在且可读；超长路径会先通过私有临时副本传输。"
       : "The device tool could not read the local file. Confirm it exists and is readable; long paths use a private temporary copy.";
@@ -70,9 +79,6 @@ export class HarmonyRequestError extends Error {
     if (this.reason === "system-recording-start-unconfirmed") return chinese
       ? "已向手机发送系统录屏指令，但无法确认录屏是否开始。请在手机上手动停止录屏，然后点击“我已停止，取回录屏”。"
       : "The system recording command was sent, but Piora could not confirm that recording started. Stop the recording on the phone, then select “I stopped it, retrieve recording”.";
-    if (this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "mirror-component-missing") return chinese
-      ? "实时视频组件尚未初始化；正在尝试兼容投屏。需要实时视频时，请点击“启用实时视频”。"
-      : "The live video component is not initialized; trying compatible mirroring. Select Enable live video when you need it.";
     if (this.code === "CAPABILITY_UNAVAILABLE" && this.reason === "mirror-package-invalid") return chinese
       ? "投屏组件缺少可用的前台入口。请重新安装有效的投屏组件。"
       : "The capture package has no supported foreground entry. Reinstall a valid capture component.";

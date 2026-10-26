@@ -46,6 +46,7 @@
 .deviceState[data-state="unauthorized"] i { background: var(--status-attention, #d97706); }
 .deviceState[data-state="offline"] i { background: var(--status-failed, #dc2626); }
 .toolbarActions { display: flex; flex: 0 0 auto; gap: 2px; }
+.toolbarActions > select { min-width: 0; height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text); padding: 4px 6px; font-size: var(--text-xs); }
 .secondaryActions { display: flex; gap: 2px; }
 .compactActions { display: none; position: relative; }
 .compactActions summary { display: grid; place-items: center; width: 32px; height: 32px; list-style: none; border-radius: 6px; }
@@ -207,13 +208,10 @@
 .dbQueryError strong { flex: 1 1 100%; font-weight: 500; }
 .settingsLinks { display: flex; flex-wrap: wrap; gap: 6px; }
 .settingsPanel {
-  position: absolute;
-  z-index: 40;
-  top: 48px;
-  right: 8px;
-  width: min(480px, calc(100% - 16px));
-  max-height: calc(100% - 58px);
-  overflow: auto;
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   display: grid;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-surface);
@@ -636,3 +634,5 @@
 .workbenchContent[data-tab="databases"] .dbWorkbench { flex: 1; }
 .workbenchContent[data-tab="databases"] .dbLayout { height: auto; min-height: 0; flex: 1; }
 @container harmony-panel (max-width: 520px) { .deviceHeader { flex-wrap: wrap; } .deviceIdentity { flex-basis: 100%; } .toolbarActions { max-width: 100%; flex-wrap: wrap; } }
+
+.embeddedMirror { flex: 0 0 auto; min-height: 100px; max-height: 75dvh; overflow: hidden; border-bottom: 1px solid var(--border); }

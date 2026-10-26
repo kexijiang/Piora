@@ -38,6 +38,7 @@ export interface ToolInfo {
   description: string;
   exposure?: string;
   defaultActive?: boolean;
+  defaultEnabled?: boolean;
   parameters?: unknown;
   inputSchema?: unknown;
   promptGuidelines?: readonly string[];
