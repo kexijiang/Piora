@@ -312,6 +312,8 @@ export class AgentSessionWrapper {
   private projectManaged: boolean;
   private readonly queueSource = new AsyncLocalStorage<string | undefined>();
   private readonly queueSources = new WeakMap<object, string>();
+  private readonly queuedInputReceipts = new Map<string, { consumed: () => Promise<void>; cancelled: () => Promise<void> }>();
+  private stoppedInputRecovery: Promise<void> = Promise.resolve();
   private readonly _projectRoot: string;
   private _alive = true;
   readonly nativeMcp?: NativeMcpController;
@@ -324,6 +326,14 @@ export class AgentSessionWrapper {
         if (!this._alive || !sameQueuedInputs(snapshot, snapshotQueuedInputs(this.inner))) throw new Error("The pending queue changed. Retry recalling the remaining messages.");
         // No await between identity check, durable archive, and SDK dequeue.
         persist();
+        for (const message of snapshot) {
+          const source = this.queueSources.get(message);
+          const receipt = source ? this.queuedInputReceipts.get(source) : undefined;
+          if (source && receipt) {
+            this.queuedInputReceipts.delete(source);
+            void receipt.consumed().catch(error => console.error("[pi-web] recalled input receipt failed", error));
+          }
+        }
         this.inner.clearQueue();
       },
     };
@@ -893,6 +903,14 @@ export class AgentSessionWrapper {
       this.streamingMetrics.update(event);
       this.remoteContent.update(event);
       if (event.type === "message_start" && (event.message as { role?: string } | undefined)?.role === "user") this.promptInputEnrichment.apply(event.message as { content?: unknown });
+      if (event.type === "message_end" && event.message && typeof event.message === "object") {
+        const source = this.queueSources.get(event.message);
+        const receipt = source ? this.queuedInputReceipts.get(source) : undefined;
+        if (source && receipt) {
+          this.queuedInputReceipts.delete(source);
+          void receipt.consumed().catch(error => console.error("[pi-web] queue consumption receipt failed", error));
+        }
+      }
       if (event.type === "message_end" && (event.message as { role?: string } | undefined)?.role === "user" && this.pendingClientPromptId) {
         // The SDK emits this event before appending the same object to its
         // SessionManager. Persist the receipt alongside the actual user text.
@@ -1421,9 +1439,14 @@ export class AgentSessionWrapper {
         });
         // Keep the handoff available when the client retries a lost stop reply.
         // A new prompt clears it, so a later stop cannot replay the previous queue.
-        if (this.stopping || (!this.isRunning() && this.abortedQueuedMessages)) return receipt();
+        if (this.stopping || (!this.isRunning() && this.abortedQueuedMessages)) { await this.stoppedInputRecovery; return receipt(); }
         const promptRun = this.activePromptRun;
         this.abortGeneration += 1;
+        // Claim all unconsumed admissions synchronously, including input hooks
+        // which have not reached the SDK queue yet. Persist before acknowledging.
+        const stoppedReceipts = [...this.queuedInputReceipts.entries()];
+        const recoveryTasks = stoppedReceipts.map(([, receipt]) => receipt.cancelled());
+        this.stoppedInputRecovery = Promise.all(recoveryTasks).then(() => undefined);
         this.stopping = true;
         this.statusPhaseKind = "stopping";
         this.statusPhaseStartedAt = Date.now();
@@ -1460,12 +1483,18 @@ export class AgentSessionWrapper {
             }
           }
         }).finally(() => {
+          // A queue drain can precede an awaited SDK boundary. Keep identity
+          // tracking until cleanup settles so a late consumption wins recovery.
+          for (const [id, receipt] of stoppedReceipts) {
+            if (this.queuedInputReceipts.get(id) === receipt) this.queuedInputReceipts.delete(id);
+          }
           if (!this._alive) return;
           this.stopping = false;
           this.flushPendingProjectCapabilitySettings();
           this.emit({ type: "session_idle", sessionId: this.sessionId });
           notifyRunningChange();
         });
+        await this.stoppedInputRecovery;
         return receipt();
       }
 
@@ -1708,6 +1737,14 @@ export class AgentSessionWrapper {
 
       case "steer":
       case "follow_up": {
+        if (typeof command.expectedRunId === "string" && command.expectedRunId !== this.getActivePromptRunId()) throw new Error("Prompt cancelled");
+        const queuedCommandId = typeof command.commandId === "string" ? command.commandId : undefined;
+        if (queuedCommandId && typeof command.onQueueConsumed === "function" && typeof command.onQueueCancelled === "function") {
+          this.queuedInputReceipts.set(queuedCommandId, {
+            consumed: command.onQueueConsumed as () => Promise<void>,
+            cancelled: command.onQueueCancelled as () => Promise<void>,
+          });
+        }
         this.reviews().admit({ id: typeof command.commandId === "string" ? command.commandId : randomUUID(),
           source: type === "follow_up" ? "queued" : typeof command.source === "string" ? command.source : "unknown",
           text: String(command.message ?? ""), timestamp: Date.now() }, false);
@@ -1720,6 +1757,7 @@ export class AgentSessionWrapper {
           const extensionCommand = invocationName && this.inner.extensionRunner.getRegisteredCommands().some(item => item.invocationName === invocationName);
           if (extensionCommand && command.inputMode !== "text") {
             await this.executeChatCommand(typeof command.commandId === "string" ? command.commandId : `cmd_${randomUUID()}`, text);
+            if (queuedCommandId) this.queuedInputReceipts.delete(queuedCommandId);
             return { disposition: "handled" };
           }
           let literalDisposition: "handled" | "queued" | "started" | undefined;
@@ -1737,8 +1775,12 @@ export class AgentSessionWrapper {
             this.emit({ type: "queue_update", steering: [], followUp: [] });
             throw new Error("Prompt cancelled");
           }
+          if (disposition === "handled" && queuedCommandId) this.queuedInputReceipts.delete(queuedCommandId);
           return { disposition };
-        })).finally(() => { this.inputAdmissions--; notifyRunningChange(); });
+        })).catch(error => {
+          if (queuedCommandId && abortGeneration === this.abortGeneration) this.queuedInputReceipts.delete(queuedCommandId);
+          throw error;
+        }).finally(() => { this.inputAdmissions--; notifyRunningChange(); });
         const writer = admission.then(() => undefined, () => undefined).finally(() => this.promptTasks.delete(writer));
         this.promptTasks.add(writer);
         return admission;

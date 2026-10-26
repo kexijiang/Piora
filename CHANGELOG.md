@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 修复
+
+- 停止会话时，将尚未消费的引导及附件保留为独立的暂停队列项，支持刷新后恢复和手动重发；不再自动启动下一轮或修改已有输入草稿。
+
 ## [0.5.5-beta.41] - 2026-10-26
 
 ### 发布校验

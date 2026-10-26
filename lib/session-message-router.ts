@@ -420,6 +420,7 @@ export class SessionMessageRouter {
     const existing = this.store.findByIdempotencyKey(input.idempotencyKey, input.targetSessionId);
     if (existing) return { accepted: true, commandId: existing.commandId, sessionId: existing.targetSessionId, status: existing.status, attachedRunId: existing.attachedRunId, idempotent: true };
     const session = (await this.getLiveSession(input.targetSessionId));
+    await this.ensureLoaded(input.targetSessionId);
     if (!session.isRunning() || !session.getActivePromptRunId()) throw new SessionMessageRouterError("STEER_REQUIRES_RUNNING_SESSION", "Steer requires a running Session.");
     const command = this.makeRecord(message);
     command.delivery = "steer";
@@ -427,10 +428,8 @@ export class SessionMessageRouter {
     await this.store.appendCommand(command);
     await this.transition(command, "dispatching", { attachedRunId: command.attachedRunId }, "command_dispatching");
     try {
-      await session.send({ type: "steer", source: input.source, message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
-      await this.transition(command, "delivered", { attachedRunId: command.attachedRunId }, "command_delivered");
-      await this.transition(command, "completed", {}, "command_completed");
-      return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: "completed", attachedRunId: command.attachedRunId };
+      await this.deliverQueuedCommand(command, session, "steer");
+      return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: command.status, attachedRunId: command.attachedRunId };
     } catch (error) {
       command.errorCode = errorCode(error);
       command.errorMessage = safeErrorMessage(error);
@@ -442,6 +441,28 @@ export class SessionMessageRouter {
   private steeringText(input: Pick<SessionMessageInput, "content" | "promptSuffix" | "materials">): string {
     const message = input.promptSuffix ? input.content + "\n\n" + input.promptSuffix : input.content;
     return input.materials?.length ? buildPromptWithMaterials(message, resolvePromptMaterialReferences(input.materials)) : message;
+  }
+
+  private async deliverQueuedCommand(command: SessionCommandRecord, session: AgentSessionWrapper, type: "steer" | "follow_up"): Promise<void> {
+    let recovery: Promise<void> | undefined;
+    const cancelled = () => recovery ??= (async () => {
+      await this.transition(command, "queued", { delivery: "next_turn", queuePaused: true, inputMode: "text" });
+      if (command.status === "queued") getSessionInboxRegistry().enqueue(command);
+    })();
+    try {
+      const result = await session.send({ type, source: command.source, message: this.steeringText(command), images: command.images,
+        commandId: command.commandId, expectedRunId: command.attachedRunId,
+        onQueueConsumed: () => {
+          getSessionInboxRegistry().removeCommand(command.targetSessionId, command.commandId);
+          return this.transition(command, "completed", { queuePaused: false });
+        }, onQueueCancelled: cancelled,
+        ...(command.inputMode ? { inputMode: command.inputMode } : {}) }) as { disposition?: string } | undefined;
+      if (recovery) await recovery;
+      else if (command.status === "dispatching") await this.transition(command, result?.disposition === "handled" ? "completed" : "delivered");
+    } catch (error) {
+      if (recovery || /cancelled|stopping/i.test(safeErrorMessage(error))) { await cancelled(); return; }
+      throw error;
+    }
   }
 
   /** Recall into separate durable, paused queue entries before removing SDK input. */
@@ -507,13 +528,11 @@ export class SessionMessageRouter {
         const session = (await this.resolver(sessionId)).session;
         if (this.isCancelled(command)) throw new SessionMessageRouterError("SESSION_BUSY", "Message was cancelled.");
         if (!session.isRunning() || !session.getActivePromptRunId()) throw new SessionMessageRouterError("STEER_REQUIRES_RUNNING_SESSION", "Steer requires a running Session.");
-        const message = this.steeringText(command);
         getSessionInboxRegistry().removeCommand(sessionId, commandId);
         try {
           await this.transition(command, "dispatching", { delivery: "steer", queuePaused: false, attachedRunId: session.getActivePromptRunId() });
           if (this.isCancelled(command)) throw new Error("Message cancelled");
-          await session.send({ type: "steer", source: command.source, message, images: command.images, commandId, ...(command.inputMode ? { inputMode: command.inputMode } : {}) });
-          await this.transition(command, "completed");
+          await this.deliverQueuedCommand(command, session, "steer");
         } catch (error) {
           await this.transition(command, "failed", { errorCode: errorCode(error), errorMessage: safeErrorMessage(error) });
           throw error;
@@ -561,15 +580,15 @@ export class SessionMessageRouter {
     validateInput(message, this.maxMessageBytes);
     assertPrincipal(message, principal);
     const session = await this.getLiveSession(input.targetSessionId);
+    await this.ensureLoaded(input.targetSessionId);
     if (!session.isRunning() || !session.getActivePromptRunId()) throw new SessionMessageRouterError("SESSION_BUSY", "Follow-up requires a running Session.");
     const command = this.makeRecord(message);
     command.attachedRunId = session.getActivePromptRunId();
     await this.store.appendCommand(command);
     await this.transition(command, "dispatching", { attachedRunId: command.attachedRunId }, "command_dispatching");
     try {
-      await session.send({ type: "follow_up", source: input.source, message: this.steeringText(input), images: input.images, commandId: command.commandId, ...(input.inputMode ? { inputMode: input.inputMode } : {}) });
-      await this.transition(command, "delivered", {}, "command_delivered");
-      return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: "delivered", attachedRunId: command.attachedRunId };
+      await this.deliverQueuedCommand(command, session, "follow_up");
+      return { accepted: true, commandId: command.commandId, sessionId: input.targetSessionId, status: command.status, attachedRunId: command.attachedRunId };
     } catch (error) {
       command.errorCode = errorCode(error);
       command.errorMessage = safeErrorMessage(error);
