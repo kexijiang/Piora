@@ -89,10 +89,11 @@ test("Mermaid retains geometry across remounts and opens a viewport-fitted, stab
     assert.deepEqual(during, before, "opening must preserve the message height and scroll anchor");
     const assertFit = async () => {
       await page.waitForFunction(() => {
-        const svg = document.querySelector(".mermaid-zoom-canvas svg"), viewport = document.querySelector(".mermaid-zoom-viewport");
+        const svg = document.querySelector(".mermaid-zoom-canvas svg"), viewport = document.querySelector(".mermaid-zoom-viewport"), dialog=document.querySelector("dialog");
         if (!svg || !viewport) return false;
-        const r = svg.getBoundingClientRect(), v = viewport.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 && r.left >= v.left && r.top >= v.top && r.right <= v.right+1 && r.bottom <= v.bottom+1;
+        const r = svg.getBoundingClientRect(), v = viewport.getBoundingClientRect(), d=dialog.getBoundingClientRect();
+        const controls=[...dialog.querySelectorAll("button")].every(button=>{const b=button.getBoundingClientRect();return b.left>=d.left && b.right<=d.right && b.top>=d.top && b.bottom<=d.bottom;});
+        return controls && v.left>=d.left && v.right<=d.right && v.bottom<=d.bottom && r.width > 0 && r.height > 0 && r.left >= v.left && r.top >= v.top && r.right <= v.right+1 && r.bottom <= v.bottom+1;
       });
       const values = await page.locator(".mermaid-zoom-canvas svg").evaluate(el => { const r=el.getBoundingClientRect(),b=el.viewBox.baseVal;return {ratio:r.width/r.height,natural:b.width/b.height,width:r.width,naturalWidth:b.width}; });
       assert.ok(Math.abs(values.ratio / values.natural - 1) < 0.01, "preserve aspect ratio");

@@ -4624,11 +4624,13 @@ pre, code {
 }
 .mermaid-zoom-layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
 }
 .mermaid-zoom-toolbar {
   display: flex;
+  min-width: 0;
   align-items: center;
   gap: 10px;
   min-height: 40px;
