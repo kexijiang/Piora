@@ -4554,10 +4554,14 @@ pre, code {
 }
 .mermaid-block svg {
   display: block;
-  max-width: none;
+  max-width: 100%;
+  height: auto;
 }
 .mermaid-block-loading {
   min-height: 120px;
+}
+.mermaid-block-loading:has(> div) {
+  min-height: 0;
 }
 .mermaid-block-error {
   color: var(--text-muted);
@@ -4591,13 +4595,15 @@ pre, code {
 }
 
 .mermaid-zoom-dialog {
-  width: 100vw;
-  max-width: none;
-  height: 100dvh;
-  max-height: none;
-  margin: 0;
+  width: min(var(--diagram-width), 1000px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  height: min(var(--diagram-height), 760px, calc(100dvh - 48px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
   background: var(--bg);
   color: var(--text);
 }
@@ -4606,7 +4612,8 @@ pre, code {
 }
 .mermaid-zoom-dialog[data-desktop-chrome="true"] {
   inset: 36px 0 0;
-  height: calc(100dvh - 36px);
+  height: min(var(--diagram-height), 760px, calc(100dvh - 84px));
+  max-height: calc(100dvh - 84px);
 }
 .mermaid-zoom-dialog[data-desktop-chrome="true"]::backdrop {
   background: linear-gradient(
@@ -4644,6 +4651,7 @@ pre, code {
   align-items: center;
   gap: 6px;
   margin-left: auto;
+  flex-shrink: 0;
 }
 .mermaid-zoom-stepper {
   display: flex;
@@ -4709,25 +4717,28 @@ pre, code {
   user-select: none;
 }
 .mermaid-zoom-viewport {
+  display: flex;
   min-width: 0;
   min-height: 0;
   overflow: auto;
   padding: 24px;
   background: var(--bg);
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: none;
+  cursor: grab;
 }
+.mermaid-zoom-viewport:active { cursor: grabbing; }
 .mermaid-zoom-canvas {
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-control);
+  flex-shrink: 0;
   background: var(--bg-panel);
-  margin: 0 auto;
-  transition: width 0.15s ease;
+  margin: auto;
+  user-select: none;
 }
 .mermaid-zoom-canvas svg {
   display: block;
   width: 100% !important;
-  height: auto;
+  height: 100% !important;
   max-width: none !important;
 }
 

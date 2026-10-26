@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 修复
+
+- 修复切回含 Mermaid 图形的会话或虚拟列表回收后，重复渲染造成的高度跳动；打开图形预览时保留聊天原图及滚动位置。预览面板按可用视口和图形比例适配，支持缩放、拖动与窗口调整，小图不再默认放大到全屏。
+
 ## [0.5.5-beta.41] - 2026-10-26
 
 ### 发布校验
