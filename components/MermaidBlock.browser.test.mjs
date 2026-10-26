@@ -169,6 +169,13 @@ test("Mermaid retains geometry across remounts and opens a viewport-fitted, stab
           await page.waitForFunction(previous=>document.querySelector(".mermaid-zoom-value").textContent!==previous,previous);
         }
         assert.equal(await page.locator(".mermaid-zoom-value").textContent(),"300%");
+        // Chromium can expose the new text before its protocol box snapshot has
+        // caught up. Establish the actual 3x geometry before testing resize.
+        await page.waitForFunction(()=>{
+          const canvas=document.querySelector(".mermaid-zoom-canvas");
+          const svg=canvas.querySelector("svg"), box=canvas.getBoundingClientRect(), view=svg.viewBox.baseVal;
+          return Math.abs(box.width-view.width*3)<0.02 && Math.abs(box.height-view.height*3)<0.02;
+        });
         const manualSize=await page.locator(".mermaid-zoom-canvas").boundingBox();
         for(const size of [{width:360,height:600},{width:800,height:360},{width:1100,height:800}]) {
           await page.setViewportSize(size);

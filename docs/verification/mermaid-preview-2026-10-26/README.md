@@ -34,6 +34,8 @@ node --test --test-concurrency=1 components/MermaidBlock.test.mjs components/Mar
 
 Linux CI 暴露了两个读取 React 提交前旧状态的浏览器测试时序：Mermaid 重置后仍暂时读到放大比例、CompactProcess 按 Enter 后仍暂时读到 0 个展开项。两处增加对实际目标状态的等待，继续保留“不放大小图”和“恰好 3 项”的原断言；CompactProcess 未修改产品代码，只增加等待，与引导消息任务无关。
 
+Linux 的后续回归在 300% 标签更新后读取到了旧画布尺寸（477.921875px，resize 后为 504px）。现在记录基线前还必须确认实际宽高均等于 viewBox 的 3 倍；resize 后仍严格要求宽高不变，不放宽比例或上限断言。修正后本地真实 Edge 回归通过（1 项，17.7 秒）。
+
 ## 截图
 
 这些是实际浏览器截图，使用合成图形数据。基线图展示全屏放大及裁切；修复后普通、宽、高、小图均完整显示。

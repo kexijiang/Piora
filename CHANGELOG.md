@@ -10,6 +10,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - Mermaid 内容、主题或流式状态变化后关闭旧预览，往返切换不再自动重开；完成的渲染队列不再额外持有缓存预算外的大图结果。
 - 浏览器回归等待缩放重置和键盘展开的实际界面更新后再断言，避免不同平台的 React 调度时序造成误报，保留原有边界和数量检查。
 
+- Mermaid 最大缩放回归在记录基线前验证实际画布达到 300%，再严格比较 resize 前后尺寸，避免文字状态先更新时读取旧几何快照。
+
 ## [0.5.5-beta.41] - 2026-10-26
 
 ### 发布校验
