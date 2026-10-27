@@ -1,5 +1,7 @@
 # Pi 1.0.2 native MCP adaptation
 
+> Historical adaptation notes. The current default behavior is documented in [Pi GUI capability defaults](../pi-native-defaults.md); the opt-in and `models:false` rules below were removed.
+
 This continues draft PR142. It uses the public Pi native factories and `@earendil-works/pi-mcp` transports, with an explicit direct dependency pinned to 1.0.2. Next keeps that package external in both server compilation paths so native transport/error class identities stay shared with the external SDK. Pi owns protocol conversion, connection lifecycle, OAuth storage/refresh, resource conversion, progress, cancellation and reconnect semantics. Piora retains its extension load plan and `noExtensions:true`; it injects named replaceable MCP, codemode and tool-search factories only into normal, non-notes sessions. Codemode model helpers are disabled with `models:false`.
 
 ## Configuration and permission flow

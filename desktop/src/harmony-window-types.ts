@@ -2,17 +2,21 @@ export type MirrorScale = 25 | 50 | 75 | 100;
 export interface HarmonyWindowState {
   serial: string; scale: MirrorScale; alwaysOnTop: boolean; open: boolean;
   minimized: boolean; ownerId: string;
+  presentation?: "floating" | "sidebar";
 }
 export interface PioraMessage {
   title: string; message: string; tone?: "info" | "success" | "error" | "confirm";
   preview?: string;
   notificationKey?: string;
+  presentation?: "notice";
+  durationMs?: number;
   actions: Array<{ id: string; label: string; primary?: boolean }>;
 }
 export interface HarmonyWindowBridge {
   open(serial: string): Promise<HarmonyWindowState>;
   focus(): Promise<void>;
   close(): Promise<boolean>;
+  setPresentation(value: "floating" | "sidebar"): Promise<HarmonyWindowState>;
   selectDevice(serial: string): Promise<HarmonyWindowState>;
   setScale(scale: MirrorScale): Promise<HarmonyWindowState>;
   setAlwaysOnTop(value: boolean): Promise<HarmonyWindowState>;

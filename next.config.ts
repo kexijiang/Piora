@@ -92,6 +92,7 @@ const nextConfig: NextConfig = {
     "playwright-core",
     "proper-lockfile",
     "hypium-driver",
+    "@grpc/grpc-js",
     "mediabunny",
     "ssh2",
   ],
@@ -120,6 +121,7 @@ const nextConfig: NextConfig = {
         "@deveco/deveco-cli",
         "playwright-core",
         "hypium-driver",
+        "@grpc/grpc-js",
     "mediabunny",
         "ssh2",
       );

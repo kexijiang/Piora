@@ -1563,9 +1563,9 @@ function configureSession(runtimeSession: Session, origin: string, token: string
 
   // A renderer ChunkLoadError alone loses the underlying Chromium/HTTP error.
   // Record only app asset paths, never request headers or application content.
-  const assetFilter = { urls: [`${origin}/_next/static/*`] };
+  const assetFilter = { urls: [`${origin}/_next/static/*`, `${origin}/api/harmony/video*`] };
   runtimeSession.webRequest.onErrorOccurred(assetFilter, (details) => {
-    logger?.error("Application asset request failed", {
+      logger?.error(new URL(details.url).pathname === "/api/harmony/video" ? "Harmony video request failed" : "Application asset request failed", {
       path: new URL(details.url).pathname,
       error: details.error,
       resourceType: details.resourceType,

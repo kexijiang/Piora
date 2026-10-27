@@ -49,6 +49,7 @@ async function mountLiveFrame(videoResponse, decoderClass, geometryResponse, opt
     },
     clearTimeout(id) { if (options.clock) options.clock.clearTimeout(id); else timers.delete(id); },
     ...(decoderClass ? { VideoDecoder: decoderClass } : {}),
+    ...(options.animationFrame ?? {}),
   };
   const exports = {};
   runInNewContext(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, {
@@ -374,7 +375,7 @@ test("a stalled video HTTP request is aborted before falling back", async () => 
     signal.addEventListener("abort", () => { aborted = true; reject(new Error("aborted")); });
   }));
   try {
-    [...hook.timers.values()].find((timer) => timer.ms === 15_000).fn();
+    [...hook.timers.values()].find((timer) => timer.ms === 30_000).fn();
     await hook.flush();
     assert.ok(aborted);
     assert.equal(hook.states[1], "live", hook.states[3]);
@@ -485,7 +486,7 @@ test("an expired HTTP request cannot revive native video when an ignored abort r
     return new Promise(resolve => { resolveResponse = resolve; });
   }, Decoder, undefined, { clock });
   try {
-    await clock.advance(15_000);
+    await clock.advance(30_000);
     assert.equal(signal.aborted, true);
     resolveResponse(new Response(new ReadableStream({
       start(controller) { controller.enqueue(capacityPackets(['key'])); },
@@ -824,4 +825,69 @@ test('late decoder callbacks cannot repaint or cancel a newer configuration on t
     assert.equal(afterCleanup.closed, true);
     assert.equal(hook.painted.length, 2);
   } finally { hook.cleanup(); }
+});
+
+test("passive video viewing never starts the HDC geometry calibration loop", async () => {
+  const hook = await mountLiveFrame(async () => new Response(new ReadableStream({ start(controller) { controller.enqueue(jpegFrame()); } })), undefined, undefined, { hookOptions: { calibrateGeometry: false } });
+  try {
+    await hook.flush(); assert.equal(hook.states[2], "video");
+    assert.equal(hook.calls.filter(url => url.includes("/geometry?")).length, 0);
+  } finally { hook.cleanup(); await hook.flush(); }
+});
+
+test("H264 preserves dependent decode inputs and presents only the newest frame per display tick", async () => {
+  const scheduled = new Map(); let closed = 0; let count = 0;
+  class Decoder {
+    static current;
+    static async isConfigSupported(config) { return { supported: true, config }; }
+    state = "unconfigured"; decodeQueueSize = 0; inputs = [];
+    constructor(callbacks) { this.callbacks = callbacks; Decoder.current = this; }
+    configure() { this.state = "configured"; }
+    decode(chunk) { this.inputs.push(chunk); this.callbacks.output({ id: ++count, displayWidth: 100, displayHeight: 200, close() { closed++; } }); }
+    close() { this.state = "closed"; }
+  }
+  const hook = await mountLiveFrame(async () => new Response(new ReadableStream({ start(controller) { controller.enqueue(capacityPackets(["key", ...Array(8).fill("delta")])); } })), Decoder, undefined, { animationFrame: {
+    requestAnimationFrame(callback) { scheduled.set(1, callback); return 1; }, cancelAnimationFrame(id) { scheduled.delete(id); },
+  } });
+  try {
+    assert.equal(Decoder.current.inputs.length, 9, "dependent H264 frames are all decoded");
+    assert.equal(closed, 8, "obsolete decoded images are released immediately");
+    assert.equal(scheduled.size, 1); assert.equal(hook.painted.length, 0);
+    const tick = scheduled.get(1); scheduled.clear(); tick();
+    assert.equal(hook.painted.length, 1); assert.equal(hook.painted[0].id, 9);
+    assert.equal(closed, 9); assert.equal(hook.states[1], "live");
+  } finally { hook.cleanup(); await hook.flush(); }
+});
+
+test("slow JPEG decoding has one replaceable pending image instead of a growing transport backlog", async () => {
+  let stream, finish; const decoded = [];
+  const hook = await mountLiveFrame(async () => new Response(new ReadableStream({ start(controller) { stream = controller; controller.enqueue(jpegFrame()); } })), undefined, undefined, {
+    createImageBitmap: async blob => {
+      const bytes = new Uint8Array(await blob.arrayBuffer()); const id = bytes[0]; decoded.push(id);
+      if (decoded.length === 1) await new Promise(resolve => { finish = resolve; });
+      return { id, width: 100, height: 200, close() {} };
+    },
+  });
+  try {
+    await hook.flush();
+    const packet = id => { const bytes = Buffer.alloc(18); bytes.writeUInt32BE(3, 0); bytes.writeUInt32BE(10, 4); bytes[17] = id; return bytes; };
+    for (let id = 1; id <= 30; id++) stream.enqueue(packet(id));
+    for (let index = 0; index < 4; index++) await hook.flush();
+    finish(); for (let index = 0; index < 4; index++) await hook.flush();
+    assert.deepEqual(decoded, [0, 30]);
+    assert.equal(hook.painted.at(-1).id, 30);
+  } finally { finish?.(); hook.cleanup(); await hook.flush(); }
+});
+
+test("SDK startup lasting twenty seconds survives the HTTP phase and keeps a short playback deadline", async () => {
+  const clock = virtualClock(); let signal;
+  const hook = await mountLiveFrame(options => { signal = options.signal; return new Promise(resolve => clock.setTimeout(() => resolve(new Response(new ReadableStream({ start(controller) { controller.enqueue(jpegFrame()); } }))), 20_000)); }, undefined, undefined, { clock });
+  try {
+    await clock.advance(19_999); assert.equal(signal.aborted, false);
+    await clock.advance(1); await hook.flush();
+    assert.equal(hook.states[2], "video"); assert.equal(hook.states[1], "live");
+    assert.equal(signal.aborted, false);
+    assert.ok([...hook.timers.values()].some(timer => timer.ms === 15_000), "playback still has a bounded short no-frame deadline");
+    assert.equal(hook.calls.filter(url => url.includes("/frame?")).length, 0);
+  } finally { hook.cleanup(); await hook.flush(); }
 });

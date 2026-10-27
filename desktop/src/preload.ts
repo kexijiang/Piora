@@ -52,6 +52,7 @@ const runtime = Object.freeze({
     open: serial => ipcRenderer.invoke("pi:harmony-window-open", serial),
     focus: () => ipcRenderer.invoke("pi:harmony-window-focus"),
     close: () => ipcRenderer.invoke("pi:harmony-window-close"),
+    setPresentation: value => ipcRenderer.invoke("pi:harmony-window-presentation", value),
     selectDevice: serial => ipcRenderer.invoke("pi:harmony-window-select", serial),
     setScale: scale => ipcRenderer.invoke("pi:harmony-window-scale", scale),
     setAlwaysOnTop: value => ipcRenderer.invoke("pi:harmony-window-top", value),

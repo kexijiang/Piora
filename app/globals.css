@@ -5874,11 +5874,6 @@ button.file-tool-path:hover { color: var(--accent); }
 .file-tool-more:focus-visible, button.file-tool-path:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .file-tool-empty, .file-tool-notice { margin: 0; padding: 8px 12px; color: var(--text-muted); font-size: var(--text-xs); overflow-wrap: anywhere; }
 .file-tool-notice { border-top: 1px solid var(--border); }
-.tool-activity-heading .chat-disclosure-label { font-weight: 550; }
-.tool-activity-heading .chat-disclosure-icon { color: var(--text); }
-.tool-activity-detail { padding-left: 38px; }
-.tool-activity-detail .chat-disclosure-label { font-weight: 400; }
-.tool-activity-heading .chat-disclosure-trigger:disabled { cursor: default; }
 .compact-command-preview { margin: 0 0 8px 24px; min-width: 0; }
 .compact-command-expand { display: block; margin: 3px 0 0 auto; padding: 3px 5px; color: var(--text-muted); font-size: var(--text-xs); cursor: pointer; }
 .compact-command-expand:hover { color: var(--text); }
@@ -5886,7 +5881,6 @@ button.file-tool-path:hover { color: var(--accent); }
 .compact-command-error { margin: 4px 0 8px 24px; font: var(--text-sm)/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; color: #ef4444; }
 @media (max-width: 600px) {
   .compact-process-preview, .compact-process-detail { padding-left: 9px; }
-  .tool-activity-detail { padding-left: 29px; }
   .compact-process-toggle.chat-disclosure-trigger { grid-template-columns: 12px 14px minmax(0, 1fr) auto; }
   .compact-process-toggle .chat-disclosure-meta { grid-column: 4; }
   .compact-process-toggle .chat-disclosure-description { white-space: normal; }

@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports -- also runs in packaged Electron's Node mode. */
 const { createHash } = require("node:crypto");
-const { createReadStream } = require("node:fs");
-const { lstat, mkdir, readFile, readdir, rm, writeFile } = require("node:fs/promises");
+// Electron's Node mode mounts ASAR files as virtual directories; this manifest
+// instead binds physical bytes, including each complete archive.
+const rawFs = require(process.versions.electron ? "original-fs" : "node:fs");
+const { createReadStream } = rawFs;
+const { lstat, mkdir, readFile, readdir, rm, writeFile } = rawFs.promises;
 const { basename, dirname, join, resolve } = require("node:path");
 
 const MANIFEST_PATH = "resources/portable-payload.json";

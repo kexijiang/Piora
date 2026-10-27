@@ -144,6 +144,10 @@ jobs:
           $env:PIORA_TEST_7ZA = (Resolve-Path -LiteralPath 'desktop/build/portable-extractor/7za.exe').Path
           node --test lib/portable-payload.test.mjs
 
+      - name: Verify physical portable payload with packaged Electron
+        shell: pwsh
+        run: node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked $env:GITHUB_REF_NAME
+
       - name: Smoke-test portable executable
         shell: pwsh
         # Hosted Windows runners apply aggressive scanning to self-extracting

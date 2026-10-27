@@ -31,3 +31,9 @@ export function formatHarmonyDeviceLabel(device: HarmonyDeviceLabelSource): stri
   if (!nickname || sameIdentity(nickname, product) || sameIdentity(nickname, model)) return hardware;
   return `${hardware} · ${nickname}`;
 }
+
+/** Small mirror titles show a readable product name; certification codes stay in details. */
+export function formatHarmonyDeviceTitle(device: HarmonyDeviceLabelSource, fallback = "鸿蒙设备"): string {
+  const code = /^[A-Z0-9]{2,10}[-_][A-Z0-9-]{2,12}$/i;
+  return [cleanPart(device.product), cleanPart(device.name)].find(value => value && !code.test(value)) ?? fallback;
+}

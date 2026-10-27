@@ -8,7 +8,7 @@ import {
 import { StdioTransport, StreamableHttpTransport, type McpTransport } from "@earendil-works/pi-mcp";
 import {
   loadNativeMcpConfig, nativeMcpApprovalIdentity, readNativeMcpPreferences,
-  writeNativeMcpPreferences, validateNativeMcpConfig, type NativeMcpEntry, type NativeMcpOptions,
+  writeNativeMcpPreferences, updateNativeMcpServer, validateNativeMcpConfig, type NativeMcpEntry, type NativeMcpOptions,
 } from "./native-mcp-config";
 import type { SessionCapabilityItem } from "./session-capabilities";
 
@@ -56,8 +56,9 @@ export class NativeMcpController {
   private states = new Map<string, NativeMcpServerState>();
   private entries = new Map<string, NativeMcpEntry>();
   private registeredApprovals = new Map<string, string>();
-  private definitions = new Map<string, { exposure: ToolExposure; server?: string }>();
+  private definitions = new Map<string, { exposure: ToolExposure; server?: string; defaultActive?: boolean }>();
   private revealed = new Set<string>();
+  private initialActive = new Set<string>();
   private secrets = new Set<string>();
   private notificationQueued = false;
 
@@ -73,6 +74,7 @@ export class NativeMcpController {
         this.loadedEnabled = enabled;
         this.loadedRegisteredApprovals.clear();
         this.entries.clear(); this.states.clear(); this.registeredApprovals.clear(); this.revealed.clear();
+        for (const name of this.initialActive) this.revealed.add(name);
         for (const [name, definition] of this.definitions) if (definition.server) this.definitions.delete(name);
         for (const entry of config.servers) this.observeEntry(entry, enabled);
         return { ...config, servers: config.servers.map(entry => ({ ...entry, config: { ...entry.config, enabled: enabled && entry.config.enabled !== false } })) };
@@ -83,7 +85,17 @@ export class NativeMcpController {
           ...(auth.onUnauthorized ? { onUnauthorized: async (...args: Parameters<NonNullable<typeof auth.onUnauthorized>>) => { this.assertServerAuthorized(entry.name); await auth.onUnauthorized!(...args); this.assertServerAuthorized(entry.name); } } : {}) } : undefined;
         return this.observeTransport(entry, options.createTransport?.(entry, workingDirectory, observedAuth) ?? this.transport(entry, workingDirectory, observedAuth));
       },
-      updateConfig: () => { throw new Error("Manage native MCP configuration in Piora Settings > Plugins"); },
+      updateConfig: (entry, patch) => {
+        if (options.updateConfig) options.updateConfig(entry, patch);
+        else updateNativeMcpServer(agentDir, cwd, this.projectTrusted, {
+          name: entry.name, scope: entry.override || entry.scope === "project" ? "project" : "global", ...patch,
+        });
+        const config = loadNativeMcpConfig(agentDir, cwd, this.projectTrusted);
+        const updated = config.servers.find(server => server.name === entry.name);
+        if (updated) this.observeEntry(updated, readNativeMcpPreferences(agentDir).enabled);
+        this.loadedConfigRevision = this.configRevision(config);
+        this.announce();
+      },
     });
     this.factories = [
       { name: "piora-capability-policy", factory: pi => {
@@ -92,7 +104,7 @@ export class NativeMcpController {
         });
       } },
       { name: "piora-native-mcp", replaceable: true, factory: pi => mcp(this.api(pi, "mcp")) },
-      { name: "piora-codemode", replaceable: true, factory: pi => createCodemodeExtension({ models: false, mode: "on" })(this.api(pi, "codemode")) },
+      { name: "piora-codemode", replaceable: true, factory: pi => createCodemodeExtension()(this.api(pi, "codemode")) },
       { name: "piora-tool-search", replaceable: true, factory: pi => createToolSearchExtension()(this.api(pi, "search")) },
     ];
   }
@@ -106,6 +118,10 @@ export class NativeMcpController {
     queueMicrotask(() => { this.notificationQueued = false; this.changed(); });
   }
   isAvailable(name: string): boolean { return this.definitions.get(name)?.exposure !== "hidden"; }
+  isNativeTool(name: string): boolean { return this.definitions.has(name); }
+  captureActiveTools(names: readonly string[]): void {
+    for (const name of names) { this.initialActive.add(name); this.revealed.add(name); }
+  }
   private canDiscover(name: string): boolean {
     if (!RESOURCE_TOOLS.has(name)) return this.isAllowed(name);
     return [...this.states.values()].some(server => this.isAllowed(name, { server: server.name }));
@@ -118,9 +134,12 @@ export class NativeMcpController {
       const server = input?.server;
       // Upstream's no-server aggregate listing crosses server boundaries. Require
       // an explicit authorized server for both direct and codemode calls.
-      return typeof server === "string" && this.isServerAuthorized(server) && this.resourcePermission(server)
-        && this.states.get(server)?.resources === true && this.states.get(server)?.exposure !== "hidden"
-        && !["disabled", "approval-required", "closed"].includes(this.states.get(server)!.state);
+      const allowed = (name: string) => this.isServerAuthorized(name) && this.resourcePermission(name)
+        && this.states.get(name)?.resources === true && this.states.get(name)?.exposure !== "hidden"
+        && !["disabled", "approval-required", "closed"].includes(this.states.get(name)!.state);
+      if (typeof server === "string") return allowed(server);
+      const servers = [...this.states.values()].filter(entry => entry.resources && entry.exposure !== "hidden" && this.isServerAuthorized(entry.name));
+      return servers.length > 0 && servers.every(entry => allowed(entry.name));
     }
     return true;
   }
@@ -140,7 +159,7 @@ export class NativeMcpController {
       const entry = this.entries.get(server);
       if (!entry || entry.config.enabled === false) return false;
       const identity = nativeMcpApprovalIdentity(this.cwd, server, entry.source, entry.config);
-      if (entry.scope === "extension") return preferences.approvedRegistered.includes(identity);
+      if (entry.scope === "extension") return !preferences.blockedRegistered?.includes(identity);
       const current = loadNativeMcpConfig(this.agentDir, this.cwd, this.projectTrusted).servers.find(candidate => candidate.name === server);
       return !!current && current.config.enabled !== false
         && nativeMcpApprovalIdentity(this.cwd, server, current.source, current.config) === identity;
@@ -149,16 +168,18 @@ export class NativeMcpController {
   private assertServerAuthorized(server: string): void {
     if (!this.isServerAuthorized(server)) throw new Error("Native MCP connection authorization was revoked or its configuration changed. Reload after approving the current configuration.");
   }
-  declarationNames(names: readonly string[]): string[] {
+  declarationNames(names: readonly string[], explicitlySelected = false): string[] {
     return names.filter(name => {
-      const exposure = this.definitions.get(name)?.exposure;
-      return exposure !== "hidden" && (exposure !== "codemode" && exposure !== "deferred" || this.revealed.has(name));
+      const definition = this.definitions.get(name);
+      return definition?.exposure !== "hidden"
+        && (definition?.exposure !== "codemode" && definition?.exposure !== "deferred" || this.revealed.has(name))
+        && (definition?.defaultActive !== false || this.revealed.has(name) || explicitlySelected);
     });
   }
   resourceCatalog(): Array<Omit<SessionCapabilityItem, "enabled" | "activeToolNames">> {
     return [...this.states.values()].filter(server => server.resources).map(server => ({
       id: nativeMcpResourceCapabilityId(server.name), label: `MCP resources · ${server.name}`,
-      description: `Allow resource listings and reads from ${server.name}. Resource helper tools must also be enabled.`,
+      description: `Allow resource listings and reads from ${server.name}.`, defaultEnabled: true,
       kind: "extension", toolNames: [], available: server.exposure !== "hidden" && !["disabled", "approval-required", "closed"].includes(server.state),
     }));
   }
@@ -175,7 +196,7 @@ export class NativeMcpController {
       const preferences = readNativeMcpPreferences(this.agentDir);
       return preferences.enabled !== this.loadedEnabled
         || this.configRevision(loadNativeMcpConfig(this.agentDir, this.cwd, this.projectTrusted)) !== this.loadedConfigRevision
-        || [...this.loadedRegisteredApprovals].some(([identity, approved]) => preferences.approvedRegistered.includes(identity) !== approved);
+        || [...this.loadedRegisteredApprovals].some(([identity, approved]) => !preferences.blockedRegistered?.includes(identity) !== approved);
     } catch { return true; }
   }
   snapshot(): { reloadRequired: boolean; enabled: boolean; projectTrusted: boolean; owner: "native" | "replacement"; servers: NativeMcpServerState[] } {
@@ -183,7 +204,7 @@ export class NativeMcpController {
     return { reloadRequired: this.reloadRequired(), enabled: preferences.enabled, projectTrusted: this.projectTrusted,
       owner: this.nativeStarted ? "native" : "replacement",
       servers: [...this.states.values()].map(server => ({ ...server, configurationCurrent: this.configurationIsCurrent(server.name), connectionAuthorized: this.isServerAuthorized(server.name),
-        ...(server.scope === "extension" ? { approvalRequired: !preferences.approvedRegistered.includes(this.registeredApprovals.get(server.name) ?? "") } : {}),
+        ...(server.scope === "extension" ? { approvalRequired: preferences.blockedRegistered?.includes(this.registeredApprovals.get(server.name) ?? "") === true } : {}),
         owner: this.nativeStarted ? "native" : "replacement", tools: server.tools.map(tool => ({ ...tool })) })) };
   }
   approveRegistered(name: string, approved: boolean): void {
@@ -191,6 +212,7 @@ export class NativeMcpController {
     if (!identity) throw new Error("Registered MCP server not found");
     const preferences = readNativeMcpPreferences(this.agentDir);
     preferences.approvedRegistered = [...new Set(preferences.approvedRegistered.filter(id => id !== identity).concat(approved ? [identity] : []))];
+    preferences.blockedRegistered = [...new Set((preferences.blockedRegistered ?? []).filter(id => id !== identity).concat(approved ? [] : [identity]))];
     writeNativeMcpPreferences(this.agentDir, preferences);
     this.announce();
   }
@@ -276,8 +298,8 @@ export class NativeMcpController {
           const source = server.extensionPath;
           const identity = nativeMcpApprovalIdentity(this.cwd, server.name, source, server.config);
           this.registeredApprovals.set(server.name, identity);
-          this.loadedRegisteredApprovals.set(identity, preferences.approvedRegistered.includes(identity));
-          const approved = preferences.enabled && preferences.approvedRegistered.includes(identity);
+          this.loadedRegisteredApprovals.set(identity, !preferences.blockedRegistered?.includes(identity));
+          const approved = preferences.enabled && !preferences.blockedRegistered?.includes(identity);
           if (!this.entries.has(server.name) || this.entries.get(server.name)?.scope === "extension") {
             this.observeEntry({ name: server.name, source, scope: "extension", config: server.config }, approved);
             if (!approved && preferences.enabled && server.config.enabled !== false) this.states.get(server.name)!.state = "approval-required";
@@ -289,13 +311,13 @@ export class NativeMcpController {
         const exposure = definition.exposure ?? "direct";
         const server = definition.namespace?.name.startsWith("mcp__")
           ? [...this.states.keys()].find(name => `mcp__${name.replace(/[^\w]/g, "_")}` === definition.namespace?.name) : undefined;
-        this.definitions.set(definition.name, { exposure, server });
+        this.definitions.set(definition.name, { exposure, server, defaultActive: definition.defaultActive });
         if (server) {
           const state = this.states.get(server)!;
           state.tools = [...state.tools.filter(tool => tool.name !== definition.name), { name: definition.name, exposure }];
         }
         const original = definition;
-        const wrapped = { ...definition, defaultActive: false,
+        const wrapped = { ...definition,
           ...(original.prepareLoadout ? { prepareLoadout: (loadout: Parameters<NonNullable<typeof original.prepareLoadout>>[0]) => original.prepareLoadout!({ ...loadout,
             callable: loadout.callable.filter(tool => this.canDiscover(tool.name)) }) } : {}),
           execute: async (...[id, input, signal, update, ctx]: Parameters<typeof original.execute>) => {

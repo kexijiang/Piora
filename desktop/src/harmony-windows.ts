@@ -42,7 +42,14 @@ export class HarmonyWindows {
       return run(event, value);
     });
     call("state", () => this.snapshot());
-    call("open", (_event, value) => this.serialized(async () => { await this.select(value); this.create(); this.focus(); return this.snapshot(); }));
+    call("open", (_event, value) => this.serialized(async () => { await this.select(value); this.state.presentation = "floating"; this.state.open = true; this.create(); this.focus(); this.emit(); return this.snapshot(); }));
+    call("presentation", (_event, value) => this.serialized(async () => {
+      if (value !== "floating" && value !== "sidebar") throw new Error("Invalid mirror presentation");
+      this.state.presentation = value; this.state.open = true;
+      if (value === "sidebar") { this.mirror?.hide(); this.deps.workbench(); }
+      else { this.create(); this.focus(); }
+      this.emit(); return this.snapshot();
+    }));
     call("select", (_event, value) => this.serialized(async () => { await this.select(value); return this.snapshot(); }));
     call("close", () => this.requestClose());
     call("focus", () => this.focus());
@@ -122,7 +129,7 @@ export class HarmonyWindows {
     window.webContents.on("will-attach-webview", event => event.preventDefault());
     window.webContents.setZoomFactor(1);
     void window.webContents.setVisualZoomLevelLimits(1, 1);
-    window.once("ready-to-show", () => { if (!window.isDestroyed()) window.show(); });
+    window.once("ready-to-show", () => { if (!window.isDestroyed()) { if (options.focusable === false) window.showInactive(); else window.show(); } });
     void window.loadURL(target.href).catch(() => { if (!window.isDestroyed()) window.destroy(); });
     return window;
   }
@@ -164,9 +171,10 @@ export class HarmonyWindows {
     }
   }
   async close() {
-    if (!this.mirror) return true;
+    if (!this.mirror && !this.state.open) return true;
     if (!await this.confirmRecording("关闭投屏")) return false;
-    this.save(); this.forceClose = true; this.mirror.close(); this.forceClose = false; return true;
+    this.save(); this.forceClose = true; this.mirror?.close(); this.forceClose = false;
+    this.state.open = false; this.emit(); return true;
   }
   private requestClose(): Promise<boolean> {
     if (this.closing) return this.closing;
@@ -193,6 +201,9 @@ export class HarmonyWindows {
     if (!message || typeof message.title !== "string" || message.title.length > 200 || typeof message.message !== "string" || message.message.length > 10000 || !Array.isArray(message.actions) || !message.actions.length || message.actions.length > 5 || message.actions.some(a => typeof a.id !== "string" || typeof a.label !== "string" || a.id.length > 80 || a.label.length > 100)) throw new Error("Invalid message");
     if (message.preview && !message.preview.startsWith("/api/harmony/media/preview?")) throw new Error("Invalid media preview");
     if (message.notificationKey !== undefined && (typeof message.notificationKey !== "string" || message.notificationKey.length > 160)) throw new Error("Invalid notification key");
+    if (message.presentation !== undefined && message.presentation !== "notice") throw new Error("Invalid presentation");
+    if (message.durationMs !== undefined && (!Number.isInteger(message.durationMs) || message.durationMs < 1200 || message.durationMs > 10000)) throw new Error("Invalid notice duration");
+    if (message.presentation === "notice" && (message.tone === "confirm" || message.preview)) throw new Error("Notices cannot request confirmation or show previews");
     return message;
   }
   private showMessage(message: PioraMessage, parent: BrowserWindow | null): Promise<string | null> {
@@ -205,16 +216,19 @@ export class HarmonyWindows {
       const host = parent && !parent.isDestroyed() ? parent : this.deps.main();
       const area = host ? screen.getDisplayMatching(host.getBounds()).workArea : screen.getPrimaryDisplay().workArea;
       const bounds = host?.getBounds() ?? area;
-      const width = Math.min(430, area.width - 32), height = Math.min(message.preview ? 500 : 320, area.height - 32);
+      const notice = message.presentation === "notice";
+      const width = Math.min(notice ? 340 : 430, area.width - 32), height = Math.min(notice ? 112 : message.preview ? 500 : 320, area.height - 32);
       this.message = message;
       const window = this.createSurface("/desktop-message", { width, height,
         x: Math.max(area.x, Math.min(area.x + area.width - width, Math.round(bounds.x + (bounds.width - width) / 2))),
-        y: Math.max(area.y, Math.min(area.y + area.height - height, Math.round(bounds.y + (bounds.height - height) / 2))),
-        ...(host ? { parent: host, modal: true } : {}), frame: false, resizable: false, minimizable: false, maximizable: false, skipTaskbar: true, title: message.title });
+        y: Math.max(area.y, Math.min(area.y + area.height - height, Math.round(notice ? bounds.y + 44 : bounds.y + (bounds.height - height) / 2))),
+        ...(host ? { parent: host, modal: !notice } : {}), ...(notice ? { focusable: false } : {}), frame: false, resizable: false, minimizable: false, maximizable: false, skipTaskbar: true, title: message.title });
       this.messageWindow = window;
       let done = false;
-      const finish = (id: string | null) => { if (done) return; done = true; this.message = null; this.messageWindow = null; this.finishMessage = undefined; if (!window.isDestroyed()) window.destroy(); if (host && !host.isDestroyed()) host.focus(); resolve(id); };
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      const finish = (id: string | null) => { if (done) return; done = true; clearTimeout(timeout); this.message = null; this.messageWindow = null; this.finishMessage = undefined; if (!window.isDestroyed()) window.destroy(); if (!notice && host && !host.isDestroyed()) host.focus(); resolve(id); };
       this.finishMessage = finish; window.on("closed", () => finish(null));
+      if (notice) window.once("ready-to-show", () => { timeout = setTimeout(() => finish(null), message.durationMs ?? 3000); });
     });
     const result = this.messages.then(show, show); this.messages = result.catch(() => undefined); return result;
   }

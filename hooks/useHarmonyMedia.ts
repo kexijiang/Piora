@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { showPioraMessage } from "@/components/PioraMessage";
-import { copyText } from "@/lib/clipboard";
 import type { HarmonyMediaArtifact, HarmonyRecordingState } from "@/lib/harmony/types";
 import { HarmonyRequestError } from "@/lib/harmony/request-error";
 
@@ -53,22 +52,15 @@ export function useHarmonyMedia(serial: string, ownerId: string, active: boolean
     const generation = epoch.current;
     let copied = false;
     try { const clipboard = window.piDesktop?.clipboard?.copyHarmonyMedia; if (clipboard) { await clipboard({ kind: file.kind, path: file.path }); copied = true; } } catch { /* File save succeeded independently of clipboard. */ }
-    let first = true;
-    const reasons: Record<string, string> = { "duration-limit": copy("已达到30分钟上限。", "30 minute limit reached."), "size-limit": copy("已达到文件大小上限。", "File size limit reached."), "disk-space": copy("可用空间不足256 MiB，已停止录屏。", "Recording stopped: less than 256 MiB available."), "format-changed": copy("画面规格发生变化，已保存本段。", "Video format changed; this segment was saved."), "interrupted": copy("连接中断，已保存可播放的部分。", "Connection interrupted; playable footage saved.") };
-    while (generation === epoch.current) {
-      const result = await showPioraMessage({ title: copy(file.kind === "screenshot" ? "截图已保存" : "录屏已保存", "Media saved"), tone: "success",
-        ...(first && notificationKey ? { notificationKey } : {}),
-        message: `${reason ? (reasons[reason] ?? reason) + "\n" : ""}${copied ? copy("已复制到剪贴板。", "Copied to clipboard.") : copy("文件已保存，但未能复制到剪贴板。", "File saved, but clipboard copy failed.")}\n${file.filename}`,
-        ...(file.kind === "screenshot" ? { preview: `/api/harmony/media/preview?${new URLSearchParams({ serial: file.serial, filename: file.filename })}` } : {}),
-        actions: [{ id: "folder", label: copy("打开文件夹", "Show folder") }, { id: "path", label: copy("复制路径", "Copy path") }, ...(!copied ? [{ id: "copy", label: copy("重新复制", "Retry copy") }] : []), { id: "done", label: copy("完成", "Done"), primary: true }] });
-      if (!result || result === "done") break;
-      first = false;
-      try {
-        if (result === "folder") { if (!await window.piDesktop?.revealPath?.(file.path)) throw new Error(copy("无法打开文件夹", "Could not reveal file")); }
-        if (result === "path") await copyText(file.path);
-        if (result === "copy") { if (!window.piDesktop?.clipboard?.copyHarmonyMedia) throw new Error("Clipboard unavailable"); await window.piDesktop.clipboard.copyHarmonyMedia({ kind: file.kind, path: file.path }); copied = true; }
-      } catch (error) { await showPioraMessage({ title: copy("操作未完成", "Action failed"), message: String(error), tone: "error", actions: [{ id: "done", label: copy("返回", "Back"), primary: true }] }); }
-    }
+    if (generation !== epoch.current) return;
+    const reasons: Record<string, string> = { "duration-limit": copy("已达到30分钟上限。", "30 minute limit reached."), "size-limit": copy("已达到文件大小上限。", "File size limit reached."), "disk-space": copy("磁盘空间不足，已停止录屏。", "Recording stopped: low disk space."), "format-changed": copy("画面规格变化，已保存本段。", "Format changed; segment saved."), "interrupted": copy("连接中断，已保留可播放部分。", "Connection interrupted; playable footage saved.") };
+    void showPioraMessage({ title: copy(file.kind === "screenshot" ? "截图已保存" : "录屏已保存", "Media saved"), tone: "success", presentation: "notice", durationMs: 3000,
+      ...(notificationKey ? { notificationKey } : {}),
+      message: reason ? reasons[reason] ?? reason : copied ? copy("已复制到剪贴板", "Copied to clipboard") : copy("保存成功，剪贴板复制未完成", "Saved; clipboard copy did not complete"),
+      actions: [{ id: "folder", label: copy("打开文件夹", "Show folder") }, { id: "done", label: copy("关闭", "Close") }],
+    }).then(async result => {
+      if (result === "folder") await window.piDesktop?.revealPath?.(file.path);
+    }).catch(() => undefined);
   }, [copy]);
   useEffect(() => { notify.current = showArtifact; }, [showArtifact]);
   const action = useCallback(async (action: "capture_screenshot" | "start_recording" | "stop_recording" | "retrieve_recording" | "abandon_recording" | "retry_recording_save" | "discard_recording_draft", recoveryId?: string) => {

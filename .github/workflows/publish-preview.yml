@@ -8,7 +8,7 @@ on:
         type: string
         required: true
       build_run_id:
-        description: Successful preview build run whose exact artifacts passed installed-app and phone acceptance
+        description: Successful preview build run whose exact artifacts passed installed-app acceptance
         type: string
         required: true
 

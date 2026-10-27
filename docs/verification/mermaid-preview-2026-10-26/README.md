@@ -2,6 +2,27 @@
 
 基于 `origin/main` 的 `19ff18c4ac54780fbe8ddf64fb1a747e4a16af9b`，独立分支 `fix/mermaid-stable-preview-20261026`。未包含引导消息修复或用户工作区中的未提交内容。没有合并、发布或本地生产构建。
 
+## 2026-10-27 云端同步验证
+
+在独立云端工作树将 PR 头 `f73ccf760ef91980a40e4820b49d5306bd3f96c2` 与主分支 `d1324cfde43362373821c9fab4ec576de726e1c5` 同步。唯一文本冲突 `CompactProcess.browser.test.mjs` 采用主分支完整版本，保留 PR #228 移除内层工具分组后的外层展开、键盘、命令卡片与搜索定位断言；该测试与主分支逐字节相同。修复自动合并误把 Mermaid 说明放进 beta.43、覆盖停止队列说明的问题：所有主分支已发布章节逐字节保留，Mermaid 说明仅列入 `Unreleased`。未修改 PR #229 的模型设置代码；锁文件与主分支相同。
+
+平台为 Linux x64，Node.js **22.19.0**、npm **10.9.3**，原生修补工具 patchelf **0.19.2**；Node 和 patchelf 使用已验证官方摘要的版本。独立 `npm ci` 正常执行全部安装生命周期及仓库依赖修补，未共享其他工作树的 node_modules。
+
+本次拟提交代码已通过：
+
+- 下列相关非浏览器回归 **88 项通过、0 失败、0 跳过**，覆盖 Mermaid 缓存与适配、Markdown/消息、聊天和轻量历史、虚拟行状态、桌面样式及本地化：
+
+  ```sh
+  node --test --test-concurrency=1 components/MermaidBlock.test.mjs components/MarkdownBody.test.mjs components/MessageView.test.mjs components/ChatWindow.performance.test.mjs lib/chat-history.test.mjs lib/compact-chat-history.test.mjs lib/virtual-row-state.test.mjs lib/desktop-window-style.test.mjs lib/mermaid-preview.test.mjs lib/i18n/*.test.mjs
+  ```
+
+- `npm run lint`：0 错误，两个未修改脚本的既有 warning；`npm run typecheck`：根包和桌面包通过。
+- `npm run harmony:docs:check`、`npm run verify:hygiene`、`npm run licenses:check`、`npm run verify:backgrounds`、`npm run audit:runtime`（0 vulnerabilities）、`npm run perf:check` 通过。
+- `node scripts/diagnose-sharp-electron.mjs` 通过：修补后的 Node、Electron Node 模式及 ASAR 三项图片探针通过。未修补 Electron 基线仍产生预期的 GLib 诊断；仅基线失败，不是修补后检查失败。系统未安装 glib pkg-config 开发元数据，但运行时图片探针均已实际执行。
+- `git diff --check origin/main` 通过；浏览器测试脚本语法通过。默认云端 HOME 恰好与未修改 Skills 测试的合成路径重名，首次 hygiene 报路径匹配；改用独立可写测试 HOME/XDG 缓存后，未修改的完整扫描器通过，未删规则或忽略文件。
+
+**未覆盖范围与授权例外：** 当前云端 Chromium 在页面加载前因 `process_singleton_posix.cc` 的 `socket() failed: Operation not permitted (1)` 退出（134），因此未重复启动已知被阻止的 Mermaid、CompactProcess 及其他浏览器回归，也不声称本地全量 `npm test` 或 Windows 验证通过。用户已明确授权本批 PR 先完成云端可执行检查并记录缺口，再由推送后的 GitHub CI 补齐浏览器与 Windows 验证，全部必要 CI 通过后才允许合并；没有修改或放宽门禁。独立 Harmony、Shell、真实设备、website 及发布包专项未因本次 Mermaid 同步在本地重跑；这些模块相对主分支未更改。没有运行 `next build` 或构建发布包。以下 2026-10-26 的 Windows 截图和浏览器结果是历史证据，不替代这次同步后的远端 CI。
+
 ## 根因与修复
 
 - 会话切换及 VirtualList 回收会销毁 MermaidBlock 的局部 SVG 状态；重新挂载先显示 120px 加载占位，再重新解析/渲染。现在按源码和明暗主题保留最多 32 项、4 百万字符的内存缓存，首次 React 渲染即复用完成的 SVG/尺寸。并发相同请求复用同一个 Promise，过期请求不会更新新的代码实例。主题首次重绘可用另一个主题的已知宽高保留占位。

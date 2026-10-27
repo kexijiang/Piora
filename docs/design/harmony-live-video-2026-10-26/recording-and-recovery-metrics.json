@@ -1,0 +1,72 @@
+{
+  "recording": {
+    "bytes": 317377840,
+    "duration": 1797.0233333333333,
+    "width": 1216,
+    "height": 2688,
+    "codec": "avc",
+    "packets": [
+      {
+        "requested": 0,
+        "timestamp": 0,
+        "bytes": 34783,
+        "type": "key"
+      },
+      {
+        "requested": 898.5116666666667,
+        "timestamp": 898.4180034722223,
+        "bytes": 1533,
+        "type": "delta"
+      },
+      {
+        "requested": 1761.0828666666666,
+        "timestamp": 1759.9089930555556,
+        "bytes": 923,
+        "type": "delta"
+      }
+    ]
+  },
+  "playback": {
+    "duration": 1797.023333,
+    "width": 1216,
+    "height": 2688,
+    "samples": [
+      {
+        "fraction": 0,
+        "time": 1.759846,
+        "decoded": 70,
+        "error": null
+      },
+      {
+        "fraction": 0.5,
+        "time": 900.315451,
+        "decoded": 66,
+        "error": null
+      },
+      {
+        "fraction": 0.98,
+        "time": 1762.888554,
+        "decoded": 31,
+        "error": null
+      }
+    ]
+  },
+  "recovery": {
+    "hostCrashRecovered": true,
+    "recoveredFrames": 103,
+    "interruption": {
+      "size": 719964,
+      "duration": 3.686354166666667,
+      "reason": "The debug video connection failed: 14 UNAVAILABLE: Connection dropped"
+    },
+    "unrelatedForwardPreserved": true
+  },
+  "interruptedPlayback": {
+    "duration": 3.686354,
+    "width": 1216,
+    "height": 2688,
+    "decodedFrames": 75,
+    "seek": 3.1334,
+    "error": null
+  }
+}

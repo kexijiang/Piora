@@ -122,6 +122,8 @@ jobs:
       - name: Verify final portable wrapper
         shell: pwsh
         run: |
+          node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked $env:GITHUB_REF_NAME
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged Electron portable payload verification failed' }
           node scripts/verify-portable-artifact.mjs --expected-version $env:GITHUB_REF_NAME
           $artifact = @(Get-ChildItem -LiteralPath desktop/release -Filter '*-portable.exe' -File)
           7z t $artifact[0].FullName

@@ -53,6 +53,8 @@ export interface SessionCapabilityToolInfo {
   description: string;
   exposure?: string;
   defaultActive?: boolean;
+  /** Host adapters can permit native tools without declaring deferred tools. */
+  defaultEnabled?: boolean;
   sourceInfo?: {
     path: string;
     source: string;
@@ -169,7 +171,8 @@ export function buildSessionCapabilityCatalog(
         kind: definition?.kind ?? "extension",
         // Installed extensions opt their own tools in by default. Preserve the
         // SDK's explicit opt-out (notably native MCP discovery helpers).
-        ...(!definition && tool.sourceInfo && !["builtin", "sdk", "piora"].includes(tool.sourceInfo.source)
+        ...(tool.defaultEnabled !== undefined ? { defaultEnabled: tool.defaultEnabled }
+          : !definition && tool.sourceInfo && !["builtin", "sdk", "piora"].includes(tool.sourceInfo.source)
           ? { defaultEnabled: tool.defaultActive !== false } : {}),
         toolNames: [tool.name],
         available: profileAllowed && tool.exposure !== "hidden",
