@@ -27,13 +27,27 @@ This review covers the grouped npm update on `46a863e9d5383d0206e43c9b2092c9d3e2
 
 ## Verification record
 
-### Final main synchronization to 5d51b7f
+### Electron 45 combined graph on main fa7480d
 
-The final prepared tree incorporates main `5d51b7f5ac651271607a155389bdcb1a653644d4`, adding the merged Mermaid preview/UI work. Its 18 changed paths contain no dependency manifests, lockfile or dependency patches. Before reconstructing the pending merge, the complete prior staged tree and dependency delta were backed up. All 18 non-changelog #227 blobs, including the exact manifests, lockfile and license inventory, and all 17 non-changelog advanced-main blobs were verified byte-for-byte; both sets of changelog notes remain. Only this review record was subsequently extended.
+The current prepared tree merges main `fa7480d1486e3ff2e6d2c520789bee5563a74a22` into published #227 head `d6640107c23c520e4f9ad4f056a49c8cfafe9e83`. Before adopting that published head, its complete tree was verified identical to the locally tested tree; a fresh fetch confirmed the remote head. Main adds Electron 45.0.0 and its compatibility review/tests. Semantic conflict resolution preserves the prior #227 graph except for main's exact Electron requirement and Electron package record. Builder 26.18.0, all grouped upgrades, official URLs and security guards remain intact. The main implementation/tests/docs and prior #227 source fixes were checked byte-for-byte, and an independent review confirmed graph, changelog and source preservation. Licenses were regenerated for the final lockfile (1,379 unique packages).
+
+Because Electron changed, this checkpoint uses a new locked install and a fresh applicable aggregate rather than inheriting the prior graph's results:
+
+- Linux x64, Node.js 22.19.0; isolated writable HOME/cache, inherited agent-directory and XDG state/config/data overrides unset. `npm ci --registry=https://registry.npmjs.org/` passed (1,319 packages, 27 seconds), including the guarded dependency/native patches and Pi 1.4.0 source verification. Worker/desktop fixtures were rebuilt.
+- **573 complete applicable files: 3,046 tests, 3,031 passed, zero failed, 15 skipped**, serially in 348.3 seconds. No resource-skip flag was set. The 15 skips remain 13 Windows/native-platform cases and two unavailable DevEco Studio compilation fixtures; they are not passes.
+- Focused integration checks passed **69 tests across 14 files, zero skipped**, covering real builder collectors/fallback, updater cache/state behavior, gRPC redaction, actual isolated DevEco CLI closure, Harmony video/ownership, Pi alignment, and Electron 45 preload/permission compatibility. The nested RightPanel regression is included. The feasible mixed-file cookie case separately passed **1/1**.
+- Native diagnostics executed the actual **Electron 45.0.0 binary** (embedded Node 24.22.0). All three patched Node/Electron loose-file/Electron ASAR image probes passed. The two unpatched Electron baselines reproduced the expected GLib issue. The preload/permission VM regressions and native Node-mode probes do not replace real renderer or Windows acceptance.
+- Full typecheck/lint, Harmony docs, hygiene, licenses, performance budgets, backgrounds and runtime audit passed again. Lint has zero errors and the same two existing clipboard-script warnings; runtime audit reports zero vulnerabilities and verifies the Pi/forge boundaries.
+
+The 78 browser-dependent files below remain deferred under the explicit local-browser exception. No local Next.js production build or release package was run, and unchanged website checks were not repeated. Earlier CI or local results are historical evidence only; the next exact commit still requires its own successful mandatory CI before merging.
+
+### UI-only main synchronization to 5d51b7f
+
+The preceding prepared checkpoint incorporated main `5d51b7f5ac651271607a155389bdcb1a653644d4`, adding the merged Mermaid preview/UI work. Its 18 changed paths contain no dependency manifests, lockfile or dependency patches. Before reconstructing the pending merge, the complete prior staged tree and dependency delta were backed up. All 18 non-changelog #227 blobs, including the exact manifests, lockfile and license inventory, and all 17 non-changelog advanced-main blobs were verified byte-for-byte; both sets of changelog notes remained. Only this review record was subsequently extended.
 
 On this synchronized tree, **192 tests across 31 affected files passed, zero failures/skips**. The selection covers Mermaid geometry helpers/static rendering, Markdown and message rendering, chat history/scroll/process views, desktop styles, themes/locales, actual builder collection/fallback, updater/gRPC security behavior, isolated DevEco CLI closure, and Pi dependency alignment. Worker/desktop fixtures, full typecheck/lint, Harmony docs, hygiene, licenses, performance budgets, backgrounds and runtime audit all passed again; lint has the same two existing warnings and the audit reports zero vulnerabilities.
 
-No new install or full aggregate was needed for this UI-only synchronization: the unchanged dependency graph retains the fresh 7354bb7 aggregate and native-diagnostic evidence below, while affected behavior was rerun explicitly. This is **not** a claim of another full-suite run. The current CI file selection has 572 nonbrowser files and 78 browser-dependent files; the new nonbrowser Mermaid helper is covered by the scoped rerun. The new `components/MermaidBlock.browser.test.mjs` requires a real browser throughout and joins the local deferral list below. Final-head CI remains mandatory under the same explicit exception.
+No new install or full aggregate was needed for that UI-only synchronization: its unchanged dependency graph retained the fresh 7354bb7 aggregate and native-diagnostic evidence below, while affected behavior was rerun explicitly. This is **not** a claim of another full-suite run at that checkpoint. Its CI file selection had 572 nonbrowser files and 78 browser-dependent files; the new nonbrowser Mermaid helper was covered by the scoped rerun. The new `components/MermaidBlock.browser.test.mjs` requires a real browser throughout and joined the local deferral list below. Final-head CI remained mandatory under the same explicit exception.
 
 ### Combined dependency graph on main 7354bb7
 
@@ -76,7 +90,7 @@ Full `npm run typecheck` and `npm run lint` passed again (zero lint errors, the 
 
 ### Browser-dependent files deferred locally
 
-Except for the explicitly tested cookie unit case above, no case in these files is counted as locally passed. The list was audited to retain feasible mocked/static tests and prerecorded-media tests in the applicable selection rather than excluding every file that mentions Playwright. The 7354bb7 aggregate selected 571 complete files after adding Pi compaction to the original 570-file selection; the later Mermaid helper was covered in the scoped rerun. The current 78-file browser deferral list includes the newly merged Mermaid browser regression.
+Except for the explicitly tested cookie unit case above, no case in these files is counted as locally passed. The list was audited to retain feasible mocked/static tests and prerecorded-media tests in the applicable selection rather than excluding every file that mentions Playwright. The current fa7480d aggregate selected all 573 applicable complete files from the 651-file CI selection, including the added Pi compaction, Mermaid helper and Electron 45 regressions. The current 78-file browser deferral list includes the merged Mermaid browser regression.
 
 
 - `components/AppShellSessionSelection.browser.test.mjs`

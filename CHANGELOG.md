@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 依赖与兼容性
+
+- 桌面运行时固定升级至 Electron 45.0.0，继续隔离预加载脚本并拒绝未经支持的屏幕采集权限；补充权限与预加载兼容性回归，保持 Linux 原生图片隔离校验。
+
 ### Mermaid 图形
 
 - 修复切回含 Mermaid 图形的会话或虚拟列表回收后，重复渲染造成的高度跳动；打开图形预览时保留聊天原图及滚动位置。预览面板按可用视口和图形比例适配，支持缩放、拖动与窗口调整，小图不再默认放大到全屏；窄窗口完整显示图形及工具栏按钮，手动缩放在调整窗口后保持原比例和上限。
