@@ -4,14 +4,6 @@ import { isEmptyThinkingBlock, hasAssistantNotice } from "./message-display";
 import { isCommandToolName, toolResultText } from "./command-execution";
 import { toolActivityKind, type ToolActivityKind } from "./tool-activity";
 
-export interface ToolActivityGroup {
-  kind: ToolActivityKind;
-  count: number;
-  expanded: boolean;
-  active: boolean;
-  attention: boolean;
-}
-
 export interface ProcessStep {
   key: string;
   block: AssistantContentBlock;
@@ -56,8 +48,6 @@ export function buildCompactChatHistoryRows(
   const rows: ChatHistoryRow[] = [];
   const entryRows = new Map<string, string>();
   const entryGroups = new Map<string, string>();
-  const entryActivities = new Map<string, string[]>();
-  const commandActivities = new Map<string, string>();
   const results = new Map<string, ToolResultMessage>();
   for (const message of messages) if (message.role === "toolResult") results.set(message.toolCallId, message);
   for (let start = 0; start < messages.length;) {
@@ -109,7 +99,6 @@ export function buildCompactChatHistoryRows(
         const last = s === segments.length - 1;
         turnRows.push({ key: `${rowKey}:${segment.offset}`, index: i, secondary: segment.process,
           processGroupKey: segment.process ? key : undefined, attachRef: last,
-          toolActivityKind: segment.activity,
           intermediate: !last || segment.process, isStreaming: i === streamingIndex && last,
           message: { ...message, content: segment.blocks, ...(!last ? { usage: undefined, stopReason: undefined, errorMessage: undefined } : {}) } as AssistantMessage });
         if (segment.process && entryIds[i]) entryGroups.set(entryIds[i], key);
@@ -118,63 +107,23 @@ export function buildCompactChatHistoryRows(
     // Latest completed turn stays open until another input; exceptional turns
     // never hide their evidence, even after a previous manual collapse.
     const open = attention || (choices.get(key) ?? (end === messages.length && (!active || !compact)));
-    // Keep each tool row virtualized. Summary rows only group contiguous tools
-    // of the same kind; thinking, prose and custom notices break the group.
-    const groupedRows: ChatHistoryRow[] = [];
-    const closedActivities = new Set<string>();
-    for (let j = 0; j < turnRows.length;) {
-      const first = turnRows[j];
-      if (!first.toolActivityKind) { groupedRows.push(first); j++; continue; }
-      let k = j + 1;
-      while (k < turnRows.length && turnRows[k].toolActivityKind === first.toolActivityKind) k++;
-      const activityKey = `tool-activity:${first.key}`;
-      let groupAttention = false, groupActive = false, count = 0;
-      const paths = new Set<string>();
-      for (const row of turnRows.slice(j, k)) {
-        row.toolActivityKey = activityKey;
-        const id = entryIds[row.index];
-        if (id) {
-          const groups = entryActivities.get(id) ?? [];
-          if (groups.at(-1) !== activityKey) groups.push(activityKey);
-          entryActivities.set(id, groups);
-        }
-        const content = row.message?.role === "assistant" ? row.message.content : undefined;
-        if (!Array.isArray(content)) continue;
-        for (const block of content) {
-          if (block.type !== "toolCall") continue;
-          count++;
-          paths.add(typeof block.input?.path === "string" ? block.input.path : block.toolCallId);
-          commandActivities.set(block.toolCallId, activityKey);
-          groupAttention ||= needsAttention(block, results, active);
-          const result = results.get(block.toolCallId);
-          groupActive ||= active && (!result || Boolean(result.isStreaming));
-        }
-      }
-      const expanded = groupAttention || (choices.get(activityKey) ?? true);
-      if (!expanded) closedActivities.add(activityKey);
-      groupedRows.push({ key: activityKey, index: first.index, processGroupKey: key,
-        toolActivity: { kind: first.toolActivityKind, count: ["read", "directory", "edit"].includes(first.toolActivityKind) ? paths.size : count,
-          expanded, active: groupActive, attention: groupAttention } });
-      groupedRows.push(...turnRows.slice(j, k));
-      j = k;
-    }
+    // Secondary rows stay individually virtualized under the process heading.
+    // Thinking, prose and custom notices still split the assistant message.
     let headingAdded = false;
     const timestamps = messages.slice(start, end).map(message => message.timestamp).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-    for (const row of groupedRows) {
-      if ((row.secondary || row.toolActivity) && !headingAdded) {
+    for (const row of turnRows) {
+      if (row.secondary && !headingAdded) {
         rows.push({ key, index: row.index - 0.1, compactProcess: { active, expanded: open, count: steps.length, attention, activities,
           startedAt: timestamps[0], endedAt: active ? undefined : timestamps.at(-1), preview: steps.slice(-3) } });
         headingAdded = true;
       }
-      if (row.toolActivity) { if (open) rows.push(row); continue; }
       const id = entryIds[row.index];
-      const activityClosed = row.toolActivityKey && closedActivities.has(row.toolActivityKey);
-      if (id && (!entryRows.has(id) || entryRows.get(id) === key || entryRows.get(id)?.startsWith("tool-activity:"))) {
-        entryRows.set(id, row.secondary && !open ? key : activityClosed ? row.toolActivityKey! : row.key);
+      if (id && (!entryRows.has(id) || entryRows.get(id) === key)) {
+        entryRows.set(id, row.secondary && !open ? key : row.key);
       }
-      if (!row.secondary || open && !activityClosed) rows.push(row);
+      if (!row.secondary || open) rows.push(row);
     }
     start = end;
   }
-  return { rows, entryRows, entryGroups, entryActivities, commandActivities };
+  return { rows, entryRows, entryGroups };
 }
