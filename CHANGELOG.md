@@ -6,6 +6,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### 依赖与兼容性
 
+- 语言服务通信固定升级至 vscode-jsonrpc 10.0.0；新增真实双向流回归，验证 ArkTS 初始化、服务器配置请求、文档同步、悬停及错误与超时后的连接清理。
 - 桌面运行时固定升级至 Electron 45.0.0，继续隔离预加载脚本并拒绝未经支持的屏幕采集权限；补充权限与预加载兼容性回归，保持 Linux 原生图片隔离校验。
 
 ### Mermaid 图形
@@ -43,7 +44,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ### 依赖兼容性与安全
 
-- 更新 DevEco CLI、gRPC、桌面更新器及构建依赖，同步隔离运行时的精确版本验收，保留 Axios 1.20.0 与 node-forge RSA 校验补丁，避免升级后安装或鸿蒙检查因旧版本断言失败。
+- 更新 DevEco CLI、gRPC、桌面更新器及构建依赖，同步隔离运行时的精确版本验收，并核对语言服务入口及参数；保留 Axios 1.20.0 与 node-forge RSA 校验补丁，避免升级后安装或鸿蒙检查因旧版本断言失败。
 - 重新审核 electron-builder 26.18.0 的工作区依赖收集：上游仅验证依赖有交集，仍保留经过源码指纹校验的桌面依赖优先遍历，防止共享依赖掩盖更新器遗漏或混入网页依赖；补充真实工作区、回退、更新缓存完整性与 gRPC 错误脱敏回归。
 - 锁定桌面构建器精确版本，将锁文件镜像下载地址统一到 npm 官方源并同步许可证清单，不改变包版本、依赖图或完整性校验值。
 

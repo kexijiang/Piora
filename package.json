@@ -186,7 +186,7 @@
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.3",
     "unified": "^11.0.5",
-    "vscode-jsonrpc": "^9.0.3",
+    "vscode-jsonrpc": "10.0.0",
     "ws": "^8.22.0"
   },
   "devDependencies": {

@@ -12,7 +12,7 @@ This review covers the grouped npm update on `46a863e9d5383d0206e43c9b2092c9d3e2
 ## DevEco CLI 1.3.9
 
 - Integrity-verified official `@deveco/deveco-cli-common` tarballs were compared with 1.3.6. The wrapper/common platform split remains; common now directly requests Axios 1.20.0 rather than 1.19.0. Keep the project-wide Axios 1.20.0 override and the node-forge 1.4.0 RSA DigestAlgorithm patch and fingerprint; a dependency update does not supersede that local security fix.
-- The upstream README changes describe safer non-forced skill installation, broader agent recognition, and device API restrictions. Piora's used `serve mcp`, `check lint`, and `signature generate` interfaces remain present. CLI help/version and isolated copied production-closure tests cover local launch/resolution, not real SDK signing or device behavior.
+- The upstream README changes describe safer non-forced skill installation, broader agent recognition, and device API restrictions. Piora's used `serve mcp`, `serve lsp`, `check lint`, and `signature generate` interfaces remain present. CLI help/version and isolated copied production-closure tests cover local launch/resolution, not real SDK-backed language service, signing or device behavior.
 - Packaged verification continues resolving dependencies from the actual common implementation in a fresh child with empty `NODE_PATH`, checking both exact manifests, Axios, node-forge, RSA bytes, and actual CLI `--version`. It also rejects an unpatched nested forge copy that could shadow the secure root package.
 
 ## gRPC-js 1.14.6
@@ -27,9 +27,26 @@ This review covers the grouped npm update on `46a863e9d5383d0206e43c9b2092c9d3e2
 
 ## Verification record
 
+### Final cumulative graph on main 09b5ad3
+
+The final prepared tree merges main `09b5ad3080665140a3db5b347a68266089598413` into published #227 head `a1f1363ffff9cca5e6244be23608fb853234905d`. The local tree exactly matched that published tree before adoption, and the remote head was verified by fetch. The root manifest and complete lock graph now equal the prior published graph plus only main's JSON-RPC 10.0.0 requirement/package record. Electron 45.0.0, Pi 1.4.0, builder 26.18.0 and all grouped/security fixes remain intact; main's actual production-transport test and review were preserved. Licenses were regenerated (1,379 unique packages). Independent read-only review found no preservation or security-guard blocker.
+
+One additional assertion strengthens the existing isolated DevEco 1.3.9 closure test: its actual copied launcher now runs `serve lsp --help` and must expose both `--arkts` and `--project-path`, the flags used by production code intelligence. This complements the JSON-RPC test's substituted external DevEco process; neither check claims that an SDK-backed LSP server started successfully.
+
+Fresh validation of this final combination used Linux x64, Node.js 22.19.0, isolated writable HOME/cache and the same cleared agent/XDG overrides, with no resource-skip flag:
+
+- New locked `npm ci` passed (1,319 packages, 26 seconds), including strict builder/forge/native/Pi patches. Worker/desktop fixtures were rebuilt.
+- **574 complete applicable files: 3,051 tests, 3,036 passed, zero failed, 15 skipped**, serially in 351.5 seconds. The skips are the same 13 Windows/native-platform cases and two unavailable DevEco Studio compilations, not passes.
+- The five real production JSON-RPC10 framing/lifecycle/error/timeout cases also passed under the actual Electron 45.0.0 binary via `ELECTRON_RUN_AS_NODE=1`. External DevEco process discovery/launch remains substituted, as documented in the test.
+- Focused dependency/transport/preload/isolated-CLI/RightPanel regressions passed **41/41** with zero skips; the feasible mixed-file cookie case passed **1/1**. The strengthened DevEco LSP command-surface assertion passed both in the focused run and aggregate.
+- Native diagnostics again passed all three patched Node/Electron loose-file/Electron ASAR probes with the actual Electron 45.0.0 runtime; the unpatched Electron baselines reproduced the known GLib issue.
+- Full typecheck/lint, Harmony docs, hygiene, licenses, performance budgets, backgrounds and runtime audit passed. Lint reports zero errors and the same two pre-existing warnings; runtime audit reports zero vulnerabilities and verifies the Pi source profile and forge patch.
+
+The 78 browser-dependent files remain explicitly deferred. Unchanged website checks were not rerun; no local Next.js production build or release package was created. Required final-commit CI, including browser and Windows acceptance, must succeed before merging; earlier-head results are not a substitute.
+
 ### Electron 45 combined graph on main fa7480d
 
-The current prepared tree merges main `fa7480d1486e3ff2e6d2c520789bee5563a74a22` into published #227 head `d6640107c23c520e4f9ad4f056a49c8cfafe9e83`. Before adopting that published head, its complete tree was verified identical to the locally tested tree; a fresh fetch confirmed the remote head. Main adds Electron 45.0.0 and its compatibility review/tests. Semantic conflict resolution preserves the prior #227 graph except for main's exact Electron requirement and Electron package record. Builder 26.18.0, all grouped upgrades, official URLs and security guards remain intact. The main implementation/tests/docs and prior #227 source fixes were checked byte-for-byte, and an independent review confirmed graph, changelog and source preservation. Licenses were regenerated for the final lockfile (1,379 unique packages).
+The preceding Electron checkpoint merged main `fa7480d1486e3ff2e6d2c520789bee5563a74a22` into published #227 head `d6640107c23c520e4f9ad4f056a49c8cfafe9e83`. Before adopting that published head, its complete tree was verified identical to the locally tested tree; a fresh fetch confirmed the remote head. Main added Electron 45.0.0 and its compatibility review/tests. Semantic conflict resolution preserved the prior #227 graph except for main's exact Electron requirement and Electron package record. Builder 26.18.0, all grouped upgrades, official URLs and security guards remained intact. The main implementation/tests/docs and prior #227 source fixes were checked byte-for-byte, and an independent review confirmed graph, changelog and source preservation. Licenses were regenerated for that lockfile (1,379 unique packages).
 
 Because Electron changed, this checkpoint uses a new locked install and a fresh applicable aggregate rather than inheriting the prior graph's results:
 
@@ -90,7 +107,7 @@ Full `npm run typecheck` and `npm run lint` passed again (zero lint errors, the 
 
 ### Browser-dependent files deferred locally
 
-Except for the explicitly tested cookie unit case above, no case in these files is counted as locally passed. The list was audited to retain feasible mocked/static tests and prerecorded-media tests in the applicable selection rather than excluding every file that mentions Playwright. The current fa7480d aggregate selected all 573 applicable complete files from the 651-file CI selection, including the added Pi compaction, Mermaid helper and Electron 45 regressions. The current 78-file browser deferral list includes the merged Mermaid browser regression.
+Except for the explicitly tested cookie unit case above, no case in these files is counted as locally passed. The list was audited to retain feasible mocked/static tests and prerecorded-media tests in the applicable selection rather than excluding every file that mentions Playwright. The final 09b5ad3 aggregate selected all 574 applicable complete files from the 652-file CI selection, including the added Pi compaction, Mermaid helper, Electron 45 and production JSON-RPC regressions. The current 78-file browser deferral list includes the merged Mermaid browser regression.
 
 
 - `components/AppShellSessionSelection.browser.test.mjs`
