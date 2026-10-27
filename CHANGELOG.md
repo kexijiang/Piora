@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 对话展示
+
+- 主对话展开进程组后直接逐条显示工具调用，移除重复的工具活动内层分组；保留外层进程摘要、命令日志展开和搜索定位。
+
 ## [0.5.5-beta.43] - 2026-10-27
 
 ### 便携版与发布验收
