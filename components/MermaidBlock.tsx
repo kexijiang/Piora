@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { createDiagramCache, fitDiagram, scopeDiagramSvg, type Diagram } from "@/lib/mermaid-preview";
 import vs from "react-syntax-highlighter/dist/esm/styles/prism/vs";
 import vscDarkPlus from "react-syntax-highlighter/dist/esm/styles/prism/vsc-dark-plus";
 import a11yOneLight from "react-syntax-highlighter/dist/esm/styles/prism/a11y-one-light";
@@ -91,15 +92,14 @@ interface MermaidBlockProps {
 }
 
 const ZOOM_STEP = 0.25;
-const ZOOM_MIN = 0.5;
+const ZOOM_MIN = 0.1;
 const ZOOM_MAX = 3;
 const PNG_MAX_EDGE = 4096;
 const PNG_SCALE = 2;
 
 type RenderState =
-  | { key: string; status: "loading" }
   | { key: string; status: "error" }
-  | { key: string; status: "ready"; svg: string };
+  | { key: string; status: "ready"; diagram: Diagram };
 
 type ImageActionState = "idle" | "pending" | "success" | "error";
 
@@ -120,6 +120,54 @@ function readSvgSize(svg: Element): { height: number; width: number } {
   const height = viewBoxHeight ?? readSvgLength(svg.getAttribute("height")) ?? Math.max(400, width * 0.625);
   return { height, width };
 }
+
+// Mermaid's configuration is global. Serialize initialize/parse/render together
+// so concurrent light/dark requests cannot contaminate each other's results.
+let renderQueue: Promise<unknown> = Promise.resolve();
+let renderSequence = 0;
+const diagramCache = createDiagramCache((key) => {
+  const request = renderQueue.catch(() => {}).then(async () => {
+    const split = key.indexOf("\n");
+    const theme = key.slice(0, split);
+    const code = key.slice(split + 1);
+    const { default: mermaid } = await import("mermaid");
+    mermaid.initialize({ htmlLabels: false, startOnLoad: false, securityLevel: "strict", suppressErrorRendering: true, theme: theme === "dark" ? "dark" : "default" });
+    const parsed = await mermaid.parse(code, { suppressErrors: true });
+    if (!parsed) throw new Error("Invalid Mermaid diagram");
+    // Mermaid otherwise appends temporary layout SVGs to body, changing page
+    // geometry while rendering. Hidden (not display:none) keeps text measurable.
+    const host = document.createElement("div");
+    host.style.cssText = "position:fixed;left:-10000px;top:0;width:1200px;visibility:hidden;pointer-events:none;";
+    host.setAttribute("aria-hidden", "true");
+    document.body.appendChild(host);
+    try {
+      const { svg } = await mermaid.render(`mermaid-render-${++renderSequence}`, code, host);
+      // Some renderers finalize node transforms after calculating their viewBox.
+      // Measure the completed SVG. Repair an undersized viewBox from its actual
+      // content; otherwise preserve the renderer's intentional framing.
+      host.innerHTML = svg;
+      const element = host.querySelector("svg")!;
+      const box = element.getBBox();
+      const view = element.viewBox.baseVal;
+      if (view.width > 0 && view.height > 0 && box.width > 0 && box.height > 0
+        && (box.x < view.x || box.y < view.y || box.x + box.width > view.x + view.width || box.y + box.height > view.y + view.height)) {
+        const x = box.x - 8;
+        const y = box.y - 8;
+        const width = box.width + 16;
+        const height = box.height + 16;
+        element.setAttribute("viewBox", `${x} ${y} ${width} ${height}`);
+        element.style.maxWidth = `${width}px`;
+      }
+      return { svg: element.outerHTML, ...readSvgSize(element) };
+    } finally {
+      host.remove();
+    }
+  });
+  // The queue only retains completion, never an oversized result outside the
+  // bounded cache after its last consumer unmounts.
+  renderQueue = request.then(() => {}, () => {});
+  return request;
+});
 
 function resolveMermaidExportBackground(fallback: string): string {
   const probe = document.createElement("span");
@@ -263,41 +311,21 @@ export function MermaidBlock({ code, isStreaming, defaultPreview = true }: Merma
   const { t } = useI18n();
   const [showPreview, setShowPreview] = useState(defaultPreview);
   const [renderState, setRenderState] = useState<RenderState | null>(null);
-  const [zoomOpen, setZoomOpen] = useState(false);
+  const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const currentKey = `${isDark ? "dark" : "light"}\n${code}`;
   const previewVisible = showPreview && !isStreaming;
-  const readySvg = renderState?.key === currentKey && renderState.status === "ready" ? renderState.svg : undefined;
+  // Read a completed result during render, before virtual rows measure height.
+  const diagram = renderState?.key === currentKey && renderState.status === "ready" ? renderState.diagram : diagramCache.peek(currentKey);
+  const readySvg = useMemo(() => diagram ? scopeDiagramSvg(diagram.svg, `inline-${instanceId}`) : undefined, [diagram, instanceId]);
+  const knownSize = diagram ?? diagramCache.peek(`${isDark ? "light" : "dark"}\n${code}`);
 
   useEffect(() => {
     if (!previewVisible) return;
 
     let cancelled = false;
-    setRenderState({ key: currentKey, status: "loading" });
-
-    const render = async () => {
-      const { default: mermaid } = await import("mermaid");
-      mermaid.initialize({
-        htmlLabels: false,
-        startOnLoad: false,
-        securityLevel: "strict",
-        suppressErrorRendering: true,
-        theme: isDark ? "dark" : "default",
-      });
-
-      const parsed = await mermaid.parse(code, { suppressErrors: true });
-      if (!parsed) throw new Error("Invalid Mermaid diagram");
-
-      const id =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? `mermaid-${crypto.randomUUID()}`
-          : `mermaid-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const result = await mermaid.render(id, code);
-      if (!cancelled) {
-        setRenderState({ key: currentKey, status: "ready", svg: result.svg });
-      }
-    };
-
-    render().catch(() => {
+    diagramCache.load(currentKey).then(diagram => {
+      if (!cancelled) setRenderState({ key: currentKey, status: "ready", diagram });
+    }).catch(() => {
       if (!cancelled) setRenderState({ key: currentKey, status: "error" });
     });
 
@@ -324,22 +352,12 @@ export function MermaidBlock({ code, isStreaming, defaultPreview = true }: Merma
 
   const body = renderState?.key === currentKey && renderState.status === "error" ? (
       <div className="mermaid-block mermaid-block-error">{t("i18n.invalidMermaid")}</div>
-    ) : renderState?.key !== currentKey || renderState.status !== "ready" ? (
-      <div className="mermaid-block mermaid-block-loading" aria-label={t("i18n.renderingMermaid")} />
+    ) : !diagram || !readySvg ? (
+      <div className="mermaid-block mermaid-block-loading" aria-label={t("i18n.renderingMermaid")}>
+        {knownSize && <div style={{ width: `min(100%, ${knownSize.width}px)`, aspectRatio: `${knownSize.width} / ${knownSize.height}` }} />}
+      </div>
     ) : (
-      <>
-        {!zoomOpen && (
-          <button
-            type="button"
-            className="mermaid-block mermaid-preview-button"
-            title={t("i18n.openMermaidViewer")}
-            aria-label={t("i18n.openMermaidViewer")}
-            onClick={() => setZoomOpen(true)}
-            dangerouslySetInnerHTML={{ __html: renderState.svg }}
-          />
-        )}
-        {zoomOpen && <MermaidZoomDialog svg={renderState.svg} onClose={() => setZoomOpen(false)} />}
-      </>
+      <MermaidPreview key={currentKey} diagram={diagram} svg={readySvg} />
     );
 
   return (
@@ -356,30 +374,74 @@ export function MermaidBlock({ code, isStreaming, defaultPreview = true }: Merma
   );
 }
 
-function MermaidZoomDialog({ svg, onClose }: { svg: string; onClose: () => void }) {
+// The key and conditional mount tie viewer state to this exact preview. Returning
+// to old code/theme or ending streaming must never resurrect a previously open dialog.
+function MermaidPreview({ diagram, svg }: { diagram: Diagram; svg: string }) {
+  const { t } = useI18n();
+  const [zoomOpen, setZoomOpen] = useState(false);
+  return <>
+    <button
+      type="button"
+      className="mermaid-block mermaid-preview-button"
+      title={t("i18n.openMermaidViewer")}
+      aria-label={t("i18n.openMermaidViewer")}
+      onClick={() => setZoomOpen(true)}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
+    {zoomOpen && <MermaidZoomDialog diagram={diagram} onClose={() => setZoomOpen(false)} />}
+  </>;
+}
+
+function MermaidZoomDialog({ diagram, onClose }: { diagram: Diagram; onClose: () => void }) {
   const { t } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const [zoom, setZoom] = useState(1);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
+  const instanceId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const svg = useMemo(() => scopeDiagramSvg(diagram.svg, `dialog-${instanceId}`), [diagram, instanceId]);
+  const [fit, setFit] = useState(1);
+  // null follows the viewport; a user zoom is an absolute SVG scale, so a
+  // resize cannot multiply it beyond the limit or unexpectedly enlarge it.
+  const [manualZoom, setManualZoom] = useState<number | null>(null);
+  const zoom = manualZoom ?? fit;
+  const minimumZoom = Math.min(ZOOM_MIN, fit);
   const hasDesktopChrome = typeof window !== "undefined" && Boolean(window.piDesktop);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const opener = document.activeElement;
     dialog.showModal();
+    const viewport = viewportRef.current!;
+    const resize = () => {
+      const style = getComputedStyle(viewport);
+      setFit(fitDiagram(diagram, {
+        width: Math.max(1, viewport.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)),
+        height: Math.max(1, viewport.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)),
+      }));
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(viewport);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      observer.disconnect();
       if (dialog.open) dialog.close();
+      if (opener instanceof HTMLElement && opener.isConnected) opener.focus({ preventScroll: true });
     };
-  }, []);
+  }, [diagram]);
+
+  const resetZoom = () => {
+    setManualZoom(null);
+    viewportRef.current?.scrollTo(0, 0);
+  };
 
   return (
     <dialog
       ref={dialogRef}
       className="mermaid-zoom-dialog"
+      style={{ "--diagram-width": `${Math.max(360, diagram.width + 48)}px`, "--diagram-height": `${Math.max(220, diagram.height + 104)}px` } as CSSProperties}
       data-desktop-chrome={hasDesktopChrome ? "true" : undefined}
       aria-label={t("i18n.mermaidViewer")}
       onCancel={(event) => {
@@ -399,8 +461,8 @@ function MermaidZoomDialog({ svg, onClose }: { svg: string; onClose: () => void 
             <div className="mermaid-zoom-stepper">
               <button
                 type="button"
-                onClick={() => setZoom((value) => Math.max(ZOOM_MIN, value - ZOOM_STEP))}
-                disabled={zoom <= ZOOM_MIN}
+                onClick={() => setManualZoom((value) => Math.max(minimumZoom, (value ?? fit) - ZOOM_STEP))}
+                disabled={zoom <= minimumZoom}
                 title={t("i18n.zoomOut")}
                 aria-label={t("i18n.zoomOut")}
               >
@@ -409,7 +471,7 @@ function MermaidZoomDialog({ svg, onClose }: { svg: string; onClose: () => void 
               <span className="mermaid-zoom-value">{Math.round(zoom * 100)}%</span>
               <button
                 type="button"
-                onClick={() => setZoom((value) => Math.min(ZOOM_MAX, value + ZOOM_STEP))}
+                onClick={() => setManualZoom((value) => Math.min(ZOOM_MAX, (value ?? fit) + ZOOM_STEP))}
                 disabled={zoom >= ZOOM_MAX}
                 title={t("i18n.zoomIn")}
                 aria-label={t("i18n.zoomIn")}
@@ -420,9 +482,9 @@ function MermaidZoomDialog({ svg, onClose }: { svg: string; onClose: () => void 
             <button
               type="button"
               className="mermaid-zoom-icon-button"
-              onClick={() => setZoom(1)}
-              title={t("i18n.fitToWidth")}
-              aria-label={t("i18n.fitToWidth")}
+              onClick={resetZoom}
+              title={t("i18n.fitToView")}
+              aria-label={t("i18n.fitToView")}
             >
               <AliIcon name="fullscreen" size={13} />
             </button>
@@ -439,14 +501,25 @@ function MermaidZoomDialog({ svg, onClose }: { svg: string; onClose: () => void 
           </div>
         </div>
         <div
+          ref={viewportRef}
           className="mermaid-zoom-viewport"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) onClose();
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            const viewport = event.currentTarget;
+            drag.current = { x: event.clientX, y: event.clientY, left: viewport.scrollLeft, top: viewport.scrollTop };
+            viewport.setPointerCapture(event.pointerId);
           }}
+          onPointerMove={(event) => {
+            if (!drag.current) return;
+            event.currentTarget.scrollLeft = drag.current.left - (event.clientX - drag.current.x);
+            event.currentTarget.scrollTop = drag.current.top - (event.clientY - drag.current.y);
+          }}
+          onPointerUp={() => { drag.current = null; }}
+          onLostPointerCapture={() => { drag.current = null; }}
         >
           <div
             className="mermaid-zoom-canvas"
-            style={{ width: `${zoom * 100}%` }}
+            style={{ width: diagram.width * zoom, height: diagram.height * zoom }}
             dangerouslySetInnerHTML={{ __html: svg }}
           />
         </div>

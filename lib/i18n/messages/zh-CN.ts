@@ -2650,6 +2650,7 @@ export const zhCNLocale: LocalePlugin = {
     "i18n.zoomOut": "缩小",
     "i18n.zoomIn": "放大",
     "i18n.fitToWidth": "适应宽度",
+    "i18n.fitToView": "适应视图",
     "models.discoveryFetching": "正在识别可用模型…",
     "models.discoveryFetch": "自动识别可用模型",
     "models.discoveryFilterPlaceholder": "筛选 {count} 个模型…",
