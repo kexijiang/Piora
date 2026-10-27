@@ -2,6 +2,25 @@
 
 基于 `origin/main` 的 `19ff18c4ac54780fbe8ddf64fb1a747e4a16af9b`，独立分支 `fix/mermaid-stable-preview-20261026`。未包含引导消息修复或用户工作区中的未提交内容。没有合并、发布或本地生产构建。
 
+## 2026-10-27 同步 Pi 1.4.0 后的完整可执行回归
+
+本轮以 `425d0508a23f7e451e5bae8d1fd3bd403da6aba5` 和合入 PR #219 的主线 `7354bb78b60473ed41925251bde40683e0a4a219` 为合并父提交。保留主线 Pi 1.4.0 的官方锁文件、源码证书、兼容性测试与许可证记录；只合并 `Unreleased` 的双方新增说明，所有已发布章节原样保留。Mermaid 实现和断言没有改变。
+
+**前一轮 CI 失败保留：** [运行 40489060455 的 Windows 第 1 分片](https://github.com/kexijiang/Piora/actions/runs/40489060455/job/122138097908) 在未修改的 `lib/clipboard-drafts-browser.test.mjs:23` 首次 `page.goto('https://clipboard-drafts.test/')` 等待 `load` 时达到 30 秒超时，尚未执行草稿恢复断言；该分片 996 项通过、1 项失败、6 项按原配置跳过。夹具使用独立 ClipboardWorkspace、单个 eager bundle、同源请求拦截及未变的 root/dark 主题变量，不导入 Mermaid；富文本预览移除外部图片并使用 `default-src 'none'`。目前没有证据定位到可修复的资源依赖，也不能仅据此认定是偶发故障。本次未增加超时、减少断言或修改夹具；这项失败必须由新提交的完整 CI 重新验证通过，如再次出现应继续诊断，不得忽略。
+
+Linux x64 / Node.js **22.19.0** / npm **10.9.3** / patchelf **0.19.2**。重新执行 `npm ci`，正常运行全部生命周期和 Pi 1.4.0 严格源码修补（1013 个 source files）；未复用旧版本 node_modules。`npm run build:harmony-worker` 与 `npm run build:desktop` 仅用于仓库允许的测试夹具，不是发布包构建。
+
+本轮检查：
+
+- 按 `scripts/run-tests.mjs` 的所有文件模式展开得到 648 个文件；排除[清单中的 78 个浏览器依赖文件](cloud-browser-deferred-2026-10-27.txt)后，使用 `node --test --test-concurrency=1` 运行全部 **570 个可执行文件**。结果 **3035 项，3020 通过、0 失败、15 环境跳过**，约 411 秒；未设置 `PIORA_SKIP_RESOURCE_TESTS`。
+- 15 项跳过逐项核对为：12 项 Windows 专属检查（根目录目标、默认 PowerShell、气泡 DPI、启动代理、Electron 启动交接、ACL、路径别名、投屏 DPI、原生文件选择器、hosts 编辑授权、PowerShell 启动授权、UIA 二进制），2 项缺少 DevEco Studio 的 ArkUI 编译夹具，1 项需要 `PIORA_TEST_7ZA` 的可选固定版 7za 提取器实测。跳过不记为通过。
+- CI 文件模式未包含的 `node --test components/workspace/RightPanel.test.mjs` **5/5 通过**；浏览器文件中可独立运行的 `node --test --test-name-pattern='^browser recovery snapshots only session cookies and serializes concurrent writes$' lib/browser-cookie-persistence.test.mjs` **1/1 通过**。
+- `npm run lint`（0 错误、两个既有脚本 warning）、`npm run typecheck`（根包与桌面包）、`npm run harmony:docs:check`、`npm run verify:hygiene`、`npm run licenses:check`、`npm run verify:backgrounds`、`npm run audit:runtime`（0 vulnerabilities）、`npm run perf:check` 全部通过。
+- `node scripts/diagnose-sharp-electron.mjs` 通过；修补后 Node、Electron Node 模式、ASAR 三项图片探针均成功，未修补 Electron 基线仍有预期 GLib 诊断。
+- 文档更新后复查本地链接、浏览器脚本语法、发布说明完整性和 `git diff --check origin/main`，并重跑 docs/hygiene 门禁。
+
+云端浏览器仍因下述 socket 权限限制不可执行，Windows、真实设备和可选 DevEco/7za 环境没有在本地补齐。沿用用户明确授权的验证例外；**不是全量 `npm test` 通过，新提交全部必要远端 CI 必须成功才可合并**。未运行 `next build` 或任何本地发布包构建。
+
 ## 2026-10-27 主线再次前进后的复验
 
 前一轮提交 `18de944b3d1e46fc21e7c5c6729fcf6dd490dc44` 的 [CI #783](https://github.com/kexijiang/Piora/actions/runs/40470951340) 已全部成功。随后主分支前进到 `7481f3b5d166a886b4eae2c0f67cd00f3e1e2317`，修改了主对话直接展示、设置及本地化、鸿蒙共享视频和工作区展开逻辑；没有把旧 CI 当成本次合并内容的验证。
