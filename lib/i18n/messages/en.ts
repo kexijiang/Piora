@@ -2089,8 +2089,6 @@ export const enLocale: LocalePlugin = {
     "settings.chatShortcutError.invalid": "Use Enter, a function key, or a combination with Ctrl, Cmd, or Alt.",
     "settings.chatShortcutError.reserved": "This binding is reserved for text editing or focus navigation. Choose another shortcut.",
     "settings.chatShortcutError.conflict": "Send, steer, and new line must use different bindings. Change or clear the existing binding first.",
-    "settings.compactProcess": "Lightweight process display",
-    "settings.compactProcessDescription": "Off by default. Show recent steps while running; expand on completion and fold on the next input. Manually opened and exceptional processes stay visible.",
     "fileTool.showMore": "Show {count} more rows",
     "fileTool.showLess": "Show fewer rows",
     "fileTool.lines": "{count} lines returned",

@@ -2,6 +2,26 @@
 
 基于 `origin/main` 的 `19ff18c4ac54780fbe8ddf64fb1a747e4a16af9b`，独立分支 `fix/mermaid-stable-preview-20261026`。未包含引导消息修复或用户工作区中的未提交内容。没有合并、发布或本地生产构建。
 
+## 2026-10-27 主线再次前进后的复验
+
+前一轮提交 `18de944b3d1e46fc21e7c5c6729fcf6dd490dc44` 的 [CI #783](https://github.com/kexijiang/Piora/actions/runs/40470951340) 已全部成功。随后主分支前进到 `7481f3b5d166a886b4eae2c0f67cd00f3e1e2317`，修改了主对话直接展示、设置及本地化、鸿蒙共享视频和工作区展开逻辑；没有把旧 CI 当成本次合并内容的验证。
+
+本轮以 `18de944b3d1e46fc21e7c5c6729fcf6dd490dc44` 和 `7481f3b5d166a886b4eae2c0f67cd00f3e1e2317` 为合并父提交，仅解决 `Unreleased` 新增章节冲突，保留双方说明和所有已发布说明。逐文件核对：所有新引入的主线运行逻辑及 CompactProcess 浏览器测试与主线相同；Mermaid 源码、浏览器断言及缓存测试未更改；主线已删除的轻量过程设置语言项未被重新加入，`fitToView` 语言项继续保留。锁文件未变，复用本工作树此前经 `npm ci` 安装和修补的依赖。
+
+Linux x64 / Node.js **22.19.0** / npm **10.9.3** / patchelf **0.19.2**，独立测试 HOME，未设置资源测试跳过开关。本轮以下检查重新执行并通过：
+
+- **216 项相关测试，0 失败、0 跳过**；除 Mermaid、Markdown、消息、聊天历史和虚拟行回归外，加入主线受影响的设置检索、工作区以及鸿蒙共享观看、所有权恢复、视频启动、HDC、数据包、错误和实时帧回归：
+
+  ```sh
+  node --test --test-concurrency=1 components/MermaidBlock.test.mjs components/MarkdownBody.test.mjs components/MessageView.test.mjs components/ChatWindow.performance.test.mjs components/workspace/RightPanel.test.mjs lib/chat-history.test.mjs lib/compact-chat-history.test.mjs lib/virtual-row-state.test.mjs lib/desktop-window-style.test.mjs lib/mermaid-preview.test.mjs lib/settings-search.test.mjs lib/i18n/*.test.mjs lib/harmony-deveco-video.test.mjs lib/harmony-video-ownership.test.mjs lib/harmony-video-start.test.mjs lib/harmony-hdc-backend.test.mjs lib/harmony-hos-packets.test.mjs lib/harmony-runtime-contracts.test.mjs lib/harmony-request-error.test.mjs hooks/useHarmonyLiveFrame.test.mjs
+  ```
+
+- `npm run lint`（0 错误、两个未修改脚本的既有 warning）、`npm run typecheck`（根包及桌面包）、`npm run harmony:docs:check`、`npm run verify:hygiene`、`npm run licenses:check`、`npm run verify:backgrounds`、`npm run audit:runtime`（0 vulnerabilities）、`npm run perf:check`。
+- `node scripts/diagnose-sharp-electron.mjs`：修补后的 Node、Electron Node 模式和 ASAR 三项图片探针全部通过，未修补 Electron 基线继续给出预期的 GLib 失败诊断。
+- `git diff --check origin/main`、受影响浏览器测试语法、验证文档本地链接和已发布更新记录完整性检查通过。
+
+浏览器启动仍受下节记录的云端 socket 权限限制；沿用用户已明确批准的例外，不声称本地浏览器或全量测试通过。Harmony 实际设备共享兼容性与流畅度仍未实机验证；未修改的 Shell、website、其他独立子系统和发布包专项不重复本地运行。没有运行 Next 生产构建或发布包构建。**本轮新提交仍必须通过新的完整远端 CI 后才允许合并；上一轮成功不替代本轮检查。**
+
 ## 2026-10-27 云端同步验证
 
 在独立云端工作树将 PR 头 `f73ccf760ef91980a40e4820b49d5306bd3f96c2` 与主分支 `d1324cfde43362373821c9fab4ec576de726e1c5` 同步。唯一文本冲突 `CompactProcess.browser.test.mjs` 采用主分支完整版本，保留 PR #228 移除内层工具分组后的外层展开、键盘、命令卡片与搜索定位断言；该测试与主分支逐字节相同。修复自动合并误把 Mermaid 说明放进 beta.43、覆盖停止队列说明的问题：所有主分支已发布章节逐字节保留，Mermaid 说明仅列入 `Unreleased`。未修改 PR #229 的模型设置代码；锁文件与主分支相同。

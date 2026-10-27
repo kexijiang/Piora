@@ -2089,8 +2089,6 @@ export const zhCNLocale: LocalePlugin = {
     "settings.chatShortcutError.invalid": "请使用 Enter、功能键或包含 Ctrl、Cmd、Alt 的组合键。",
     "settings.chatShortcutError.reserved": "这个键位用于文本编辑或焦点移动，请选择其他快捷键。",
     "settings.chatShortcutError.conflict": "发送、引导和换行不能使用相同键位，请先修改或清除已占用的快捷键。",
-    "settings.compactProcess": "轻量过程展示",
-    "settings.compactProcessDescription": "默认关闭。开启后运行时显示最近步骤摘要；完成后展开，下一次输入时收起。手动展开和异常过程保持可见。",
     "fileTool.showMore": "显示其余 {count} 行",
     "fileTool.showLess": "收起内容",
     "fileTool.lines": "已返回 {count} 行",

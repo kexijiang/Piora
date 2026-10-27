@@ -43,7 +43,7 @@ function needsAttention(block: AssistantContentBlock, results: Map<string, ToolR
 /** Both display modes share turn boundaries. Only running defaults differ. */
 export function buildCompactChatHistoryRows(
   messages: AgentMessage[], entryIds: string[], busy: boolean,
-  choices: ReadonlyMap<string, boolean>, streamingIndex = -1, compact = false,
+  choices: ReadonlyMap<string, boolean>, streamingIndex = -1, compact = false, direct = false,
 ) {
   const rows: ChatHistoryRow[] = [];
   const entryRows = new Map<string, string>();
@@ -101,18 +101,18 @@ export function buildCompactChatHistoryRows(
           processGroupKey: segment.process ? key : undefined, attachRef: last,
           intermediate: !last || segment.process, isStreaming: i === streamingIndex && last,
           message: { ...message, content: segment.blocks, ...(!last ? { usage: undefined, stopReason: undefined, errorMessage: undefined } : {}) } as AssistantMessage });
-        if (segment.process && entryIds[i]) entryGroups.set(entryIds[i], key);
+        if (segment.process && entryIds[i] && !direct) entryGroups.set(entryIds[i], key);
       }
     }
     // Latest completed turn stays open until another input; exceptional turns
     // never hide their evidence, even after a previous manual collapse.
-    const open = attention || (choices.get(key) ?? (end === messages.length && (!active || !compact)));
+    const open = direct || attention || (choices.get(key) ?? (end === messages.length && (!active || !compact)));
     // Secondary rows stay individually virtualized under the process heading.
     // Thinking, prose and custom notices still split the assistant message.
     let headingAdded = false;
     const timestamps = messages.slice(start, end).map(message => message.timestamp).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
     for (const row of turnRows) {
-      if (row.secondary && !headingAdded) {
+      if (row.secondary && !headingAdded && !direct) {
         rows.push({ key, index: row.index - 0.1, compactProcess: { active, expanded: open, count: steps.length, attention, activities,
           startedAt: timestamps[0], endedAt: active ? undefined : timestamps.at(-1), preview: steps.slice(-3) } });
         headingAdded = true;

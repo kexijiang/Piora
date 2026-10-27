@@ -86,7 +86,6 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "conversation.sendShortcut", section: "shortcuts", labelKey: "settings.sendShortcut", descriptionKey: "settings.sendShortcutDescription", keywords: ["enter", "ctrl enter", "发送", "换行"] },
   { id: "conversation.steerShortcut", section: "shortcuts", labelKey: "settings.steerShortcut", descriptionKey: "settings.steerShortcutDescription", keywords: ["steer", "shortcut", "引导", "快捷键"] },
   { id: "conversation.newlineShortcut", section: "shortcuts", labelKey: "settings.newlineShortcut", descriptionKey: "settings.newlineShortcutDescription", keywords: ["newline", "shift enter", "换行", "快捷键"] },
-  { id: "conversation.compactProcess", section: "conversation", labelKey: "settings.compactProcess", descriptionKey: "settings.compactProcessDescription", keywords: ["process", "thinking", "shell", "compact", "思考", "步骤", "轻量", "日志"] },
   { id: "conversation.autoScroll", section: "conversation", labelKey: "settings.liveOutputAutoScroll", descriptionKey: "settings.liveOutputAutoScrollDescription", keywords: ["scroll", "follow", "滚动", "跟随"] },
   { id: "conversation.notifications", section: "conversation", labelKey: "taskControls.notifications", descriptionKey: "taskControls.notificationsDescription", keywords: ["notify", "notification", "通知", "完成"] },
   { id: "prompts", section: "prompts", labelKey: "settings.page.prompts", descriptionKey: "settings.page.promptsDescription", keywords: ["prompt", "title", "提示词", "标题"] },

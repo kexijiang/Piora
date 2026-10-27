@@ -58,7 +58,7 @@ function App(){
   window.revealEntry=(id)=>history.current.revealEntry(id);
   return <I18nProvider><main><header>Piora <button role="switch" aria-label="轻量过程展示" aria-checked={enabled} onClick={()=>setEnabled(!enabled)}>轻量过程展示</button></header>
     <div id="scroll" className="overflow-y-auto" ref={scroll}><div className="chat-column">
-      <ChatHistory messages={messages} entryIds={mixed?["u","mixed","r","answer"]:["u","a","r","a2","r2","r3",...(attention?["wait"]:[]),...(done?["answer"]:[]),...(next?["next"]:[])]} compactProcess={enabled}
+      <ChatHistory messages={messages} entryIds={mixed?["u","mixed","r","answer"]:["u","a","r","a2","r2","r3",...(attention?["wait"]:[]),...(done?["answer"]:[]),...(next?["next"]:[])]} compactProcess={enabled} directProcess={location.search.includes("direct")}
         streamingMessage={draft} busy={!done} streaming={Boolean(draft)} isNew={false} forkingEntryId={null} highlightedEntryId={null} lastUserMsgRef={lastUser}
         pendingScrollToUserRef={pending} scrollContainer={scroll} handleRef={history} sessionId="fixture" cwd="Z:/workspace/CreateMyCard" onOpenFile={path=>window.openedFile=path} onDeleteMessage={async()=>{}} />
     </div></div><footer>发送消息…</footer></main></I18nProvider>;
@@ -90,6 +90,21 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         #scroll{overflow:auto;flex:1;min-height:0;padding:24px}.chat-column{max-width:760px;margin:auto}footer{margin:16px;padding:16px;border:1px solid var(--border);border-radius:12px;color:var(--text-muted)}
         </style><div id="root"></div><script src="/bundle.js"></script></html>` });
     });
+    const direct = await context.newPage();
+    await direct.goto("http://compact.test/?direct");
+    await direct.locator(".command-execution-card").first().waitFor();
+    assert.equal(await direct.locator(".compact-process-toggle").count(), 0);
+    assert.equal(await direct.locator(".command-execution-card").count(), 3);
+    await direct.locator(".command-execution-toggle").first().click();
+    await direct.locator(".command-output-section").waitFor();
+    await direct.evaluate(() => { window.finish(); window.next(); });
+    await direct.getByText("下一轮输入", { exact: true }).waitFor();
+    assert.equal(await direct.locator(".compact-process-toggle").count(), 0);
+    assert.equal(await direct.locator(".command-execution-card").count(), 3);
+    await direct.evaluate(() => window.activities());
+    await direct.getByText("notes.md", { exact: true }).first().waitFor();
+    assert.equal(await direct.locator(".compact-process-toggle").count(), 0);
+    await direct.close();
     const page = await context.newPage();
     const screenshot = async (name) => {
       if (!process.env.PIORA_COMPACT_SCREENSHOTS) return;
