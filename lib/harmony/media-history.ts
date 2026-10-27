@@ -1,4 +1,4 @@
-import { lstat, opendir, open } from "node:fs/promises";
+import { lstat, opendir, open, unlink } from "node:fs/promises";
 import { isAbsolute, join } from "node:path";
 import { resolveHarmonyStorage, safeHarmonyDeviceName } from "./artifacts";
 import { HarmonyError } from "./errors";
@@ -8,6 +8,16 @@ const MAX_DIRECTORY_ENTRIES = 10_000;
 const MAX_HISTORY = 40;
 const PNG_HEADER = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 type Candidate = { kind: "screenshot" | "recording"; directory: string; filename: string; createdAt: string };
+
+/** Only a registered current-device history entry can be removed; never accept renderer paths. */
+export async function deleteHarmonyMedia(config: HarmonyConfig, serial: string, filename: string) {
+  const { artifacts } = await listHarmonyMediaHistory(config, serial);
+  const artifact = artifacts.find(item => item.filename === filename);
+  if (!artifact) throw new HarmonyError("INVALID_ARGUMENT", "Choose a saved media file for this device");
+  const info = await lstat(artifact.path);
+  if (!info.isFile() || info.isSymbolicLink()) throw new HarmonyError("INVALID_ARGUMENT", "Media file changed");
+  await unlink(artifact.path);
+}
 
 function generatedTime(filename: string, prefix: string, extension: "png" | "mp4"): string | undefined {
   if (!filename.startsWith(`${prefix}-`)) return;

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { HarmonyMediaArtifact } from "@/lib/harmony/types";
 import { copyText } from "@/lib/clipboard";
+import { showPioraMessage } from "@/components/PioraMessage";
 import styles from "../HarmonyPanel.module.css";
 
 export function MediaHistory({ serial, refreshKey, chinese }: { serial: string; refreshKey?: string; chinese: boolean }) {
@@ -10,24 +11,26 @@ export function MediaHistory({ serial, refreshKey, chinese }: { serial: string; 
   const [artifacts, setArtifacts] = useState<HarmonyMediaArtifact[]>([]);
   const [truncated, setTruncated] = useState(false);
   const [filter, setFilter] = useState<"all" | "screenshot" | "recording">("all");
-  const [error, setError] = useState(""), [notice, setNotice] = useState(""), [busy, setBusy] = useState(false);
+  const [error, setError] = useState(""), [busy, setBusy] = useState(false);
   const load = useCallback(async (signal?: AbortSignal) => {
     const response = await fetch(`/api/harmony/media/history?serial=${encodeURIComponent(serial)}`, { cache: "no-store", signal });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message ?? data.error ?? "Unable to load media history");
     if (!Array.isArray(data.artifacts)) throw new Error("Invalid media history");
+    if (signal?.aborted) return;
     setArtifacts(data.artifacts); setTruncated(Boolean(data.truncated)); setError("");
   }, [serial]);
   useEffect(() => {
     const controller = new AbortController();
+    setArtifacts([]); setError("");
     void load(controller.signal).catch(failure => { if (!controller.signal.aborted) setError(failure instanceof Error ? failure.message : String(failure)); });
     return () => controller.abort();
   }, [load, refreshKey]);
   const act = async (action: () => Promise<unknown>, success: string) => {
     if (busy) return;
-    setBusy(true); setError(""); setNotice("");
-    try { await action(); setNotice(success); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : String(failure)); }
+    setBusy(true); setError("");
+    try { await action(); if (success) await showPioraMessage({ title: success, message: "", tone: "success", actions: [{ id: "done", label: copy("完成", "Done"), primary: true }] }); }
+    catch (failure) { await showPioraMessage({ title: copy("操作未完成", "Action failed"), message: failure instanceof Error ? failure.message : String(failure), tone: "error", actions: [{ id: "done", label: copy("确定", "OK"), primary: true }] }); }
     finally { setBusy(false); }
   };
   const visible = artifacts.filter(item => filter === "all" || item.kind === filter);
@@ -39,7 +42,7 @@ export function MediaHistory({ serial, refreshKey, chinese }: { serial: string; 
       </select></label>
       <button type="button" disabled={busy} onClick={() => void load().catch(failure => setError(failure instanceof Error ? failure.message : String(failure)))}>{copy("刷新历史", "Refresh history")}</button>
     </div>
-    {notice ? <p role="status">{notice}</p> : null}{error ? <p role="alert">{error}</p> : null}
+    {error ? <p role="alert">{error}</p> : null}
     {truncated ? <small>{copy("仅展示最近 40 个结果；媒体目录内容较多。", "Showing the 40 newest results; the media directory contains more.")}</small> : null}
     {!visible.length ? <p className={styles.mediaEmpty}>{copy("此设备暂无已保存的截图或录屏。", "No saved screenshots or recordings for this device.")}</p> : null}
     <div className={styles.mediaHistoryList}>{visible.map(item => <article className={styles.mediaHistoryCard} key={item.path}>
@@ -51,6 +54,9 @@ export function MediaHistory({ serial, refreshKey, chinese }: { serial: string; 
       <small>{item.filename}{item.width && item.height ? ` · ${item.width}×${item.height}` : ""} · {(item.size / 1024).toFixed(1)} KiB</small>
       <code className={styles.mediaHistoryPath} title={item.path}>{item.path}</code>
       <div className={styles.mediaHistoryActions}>
+        <button type="button" disabled={busy || !window.piDesktop?.revealPath} onClick={() => void act(async () => {
+          if (!await window.piDesktop?.revealPath?.(item.path)) throw new Error(copy("无法打开文件夹", "Could not reveal file"));
+        }, "")}>{copy("打开文件夹", "Show folder")}</button>
         <button type="button" disabled={busy || !window.piDesktop?.openPath} onClick={() => void act(async () => {
           if (!await window.piDesktop?.openPath?.(item.path)) throw new Error(copy("无法打开媒体文件", "Could not open media file"));
         }, copy("已打开文件", "Opened file"))}>{copy("打开文件", "Open file")}</button>
@@ -60,6 +66,13 @@ export function MediaHistory({ serial, refreshKey, chinese }: { serial: string; 
           if (!copyMedia) throw new Error(copy("媒体剪贴板不可用", "Media clipboard unavailable"));
           await copyMedia({ kind: item.kind, path: item.path });
         }, copy("媒体已复制", "Media copied"))}>{copy("复制媒体", "Copy media")}</button>
+        <button type="button" disabled={busy} onClick={() => void act(async () => {
+          const answer = await showPioraMessage({ title: copy("删除媒体文件？", "Delete media file?"), message: item.filename, tone: "confirm", actions: [{ id: "cancel", label: copy("取消", "Cancel") }, { id: "delete", label: copy("删除", "Delete"), primary: true }] });
+          if (answer !== "delete") return;
+          const response = await fetch("/api/harmony/media/history", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "delete", serial, filename: item.filename }) });
+          if (!response.ok) throw new Error(copy("删除失败，文件可能已经改变。", "Deletion failed; the file may have changed."));
+          await load();
+        }, "")}>{copy("删除", "Delete")}</button>
       </div>
     </article>)}</div>
   </fieldset>;

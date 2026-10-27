@@ -14,6 +14,8 @@ import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/hooks/useI18n";
 import { parseCompactionSummary } from "@/lib/compaction-summary";
 import { summarizeToolDisclosure } from "@/lib/tool-summary";
+import { fileToolResult } from "@/lib/file-tool-result";
+import { FileToolResultView } from "./FileToolResultView";
 import { commandExitCode, commandResultMetadata, commandStatus, isCommandToolName, toolResultText, type CommandExecutionData } from "@/lib/command-execution";
 import { getFileChangeInfo, type FileChangeInfo } from "@/lib/file-change";
 import {
@@ -883,6 +885,7 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
   const summary = summarizeToolDisclosure(block.toolName, block.input, result?.isStreaming ? undefined : result, t);
   const automationDetails = getAutomationToolCardDetails(block, result);
   const nestedCalls = useNestedToolCalls(block.toolCallId, result?.nestedCalls);
+  const fileResult = useMemo(() => fileToolResult(block, result, cwd), [block, result, cwd]);
 
   if (isCommandToolName(block.toolName)) {
     const output = toolResultText(result);
@@ -967,6 +970,7 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
       </>}>
       {result ? resultDiff
         ? <PairedDiffResult diff={resultDiff} />
+        : fileResult ? <FileToolResultView model={fileResult} toolCallId={block.toolCallId} onOpenFile={onOpenFile} />
         : <PairedResult text={resultText ?? ""} isEmpty={resultIsEmpty} isError={isError} />
         : <div className="chat-disclosure-notice">{t(historyMode ? "history.noSavedResult" : "command.waitingForOutput")}</div>}
       {nestedCalls ? <NestedToolCalls snapshot={nestedCalls} /> : null}

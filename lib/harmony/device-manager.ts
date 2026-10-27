@@ -1,6 +1,9 @@
 import { randomBytes } from "node:crypto";
 import { statSync, readFileSync } from "node:fs";
-import { readFile, rm } from "node:fs/promises";
+import { readFile, rm, copyFile, mkdir, statfs } from "node:fs/promises";
+import { constants } from "node:fs";
+import { RECORDING_POLICY } from "./media/recording-policy";
+import { RecordingDrafts } from "./media/recording-drafts";
 import { basename, dirname, join } from "node:path";
 
 import { asHarmonyError, HarmonyError, isHarmonyError } from "./errors";
@@ -70,7 +73,7 @@ import type {
   HarmonyTapRefOptions,
   HarmonyUiNode,
 } from "./types";
-import { prepareHarmonyRecordingPath, recordingArtifact, saveHarmonyScreenshot } from "./artifacts";
+import { nextHarmonyArtifactPath, prepareHarmonyRecordingPath, recordingArtifact, saveHarmonyScreenshot, resolveHarmonyStorage } from "./artifacts";
 
 const DEFAULT_LEASE_TTL_MS = 5 * 60_000;
 const MIN_LEASE_TTL_MS = 5_000;
@@ -101,6 +104,7 @@ export interface HarmonyDeviceManagerOptions {
   backendFactory?: (config: HarmonyConfig) => HarmonyAutomationBackend;
   configPath?: string;
   now?: () => number;
+  freeDiskBytes?: (directory: string) => Promise<number>;
   token?: () => string;
 }
 
@@ -166,6 +170,7 @@ export class HarmonyDeviceManager {
   private readonly configPath: string;
   private config: HarmonyConfig;
   private readonly now: () => number;
+  private readonly freeDiskBytes: (directory: string) => Promise<number>;
   private readonly token: () => string;
   private readonly devices = new Map<string, HarmonyDevice>();
   private readonly generations = new Map<string, number>();
@@ -179,6 +184,9 @@ export class HarmonyDeviceManager {
   private readonly recordingStarts = new Set<string>();
   private readonly recordingTasks = new Map<string, string>();
   private readonly recordingFinishes = new Map<string, Promise<HarmonyMediaArtifact>>();
+  private readonly completedRecordings = new Map<string, { ownerId: string; artifact: HarmonyMediaArtifact; stopReason?: string }>();
+  private recordingDrafts?: RecordingDrafts;
+  private readonly recoveredRecordings = new Map<string, { state: HarmonyRecordingState; finalized: boolean }>();
   private readonly recordingFailures = new Map<string, HarmonyError>();
   private readonly recordingRecoveryDevices = new Set<string>();
   private readonly inputOnlyStops = new Set<string>();
@@ -206,6 +214,7 @@ export class HarmonyDeviceManager {
   private readonly stoppingDevices = new Map<string, "stopping" | "recovering">();
   private readonly stopPromises = new Map<string, Promise<{ dispatchBlocked: true; cleanup: "complete" | "uncertain" }>>();
   private readonly recordingTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  private readonly recordingDiskTimers = new Map<string, ReturnType<typeof setInterval>>();
   private readonly recoveryStore?: HarmonyRecoveryStore;
   private readonly capabilityCache = new Map<string, { fingerprint: string; at: number; values: HarmonyDoctorReport["capabilities"] }>();
   private readonly capabilityFailures = new Map<string, Map<string, string>>();
@@ -236,9 +245,12 @@ export class HarmonyDeviceManager {
     this.configPath = options.configPath ?? defaultHarmonyConfigPath();
     this.config = readHarmonyConfig(this.configPath);
     this.now = options.now ?? Date.now;
+    this.freeDiskBytes = options.freeDiskBytes ?? (async directory => { const space = await statfs(directory); return space.bavail * space.bsize; });
     this.operationTasks = new HarmonyOperationTasks(!options.backend || options.configPath
       ? join(dirname(this.configPath), "harmony-operation-tasks.json") : undefined, this.now);
     if (!options.backend || options.configPath) {
+      this.recordingDrafts = new RecordingDrafts(join(dirname(this.configPath), "harmony-recording-drafts"));
+      for (const draft of this.recordingDrafts.list()) this.recoveredRecordings.set(draft.state.recordingId, draft);
       this.scenarioStore = new ScenarioExecutionStore(join(dirname(this.configPath), "harmony-executions"));
       this.scenarioStore.recoverInterrupted();
       this.recoveryStore = new HarmonyRecoveryStore(join(dirname(this.configPath), "harmony-recovery"));
@@ -1392,10 +1404,52 @@ export class HarmonyDeviceManager {
 
   getRecordingState(serial: string): HarmonyRecordingState | undefined {
     validateSerial(serial);
-    if (this.recordingStarts.has(serial)) return undefined;
     const state = this.recordings.get(serial);
-    if (state && this.recordingFailures.get(state.recordingId)?.details?.recordingStopped === true) return undefined;
     return state ? { ...state } : undefined;
+  }
+
+  getRecordingRecoveries(serial: string): HarmonyRecordingState[] {
+    validateSerial(serial);
+    return [...this.recoveredRecordings.values()].filter(item => item.state.serial === serial).map(item => ({ ...item.state, recoveryAvailable: item.finalized }));
+  }
+
+  getRecordingCompletion(serial: string, recordingId: string, ownerId: string) {
+    validateSerial(serial);
+    const completed = this.completedRecordings.get(recordingId);
+    return completed?.artifact.serial === serial && completed.ownerId === ownerId ? { artifact: completed.artifact, stopReason: completed.stopReason } : null;
+  }
+
+  async discardRecordingDraft(options: { serial: string; recordingId: string; ownerId: string; signal?: AbortSignal }): Promise<void> {
+    validateSerial(options.serial);
+    await this.enqueue("discard_recording_draft", async () => {
+      const draft = this.recoveredRecordings.get(options.recordingId);
+      if (!draft || draft.state.serial !== options.serial || !this.recordingDrafts) throw new HarmonyError("INVALID_ARGUMENT", "No retained recording matches this request");
+      // Only registered, inactive local recovery files can be discarded. Phone originals stay.
+      this.recordingDrafts.clear(options.recordingId);
+      this.recoveredRecordings.delete(options.recordingId);
+    }, options.signal, options.ownerId, options.serial, undefined, "media");
+  }
+
+  async retryRecordingSave(options: { serial: string; recordingId: string; ownerId: string; signal?: AbortSignal }): Promise<HarmonyMediaArtifact> {
+    const current = this.recordings.get(options.serial);
+    if (current?.recordingId === options.recordingId) return this.stopRecording(options);
+    return this.enqueue("retry_recording_save", async () => {
+      const completed = this.completedRecordings.get(options.recordingId);
+      if (completed && completed.ownerId === options.ownerId && completed.artifact.serial === options.serial) return completed.artifact;
+      const draft = this.recoveredRecordings.get(options.recordingId);
+      if (!draft || draft.state.serial !== options.serial || !this.recordingDrafts) throw new HarmonyError("INVALID_ARGUMENT", "No retained recording matches this request");
+      if (!draft.finalized) throw new HarmonyError("INVALID_RESPONSE", "This interrupted recording was not finalized and cannot be automatically recovered. The draft is retained.");
+      const destination = await prepareHarmonyRecordingPath(this.config, options.serial, new Date(draft.state.startedAt));
+      if (draft.state.method === "system-recorder" && draft.state.systemFileName) {
+        const backend = this.requireBackend();
+        if (!backend.retrieveRetainedRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "This runtime cannot retrieve retained system recordings");
+        await backend.retrieveRetainedRecording(options.serial, draft.state.systemFileName, destination);
+      } else await copyFile(this.recordingDrafts.path(options.recordingId), destination, constants.COPYFILE_EXCL);
+      const artifact = await recordingArtifact(options.serial, destination, new Date());
+      this.recordingDrafts.clear(options.recordingId); this.recoveredRecordings.delete(options.recordingId);
+      this.completedRecordings.set(options.recordingId, { ownerId: options.ownerId, artifact });
+      return artifact;
+    }, options.signal, options.ownerId, options.serial, undefined, "media");
   }
 
   async startRecording(options: {
@@ -1420,11 +1474,15 @@ export class HarmonyDeviceManager {
       // never acquires or preempts the input lease, including a long AI action.
       const backend = this.requireBackend();
       if (!backend.startRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony screen recording is unavailable on this device runtime");
+      const directory = resolveHarmonyStorage(this.config).recordingDirectory;
+      await mkdir(directory, { recursive: true });
+      if (await this.freeDiskBytes(directory) < RECORDING_POLICY.minimumFreeBytes) throw new HarmonyError("COMMAND_OUTPUT_LIMIT", "Recording needs at least 256 MiB of free disk space");
       await this.onlineDevice(options.serial, signal);
       this.requireAdmission(options.serial, true);
       if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Recording start cancelled", { details: { dispatchState: "not-sent" } });
       const recordingId = randomBytes(12).toString("hex");
       const state: HarmonyRecordingState = {
+        phase: "preparing", maxDurationMs: RECORDING_POLICY.durationMs, bytesWritten: 0,
         serial: options.serial,
         recordingId,
         remoteName: `piora-recording-${recordingId}.mp4`,
@@ -1439,14 +1497,30 @@ export class HarmonyDeviceManager {
       dispatched = true;
       let stateUnknown = false;
       try {
-        const started = await backend.startRecording(options.serial, state.remoteName, signal, error => this.recordingFailed(state, error));
+        const destinationDirectory = resolveHarmonyStorage(this.config).recordingDirectory;
+        await mkdir(destinationDirectory, { recursive: true });
+        this.recordingDrafts?.save(state);
+        const started = await backend.startRecording(options.serial, state.remoteName, signal, error => this.recordingFailed(state, error), {
+          ...(this.recordingDrafts ? { draftPath: this.recordingDrafts.path(recordingId) } : {}), destinationDirectory,
+          onProgress: update => {
+            if (update.bytesWritten !== undefined) state.bytesWritten = update.bytesWritten;
+            if (update.stopReason) state.stopReason = update.stopReason;
+            if (update.finalized) { state.recoveryAvailable = true; state.phase = "saving"; }
+            this.recordingDrafts?.save(state, update.finalized);
+          },
+        });
         state.method = started?.method ?? "stream";
+        if (started?.systemFileName) state.systemFileName = started.systemFileName;
+        state.phase = "recording";
+        this.recordingDrafts?.save(state);
       }
       catch (error) {
         // A sent but unconfirmed system-recorder start may be recording on the phone. Keep the
         // session so the user can stop it there and retrieve the file; no toggle is sent again.
         if (isHarmonyError(error) && error.details?.systemRecorderStateUnknown === true && error.details?.recordingStopped === false) {
-          state.method = "system-recorder"; state.systemRecorderStateUnknown = true; stateUnknown = true;
+          state.method = "system-recorder"; state.systemRecorderStateUnknown = true; state.phase = "unconfirmed"; stateUnknown = true;
+          if (typeof error.details.systemFileName === "string") state.systemFileName = error.details.systemFileName;
+          this.recordingDrafts?.save(state);
         } else {
         if (isHarmonyError(error) && (error.details?.recordingStopped || error.details?.dispatchState === "not-sent")) {
           this.recordings.delete(options.serial); this.recordingTasks.delete(recordingId);
@@ -1467,8 +1541,20 @@ export class HarmonyDeviceManager {
         return { ...state };
       }
       // The media duration limit must not cancel an unrelated AI/input owner.
-      const timer = setTimeout(() => { void this.stopRecording({ serial: options.serial, ownerId: state.ownerId, recordingId }).catch(() => undefined); }, 120_000);
+      const timer = setTimeout(() => { state.stopReason = "duration-limit"; void this.stopRecording({ serial: options.serial, ownerId: state.ownerId, recordingId }).catch(() => undefined); }, RECORDING_POLICY.durationMs);
       timer.unref?.(); this.recordingTimers.set(options.serial, timer);
+      let checkingDisk = false;
+      const diskTimer = setInterval(() => {
+        if (checkingDisk) return;
+        checkingDisk = true;
+        void this.freeDiskBytes(directory).then(bytes => {
+          if (this.recordings.get(options.serial) === state && bytes < RECORDING_POLICY.minimumFreeBytes) {
+            state.stopReason = "disk-space";
+            return this.stopRecording({ serial: options.serial, ownerId: state.ownerId, recordingId });
+          }
+        }).catch(() => undefined).finally(() => { checkingDisk = false; });
+      }, RECORDING_POLICY.diskCheckIntervalMs);
+      diskTimer.unref?.(); this.recordingDiskTimers.set(options.serial, diskTimer);
       this.emit({ type: "operation", timestamp: iso(this.now()), serial: options.serial, operation: "start_recording", operationId });
       return { ...state };
     }, options.signal, options.ownerId, options.serial, undefined, "media"); }
@@ -1484,6 +1570,8 @@ export class HarmonyDeviceManager {
   }): Promise<HarmonyMediaArtifact> {
     validateSerial(options.serial);
     return await this.enqueue("stop_recording", async (signal, operationId) => {
+      const completed = options.recordingId ? this.completedRecordings.get(options.recordingId) : undefined;
+      if (completed && completed.ownerId === options.ownerId && completed.artifact.serial === options.serial) return completed.artifact;
       if (options.leaseToken) {
         const lease = this.requireLease(options.serial, options.leaseToken);
         if (lease.owner.id !== options.ownerId) throw new HarmonyError("LEASE_REQUIRED", "The recording owner does not hold this device lease");
@@ -1557,6 +1645,8 @@ export class HarmonyDeviceManager {
       await backend.abandonRecording(options.serial, state.remoteName);
       if (this.recordings.get(options.serial) === state) this.recordings.delete(options.serial);
       clearTimeout(this.recordingTimers.get(options.serial)); this.recordingTimers.delete(options.serial);
+      clearInterval(this.recordingDiskTimers.get(options.serial)); this.recordingDiskTimers.delete(options.serial);
+      this.recordingDrafts?.clear(state.recordingId);
       this.clearRecordingRecovery(options.serial);
       const taskId = this.recordingTasks.get(state.recordingId);
       if (taskId) this.operationTasks.failed(taskId, new HarmonyError("COMMAND_ABORTED", "Retrieval abandoned; the recording remains in the phone gallery", { details: { reason: "system-recording-abandoned", recordingStopped: true } }));
@@ -1567,9 +1657,10 @@ export class HarmonyDeviceManager {
 
   private recordingFailed(state: HarmonyRecordingState, error: HarmonyError): void {
     if (this.recordings.get(state.serial) !== state) return;
-    this.recordingFailures.set(state.recordingId, error);
+    if (error.details?.recoverable === true) state.stopReason = String(error.details.stopReason ?? "interrupted");
+    else this.recordingFailures.set(state.recordingId, error);
     const taskId = this.recordingTasks.get(state.recordingId);
-    try { if (taskId) this.operationTasks.failed(taskId, error); }
+    try { if (taskId && error.details?.recoverable !== true) this.operationTasks.failed(taskId, error); }
     catch (failure) { this.runtimeError = asHarmonyError(failure); }
     void this.enqueue("recording_failed", async signal => {
       if (this.recordings.get(state.serial) === state) await this.finishRecording(state, signal);
@@ -1588,8 +1679,10 @@ export class HarmonyDeviceManager {
 
   private async finishRecordingNow(state: HarmonyRecordingState, signal: AbortSignal, reason?: string, mode: "stop" | "retrieve" = "stop"): Promise<HarmonyMediaArtifact> {
     const serial = state.serial, taskId = this.recordingTasks.get(state.recordingId);
+    clearInterval(this.recordingDiskTimers.get(serial)); this.recordingDiskTimers.delete(serial);
     let stopped = false;
     try {
+      state.phase = "stopping";
       const backend = this.requireBackend();
       if (!backend.stopRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony screen recording is unavailable on this device runtime");
       if (mode === "retrieve" && !backend.retrieveRecording) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "System recording retrieval is unavailable on this device runtime");
@@ -1597,9 +1690,10 @@ export class HarmonyDeviceManager {
       let journalFailure: unknown;
       try { if (taskId) this.operationTasks.started(taskId, "saving"); }
       catch (error) { journalFailure = error; }
-      const destinationPath = await prepareHarmonyRecordingPath(this.config, serial, new Date(state.startedAt));
+      const destinationPath = await prepareHarmonyRecordingPath(this.config, serial, new Date(state.startedAt)).catch(() => nextHarmonyArtifactPath(this.config, "recording", serial, new Date(state.startedAt)));
       if (mode === "retrieve") await backend.retrieveRecording!(serial, state.remoteName, destinationPath, signal);
       else await backend.stopRecording(serial, state.remoteName, destinationPath, signal);
+      state.phase = "saving";
       stopped = true;
       if (this.recordings.get(serial) === state) this.recordings.delete(serial);
       this.clearRecordingRecovery(serial);
@@ -1612,9 +1706,21 @@ export class HarmonyDeviceManager {
         verification: "media-saved", mediaFilename: artifact.filename });
       this.recordingTasks.delete(state.recordingId);
       this.recordingFailures.delete(state.recordingId);
+      this.recordingDrafts?.clear(state.recordingId);
+      this.completedRecordings.set(state.recordingId, { ownerId: state.ownerId, artifact, ...(state.stopReason ? { stopReason: state.stopReason } : {}) });
+      if (this.completedRecordings.size > 100) this.completedRecordings.delete(this.completedRecordings.keys().next().value!);
       return artifact;
     }
       catch (error) {
+        if (isHarmonyError(error) && error.details?.recoverable === true) {
+          state.phase = "save-failed"; state.recoveryAvailable = true;
+          if (error.details?.systemRecorderStateUnknown) state.systemRecorderStateUnknown = true;
+          clearTimeout(this.recordingTimers.get(serial)); this.recordingTimers.delete(serial);
+          this.recordingDrafts?.save(state);
+          this.clearRecordingRecovery(serial);
+          if (taskId) this.operationTasks.failed(taskId, error);
+          throw error;
+        }
         // A retrieval-only attempt that found or copied nothing keeps the session: the user can
         // retry "我已停止，取回录屏" or explicitly give up. Nothing on the phone was toggled.
         if (!stopped && mode === "retrieve" && isHarmonyError(error) && error.details?.pendingRetrieval === true && error.details?.recordingStopped === false) {

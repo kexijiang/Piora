@@ -81,14 +81,28 @@ export function useWorktreeState({ selectedCwd, setSelectedCwd, refreshKey }: {
   }, [selectedCwd, setSelectedCwd, worktreeState, wtBusy]);
 
   useEffect(() => {
+    const reset = () => {
+      setWtDropdownOpen(false); setWtNewOpen(false); setWtNewBranch("");
+      setWtError(null); setWtConfirmRemove(null); setWtFilter("");
+    };
     const close = (event: MouseEvent) => {
       if (wtDropdownRef.current && !wtDropdownRef.current.contains(event.target as Node)) {
-        setWtDropdownOpen(false); setWtNewOpen(false); setWtNewBranch("");
-        setWtError(null); setWtConfirmRemove(null); setWtFilter("");
+        reset();
       }
     };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const section = wtDropdownRef.current?.closest("section");
+      if (!section?.contains(document.activeElement)) return;
+      reset();
+      section.querySelector<HTMLButtonElement>("[data-worktree-menu-trigger]")?.focus();
+    };
+    // The picker now participates in project layout. Dismiss on the completed
+    // click, not mousedown, so removing it cannot move another button between
+    // pointer-down and pointer-up. Capture still precedes that button's action.
+    document.addEventListener("click", close, true);
+    document.addEventListener("keydown", onKeyDown);
+    return () => { document.removeEventListener("click", close, true); document.removeEventListener("keydown", onKeyDown); };
   }, []);
 
   return {

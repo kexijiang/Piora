@@ -1148,6 +1148,10 @@ export function AppShell() {
           setRightPanelTab("review");
           setRightPanelOpen(true);
           break;
+        case "harmony-workbench":
+          setRightPanelTab("harmony");
+          setRightPanelOpen(true);
+          break;
         case "open-browser":
           setRightPanelTab("browser");
           setRightPanelOpen(true);

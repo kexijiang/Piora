@@ -5,6 +5,8 @@ import type { SettingsKey } from "@/lib/settings-search";
 declare global {
   interface Window {
     piDesktop?: {
+      harmonyMirror?: import("@/desktop/src/harmony-window-types").HarmonyWindowBridge;
+      messages?: import("@/desktop/src/harmony-window-types").PioraMessageBridge;
       files?: { getPathForFile: (file: File) => string };
       restartForDataImport?: () => Promise<boolean>;
       quickAccess?: import("@/desktop/src/quick-access-types").QuickAccessBridge;

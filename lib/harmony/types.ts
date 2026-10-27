@@ -172,9 +172,15 @@ export type HarmonyRecordingMethod = "system-recorder" | "stream";
 
 export interface HarmonyRecordingStartResult {
   method: HarmonyRecordingMethod;
+  systemFileName?: string;
 }
 
 export interface HarmonyRecordingState {
+  phase?: "preparing" | "recording" | "stopping" | "saving" | "recoverable" | "save-failed" | "unconfirmed";
+  maxDurationMs?: number;
+  bytesWritten?: number;
+  stopReason?: string;
+  recoveryAvailable?: boolean;
   serial: string;
   recordingId: string;
   remoteName: string;
@@ -183,6 +189,13 @@ export interface HarmonyRecordingState {
   method?: HarmonyRecordingMethod;
   /** The system recorder start was sent but not confirmed: the user stops it on the phone, then Piora only retrieves the file. */
   systemRecorderStateUnknown?: boolean;
+  systemFileName?: string;
+}
+
+export interface HarmonyRecordingContext {
+  draftPath?: string;
+  destinationDirectory: string;
+  onProgress?: (update: { bytesWritten?: number; finalized?: boolean; stopReason?: string }) => void;
 }
 
 export interface HarmonyRuntimeCandidate {
@@ -477,10 +490,11 @@ export interface HarmonyAutomationBackend {
     serial: string,
     options: { includeTree: boolean; includeScreenshot: boolean; signal?: AbortSignal },
   ): Promise<BackendSnapshot>;
-  startRecording?(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: import("./errors").HarmonyError) => void): Promise<HarmonyRecordingStartResult | void>;
+  startRecording?(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: import("./errors").HarmonyError) => void, context?: HarmonyRecordingContext): Promise<HarmonyRecordingStartResult | void>;
   stopRecording?(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number>;
   /** Retrieval only, for a system recording the user stopped on the phone; never toggles the recorder. */
   retrieveRecording?(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number>;
+  retrieveRetainedRecording?(serial: string, fileName: string, destinationPath: string): Promise<number>;
   /** Forgets an unconfirmed system recording on the PC side; removes only the relay copy, never toggles or deletes gallery media. */
   abandonRecording?(serial: string, remoteName: string): Promise<void>;
   openVideoStream?(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection>;

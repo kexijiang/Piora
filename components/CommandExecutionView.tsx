@@ -2,13 +2,13 @@
 
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
-import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { copyText } from "@/lib/clipboard";
-import { commandActionKey, commandDisplayName, commandErrorExcerpt, type CommandExecutionData } from "@/lib/command-execution";
+import { commandDisplayName, commandErrorExcerpt, type CommandExecutionData } from "@/lib/command-execution";
 import { useVirtualRowToggle } from "./VirtualRowState";
 import { AliIcon } from "./AliIcon";
-import { ChatDisclosure } from "./ChatDisclosure";
+import { ChatDisclosure, togglePreservingScroll } from "./ChatDisclosure";
 import { RevealProcessCommandContext, useCompactProcess } from "./CompactProcessContext";
 
 const CommandLogViewer = dynamic(
@@ -38,19 +38,18 @@ function IconButton({ icon, label, onClick, disabled = false }: { icon: "copy" |
   );
 }
 
-function CopyButton({ text, compact = false }: { text: string; compact?: boolean }) {
+function CopyButton({ text, label }: { text: string; label?: string }) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   return (
-    <button type="button" className={compact ? "command-icon-button" : "command-text-button"} title={t("command.copyCommand")} aria-label={t("command.copyCommand")}
+    <button type="button" className="command-icon-button" title={copied ? t("i18n.copied") : label ?? t("command.copyCommand")} aria-label={label ?? t("command.copyCommand")}
       onClick={() => { void copyText(text).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 1400); }); }}>
       <AliIcon name={copied ? "check" : "copy"} size={13} />
-      {!compact ? <span>{copied ? t("i18n.copied") : t("i18n.copy")}</span> : null}
     </button>
   );
 }
 
-function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecutionData; initialSearch?: string }) {
+function CommandOutputPanel({ data, initialSearch = "", inDialog = false }: { data: CommandExecutionData; initialSearch?: string; inDialog?: boolean }) {
   const { t } = useI18n();
   const [fullOutput, setFullOutput] = useState<string | null>(null);
   const [loadingFull, setLoadingFull] = useState(false);
@@ -59,7 +58,8 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
   const [searchRequest, setSearchRequest] = useState(0);
   const [endRequest, setEndRequest] = useState(0);
   const [following, setFollowing] = useState(data.isStreaming);
-  const [outputCopied, setOutputCopied] = useState(false);
+  const [outputExpanded, setOutputExpanded] = useVirtualRowToggle(`command-output-height:${data.id}`);
+  const [outputOverflows, setOutputOverflows] = useState(false);
   const fullUrl = commandOutputUrl(data);
   const output = data.isStreaming ? data.output : fullOutput ?? data.output;
   const isEmpty = !output.trim() || output.trim() === "(no output)";
@@ -92,8 +92,9 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
   }
 
   return (
-    <section className="command-output-section" aria-label={t("command.output")}>
+    <section className={`command-output-section${!inDialog && outputExpanded ? " is-output-expanded" : ""}`} aria-label={t("command.output")}>
       <div className="command-section-toolbar">
+        <AliIcon name="code" size={14} aria-hidden="true" />
         <span className="command-section-label">{t("command.output")}</span>
         {fullOutput !== null ? <span className="command-full-loaded">{t("command.fullOutputLoaded")}</span> : null}
         <span className="command-toolbar-spacer" />
@@ -101,10 +102,15 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
           <IconButton icon="search" label={t("command.searchOutput")} onClick={() => setSearchRequest((value) => value + 1)} />
           <IconButton icon="code" label={t(wrap ? "command.disableWrap" : "command.enableWrap")} onClick={() => setWrap((value) => !value)} />
           <IconButton icon="arrowdown" label={t("command.jumpToEnd")} onClick={() => setEndRequest((value) => value + 1)} />
-          <button type="button" className="command-text-button" onClick={() => { void copyText(output).then(() => { setOutputCopied(true); window.setTimeout(() => setOutputCopied(false), 1400); }); }}>
-            <AliIcon name={outputCopied ? "check" : "copy"} size={13} />
-            {outputCopied ? t("i18n.copied") : t(data.truncated && fullOutput === null ? "command.copyCurrentOutput" : "command.copyOutput")}
-          </button>
+          {!inDialog && (outputExpanded || outputOverflows) ? (
+            <button type="button" className="command-icon-button command-output-expand" aria-expanded={outputExpanded}
+              title={t(outputExpanded ? "command.collapseOutput" : "command.expandOutput")}
+              aria-label={t(outputExpanded ? "command.collapseOutput" : "command.expandOutput")}
+              onClick={(event) => togglePreservingScroll(event.currentTarget, () => setOutputExpanded(!outputExpanded))}>
+              <AliIcon name="chevron-right" size={13} aria-hidden="true" />
+            </button>
+          ) : null}
+          <CopyButton text={output} label={t(data.truncated && fullOutput === null ? "command.copyCurrentOutput" : "command.copyOutput")} />
         </> : null}
       </div>
       {data.truncated && fullOutput === null ? (
@@ -121,7 +127,7 @@ function CommandOutputPanel({ data, initialSearch = "" }: { data: CommandExecuti
         <div className="command-empty-output">{t(data.status === "running" ? data.historical ? "history.noSavedResult" : "command.waitingForOutput" : data.status === "success" ? "command.noOutput" : "command.noErrorOutput")}</div>
       ) : (
         <div className="command-log-frame">
-          <CommandLogViewer output={output} wrap={wrap} streaming={data.isStreaming} searchText={initialSearch} searchRequest={searchRequest} endRequest={endRequest} ariaLabel={t("command.outputLog")} onFollowChange={setFollowing} />
+          <CommandLogViewer output={output} wrap={wrap} streaming={data.isStreaming} searchText={initialSearch} searchRequest={searchRequest} endRequest={endRequest} ariaLabel={t("command.outputLog")} onFollowChange={setFollowing} onOverflowChange={setOutputOverflows} />
           {data.isStreaming && !following ? <button type="button" className="command-follow-output" onClick={() => setEndRequest((value) => value + 1)}>{t("command.backToLatest")}</button> : null}
         </div>
       )}
@@ -138,6 +144,7 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
     if (inspectCommand === data.id) setExpanded(true);
   }, [inspectCommand, data.id, setExpanded]);
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`command-diagnostics:${data.id}`);
+  const diagnosticsId = useId();
   const [errorSearch, setErrorSearch] = useState("");
   const errorExcerpt = useMemo(() => data.status === "failed" || data.status === "cancelled" || data.status === "timed_out" ? commandErrorExcerpt(data.output) : "", [data.output, data.status]);
   const statusParts = [t(data.historical && data.status === "running" ? "history.noSavedResult" : statusKey(data.status))];
@@ -152,15 +159,18 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
   return (
     <div className={compact ? "compact-command-card" : undefined}>
     <ChatDisclosure className={`command-execution-card is-${data.historical && data.status === "running" ? "unknown" : data.status}`}
-      expanded={expanded} onExpandedChange={setExpanded} label={t(commandActionKey(data.command))} icon="code"
+      expanded={expanded} onExpandedChange={setExpanded} label={t("command.action.run")} icon="terminal"
       description={<span className="command-summary-preview" title={data.command}>{data.command.replace(/\s+/g, " ").trim()}</span>}
       triggerClassName="command-execution-toggle"
       metadata={<span title={statusParts.join(" · ")} aria-label={statusParts.join(" · ")} className={`chat-disclosure-status is-${data.historical && data.status === "running" ? "unknown" : data.status}`}>
-        <AliIcon name={data.status === "cancelled" ? "stop" : data.status === "timed_out" ? "timer" : data.status === "failed" ? "error" : data.status === "running" ? "timer" : "check"} size={14} aria-hidden="true" />
-        {data.status === "success" && !expanded ? null : statusParts.join(" · ")}
+        <span className="command-status-badge">
+          <AliIcon name={data.status === "cancelled" ? "stop" : data.status === "timed_out" ? "timer" : data.status === "failed" ? "error" : data.status === "running" ? "timer" : "check"} size={14} aria-hidden="true" />
+          {data.status === "success" && !expanded ? null : statusParts[0]}
+        </span>
+        {expanded && statusParts.length > 1 ? <span className="command-status-details">{statusParts.slice(1).join(" · ")}</span> : null}
       </span>}
       actions={<>
-        <CopyButton text={data.command} compact />
+        <CopyButton text={data.command} />
         {actions ? <span className="command-message-actions">{actions}</span> : null}
         {onOpen ? <IconButton icon="expand" label={t("command.openLargeViewer")} onClick={() => onOpen(data)} /> : null}
       </>}>
@@ -172,18 +182,26 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
       <div className="command-execution-details">
         <section className="command-source-section">
           <div className="command-section-toolbar">
+            <AliIcon name="terminal" size={14} aria-hidden="true" />
             <span className="command-section-label">{t("command.command")}</span>
-            {data.cwd ? <span className="command-cwd" title={data.cwd}>{t("command.cwd")}: {data.cwd}</span> : null}
             <span className="command-toolbar-spacer" />
             <CopyButton text={data.command} />
           </div>
+          {data.cwd ? <div className="command-cwd" title={data.cwd}>{t("command.cwd")}: {data.cwd}</div> : null}
           <pre>{data.command}</pre>
         </section>
         <CommandOutputPanel data={data} initialSearch={errorSearch} />
-        {data.diagnostics ? <ChatDisclosure variant="inline" expanded={diagnosticsOpen} onExpandedChange={setDiagnosticsOpen}
-          label={t("toolSummary.diagnostics")}>
-          <pre className="chat-disclosure-diagnostics command-diagnostics">{data.diagnostics}</pre>
-        </ChatDisclosure> : null}
+        {data.diagnostics ? <section className="command-diagnostics-section" aria-label={t("toolSummary.diagnostics")}>
+          <div className="command-section-toolbar">
+            <button type="button" className="command-section-toggle" aria-expanded={diagnosticsOpen} aria-controls={diagnosticsId}
+              onClick={(event) => togglePreservingScroll(event.currentTarget, () => setDiagnosticsOpen(!diagnosticsOpen))}>
+              <AliIcon name="chevron-right" size={14} aria-hidden="true" />
+              <span className="command-section-label">{t("toolSummary.diagnostics")}</span>
+            </button>
+            <CopyButton text={data.diagnostics} label={t("command.copyDiagnostics")} />
+          </div>
+          {diagnosticsOpen ? <pre id={diagnosticsId} className="command-diagnostics">{data.diagnostics}</pre> : null}
+        </section> : null}
       </div>
     </ChatDisclosure>
     {compact && !expanded && errorExcerpt ? <div className="compact-command-error" role="status">{errorExcerpt}</div> : null}
@@ -226,10 +244,11 @@ export function CommandExecutionDialog({ data, onClose }: { data: CommandExecuti
           <button type="button" className="command-icon-button" onClick={close} title={t("i18n.close")} aria-label={t("i18n.close")}><AliIcon name="close" size={15} /></button>
         </header>
         <section className="command-source-section command-dialog-source">
-          <div className="command-section-toolbar"><span className="command-section-label">{t("command.command")}</span>{current.cwd ? <span className="command-cwd">{t("command.cwd")}: {current.cwd}</span> : null}<span className="command-toolbar-spacer" /><CopyButton text={current.command} /></div>
+          <div className="command-section-toolbar"><AliIcon name="terminal" size={14} aria-hidden="true" /><span className="command-section-label">{t("command.command")}</span><span className="command-toolbar-spacer" /><CopyButton text={current.command} /></div>
+          {current.cwd ? <div className="command-cwd" title={current.cwd}>{t("command.cwd")}: {current.cwd}</div> : null}
           <pre>{current.command}</pre>
         </section>
-        <CommandOutputPanel data={current} />
+        <CommandOutputPanel data={current} inDialog />
       </div>
     </dialog>,
     document.body,

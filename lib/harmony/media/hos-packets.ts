@@ -1,3 +1,5 @@
+import { avcSize } from "./avc-size";
+
 /** Convert HOScrcpy's raw H.264 callbacks to Piora's bounded video packet format. */
 function nalUnits(bytes: Buffer): Buffer[] {
   const starts: Array<{ at: number; size: number }> = [];
@@ -37,8 +39,16 @@ export class HosVideoPacketizer {
     const units = nalUnits(bytes);
     for (const unit of units) {
       const type = unit[0] & 0x1f;
-      if (type === 7) this.sps = Buffer.from(unit);
-      if (type === 8) this.pps = Buffer.from(unit);
+      if (type === 7) {
+        if (!this.sps?.equals(unit)) this.configured = false;
+        this.sps = Buffer.from(unit);
+        const size = avcSize(unit);
+        if (size) this.setSize(size.width, size.height);
+      }
+      if (type === 8) {
+        if (!this.pps?.equals(unit)) this.configured = false;
+        this.pps = Buffer.from(unit);
+      }
     }
     const output: Buffer[] = [];
     if (!this.configured && this.width && this.height && this.sps && this.pps && this.sps.length <= 4096 && this.pps.length <= 4096) {
@@ -53,7 +63,9 @@ export class HosVideoPacketizer {
     if (this.configured && picture) {
       const payload = Buffer.allocUnsafe(9 + bytes.length);
       payload.writeUInt8(key ? 1 : 0, 0);
-      const now = BigInt(Date.now()) * BigInt(1000);
+      // MP4 timing must survive host clock synchronization or manual clock edits.
+      // Consumers use relative timestamps; this is not a capture-latency metric.
+      const now = process.hrtime.bigint() / BigInt(1000);
       this.timestamp = now > this.timestamp ? now : this.timestamp + BigInt(1);
       payload.writeBigUInt64BE(this.timestamp, 1); bytes.copy(payload, 9);
       output.push(packet(3, payload));

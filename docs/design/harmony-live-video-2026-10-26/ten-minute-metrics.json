@@ -1,0 +1,14 @@
+{
+  "windowSeconds": 600,
+  "frames": 17520,
+  "averageFps": 29.2,
+  "latencySampleSeconds": 604.85,
+  "validSamples": 5894,
+  "invalidSamples": 0,
+  "p50UpperMs": 180,
+  "p95UpperMs": 220,
+  "p99UpperMs": 250,
+  "maximumPaintGapMs": 370,
+  "recordedBytes": 109051904,
+  "rendererHeapBytes": 9397104
+}

@@ -18,6 +18,7 @@ type MessageProps = ComponentProps<typeof MessageView>;
 interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "onRetry" | "retryDisabled" | "sessionId" | "onOpenAutomation" | "onOpenCommandExecution"> {
   messages: AgentMessage[];
   compactProcess?: boolean;
+  directProcess?: boolean;
   streamingMessage?: AgentMessage | null;
   entryIds: string[];
   busy: boolean;
@@ -50,7 +51,7 @@ function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message
 }
 
 /** One turn projection for saved history and the live tail in both display modes. */
-export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, compactProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, ...messageProps }: Props) {
+export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, ...messageProps }: Props) {
   const { t } = useI18n();
   const messages = useMemo(() => streamingMessage ? [...savedMessages, streamingMessage] : savedMessages, [savedMessages, streamingMessage]);
   const streamingIndex = streamingMessage ? messages.length - 1 : -1;
@@ -58,9 +59,9 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
   const [inspectCommand, setInspectCommand] = useState<string | null>(null);
   const list = useRef<VirtualListHandle>(null);
   const { rows, entryRows, entryGroups } = useMemo(() => {
-    const plan = buildCompactChatHistoryRows(messages, entryIds, busy || streaming, expanded, streamingIndex, compactProcess);
+    const plan = buildCompactChatHistoryRows(messages, entryIds, busy || streaming, expanded, streamingIndex, compactProcess, directProcess);
     return { ...plan, rows: layoutChatResponseRows(insertCommandHistoryRows(plan.rows, messages, entryIds, operations), messages, busy || streaming) };
-  }, [messages, entryIds, busy, streaming, expanded, compactProcess, streamingIndex, operations]);
+  }, [messages, entryIds, busy, streaming, expanded, compactProcess, directProcess, streamingIndex, operations]);
   const visibleRows = rows;
   const keys = useMemo(() => visibleRows.map((row) => row.key), [visibleRows]);
   const pendingReveal = useRef<string | null>(null);
@@ -114,7 +115,10 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
     if (row.operation) return commandActions ? <ChatCommandCard record={row.operation} actions={commandActions} /> : null;
     if (row.compactProcess) return <CompactProcessSummary group={row.compactProcess}
       onToggle={() => { setInspectCommand(null); toggle(row.key, !row.compactProcess!.expanded); }}
-      onInspectCommand={(id) => { setInspectCommand(id); setExpanded((previous) => new Map(previous).set(row.key, true)); }} />;
+      onInspectCommand={(id) => {
+        setInspectCommand(id);
+        setExpanded(previous => new Map(previous).set(row.key, true));
+      }} />;
     const index = row.index;
     const message = row.message!;
     const showTimestamp = row.showTimestamp ?? (metadata.showTimestamps.has(index) && !(streaming && index === messages.length - 1));

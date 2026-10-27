@@ -20,6 +20,7 @@ import "./FileCodeEditor.css";
 export interface FileCodeEditorHandle {
   focus(): void;
   revealLine(line: number, column?: number): void;
+  getScrollProgress(): number;
 }
 
 interface Props {
@@ -128,6 +129,12 @@ export const FileCodeEditor = forwardRef<FileCodeEditorHandle, Props>(function F
 
   useImperativeHandle(forwardedRef, () => ({
     focus() { viewRef.current?.focus(); },
+    getScrollProgress() {
+      const scroller = viewRef.current?.scrollDOM;
+      if (!scroller) return 0;
+      const range = scroller.scrollHeight - scroller.clientHeight;
+      return range > 0 ? Math.max(0, Math.min(1, scroller.scrollTop / range)) : 0;
+    },
     revealLine(line, column) {
       const view = viewRef.current;
       if (!view) return;

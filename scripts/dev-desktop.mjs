@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 import { createDesktopDevRelay } from "./desktop-dev-relay.mjs";
+import { desktopDevelopmentEnvironment } from "./desktop-dev-environment.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const host = "127.0.0.1";
@@ -14,10 +15,15 @@ const port = requestedPort ? Number(requestedPort) : 30141;
 if (!Number.isInteger(port) || port < 1_024 || port > 65_535) {
   throw new Error("PIORA_DESKTOP_DEV_PORT must be an integer between 1024 and 65535");
 }
+const debugPort = process.env.PIORA_DESKTOP_DEV_DEBUG_PORT?.trim();
+if (debugPort && (!Number.isInteger(Number(debugPort)) || Number(debugPort) < 1024 || Number(debugPort) > 65535)) {
+  throw new Error("PIORA_DESKTOP_DEV_DEBUG_PORT must be an integer between 1024 and 65535");
+}
 const applicationUrl = new URL(`http://${host}:${port}/`);
 const token = randomBytes(32).toString("base64url");
-const devUserData = join(root, ".piora-data", "desktop-dev");
-const runtimeData = join(devUserData, "runtime", "normal");
+const developmentEnvironment = desktopDevelopmentEnvironment(root);
+const devUserData = developmentEnvironment.PIORA_DESKTOP_DEV_USER_DATA;
+const runtimeData = developmentEnvironment.PIORA_DESKTOP_DATA_DIR;
 const require = createRequire(import.meta.url);
 
 if (process.argv.includes("--help")) {
@@ -29,9 +35,8 @@ mkdirSync(runtimeData, { recursive: true });
 
 const sharedEnvironment = {
   ...process.env,
+  ...developmentEnvironment,
   PI_DESKTOP_TOKEN: token,
-  PIORA_DESKTOP_DATA_DIR: runtimeData,
-  PIORA_RUNTIME_PROFILE: "normal",
 };
 
 let nextProcess;
@@ -126,7 +131,9 @@ function launchElectron() {
   if (stopping || electronProcess) return;
   log("electron", "starting desktop shell");
   expectedElectronExit = false;
-  electronProcess = spawn(electronExecutable(), [join(root, "desktop")], {
+  electronProcess = spawn(electronExecutable(), [join(root, "desktop"),
+    ...(debugPort ? ["--remote-debugging-address=127.0.0.1", `--remote-debugging-port=${debugPort}`] : []),
+  ], {
     cwd: root,
     detached: process.platform !== "win32",
     env: {
@@ -178,11 +185,13 @@ async function shutdown(exitCode) {
 }
 
 async function main() {
+  log("profile", `Piora Dev user data: ${devUserData}`);
+  log("profile", `Pi agent data: ${developmentEnvironment.PI_CODING_AGENT_DIR}`);
   await ensurePortAvailable();
   log("next", `starting authenticated development server at ${applicationUrl.origin}`);
-  // Shared desktop modules use .js specifiers for their TypeScript sources;
-  // the repository's Webpack extensionAlias resolves those during development.
-  nextProcess = spawn(process.execPath, [join(root, "scripts", "desktop-next-dev.cjs"), "dev", "--webpack", "-H", host, "-p", String(port)], {
+  // Turbopack owns dev compilation and CSS HMR; next.config.ts adapts the
+  // shared desktop sources without changing the packaged CommonJS build.
+  nextProcess = spawn(process.execPath, [join(root, "scripts", "desktop-next-dev.cjs"), "dev", "--turbopack", "-H", host, "-p", String(port)], {
     cwd: root,
     detached: process.platform !== "win32",
     env: { ...sharedEnvironment, PIORA_DESKTOP_NETWORK_IPC: "1" },

@@ -46,9 +46,11 @@ actual Git executable; subsequent PTY runs print every exercised profile.
 The UI references were generated with built-in imagegen and saved with the full
 prompt set. Components now follow their fixed composer/model controls, directory
 bar, activity cards, suggestion metadata and grouped settings. Page verification
-uses `next dev --webpack`; the concurrent desktop clipboard sources currently
-prevent the default Turbopack entry from compiling. Webpack needs the added
+used `next dev --webpack`; the concurrent desktop clipboard sources
+prevented the default Turbopack entry from compiling in that verification run. Webpack needs the added
 `.js` → `.ts` extension resolution for those Node16-style imports.
+The current development commands now use Turbopack with a scoped shared-desktop
+source loader; see [development startup and HMR](development-startup-and-hmr.md).
 
 UI component browser tests pass: history completion never auto-executes, failed
 submissions retain drafts, composer fits 360/480/640 px, and failed settings saves

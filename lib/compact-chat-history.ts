@@ -2,6 +2,7 @@ import type { AgentMessage, AssistantMessage, AssistantContentBlock, ToolResultM
 import type { ChatHistoryRow } from "./chat-history";
 import { isEmptyThinkingBlock, hasAssistantNotice } from "./message-display";
 import { isCommandToolName, toolResultText } from "./command-execution";
+import { toolActivityKind, type ToolActivityKind } from "./tool-activity";
 
 export interface ProcessStep {
   key: string;
@@ -42,7 +43,7 @@ function needsAttention(block: AssistantContentBlock, results: Map<string, ToolR
 /** Both display modes share turn boundaries. Only running defaults differ. */
 export function buildCompactChatHistoryRows(
   messages: AgentMessage[], entryIds: string[], busy: boolean,
-  choices: ReadonlyMap<string, boolean>, streamingIndex = -1, compact = false,
+  choices: ReadonlyMap<string, boolean>, streamingIndex = -1, compact = false, direct = false,
 ) {
   const rows: ChatHistoryRow[] = [];
   const entryRows = new Map<string, string>();
@@ -70,15 +71,16 @@ export function buildCompactChatHistoryRows(
       }
       attention ||= i !== streamingIndex && hasAssistantNotice(message);
       const content = Array.isArray(message.content) ? message.content : [];
-      const segments: Array<{ offset: number; process: boolean; blocks: AssistantContentBlock[] }> = [];
+      const segments: Array<{ offset: number; process: boolean; activity?: ToolActivityKind; blocks: AssistantContentBlock[] }> = [];
       for (const [b, original] of content.entries()) {
         if (Boolean(isEmptyThinkingBlock(original, { isStreaming: i === streamingIndex }))) continue;
         // Splitting rows must not change deferred lookup or disclosure identities.
         const block = original.type === "thinking" ? { ...original, deferredBlockIndex: original.deferredBlockIndex ?? b } : original;
         const process = block.type === "thinking" || block.type === "toolCall";
+        const activity = block.type === "toolCall" ? toolActivityKind(block.toolName) : undefined;
         const previous = segments.at(-1);
-        if (previous?.process === process) previous.blocks.push(block);
-        else segments.push({ offset: b, process, blocks: [block] });
+        if (previous?.process === process && previous.activity === activity) previous.blocks.push(block);
+        else segments.push({ offset: b, process, activity, blocks: [block] });
         if (process) {
           attention ||= needsAttention(block, results, active);
           const result = block.type === "toolCall" ? results.get(block.toolCallId) : undefined;
@@ -99,22 +101,26 @@ export function buildCompactChatHistoryRows(
           processGroupKey: segment.process ? key : undefined, attachRef: last,
           intermediate: !last || segment.process, isStreaming: i === streamingIndex && last,
           message: { ...message, content: segment.blocks, ...(!last ? { usage: undefined, stopReason: undefined, errorMessage: undefined } : {}) } as AssistantMessage });
-        if (segment.process && entryIds[i]) entryGroups.set(entryIds[i], key);
+        if (segment.process && entryIds[i] && !direct) entryGroups.set(entryIds[i], key);
       }
     }
     // Latest completed turn stays open until another input; exceptional turns
     // never hide their evidence, even after a previous manual collapse.
-    const open = attention || (choices.get(key) ?? (end === messages.length && (!active || !compact)));
+    const open = direct || attention || (choices.get(key) ?? (end === messages.length && (!active || !compact)));
+    // Secondary rows stay individually virtualized under the process heading.
+    // Thinking, prose and custom notices still split the assistant message.
     let headingAdded = false;
     const timestamps = messages.slice(start, end).map(message => message.timestamp).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
     for (const row of turnRows) {
-      if (row.secondary && !headingAdded) {
+      if (row.secondary && !headingAdded && !direct) {
         rows.push({ key, index: row.index - 0.1, compactProcess: { active, expanded: open, count: steps.length, attention, activities,
           startedAt: timestamps[0], endedAt: active ? undefined : timestamps.at(-1), preview: steps.slice(-3) } });
         headingAdded = true;
       }
       const id = entryIds[row.index];
-      if (id && (!entryRows.has(id) || entryRows.get(id) === key)) entryRows.set(id, row.secondary && !open ? key : row.key);
+      if (id && (!entryRows.has(id) || entryRows.get(id) === key)) {
+        entryRows.set(id, row.secondary && !open ? key : row.key);
+      }
       if (!row.secondary || open) rows.push(row);
     }
     start = end;

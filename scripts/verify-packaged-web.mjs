@@ -57,9 +57,9 @@ const packagedRuntimeArchive = join(packagedWebRoot, "runtime.asar");
 const execFileAsync = promisify(execFile);
 let activeServerStderr = "";
 
-export function verifyPackagedCoreTools(tools, { harmonyWorkbench = false } = {}) {
-  // The isolated packaged service starts in mirror mode. Compatibility tests
-  // must opt in explicitly; a host environment flag cannot weaken this check.
+export function verifyPackagedCoreTools(tools, { harmonyWorkbench = true } = {}) {
+  // The isolated packaged service uses the complete workbench by default.
+  // Restricted-mode checks must opt out explicitly; never inherit host flags.
   const required = ["browser", ...(harmonyWorkbench ? ["harmony_control"] : []), "piora_room"];
   const optional = ["computer_control"];
   const inspect = (name) => {
@@ -1304,7 +1304,7 @@ async function main() {
     const coreExtensionTools = verifyPackagedCoreTools(initialTools);
     for (const name of ["codemode", "tool_search"]) {
       const helper = requireArrayEntry(initialTools, entry => entry.name === name, `native Pi helper ${name}`);
-      if (helper.active) throw new Error(`Native helper ${name} must require explicit task authorization`);
+      if (helper.active) throw new Error(`Native helper ${name} should remain inactive with no MCP config or native defaultTools selection`);
     }
     requireArrayEntry(commands, entry => entry.name === "mcp" && entry.source === "extension", "native MCP command");
 

@@ -204,7 +204,10 @@ test("keeps the real worktree switcher without an inactive repo-root hint", () =
 test("uses a compact Codex-style Piora brand row without the old animated title", () => {
   assert.doesNotMatch(source, /PiWebTitle|useScramble|sidebar-title-row/);
   assert.match(source, /sidebar\.appMenu/);
-  assert.match(source, /\{showWorktreeSwitcher && <div\s+className="sidebar-header"/);
+  assert.doesNotMatch(source, /className="sidebar-header"/);
+  assert.match(source, /className="project-worktree-section"/);
+  assert.match(source, /worktreeSection=\{selectedProject === group\.projectRoot \? props\.worktreeSection : null\}/);
+  assert.match(source, /<div className=\{styles\.sessionList\}>\s*\{worktreeSection\}/);
   assert.doesNotMatch(source, /<span>Piora<\/span>[\s\S]{0,120}rotate\(90deg\)/);
 });
 

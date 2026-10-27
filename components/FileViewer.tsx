@@ -108,6 +108,7 @@ const FILE_LINE_NUMBER_STYLE: CSSProperties = {
 
 type SourceCodeRendererProps = Parameters<NonNullable<SyntaxHighlighterProps["renderer"]>>[0] & {
   wrapLines: boolean;
+  highlightedLine?: number;
 };
 
 interface SelectedLineRange {
@@ -177,7 +178,7 @@ function getSelectedSourceLineRange(root: HTMLElement, selection: Selection | nu
   return { startLine, endLine };
 }
 
-function SourceCodeRenderer({ rows, stylesheet, useInlineStyles, wrapLines }: SourceCodeRendererProps) {
+function SourceCodeRenderer({ rows, stylesheet, useInlineStyles, wrapLines, highlightedLine }: SourceCodeRendererProps) {
   return rows.map((row, lineIndex) => {
     const children = row.children ?? [];
     const firstChildClasses = children[0]?.properties?.className;
@@ -188,7 +189,7 @@ function SourceCodeRenderer({ rows, stylesheet, useInlineStyles, wrapLines }: So
 
     return (
       <span
-        className="file-source-line"
+        className={`file-source-line${highlightedLine === lineIndex + 1 ? " search-reveal-line" : ""}`}
         data-line-number={lineIndex + 1}
         key={`source-line-${lineIndex}`}
         style={{ display: "flex", minWidth: "100%" }}
@@ -746,8 +747,10 @@ function TextFileViewer({
   const [diffChange, setDiffChange] = useState<{ patch: string; line: number; key: number } | null>(null);
   const [changeReveal, setChangeReveal] = useState<{ line: number } | null>(null);
   const appliedChangeRevealRef = useRef<typeof changeReveal>(null);
+  const [sourceHighlight, setSourceHighlight] = useState<typeof changeReveal>(null);
   const esRef = useRef<EventSource | null>(null);
   const editorRef = useRef<FileCodeEditorHandle | null>(null);
+  const splitPreviewRef = useRef<HTMLDivElement | null>(null);
   const conflictConfirmRef = useRef<HTMLButtonElement | null>(null);
   const loadedRef = useRef(false);
   const dirtyRef = useRef(false);
@@ -757,6 +760,23 @@ function TextFileViewer({
   const gitDiffRequestRef = useRef(0);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const viewerRootRef = useRef<HTMLDivElement | null>(null);
+
+  const syncPreviewScroll = useCallback(() => {
+    const preview = splitPreviewRef.current;
+    if (!preview || !editorRef.current) return;
+    preview.scrollTop = editorRef.current.getScrollProgress() * Math.max(0, preview.scrollHeight - preview.clientHeight);
+  }, []);
+
+  useEffect(() => {
+    const preview = splitPreviewRef.current;
+    if (!preview) return;
+    // Preview images, rendered diagrams and pane resizing can change the scroll range.
+    const observer = new ResizeObserver(syncPreviewScroll);
+    observer.observe(preview);
+    if (preview.firstElementChild) observer.observe(preview.firstElementChild, { box: "border-box" });
+    const frame = requestAnimationFrame(syncPreviewScroll);
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [active, displayMode, loading, data?.language, viewerWidth, syncPreviewScroll]);
 
   useEffect(() => {
     const root = viewerRootRef.current;
@@ -1010,24 +1030,35 @@ function TextFileViewer({
   };
 
   useEffect(() => {
+    setSourceHighlight(null);
     if (!active || !changeReveal || appliedChangeRevealRef.current === changeReveal) return;
-    let highlighted: HTMLElement | null = null;
     let highlightTimer: ReturnType<typeof setTimeout> | undefined;
-    const frame = requestAnimationFrame(() => {
+    let observer: MutationObserver | undefined;
+    const reveal = () => {
       if (editorRef.current) editorRef.current.revealLine(changeReveal.line);
       else {
-        highlighted = contentRef.current?.querySelector<HTMLElement>(`.file-source-line[data-line-number="${changeReveal.line}"]`) ?? null;
-        if (!highlighted) return;
-        highlighted.scrollIntoView({ block: "center" });
-        highlighted.classList.add("search-reveal-line");
-        highlightTimer = setTimeout(() => highlighted?.classList.remove("search-reveal-line"), 1600);
+        const line = contentRef.current?.querySelector<HTMLElement>(`.file-source-line[data-line-number="${changeReveal.line}"]`);
+        if (!line) return false;
+        line.scrollIntoView({ block: "center" });
+        // Keep the highlight in React state: lazy grammar registration can
+        // replace source rows after the navigation frame has run.
+        setSourceHighlight(changeReveal);
+        highlightTimer = setTimeout(() => setSourceHighlight(current => current === changeReveal ? null : current), 1600);
       }
       appliedChangeRevealRef.current = changeReveal;
+      observer?.disconnect();
+      return true;
+    };
+    const frame = requestAnimationFrame(() => {
+      if (!reveal() && contentRef.current) {
+        observer = new MutationObserver(() => { reveal(); });
+        observer.observe(contentRef.current, { childList: true, subtree: true });
+      }
     });
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(highlightTimer);
-      highlighted?.classList.remove("search-reveal-line");
+      observer?.disconnect();
     };
   }, [active, changeReveal, displayMode, compactSplitSide]);
 
@@ -1277,7 +1308,7 @@ function TextFileViewer({
                   setSaveError(null);
                 }}
                 onCursorChange={(position) => { setCursorPosition(position); setChangeLine(position.line); }}
-                onScrollChange={setEditorScrollTop}
+                onScrollChange={(top) => { setEditorScrollTop(top); syncPreviewScroll(); }}
                 onSave={() => void saveFile(false)}
                 onNavigate={(target) => onOpenFile?.(target.filePath, { line: target.line, column: target.column })}
                 onIntelligenceMode={(mode, message) => setIntelligence({ mode, message })}
@@ -1595,7 +1626,7 @@ function TextFileViewer({
           renderEditor()
         ) : effectiveDisplayMode === "split" ? (
           viewerWidth >= 650
-            ? <div className={editorStyles.splitPreviewLayout}><div className={editorStyles.splitEditorPane}>{renderEditor()}</div><div className={editorStyles.splitPreviewPane}>{renderPreview(true)}</div></div>
+            ? <div className={editorStyles.splitPreviewLayout}><div className={editorStyles.splitEditorPane}>{renderEditor()}</div><div ref={isMarkdown ? splitPreviewRef : undefined} className={editorStyles.splitPreviewPane}>{renderPreview(true)}</div></div>
             : compactSplitSide === "edit" ? renderEditor() : renderPreview(true)
         ) : effectiveDisplayMode === "diff" && hasGitDiff ? (
           <DiffView patch={gitDiff.patch!} revealDiffLine={diffReveal} />
@@ -1628,7 +1659,7 @@ function TextFileViewer({
               },
             }}
             renderer={(rendererProps) => (
-              <SourceCodeRenderer {...rendererProps} wrapLines={wrapLines} />
+              <SourceCodeRenderer {...rendererProps} wrapLines={wrapLines} highlightedLine={sourceHighlight === changeReveal ? sourceHighlight?.line : undefined} />
             )}
             wrapLongLines={wrapLines}
           >

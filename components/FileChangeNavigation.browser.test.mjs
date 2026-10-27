@@ -44,10 +44,14 @@ test("file change arrows navigate real editors, drafts, folds, independent tabs,
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
     const page = await browser.newPage({ viewport: { width: 1000, height: 760 } });
     const errors = [], writes = [];
+    let releaseJsonGrammar;
+    let jsonGrammarRequested = false;
+    const jsonGrammarGate = new Promise(resolve => { releaseJsonGrammar = resolve; });
     page.on("pageerror", error => errors.push(error.message));
     await page.addInitScript(() => { localStorage.setItem("pi-locale", "zh-CN"); window.EventSource = class { addEventListener() {} close() {} }; });
     await page.route("http://file-navigation.test/**", async route => {
       const url = new URL(route.request().url());
+      if (url.pathname.includes("languages_prism_json")) { jsonGrammarRequested = true; await jsonGrammarGate; }
       if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(root, path.basename(url.pathname))) });
       if (url.pathname.startsWith("/fonts/")) return route.fulfill({ status: 404, body: "" });
       if (url.pathname === "/api/git/diff") {
@@ -116,7 +120,21 @@ test("file change arrows navigate real editors, drafts, folds, independent tabs,
     assert.equal(await one.locator(".cm-foldPlaceholder").count(), 0);
     await one.getByRole("button", { name: "源代码", exact: true }).click();
     await next(one).click();
-    await one.locator('.file-source-line[data-line-number="180"].search-reveal-line').waitFor();
+    try { await one.locator('.file-source-line[data-line-number="180"].search-reveal-line').waitFor(); }
+    catch (error) {
+      console.error("Source navigation diagnostics", await one.evaluate(root => ({
+        count: root.querySelector(".changeCount")?.getAttribute("title"),
+        highlighted: [...root.querySelectorAll(".search-reveal-line")].map(line => line.getAttribute("data-line-number")),
+        sourceLines: root.querySelectorAll(".file-source-line").length,
+      })));
+      throw error;
+    }
+    assert.equal(jsonGrammarRequested, true, "exercise a delayed JSON grammar response");
+    const grammarResponse = page.waitForResponse(response => response.url().includes("languages_prism_json"));
+    releaseJsonGrammar();
+    await grammarResponse;
+    await one.locator('.file-source-line[data-line-number="180"] .file-source-line-content span[style*="color"]').first().waitFor();
+    assert.equal(await one.locator('.file-source-line[data-line-number="180"].search-reveal-line').count(), 1, "lazy grammar repaint retains the navigation highlight");
     assert.equal(await one.getByRole("button", { name: "源代码", exact: true }).getAttribute("aria-pressed"), "true");
 
     // Preview and narrow split preview reveal the editable source when navigating.

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type { ClipboardBridge, ClipboardChange, ClipboardMutation, ClipboardOperation, ClipboardQuery } from "./clipboard-types.js";
 import type { QuickAccessBridge } from "./quick-access-types.js";
+import type { HarmonyWindowBridge, HarmonyWindowState, PioraMessageBridge } from "./harmony-window-types.js";
 declare const document: { documentElement: { inert: boolean } };
 
 const clipboardCloseHandlers = new Set<() => Promise<void>>();
@@ -47,6 +48,26 @@ const clipboardHistory = Object.freeze({
 } satisfies ClipboardBridge);
 
 const runtime = Object.freeze({
+  harmonyMirror: Object.freeze({
+    open: serial => ipcRenderer.invoke("pi:harmony-window-open", serial),
+    focus: () => ipcRenderer.invoke("pi:harmony-window-focus"),
+    close: () => ipcRenderer.invoke("pi:harmony-window-close"),
+    setPresentation: value => ipcRenderer.invoke("pi:harmony-window-presentation", value),
+    selectDevice: serial => ipcRenderer.invoke("pi:harmony-window-select", serial),
+    setScale: scale => ipcRenderer.invoke("pi:harmony-window-scale", scale),
+    setAlwaysOnTop: value => ipcRenderer.invoke("pi:harmony-window-top", value),
+    getState: () => ipcRenderer.invoke("pi:harmony-window-state"),
+    reportFrame: frame => ipcRenderer.invoke("pi:harmony-window-frame", frame),
+    showMenu: () => ipcRenderer.invoke("pi:harmony-window-menu"),
+    openWorkbench: () => ipcRenderer.invoke("pi:harmony-window-workbench"),
+    onStateChange: listener => { const handler = (_event: Electron.IpcRendererEvent, state: HarmonyWindowState) => listener(state); ipcRenderer.on("pi:harmony-window-state", handler); return () => ipcRenderer.removeListener("pi:harmony-window-state", handler); },
+    onCommand: listener => { const handler = (_event: Electron.IpcRendererEvent, command: "screenshot" | "record" | "reconnect" | "details") => listener(command); ipcRenderer.on("pi:harmony-window-command", handler); return () => ipcRenderer.removeListener("pi:harmony-window-command", handler); },
+  } satisfies HarmonyWindowBridge),
+  messages: Object.freeze({
+    show: message => ipcRenderer.invoke("pi:message-show", message),
+    get: () => ipcRenderer.invoke("pi:message-get"),
+    finish: action => ipcRenderer.invoke("pi:message-finish", action),
+  } satisfies PioraMessageBridge),
   finishStartupIntro(): void { ipcRenderer.send("pi:startup-continue"); },
   restartForDataImport(): Promise<boolean> { return ipcRenderer.invoke("pi:restart-for-data-import") as Promise<boolean>; },
   platform: process.platform,

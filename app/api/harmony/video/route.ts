@@ -1,5 +1,6 @@
 import { getHarmonyDeviceManager } from "@/lib/harmony";
 import { HarmonyError } from "@/lib/harmony/errors";
+import { prepareVideoStream } from "@/lib/harmony/media/stream-start";
 import { harmonyErrorResponse, requireHarmonyAccess, requiredQuery } from "../_shared";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
       await connection.close();
       throw new HarmonyError("DEVICE_NOT_FOUND", "The selected Harmony device is not connected");
     }
-    return new Response(connection.stream, {
+    return new Response(await prepareVideoStream(connection, request.signal), {
       headers: {
         "Content-Type": "application/vnd.piora.harmony-stream",
         "Cache-Control": "private, no-store, no-transform",

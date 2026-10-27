@@ -48,6 +48,7 @@
 }
 
 .actions {
+  flex-wrap: wrap;
   display: flex;
   justify-content: flex-end;
   gap: 7px;
@@ -55,6 +56,17 @@
   border-top: 1px solid var(--border-soft);
   background: var(--floating-section);
 }
+
+.standalone { width: 100vw; height: 100dvh; display: flex; flex-direction: column; border-radius: 0; }
+.noticeHost { position: fixed; z-index: 3500; top: 24px; right: 24px; pointer-events: none; }
+.notice { pointer-events: auto; width: min(340px, calc(100vw - 32px)); }
+.notice.standalone { width: 100vw; }
+.notice .body { padding: 12px 14px 6px; gap: 4px; }
+.notice .body h2 { font-size: var(--text-sm); }
+.notice .body p { font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.notice .actions { border: 0; background: transparent; padding: 2px 10px 8px; }
+.standalone .body { flex: 1; min-height: 0; overflow: auto; }
+.preview { display: block; max-height: 220px; max-width: 100%; object-fit: contain; margin: auto; }
 
 .actions button {
   min-height: var(--control-height);

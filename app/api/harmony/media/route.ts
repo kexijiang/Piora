@@ -38,11 +38,18 @@ export async function GET(request: Request) {
       recordingOutcome: outcome ? { id: outcome.id, status: outcome.status, phase: outcome.phase, error: outcome.error,
         recoveryPath: outcome.recoveryPath, finalized: outcome.recoveryFinalized,
         ...(outcome.status === "completed" && outcome.mediaFilename ? { path: join(storage.recordingDirectory, outcome.mediaFilename) } : {}) } : null,
+      completion: serial ? manager.getRecordingCompletion(serial, new URL(request.url).searchParams.get("recordingId") ?? "", new URL(request.url).searchParams.get("ownerId") ?? "") : null,
+      recoveries: serial ? manager.getRecordingRecoveries(serial).map(state => ({ serial: state.serial, recordingId: state.recordingId, startedAt: state.startedAt, ownerId: state.ownerId, phase: state.phase, recoveryAvailable: state.recoveryAvailable, systemRecorderStateUnknown: state.systemRecorderStateUnknown })) : [],
       recording: recording ? {
         serial: recording.serial,
         recordingId: recording.recordingId,
         startedAt: recording.startedAt,
         ownerId: recording.ownerId,
+        phase: recording.phase,
+        maxDurationMs: recording.maxDurationMs,
+        bytesWritten: recording.bytesWritten,
+        stopReason: recording.stopReason,
+        recoveryAvailable: recording.recoveryAvailable,
         method: recording.method ?? "stream",
         ...(recording.systemRecorderStateUnknown ? { systemRecorderStateUnknown: true } : {}),
       } : null,
@@ -74,9 +81,22 @@ export async function POST(request: Request) {
         recordingId: recording.recordingId,
         startedAt: recording.startedAt,
         ownerId: recording.ownerId,
+        phase: recording.phase,
+        maxDurationMs: recording.maxDurationMs,
+        bytesWritten: recording.bytesWritten,
         method: recording.method ?? "stream",
         ...(recording.systemRecorderStateUnknown ? { systemRecorderStateUnknown: true } : {}),
       } });
+    }
+    if (body.action === "retry_recording_save") {
+      const recordingId = requiredString(body, "recordingId", 64);
+      const artifact = await manager.retryRecordingSave({ serial, recordingId, ownerId, signal: request.signal });
+      return noStoreJson({ artifact });
+    }
+    if (body.action === "discard_recording_draft") {
+      const recordingId = requiredString(body, "recordingId", 64);
+      await manager.discardRecordingDraft({ serial, recordingId, ownerId, signal: request.signal });
+      return noStoreJson({ discarded: true });
     }
     if (body.action === "stop_recording") {
       const recordingId = optionalString(body, "recordingId", 64);

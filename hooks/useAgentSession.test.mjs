@@ -192,44 +192,28 @@ function abortHarness(overrides = {}) {
   return { env, calls, run: new Function("env", `with(env){${js};return handleAbort;}`)(env) };
 }
 
-test("stop resumes only the server's unconsumed queue once without waiting for history or touching the composer", async () => {
-  const resumed = abortHarness();
-  await resumed.run();
-  assert.deepEqual(resumed.calls, ["finish", ["send", "correct this\n\ncorrect this\n\nthen verify", "queue-handoff"]]);
-  resumed.env.agentRunningRef.current = true;
-  await resumed.run();
-  assert.equal(resumed.calls.filter(call => Array.isArray(call) && call[0] === "send").length, 1, "stopping again during cleanup cannot resume the same handoff twice");
+test("stop never resubmits queued input or changes drafts, including repeated stops and session switches", async () => {
+  const stopped = abortHarness();
+  await stopped.run();
+  assert.deepEqual(stopped.calls, ["finish"]);
+  stopped.env.agentRunningRef.current = true;
+  await stopped.run();
+  assert.deepEqual(stopped.calls, ["finish", "finish"]);
   const delivered = abortHarness({ sendAgentCommand: async () => ({ accepted: true }) });
   await delivered.run();
-  assert.deepEqual(delivered.calls, ["finish"], "an already-consumed queue must not be reconstructed from stale UI text");
+  assert.deepEqual(delivered.calls, ["finish"]);
   let reply;
   let stops = 0;
-  const pending = abortHarness({ sendAgentCommand: async () => { stops += 1; return await new Promise(resolve => { reply = resolve; }); } });
+  const pending = abortHarness({ sendAgentCommand: async () => { stops++; return new Promise(resolve => { reply = resolve; }); } });
   const stopping = pending.run();
   await pending.run();
   assert.equal(stops, 1);
-  reply({ queuedMessages: { id: "queue-once", steering: ["once"] } });
+  pending.env.sessionIdRef.current = "other-session";
+  pending.env.promptRunIdRef.current++;
+  reply({ queuedMessages: { id: "queue-once", steering: ["same", "same"] } });
   await stopping;
-  assert.equal(pending.calls.filter(call => Array.isArray(call) && call[0] === "send").length, 1);
+  assert.deepEqual(pending.calls, [], "late stop replies cannot edit either session's composer or start a run");
 });
-
-test("failed resume and a session switch preserve queued guidance alongside the originating draft", async () => {
-  const failed = abortHarness({ handleSend: async () => false });
-  await failed.run();
-  assert.deepEqual(failed.calls, ["finish", ["restore", "correct this\n\ncorrect this\n\nthen verify", ["queue-handoff"]]]);
-  let reply;
-  const switched = abortHarness({ sendAgentCommand: async () => await new Promise(resolve => { reply = resolve; }) });
-  const stopping = switched.run();
-  switched.env.sessionIdRef.current = "other-session";
-  switched.env.promptRunIdRef.current += 1;
-  reply({ queuedMessages: { id: "queue-switched", steering: ["original guidance"] } });
-  await stopping;
-  assert.deepEqual(switched.calls, [["draft", "session", {
-    value: "original guidance\n\nnew draft", images: [], files: [{ name: "keep.txt", text: "attachment", size: 10 }],
-    retryOfPromptIds: ["queue-switched"],
-  }]]);
-});
-
 test("retry lineage is durable before the replacement prompt is admitted", async () => {
   let acknowledged;
   const { env, run } = sendHarness();
@@ -578,7 +562,7 @@ test("Stop during an actual prompt POST cancels its exact durable key rather tha
   assert.equal(await sending, false);
 });
 
-test("tracked Stop preserves the SDK's queued guidance handoff without a second generic abort", async () => {
+test("tracked Stop never auto-submits the queued guidance or issues a second abort", async () => {
   const commands = [];
   const h = promptSubmissionHarness({ sendAgentCommand: async (_sid, command) => {
     commands.push(command);
@@ -589,10 +573,10 @@ test("tracked Stop preserves the SDK's queued guidance handoff without a second 
   await h.handleSend("original");
   const originalKey = h.env.saved.id;
   await h.handleAbort();
-  assert.deepEqual(commands.map(command => command.type), ["prompt", "cancel_prompt_submission", "prompt"]);
+  assert.deepEqual(commands.map(command => command.type), ["prompt", "cancel_prompt_submission"]);
   assert.deepEqual(commands[1], { type: "cancel_prompt_submission", idempotencyKey: originalKey, promptCommandId: "cmd-current" });
-  assert.equal(commands[2].message, "continue safely");
-  assert.equal(commands[2].idempotencyKey, "queue-handoff");
+
+
 });
 
 test("actual ambiguous prompt failures retain idle recovery and definite 4xx failures close immediately", async () => {
@@ -613,11 +597,15 @@ test("actual ambiguous prompt failures retain idle recovery and definite 4xx fai
   }
 });
 
+// Load the real router before the per-case admission/cancellation deadline.
+// Cold TypeScript/SDK compilation is fixture setup, not prompt dispatch latency.
+const routerJiti = createJiti(import.meta.url);
+const [{ SessionMessageRouter }, { SessionControlStore }, { SessionCommandEventHub }, { dispatchChatInput }] = await Promise.all([
+  routerJiti.import("../lib/session-message-router.ts"), routerJiti.import("../lib/session-control-store.ts"),
+  routerJiti.import("../lib/session-command-events.ts"), routerJiti.import("../lib/chat-input-dispatch.ts"),
+]);
+
 async function routerSubmissionHarness() {
-  const jiti = createJiti(import.meta.url);
-  const [{ SessionMessageRouter }, { SessionControlStore }, { SessionCommandEventHub }] = await Promise.all([
-    jiti.import("../lib/session-message-router.ts"), jiti.import("../lib/session-control-store.ts"), jiti.import("../lib/session-command-events.ts"),
-  ]);
   const root = await mkdtemp(join(tmpdir(), "piora-hook-prompt-cancel-"));
   const sid = randomUUID();
   const listeners = new Set();
@@ -652,7 +640,6 @@ async function routerSubmissionHarness() {
   const store = new SessionControlStore({ root });
   const events = new SessionCommandEventHub(store);
   const router = new SessionMessageRouter({ store, events, resolver: async () => ({ session, realSessionId: sid, cwd: root }) });
-  const { dispatchChatInput } = await jiti.import("../lib/chat-input-dispatch.ts");
   const previousRouter = globalThis.__pioraSessionMessageRouter;
   globalThis.__pioraSessionMessageRouter = router;
   const h = promptSubmissionHarness({ session: { id: sid } });

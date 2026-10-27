@@ -15,9 +15,10 @@ interface Props {
   endRequest?: number;
   ariaLabel: string;
   onFollowChange?: (following: boolean) => void;
+  onOverflowChange?: (overflows: boolean) => void;
 }
 
-export function CommandLogViewer({ output, wrap, streaming = false, searchText = "", searchRequest = 0, endRequest = 0, ariaLabel, onFollowChange }: Props) {
+export function CommandLogViewer({ output, wrap, streaming = false, searchText = "", searchRequest = 0, endRequest = 0, ariaLabel, onFollowChange, onOverflowChange }: Props) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const followingRef = useRef(streaming);
@@ -26,6 +27,8 @@ export function CommandLogViewer({ output, wrap, streaming = false, searchText =
   const onFollowChangeRef = useRef(onFollowChange);
   const initialOptionsRef = useRef({ wrap, streaming });
   onFollowChangeRef.current = onFollowChange;
+  const onOverflowChangeRef = useRef(onOverflowChange);
+  onOverflowChangeRef.current = onOverflowChange;
   const [wrapCompartment] = useState(() => new Compartment());
 
   useEffect(() => {
@@ -59,8 +62,15 @@ export function CommandLogViewer({ output, wrap, streaming = false, searchText =
       }),
     });
     viewRef.current = view;
+    // Observe both viewport and content: wrapping, streamed lines and container
+    // resizing can all turn a short log into a scrollable one.
+    const observer = new ResizeObserver(() => {
+      onOverflowChangeRef.current?.(view.scrollDOM.scrollHeight > view.scrollDOM.clientHeight + 1);
+    });
+    observer.observe(view.scrollDOM);
+    observer.observe(view.contentDOM);
     if (initialOptionsRef.current.streaming) view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true });
-    return () => { viewRef.current = null; view.destroy(); };
+    return () => { observer.disconnect(); viewRef.current = null; view.destroy(); };
   }, [ariaLabel, wrapCompartment]);
 
   useEffect(() => {
@@ -100,6 +110,12 @@ export function CommandLogViewer({ output, wrap, streaming = false, searchText =
     followingRef.current = true;
     onFollowChangeRef.current?.(true);
     view.dispatch({ selection: { anchor: view.state.doc.length }, scrollIntoView: true });
+    // The last cursor position may leave the content's bottom padding below
+    // the viewport. An explicit jump should reach the actual end of the log.
+    view.requestMeasure({
+      read: () => view.scrollDOM.scrollHeight,
+      write: (height) => { view.scrollDOM.scrollTop = height; },
+    });
     view.focus();
   }, [endRequest]);
 

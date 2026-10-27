@@ -1,6 +1,7 @@
 import { readFile, stat } from "node:fs/promises";
 import { isAbsolute, resolve } from "node:path";
 import { generateUnifiedPatch, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { fileToolGuidance } from "../lib/file-tool-guidance.ts";
 
 const MAX_CAPTURE_BYTES = 512 * 1024;
 
@@ -93,6 +94,13 @@ function writeResultDetails(snapshot: PendingWrite): Record<string, unknown> {
 
 export default function pioraFileChanges(api: ExtensionAPI) {
   const pendingWrites = new Map<string, PendingWrite>();
+
+  api.on("before_agent_start", (event) => {
+    if (event.systemPrompt.includes("<piora_file_tools>")) return;
+    const hidden = new Set(event.systemPromptOptions.hiddenTools ?? []);
+    const guidance = fileToolGuidance((event.systemPromptOptions.selectedTools ?? []).filter(name => !hidden.has(name)));
+    if (guidance) return { systemPrompt: `${event.systemPrompt}\n\n${guidance}` };
+  });
 
   api.on("tool_call", async (event, ctx) => {
     if (event.toolName !== "write") return;

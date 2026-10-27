@@ -34,6 +34,7 @@ import { applyConfiguredImageInput, modelSupportsImages } from "./model-capabili
 import { resolveDefaultModelPreference } from "./model-policy";
 import {
   applyExtensionLoadPlan,
+  installExtensionLoadPlanReload,
   resolveExtensionLoadPlan,
 } from "./extension-config";
 import { cacheSessionPath, invalidateSessionListCache } from "./session-reader";
@@ -96,11 +97,6 @@ import { mergeCommandOutputDetails } from "./command-execution";
 import { ChatCommandActivityTracker } from "./chat-command-activity";
 import { createChatCommandCatalog, templateUsesArguments } from "./chat-command-input";
 import type { ChatCommandPhase } from "./chat-command-types";
-import {
-  fitToolNamesWithinDefinitionBudget,
-  estimateToolDefinitionPromptTokens,
-  TOOL_DEFINITION_PROMPT_TOKEN_LIMIT,
-} from "./tool-definition-budget";
 import {
   appendSessionCapabilityPolicy,
   buildSessionCapabilitiesState,
@@ -311,6 +307,8 @@ export class AgentSessionWrapper {
   private projectManaged: boolean;
   private readonly queueSource = new AsyncLocalStorage<string | undefined>();
   private readonly queueSources = new WeakMap<object, string>();
+  private readonly queuedInputReceipts = new Map<string, { consumed: () => Promise<void>; cancelled: () => Promise<void> }>();
+  private stoppedInputRecovery: Promise<void> = Promise.resolve();
   private readonly _projectRoot: string;
   private _alive = true;
   readonly nativeMcp?: NativeMcpController;
@@ -323,6 +321,14 @@ export class AgentSessionWrapper {
         if (!this._alive || !sameQueuedInputs(snapshot, snapshotQueuedInputs(this.inner))) throw new Error("The pending queue changed. Retry recalling the remaining messages.");
         // No await between identity check, durable archive, and SDK dequeue.
         persist();
+        for (const message of snapshot) {
+          const source = this.queueSources.get(message);
+          const receipt = source ? this.queuedInputReceipts.get(source) : undefined;
+          if (source && receipt) {
+            this.queuedInputReceipts.delete(source);
+            void receipt.consumed().catch(error => console.error("[pi-web] recalled input receipt failed", error));
+          }
+        }
         this.inner.clearQueue();
       },
     };
@@ -387,8 +393,10 @@ export class AgentSessionWrapper {
     };
     this.remotePolicy = readRemoteSessionPolicy(inner.sessionManager.getEntries());
     this.cachedSessionTitle = inner.sessionManager.getSessionName()?.trim() || null;
+    this.nativeMcp?.captureActiveTools([...inner.getActiveToolNames(), ...(inner.settingsManager?.getDefaultTools?.() ?? [])]);
     this.capabilityCatalog = [...buildSessionCapabilityCatalog(inner.getAllTools().map(tool => ({
       ...tool, defaultActive: inner.getToolDefinition?.(tool.name)?.defaultActive,
+      ...(this.nativeMcp?.isNativeTool(tool.name) ? { defaultEnabled: true } : {}),
     })), runtimeProfile), ...this.nativeMcp?.resourceCatalog() ?? []];
     this.capabilityPolicy = capabilityOptions.policy
       ?? restoreSessionCapabilityPolicy(inner.sessionManager.getEntries(), this.capabilityCatalog, runtimeProfile);
@@ -516,6 +524,7 @@ export class AgentSessionWrapper {
   private refreshCapabilityCatalog(): void {
     this.capabilityCatalog = [...buildSessionCapabilityCatalog(this.inner.getAllTools().map(tool => ({
       ...tool, defaultActive: this.inner.getToolDefinition?.(tool.name)?.defaultActive,
+      ...(this.nativeMcp?.isNativeTool(tool.name) ? { defaultEnabled: true } : {}),
     })), this.runtimeProfile), ...this.nativeMcp?.resourceCatalog() ?? []];
   }
 
@@ -536,51 +545,21 @@ export class AgentSessionWrapper {
 
   refreshNativeMcpCapabilities(): void {
     if (!this._alive) return;
-    this.applySessionCapabilities({ persistBudgetTrim: true });
+    this.applySessionCapabilities();
     this.emit({ type: "capabilities_changed", capabilities: this.getSessionCapabilities() });
   }
 
-  private resolveCapabilityToolBudget(
+  private resolveCapabilityTools(
     policy: SessionCapabilityPolicy,
-    rejectOverBudget: boolean,
-  ): { policy: SessionCapabilityPolicy; toolNames: string[]; trimmed: boolean } {
-    const allTools = this.inner.getAllTools();
+  ): { policy: SessionCapabilityPolicy; toolNames: string[] } {
     const requestedToolNames = resolveSessionCapabilityToolNames(
-      this.capabilityCatalog,
-      policy,
-      allTools.map((tool) => tool.name),
-      this.toolNameCeiling,
+      this.capabilityCatalog, policy, this.inner.getAllTools().map(tool => tool.name), this.toolNameCeiling,
     );
-    const declarationNames = this.nativeMcp?.declarationNames(requestedToolNames) ?? requestedToolNames;
-    const budget = fitToolNamesWithinDefinitionBudget(allTools, declarationNames);
-    if (budget.droppedToolNames.length === 0) {
-      return { policy, toolNames: budget.toolNames, trimmed: false };
-    }
-
-    if (rejectOverBudget) {
-      const requested = new Set(requestedToolNames);
-      const requestedTokens = estimateToolDefinitionPromptTokens(allTools.filter((tool) => requested.has(tool.name)));
-      throw new Error(
-        `Tool definitions require about ${requestedTokens.toLocaleString("en-US")} tokens; the per-session limit is ${TOOL_DEFINITION_PROMPT_TOKEN_LIMIT.toLocaleString("en-US")} tokens. Disable another tool before enabling ${budget.droppedToolNames.join(", ")}.`,
-      );
-    }
-
-    const droppedIds = new Set(budget.droppedToolNames.map(name => `tool:${name}`));
-    const enabledCapabilityIds = policy.enabledCapabilityIds.filter(id => !droppedIds.has(id));
-    return {
-      policy: {
-        ...policy,
-        revision: policy.revision + 1,
-        preset: "custom",
-        enabledCapabilityIds,
-        updatedAt: new Date().toISOString(),
-      },
-      toolNames: budget.toolNames,
-      trimmed: true,
-    };
+    const toolNames = this.nativeMcp?.declarationNames(requestedToolNames, policy.preset === "custom") ?? requestedToolNames;
+    return { policy, toolNames };
   }
 
-  private applySessionCapabilities(options: { persistBudgetTrim?: boolean } = {}): void {
+  private applySessionCapabilities(): void {
     this.refreshCapabilityCatalog();
     if (this.runtimeProfile === "normal" && this.capabilityPolicy.preset === "coding") {
       this.capabilityPolicy = {
@@ -589,11 +568,8 @@ export class AgentSessionWrapper {
           ...this.capabilityCatalog.filter(item => item.available && item.defaultEnabled).map(item => item.id)])].sort(),
       };
     }
-    const resolved = this.resolveCapabilityToolBudget(this.capabilityPolicy, false);
+    const resolved = this.resolveCapabilityTools(this.capabilityPolicy);
     this.capabilityPolicy = resolved.policy;
-    if (resolved.trimmed && options.persistBudgetTrim && !this.projectManaged) {
-      appendSessionCapabilityPolicy(this.inner.sessionManager, this.capabilityPolicy);
-    }
     this.setForceEmptySystemPrompt(resolved.toolNames.length === 0);
     this.inner.setActiveToolsByName(resolved.toolNames);
     this.applyForcedEmptySystemPrompt();
@@ -609,7 +585,7 @@ export class AgentSessionWrapper {
   }
 
   initializeSessionCapabilities(): void {
-    this.applySessionCapabilities({ persistBudgetTrim: true });
+    this.applySessionCapabilities();
   }
 
   applyProjectCapabilitySettings(record: ProjectToolSettingsRecord): "applied" | "deferred" {
@@ -621,7 +597,7 @@ export class AgentSessionWrapper {
       record.revision - 1,
       { ...this.capabilityPolicy, knownCapabilityIds: [...this.capabilityPolicy.knownCapabilityIds, ...projectToolPolicyHistory(record).knownCapabilityIds] },
     );
-    const resolved = this.resolveCapabilityToolBudget(policy, true);
+    const resolved = this.resolveCapabilityTools(policy);
     const projectAllowedToolNames = new Set([
       ...resolveSessionCapabilityToolNames(this.capabilityCatalog, resolved.policy, this.inner.getAllTools().map(tool => tool.name)),
       ...resolved.policy.enabledCapabilityIds.filter(id => id.startsWith("tool:")).map(id => id.slice(5)),
@@ -672,7 +648,7 @@ export class AgentSessionWrapper {
       this.capabilityPolicy,
     );
     this.refreshCapabilityCatalog();
-    const resolved = this.resolveCapabilityToolBudget(nextPolicy, true);
+    const resolved = this.resolveCapabilityTools(nextPolicy);
     this.capabilityPolicy = resolved.policy;
     appendSessionCapabilityPolicy(this.inner.sessionManager, this.capabilityPolicy);
     this.applySessionCapabilities();
@@ -892,6 +868,14 @@ export class AgentSessionWrapper {
       this.streamingMetrics.update(event);
       this.remoteContent.update(event);
       if (event.type === "message_start" && (event.message as { role?: string } | undefined)?.role === "user") this.promptInputEnrichment.apply(event.message as { content?: unknown });
+      if (event.type === "message_end" && event.message && typeof event.message === "object") {
+        const source = this.queueSources.get(event.message);
+        const receipt = source ? this.queuedInputReceipts.get(source) : undefined;
+        if (source && receipt) {
+          this.queuedInputReceipts.delete(source);
+          void receipt.consumed().catch(error => console.error("[pi-web] queue consumption receipt failed", error));
+        }
+      }
       if (event.type === "message_end" && (event.message as { role?: string } | undefined)?.role === "user" && this.pendingClientPromptId) {
         // The SDK emits this event before appending the same object to its
         // SessionManager. Persist the receipt alongside the actual user text.
@@ -1420,9 +1404,14 @@ export class AgentSessionWrapper {
         });
         // Keep the handoff available when the client retries a lost stop reply.
         // A new prompt clears it, so a later stop cannot replay the previous queue.
-        if (this.stopping || (!this.isRunning() && this.abortedQueuedMessages)) return receipt();
+        if (this.stopping || (!this.isRunning() && this.abortedQueuedMessages)) { await this.stoppedInputRecovery; return receipt(); }
         const promptRun = this.activePromptRun;
         this.abortGeneration += 1;
+        // Claim all unconsumed admissions synchronously, including input hooks
+        // which have not reached the SDK queue yet. Persist before acknowledging.
+        const stoppedReceipts = [...this.queuedInputReceipts.entries()];
+        const recoveryTasks = stoppedReceipts.map(([, receipt]) => receipt.cancelled());
+        this.stoppedInputRecovery = Promise.all(recoveryTasks).then(() => undefined);
         this.stopping = true;
         this.statusPhaseKind = "stopping";
         this.statusPhaseStartedAt = Date.now();
@@ -1459,12 +1448,18 @@ export class AgentSessionWrapper {
             }
           }
         }).finally(() => {
+          // A queue drain can precede an awaited SDK boundary. Keep identity
+          // tracking until cleanup settles so a late consumption wins recovery.
+          for (const [id, receipt] of stoppedReceipts) {
+            if (this.queuedInputReceipts.get(id) === receipt) this.queuedInputReceipts.delete(id);
+          }
           if (!this._alive) return;
           this.stopping = false;
           this.flushPendingProjectCapabilitySettings();
           this.emit({ type: "session_idle", sessionId: this.sessionId });
           notifyRunningChange();
         });
+        await this.stoppedInputRecovery;
         return receipt();
       }
 
@@ -1536,6 +1531,8 @@ export class AgentSessionWrapper {
           model = this.inner.modelRuntime.getModel(provider, modelId);
         }
         if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
+        // Missing or non-positive windows skip this compact. Do not invent a
+        // size; legacy resolution is documented in lib/model-limits.ts.
         const targetWindow = model.contextWindow;
         let compacted = false;
         if (Number.isFinite(targetWindow) && targetWindow > 0
@@ -1707,6 +1704,14 @@ export class AgentSessionWrapper {
 
       case "steer":
       case "follow_up": {
+        if (typeof command.expectedRunId === "string" && command.expectedRunId !== this.getActivePromptRunId()) throw new Error("Prompt cancelled");
+        const queuedCommandId = typeof command.commandId === "string" ? command.commandId : undefined;
+        if (queuedCommandId && typeof command.onQueueConsumed === "function" && typeof command.onQueueCancelled === "function") {
+          this.queuedInputReceipts.set(queuedCommandId, {
+            consumed: command.onQueueConsumed as () => Promise<void>,
+            cancelled: command.onQueueCancelled as () => Promise<void>,
+          });
+        }
         this.reviews().admit({ id: typeof command.commandId === "string" ? command.commandId : randomUUID(),
           source: type === "follow_up" ? "queued" : typeof command.source === "string" ? command.source : "unknown",
           text: String(command.message ?? ""), timestamp: Date.now() }, false);
@@ -1719,6 +1724,7 @@ export class AgentSessionWrapper {
           const extensionCommand = invocationName && this.inner.extensionRunner.getRegisteredCommands().some(item => item.invocationName === invocationName);
           if (extensionCommand && command.inputMode !== "text") {
             await this.executeChatCommand(typeof command.commandId === "string" ? command.commandId : `cmd_${randomUUID()}`, text);
+            if (queuedCommandId) this.queuedInputReceipts.delete(queuedCommandId);
             return { disposition: "handled" };
           }
           let literalDisposition: "handled" | "queued" | "started" | undefined;
@@ -1736,8 +1742,12 @@ export class AgentSessionWrapper {
             this.emit({ type: "queue_update", steering: [], followUp: [] });
             throw new Error("Prompt cancelled");
           }
+          if (disposition === "handled" && queuedCommandId) this.queuedInputReceipts.delete(queuedCommandId);
           return { disposition };
-        })).finally(() => { this.inputAdmissions--; notifyRunningChange(); });
+        })).catch(error => {
+          if (queuedCommandId && abortGeneration === this.abortGeneration) this.queuedInputReceipts.delete(queuedCommandId);
+          throw error;
+        }).finally(() => { this.inputAdmissions--; notifyRunningChange(); });
         const writer = admission.then(() => undefined, () => undefined).finally(() => this.promptTasks.delete(writer));
         this.promptTasks.add(writer);
         return admission;
@@ -1841,9 +1851,9 @@ export class AgentSessionWrapper {
           this.capabilityPolicy,
         );
         this.refreshCapabilityCatalog();
-        let resolved: { policy: SessionCapabilityPolicy; toolNames: string[]; trimmed: boolean };
+        let resolved: { policy: SessionCapabilityPolicy; toolNames: string[] };
         try {
-          resolved = this.resolveCapabilityToolBudget(nextPolicy, true);
+          resolved = this.resolveCapabilityTools(nextPolicy);
         } catch (error) {
           this.toolNameCeiling = previousCeiling;
           throw error;
@@ -1862,7 +1872,7 @@ export class AgentSessionWrapper {
         if (typeof this.inner.bindExtensions !== "function") {
           this.inner.extensionRunner.setUIContext?.(this.createExtensionUiContext(), "rpc");
         }
-        this.applySessionCapabilities({ persistBudgetTrim: true });
+        this.applySessionCapabilities();
         invalidateModelsCache();
         return { success: true };
       }
@@ -2437,7 +2447,7 @@ export function getLiveProjectNativeMcpCatalog(projectRoot: string) {
   for (const session of getRegistry().values()) {
     if (!session.isAlive() || session.runtimeProfile !== "normal" || normalizeRpcCwd(session.projectRoot) !== normalizeRpcCwd(projectRoot) || !session.nativeMcp) continue;
     if (session.nativeMcp.snapshot().owner !== "native") continue;
-    for (const tool of session.inner.getAllTools()) if (tool.name.startsWith("mcp__") || ["codemode", "tool_search", "list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"].includes(tool.name)) tools.set(tool.name, tool);
+    for (const tool of session.inner.getAllTools()) if (tool.name.startsWith("mcp__") || ["codemode", "tool_search", "list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"].includes(tool.name)) tools.set(tool.name, { ...tool, defaultEnabled: true });
     for (const resource of session.nativeMcp.resourceCatalog()) resources.set(resource.id, resource);
   }
   return { tools: [...tools.values()], resources: [...resources.values()] };
@@ -2862,6 +2872,10 @@ export async function startRpcSession(
               },
             }),
       });
+      installExtensionLoadPlanReload(services.resourceLoader, extensionPlan, async () => {
+        await settingsManager.reload();
+        return resolveExtensionLoadPlan({ cwd, agentDir, settingsManager, profile: runtimeProfile, installMissing: true });
+      });
       if (nativeMcp) setNativeMcpController(services, nativeMcp);
       if (runtimeProfile === "device-control") {
         if (
@@ -2933,6 +2947,7 @@ export async function startRpcSession(
     const nativeMcp = getNativeMcpController(services);
     const capabilityCatalog = [...buildSessionCapabilityCatalog(inner.getAllTools().map(tool => ({
       ...tool, defaultActive: inner.getToolDefinition?.(tool.name)?.defaultActive,
+      ...(nativeMcp?.isNativeTool(tool.name) ? { defaultEnabled: true } : {}),
     })), runtimeProfile), ...nativeMcp?.resourceCatalog() ?? []];
     const restoredPolicy = projectToolRecord
       ? createSessionCapabilityPolicy(

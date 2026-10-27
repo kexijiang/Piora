@@ -422,6 +422,14 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
     && selectedCwd
     && selectedProject === worktreeState.projectRoot
   );
+  const worktreeSection = <WorktreeSection
+    showWorktreeSwitcher={showWorktreeSwitcher} worktreeState={worktreeState} selectedCwd={selectedCwd} homeDir={homeDir}
+    wtFilter={wtFilter} setWtFilter={setWtFilter} wtDropdownOpen={wtDropdownOpen} setWtDropdownOpen={setWtDropdownOpen}
+    wtNewOpen={wtNewOpen} setWtNewOpen={setWtNewOpen} wtNewBranch={wtNewBranch} setWtNewBranch={setWtNewBranch}
+    wtError={wtError} setWtError={setWtError} wtBusy={wtBusy} wtConfirmRemove={wtConfirmRemove} setWtConfirmRemove={setWtConfirmRemove}
+    wtDropdownRef={wtDropdownRef} wtNewInputRef={wtNewInputRef} setSelectedCwd={setSelectedCwd}
+    handleCreateWorktree={handleCreateWorktree} handleRemoveWorktree={handleRemoveWorktree}
+  />;
   return (
     <>
     <SidebarShell>
@@ -459,30 +467,6 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
         handleDefaultCwd={handleDefaultCwd}
         togglePinnedProject={togglePinnedProject}
       />
-      <WorktreeSection
-        showWorktreeSwitcher={showWorktreeSwitcher}
-        worktreeState={worktreeState}
-        selectedCwd={selectedCwd}
-        homeDir={homeDir}
-        wtFilter={wtFilter}
-        setWtFilter={setWtFilter}
-        wtDropdownOpen={wtDropdownOpen}
-        setWtDropdownOpen={setWtDropdownOpen}
-        wtNewOpen={wtNewOpen}
-        setWtNewOpen={setWtNewOpen}
-        wtNewBranch={wtNewBranch}
-        setWtNewBranch={setWtNewBranch}
-        wtError={wtError}
-        setWtError={setWtError}
-        wtBusy={wtBusy}
-        wtConfirmRemove={wtConfirmRemove}
-        setWtConfirmRemove={setWtConfirmRemove}
-        wtDropdownRef={wtDropdownRef}
-        wtNewInputRef={wtNewInputRef}
-        setSelectedCwd={setSelectedCwd}
-        handleCreateWorktree={handleCreateWorktree}
-        handleRemoveWorktree={handleRemoveWorktree}
-      />
       {onSelectRoom ? (
         <RoomSidebarSection
           sessions={activeSessions}
@@ -496,6 +480,14 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
         />
       ) : null}
       <SidebarProjectArea
+        worktreeSection={worktreeSection}
+        onOpenWorktrees={(group) => {
+          if (selectedProject !== group.projectRoot) setSelectedCwd(group.preferredCwd);
+          setCollapsedProjectKeys((previous) => {
+            const next = new Set(previous); next.delete(group.key); return next;
+          });
+          setWtDropdownOpen(true);
+        }}
         loading={loading} error={error}
         handleDefaultCwd={handleDefaultCwd} handleCustomPathClick={handleCustomPathClick}
         projectGroups={projectGroups} selectedProject={selectedProject}

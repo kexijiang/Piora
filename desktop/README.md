@@ -14,14 +14,51 @@ npm run dev:desktop
 This command binds an authenticated Next.js development server to
 `127.0.0.1:30141`, watches `desktop/src`, and opens Electron after both the web
 server and desktop TypeScript compile are healthy. React and CSS use Next.js
-hot reload; a successful main-process or preload compile restarts Electron.
+hot reload through Turbopack; a successful main-process or preload compile restarts Electron.
+Development reuses verified branding resources, compiles the Harmony worker
+incrementally, and skips the release intro film. Packaged startup is unchanged.
 Ctrl+C or quitting Electron terminates the complete development process tree.
 The command does not run `next build` or create standalone output.
+
+You can keep the installed Piora running at the same time. The development
+window/tray is named **Piora Dev** and uses a separate Windows taskbar identity.
+By default its Electron profile, instance lock and clipboard are under
+`.piora-data/desktop-dev/`, its server state is under `runtime/normal/`, and its
+Pi sessions/configuration/credentials are under `agent/` in that directory.
+Both launcher processes receive the same isolated paths; production data is
+not copied or migrated. A fresh dev profile requires its own model setup.
+Global new-chat, companion and clipboard shortcuts remain owned by the installed
+app; focused-window/menu shortcuts still work in dev. Do not disable the
+single-instance lock: duplicate launches of the same edition remain blocked.
+
+An explicit `PIORA_DESKTOP_DEV_USER_DATA` selects another development profile.
+An explicit `PI_CODING_AGENT_DIR` overrides the dev agent directory; pointing it
+at production intentionally shares that data and removes the default isolation.
+
+If startup stalls after switching branches, stop the dev launcher, run
+`npm run dev:reset-cache`, then start `npm run dev:desktop` again. Reset preserves
+the old generated directory as `.next/dev-stale-*` using an atomic rename;
+it never walks Next's external dependency links or deletes application data.
+If dependencies are incomplete, restore them from the lockfile with `npm ci`
+before restarting. Startup diagnostics now identify page compilation vs. asset
+warming and include the specific stalled resource without printing auth tokens.
+Local readiness probes use independent loopback HTTP connections, not the
+application's global fetch/proxy transport or connection pool.
+Windows defaults to in-memory Turbopack caching, avoiding persistent snapshot
+validation stalls on slow filesystems; other platforms retain persistent caching.
+Set `PIORA_DEV_FILESYSTEM_CACHE=1` to opt into persistent dev caching or `0` to
+disable it explicitly. This does not change release-build caching.
 
 If port 30141 is already occupied, stop the existing process first; the command
 reports the conflict without attaching to an unauthenticated server.
 For an intentional parallel instance, choose another loopback port before
 starting, for example `$env:PIORA_DESKTOP_DEV_PORT = "30142"`.
+
+For an explicit local automation/debugging session, optionally set
+`$env:PIORA_DESKTOP_DEV_DEBUG_PORT = "19221"` before starting. This opens a
+loopback Chromium debugging endpoint with full renderer control; leave it unset
+for normal development. See [startup and hot-reload verification](../docs/development-startup-and-hmr.md)
+for isolated timing measurements and the Harmony tab regression procedure.
 
 For a one-off Electron-only compile:
 
@@ -86,7 +123,7 @@ speech transcription reports unavailable there.
 
 Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` to build and upload a Windows
 installer, portable EXE, blockmap, `beta.yml`, checksums, and release notes without
-publishing them. After those exact bytes pass installed Piora and phone acceptance,
+publishing them. After those exact bytes pass installed Piora acceptance,
 `publish-preview.yml` publishes them as a prerelease. The beta path does not run the
 stable Linux/ZIP pipeline. Installed beta builds use the beta update channel.
 Settings > General also provides an opt-in scheduled silent update: installation

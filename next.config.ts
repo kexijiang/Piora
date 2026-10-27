@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { developmentFilesystemCache } from "./scripts/development-filesystem-cache.mjs";
 
 const { version } = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")) as { version: string };
 const deploymentId = `piora-${version.replace(/[^A-Za-z0-9_-]/g, "-")}`;
@@ -12,9 +13,32 @@ try {
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Allow isolated dev benchmarks without replacing the interactive cache.
+  distDir: process.env.NODE_ENV === "development" ? process.env.PIORA_DEV_DIST_DIR || ".next" : ".next",
+  typescript: {
+    tsconfigPath: process.env.NODE_ENV === "development" ? process.env.PIORA_DEV_TSCONFIG || "tsconfig.json" : "tsconfig.json",
+  },
   // Proxy clones request bodies before the route reads them. Its 10 MiB
   // default truncates supported file uploads; leave room for multipart headers.
-  experimental: { proxyClientMaxBodySize: 101 * 1024 * 1024 },
+  experimental: {
+    turbopackFileSystemCacheForDev: developmentFilesystemCache(),
+    proxyClientMaxBodySize: 101 * 1024 * 1024,
+    turbopackLazyDynamicImports: true,
+    turbopackLazyDynamicImportsSSR: true,
+  },
+  turbopack: {
+    root: __dirname,
+    rules: Object.fromEntries(["clipboard-archive.ts", "clipboard-database.ts", "clipboard-types.ts"].map((file) => [file, {
+      loaders: ["./scripts/desktop-dev-loader.cjs"],
+      as: "*.mjs",
+    }])),
+    // Node16 desktop sources use emitted .js specifiers; resolve the two
+    // clipboard modules shared with the server to their source during dev.
+    resolveAlias: {
+      "./clipboard-database.js": "./desktop/src/clipboard-database.ts",
+      "./clipboard-types.js": "./desktop/src/clipboard-types.ts",
+    },
+  },
   // The app has a dedicated transparent desktop-pet renderer. Next's floating
   // development badge otherwise appears as an unexplained black disc inside
   // that frameless window; compiler and runtime errors remain enabled.
@@ -68,6 +92,7 @@ const nextConfig: NextConfig = {
     "playwright-core",
     "proper-lockfile",
     "hypium-driver",
+    "@grpc/grpc-js",
     "mediabunny",
     "ssh2",
   ],
@@ -96,6 +121,7 @@ const nextConfig: NextConfig = {
         "@deveco/deveco-cli",
         "playwright-core",
         "hypium-driver",
+        "@grpc/grpc-js",
     "mediabunny",
         "ssh2",
       );

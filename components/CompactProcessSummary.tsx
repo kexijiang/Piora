@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { CompactProcessGroup } from "@/lib/compact-chat-history";
-import { commandActionKey, isCommandToolName } from "@/lib/command-execution";
+import { isCommandToolName } from "@/lib/command-execution";
+import { toolActivityIcons, toolActivityKind } from "@/lib/tool-activity";
 import { summarizeToolDisclosure } from "@/lib/tool-summary";
 import { formatStatusDuration } from "@/lib/status-duration";
 import { useI18n } from "@/hooks/useI18n";
@@ -33,11 +34,11 @@ export function CompactProcessSummary({ group, onToggle, onInspectCommand }: { g
         const summary = block.type === "toolCall" ? summarizeToolDisclosure(block.toolName, block.input, undefined, t) : undefined;
         const detail = block.type === "toolCall" ? command ? String(block.input.command ?? "") : summary?.subject ?? summary?.detail : undefined;
         const label = block.type === "thinking" ? t("i18n.thinking")
-          : block.type === "toolCall" ? command ? t(commandActionKey(typeof block.input.command === "string" ? block.input.command : "")) : summarizeToolDisclosure(block.toolName, block.input, undefined, t).title
+          : block.type === "toolCall" ? command ? t("command.action.run") : summarizeToolDisclosure(block.toolName, block.input, undefined, t).title
             : t("chat.processUpdate");
         return <div key={step.key} className={`compact-process-step is-${step.status}`}>
           <div className="compact-process-step-line">
-            <AliIcon name={step.status === "running" ? "timer" : step.status === "done" ? "check" : step.status === "error" ? "error" : "info"} size={12} />
+            <AliIcon name={block.type === "thinking" ? "brain" : block.type === "toolCall" ? toolActivityIcons[toolActivityKind(block.toolName)] : "info"} size={14} />
             <span className="compact-process-step-label" title={label}>{label}</span>
             {detail ? <span className="compact-process-step-detail" title={detail}>{detail}</span> : null}
             {block.type === "toolCall" ? <span className="compact-process-step-status">{t(step.status === "running" ? "command.status.running" : step.status === "unknown" ? "chat.processUnknown" : step.status === "error" ? "command.status.failed" : "chat.processStepDone")}</span> : null}

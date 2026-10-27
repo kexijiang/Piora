@@ -118,6 +118,11 @@ jobs:
         if: runner.os == 'Windows'
         run: npm run verify:package
 
+      - name: Verify physical portable payload with packaged Electron
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked (Get-Content package.json | ConvertFrom-Json).version
+
   quality:
     # Preserve branch-protection check names. This gate needs neither checkout
     # nor dependencies, and must fail even when an upstream job was skipped.

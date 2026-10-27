@@ -4,6 +4,7 @@ import { SystemLauncher } from "./system-launcher";
 import { registerQuickAccessHandlers } from "./quick-access-ipc.js";
 import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
 import { copyHarmonyMedia } from "./harmony-media-clipboard.js";
+import { HarmonyWindows } from "./harmony-windows.js";
 import { pathToFileURL } from "node:url";
 import { accessSync, constants as fsConstants, existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, resolve } from "node:path";
@@ -149,6 +150,7 @@ const VERIFY_SMOKE_SINGLE_INSTANCE = PORTABLE_SMOKE_TEST && process.env.PIORA_SM
 const STARTUP_SHELL_BACKGROUND = "#080a0f";
 const PI_AGENT_DIRECTORY_ENV = "PI_CODING_AGENT_DIR";
 const desktopDevelopmentRuntime = resolveDesktopDevelopmentRuntime();
+const DESKTOP_DISPLAY_NAME = desktopDevelopmentRuntime ? `${APP_DISPLAY_NAME} Dev` : APP_DISPLAY_NAME;
 
 const requestedSmokeUserData = process.env.PIORA_SMOKE_USER_DATA?.trim();
 const requestedCompanionUiTestUserData = process.env.PIORA_COMPANION_UI_TEST === "1"
@@ -173,6 +175,7 @@ if (desktopDevelopmentRuntime) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let harmonyWindows: HarmonyWindows | undefined;
 let companionWindow: BrowserWindow | null = null;
 let companionBubbleWindow: BrowserWindow | null = null;
 let companionPanelWindow: BrowserWindow | null = null;
@@ -357,6 +360,7 @@ function prepareWritableDirectory(directory: string): string {
 }
 
 function defaultPiAgentDirectory(): string {
+  if (desktopDevelopmentRuntime) return resolve(app.getPath("userData"), "agent");
   return resolve(app.getPath("home"), ".pi", "agent");
 }
 
@@ -530,11 +534,11 @@ function registerKeyboardShortcutHandler(): void {
     const previous = keyboardShortcutBindings;
     keyboardShortcutBindings = parsed;
     const companionShortcutRegistered = syncCompanionPanelShortcut();
-    const clipboardShortcutRegistered = clipboardController?.setShortcut(toElectronAccelerator(parsed["companion.clipboard"])) ?? true;
+    const clipboardShortcutRegistered = clipboardController?.setShortcut(desktopDevelopmentRuntime ? undefined : toElectronAccelerator(parsed["companion.clipboard"])) ?? true;
     if (!companionShortcutRegistered || !clipboardShortcutRegistered) {
       keyboardShortcutBindings = previous;
       syncCompanionPanelShortcut();
-      clipboardController?.setShortcut(toElectronAccelerator(previous["companion.clipboard"]));
+      clipboardController?.setShortcut(desktopDevelopmentRuntime ? undefined : toElectronAccelerator(previous["companion.clipboard"]));
       return false;
     }
     installApplicationMenu();
@@ -1115,7 +1119,7 @@ function registerFileShellHandlers(): void {
   // App-owned main frames only; third-party browser tabs never receive this bridge.
   for (const channel of ["pi:clipboard-read", "pi:clipboard-write", "pi:harmony-media-copy"]) ipcMain.removeHandler(channel);
   ipcMain.handle("pi:harmony-media-copy", async (event, value: unknown) => {
-    if (!isTrustedMainWindowSender(event) || !serverUrl || !applicationToken || !mainWindow) throw new Error("Untrusted Harmony clipboard request");
+    if ((!isTrustedMainWindowSender(event) && !harmonyWindows?.trustedMirror(event)) || !serverUrl || !applicationToken || !mainWindow) throw new Error("Untrusted Harmony clipboard request");
     const response = await fetch(new URL("/api/harmony/media", serverUrl), {
       headers: { [DESKTOP_TOKEN_HEADER]: applicationToken }, signal: AbortSignal.timeout(5_000),
     });
@@ -1151,7 +1155,7 @@ function registerFileShellHandlers(): void {
     return clipboard.readText();
   });
   ipcMain.handle("pi:clipboard-write", async (event, value: unknown, image: unknown) => {
-    if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event)) throw new Error("Untrusted clipboard request");
+    if (!isTrustedMainWindowSender(event) && !isTrustedCompanionSurfaceSender(event) && !(image !== true && harmonyWindows?.trustedMirror(event))) throw new Error("Untrusted clipboard request");
     if (typeof value !== "string" || value.length > 12 * 1024 * 1024) throw new Error("Invalid clipboard content");
     if (image === true) {
       if (!/^data:image\/(png|jpeg|webp|gif);base64,/.test(value)) throw new Error("Invalid clipboard image");
@@ -1164,7 +1168,7 @@ function registerFileShellHandlers(): void {
   ipcMain.removeHandler(OPEN_PATH_CHANNEL);
 
   ipcMain.handle(REVEAL_PATH_CHANNEL, async (event, requestedPath: unknown): Promise<boolean> => {
-    if (!isTrustedMainWindowSender(event)) {
+    if (!isTrustedMainWindowSender(event) && !await harmonyWindows?.trustedMediaFile(event, requestedPath).catch(() => false)) {
       logger?.warn("Blocked reveal-path request from an untrusted renderer");
       return false;
     }
@@ -1183,7 +1187,7 @@ function registerFileShellHandlers(): void {
   });
 
   ipcMain.handle(OPEN_PATH_CHANNEL, async (event, requestedPath: unknown): Promise<boolean> => {
-    if (!isTrustedMainWindowSender(event)) {
+    if (!isTrustedMainWindowSender(event) && !await harmonyWindows?.trustedMediaFile(event, requestedPath).catch(() => false)) {
       logger?.warn("Blocked open-path request from an untrusted renderer");
       return false;
     }
@@ -1559,9 +1563,9 @@ function configureSession(runtimeSession: Session, origin: string, token: string
 
   // A renderer ChunkLoadError alone loses the underlying Chromium/HTTP error.
   // Record only app asset paths, never request headers or application content.
-  const assetFilter = { urls: [`${origin}/_next/static/*`] };
+  const assetFilter = { urls: [`${origin}/_next/static/*`, `${origin}/api/harmony/video*`] };
   runtimeSession.webRequest.onErrorOccurred(assetFilter, (details) => {
-    logger?.error("Application asset request failed", {
+      logger?.error(new URL(details.url).pathname === "/api/harmony/video" ? "Harmony video request failed" : "Application asset request failed", {
       path: new URL(details.url).pathname,
       error: details.error,
       resourceType: details.resourceType,
@@ -1580,6 +1584,10 @@ function configureSession(runtimeSession: Session, origin: string, token: string
 async function waitForDesktopDevelopmentServer(url: URL, token: string): Promise<void> {
   const readiness = await waitForDevelopmentPageAssets(url, {
     headers: { [DESKTOP_TOKEN_HEADER]: token },
+    onProgress: progress => {
+      recordStartupStage(progress.phase === "assets" ? "warming-development-assets" : "compiling-development-page");
+      logger?.info("Development page startup progress", progress);
+    },
   });
   logger?.info("Development page scripts and styles are ready", readiness);
 }
@@ -1605,7 +1613,9 @@ function positionCompanionBubble(petBounds?: Electron.Rectangle): void {
   // Keep the speech surface on the exact same planned coordinates as the pet.
   // Reading getBounds() immediately after setPosition() can return the previous
   // native-window position on Windows and makes the bubble visibly trail.
-  companionBubbleWindow.setPosition(x, y, false);
+  // setPosition reuses native dimensions, which round upwards on fractional
+  // Windows DPI. Repeated moves then grow the bottom-aligned bubble down/right.
+  companionBubbleWindow.setBounds({ x, y, width: COMPANION_BUBBLE_WIDTH, height: COMPANION_BUBBLE_HEIGHT }, false);
 }
 
 function stopCompanionWindowMotion(): boolean {
@@ -1963,6 +1973,9 @@ function toggleCompanionPanel(): boolean {
 }
 
 function syncCompanionPanelShortcut(): boolean {
+  // Global bindings belong to the installed app while both editions run.
+  // Dev keeps its ordinary focused-window/menu shortcuts available.
+  if (desktopDevelopmentRuntime) return true;
   const next = toElectronAccelerator(keyboardShortcutBindings["companion.togglePanel"]);
   if (companionPanelShortcutAccelerator) {
     globalShortcut.unregister(companionPanelShortcutAccelerator);
@@ -2097,7 +2110,7 @@ function installNativeContextMenu(window: BrowserWindow): void {
 function updateTrayMenu(): void {
   if (!tray) return;
   const isChinese = app.getLocale().toLowerCase().startsWith("zh");
-  tray.setToolTip(runningTaskCount > 0 ? `${APP_DISPLAY_NAME} · ${runningTaskCount}` : brandText("Piora"));
+  tray.setToolTip(runningTaskCount > 0 ? `${DESKTOP_DISPLAY_NAME} · ${runningTaskCount}` : DESKTOP_DISPLAY_NAME);
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: isChinese ? brandText("显示 Piora") : brandText("Show Piora"), click: () => focusMainWindow() },
     { label: isChinese ? "新任务" : "New task", click: () => focusMainWindow("new-session") },
@@ -2157,6 +2170,7 @@ function registerGlobalShortcutHandler(): void {
   ipcMain.removeHandler(GLOBAL_SHORTCUT_CHANNEL);
   ipcMain.handle(GLOBAL_SHORTCUT_CHANNEL, (event, enabled: unknown): boolean => {
     if (!isTrustedMainWindowSender(event) || typeof enabled !== "boolean") return false;
+    if (desktopDevelopmentRuntime) return !enabled;
     globalShortcut.unregister("CommandOrControl+Alt+P");
     return !enabled || globalShortcut.register("CommandOrControl+Alt+P", () => focusMainWindow("new-session"));
   });
@@ -2407,7 +2421,7 @@ function createMainWindowShell(log: Logger): MainWindowShell {
     minWidth: 900,
     minHeight: 640,
     show: false,
-    title: brandText("Piora"),
+    title: DESKTOP_DISPLAY_NAME,
     backgroundColor: STARTUP_SHELL_BACKGROUND,
     autoHideMenuBar: true,
     ...integratedTitleBar,
@@ -2428,6 +2442,10 @@ function createMainWindowShell(log: Logger): MainWindowShell {
   });
 
   installRendererDiagnostics(window, "Main", log);
+  if (desktopDevelopmentRuntime) {
+    // The renderer's document title otherwise replaces BrowserWindow.title.
+    window.on("page-title-updated", event => { event.preventDefault(); window.setTitle(DESKTOP_DISPLAY_NAME); });
+  }
 
   const scheduleWindowStateWrite = () => {
     if (mainWindowStateTimer) clearTimeout(mainWindowStateTimer);
@@ -2561,7 +2579,11 @@ function createStartupWindow(log: Logger): { window: BrowserWindow; ready: Promi
   const firstLaunchOfVersion = previousVersion !== app.getVersion();
   const updated = Boolean(previousVersion) && firstLaunchOfVersion;
   const mediaDirectory = app.isPackaged ? join(process.resourcesPath, "startup") : resolve(__dirname, "../../.branding/resources/startup");
-  const media = loadStartupMedia(mediaDirectory);
+  // The authenticated dev launcher already waits for the live server. Avoid
+  // synchronously reading/base64-embedding the release film on every restart.
+  // Packaged startup always retains the offline intro, even with a stray env.
+  const media = !app.isPackaged && process.env.PI_DESKTOP_DEV_SERVER_URL
+    ? {} : loadStartupMedia(mediaDirectory);
   const startupPath = join(app.getPath("userData"), "startup.html");
   let finishIntro!: () => void;
   const finished = new Promise<void>((resolveIntro) => { finishIntro = () => { resolveIntro(); }; });
@@ -2724,7 +2746,7 @@ async function startApplication(): Promise<void> {
   const startupStartedAt = Date.now();
   recordStartupStage("waiting-for-electron");
   await app.whenReady();
-  app.setAppUserModelId("io.github.kexijiang.piora");
+  app.setAppUserModelId(desktopDevelopmentRuntime ? "io.github.kexijiang.piora.dev" : "io.github.kexijiang.piora");
 
   logger ??= new FileLogger(app.getPath("userData"));
   logger.info("Starting Piora", {
@@ -2781,6 +2803,17 @@ async function startApplication(): Promise<void> {
   warmInitialModelCatalog(serverUrl, token, logger);
 
   recordStartupStage("initializing-desktop-services");
+  harmonyWindows = new HarmonyWindows({ origin: serverUrl, partition: DESKTOP_PARTITION, preload: join(__dirname, "preload.js"),
+    main: () => mainWindow, trustedMain: isTrustedMainWindowSender,
+    workbench: () => { focusMainWindow(); mainWindow?.webContents.send("pi:menu-action", "harmony-workbench"); },
+    request: async <T>(path: string, body?: unknown): Promise<T> => {
+      const response = await fetch(new URL(path, serverUrl!), { headers: { [DESKTOP_TOKEN_HEADER]: token, "Content-Type": "application/json" },
+        ...(body === undefined ? {} : { method: "POST", body: JSON.stringify(body) }), signal: AbortSignal.timeout(180_000) });
+      const data = await response.json() as T & { error?: { message?: string } | string };
+      if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : data.error?.message ?? `HTTP ${response.status}`);
+      return data;
+    },
+  });
   registerCompletionNotificationHandler();
   registerCompanionWindowHandlers();
   registerAutoLaunchHandlers();
@@ -2865,7 +2898,7 @@ async function startApplication(): Promise<void> {
   // Existing archives may need migration or maintenance. Keep this optional
   // worker off the critical path to the main application window.
   void clipboardController.start().catch(error => logger?.warn("Clipboard startup failed; application remains available", error));
-  clipboardController.setShortcut(toElectronAccelerator(keyboardShortcutBindings["companion.clipboard"]));
+  clipboardController.setShortcut(desktopDevelopmentRuntime ? undefined : toElectronAccelerator(keyboardShortcutBindings["companion.clipboard"]));
   registerFileShellHandlers();
   installDisplayReconciliation();
 
@@ -2971,8 +3004,13 @@ if (!hasSingleInstanceLock) {
     if (shutdownComplete) return;
     event.preventDefault();
 
-    shutdownPromise ??= stopApplication()
-      .then(() => {
+    shutdownPromise ??= (async () => {
+      if (harmonyWindows && !await harmonyWindows.prepareQuit()) { quitRequested = false; shutdownPromise = undefined; return false; }
+      harmonyWindows?.destroy();
+      await stopApplication(); return true;
+    })()
+      .then((completed) => {
+        if (!completed) return;
         shutdownComplete = true;
         app.quit();
       }).catch((error) => {

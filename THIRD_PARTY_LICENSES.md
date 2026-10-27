@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `cb0141d59674d235ddb13425e685770d028f8a19373e09a49e817087efe18848`
+Lockfile SHA-256: `080b16572a79bf953e3527963b44c517304bc4f56bfdecbafe42f4cc71e3afb6`
 
-Unique locked packages: **1380**. Runtime packages: **902**. Build/development-only packages: **478**.
+Unique locked packages: **1381**. Runtime packages: **903**. Build/development-only packages: **478**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -78,13 +78,13 @@ Every locked package declares a license.
 | `@deveco/deveco-cli-common` | `1.3.6` | MIT | Yes |
 | `@deveco/deveco-cli-knowledgebase` | `1.3.6` | MIT | Yes |
 | `@deveco/deveco-cli-openharmony-arm64` | `1.3.6` | MIT | Yes |
-| `@earendil-works/pi-agent-core` | `1.3.0` | MIT | No |
-| `@earendil-works/pi-ai` | `1.3.0` | MIT | No |
-| `@earendil-works/pi-codemode` | `1.3.0` | MIT | No |
-| `@earendil-works/pi-coding-agent` | `1.3.0` | MIT | No |
-| `@earendil-works/pi-mcp` | `1.3.0` | MIT | No |
-| `@earendil-works/pi-telemetry` | `1.3.0` | MIT | No |
-| `@earendil-works/pi-tui` | `1.3.0` | MIT | No |
+| `@earendil-works/pi-agent-core` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-ai` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-codemode` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-coding-agent` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-mcp` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-telemetry` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-tui` | `1.4.0` | MIT | No |
 | `@emnapi/core` | `1.9.1` | MIT | Yes |
 | `@emnapi/runtime` | `1.11.3` | MIT | Yes |
 | `@emnapi/wasi-threads` | `1.2.0` | MIT | Yes |
@@ -610,6 +610,7 @@ Every locked package declares a license.
 | `markdown-table` | `3.0.4` | MIT | No |
 | `marked` | `16.4.2` | MIT | No |
 | `marked` | `18.0.11` | MIT | No |
+| `marked-cjk-friendly` | `0.1.2` | MIT | No |
 | `matcher` | `4.0.0` | MIT | Yes |
 | `math-intrinsics` | `1.1.0` | MIT | No |
 | `mdast-util-find-and-replace` | `3.0.2` | MIT | No |
@@ -885,7 +886,7 @@ Every locked package declares a license.
 | `vfile` | `6.0.3` | MIT | No |
 | `vfile-location` | `5.0.3` | MIT | No |
 | `vfile-message` | `4.0.3` | MIT | No |
-| `vscode-jsonrpc` | `9.0.3` | MIT | No |
+| `vscode-jsonrpc` | `10.0.0` | MIT | No |
 | `w3c-keyname` | `2.2.8` | MIT | No |
 | `web-namespaces` | `2.0.1` | MIT | No |
 | `web-streams-polyfill` | `3.3.3` | MIT | No |

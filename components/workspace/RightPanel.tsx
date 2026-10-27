@@ -114,11 +114,12 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
   }, []);
 
   useEffect(() => {
+    // The files subtree mounts one render after its first tab activation.
     if (activeTab !== "files" || !filesRootRef.current) return;
     const observer = new ResizeObserver(([entry]) => setFilesWidth(entry.contentRect.width));
     observer.observe(filesRootRef.current);
     return () => observer.disconnect();
-  }, [activeTab]);
+  }, [activeTab, filesHasOpened]);
 
   useEffect(() => { if (!compactFiles) setTreeDrawerOpen(false); }, [compactFiles]);
 

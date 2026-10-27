@@ -1,6 +1,8 @@
-# Minimal Harmony mirror
+# Legacy embedded Harmony mirror
 
-The default workspace mounts `MirrorPanel`, not the retained legacy workbench. It automatically selects a single online device; once selected, disconnection never silently selects another phone. The normal toolbar contains zoom, screenshot and recording controls. Multiple devices add a compact selector. Recording disables device switching until the session is stopped/saved. The on-demand Controls area contains standard/fluent selection, navigation, supported physical-key holds and semantic text submission.
+The current default is the [complete workbench and independent read-only mirror](workbench-and-mirror.md). This document records the retained embedded panel and its shared transport behavior; its screenshot is not the beta.40 default UI.
+
+The retained `MirrorPanel` fixture uses an embedded preview. It automatically selects a single online device; once selected, disconnection never silently selects another phone. The normal toolbar contains zoom, screenshot and recording controls. Multiple devices add a compact selector. Recording disables device switching until the session is stopped/saved. The on-demand Controls area contains standard/fluent selection, navigation, supported physical-key holds and semantic text submission.
 
 ![Minimal mirror toolbar rendered with a synthetic browser-test frame, not a real device capture](images/mirror-mode-fixture.png)
 
@@ -8,7 +10,7 @@ This screenshot uses the production panel/CSS and mocked device/video hooks. It 
 
 ## Capability boundary
 
-`lib/harmony/mirror-mode.ts` permits discovery, authenticated metadata, video/frame/geometry, media, manual input ownership and bounded direct input. Tool routes (logs, terminal, files, databases, scenarios, audio and associated jobs) reject new requests by default. The Harmony Agent extension registers no tools in this mode. `PIORA_HARMONY_WORKBENCH=1` is an explicit developer compatibility setting for retained backend tools and their tests; it does not switch the visible page back to the legacy UI. Apply mode changes by restarting the service so existing subscriptions are not left running under an old module. No user histories, recordings, transfer data or phone media are deleted.
+`lib/harmony/mirror-mode.ts` permits discovery, authenticated metadata, video/frame/geometry, media, manual input ownership and bounded direct input. Tool routes (logs, terminal, files, databases, scenarios, audio and associated jobs) reject new requests only when `PIORA_HARMONY_WORKBENCH=0` explicitly restricts the service. The Harmony Agent extension registers no tools under that restriction. The default complete workbench retains its backend tools and Agent registration; this flag does not change the visible page. Apply mode changes by restarting the service so existing subscriptions are not left running under an old module. No user histories, recordings, transfer data or phone media are deleted.
 
 Device polling and recording-state polling are serial, abortable and active-panel scoped. The mirror page does not mount history, log or tool components. Input leases are acquired only for user input, not viewing, screenshots or recording. Media operations use their own pending state and exact recording owner/ID.
 
@@ -16,7 +18,7 @@ Device polling and recording-state polling are serial, abortable and active-pane
 
 Connect an HDC-authorized device, unlock it yourself and start/authorize the Piora screen-sharing component on the phone. A missing component must be prepared manually using the existing documented setup process; this page does not install, update, wake or unlock a phone. It shows connection/authorization failures and retries after readiness changes. No new component-install button is included.
 
-The default action allowlist also rejects `initialize_mirror`; the existing installer action is retained only behind the explicit workbench compatibility boundary. This change does not grant installation permission.
+The restricted action allowlist rejects `initialize_mirror`; the complete workbench retains the existing installer action behind its explicit user flow. This change does not grant installation permission.
 
 Native binary H.264/WebCodecs remains primary. Standard mode uses the existing bounded screenshot endpoint. Automatic fallback keeps refreshing while one bounded native probe runs; valid configuration alone does not replace the displayed fallback. The first decoded keyframe completes the handoff and cancels fallback polling. Failed probes are cleaned before retry; teardown fences both pumps by device generation and attempt. Reconnect delay is capped at two seconds, inside the current five-second phone absence grace. Socket setup and first-frame budgets still apply, so this is not a guaranteed two-second recovery deadline. This short overlap does not start a second native encoder.
 

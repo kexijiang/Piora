@@ -1,6 +1,6 @@
 "use client";
 
-import type { Dispatch, RefObject, SetStateAction } from "react";
+import { useEffect, type Dispatch, type RefObject, type SetStateAction } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { AliIcon } from "../AliIcon";
 import { AnimatedDropdown, PathLabel } from "./SidebarPrimitives";
@@ -34,14 +34,15 @@ interface Props {
 export function WorktreeSection(props: Props) {
   const { t } = useI18n();
   const { showWorktreeSwitcher, worktreeState, selectedCwd, homeDir, wtFilter, setWtFilter, wtDropdownOpen, setWtDropdownOpen, wtNewOpen, setWtNewOpen, wtNewBranch, setWtNewBranch, wtError, setWtError, wtBusy, wtConfirmRemove, setWtConfirmRemove, wtDropdownRef, wtNewInputRef, setSelectedCwd, handleCreateWorktree, handleRemoveWorktree } = props;
+  useEffect(() => {
+    if (showWorktreeSwitcher && wtDropdownOpen) wtDropdownRef.current?.querySelector<HTMLButtonElement>("button")?.focus();
+  }, [showWorktreeSwitcher, wtDropdownOpen, wtDropdownRef]);
   return <>
-      {/* Worktree controls are the only content that needs a sidebar header. */}
-      {showWorktreeSwitcher && <div
-        className="sidebar-header"
+      {/* A single checkout needs no persistent row; the project menu opens it. */}
+      {showWorktreeSwitcher && (wtDropdownOpen || (worktreeState?.worktrees.length ?? 0) > 1) && <div
+        className="project-worktree-section"
         style={{
-          padding: "10px",
-          borderBottom: "1px solid var(--border)",
-          flexShrink: 0,
+          padding: "2px 6px 4px",
         }}
       >
         {/* Worktree switcher — shown only for git projects at a checkout top
@@ -63,6 +64,9 @@ export function WorktreeSection(props: Props) {
           return (
             <div ref={wtDropdownRef} style={{ position: "relative" }}>
               <button
+                type="button"
+                aria-label={t("sidebar.switchWorktree")}
+                aria-expanded={wtDropdownOpen}
                 onClick={() => setWtDropdownOpen((v) => !v)}
                  title={currentWt ? t("sidebar.switchWorktreeTitle", { path: currentWt.path }) : t("sidebar.switchWorktree")}
                 style={{
@@ -73,8 +77,8 @@ export function WorktreeSection(props: Props) {
                   alignItems: "center",
                   gap: 6,
                   padding: "0 10px",
-                  background: "var(--bg-hover)",
-                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  border: "none",
                   borderRadius: "var(--radius-control)",
                   cursor: "pointer",
                   fontSize: "var(--text-xs)",
@@ -88,9 +92,6 @@ export function WorktreeSection(props: Props) {
                   text={currentWt ? (currentWt.branch ?? displayCwd(currentWt.path, homeDir)) : "…"}
                   style={{ flex: 1, fontFamily: "var(--font-mono)", color: "var(--text)" }}
                 />
-                {currentWt?.isMain && (
-                   <span style={{ flexShrink: 0, color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>{t("sidebar.main")}</span>
-                )}
                 {worktreeState.worktrees.length > 1 && (
                   <span style={{ flexShrink: 0, color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
                     {worktreeState.worktrees.length}
@@ -102,11 +103,8 @@ export function WorktreeSection(props: Props) {
               <AnimatedDropdown
                 open={wtDropdownOpen}
                 style={{
-                  position: "absolute",
-                  top: "calc(100% + 4px)",
-                  left: 0,
-                  right: 0,
-                  zIndex: 100,
+                  position: "relative",
+                  marginTop: 4,
                   background: "var(--bg)",
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius-control)",
@@ -273,6 +271,8 @@ export function WorktreeSection(props: Props) {
                             void handleCreateWorktree();
                           }
                           if (e.key === "Escape") {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setWtNewOpen(false);
                             setWtNewBranch("");
                             setWtError(null);

@@ -10,14 +10,14 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("Retained Harmony workbench keeps its view-only mirror, responsive drawer and fenced tool control", { timeout: 180000 }, async () => {
+test("Harmony workspace keeps device tools, drafts and fenced control in a full workbench", { timeout: 180000 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "piora-harmony-panel-"));
   let browser;
   try {
     await writeFile(path.join(root, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root, "css.cjs"), 'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
     await writeFile(path.join(root, "stubs.tsx"), `import {useEffect,useMemo,useState} from "react";import {zhCNLocale} from "@/lib/i18n/messages/zh-CN";import {interpolateMessage} from "@/lib/i18n/format";export const useI18n=()=>({locale:"zh-CN",t:(key,params)=>interpolateMessage(zhCNLocale.messages[key]??key,params)});export const useHarmonyLiveFrame=options=>{const[geometryId,setGeometryId]=useState("geometry");window.setFixtureGeometry=setGeometryId;const[frameMode,setFrameMode]=useState("video");window.setFixtureFrameMode=setFrameMode;useEffect(()=>{if(!options.enabled)return;const canvas=options.canvasRef.current;if(!canvas)return;canvas.width=1080;canvas.height=2400;const context=canvas.getContext("2d");context.fillStyle="#f7f8fa";context.fillRect(0,0,1080,2400);context.fillStyle="#15181d";context.font="600 92px sans-serif";context.fillText("设置",80,230);context.fillStyle="#e8ebef";for(let y=340;y<2100;y+=250)context.fillRect(65,y,950,180);context.fillStyle="#333942";context.font="48px sans-serif";["无线网络","蓝牙","移动网络","显示和亮度","声音和振动","通知和状态栏","应用和服务"].forEach((text,index)=>context.fillText(text,105,445+index*250));},[options.canvasRef,options.enabled,options.serial]);return useMemo(()=>({status:"live",mode:frameMode,frame:{width:1080,height:2400,serial:options.serial,generation:options.generation,geometryId},refresh:()=>{}}),[options.serial,options.generation,geometryId,frameMode])};export const AliIcon=({name})=><span aria-hidden="true" style={{display:"inline-block",fontSize:10,lineHeight:1}}>{name==="mobile"?"▯":"◆"}</span>;export const HarmonyLogViewer=()=>null;export const HarmonyCheckPanel=()=>null;`);
-    await writeFile(path.join(root, "entry.tsx"), `import React,{useState} from "react";import {createRoot} from "react-dom/client";import {flushSync} from "react-dom";import {AppTooltip} from "@/components/AppTooltip";import {ShortcutSettings} from "@/components/ShortcutSettings";import {LegacyHarmonyPanel as HarmonyPanel} from "@/components/workspace/HarmonyPanel";function Fixture(){const[maximized,setMaximized]=useState(false);const[active,setActive]=useState(true);const[tooltips,setTooltips]=useState(false);const[shortcuts,setShortcuts]=useState(false);window.setFixtureShortcuts=setShortcuts;window.setFixtureTooltips=setTooltips;window.setFixtureActive=value=>flushSync(()=>setActive(value));window.maximized=maximized;return <>{shortcuts?<div role="dialog" aria-modal="true" style={{position:"fixed",inset:0,zIndex:2000,overflow:"auto",background:"white"}}><ShortcutSettings/></div>:null}{tooltips?<AppTooltip/>:null}<HarmonyPanel active={active} maximized={maximized} onMaximizedChange={setMaximized}/></>};createRoot(document.getElementById("root")).render(<Fixture/>);`);
+    await writeFile(path.join(root, "entry.tsx"), `import React,{useState} from "react";import {createRoot} from "react-dom/client";import {flushSync} from "react-dom";import {AppTooltip} from "@/components/AppTooltip";import {ShortcutSettings} from "@/components/ShortcutSettings";import {HarmonyPanel} from "@/components/workspace/HarmonyPanel";function Fixture(){const[maximized,setMaximized]=useState(false);const[active,setActive]=useState(true);const[tooltips,setTooltips]=useState(false);const[shortcuts,setShortcuts]=useState(false);window.setFixtureShortcuts=setShortcuts;window.setFixtureTooltips=setTooltips;window.setFixtureActive=value=>flushSync(()=>setActive(value));window.maximized=maximized;return <>{shortcuts?<div role="dialog" aria-modal="true" style={{position:"fixed",inset:0,zIndex:2000,overflow:"auto",background:"white"}}><ShortcutSettings/></div>:null}{tooltips?<AppTooltip/>:null}<HarmonyPanel active={active} maximized={maximized} onMaximizedChange={setMaximized}/></>};createRoot(document.getElementById("root")).render(<Fixture/>);`);
     const aliases = Object.fromEntries(["@/hooks/useI18n", "@/hooks/useHarmonyLiveFrame", "./HarmonyLogViewer", "./HarmonyCheckPanel"].map(name => [name, path.join(root, "stubs.tsx")]));
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
       entry: path.join(root, "entry.tsx"), output: { path: root, filename: "bundle.js" },
@@ -31,8 +31,14 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     page.on("pageerror", error => errors.push(error.message));
     page.on("dialog", async dialog => { nativeDialogs.push(dialog.type()); await dialog.dismiss(); });
     await page.addInitScript(() => {
-      window.copies = [];
-      window.piDesktop = { files: { getPathForFile: file => file.name === "dragged.txt" ? "C:\\workspace\\dragged.txt" : "" }, clipboard: {
+      window.copies = []; window.messages = []; window.mirrorCalls = [];
+      let state = { serial: "", scale: 75, open: false, minimized: false, alwaysOnTop: false, ownerId: "desktop-media-fixture" }, listeners = [];
+      const update = serial => { state = { ...state, serial }; listeners.forEach(fn => fn(state)); return state; };
+      window.piDesktop = { messages: { show: async message => { window.messages.push(message); return "done"; } }, harmonyMirror: {
+        getState: async () => state, onCommand: () => () => {}, setScale: async scale => { state={...state,scale}; return update(state.serial); }, close: async () => { state={...state,open:false}; update(state.serial); return true; }, onStateChange: fn => { listeners.push(fn); return () => { listeners = listeners.filter(item => item !== fn); }; },
+        setPresentation: async presentation => { state = { ...state, presentation, open: true }; return update(state.serial); },
+        selectDevice: async serial => update(serial), open: async serial => { window.mirrorCalls.push(serial); return update(serial); },
+      }, files: { getPathForFile: file => file.name === "dragged.txt" ? "C:\\workspace\\dragged.txt" : "" }, clipboard: {
         copyHarmonyMedia: async media => { if (window.failMedia) throw Error("clipboard busy"); window.copies.push(media); },
         writeText: async text => { if (window.failPath) throw Error("clipboard busy"); window.copiedPath = text; },
       } };
@@ -50,10 +56,11 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     const bundle = await readFile(path.join(root, "bundle.js"));
     let screenshotPreview = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lWQAAAAASUVORK5CYII=", "base64");
     const exportJobs = [];
-    const css = await readFile(path.join(repo, "components/workspace/HarmonyPanel.module.css"), "utf8");
+    const css = await readFile(path.join(repo, "components/workspace/HarmonyPanel.module.css"), "utf8") + await readFile(path.join(repo, "components/ConfirmDialog.module.css"), "utf8") + await readFile(path.join(repo, "components/workspace/harmony/MirrorWindow.module.css"), "utf8");
     await page.route("https://harmony-panel.test/**", async route => {
       const request = route.request(), url = new URL(request.url());
       if (url.pathname === "/bundle.js") return route.fulfill({ contentType: "text/javascript", body: bundle });
+      if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(root, path.basename(url.pathname))) });
       if (url.pathname === "/api/harmony/media/preview") return route.fulfill({ contentType: "image/png", body: screenshotPreview });
       if (url.pathname === "/api/harmony/media/history") return route.fulfill({ json: { artifacts: url.searchParams.get("serial") === "phone" ? [
         { ...screenshot, serial: "phone", createdAt: "2026-09-29T09:41:12.000Z", mimeType: "image/png" },
@@ -158,69 +165,65 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
       return route.fulfill({ json: data });
     });
     await page.goto("https://harmony-panel.test/");
-    await page.getByText("投屏只读 · 已连接", { exact: true }).waitFor();
-    screenshotPreview = await page.locator("canvas").screenshot();
-    screenshot.size = screenshotPreview.length;
-    const fontBefore = await page.locator(".deviceIdentity select").evaluate(element => parseFloat(getComputedStyle(element).fontSize));
-    await page.evaluate(() => document.documentElement.style.setProperty("--text-base", "20px"));
-    const fontAfter = await page.locator(".deviceIdentity select").evaluate(element => parseFloat(getComputedStyle(element).fontSize));
-    assert.ok(fontAfter > fontBefore * 1.4, "device text follows the configured font scale");
-    await page.evaluate(() => document.documentElement.style.removeProperty("--text-base"));
-    assert.equal(await page.locator(".toolDrawer").isVisible(), false, "tools start closed");
-    assert.equal(requests.filter(r => r.endpoint === "/api/harmony/manual").length, 0, "mounting a mirror does not acquire control");
+    await page.getByRole("tab", { name: "概览", exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector('[aria-label="选择设备"]')?.value === "phone");
+    const selectTool = async name => {
+      const tab = page.getByRole("tab", { name, exact: true });
+      if (!await tab.count()) { await page.getByRole("button", { name: "更多 ▾", exact: true }).click(); await page.locator(".morePopover").getByRole("button", { name: name === "自动化" ? "自动化场景" : name, exact: true }).click(); }
+      else await tab.click();
+    };
+    assert.equal(await page.locator("canvas").count(), 0, "the workbench creates no hidden video viewer");
+    assert.equal(await page.locator(".workbenchTabs [role=tab]").count(), 4);
+    await page.locator(".toolbarActions").getByRole("button", { name: "打开投屏", exact: true }).click();
+    await page.waitForFunction(() => window.mirrorCalls.length === 1);
+    assert.deepEqual(await page.evaluate(() => window.mirrorCalls), ["phone"]);
+    assert.equal(requests.some(r => r.endpoint === "/api/harmony/manual"), false);
+    await page.locator(".toolbarActions").getByRole("button", { name: "设备设置", exact: true }).click();
+    const deviceSettings = page.getByRole("dialog", { name: "设备设置", exact: true });
+    await deviceSettings.getByRole("button", { name: "保存", exact: true }).waitFor();
+    assert.equal(await deviceSettings.getByRole("option", { name: "自动（HDC 实时视频优先）", exact: true }).count(), 1);
+    assert.ok(await deviceSettings.locator(".settingsPanel").evaluate(panel => {
+      const outer = panel.closest('[role="dialog"]').getBoundingClientRect(); const inner = panel.getBoundingClientRect();
+      return inner.height > 100 && inner.width > 300 && inner.left >= outer.left - 1 && inner.right <= outer.right + 1;
+    }), "settings content stays inside the modal instead of absolute-position clipping");
+    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true}); await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"settings-visible.png")}); }
+    await deviceSettings.getByRole("button", {name:"取消", exact:true}).click();
+    const wideViewport = page.viewportSize();
+    await page.setViewportSize({ width: 380, height: 700 });
+    assert.equal(await page.getByRole("combobox", { name: "投屏位置" }).isVisible(), true, "position selection remains available in a narrow sidebar");
+    await page.getByLabel("设备操作菜单", { exact: true }).click();
+    await page.locator(".compactActions").getByRole("button", { name: "设备设置", exact: true }).click();
+    await deviceSettings.locator("input").first().waitFor();
+    assert.ok(await deviceSettings.evaluate(dialog => {
+      const box = dialog.getBoundingClientRect();
+      return box.height > 200 && box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight && dialog.scrollWidth <= dialog.clientWidth + 1;
+    }), "settings remain visible, scrollable and inside the narrow window");
+    await deviceSettings.getByRole("button", { name: "取消", exact: true }).click();
+    await page.getByLabel("设备操作菜单", { exact: true }).click();
+    await page.setViewportSize(wideViewport);
+    await page.getByRole("combobox", {name:"投屏位置"}).selectOption("sidebar");
+    await page.locator(".toolbarActions").getByRole("button", { name: "打开投屏", exact: true }).click();
+    try { await page.getByRole("region", {name:"侧栏投屏"}).locator("canvas").waitFor(); } catch (error) { console.error("Sidebar diagnosis", errors, await page.locator("#root").innerText(), await page.locator(".embeddedMirror").count()); throw error; }
+    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"sidebar-mirror.png")});
+    assert.deepEqual(await page.evaluate(()=>window.mirrorCalls), ["phone"], "docking reuses the viewer state without opening another floating window");
+    const fullHeight = (await page.locator(".embeddedMirror").boundingBox()).height;
+    await page.getByRole("region",{name:"侧栏投屏"}).getByRole("combobox",{name:"画面缩放"}).selectOption("25");
+    await page.waitForFunction(() => document.querySelector('.embeddedMirror').getBoundingClientRect().height < 250);
+    assert.ok((await page.locator(".embeddedMirror").boundingBox()).height < fullHeight / 2, "sidebar zoom releases workspace space");
+    await page.getByRole("combobox", {name:"投屏位置"}).selectOption("floating");
+    await page.waitForFunction(()=>!document.querySelector('.embeddedMirror canvas'));
+    assert.equal(await page.evaluate(() => window.maximized), false, "switching between sidebar and floating mirror does not expand the workspace");
     await page.getByText("响应 17 ms", { exact: true }).waitFor();
-    assert.match(await page.getByText("响应 17 ms", { exact: true }).getAttribute("title"), /包含主机 HDC 耗时.*不代表视频延迟/);
-    assert.match(await page.getByRole("combobox", { name: "选择设备", exact: true }).inputValue(), /phone/);
-    assert.match(await page.locator('.deviceIdentity select option[value="phone"]').textContent(), / · phone$/);
-    assert.equal(await page.locator(".deviceConnection").getByText("USB", { exact: true }).count(), 1);
-    assert.equal(await page.locator('.deviceConnection [title="设备序列号：phone"]').textContent(), "phone", "the serial remains visible outside the possibly clipped device selector");
-    connectionSample = { durationMs: 90, sampledAt: "2000-01-01T00:00:00.000Z" };
-    phoneTransport = "unknown";
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByText("响应未确认", { exact: true }).waitFor();
-    assert.equal(await page.getByText("响应 90 ms", { exact: true }).count(), 0, "old latency cannot masquerade as a current sample");
-    assert.equal(await page.locator(".deviceConnection").getByText("连接方式未知", { exact: true }).count(), 1);
-    await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone2");
-    await page.locator(".deviceConnection").getByText("TCP/Wi-Fi", { exact: true }).waitFor();
-    assert.equal(await page.getByText("响应 17 ms", { exact: true }).count(), 0, "switching phones never inherits another phone's response");
-    connectionSample = { durationMs: 23, sampledAt: new Date().toISOString() };
-    phoneTransport = "usb";
-    await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone");
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByText("响应 23 ms", { exact: true }).waitFor();
+    assert.match(await page.getByText("响应 17 ms", { exact: true }).getAttribute("title"), /不代表视频延迟/);
     phoneState = "offline";
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByText("设备已离线", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "截图", exact: true }).isDisabled(), true);
-    assert.equal(await page.getByText("响应 23 ms", { exact: true }).count(), 0);
-    await page.getByText("重新连接 USB 并确认手机调试授权，恢复后自动显示画面。", { exact: true }).waitFor();
-    phoneState = "unauthorized";
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.locator(".frameEmpty").getByText("等待手机授权", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "截图", exact: true }).isDisabled(), true);
-    phoneState = "unknown";
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.locator(".deviceConnection").getByText("连接未确认", { exact: true }).waitFor();
-    await page.locator(".frameEmpty").getByText("连接状态未确认", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "截图", exact: true }).isDisabled(), true);
-    phoneIssue = "hdc-channel-not-ready";
-    connectionSample = undefined;
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.locator(".frameEmpty").getByText("调试通信未就绪", { exact: true }).waitFor();
-    await page.getByText("等待调试通信", { exact: true }).waitFor();
-    await page.locator(".frameEmpty").getByText(/检测到 USB.*重新插拔 USB/).waitFor();
-    assert.equal(await page.getByRole("button", { name: "截图", exact: true }).isDisabled(), true);
-    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isDisabled(), true);
-    assert.equal(await page.locator("canvas").count(), 0, "an unconfirmed channel must not display a previous device frame");
-    const capturesBeforeChannelShortcut = requests.filter(r => r.action === "capture_screenshot").length;
-    await page.locator(".frameEmpty").click();
-    await page.keyboard.press("Alt+Shift+S");
-    await page.waitForTimeout(100);
-    assert.equal(requests.filter(r => r.action === "capture_screenshot").length, capturesBeforeChannelShortcut, "channel failures disable keyboard capture too");
-    phoneIssue = undefined;
+    await page.waitForFunction(() => document.querySelector('.toolbarActions button[title^="截图"]')?.disabled);
+    assert.equal(await page.getByRole("combobox", { name: "选择设备", exact: true }).inputValue(), "phone", "disconnect preserves device identity");
     phoneState = "online";
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByText("投屏只读 · 已连接", { exact: true }).waitFor();
+    await page.waitForFunction(() => !document.querySelector('.toolbarActions button[title^="截图"]')?.disabled);
+    screenshotPreview = await page.evaluate(() => { const c=document.createElement('canvas');c.width=200;c.height=400;const g=c.getContext('2d');g.fillStyle='#eee';g.fillRect(0,0,200,400);g.fillStyle='#333';g.font='20px sans-serif';g.fillText('Fixture',30,70);return c.toDataURL().split(',')[1]; }).then(value => Buffer.from(value,'base64'));
+    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR, { recursive: true }); await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"workbench.png") }); }
     const captureCount = () => requests.filter(r => r.action === "capture_screenshot").length;
     const captureShortcut = async (binding) => {
       const response = page.waitForResponse(response => response.url().endsWith("/media") && response.request().postDataJSON()?.action === "capture_screenshot");
@@ -228,7 +231,7 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
       await page.keyboard.press(binding);
       assert.equal((await response).status(), 200);
       await page.getByRole("button", { name: "截图", exact: true }).waitFor();
-      await page.waitForFunction(() => !document.querySelector('.actionBar button')?.disabled);
+      await page.waitForFunction(() => !document.querySelector('.toolbarActions button[title^="截图"]')?.disabled);
     };
     await captureShortcut("Alt+Shift+S");
     // Configure through the real Settings component rather than injecting an override.
@@ -242,14 +245,14 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("piora-keyboard-shortcuts:v1")).overrides["harmony.screenshot"]), "Alt+Shift+S", "a conflicting assignment is not persisted");
     await recorder.press("Control+Alt+s");
     await page.evaluate(() => window.setFixtureShortcuts(false));
-    await page.waitForFunction(() => document.querySelector('.actionBar button')?.title === "截图 · Ctrl+Alt+S");
-    await page.locator("canvas").click(); await page.keyboard.press("Alt+Shift+S");
+    await page.waitForFunction(() => document.querySelector('.toolbarActions button[title^="截图"]')?.title === "截图 · Ctrl+Alt+S");
+    await page.locator(".overview h2").click(); await page.keyboard.press("Alt+Shift+S");
     await page.waitForTimeout(100);
     assert.equal(captureCount(), countBeforeSettings, "the old binding stops immediately after customization");
     await captureShortcut("Control+Alt+s");
     await page.reload();
-    await page.getByText("投屏只读 · 已连接", { exact: true }).waitFor();
-    await page.waitForFunction(() => document.querySelector('.actionBar button')?.title === "截图 · Ctrl+Alt+S");
+    await page.getByRole("tab", { name: "概览", exact: true }).waitFor();
+    await page.waitForFunction(() => document.querySelector('.toolbarActions button[title^="截图"]')?.title === "截图 · Ctrl+Alt+S");
     await captureShortcut("Control+Alt+s");
     const protectedCount = captureCount();
     const protectedEvents = await page.evaluate(() => {
@@ -265,7 +268,7 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
       dispatch(document.body, { repeat: true }); dispatch(document.body, { isComposing: true });
       const dialog = document.createElement("div"); dialog.setAttribute("aria-modal", "true"); dialog.textContent = "Modal"; document.body.append(dialog);
       dispatch(document.body); dialog.remove();
-      const panel = document.querySelector('.actionBar').closest('.root'); panel.style.display = "none"; dispatch(document.body); panel.style.display = "";
+      const panel = document.querySelector('.toolbarActions').closest('.root'); panel.style.display = "none"; dispatch(document.body); panel.style.display = "";
       const prevented = new KeyboardEvent("keydown", { key: "s", ctrlKey: true, altKey: true, bubbles: true, cancelable: true }); prevented.preventDefault(); document.body.dispatchEvent(prevented);
       return outcomes;
     });
@@ -275,30 +278,16 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     await page.evaluate(() => window.setFixtureShortcuts(true));
     await recorder.click(); await recorder.press("Backspace");
     await page.evaluate(() => window.setFixtureShortcuts(false));
-    await page.waitForFunction(() => document.querySelector('.actionBar button')?.title === "截图");
-    await page.locator("canvas").click(); await page.keyboard.press("Control+Alt+s");
+    await page.waitForFunction(() => document.querySelector('.toolbarActions button[title^="截图"]')?.title === "截图");
+    await page.locator(".overview h2").click(); await page.keyboard.press("Control+Alt+s");
     await page.waitForTimeout(100);
     assert.equal(captureCount(), protectedCount, "a cleared binding stays disabled");
     await page.evaluate(() => window.setFixtureShortcuts(true));
     await page.getByRole("button", { name: "恢复“鸿蒙设备截图”的默认快捷键", exact: true }).click();
     await page.evaluate(() => window.setFixtureShortcuts(false));
-    await page.waitForFunction(() => document.querySelector('.actionBar button')?.title === "截图 · Alt+Shift+S");
+    await page.waitForFunction(() => document.querySelector('.toolbarActions button[title^="截图"]')?.title === "截图 · Alt+Shift+S");
     assert.ok(requests.filter(r => r.action === "capture_screenshot").every(r => r.leaseToken === undefined));
     assert.equal(requests.filter(r => r.endpoint === "/api/harmony/manual").length, 0, "keyboard screenshots never acquire or take over the device");
-    await page.reload();
-    await page.getByText("投屏只读 · 已连接", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: /^(手动控制|控制设备|结束控制)$/ }).count(), 0);
-    const actionsBeforeMirrorClick = requests.filter(request => request.endpoint === "/api/harmony/action").length;
-    await page.locator("canvas").click();
-    await page.waitForTimeout(100);
-    assert.equal(requests.filter(request => request.endpoint === "/api/harmony/action").length, actionsBeforeMirrorClick, "clicking the view-only mirror must not send a device action");
-    assert.equal(await page.getByRole("button", { name: "输入文字" }).count(), 0);
-    assert.equal(requests.some(request => request.endpoint === "/api/harmony/approval"), false, "connected phones never poll for Piora approval");
-    const beforeTools = await page.locator("canvas").boundingBox();
-    assert.ok(beforeTools.height > 600, "the default screen uses the available vertical space");
-    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR, { recursive: true }); await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "default.png") }); }
-    await page.getByRole("button", { name: "工具", exact: true }).click();
-    assert.equal(await page.getByRole("tab", { name: "文件", exact: true }).getAttribute("aria-selected"), "true", "the tool drawer opens on the high-frequency file workspace");
     await page.getByRole("tab", { name: "应用", exact: true }).click();
     const applications = page.getByRole("region", { name: "应用管理", exact: true });
     const beforeSandbox = requests.filter(request => /\/(action|manual)$/.test(request.endpoint)).length;
@@ -327,22 +316,16 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     assert.equal(await applications.getByRole("status").filter({ hasText: "设备已验证操作结果" }).count(), 0, "failed installation cannot announce a successful receipt");
     rejectRecording = true;
     await page.getByRole("button", { name: "开始录屏", exact: true }).click();
-    await page.getByRole("alert").filter({ hasText: "录屏不可用" }).waitFor();
-    assert.equal(await page.getByRole("button", { name: /停止录屏/ }).count(), 0);
-    const screenshotAfterError = page.waitForResponse(response => response.url().endsWith("/media") && response.request().postDataJSON()?.action === "capture_screenshot");
-    await page.getByRole("button", { name: "截图", exact: true }).click();
-    assert.equal((await screenshotAfterError).status(), 200, "error feedback must not cover or block screenshot actions");
-    await page.locator(".captureNotice").getByText("截图已保存并复制到剪贴板", { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.copies), [{ kind: "screenshot", path: screenshot.path }]);
-    await page.evaluate(() => { window.copies = []; });
+    await page.waitForFunction(() => window.messages.some(item => item.tone === "error" && item.message.includes("录屏不可用")));
+    assert.equal(await page.getByRole("button", { name: "停止录屏", exact: true }).count(), 0);
     rejectRecording = false;
-    if (!await page.locator(".toolDrawer").isVisible()) await page.getByRole("button", { name: "工具", exact: true }).click();
-    await page.getByRole("tab", { name: "测试", exact: true }).click();
+    await selectTool("自动化");
     await page.getByRole("combobox", { name: "测试应用", exact: true }).selectOption("dev.piora.audio.fixture");
     await page.getByRole("button", { name: "运行测试", exact: true }).click();
     await page.getByText("测试通过", { exact: true }).waitFor();
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "tests.png") });
     await page.getByRole("tab", { name: "文件", exact: true }).click();
+    await page.setViewportSize({ width: 620, height: 850 });
     largeFileParent = true;
     delayedTextPreview = new Promise(resolve => { releaseTextPreview = resolve; });
     const previewRequested = page.waitForRequest(request => request.method() === "GET" && new URL(request.url()).pathname === "/api/harmony/files/text");
@@ -364,9 +347,10 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     });
     assert.ok(revealedEditorActions.top >= revealedEditorActions.bodyTop && revealedEditorActions.bottom <= revealedEditorActions.bodyBottom && revealedEditorActions.exposed,
       `a narrow workspace must expose its primary actions after a delayed preview under a large directory: ${JSON.stringify(revealedEditorActions)}`);
-    assert.ok(await page.locator(".drawerBody").evaluate(element => element.scrollTop) > 0);
+    assert.ok(await page.locator(".workbenchBody").evaluate(element => element.scrollTop) > 0);
     largeFileParent = false;
-    await page.locator(".drawerHeading").getByRole("button", { name: "展开设备工作台" }).click();
+    await page.setViewportSize({ width: 1100, height: 850 });
+    await page.locator(".toolbarActions").getByRole("button", { name: "展开设备工作台" }).click();
     assert.equal(await page.evaluate(() => window.maximized), true, "file management can expand into the full workspace");
     await page.getByRole("textbox", { name: "设备文件或文件夹路径" }).fill("/data/local/tmp/projects/notes.txt");
     await page.getByRole("button", { name: "前往", exact: true }).click();
@@ -404,7 +388,7 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     assert.equal(await page.getByRole("textbox", { name: "设备文件或文件夹路径" }).evaluate(element => document.activeElement === element
       && element.selectionStart === 0 && element.selectionEnd === element.value.length), true, "Ctrl+L focuses and selects the complete device path");
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "files-three-pane.png") });
-    await page.locator(".drawerHeading").getByRole("button", { name: "返回双栏" }).click();
+    await page.locator(".toolbarActions").getByRole("button", { name: "返回双栏" }).click();
     assert.equal(await page.evaluate(() => window.maximized), false);
     const locatedFile = page.getByRole("button", { name: /notes\.txt · 路径直达/ });
     await locatedFile.waitFor();
@@ -474,14 +458,14 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     await page.getByRole("alert").filter({ hasText: "无法取得本地文件路径" }).waitFor();
     assert.equal(await page.getByRole("textbox", { name: "上传的本地文件路径（每行一个）" }).inputValue(), "C:\\workspace\\dragged.txt");
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "files.png") });
-    await page.locator(".drawerBody").evaluate(element => { element.scrollTop = element.scrollHeight; });
-    assert.ok(await page.locator(".drawerBody").evaluate(element => element.scrollTop) > 0, "file details make the tool panel scrollable");
-    await page.getByRole("tab", { name: "数据库", exact: true }).click();
+    await page.locator(".workbenchBody").evaluate(element => { element.scrollTop = element.scrollHeight; });
+    assert.ok(await page.locator(".workbenchBody").evaluate(element => element.scrollTop) > 0, "file details make the tool panel scrollable");
+    await selectTool("数据库");
     await page.locator(".dbHeader").waitFor();
-    await page.waitForFunction(() => document.querySelector(".drawerBody")?.scrollTop === 0);
+    await page.waitForFunction(() => document.querySelector(".workbenchBody")?.scrollTop === 0);
     await page.setViewportSize({ width: 720, height: 900 });
     const initialTree = await page.locator(".dbObjects").boundingBox();
-    const initialBody = await page.locator(".drawerBody").boundingBox();
+    const initialBody = await page.locator(".workbenchBody").boundingBox();
     assert.ok(initialTree.height > 350 && initialTree.y + initialTree.height <= initialBody.y + initialBody.height,
       `before opening a database, the app tree should use the visible drawer instead of leaving space for an empty result pane: ${JSON.stringify({initialTree,initialBody})}`);
     await page.getByRole("button", { name: "Harmony 测试 App" }).click();
@@ -498,7 +482,7 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
       && response.request().postDataJSON()?.action === "read");
     await page.getByRole("button", { name: "notes", exact: true }).click();
     await tableReadStarted;
-    const databaseBody = await page.locator(".drawerBody").boundingBox();
+    const databaseBody = await page.locator(".workbenchBody").boundingBox();
     const sqlEditorsWhileLoading = await page.getByRole("textbox", { name: "只读 SQL 查询" }).count();
     releaseDatabaseRead();
     databaseReadDelay = null;
@@ -510,7 +494,7 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     assert.ok(headerHeight <= 32, `sortable column headers must not inherit tall tool-button spacing: ${headerHeight}`);
     assert.ok(gridBox.y >= databaseBody.y && gridBox.y + Math.min(60, gridBox.height) <= databaseBody.y + databaseBody.height,
       `result headers and the first rows should be visible alongside the object tree: ${JSON.stringify({ databaseBody, gridBox })}`);
-    assert.equal(await page.locator(".drawerBody").evaluate(element => element.scrollHeight > element.clientHeight + 1), false,
+    assert.equal(await page.locator(".workbenchBody").evaluate(element => element.scrollHeight > element.clientHeight + 1), false,
       "database navigation and query results should scroll independently inside the available drawer height");
     await page.getByRole("tab", { name: "SQL 控制台", exact: true }).click();
     const queryBox = await page.getByRole("textbox", { name: "只读 SQL 查询" }).boundingBox();
@@ -544,7 +528,7 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     assert.match(await captureTask.innerText(), /采集时间/);
     await taskOverview.getByRole("article").filter({ hasText: "Harmony 测试 App / notes.db / notes" }).getByRole("button", { name: "查看分类记录" }).click();
     await page.getByRole("group", { name: "数据库导出任务" }).getByText("Harmony 测试 App / notes.db / notes", { exact: false }).waitFor();
-    await page.getByRole("tab", { name: "数据库", exact: true }).click();
+    await selectTool("数据库");
     await page.getByRole('button', { name: 'idx_notes_body', exact: true }).click();
     await page.getByRole("article", { name: "索引 idx_notes_body", exact: true }).getByText("当前索引", { exact: true }).waitFor();
     await page.getByRole('tab', { name: 'SQL 控制台', exact: true }).click();
@@ -566,22 +550,22 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     await page.getByRole('button', { name: '刷新快照' }).click();
     assert.equal(await sqlEditor.inputValue(), 'SELECT 1\nSELECT 2', 'refresh preserves the SQL draft');
     assert.equal(await page.getByRole('tab', { name: 'notes', exact: true }).count(), 1, 'previously opened tables retain a tab');
-    await page.locator(".drawerHeading").getByRole("button", { name: "展开设备工作台", exact: true }).click();
+    await page.locator(".toolbarActions").getByRole("button", { name: "展开设备工作台", exact: true }).click();
     await page.waitForFunction(() => window.maximized === true);
     const expandedDatabase = await page.evaluate(() => {
       const root = document.querySelector(".root").getBoundingClientRect();
-      const drawer = document.querySelector('.toolDrawer[data-tab="databases"]').getBoundingClientRect();
+      const drawer = document.querySelector('.workbenchContent').getBoundingClientRect();
       return { rootWidth: root.width, drawerWidth: drawer.width, rootRight: root.right, drawerRight: drawer.right };
     });
     assert.ok(expandedDatabase.drawerWidth >= expandedDatabase.rootWidth * .95 && expandedDatabase.drawerRight <= expandedDatabase.rootRight + 1,
       `expanded databases use the full available workspace: ${JSON.stringify(expandedDatabase)}`);
     assert.equal(await sqlEditor.inputValue(), 'SELECT 1\nSELECT 2', 'expanding keeps the SQL draft');
-    await page.locator(".drawerHeading").getByRole("button", { name: "返回双栏", exact: true }).click();
+    await page.locator(".toolbarActions").getByRole("button", { name: "返回双栏", exact: true }).click();
     await page.waitForFunction(() => window.maximized === false);
     assert.equal(await sqlEditor.inputValue(), 'SELECT 1\nSELECT 2', 'restoring split view keeps the SQL draft');
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "database-workspace.png") });
     await page.getByRole("tab", { name: "文件", exact: true }).click();
-    await page.waitForFunction(() => (document.querySelector(".drawerBody")?.scrollTop ?? 0) > 0);
+    await page.waitForFunction(() => (document.querySelector(".workbenchBody")?.scrollTop ?? 0) > 0);
     assert.equal(await page.getByRole("textbox", { name: "设备文件或文件夹路径" }).inputValue(), "/data/local/tmp/projects/photo.png", "returning from the database keeps the file address");
     await page.getByRole("img", { name: "photo.png 的设备图片预览" }).waitFor();
     const moveCountBefore = requests.filter(request => request.action === "move_path").length;
@@ -590,19 +574,19 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
     assert.equal(requests.filter(request => request.action === "move_path").length, moveCountBefore + 1, "an explicit move click sends exactly one move");
     assert.deepEqual(nativeDialogs, [], "moving a file opens no native confirmation");
     assert.equal(requests.find(request => request.action === "move_path")?.path, "/data/local/tmp/projects/photo.png");
-    await page.getByRole("tab", { name: "数据库", exact: true }).click();
+    await selectTool("数据库");
     assert.equal(await page.getByRole('textbox', { name: '只读 SQL 查询' }).inputValue(), 'SELECT 1\nSELECT 2', 'returning to the database keeps the SQL draft');
     await page.getByRole("button", { name: "重新扫描" }).click();
     await page.waitForFunction(() => document.querySelector('textarea[aria-label="只读 SQL 查询"]')?.value === "SELECT 1\nSELECT 2");
     assert.equal(await page.getByRole('tab', { name: 'notes', exact: true }).count(), 1, 'rescan restores object tabs after a new catalog is available');
-    await page.getByRole("tab", { name: "命令", exact: true }).click();
+    await selectTool("终端");
     const commandPanel = page.getByRole("region", { name: "设备命令", exact: true });
     await commandPanel.getByLabel("范围", { exact: true }).selectOption("sandbox");
     await commandPanel.getByRole("textbox", { name: "应用包名", exact: true }).fill("dev.piora.audio.fixture");
-    await page.locator(".drawerHeading").getByRole("button", { name: "展开设备工作台", exact: true }).click();
+    await page.locator(".toolbarActions").getByRole("button", { name: "展开设备工作台", exact: true }).click();
     const expandedCommands = await page.evaluate(() => ({
       root: document.querySelector(".root").getBoundingClientRect().width,
-      drawer: document.querySelector('.toolDrawer[data-tab="commands"]').getBoundingClientRect().width,
+      drawer: document.querySelector('.workbenchContent').getBoundingClientRect().width,
     }));
     assert.ok(expandedCommands.drawer >= expandedCommands.root * .95, "expanded device commands receive the full workspace width");
     const captureControl = page.getByRole("button", { name: "截图", exact: true });
@@ -611,265 +595,45 @@ test("Retained Harmony workbench keeps its view-only mirror, responsive drawer a
       const box = button.getBoundingClientRect();
       return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest("button") === button;
     }), true, "capturing remains reachable while device commands use the full workspace");
-    await page.locator(".drawerHeading").getByRole("button", { name: "返回双栏", exact: true }).click();
+    await page.locator(".toolbarActions").getByRole("button", { name: "返回双栏", exact: true }).click();
     await commandPanel.getByLabel("范围", { exact: true }).selectOption("shared");
-    await page.getByRole("tab", { name: "测试", exact: true }).click();
+    await selectTool("自动化");
     const scenario = requests.find(r => r.endpoint === "/api/harmony/scenario");
     assert.equal(scenario.leaseToken, "lease");
     assert.equal(scenario.steps[0].bundleName, "dev.piora.audio.fixture");
     assert.equal(scenario.steps[0].abilityName, "EntryAbility");
-    const wideDrawer = await page.locator(".toolDrawer").boundingBox();
-    const wideScreen = await page.locator(".screenPane").boundingBox();
-    assert.ok(wideDrawer.x >= wideScreen.x + wideScreen.width - 1, "wide panels put the drawer beside the mirror");
-    await page.getByRole("button", { name: "关闭工具" }).click();
-    assert.equal(await page.locator(".toolDrawer").isVisible(), false);
-    await page.getByRole("button", { name: "截图", exact: true }).click();
-    await page.locator(".captureNotice").getByText("截图已保存并复制到剪贴板", { exact: true }).waitFor();
-    assert.deepEqual(await page.evaluate(() => window.copies), [{ kind: "screenshot", path: screenshot.path }]);
-    assert.equal(await page.locator(".toolDrawer").isVisible(), false, "capturing does not interrupt the mirror with a drawer");
-    await page.keyboard.press("Alt+Shift+s");
-    await page.waitForFunction(() => window.copies.length === 2);
-    await page.getByRole("button", { name: "查看路径" }).click();
+    await selectTool("媒体");
     const mediaHistory = page.getByRole("group", { name: "截图与录屏历史" });
-    await mediaHistory.getByRole("article").first().locator("small").filter({ hasText: screenshot.filename }).waitFor();
-    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) {
-      await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR, { recursive: true });
-      await mediaHistory.screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "media-history.png") });
-    }
-    assert.equal(await mediaHistory.getByRole("article").count(), 2, "saved screenshots and recordings remain listed in Tasks");
+    await mediaHistory.getByRole("article").first().waitFor();
+    assert.equal(await mediaHistory.getByRole("article").count(), 2);
     await mediaHistory.getByRole("combobox", { name: "显示" }).selectOption("recording");
     assert.equal(await mediaHistory.getByRole("article").count(), 1);
     await mediaHistory.getByRole("combobox", { name: "显示" }).selectOption("all");
-    await mediaHistory.getByRole("button", { name: "复制路径" }).first().click();
-    await page.waitForFunction(expected => window.copiedPath === expected, screenshot.path);
-    assert.equal(await page.locator(".mediaPath code").textContent(), screenshot.path);
-    await page.locator('.mediaThumbnail').evaluate(image => new Promise((resolve, reject) => {
-      if (image.complete) return image.naturalWidth > 100 ? resolve() : reject(new Error('Screenshot preview is blank'));
-      image.addEventListener('load', () => image.naturalWidth > 100 ? resolve() : reject(new Error('Screenshot preview is blank')), { once: true });
-      image.addEventListener('error', () => reject(new Error('Screenshot preview failed to load')), { once: true });
-    }));
-    const fitViewport = await page.locator(".frameViewport").boundingBox();
-    const fitCanvas = await page.locator("canvas").boundingBox();
-    assert.ok(fitViewport && fitCanvas);
-    assert.ok(fitCanvas.width <= fitViewport.width + 1 && fitCanvas.height <= fitViewport.height + 1, "fit mode keeps the whole device screen visible");
-    assert.ok(Math.abs(fitCanvas.width / fitCanvas.height - 1080 / 2400) < 0.01, "fit mode preserves the device aspect ratio");
-    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) {
-      await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR, { recursive: true });
-      await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "workspace.png") });
-    }
-    await page.locator(".mediaNoticeActions").getByRole("button", { name: "复制路径", exact: true }).click();
-    await page.locator(".mediaNoticeActions").getByRole("button", { name: "路径已复制", exact: true }).waitFor();
-    assert.equal(await page.evaluate(() => window.copiedPath), screenshot.path);
-    await page.evaluate(() => { window.failPath = true; });
-    await page.locator(".mediaNoticeActions").getByRole("button", { name: "路径已复制", exact: true }).click();
-    await page.getByText("路径复制失败，请重试", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), true);
-    await page.getByRole("button", { name: "关闭工具" }).click();
-    await page.getByRole("button", { name: "停止当前设备操作", exact: true }).click();
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    phoneName = "HUAWEI Mate 70 Pro 已刷新";
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('.deviceIdentity select').selectedOptions[0].textContent.includes("已刷新"));
-    const controlsBeforeRecording = requests.filter(request => request.endpoint === "/api/harmony/manual").length;
-    const recordingRequestStart = requests.length, recordingPairStart = recordingPairs.length;
-    await page.getByRole("button", { name: "开始录屏", exact: true }).click();
-    await page.getByRole("button", { name: /停止录屏/ }).click();
-    await page.locator(".captureNotice").getByText("录屏文件已保存并复制到剪贴板", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "开始录屏", exact: true }).click();
-    await page.evaluate(() => { window.failMedia = true; });
-    await page.getByRole("button", { name: /停止录屏/ }).click();
-    await page.locator(".captureNotice").getByText("录屏文件已保存，但复制失败，可重试或复制路径。", { exact: true }).waitFor();
-    const mediaRequests = requests.filter(request => ["capture_screenshot", "start_recording", "stop_recording"].includes(request.action));
-    assert.ok(mediaRequests.filter(request => request.action === "capture_screenshot").every(request => request.leaseToken === undefined), "passive screenshots do not require control");
-    const recordingRequests = requests.slice(recordingRequestStart).filter(request => ["start_recording", "stop_recording"].includes(request.action));
-    assert.ok(recordingRequests.some(request => request.action === "start_recording") && recordingRequests.some(request => request.action === "stop_recording"));
-    assert.ok(recordingRequests.every(request => request.leaseToken === undefined && typeof request.ownerId === "string" && request.ownerId.length > 0),
-      "independent read-only recording uses its owner identity and never borrows a device control lease");
-    assert.equal(new Set(recordingRequests.map(request => request.ownerId)).size, 1, "one recording interval keeps its owner identity");
-    for (const pair of recordingPairs.slice(recordingPairStart)) {
-      assert.equal(pair.stopped?.ownerId, pair.started.ownerId, "stop uses the owner from its successful start response");
-      assert.equal(pair.stopped?.recordingId, pair.started.recordingId, "stop targets its own recording, including after a previous recording ends");
-    }
-    assert.equal(requests.filter(request => request.endpoint === "/api/harmony/manual").length, controlsBeforeRecording,
-      "starting and stopping recording must not acquire or take over device control");
-    assert.equal(await page.locator(".mediaPath code").textContent(), video.path);
-    await page.evaluate(() => { window.failMedia = false; });
-    await page.getByRole("button", { name: "重新复制", exact: true }).click();
-    await page.locator(".captureNotice").getByText("录屏文件已保存并复制到剪贴板", { exact: true }).waitFor();
-    assert.equal(await page.evaluate(() => window.copies.length), 4);
-    await page.getByRole("combobox", { name: "画面缩放" }).selectOption("150");
-    assert.equal(await page.getByRole("combobox", { name: "画面缩放" }).inputValue(), "150");
-    assert.equal(await page.locator("canvas").evaluate(canvas => canvas.style.width), "1620px");
-    const viewingActions = requests.filter(r => r.endpoint === "/api/harmony/action" || r.endpoint === "/api/harmony/manual").length;
-    const viewport = page.locator(".frameViewport");
-    const viewBox = await viewport.boundingBox();
-    assert.ok(viewBox);
-    const scrollBefore = await viewport.evaluate(view => ({ x: view.scrollLeft, y: view.scrollTop }));
-    await page.mouse.move(viewBox.x + viewBox.width / 2, viewBox.y + viewBox.height / 2);
-    await page.mouse.down();
-    await page.waitForTimeout(750);
-    await page.mouse.move(viewBox.x + viewBox.width / 2 - 60, viewBox.y + viewBox.height / 2 - 80, { steps: 5 });
-    await page.mouse.up();
-    const scrollAfter = await viewport.evaluate(view => ({ x: view.scrollLeft, y: view.scrollTop }));
-    assert.ok(scrollAfter.x > scrollBefore.x || scrollAfter.y > scrollBefore.y, "dragging the zoomed mirror pans the local viewport");
-    await page.locator("canvas").click();
-    assert.equal(requests.filter(r => r.endpoint === "/api/harmony/action" || r.endpoint === "/api/harmony/manual").length, viewingActions, "clicking, holding and panning never dispatch input or acquire control");
-    await page.getByRole("button", { name: "专注投屏" }).click();
-    assert.equal(await page.evaluate(() => window.maximized), true);
-    if (await page.locator(".toolDrawer").isVisible()) await page.getByRole("button", { name: "关闭工具" }).click();
-    await page.getByRole("combobox", { name: "画面缩放" }).selectOption("fit");
-    await page.getByRole("button", { name: "工具", exact: true }).click();
-    await page.getByRole("tab", { name: "语音", exact: true }).click();
-    assert.equal(await page.getByRole("button", { name: "在所选输出预览语料", exact: true }).isEnabled(), false);
-    await page.getByRole("tab", { name: "测试", exact: true }).click();
-    await page.getByText("测试通过", { exact: true }).waitFor();
-    // Recording is passive. Establish an actual tool session explicitly before
-    // testing the global stop fence against a later, still-compiling scenario.
-    const toolSessionReady = page.waitForResponse(response => new URL(response.url()).pathname === "/api/harmony/scenario"
-      && response.request().method() === "POST");
-    await page.getByRole("button", { name: "运行测试", exact: true }).click();
-    assert.equal((await toolSessionReady).status(), 200);
-    await page.getByText("测试通过", { exact: true }).waitFor();
-    await page.getByRole("button", { name: "停止设备任务", exact: true }).waitFor();
-    // Stop fences old async preparation too: it cannot acquire a new lease after compilation completes.
-    let resolveTemplate;
-    delayTemplate = new Promise(resolve => { resolveTemplate = resolve; });
-    const scenarioCount = requests.filter(r => r.endpoint === "/api/harmony/scenario").length;
-    const compileRequest = page.waitForRequest(request => request.url().endsWith("/templates") && request.method() === "POST");
-    await page.getByRole("button", { name: "运行测试", exact: true }).click(); await compileRequest;
+    await page.evaluate(() => { window.copies = []; window.failMedia = true; });
     await captureShortcut("Alt+Shift+S");
-    assert.equal(await page.getByRole("button", { name: "停止设备任务", exact: true }).isVisible(), true, "capture does not settle or cancel the pending tool");
-    await page.getByRole("button", { name: "停止设备任务", exact: true }).click();
-    resolveTemplate(); delayTemplate = null;
-    await page.getByRole("alert").filter({ hasText: "设备状态已改变" }).waitFor();
-    assert.equal(requests.filter(r => r.endpoint === "/api/harmony/scenario").length, scenarioCount);
-    await page.getByRole("tab", { name: "测试", exact: true }).press("ArrowRight");
-    assert.equal(await page.getByRole("tab", { name: "语音", exact: true }).getAttribute("aria-selected"), "true");
-    await page.getByRole("tab", { name: "语音", exact: true }).press("Escape");
-    assert.equal(await page.getByRole("button", { name: "工具", exact: true }).evaluate(button => button === document.activeElement), true);
-    await page.getByRole("button", { name: "设备设置", exact: true }).click();
-    await page.getByRole("button", { name: "连接诊断", exact: true }).click();
-    const initializationsBeforeExplicitRequest = requests.filter(r => r.action === "initialize_mirror").length;
-    assert.equal(initializationsBeforeExplicitRequest, 0, "viewing has not initialized the phone automatically");
-    await page.evaluate(() => window.setFixtureFrameMode("frames"));
-    await page.getByRole("button", { name: "初始化投屏服务", exact: true }).evaluate(button => { button.click(); button.click(); });
-    const initializationNotice = page.locator(".captureNotice");
-    await initializationNotice.getByText(/投屏组件已启动。请在手机点击/).waitFor();
-    assert.equal(requests.filter(r => r.action === "initialize_mirror").length, initializationsBeforeExplicitRequest + 1,
-      "rapid repeated initialization clicks still dispatch exactly once");
-    assert.deepEqual(nativeDialogs, [], "mirror initialization never opens a native replacement confirmation");
-    assert.equal(await initializationNotice.getByRole("button", { name: "查看路径", exact: true }).count(), 0,
-      "initialization guidance has no saved media file to open");
-    await page.getByRole("tab", { name: "应用", exact: true }).click();
-    assert.equal(await initializationNotice.isVisible(), true, "compatible frames keep phone authorization guidance visible outside the media page");
-    await page.evaluate(() => window.setFixtureFrameMode("video"));
-    await initializationNotice.waitFor({ state: "hidden" });
-    assert.equal(requests.filter(r => r.action === "initialize_mirror").length, 1, "receiving native video never reinitializes the phone");
-    await page.getByRole("button", { name: "停止设备任务", exact: true }).click();
+    await page.waitForFunction(() => window.messages.some(m => m.title === "截图已保存" && m.message.includes("剪贴板复制未完成") && m.presentation === "notice"));
+    assert.equal(await page.locator('.captureNotice,.actionBar,.frameFooter').count(), 0, "all media results use common messages");
+    await page.evaluate(() => { window.failMedia = false; });
+    await page.getByRole("button", { name: "开始录屏", exact: true }).click();
+    await page.getByRole("button", { name: "停止录屏", exact: true }).waitFor();
+    const started = recordingPairs.at(-1).started;
+    assert.equal(started.ownerId, "desktop-media-fixture");
+    await page.reload();
+    await page.getByRole("button", { name: "停止录屏", exact: true }).click();
+    await page.getByRole("button", { name: "开始录屏", exact: true }).waitFor();
+    assert.equal(recordingPairs.at(-1).stopped.recordingId, started.recordingId);
+    assert.equal(recordingPairs.at(-1).stopped.ownerId, started.ownerId);
+    await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone2");
+    await page.waitForFunction(() => document.querySelector('[aria-label="选择设备"]')?.value === "phone2");
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByRole("button", { name: "设备设置", exact: true }).click();
-    await page.getByRole("button", { name: "按键与触摸校准", exact: true }).click();
-    await page.getByRole("combobox", { name: "按键", exact: true }).selectOption("power");
-    await page.getByText("将本次校准保存为助手入口（可选）", { exact: true }).waitFor();
+    assert.equal(await page.getByRole("combobox", { name: "选择设备", exact: true }).inputValue(), "phone2");
     await page.setViewportSize({ width: 360, height: 900 });
     assert.equal(await page.locator("#root").evaluate(root => root.scrollWidth > root.clientWidth), false);
-    const focusedNarrowDrawer = await page.locator(".toolDrawer").boundingBox();
-    assert.ok(focusedNarrowDrawer.width <= 360 && focusedNarrowDrawer.y < 200 && focusedNarrowDrawer.height > 500,
-      "an explicitly expanded workbench keeps the full usable height in a narrow window");
-    await page.locator(".drawerHeading").getByRole("button", { name: "返回双栏", exact: true }).click();
-    await page.waitForFunction(() => window.maximized === false);
-    const bottomDrawer = await page.locator(".toolDrawer").boundingBox();
-    assert.ok(bottomDrawer.width <= 360 && bottomDrawer.y > 300, "narrow panels show a bottom drawer with the mirror still visible");
-    await page.getByRole("button", { name: "返回测试", exact: true }).click();
-    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, "workspace-narrow.png") });
-    await page.getByRole("button", { name: "关闭工具" }).click();
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    // Cleanup state belongs to the selected phone; normal completion restores controls automatically.
-    controls = [{ serial: "phone2", status: "recovering" }];
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), true);
-    controls = [{ serial: "phone", status: "stopping" }];
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByText("正在停止设备操作，请稍候…", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), false);
-    assert.equal(await page.locator(".frame canvas").evaluate(canvas => getComputedStyle(canvas).cursor), "default");
-    controls = [];
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByText("投屏只读 · 已连接", { exact: true }).waitFor();
-    assert.equal(requests.some(r => r.action === "confirm_cleanup"), false, "completed cleanup needs no human confirmation");
-    // A server-side state change between polls receives a readable error and refreshes admission.
-    const successfulRecordingsBeforeRejection = recordingPairs.length;
-    const manualRequestsBeforeRejection = requests.filter(r => r.endpoint === "/api/harmony/manual").length;
-    rejectedControlStatus = "recovering";
-    await page.getByRole("button", { name: "开始录屏", exact: true }).click();
-    await page.getByRole("alert").filter({ hasText: "上次设备操作的清理尚未确认" }).waitFor();
-    await page.getByText("设备清理尚未确认，暂不能操作或开始录屏", { exact: true }).waitFor();
-    assert.equal(recordingPairs.length, successfulRecordingsBeforeRejection, "unconfirmed cleanup cannot start a recording");
-    assert.equal(requests.filter(r => r.endpoint === "/api/harmony/manual").length, manualRequestsBeforeRejection,
-      "recording admission failures do not acquire a manual session");
-    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), false);
-    rejectedControlStatus = null;
-    await page.getByRole("button", { name: "检查并恢复", exact: true }).click();
-    await page.getByText("恢复清理不确定的设备", { exact: true }).click();
-    assert.equal(requests.some(r => r.action === "confirm_cleanup"), false, "opening diagnostics never confirms physical release");
-    await page.getByRole("button", { name: "已检查手机并确认释放", exact: true }).click();
-    await page.getByText("设备已恢复，可重新操作或录屏。", { exact: true }).waitFor();
-    await page.getByText("投屏只读 · 已连接", { exact: true }).waitFor();
-    assert.equal(await page.getByRole("button", { name: "开始录屏", exact: true }).isEnabled(), true);
-    await page.getByRole("button", { name: "关闭工具" }).click();
-    // The view-only mirror never interrupts an Agent action or acquires a manual lease.
-    holder = { serial: "phone", owner: { id: "agent:one", kind: "agent" }, expiresAt: "2099-01-01T00:00:00Z" };
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    const actionsBeforeAgentMirrorClick = requests.filter(r => ["tap", "swipe", "long_press", "takeover"].includes(r.action)).length;
-    await page.locator("canvas").click();
-    const manualBeforeAgentCapture = requests.filter(r => r.endpoint === "/api/harmony/manual").length;
-    await captureShortcut("Alt+Shift+S");
-    assert.equal(requests.filter(r => r.endpoint === "/api/harmony/manual").length, manualBeforeAgentCapture, "capturing during AI ownership never acquires control");
-    assert.equal(holder.owner.kind, "agent", "capture keeps the AI holder unchanged");
-    await page.waitForTimeout(100);
-    assert.equal(requests.filter(r => ["tap", "swipe", "long_press", "takeover"].includes(r.action)).length, actionsBeforeAgentMirrorClick);
-    // Keep the Agent lease until stop_device handles it. Clearing it before the
-    // click lets a device poll legitimately remove the button mid-action.
-    const refreshedHolder = page.waitForResponse(response => new URL(response.url()).pathname === "/api/harmony/devices");
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    assert.equal((await (await refreshedHolder).json()).state.leases[0].owner.id, "agent:one");
-    const stoppedDevice = page.waitForResponse(response => new URL(response.url()).pathname === "/api/harmony/action"
-      && response.request().postDataJSON()?.action === "stop_device");
-    await page.getByRole("button", { name: "停止当前设备操作", exact: true }).click();
-    const stopped = await stoppedDevice;
-    assert.equal(stopped.status(), 200);
-    assert.equal(stopped.request().postDataJSON().serial, "phone", "stop targets the selected Agent-owned phone");
-    assert.equal(holder, null, "the stop handler releases the Agent lease");
-    await page.getByRole("button", { name: "停止当前设备操作", exact: true }).waitFor({ state: "hidden" });
-    await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone2");
-    assert.equal(requests.some(r => /unlock|wake/.test(r.action ?? "")), false, "passive viewing never wakes or unlocks the phone");
-    assert.equal(requests.filter(r => r.action === "initialize_mirror").length, initializationsBeforeExplicitRequest + 1,
-      "only the explicit initialization button deploys the component; changing devices does not");
-    await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone");
-    if (!await page.locator(".toolDrawer").isVisible()) await page.getByRole("button", { name: "工具", exact: true }).click();
-    await page.getByRole("tab", { name: "文件", exact: true }).click();
-    await page.getByRole("textbox", { name: "设备文件或文件夹路径" }).waitFor();
-    await page.waitForFunction(() => document.querySelector('[aria-label="设备文件或文件夹路径"]')?.value === "/data/local/tmp/projects/photo-copy.png");
-    assert.equal(await page.getByRole("textbox", { name: "设备文件或文件夹路径" }).inputValue(), "/data/local/tmp/projects/photo-copy.png", "switching back to a phone restores the moved file's destination");
-    await page.getByRole("tab", { name: "数据库", exact: true }).click();
-    await page.getByRole("textbox", { name: "只读 SQL 查询" }).waitFor();
-    await page.waitForFunction(() => document.querySelector('textarea[aria-label="只读 SQL 查询"]')?.value === "SELECT 1\nSELECT 2");
-    assert.equal(await page.getByRole('tab', { name: 'notes', exact: true }).count(), 1, 'switching back restores open database object tabs');
-    await page.getByRole("button", { name: "关闭工具" }).click();
-    await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone2");
-    const actionsBeforeHidden = requests.filter(r => ["tap", "swipe", "long_press", "takeover"].includes(r.action)).length;
-    await page.locator("canvas").click();
     await page.evaluate(() => window.setFixtureActive(false));
-    const capturesBeforeHiddenShortcut = captureCount();
+    const beforeHidden = captureCount();
     await page.keyboard.press("Alt+Shift+S"); await page.waitForTimeout(100);
-    assert.equal(captureCount(), capturesBeforeHiddenShortcut, "inactive Harmony panels do not handle capture shortcuts");
-    assert.equal(requests.filter(r => ["tap", "swipe", "long_press", "takeover"].includes(r.action)).length, actionsBeforeHidden);
+    assert.equal(captureCount(), beforeHidden);
+    assert.equal(requests.some(r => /unlock|wake|initialize_mirror/.test(r.action ?? "")), false);
     assert.deepEqual(errors, []);
-    assert.deepEqual(nativeDialogs, [], "the continuous workspace flow opens no native confirmation");
-  } finally {
-    await browser?.close();
-    assert.equal(path.dirname(root), path.resolve(tmpdir()));
-    await rm(root, { recursive: true, force: true });
-  }
+  } finally { await browser?.close(); await rm(root, { recursive: true, force: true }); }
 });

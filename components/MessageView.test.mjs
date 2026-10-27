@@ -170,7 +170,7 @@ test("shell rows preview commands while keeping full commands and errors behind 
     React.createElement(VirtualRowStateContext.Provider, { value: rowState }, React.createElement(MessageView, { message, cwd: "F:\\Piora", toolResults: new Map([["shell", result]]) }))));
   assert.match(expanded, /退出码 2/);
   assert.match(expanded, /错误摘录/);
-  assert.match(expanded, /完整命令/);
+  assert.match(expanded, /class="command-section-label">命令<\/span>/);
   assert.match(expanded, /npm run check/);
   assert.ok(expanded.includes(`<pre>${command}</pre>`), "expanded details preserve the original multiline command");
   assert.match(expanded, /TS2322/);

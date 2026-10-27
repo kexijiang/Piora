@@ -6,6 +6,7 @@ import {
   type Extension,
   type LoadExtensionsResult,
   type PathMetadata,
+  type ResourceLoader,
   type SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 
@@ -282,6 +283,24 @@ export function applyExtensionLoadPlan(
     };
   }
   return result;
+}
+
+/** Refresh discovery before the SDK reloads resources and clears its module cache. */
+export function installExtensionLoadPlanReload(
+  loader: ResourceLoader,
+  plan: ExtensionLoadPlan,
+  resolvePlan: () => Promise<ExtensionLoadPlan>,
+): void {
+  const reload = loader.reload.bind(loader);
+  loader.reload = async (options) => {
+    const next = await resolvePlan();
+    // DefaultResourceLoader retains the supplied additionalExtensionPaths array.
+    // Keep that array and the metadata closure live without touching SDK internals.
+    plan.enabledPaths.splice(0, plan.enabledPaths.length, ...next.enabledPaths);
+    plan.candidates = next.candidates;
+    plan.metadataByPath = next.metadataByPath;
+    await reload(options);
+  };
 }
 
 export function buildExtensionInventoryFromPlan(

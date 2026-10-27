@@ -1,6 +1,6 @@
-/** The former workbench is opt-in; media and direct mirror input stay available. */
+/** The complete workbench is available by default; deployments may explicitly restrict tools. */
 export function harmonyWorkbenchEnabled(): boolean {
-  return process.env.PIORA_HARMONY_WORKBENCH === "1";
+  return process.env.PIORA_HARMONY_WORKBENCH !== "0";
 }
 
 const mirrorRoutes = new Set(["profile", "devices", "state", "events", "config", "runtime-candidates", "frame", "video", "geometry", "media", "media/preview", "manual", "action"]);

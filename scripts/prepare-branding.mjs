@@ -61,7 +61,8 @@ export async function prepareBranding(projectRoot = resolve(import.meta.dirname,
   for (const target of ["lib/generated/brand.ts", "desktop/src/generated/brand.ts"]) {
     const file = resolve(projectRoot, target);
     await mkdir(dirname(file), { recursive: true });
-    await writeFile(file, source);
+    // Preserve compiler caches and avoid triggering HMR for identical branding.
+    if (await readFile(file, "utf8").catch(() => null) !== source) await writeFile(file, source);
   }
   await writeFile(resolve(generatedRoot, "runtime.json"), JSON.stringify(runtime, null, 2) + "\n");
   const base = load(await readFile(resolve(projectRoot, "desktop/electron-builder.yml"), "utf8"));

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, type Dispatch, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SetStateAction, type ReactNode } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { getProjectLabel, type SessionProjectGroup } from "@/lib/session-project-groups";
 import type { SessionFlags } from "@/lib/session-flags";
@@ -12,6 +12,8 @@ import type { SessionMoveTarget } from "./TaskContextMenu";
 import { isProjectNotificationMuted } from "@/lib/project-notification-preferences";
 
 interface Props {
+  worktreeSection?: ReactNode;
+  onOpenWorktrees?: (group: SessionProjectGroup) => void;
   loading: boolean; error: string | null;
   handleDefaultCwd: () => Promise<void>; handleCustomPathClick: () => void;
   projectGroups: SessionProjectGroup[];
@@ -235,6 +237,8 @@ export function SidebarProjectArea(props: Props) {
         )}
         {projectGroups.map((group) => (
           <ProjectSessionGroup
+            worktreeSection={selectedProject === group.projectRoot ? props.worktreeSection : null}
+            onOpenWorktrees={props.onOpenWorktrees ? () => props.onOpenWorktrees?.(group) : undefined}
             key={group.key}
             group={group}
             homeDir={homeDir}

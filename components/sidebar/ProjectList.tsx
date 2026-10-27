@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/hooks/useI18n";
 import { getVisibleSessionRoots, type SessionProjectGroup as SessionProjectGroupData } from "@/lib/session-project-groups";
@@ -19,6 +19,8 @@ function displayCwd(cwd: string, homeDir?: string): string {
 }
 
 export function ProjectSessionGroup({
+  worktreeSection,
+  onOpenWorktrees,
   group,
   homeDir,
   isSelectedProject,
@@ -55,6 +57,8 @@ export function ProjectSessionGroup({
   sessionOrder,
   onReorderSessions,
 }: {
+  worktreeSection?: ReactNode;
+  onOpenWorktrees?: () => void;
   group: SessionProjectGroupData;
   homeDir: string;
   isSelectedProject: boolean;
@@ -152,6 +156,7 @@ export function ProjectSessionGroup({
             }}
             title={t("sidebar.projectMenu")}
             aria-label={t("sidebar.projectMenuFor", { project: displayLabel })}
+            data-worktree-menu-trigger
             aria-expanded={menuAnchor !== null}
           >
             <AliIcon name="ellipsis" size={14} />
@@ -170,6 +175,7 @@ export function ProjectSessionGroup({
 
       {projectOpen && (
         <div className={styles.sessionList}>
+          {worktreeSection}
           {group.tree.length === 0 && (
             <div style={{ padding: "8px 12px", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
               {t("sidebar.noSessionsInProject")}
@@ -219,6 +225,7 @@ export function ProjectSessionGroup({
       )}
       {menuAnchor && createPortal(
         <ProjectContextMenu
+          onOpenWorktrees={onOpenWorktrees}
           anchor={menuAnchor}
           group={group}
           displayLabel={displayLabel}
@@ -242,6 +249,7 @@ export function ProjectSessionGroup({
 }
 
 function ProjectContextMenu({
+  onOpenWorktrees,
   anchor,
   group,
   displayLabel,
@@ -257,6 +265,7 @@ function ProjectContextMenu({
   onChangeModels,
   onClose,
 }: {
+  onOpenWorktrees?: () => void;
   anchor: { x: number; y: number };
   group: SessionProjectGroupData;
   displayLabel: string;
@@ -278,6 +287,7 @@ function ProjectContextMenu({
   const [editing, setEditing] = useState(false);
   const [alias, setAlias] = useState(displayLabel);
   const [metadata, setMetadata] = useState<{ repository?: string; branch?: string } | null>(null);
+  const [canManageWorktrees, setCanManageWorktrees] = useState(false);
 
   useEffect(() => {
     const closeOnPointer = (event: MouseEvent) => {
@@ -296,12 +306,16 @@ function ProjectContextMenu({
 
   useEffect(() => {
     const controller = new AbortController();
+    void fetch(`/api/worktrees?cwd=${encodeURIComponent(group.preferredCwd)}`, { signal: controller.signal })
+      .then(async (response) => response.ok ? response.json() as Promise<{ isGit?: boolean; isTopLevel?: boolean; projectRoot?: string }> : null)
+      .then((value) => setCanManageWorktrees(Boolean(value?.isGit && value.isTopLevel && value.projectRoot === group.projectRoot)))
+      .catch(() => {});
     void fetch(`/api/project-info?cwd=${encodeURIComponent(group.preferredCwd)}`, { signal: controller.signal })
       .then(async (response) => response.ok ? response.json() as Promise<{ repository?: string; branch?: string }> : null)
       .then((value) => { if (value) setMetadata(value); })
       .catch(() => {});
     return () => controller.abort();
-  }, [group.preferredCwd]);
+  }, [group.preferredCwd, group.projectRoot]);
 
   const commitAlias = () => {
     onRenameProject(alias);
@@ -357,6 +371,11 @@ function ProjectContextMenu({
           <AliIcon name="branches" size={14} />
           <span className={styles.ellipsis}>{metadata.branch}</span>
         </div>
+      )}
+      {canManageWorktrees && onOpenWorktrees && (
+        <button type="button" className={styles.menuItem} role="menuitem" onClick={() => { onClose(); onOpenWorktrees(); }}>
+          <AliIcon name="branches" size={14} /><span>{t("sidebar.manageWorktrees")}</span>
+        </button>
       )}
       <div className={styles.menuDivider} />
       {editing ? (

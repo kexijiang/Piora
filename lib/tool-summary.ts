@@ -54,11 +54,11 @@ export function summarizeToolCall(
 
   if (isToolCallEventType("read", call)) {
     touchResultGuard(resultEvent, isReadToolResult);
-    return { title: t("toolSummary.read", { path: call.input.path }), detail: rangeDetail(call.input.offset, call.input.limit, t), icon: "eye", status };
+    return { title: t("toolSummary.read", { path: call.input.path }), detail: rangeDetail(call.input.offset, call.input.limit, t), icon: "file", status };
   }
   if (isToolCallEventType("bash", call)) {
     touchResultGuard(resultEvent, isBashToolResult);
-    return { title: t("toolSummary.bash"), detail: truncate(call.input.command), icon: "code", status };
+    return { title: t("toolSummary.bash"), detail: truncate(call.input.command), icon: "terminal", status };
   }
   if (isToolCallEventType("edit", call)) {
     const editResult = resultEvent && isEditToolResult(resultEvent) ? resultEvent : null;

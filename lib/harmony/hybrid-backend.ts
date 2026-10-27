@@ -1,3 +1,4 @@
+import type { HarmonyRecordingContext } from "./types";
 import { HypiumWorkerClient } from "./runtime/worker-client";
 import { HarmonyError } from "./errors";
 import { createHdcBackend, type HdcBackend, type HdcBackendOptions } from "./hdc-backend";
@@ -96,8 +97,8 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.snapshot(serial, options);
   }
 
-  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void): Promise<HarmonyRecordingStartResult> {
-    return await this.hdc.startRecording(serial, remoteName, signal, onFailure);
+  async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void, context?: HarmonyRecordingContext): Promise<HarmonyRecordingStartResult> {
+    return await this.hdc.startRecording(serial, remoteName, signal, onFailure, context);
   }
 
   async stopRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {
@@ -106,6 +107,10 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
 
   async retrieveRecording(serial: string, remoteName: string, destinationPath: string, signal?: AbortSignal): Promise<number> {
     return await this.hdc.retrieveRecording(serial, remoteName, destinationPath, signal);
+  }
+
+  async retrieveRetainedRecording(serial: string, fileName: string, destinationPath: string): Promise<number> {
+    return this.hdc.retrieveRetainedRecording(serial, fileName, destinationPath);
   }
 
   async abandonRecording(serial: string, remoteName: string): Promise<void> {
