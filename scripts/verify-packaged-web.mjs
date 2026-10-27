@@ -893,12 +893,12 @@ export async function verifyPackagedDevEcoCli(runtimeWebRoot) {
     env: { ...process.env, NODE_PATH: "", DEVECO_CLI_DISABLE_TELEMETRY: "1", DEVECO_CLI_DISABLE_UPDATE: "1" },
   });
   const { wrapper, implementation, axiosVersion, nodeForgeVersion, rsaSha256 } = JSON.parse(stdout.trim());
-  if (wrapper.name !== "@deveco/deveco-cli" || wrapper.version !== "1.3.6"
-    || wrapper.optionalDependencies?.[implementation.name] !== "1.3.6"
-    || implementation.name !== "@deveco/deveco-cli-common" || implementation.version !== "1.3.6"
+  if (wrapper.name !== "@deveco/deveco-cli" || wrapper.version !== "1.3.9"
+    || wrapper.optionalDependencies?.[implementation.name] !== "1.3.9"
+    || implementation.name !== "@deveco/deveco-cli-common" || implementation.version !== "1.3.9"
     || axiosVersion !== "1.20.0" || nodeForgeVersion !== "1.4.0"
     || rsaSha256 !== nodeForgeRsaPatchedSha256) {
-    throw new Error("Packaged DevEco CLI must resolve 1.3.6 common, Axios 1.20.0 and the reviewed node-forge patch.");
+    throw new Error("Packaged DevEco CLI must resolve 1.3.9 common, Axios 1.20.0 and the reviewed node-forge patch.");
   }
   const { stdout: versionOutput } = await execFileAsync(process.execPath, [
     join(runtimeWebRoot, "node_modules", "@deveco", "deveco-cli", "cli.js"), "--version",
@@ -907,7 +907,7 @@ export async function verifyPackagedDevEcoCli(runtimeWebRoot) {
     env: { ...process.env, NODE_PATH: "", DEVECO_CLI_DISABLE_TELEMETRY: "1", DEVECO_CLI_DISABLE_UPDATE: "1" },
   });
   const version = versionOutput.trim();
-  if (version !== "1.3.6") throw new Error(`Unexpected packaged DevEco CLI version: ${version}`);
+  if (version !== "1.3.9") throw new Error(`Unexpected packaged DevEco CLI version: ${version}`);
   return { version, axiosVersion, nodeForgeVersion, rsaSha256 };
 }
 

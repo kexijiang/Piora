@@ -388,7 +388,7 @@ async function main() {
     // the complete DevEco CLI production closure because Next cannot trace
     // its CLI entry point, MCP server, or dynamically loaded check engines.
     devecoCliRuntimeRoot,
-    // The 1.3.6 launcher declares the desktop implementation as optional for
+    // The 1.3.9 launcher declares the desktop implementation as optional for
     // platform selection, but Piora requires it even with optional deps omitted.
     join(projectRoot, "node_modules", "@deveco", "deveco-cli-common"),
     // Device text editing is reached through the source-loaded Harmony

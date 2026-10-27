@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `c0aa98ff7f4fc1d8fcb164e8ac591890462d67c4e6a10957884891a9929db2b5`
+Lockfile SHA-256: `ae8708d869240080bf9dd5c08bdb4dfb4e1d1a4b019b7116ff59472395a91395`
 
-Unique locked packages: **1381**. Runtime packages: **903**. Build/development-only packages: **478**.
+Unique locked packages: **1379**. Runtime packages: **902**. Build/development-only packages: **477**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -74,10 +74,10 @@ Every locked package declares a license.
 | `@codemirror/state` | `6.7.6` | MIT | No |
 | `@codemirror/streamparser` | `6.0.0` | MIT | No |
 | `@codemirror/view` | `6.43.15` | MIT | No |
-| `@deveco/deveco-cli` | `1.3.6` | MIT | No |
-| `@deveco/deveco-cli-common` | `1.3.6` | MIT | Yes |
-| `@deveco/deveco-cli-knowledgebase` | `1.3.6` | MIT | Yes |
-| `@deveco/deveco-cli-openharmony-arm64` | `1.3.6` | MIT | Yes |
+| `@deveco/deveco-cli` | `1.3.9` | MIT | No |
+| `@deveco/deveco-cli-common` | `1.3.9` | MIT | Yes |
+| `@deveco/deveco-cli-knowledgebase` | `1.3.9` | MIT | Yes |
+| `@deveco/deveco-cli-openharmony-arm64` | `1.3.8` | MIT | Yes |
 | `@earendil-works/pi-agent-core` | `1.4.0` | MIT | No |
 | `@earendil-works/pi-ai` | `1.4.0` | MIT | No |
 | `@earendil-works/pi-codemode` | `1.4.0` | MIT | No |
@@ -89,7 +89,7 @@ Every locked package declares a license.
 | `@emnapi/runtime` | `1.11.3` | MIT | Yes |
 | `@emnapi/wasi-threads` | `1.2.0` | MIT | Yes |
 | `@google/genai` | `2.21.0` | Apache-2.0 | No |
-| `@grpc/grpc-js` | `1.14.5` | Apache-2.0 | No |
+| `@grpc/grpc-js` | `1.14.6` | Apache-2.0 | No |
 | `@grpc/proto-loader` | `0.8.1` | Apache-2.0 | No |
 | `@hono/node-server` | `2.1.5` | MIT | No |
 | `@iconify/types` | `2.0.0` | MIT | No |
@@ -161,22 +161,22 @@ Every locked package declares a license.
 | `@lezer/sass` | `1.1.0` | MIT | No |
 | `@lezer/xml` | `1.0.6` | MIT | No |
 | `@lezer/yaml` | `1.0.4` | MIT | No |
-| `@lobehub/icons` | `6.0.0` | MIT | No |
+| `@lobehub/icons` | `6.9.0` | MIT | No |
 | `@marijn/find-cluster-break` | `1.0.4` | MIT | No |
 | `@mermaid-js/parser` | `2.0.1` | MIT | No |
 | `@microsoft/winappcli` | `0.7.1` | MIT | Yes |
 | `@mixmark-io/domino` | `2.2.0` | BSD-2-Clause | No |
-| `@modelcontextprotocol/sdk` | `1.32.1` | MIT | No |
+| `@modelcontextprotocol/sdk` | `1.32.2` | MIT | No |
 | `@napi-rs/wasm-runtime` | `0.2.12` | MIT | Yes |
-| `@next/env` | `16.4.2` | MIT | No |
-| `@next/swc-darwin-arm64` | `16.4.2` | MIT | Yes |
-| `@next/swc-darwin-x64` | `16.4.2` | MIT | Yes |
-| `@next/swc-linux-arm64-gnu` | `16.4.2` | MIT | Yes |
-| `@next/swc-linux-arm64-musl` | `16.4.2` | MIT | Yes |
-| `@next/swc-linux-x64-gnu` | `16.4.2` | MIT | Yes |
-| `@next/swc-linux-x64-musl` | `16.4.2` | MIT | Yes |
-| `@next/swc-win32-arm64-msvc` | `16.4.2` | MIT | Yes |
-| `@next/swc-win32-x64-msvc` | `16.4.2` | MIT | Yes |
+| `@next/env` | `16.4.3` | MIT | No |
+| `@next/swc-darwin-arm64` | `16.4.3` | MIT | Yes |
+| `@next/swc-darwin-x64` | `16.4.3` | MIT | Yes |
+| `@next/swc-linux-arm64-gnu` | `16.4.3` | MIT | Yes |
+| `@next/swc-linux-arm64-musl` | `16.4.3` | MIT | Yes |
+| `@next/swc-linux-x64-gnu` | `16.4.3` | MIT | Yes |
+| `@next/swc-linux-x64-musl` | `16.4.3` | MIT | Yes |
+| `@next/swc-win32-arm64-msvc` | `16.4.3` | MIT | Yes |
+| `@next/swc-win32-x64-msvc` | `16.4.3` | MIT | Yes |
 | `@noble/hashes` | `1.4.0` | MIT | No |
 | `@node-rs/jieba` | `2.0.4` | MIT | Yes |
 | `@node-rs/jieba-android-arm-eabi` | `2.0.4` | MIT | Yes |
@@ -217,9 +217,9 @@ Every locked package declares a license.
 | `@smithy/signature-v4` | `5.7.4` | Apache-2.0 | No |
 | `@smithy/types` | `4.19.0` | Apache-2.0 | No |
 | `@socket.io/component-emitter` | `3.1.2` | MIT | Yes |
-| `@sqlite.org/sqlite-wasm` | `3.49.1-build4` | Apache-2.0 | Yes |
 | `@sqlite.org/sqlite-wasm` | `3.53.4-build1` | Apache-2.0 | Yes |
 | `@sqlite.org/sqlite-wasm` | `3.53.4-build2` | Apache-2.0 | No |
+| `@sqlite.org/sqlite-wasm` | `3.54.1-build1` | Apache-2.0 | Yes |
 | `@stablelib/base64` | `1.0.1` | MIT | No |
 | `@swc/helpers` | `0.5.23` | Apache-2.0 | No |
 | `@tybys/wasm-util` | `0.10.1` | MIT | Yes |
@@ -320,7 +320,6 @@ Every locked package declares a license.
 | `bignumber.js` | `9.3.1` | MIT | No |
 | `bindings` | `1.5.0` | MIT | Yes |
 | `bl` | `4.1.0` | MIT | Yes |
-| `bluebird` | `3.4.7` | MIT | No |
 | `bluebird` | `3.7.2` | MIT | No |
 | `body-parser` | `2.4.0` | MIT | No |
 | `bowser` | `2.14.1` | MIT | No |
@@ -441,7 +440,7 @@ Every locked package declares a license.
 | `eastasianwidth` | `0.2.0` | MIT | No |
 | `ecdsa-sig-formatter` | `1.0.11` | Apache-2.0 | No |
 | `ee-first` | `1.1.1` | MIT | No |
-| `electron-updater` | `6.8.9` | MIT | No |
+| `electron-updater` | `6.8.11` | MIT | No |
 | `elkjs` | `0.9.3` | EPL-2.0 | No |
 | `emoji-regex` | `10.6.0` | MIT | Yes |
 | `emoji-regex` | `8.0.0` | MIT | No |
@@ -490,7 +489,7 @@ Every locked package declares a license.
 | `fresh` | `2.0.0` | MIT | No |
 | `fs-constants` | `1.0.0` | MIT | Yes |
 | `fs-extra` | `10.1.0` | MIT | No |
-| `fs-extra` | `11.4.1` | MIT | Yes |
+| `fs-extra` | `11.4.1` | MIT | No |
 | `function-bind` | `1.1.2` | MIT | No |
 | `gaxios` | `7.3.1` | Apache-2.0 | No |
 | `gcp-metadata` | `8.1.2` | Apache-2.0 | No |
@@ -501,7 +500,7 @@ Every locked package declares a license.
 | `get-stream` | `9.0.1` | MIT | Yes |
 | `github-from-package` | `0.0.0` | MIT | Yes |
 | `glob` | `10.5.0` | ISC | No |
-| `global-agent` | `4.1.3` | BSD-3-Clause | Yes |
+| `global-agent` | `4.1.6` | BSD-3-Clause | Yes |
 | `globalthis` | `1.0.4` | MIT | No |
 | `google-auth-library` | `10.9.1` | Apache-2.0 | No |
 | `google-logging-utils` | `1.1.3` | Apache-2.0 | No |
@@ -584,7 +583,7 @@ Every locked package declares a license.
 | `jszip` | `3.10.2` | (MIT OR GPL-3.0-or-later) | No |
 | `jwa` | `2.0.1` | MIT | No |
 | `jws` | `4.0.1` | MIT | No |
-| `katex` | `0.19.0` | MIT | No |
+| `katex` | `0.19.1` | MIT | No |
 | `khroma` | `2.1.0` | MIT | No |
 | `koffi` | `3.3.3` | MIT | No |
 | `layout-base` | `1.0.2` | MIT | No |
@@ -630,7 +629,7 @@ Every locked package declares a license.
 | `mdast-util-to-markdown` | `2.1.2` | MIT | No |
 | `mdast-util-to-string` | `4.0.0` | MIT | No |
 | `media-typer` | `1.1.1` | MIT | No |
-| `mediabunny` | `1.61.6` | MPL-2.0 | No |
+| `mediabunny` | `1.62.1` | MPL-2.0 | No |
 | `merge-descriptors` | `2.0.0` | MIT | No |
 | `mermaid` | `12.2.0` | MIT | No |
 | `micromark` | `4.0.2` | MIT | No |
@@ -681,10 +680,10 @@ Every locked package declares a license.
 | `ms` | `2.1.3` | MIT | No |
 | `nan` | `2.28.0` | MIT | Yes |
 | `nanoid` | `3.3.18` | MIT | No |
-| `napi-build-utils` | `2.0.0` | MIT | Yes |
+| `napi-build-utils` | `1.0.2` | MIT | Yes |
 | `negotiator` | `1.1.0` | MIT | No |
-| `next` | `16.4.2` | MIT | No |
-| `node-abi` | `3.99.0` | MIT | Yes |
+| `next` | `16.4.3` | MIT | No |
+| `node-abi` | `3.101.0` | MIT | Yes |
 | `node-addon-api` | `7.1.1` | MIT | No |
 | `node-domexception` | `1.0.0` | MIT | No |
 | `node-fetch` | `3.3.2` | MIT | No |
@@ -730,7 +729,7 @@ Every locked package declares a license.
 | `polished` | `4.3.1` | MIT | No |
 | `portfinder` | `1.0.38` | MIT | No |
 | `postcss` | `8.5.31` | MIT | No |
-| `prebuild-install` | `7.1.3` | MIT | Yes |
+| `prebuild-install` | `7.1.2` | MIT | Yes |
 | `pretty-ms` | `9.3.1` | MIT | Yes |
 | `prismjs` | `1.30.0` | MIT | No |
 | `process` | `0.11.10` | MIT | No |
@@ -956,7 +955,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@electron/get` | `5.1.0` | MIT | No |
 | `@electron/notarize` | `2.5.0` | MIT | No |
 | `@electron/osx-sign` | `1.3.3` | BSD-2-Clause | No |
-| `@electron/rebuild` | `4.2.0` | MIT | No |
+| `@electron/rebuild` | `4.2.1` | MIT | No |
 | `@electron/universal` | `2.0.3` | MIT | No |
 | `@emnapi/core` | `1.11.1` | MIT | Yes |
 | `@emnapi/runtime` | `1.11.1` | MIT | Yes |
@@ -983,13 +982,13 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@malept/cross-spawn-promise` | `2.0.0` | Apache-2.0 | No |
 | `@malept/flatpak-bundler` | `0.4.0` | MIT | No |
 | `@napi-rs/wasm-runtime` | `1.1.4` | MIT | Yes |
-| `@next/eslint-plugin-next` | `16.4.2` | MIT | No |
-| `@noble/hashes` | `2.2.0` | MIT | No |
+| `@next/eslint-plugin-next` | `16.4.3` | MIT | No |
+| `@noble/hashes` | `1.8.0` | MIT | No |
 | `@nodelib/fs.scandir` | `2.1.5` | MIT | No |
 | `@nodelib/fs.stat` | `2.0.5` | MIT | No |
 | `@nodelib/fs.walk` | `1.2.8` | MIT | No |
 | `@nolyfill/is-core-module` | `1.0.39` | MIT | No |
-| `@peculiar/asn1-schema` | `2.8.0` | MIT | No |
+| `@peculiar/asn1-schema` | `2.11.0` | MIT | No |
 | `@peculiar/json-schema` | `1.1.12` | MIT | No |
 | `@peculiar/utils` | `2.0.3` | MIT | No |
 | `@peculiar/webcrypto` | `1.7.1` | MIT | No |
@@ -1084,7 +1083,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `abbrev` | `4.0.0` | ISC | No |
 | `acorn-jsx` | `5.3.2` | MIT | No |
 | `ajv` | `6.14.0` | MIT | No |
-| `app-builder-lib` | `26.15.3` | MIT | No |
+| `app-builder-lib` | `26.18.0` | MIT | No |
 | `aria-query` | `5.3.2` | Apache-2.0 | No |
 | `array-buffer-byte-length` | `1.0.2` | MIT | No |
 | `array-includes` | `3.1.9` | MIT | No |
@@ -1106,7 +1105,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `brace-expansion` | `1.1.21` | MIT | No |
 | `braces` | `3.0.3` | MIT | No |
 | `browserslist` | `4.28.7` | MIT | No |
-| `builder-util` | `26.15.3` | MIT | No |
+| `builder-util` | `26.16.0` | MIT | No |
 | `cacheable` | `2.5.0` | MIT | No |
 | `cacheable-lookup` | `5.0.4` | MIT | No |
 | `cacheable-request` | `7.0.4` | MIT | No |
@@ -1130,15 +1129,15 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `defer-to-connect` | `2.0.1` | MIT | No |
 | `detect-node` | `2.1.0` | MIT | Yes |
 | `dir-compare` | `4.2.0` | MIT | No |
-| `dmg-builder` | `26.15.3` | MIT | No |
+| `dmg-builder` | `26.18.0` | MIT | No |
 | `doctrine` | `2.1.0` | Apache-2.0 | No |
 | `dotenv` | `16.6.1` | BSD-2-Clause | No |
 | `dotenv-expand` | `11.0.7` | BSD-2-Clause | No |
 | `duplexer2` | `0.1.4` | BSD-3-Clause | No |
 | `ejs` | `3.1.10` | Apache-2.0 | No |
 | `electron` | `44.9.1` | MIT | No |
-| `electron-builder` | `26.15.3` | MIT | No |
-| `electron-publish` | `26.15.3` | MIT | No |
+| `electron-builder` | `26.18.0` | MIT | No |
+| `electron-publish` | `26.18.0` | MIT | No |
 | `electron-to-chromium` | `1.5.399` | ISC | No |
 | `enhanced-resolve` | `5.24.5` | MIT | No |
 | `env-paths` | `2.2.1` | MIT | No |
@@ -1150,7 +1149,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `es-to-primitive` | `1.3.0` | MIT | No |
 | `es6-error` | `4.1.1` | MIT | Yes |
 | `eslint` | `10.13.0` | MIT | No |
-| `eslint-config-next` | `16.4.2` | MIT | No |
+| `eslint-config-next` | `16.4.3` | MIT | No |
 | `eslint-import-resolver-node` | `0.3.9` | MIT | No |
 | `eslint-import-resolver-typescript` | `3.10.1` | ISC | No |
 | `eslint-module-utils` | `2.12.1` | MIT | No |
@@ -1181,7 +1180,6 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `flatted` | `3.4.4` | ISC | No |
 | `for-each` | `0.3.5` | MIT | No |
 | `fs-extra` | `11.3.1` | MIT | No |
-| `fs-extra` | `11.4.0` | MIT | No |
 | `fs-extra` | `8.1.0` | MIT | No |
 | `fs-extra` | `9.1.0` | MIT | No |
 | `fs.realpath` | `1.0.0` | ISC | No |
@@ -1208,7 +1206,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `hookified` | `1.15.1` | MIT | No |
 | `hookified` | `2.2.0` | MIT | No |
 | `hosted-git-info` | `4.1.0` | ISC | No |
-| `http-cache-semantics` | `4.2.0` | BSD-2-Clause | No |
+| `http-cache-semantics` | `4.3.0` | BSD-2-Clause | No |
 | `http-proxy-agent` | `7.0.2` | MIT | No |
 | `http2-wrapper` | `1.0.3` | MIT | No |
 | `ignore` | `5.3.2` | MIT | No |
@@ -1292,7 +1290,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `minimatch` | `3.1.5` | ISC | No |
 | `napi-postinstall` | `0.3.4` | MIT | No |
 | `natural-compare` | `1.4.0` | MIT | No |
-| `node-abi` | `4.33.0` | MIT | No |
+| `node-abi` | `4.40.0` | MIT | No |
 | `node-api-version` | `0.2.1` | MIT | No |
 | `node-exports-info` | `1.6.0` | MIT | No |
 | `node-gyp` | `12.4.0` | MIT | No |

@@ -198,18 +198,27 @@ export async function patchNodeForgeDigestAlgorithm(root = projectRoot) {
 export async function patchElectronBuilderWorkspaceCollector(root = projectRoot) {
   const packageRoot = join(root, "node_modules", "app-builder-lib");
   const packageManifest = await readPackage(packageRoot);
-  if (packageManifest.name !== "app-builder-lib" || packageManifest.version !== "26.15.3") {
+  if (packageManifest.name !== "app-builder-lib" || packageManifest.version !== "26.18.0") {
     throw new Error(
-      `Expected locked app-builder-lib 26.15.3, found ${packageManifest.name}@${packageManifest.version}`,
+      `Expected locked app-builder-lib 26.18.0, found ${packageManifest.name}@${packageManifest.version}`,
     );
   }
 
   const collectorPath = join(packageRoot, "out", "util", "appFileCopier.js");
   const source = await readFile(collectorPath, "utf8");
+  // 26.18's upstream validation accepts any ONE shared direct dependency, not
+  // the complete desktop closure. A workspace-root tree can overlap on koffi
+  // while omitting electron-updater, so retain the app-first disk traversal.
+  const originalSha256 = "39472cb1e37cf13462ab8d298ad25e1c42bd4d18dff6765cfe3f3e7bdbc28840";
+  const patchedSha256 = "f7ec419f1b195d06b4f90a9f6fe6d97988d3e3169315ccf4955223b89d7feabd";
+  const digest = createHash("sha256").update(source).digest("hex");
   const packageManagerFirst = "const pmApproaches = [await packager.getPackageManager(), node_module_collector_1.PM.TRAVERSAL];";
   const traversalFirst = "const pmApproaches = [node_module_collector_1.PM.TRAVERSAL, await packager.getPackageManager()];";
-  if (source.includes(traversalFirst)) {
+  if (digest === patchedSha256 && source.includes(traversalFirst)) {
     return { patched: false, reason: "already-patched", version: packageManifest.version };
+  }
+  if (digest !== originalSha256) {
+    throw new Error("Refusing to patch unexpected electron-builder 26.18.0 collector source.");
   }
   const occurrences = source.split(packageManagerFirst).length - 1;
   if (occurrences !== 1) {
@@ -217,7 +226,8 @@ export async function patchElectronBuilderWorkspaceCollector(root = projectRoot)
   }
   await writeFile(collectorPath, source.replace(packageManagerFirst, traversalFirst), "utf8");
   const verified = await readFile(collectorPath, "utf8");
-  if (!verified.includes(traversalFirst) || verified.includes(packageManagerFirst)) {
+  if (!verified.includes(traversalFirst) || verified.includes(packageManagerFirst)
+    || createHash("sha256").update(verified).digest("hex") !== patchedSha256) {
     throw new Error("electron-builder workspace collector patch verification failed.");
   }
   return { patched: true, version: packageManifest.version };

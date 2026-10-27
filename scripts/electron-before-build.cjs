@@ -55,7 +55,8 @@ module.exports = async function prepareDesktopBuild(context) {
 
   // The desktop shell now has its own production dependency
   // (`electron-updater`). Let electron-builder include that dependency graph
-  // in app.asar. The postinstall patch makes v26.15.3's workspace collector
-  // traverse this package first, so the root web dependency tree is not copied.
+  // in app.asar. The postinstall patch makes v26.18.0's workspace collector
+  // traverse this package first. Upstream's one-dependency overlap check alone
+  // cannot reject a root web tree sharing koffi but missing electron-updater.
   return true;
 };

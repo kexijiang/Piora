@@ -24,7 +24,7 @@ import type {
 const HARMONY_CHECK_RUNTIME_ROOT = process.env.PIORA_WEB_RUNTIME_ROOT?.trim() || process.cwd();
 const CLI_PACKAGE_PATH = join(HARMONY_CHECK_RUNTIME_ROOT, "node_modules", "@deveco", "deveco-cli", "package.json");
 const CLI_PACKAGE = JSON.parse(readFileSync(CLI_PACKAGE_PATH, "utf8")) as { version?: string };
-export const DEVECO_CLI_VERSION = CLI_PACKAGE.version ?? "1.3.6";
+export const DEVECO_CLI_VERSION = CLI_PACKAGE.version ?? "1.3.9";
 export const DEVECO_CLI_PATH = join(dirname(CLI_PACKAGE_PATH), "cli.js");
 const MAX_DIAGNOSTICS = 500;
 const IGNORE_DIRECTORIES = new Set([".git", ".hvigor", ".idea", ".preview", "build", "node_modules", "oh_modules"]);
