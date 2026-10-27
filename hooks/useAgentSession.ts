@@ -647,6 +647,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const displayModel = isNew ? (newSessionModel ?? newSessionDefaultModel) : currentModel;
   const estimatedContextUsage = useMemo(() => {
     if (!displayModel) return null;
+    // A missing window stays 0 and the estimate is skipped. Do not substitute a
+    // hidden size here; legacy resolution is documented in lib/model-limits.ts.
     const contextWindow = modelList.find((entry) => (
       entry.provider === displayModel.provider && entry.id === displayModel.modelId
     ))?.contextWindow ?? 0;

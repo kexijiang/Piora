@@ -2,7 +2,7 @@
 
 import { ModelErrorText } from "./ModelErrorText";
 import { ModelSamplingEditor } from "./ModelSamplingEditor";
-import { modelSamplingError, type ModelSamplingConfig } from "@/lib/model-sampling";
+import type { ModelSamplingConfig } from "@/lib/model-sampling";
 import styles from "./ModelsConfig.module.css";
 
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -10,7 +10,24 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { useI18n } from "@/hooks/useI18n";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import type { ModelCatalogPreset, ModelCatalogRecommendation } from "@/lib/model-catalog";
-import type { DiscoveredModel } from "@/lib/model-discovery";
+import { createDiscoveryAbort, requestDiscoveredModels, type DiscoveredModel } from "@/lib/model-discovery";
+import {
+  applyDiscoveredLimits,
+  applyEndpointLimits,
+  automaticModelLimitSources,
+  clearLimitMetaField,
+  compactLimitMeta,
+  customModelsMissingLimits,
+  findDiscoveredModel,
+  firstCustomModelSaveBlocker,
+  modelLimitFieldProblem,
+  modelLimitProblem,
+  parseModelLimitDraft,
+  positiveTokenCount,
+  stripModelLimitUiMeta,
+  type ModelLimitField,
+  type ModelLimitsMeta,
+} from "@/lib/model-limits";
 import { prioritizeProvider } from "@/lib/model-policy";
 import { AliIcon } from "./AliIcon";
 import { requestConfirmation } from "./ConfirmDialog";
@@ -58,6 +75,8 @@ interface ModelEntry extends ModelSamplingConfig {
   input?: string[];
   contextWindow?: number;
   maxTokens?: number;
+  /** Session-only captions. Stripped before models.json is written. */
+  limitsMeta?: ModelLimitsMeta;
   cost?: { input?: number; output?: number; cacheRead?: number; cacheWrite?: number };
   compat?: Record<string, unknown>;
 }
@@ -169,7 +188,7 @@ const API_OPTIONS = ["openai-completions", "openai-responses", "anthropic-messag
 
 // ── Form field helpers ────────────────────────────────────────────────────────
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className={styles.field} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       <label style={{ fontSize: "var(--text-xs)", color: "var(--text-muted)", fontWeight: 500 }}>{label}</label>
@@ -266,8 +285,9 @@ function SecretTextInput({
   );
 }
 
-function NumInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
-  return <input type="number" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />;
+function NumInput({ value, onChange, placeholder, invalid = false }: { value: string; onChange: (v: string) => void; placeholder?: string; invalid?: boolean }) {
+  return <input type="number" value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} aria-invalid={invalid || undefined}
+    style={{ ...inputStyle, borderColor: invalid ? "color-mix(in srgb, #ef4444 58%, var(--border))" : "var(--border)" }} />;
 }
 
 function Select({ value, onChange, options, required }: { value: string; onChange: (v: string) => void; options: readonly string[]; required?: boolean }) {
@@ -501,6 +521,7 @@ function ProviderDetail({ name, editingName, provider, onChange, onNameChange, o
   const [discoveryQuery, setDiscoveryQuery] = useState("");
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
   const discoveryRequestIdRef = useRef(0);
+  const discoveryAbortRef = useRef<ReturnType<typeof createDiscoveryAbort> | null>(null);
   const selectShownRef = useRef<HTMLInputElement>(null);
   const set = <K extends keyof ProviderEntry>(k: K, v: ProviderEntry[K]) => onChange({ ...provider, [k]: v });
 
@@ -511,34 +532,49 @@ function ProviderDetail({ name, editingName, provider, onChange, onNameChange, o
 
   useEffect(() => {
     discoveryRequestIdRef.current += 1;
+    const current = discoveryAbortRef.current;
+    discoveryAbortRef.current = null;
+    current?.cancel();
+    current?.dispose();
     setDiscoveryState({ phase: "idle" });
     setDiscoveryQuery("");
     setSelectedModelIds([]);
   }, [name, provider.baseUrl, provider.api, provider.apiKey]);
 
+  useEffect(() => () => {
+    const current = discoveryAbortRef.current;
+    discoveryAbortRef.current = null;
+    current?.cancel();
+    current?.dispose();
+  }, []);
+
   const handleDiscoverModels = useCallback(async () => {
     if (!provider.baseUrl?.trim() || discoveryState.phase === "loading") return;
     const requestId = ++discoveryRequestIdRef.current;
+    const previous = discoveryAbortRef.current;
+    discoveryAbortRef.current = null;
+    previous?.cancel();
+    previous?.dispose();
+    const discovery = createDiscoveryAbort();
+    discoveryAbortRef.current = discovery;
     setDiscoveryState({ phase: "loading" });
     setSelectedModelIds([]);
     try {
-      const res = await fetch("/api/models-config/discover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providerName: name, provider: { ...provider, models: undefined } }),
-      });
-      const data = await res.json() as { models?: DiscoveredModel[]; endpoint?: string; error?: string };
-      if (requestId !== discoveryRequestIdRef.current) return;
-      if (!res.ok || data.error || !data.models) {
-        setDiscoveryState({ phase: "error", message: data.error ?? `HTTP ${res.status}` });
-        return;
-      }
-      setDiscoveryState({ phase: "success", models: data.models, endpoint: data.endpoint ?? provider.baseUrl });
+      const data = await requestDiscoveredModels({ providerName: name, provider, signal: discovery.signal });
+      if (requestId !== discoveryRequestIdRef.current || discoveryAbortRef.current !== discovery) return;
+      setDiscoveryState({ phase: "success", models: data.models, endpoint: data.endpoint ?? provider.baseUrl ?? "" });
     } catch (error) {
-      if (requestId !== discoveryRequestIdRef.current) return;
-      setDiscoveryState({ phase: "error", message: error instanceof Error ? error.message : String(error) });
+      if (requestId !== discoveryRequestIdRef.current || discoveryAbortRef.current !== discovery) return;
+      if (discovery.signal.aborted && !discovery.timedOut()) return;
+      setDiscoveryState({
+        phase: "error",
+        message: discovery.timedOut() ? t("models.limits.fetchTimeout") : error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      discovery.dispose();
+      if (discoveryAbortRef.current === discovery) discoveryAbortRef.current = null;
     }
-  }, [discoveryState.phase, name, provider]);
+  }, [discoveryState.phase, name, provider, t]);
 
   const existingModelIds = new Set((provider.models ?? []).map((model) => model.id));
   const discoveredModels = discoveryState.phase === "success" ? discoveryState.models : [];
@@ -944,8 +980,14 @@ function fillEmptyModelFields(
   model: ModelEntry,
   preset: ModelCatalogPreset,
 ): { model: ModelEntry; appliedCount: number } {
+  // models.dev is only this manual button. automaticModelLimitSources() does not include it.
   const next = { ...model };
   let appliedCount = 0;
+  const meta: ModelLimitsMeta = {
+    ...(model.limitsMeta?.contextWindow ? { contextWindow: model.limitsMeta.contextWindow } : {}),
+    ...(model.limitsMeta?.maxTokens ? { maxTokens: model.limitsMeta.maxTokens } : {}),
+    ...(model.limitsMeta?.unavailable ? { unavailable: { ...model.limitsMeta.unavailable } } : {}),
+  };
   if (!model.name?.trim() && preset.name) {
     next.name = preset.name;
     appliedCount += 1;
@@ -958,14 +1000,27 @@ function fillEmptyModelFields(
     next.input = [...preset.input];
     appliedCount += 1;
   }
-  if (model.contextWindow === undefined && preset.contextWindow !== undefined) {
-    next.contextWindow = preset.contextWindow;
-    appliedCount += 1;
+  if (model.contextWindow === undefined) {
+    const value = positiveTokenCount(preset.contextWindow);
+    if (value !== undefined) {
+      next.contextWindow = value;
+      meta.contextWindow = "models.dev";
+      if (meta.unavailable) delete meta.unavailable.contextWindow;
+      appliedCount += 1;
+    }
   }
-  if (model.maxTokens === undefined && preset.maxTokens !== undefined) {
-    next.maxTokens = preset.maxTokens;
-    appliedCount += 1;
+  if (model.maxTokens === undefined) {
+    const value = positiveTokenCount(preset.maxTokens);
+    if (value !== undefined) {
+      next.maxTokens = value;
+      meta.maxTokens = "models.dev";
+      if (meta.unavailable) delete meta.unavailable.maxTokens;
+      appliedCount += 1;
+    }
   }
+  const compacted = compactLimitMeta(meta);
+  if (compacted) next.limitsMeta = compacted;
+  else delete next.limitsMeta;
 
   if (preset.cost) {
     const cost = { ...(model.cost ?? {}) };
@@ -980,6 +1035,185 @@ function fillEmptyModelFields(
     if (costChanged) next.cost = cost;
   }
   return { model: next, appliedCount };
+}
+
+function ModelLimitFields({
+  providerName,
+  provider,
+  model,
+  onChange,
+}: {
+  providerName: string;
+  provider: ProviderEntry;
+  model: ModelEntry;
+  onChange: (m: ModelEntry) => void;
+}) {
+  const { t } = useI18n();
+  const limitsAbortRef = useRef<ReturnType<typeof createDiscoveryAbort> | null>(null);
+  const limitsUndoRef = useRef<ModelEntry | null>(null);
+  const [limitsPhase, setLimitsPhase] = useState<"idle" | "loading">("idle");
+  const [limitsError, setLimitsError] = useState<string | null>(null);
+  const endpointSource = automaticModelLimitSources().includes("endpoint");
+  const nothingEmpty = model.contextWindow !== undefined && model.maxTokens !== undefined;
+
+  useEffect(() => () => {
+    const current = limitsAbortRef.current;
+    limitsAbortRef.current = null;
+    current?.cancel();
+    current?.dispose();
+  }, []);
+
+  useEffect(() => {
+    const current = limitsAbortRef.current;
+    limitsAbortRef.current = null;
+    current?.cancel();
+    current?.dispose();
+    limitsUndoRef.current = null;
+    setLimitsError(null);
+    setLimitsPhase("idle");
+  }, [providerName, provider.baseUrl, model.id]);
+
+  const setLimit = (field: ModelLimitField, raw: string) => {
+    onChange({
+      ...model,
+      [field]: parseModelLimitDraft(raw),
+      limitsMeta: clearLimitMetaField(model.limitsMeta, field),
+    });
+  };
+
+  const handleFetchLimits = async () => {
+    if (!endpointSource || limitsPhase === "loading") return;
+    if (!provider.baseUrl?.trim()) {
+      setLimitsError(t("models.limits.fetchNeedsEndpoint"));
+      return;
+    }
+    if (!model.id.trim()) {
+      setLimitsError(t("models.limits.fetchNeedsId"));
+      return;
+    }
+    const previous = limitsAbortRef.current;
+    limitsAbortRef.current = null;
+    previous?.cancel();
+    previous?.dispose();
+    const discovery = createDiscoveryAbort();
+    limitsAbortRef.current = discovery;
+    setLimitsPhase("loading");
+    setLimitsError(null);
+    try {
+      const data = await requestDiscoveredModels({ providerName, provider, signal: discovery.signal });
+      if (limitsAbortRef.current !== discovery) return;
+      const match = findDiscoveredModel(data.models, model.id);
+      const applied = applyEndpointLimits(model, match);
+      if (applied.changed) {
+        limitsUndoRef.current = model;
+        onChange(applied.model);
+      }
+      if (!match) setLimitsError(t("models.limits.modelNotListed"));
+    } catch (error) {
+      if (limitsAbortRef.current !== discovery) return;
+      if (discovery.signal.aborted && !discovery.timedOut()) return;
+      setLimitsError(discovery.timedOut()
+        ? t("models.limits.fetchTimeout")
+        : error instanceof Error ? error.message : String(error));
+    } finally {
+      discovery.dispose();
+      if (limitsAbortRef.current === discovery) {
+        limitsAbortRef.current = null;
+        setLimitsPhase("idle");
+      }
+    }
+  };
+
+  const hint = (field: ModelLimitField): { text: string; tone: "error" | "source"; source?: string; missing?: boolean } | null => {
+    const pair = modelLimitProblem(model);
+    if (pair?.code === "output-exceeds-context") return { text: t("models.limits.outputTooLarge"), tone: "error" };
+    const problem = modelLimitFieldProblem(model[field], field);
+    if (problem?.code === "required" && model.limitsMeta?.unavailable?.[field]) {
+      return { text: t("models.limits.endpointMissing"), tone: "error", missing: true };
+    }
+    if (problem?.code === "required") return { text: t("models.limits.required"), tone: "error" };
+    if (problem?.code === "not-positive-integer") return { text: t("models.limits.notInteger"), tone: "error" };
+    const source = model.limitsMeta?.[field];
+    if (source === "endpoint") return { text: t("models.limits.sourceEndpoint"), tone: "source", source };
+    if (source === "models.dev") return { text: t("models.limits.sourceCatalog"), tone: "source", source };
+    return null;
+  };
+
+  const field = (name: ModelLimitField, label: string) => {
+    const note = hint(name);
+    const invalid = note?.tone === "error";
+    return (
+      <div data-model-limit-field={name} style={{ flex: "1 1 180px", display: "flex", flexDirection: "column", gap: 4 }}>
+        <Field label={<>{label}<span style={{ color: "#ef4444" }}> *</span></>}>
+          <NumInput
+            value={model[name] !== undefined ? String(model[name]) : ""}
+            onChange={(value) => setLimit(name, value)}
+            placeholder={t("models.limits.requiredPlaceholder")}
+            invalid={invalid}
+          />
+        </Field>
+        {note && (
+          <span
+            data-limit-source={note.source}
+            data-limit-endpoint-missing={note.missing ? "true" : undefined}
+            style={{ color: note.tone === "error" ? "#ef4444" : "var(--text-dim)", fontSize: "var(--text-xs)", lineHeight: 1.4 }}
+          >
+            {note.text}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+        {field("contextWindow", t("models.form.contextWindow"))}
+        {field("maxTokens", t("models.form.maxTokens"))}
+        {endpointSource && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", paddingTop: 20 }}>
+            <button
+              type="button"
+              onClick={() => void handleFetchLimits()}
+              disabled={limitsPhase === "loading" || nothingEmpty}
+              style={{
+                height: 30, padding: "0 10px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)",
+                background: "var(--bg-panel)",
+                color: limitsPhase === "loading" || nothingEmpty ? "var(--text-dim)" : "var(--text-muted)",
+                cursor: limitsPhase === "loading" || nothingEmpty ? "not-allowed" : "pointer",
+                fontSize: "var(--text-xs)",
+              }}
+            >
+              {limitsPhase === "loading" ? t("models.limits.fetching") : t("models.limits.fetch")}
+            </button>
+            {limitsUndoRef.current && (
+              <button
+                type="button"
+                onClick={() => {
+                  const previous = limitsUndoRef.current;
+                  if (!previous) return;
+                  limitsUndoRef.current = null;
+                  setLimitsError(null);
+                  onChange(previous);
+                }}
+                style={{ padding: "0 2px", border: "none", background: "none", color: "var(--accent)", cursor: "pointer", fontSize: "var(--text-xs)" }}
+              >
+                {t("models.catalogUndo")}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      {limitsError && (
+        <div role="alert" style={{ marginTop: 6, color: "#ef4444", fontSize: "var(--text-xs)", lineHeight: 1.4 }}>
+          <ModelErrorText value={limitsError} />
+        </div>
+      )}
+      <p data-model-limits-help style={{ margin: "8px 0 0", color: "var(--text-dim)", fontSize: "var(--text-xs)", lineHeight: 1.5, whiteSpace: "pre-line" }}>
+        {t("models.limits.help")}
+      </p>
+    </div>
+  );
 }
 
 function ModelDetail({
@@ -1260,6 +1494,8 @@ function ModelDetail({
         </div>
       </div>
 
+      <ModelLimitFields providerName={providerName} provider={provider} model={model} onChange={onChange} />
+
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
         <Check label={t("models.form.imageInput")} checked={model.input?.includes("image") ?? false}
           onChange={(v) => set("input", v ? ["text", "image"] : undefined)} />
@@ -1305,20 +1541,6 @@ function ModelDetail({
           </div>
         </>
           )}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-        <Field label={t("models.form.contextWindow")}>
-          <NumInput value={model.contextWindow !== undefined ? String(model.contextWindow) : ""}
-            onChange={(v) => set("contextWindow", v ? parseInt(v) : undefined)} placeholder="128000" />
-        </Field>
-        <Field label={t("models.form.maxTokens")}>
-          <NumInput value={model.maxTokens !== undefined ? String(model.maxTokens) : ""}
-            onChange={(v) => set("maxTokens", v ? parseInt(v) : undefined)} placeholder="16384" />
-        </Field>
-      </div>
-      <p style={{ margin: "-8px 0 0", color: "var(--text-dim)", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
-        自定义模型不填时默认上下文 128000、最大输出 16384。每轮回复的实际上限 = min(最大输出，上下文 − 当前上下文估算 − 4096)，因此声明值必须与真实服务一致：上下文声明得比实际大，回复会被服务的真实上限截断；声明得太小，则会频繁触发自动压缩。自动压缩也按声明的上下文计算触发时机。
-      </p>
 
           {(model.api ?? provider.api ?? "openai-completions") === "openai-completions" && (
             <div>
@@ -1964,6 +2186,11 @@ export function ModelsConfig({
   const [dropTargetProvider, setDropTargetProvider] = useState<string | null>(null);
   const [collapsedProviders, setCollapsedProviders] = useState<Set<string>>(() => new Set());
   const providerTreeRef = useRef<HTMLDivElement>(null);
+  const limitsBannerAbortRef = useRef<ReturnType<typeof createDiscoveryAbort> | null>(null);
+  const limitsBannerUndoRef = useRef<ModelsJson | null>(null);
+  const limitsBannerBusyRef = useRef(false);
+  const [limitsBannerBusy, setLimitsBannerBusy] = useState(false);
+  const [limitsBannerError, setLimitsBannerError] = useState<string | null>(null);
   const [detailTab, setDetailTab] = useState<"connection" | "models">("connection");
   useEffect(() => setDetailTab("connection"), [selection]);
   const [oauthProviders, setOauthProviders] = useState<OAuthProvider[]>([]);
@@ -2177,7 +2404,9 @@ export function ModelsConfig({
       for (const discoveredModel of discovered) {
         if (existingIds.has(discoveredModel.id)) continue;
         existingIds.add(discoveredModel.id);
-        models.push({ id: discoveredModel.id, name: discoveredModel.name });
+        const draft: ModelEntry = { id: discoveredModel.id };
+        if (discoveredModel.name) draft.name = discoveredModel.name;
+        models.push(applyEndpointLimits(draft, discoveredModel).model);
       }
       return { ...prev, providers: { ...(prev.providers ?? {}), [providerName]: { ...provider, models } } };
     });
@@ -2317,21 +2546,17 @@ export function ModelsConfig({
 
   const handleSave = useCallback(async () => {
     if (configMutationRef.current) return;
-    for (const [providerName, provider] of Object.entries(config.providers ?? {})) {
-      const samplingIndex = (provider.models ?? []).findIndex(model => modelSamplingError(model));
-      if (samplingIndex >= 0) {
-        setSelection({ type: "model", providerName, index: samplingIndex });
-        setDetailTab("connection");
-        setSaveError(t("models.sampling.invalid", { error: modelSamplingError(provider.models![samplingIndex])! }));
-        return;
-      }
-      const invalidIndex = (provider.models ?? []).findIndex((model) => !model.id.trim());
-      if (invalidIndex >= 0) {
-        setSelection({ type: "model", providerName, index: invalidIndex });
-        setDetailTab("connection");
-        setSaveError(t("models.modelIdRequired"));
-        return;
-      }
+    const blocker = firstCustomModelSaveBlocker(config.providers);
+    if (blocker) {
+      const blocked = config.providers?.[blocker.providerName]?.models?.[blocker.index];
+      setSelection({ type: "model", providerName: blocker.providerName, index: blocker.index });
+      setDetailTab("connection");
+      setSaveError(blocker.kind === "modelId"
+        ? t("models.modelIdRequired")
+        : blocker.kind === "sampling"
+          ? t("models.sampling.invalid", { error: blocker.error })
+          : t("models.limits.saveError", { model: `${blocker.providerName}/${blocked?.id?.trim() || blocker.index}` }));
+      return;
     }
     // Keep names as drafts until the same save that persists the other fields.
     // Resolve all names together so collisions cannot silently drop a provider.
@@ -2361,7 +2586,7 @@ export function ModelsConfig({
       const res = await fetch("/api/models-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(configToSave),
+        body: JSON.stringify(stripModelLimitUiMeta(configToSave)),
       });
       const d = await res.json() as { success?: boolean; error?: string };
       if (!res.ok || d.error) setSaveError(d.error ?? `HTTP ${res.status}`);
@@ -2400,6 +2625,84 @@ export function ModelsConfig({
       setSaving(false);
     }
   }, [config, providerNameDrafts, t, loadModelScope, onModelsChanged, refreshAuthProviders, updateModelScope, rememberPersistedConfig]);
+
+  useEffect(() => () => {
+    const current = limitsBannerAbortRef.current;
+    limitsBannerAbortRef.current = null;
+    current?.cancel();
+    current?.dispose();
+  }, []);
+
+  const missingLimits = customModelsMissingLimits(config.providers);
+  const limitsFetchable = automaticModelLimitSources().includes("endpoint") && missingLimits.some(({ providerName }) => {
+    const provider = config.providers?.[providerName];
+    return Boolean(provider?.baseUrl?.trim() && provider.models?.some((model) => (
+      model.id.trim() && (model.contextWindow === undefined || model.maxTokens === undefined)
+    )));
+  });
+
+  const fetchMissingLimits = async () => {
+    // Decision (a): the configured endpoint is the only automatic source.
+    if (!automaticModelLimitSources().includes("endpoint") || limitsBannerBusyRef.current) return;
+    const targets = Object.entries(config.providers ?? {}).filter(([, provider]) => (
+      Boolean(provider.baseUrl?.trim()) && (provider.models ?? []).some((model) => (
+        model.id.trim() && (model.contextWindow === undefined || model.maxTokens === undefined)
+      ))
+    ));
+    if (targets.length === 0) {
+      setLimitsBannerError(t("models.limits.fetchNeedsEndpoint"));
+      return;
+    }
+    const previous = limitsBannerAbortRef.current;
+    limitsBannerAbortRef.current = null;
+    previous?.cancel();
+    previous?.dispose();
+    const discovery = createDiscoveryAbort();
+    limitsBannerAbortRef.current = discovery;
+    limitsBannerBusyRef.current = true;
+    setLimitsBannerBusy(true);
+    setLimitsBannerError(null);
+    const discoveredByProvider: Record<string, DiscoveredModel[]> = {};
+    const errors: string[] = [];
+    await Promise.all(targets.map(async ([name, provider]) => {
+      try {
+        const data = await requestDiscoveredModels({ providerName: name, provider, signal: discovery.signal });
+        discoveredByProvider[name] = data.models;
+      } catch (error) {
+        if (discovery.signal.aborted && !discovery.timedOut()) return;
+        const message = discovery.timedOut()
+          ? t("models.limits.fetchTimeout")
+          : error instanceof Error ? error.message : String(error);
+        errors.push(`${name}: ${message}`);
+      }
+    }));
+    if (limitsBannerAbortRef.current !== discovery) {
+      discovery.dispose();
+      return;
+    }
+    setConfig((prev) => {
+      const applied = applyDiscoveredLimits(prev.providers, discoveredByProvider);
+      if (!applied.changed || !applied.providers) return prev;
+      for (const [name, provider] of Object.entries(prev.providers ?? {})) {
+        const nextModels = applied.providers?.[name]?.models;
+        (provider.models ?? []).forEach((model, index) => {
+          const next = nextModels?.[index];
+          if (!next || next === model) return;
+          const target = persistedModelTargetsRef.current.get(model);
+          if (target) persistedModelTargetsRef.current.set(next, target);
+        });
+      }
+      limitsBannerUndoRef.current = prev;
+      return { ...prev, providers: applied.providers };
+    });
+    if (errors.length) setLimitsBannerError(errors.join("\n"));
+    discovery.dispose();
+    if (limitsBannerAbortRef.current === discovery) {
+      limitsBannerAbortRef.current = null;
+      limitsBannerBusyRef.current = false;
+      setLimitsBannerBusy(false);
+    }
+  };
 
   const configuredProviders = prioritizeProvider(
     Object.entries(config.providers ?? {}),
@@ -2811,6 +3114,29 @@ export function ModelsConfig({
           {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} title={t("i18n.close")} aria-label={t("i18n.close")} style={{ display: "inline-flex", width: 28, height: 28, alignItems: "center", justifyContent: "center", background: "none", border: "none", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, padding: 0 }}><AliIcon name="close" size={16} /></button>}
         </div>
 
+        {missingLimits.length > 0 && (
+          <div data-model-limits-banner role="status" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, padding: "8px 18px", borderBottom: "1px solid var(--border)", background: "color-mix(in srgb, #ef4444 8%, var(--bg))", color: "#b91c1c", fontSize: "var(--text-xs)", lineHeight: 1.45, flexShrink: 0 }}>
+            <span style={{ flex: "1 1 220px", minWidth: 0 }}>{t("models.limits.missingBanner", { count: missingLimits.length })}</span>
+            {limitsFetchable && (
+              <button type="button" onClick={() => void fetchMissingLimits()} disabled={limitsBannerBusy} style={{ height: 28, padding: "0 10px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-panel)", color: limitsBannerBusy ? "var(--text-dim)" : "var(--text)", cursor: limitsBannerBusy ? "not-allowed" : "pointer", fontSize: "var(--text-xs)" }}>
+                {limitsBannerBusy ? t("models.limits.fetching") : t("models.limits.fetch")}
+              </button>
+            )}
+            {limitsBannerUndoRef.current && (
+              <button type="button" onClick={() => {
+                const previous = limitsBannerUndoRef.current;
+                if (!previous) return;
+                limitsBannerUndoRef.current = null;
+                setLimitsBannerError(null);
+                setConfig(previous);
+              }} style={{ padding: "0 2px", border: "none", background: "none", color: "var(--accent)", cursor: "pointer", fontSize: "var(--text-xs)" }}>
+                {t("models.catalogUndo")}
+              </button>
+            )}
+            {limitsBannerError && <span role="alert" style={{ flexBasis: "100%", whiteSpace: "pre-line" }}><ModelErrorText value={limitsBannerError} /></span>}
+          </div>
+        )}
+
         {/* Body */}
         <div inert={saving || loading || !!loadError} aria-busy={saving || loading} style={{ flex: 1, display: loadError ? "none" : "flex", flexDirection: isMobile ? "column" : "row", overflow: "hidden" }}>
 
@@ -2995,6 +3321,9 @@ export function ModelsConfig({
                           <span style={{ fontSize: "var(--text-xs)", fontFamily: "var(--font-mono)", color: m.id ? "var(--text-muted)" : "var(--text-dim)", flex: "0 1 auto", maxWidth: "calc(100% - 52px)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                              {m.id || t("i18n.newModel")}
                           </span>
+                          {m.id.trim() && modelLimitProblem(m) && (
+                            <span data-model-limits-missing title={t("models.limits.missingDot")} aria-label={t("models.limits.missingDot")} style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444", flexShrink: 0 }} />
+                          )}
                           {modelScope?.effectiveDefault?.provider === pName && modelScope.effectiveDefault.modelId === m.id && (
                             <span className={styles.defaultBadge}>{t("models.defaultBadge")}</span>
                           )}
