@@ -19,6 +19,11 @@ test("memoizes historical chat metadata away from streaming token renders", () =
   assert.match(historySource, /streamingMessage \? \[\.\.\.savedMessages, streamingMessage\] : savedMessages/);
 });
 
+test("main chat ignores the retired compact process preference", () => {
+  assert.doesNotMatch(source, /useCompactProcessPreference/);
+  assert.match(source, /const compactProcess = false/);
+});
+
 test("long chat rows use browser rendering containment", () => {
   assert.match(historySource, /chat-message-shell/);
   assert.match(historySource, /<VirtualList/);

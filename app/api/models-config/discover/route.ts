@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { resolveModelDiscoveryAuth } from "@/lib/model-discovery-auth";
-import { buildModelsListUrl, parseDiscoveredModels } from "@/lib/model-discovery";
+import { buildModelsListUrl, MODEL_DISCOVERY_TIMEOUT_MS, parseDiscoveredModels } from "@/lib/model-discovery";
 
 export const dynamic = "force-dynamic";
-
-const DISCOVERY_TIMEOUT_MS = 20_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -58,7 +56,7 @@ export async function POST(req: Request) {
     const response = await fetch(endpoint, {
       cache: "no-store",
       headers: buildHeaders(api, auth.apiKey, auth.headers),
-      signal: AbortSignal.timeout(DISCOVERY_TIMEOUT_MS),
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(MODEL_DISCOVERY_TIMEOUT_MS)]),
     });
     const responseText = await response.text();
     if (!response.ok) {
@@ -74,15 +72,17 @@ export async function POST(req: Request) {
     } catch {
       return NextResponse.json({ error: "Upstream model list was not valid JSON" }, { status: 502 });
     }
-    const models = parseDiscoveredModels(payload);
+    const models = parseDiscoveredModels(payload, { api });
     if (models.length === 0) {
       return NextResponse.json({ error: "No models found in the upstream response" }, { status: 502 });
     }
 
     return NextResponse.json({ models, endpoint: endpoint.toString() });
   } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === "TimeoutError";
+    if (timedOut) return NextResponse.json({ error: "The model list request timed out" }, { status: 504 });
+    if (req.signal.aborted) return NextResponse.json({ error: "cancelled" }, { status: 499 });
     const message = error instanceof Error ? error.message : String(error);
-    const status = error instanceof DOMException && error.name === "TimeoutError" ? 504 : 500;
-    return NextResponse.json({ error: message }, { status });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

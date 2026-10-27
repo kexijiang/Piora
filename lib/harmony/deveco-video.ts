@@ -41,6 +41,8 @@ export class DevEcoVideoSession {
   private closing?: Promise<void>;
   private pid?: number;
   private forwarded = false;
+  private forwardPending = false;
+  private shared = false;
   private failed?: Error;
   private startedAt = Date.now();
   private firstFrameTimer?: ReturnType<typeof setTimeout>;
@@ -80,12 +82,20 @@ export class DevEcoVideoSession {
   }
 
   private async initialize(jar: string) {
+    const sockets = await this.shell("cat /proc/net/unix", "debug_video_socket_check");
+    if (sockets.includes("@scrcpy_grpc_socket")) {
+      // Subscribe to the existing service without taking ownership of its daemon.
+      // Persist this distinction before creating a forward so crash recovery can
+      // remove only our own forward while the other viewer remains connected.
+      this.ownership!.markShared();
+      this.shared = true;
+      await this.openForward();
+      return;
+    }
     const version = await this.shell("uitest --version", "debug_video_version");
     const library = await readDevEcoVideoLibrary(jar, version).catch(() => {
       throw fail("This DevEco SDK has no usable debug video library for this phone. Update DevEco Studio and reconnect.");
     });
-    const sockets = await this.shell("cat /proc/net/unix", "debug_video_socket_check");
-    if (sockets.includes("@scrcpy_grpc_socket")) throw new HarmonyError("DEVICE_BUSY", "Another development tool is using this phone's video channel. Close its mirror before reconnecting.", { details: { reason: "debug-video-busy" } });
     const directory = await mkdtemp(join(tmpdir(), "piora-video-"));
     try {
       const path = join(directory, this.name); await writeFile(path, library, { flag: "wx", mode: 0o600 });
@@ -102,8 +112,16 @@ export class DevEcoVideoSession {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     if (!ready || !await this.ownsProcess()) throw fail("The DevEco debug video service could not start on this system. Update DevEco Studio and reconnect.");
+    await this.openForward();
+  }
+
+  private async openForward() {
+    // A failed HDC response can be ambiguous: retain the journal until a
+    // later recovery checks whether the forward was actually created.
+    this.forwardPending = true;
     await this.run(["-t", this.serial, "fport", `tcp:${this.port}`, SOCKET], "debug_video_forward", undefined, 8000);
     this.forwarded = true;
+    this.forwardPending = false;
     this.rpc = new Client(`127.0.0.1:${this.port}`, credentials.createInsecure(), { "grpc.max_receive_message_length": MAX_QUEUE });
   }
 
@@ -181,16 +199,16 @@ export class DevEcoVideoSession {
         await this.shell(`rm -f /data/local/tmp/${this.name} /data/local/tmp/${this.name}.log`, "debug_video_file_cleanup");
       };
       const cleanup = await Promise.allSettled([
-        stopped().catch(() => stopped()),
+        this.shared ? Promise.resolve() : stopped().catch(() => stopped()),
         this.forwarded ? this.run(["-t", this.serial, "fport", "rm", `tcp:${this.port}`, SOCKET], "debug_video_forward_cleanup", undefined, 8000) : Promise.resolve(),
       ]);
       try {
         const failed = cleanup.find(result => result.status === "rejected");
-        if (!failed) this.ownership?.clear();
+        if (!failed && !this.forwardPending) this.ownership?.clear();
         // The host reader is closed even if an unplugged phone cannot acknowledge
         // cleanup. Preserve the durable journal for reconnect, while allowing the
         // independent MP4 writer to finalize already received frames offline.
-        else if (!this.journaled && failed.status === "rejected") throw failed.reason;
+        else if (!this.journaled && failed?.status === "rejected") throw failed.reason;
       } finally {
         try { this.ownership?.release(); } finally { this.onClose(); }
       }

@@ -212,6 +212,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     assert.ok((await page.locator(".embeddedMirror").boundingBox()).height < fullHeight / 2, "sidebar zoom releases workspace space");
     await page.getByRole("combobox", {name:"投屏位置"}).selectOption("floating");
     await page.waitForFunction(()=>!document.querySelector('.embeddedMirror canvas'));
+    assert.equal(await page.evaluate(() => window.maximized), false, "switching between sidebar and floating mirror does not expand the workspace");
     await page.getByText("响应 17 ms", { exact: true }).waitFor();
     assert.match(await page.getByText("响应 17 ms", { exact: true }).getAttribute("title"), /不代表视频延迟/);
     phoneState = "offline";
