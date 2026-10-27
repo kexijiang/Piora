@@ -11,7 +11,6 @@ import { normalizeCustomPanelLines, parseAnsiLine } from "@/lib/ansi";
 import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { messageFingerprint } from "@/lib/chat-history";
 import { CompactProcessContext } from "./CompactProcessContext";
-import { useCompactProcessPreference } from "@/hooks/useCompactProcessPreference";
 import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
@@ -162,7 +161,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
   // drafts: two new chats in the same project must never restore each other.
   const [newChatDraftKey] = useState(() => `new:${crypto.randomUUID()}`);
   const { t } = useI18n();
-  const { enabled: compactProcess } = useCompactProcessPreference();
+  const compactProcess = false;
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
   const chatColumnWidthRef = useRef(CHAT_COLUMN_DEFAULT_WIDTH);
@@ -824,7 +823,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
             <ChatHistory
               key={session?.id ?? sessionIdRef.current ?? "new"}
               operations={chatCommands.records} commandActions={commandActions}
-              messages={messages} compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
+              messages={messages} directProcess compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}

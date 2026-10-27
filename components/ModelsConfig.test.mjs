@@ -69,6 +69,25 @@ test("saving a new custom model refreshes and restores it into the visible provi
   assert.match(source, /onModelsChanged\?\.\(\)/);
 });
 
+test("context window and max output are required basic fields without hardcoded defaults", () => {
+  const detail = source.slice(source.indexOf("function ModelLimitFields"), source.indexOf("function OAuthDetail"));
+  const contextAt = detail.indexOf('t("models.form.contextWindow")');
+  const imageAt = detail.indexOf('t("models.form.imageInput")');
+  const advancedAt = detail.indexOf('t("models.advancedSettings")');
+  assert.ok(contextAt >= 0 && imageAt >= 0 && advancedAt >= 0);
+  assert.ok(contextAt < imageAt && contextAt < advancedAt);
+  assert.match(detail, /data-model-limits-help/);
+  assert.match(detail, /models\.limits\.requiredPlaceholder/);
+  assert.match(detail, /models\.limits\.fetch/);
+  assert.doesNotMatch(source, /128000|16384|自定义模型不填时默认/);
+  assert.match(source, /data-model-limits-banner/);
+  assert.match(source, /data-model-limits-missing/);
+  assert.match(source, /firstCustomModelSaveBlocker/);
+  assert.match(source, /automaticModelLimitSources/);
+  assert.match(source, /stripModelLimitUiMeta\(configToSave\)/);
+  assert.match(source, /applyEndpointLimits/);
+});
+
 test("adding a model selects its draft without nesting state updates", () => {
   assert.match(source, /const index = config\.providers\?\.\[providerName\]\?\.models\?\.length \?\? 0/);
   assert.match(source, /setSelection\(\{ type: "model", providerName, index \}\)/);

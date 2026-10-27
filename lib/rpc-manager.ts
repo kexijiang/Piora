@@ -1531,6 +1531,8 @@ export class AgentSessionWrapper {
           model = this.inner.modelRuntime.getModel(provider, modelId);
         }
         if (!model) throw new Error(`Model not found: ${provider}/${modelId}`);
+        // Missing or non-positive windows skip this compact. Do not invent a
+        // size; legacy resolution is documented in lib/model-limits.ts.
         const targetWindow = model.contextWindow;
         let compacted = false;
         if (Number.isFinite(targetWindow) && targetWindow > 0

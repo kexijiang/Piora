@@ -6,6 +6,7 @@ import { writePrivateFileAtomicSync } from "@/lib/atomic-file";
 import { invalidateModelsCache } from "@/lib/models-cache";
 import { invalidateServicesCache } from "@/lib/rpc-manager";
 import { normalizeModelConfigCosts } from "@/lib/model-config-cost";
+import { stripModelLimitUiMeta, validateCustomModelLimits } from "@/lib/model-limits";
 import { validateModelSamplingConfig } from "@/lib/model-sampling";
 import { stripJsonComments } from "@/lib/mcp-capabilities";
 
@@ -58,11 +59,13 @@ export async function PUT(req: Request) {
   try {
     body = normalizeModelConfigCosts(await req.json());
     validateModelSamplingConfig(body);
+    // Custom models only. Legacy files stay readable; see lib/model-limits.ts.
+    validateCustomModelLimits(body);
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 400 });
   }
   try {
-    writeModelsJson(body);
+    writeModelsJson(stripModelLimitUiMeta(body));
     invalidateModelsCache();
     invalidateServicesCache();
     return NextResponse.json({ success: true });

@@ -51,6 +51,16 @@ test("moves files and review into a Codex-style launcher and tool-tab workspace"
   assert.doesNotMatch(sidebar, /<FileExplorer|<SidebarFileArea/);
 });
 
+test("opening Harmony preserves the workspace size while manual expansion stays available", () => {
+  const action = shell.match(/case "harmony-workbench":([\s\S]*?)break;/)?.[1];
+  assert.ok(action);
+  assert.match(action, /setRightPanelTab\("harmony"\)/);
+  assert.match(action, /setRightPanelOpen\(true\)/);
+  assert.doesNotMatch(action, /setRightPanelMaximized/);
+  assert.match(shell, /onActiveTabChange=\{setRightPanelTab\}/);
+  assert.match(rightPanel, /onMaximizedChange\(!props\.maximized\)/);
+});
+
 test("the command panel owns a persistent workspace shell while file lookup stays in Files", () => {
   const commandPanel = fs.readFileSync(new URL("./CommandPanel.tsx", import.meta.url), "utf8");
   const smartShell = fs.readFileSync(new URL("./SmartShellPanel.tsx", import.meta.url), "utf8");

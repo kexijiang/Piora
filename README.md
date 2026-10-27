@@ -213,7 +213,7 @@ npm run verify:backgrounds
 
 TypeScript 按[微软官方并行安装方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)配置：`@typescript/native` 是 TypeScript 7 的 npm 别名，提供 `tsc`，用于类型检查、桌面及 Harmony worker 编译；`typescript` 是最新版 `@typescript/typescript6` 兼容包的别名，为代码补全、ESLint 和测试脚本提供编译器 API。需要调用编译器时使用 `npm run typecheck` 或 `node_modules/.bin/tsc`。
 
-发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；安装同批 Piora 并完成手机验收后，再由独立工作流发布这些原始字节。`vX.Y.Z` 稳定流程在接入同一 bundle 的 AGC release identity 前保持失败关闭。不要移动已发布标签或本地制作发布包。
+发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；验收同批 Piora 安装包后，再由独立工作流发布这些原始字节；鸿蒙手机实机验收按需进行，不作为发布门禁。`vX.Y.Z` 稳定流程在接入同一 bundle 的 AGC release identity 前保持失败关闭。不要移动已发布标签或本地制作发布包。
 
 **CHANGELOG 是唯一更新说明来源**，Release 正文和 `beta.yml` / `latest.yml` 的更新说明由同一版本记录生成，并在发布前校验。具体步骤见[发布流程](docs/release.md)。
 

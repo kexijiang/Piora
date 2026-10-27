@@ -1151,7 +1151,6 @@ export function AppShell() {
         case "harmony-workbench":
           setRightPanelTab("harmony");
           setRightPanelOpen(true);
-          setRightPanelMaximized(true);
           break;
         case "open-browser":
           setRightPanelTab("browser");
@@ -2925,7 +2924,7 @@ export function AppShell() {
         {rightPanelHasOpened ? <RightPanel
           ref={rightPanelRef}
           activeTab={rightPanelTab}
-          onActiveTabChange={tab => { setRightPanelTab(tab); if (tab === "harmony") setRightPanelMaximized(true); }}
+          onActiveTabChange={setRightPanelTab}
           maximized={rightPanelMaximized}
           onMaximizedChange={setRightPanelMaximized}
           onClosePanel={() => setRightPanelOpen(false)}

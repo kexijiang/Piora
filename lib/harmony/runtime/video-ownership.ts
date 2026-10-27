@@ -8,7 +8,7 @@ import { readBoundedRegularFile } from "./bounded-file";
 import { assertUnredirectedPathSync } from "./path-safety";
 
 type Run = (args: readonly string[], operation: string, signal?: AbortSignal, timeout?: number) => Promise<CommandResult>;
-interface Record { version: 1; serial: string; hostPid: number; name: string; port: number }
+interface Record { version: 1; serial: string; hostPid: number; name: string; port: number; shared?: boolean }
 const NAME = /^piora_video_[a-f0-9]{32}\.so$/;
 const SOCKET = "localabstract:scrcpy_grpc_socket";
 export const videoOwnershipDirectory = () => join(dirname(sharedDeviceLockDirectory()), "video");
@@ -35,6 +35,11 @@ export class VideoOwnership {
     return result.stdout.toString("utf8").replace(/\0/g, "");
   }
   private async clean(record: Record): Promise<void> {
+    if (record.shared) {
+      await this.cleanForward(record);
+      try { unlinkSync(this.path(record)); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+      return;
+    }
     const processes = await this.shell(record, "ps -ef", "debug_video_recovery_owner");
     const matches = processes.split(/\r?\n/).map(line => line.trim().split(/\s+/)).filter(fields =>
       /^\d+$/.test(fields[1]) && fields.includes(record.name) && fields.includes("--extension-name") && fields.includes("uitest"));
@@ -48,14 +53,18 @@ export class VideoOwnership {
       sockets = await this.shell(record, "cat /proc/net/unix", "debug_video_recovery_socket");
     }
     if (sockets.includes("@scrcpy_grpc_socket")) throw new HarmonyError("DEVICE_BUSY", "The debug video channel is still owned by another tool", { details: { reason: "debug-video-busy" } });
+    await this.cleanForward(record);
+    await this.shell(record, `rm -f /data/local/tmp/${record.name} /data/local/tmp/${record.name}.log`, "debug_video_recovery_file_cleanup");
+    try { unlinkSync(this.path(record)); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+  }
+
+  private async cleanForward(record: Record): Promise<void> {
     const forwards = await this.run(["-t", record.serial, "fport", "ls"], "debug_video_recovery_forwards", undefined, 8000);
     const ownsForward = forwards.stdout.toString("utf8").split(/\r?\n/).some(line => {
       const fields = line.trim().split(/\s+/);
       return fields.length === 4 && fields[0] === record.serial && fields[1] === `tcp:${record.port}` && fields[2] === SOCKET && fields[3] === "[Forward]";
     });
     if (ownsForward) await this.run(["-t", record.serial, "fport", "rm", `tcp:${record.port}`, SOCKET], "debug_video_recovery_forward_cleanup", undefined, 8000);
-    await this.shell(record, `rm -f /data/local/tmp/${record.name} /data/local/tmp/${record.name}.log`, "debug_video_recovery_file_cleanup");
-    try { unlinkSync(this.path(record)); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
   }
 
   async prepare(): Promise<void> {
@@ -64,6 +73,7 @@ export class VideoOwnership {
       try {
         record = JSON.parse((await readBoundedRegularFile(join(this.directory, name), 2048)).toString("utf8"));
         if (record.version !== 1 || record.serial !== this.record.serial || `${record.name}.json` !== name || !NAME.test(record.name)
+          || (record.shared !== undefined && typeof record.shared !== "boolean")
           || !Number.isInteger(record.hostPid) || record.hostPid < 1 || !Number.isInteger(record.port) || record.port < 1 || record.port > 65535) continue;
       } catch { continue; }
       if (record.hostPid !== process.pid) {
@@ -75,6 +85,11 @@ export class VideoOwnership {
       await this.clean(record);
     }
     // Persist intent before the first upload/start/forward, including startup crashes.
+    writePrivateFileAtomicSync(this.path(this.record), JSON.stringify(this.record));
+  }
+
+  markShared(): void {
+    this.record.shared = true;
     writePrivateFileAtomicSync(this.path(this.record), JSON.stringify(this.record));
   }
 

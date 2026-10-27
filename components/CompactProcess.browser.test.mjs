@@ -58,7 +58,7 @@ function App(){
   window.revealEntry=(id)=>history.current.revealEntry(id);
   return <I18nProvider><main><header>Piora <button role="switch" aria-label="轻量过程展示" aria-checked={enabled} onClick={()=>setEnabled(!enabled)}>轻量过程展示</button></header>
     <div id="scroll" className="overflow-y-auto" ref={scroll}><div className="chat-column">
-      <ChatHistory messages={messages} entryIds={mixed?["u","mixed","r","answer"]:["u","a","r","a2","r2","r3",...(attention?["wait"]:[]),...(done?["answer"]:[]),...(next?["next"]:[])]} compactProcess={enabled}
+      <ChatHistory messages={messages} entryIds={mixed?["u","mixed","r","answer"]:["u","a","r","a2","r2","r3",...(attention?["wait"]:[]),...(done?["answer"]:[]),...(next?["next"]:[])]} compactProcess={enabled} directProcess={location.search.includes("direct")}
         streamingMessage={draft} busy={!done} streaming={Boolean(draft)} isNew={false} forkingEntryId={null} highlightedEntryId={null} lastUserMsgRef={lastUser}
         pendingScrollToUserRef={pending} scrollContainer={scroll} handleRef={history} sessionId="fixture" cwd="Z:/workspace/CreateMyCard" onOpenFile={path=>window.openedFile=path} onDeleteMessage={async()=>{}} />
     </div></div><footer>发送消息…</footer></main></I18nProvider>;
@@ -90,6 +90,21 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         #scroll{overflow:auto;flex:1;min-height:0;padding:24px}.chat-column{max-width:760px;margin:auto}footer{margin:16px;padding:16px;border:1px solid var(--border);border-radius:12px;color:var(--text-muted)}
         </style><div id="root"></div><script src="/bundle.js"></script></html>` });
     });
+    const direct = await context.newPage();
+    await direct.goto("http://compact.test/?direct");
+    await direct.locator(".command-execution-card").first().waitFor();
+    assert.equal(await direct.locator(".compact-process-toggle").count(), 0);
+    assert.equal(await direct.locator(".command-execution-card").count(), 3);
+    await direct.locator(".command-execution-toggle").first().click();
+    await direct.locator(".command-output-section").waitFor();
+    await direct.evaluate(() => { window.finish(); window.next(); });
+    await direct.getByText("下一轮输入", { exact: true }).waitFor();
+    assert.equal(await direct.locator(".compact-process-toggle").count(), 0);
+    assert.equal(await direct.locator(".command-execution-card").count(), 3);
+    await direct.evaluate(() => window.activities());
+    await direct.getByText("notes.md", { exact: true }).first().waitFor();
+    assert.equal(await direct.locator(".compact-process-toggle").count(), 0);
+    await direct.close();
     const page = await context.newPage();
     const screenshot = async (name) => {
       if (!process.env.PIORA_COMPACT_SCREENSHOTS) return;
@@ -115,20 +130,11 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     assert.equal(await page.locator(".compact-process-group").count(), 1);
     assert.equal(await page.locator(".chat-process-stack-heading").count(), 0);
     assert.equal(await page.locator(".command-execution-card .chat-disclosure-label").first().innerText(), "运行命令");
-    const activityHeading = page.locator('[data-tool-activity="command"] .tool-activity-toggle');
-    assert.match(await activityHeading.innerText(), /执行 3 条命令/);
+    assert.equal(await page.locator("[data-tool-activity], .tool-activity-toggle, .tool-activity-heading").count(), 0);
+    assert.match(await page.locator(".compact-process-toggle").innerText(), /执行 3 条命令/);
+    assert.equal(await page.locator(".command-execution-card").count(), 3);
     assert.ok(await page.locator(".command-execution-toggle").first().evaluate(element =>
-      element.getBoundingClientRect().left > document.querySelector(".thinking-block-trigger").getBoundingClientRect().left + 16));
-    await activityHeading.click();
-    assert.equal(await page.locator(".command-execution-card").count(), 0);
-    assert.equal(await page.locator(".thinking-block").count(), 1);
-    await page.evaluate(() => window.advance());
-    assert.equal(await activityHeading.getAttribute("aria-expanded"), "false");
-    await page.locator(".compact-process-toggle").click();
-    await page.locator(".compact-process-toggle").click();
-    assert.equal(await activityHeading.getAttribute("aria-expanded"), "false");
-    await page.evaluate(() => window.revealEntry("a2"));
-    await page.waitForFunction(() => document.querySelectorAll(".command-execution-card").length === 3);
+      Math.abs(element.getBoundingClientRect().left - document.querySelector(".thinking-block-trigger").getBoundingClientRect().left) <= 1));
     await screenshot("grouped");
     const processHeading = page.locator(".compact-process-toggle").first();
     assert.equal(await processHeading.getAttribute("aria-expanded"), "true");
@@ -147,6 +153,11 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     await page.evaluate(() => window.revealEntry("a2"));
     await page.waitForFunction(() => document.querySelectorAll(".command-execution-card").length === 3);
     assert.equal(await processHeading.getAttribute("aria-expanded"), "true");
+    assert.ok(await page.locator('[data-chat-entry-id="a2"]').first().evaluate(element => {
+      const view = document.querySelector("#scroll").getBoundingClientRect();
+      const box = element.getBoundingClientRect();
+      return box.bottom > view.top && box.top < view.bottom;
+    }), "search reveal scrolls the tool call into view");
     await page.locator(".command-execution-card .chat-disclosure-trigger").first().click();
     await page.locator(".cm-content").waitFor();
     assert.equal(await page.locator(".cm-content").evaluate(element => {
@@ -238,13 +249,14 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     await page.waitForFunction(() => document.querySelector(".cm-content")?.textContent.includes("six"));
     await page.locator(".command-execution-card .chat-disclosure-trigger").first().click();
     await toggle.click();
-    await activityHeading.click();
     await page.locator(".compact-process-toggle").click();
     await page.locator(".compact-process-preview").waitFor();
     assert.equal(await page.locator(".compact-command-tail, .command-output-section").count(), 0);
+    const inspectedCommand = (await page.locator(".compact-process-preview .compact-process-step").filter({ has: page.locator(".compact-command-expand") }).first().locator(".compact-process-step-detail").innerText()).replace(/\s+/g, " ").trim();
     await page.locator(".compact-process-preview .compact-command-expand").first().click();
-    await page.locator(".cm-content").waitFor();
-    assert.match(await page.locator(".cm-content").innerText(), /six/);
+    await page.locator(".command-execution-card.is-expanded .cm-content").waitFor();
+    assert.equal((await page.locator(".command-execution-card.is-expanded .command-summary-preview").innerText()).replace(/\s+/g, " ").trim(), inspectedCommand);
+    assert.match(await page.locator(".command-execution-card.is-expanded .cm-content").innerText(), /six/);
     assert.equal(await page.locator(".compact-process-detail .message-response-meta").count(), 0);
     await page.evaluate(() => window.finish());
     await page.locator(".markdown-assistant-message h2").waitFor();
@@ -310,7 +322,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         if (scenario === "manual-open") await heading.click();
       }
       if (scenario === "log-open") await check.locator(".command-execution-toggle").first().click();
-      if (scenario === "failed") await check.locator(".tool-activity-toggle").click();
+      if (scenario === "failed") await heading.click();
       await check.evaluate(scenario => {
         if (scenario === "attention") window.waitForUser();
         if (scenario === "failed") window.fail(); else window.finish();
@@ -334,12 +346,17 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     activitiesPage.on("pageerror", error => errors.push(error.message));
     await activitiesPage.goto("http://compact.test/");
     await activitiesPage.evaluate(() => window.activities());
-    await activitiesPage.locator('[data-tool-activity="read"]').waitFor();
-    assert.deepEqual(await activitiesPage.locator('[data-tool-activity]').evaluateAll(rows => rows.map(row => row.dataset.toolActivity)), ["read","directory","search","edit","command"]);
-    const icons = await activitiesPage.locator('.tool-activity-heading .chat-disclosure-icon svg').evaluateAll(elements => elements.map(element => element.innerHTML));
-    assert.equal(new Set(icons).size,5,"file, folder, search, edit and terminal icons differ");
-    assert.equal(await activitiesPage.locator('.command-execution-toggle .chat-disclosure-icon svg').innerHTML(),icons[4]);
-    assert.equal(await activitiesPage.locator('.command-execution-toggle .chat-disclosure-label').innerText(),"运行命令","shell file reads remain discoverable as command execution");
+    await activitiesPage.locator(".tool-call-card").first().waitFor();
+    assert.equal(await activitiesPage.locator("[data-tool-activity], .tool-activity-toggle").count(), 0);
+    assert.equal(await activitiesPage.locator(".tool-call-card").count(), 4);
+    assert.equal(await activitiesPage.locator(".file-change-card").count(), 1);
+    assert.equal(await activitiesPage.locator(".command-execution-card").count(), 1);
+    const activitySummary = await activitiesPage.locator(".compact-process-toggle").innerText();
+    assert.match(activitySummary, /读取 1 次/);
+    assert.match(activitySummary, /搜索 3 次/);
+    assert.match(activitySummary, /修改 1 次/);
+    assert.match(activitySummary, /执行 1 条命令/);
+    assert.equal(await activitiesPage.locator(".command-execution-toggle .chat-disclosure-label").innerText(),"运行命令","shell file reads remain discoverable as command execution");
     const fileCards=activitiesPage.locator('.tool-call-card');
     await fileCards.nth(0).locator('.tool-call-toggle').click();
     const readCard=activitiesPage.locator('[data-file-result="read"]');
