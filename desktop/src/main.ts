@@ -1524,7 +1524,9 @@ function configureSession(runtimeSession: Session, origin: string, token: string
       if (!details.isMainFrame || !isAllowedOrigin(requestingOrigin)) return false;
       if (permission === "clipboard-sanitized-write") return true;
       // Voice input only needs the headset microphone. Keep camera and any
-      // unknown media permission denied by default.
+      // unknown media permission denied by default. Electron 45 reports screen
+      // sharing as display-capture; Piora does not use getDisplayMedia, so that
+      // permission stays denied rather than inheriting microphone access.
       return permission === "media" && details.mediaType === "audio";
     },
   );

@@ -7,6 +7,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 ### 依赖与兼容性
 
 - 语言服务通信固定升级至 vscode-jsonrpc 10.0.0；新增真实双向流回归，验证 ArkTS 初始化、服务器配置请求、文档同步、悬停及错误与超时后的连接清理。
+- 桌面运行时固定升级至 Electron 45.0.0，继续隔离预加载脚本并拒绝未经支持的屏幕采集权限；补充权限与预加载兼容性回归，保持 Linux 原生图片隔离校验。
 
 ### Mermaid 图形
 
