@@ -11,6 +11,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 
 import { writePrivateFileAtomicSync } from "./atomic-file";
+import { readBetaFeatures } from "./beta-features";
 import {
   FIRST_PARTY_EXTENSIONS,
   firstPartyExtensionPath,
@@ -83,6 +84,9 @@ export function setExtensionEnabled(
   enabled: boolean,
   path = extensionPreferencesPath(),
 ): ExtensionPreferences {
+  if (FIRST_PARTY_EXTENSIONS.find(descriptor => descriptor.id === id)?.betaFeature) {
+    throw new Error("Configure experimental capabilities in Settings > Beta Features.");
+  }
   const required = FIRST_PARTY_EXTENSIONS.find((descriptor) => descriptor.id === id)?.required === true;
   if (required && !enabled) {
     throw new Error("Piora core capability extensions cannot be disabled.");
@@ -125,6 +129,8 @@ export function isExtensionEnabled(
   extension: Extension,
   preferences = readExtensionPreferences(),
 ): boolean {
+  const betaFeature = getFirstPartyExtensionByPath(extension.resolvedPath)?.betaFeature;
+  if (betaFeature) return readBetaFeatures()[betaFeature];
   if (getFirstPartyExtensionByPath(extension.resolvedPath)?.required) return true;
   return !preferences.disabled.includes(extensionId(extension));
 }
@@ -133,6 +139,8 @@ export function isExtensionIdEnabled(
   id: string,
   preferences = readExtensionPreferences(),
 ): boolean {
+  const betaFeature = FIRST_PARTY_EXTENSIONS.find(descriptor => descriptor.id === id)?.betaFeature;
+  if (betaFeature) return readBetaFeatures()[betaFeature];
   if (FIRST_PARTY_EXTENSIONS.some((descriptor) => descriptor.id === id && descriptor.required)) return true;
   return !preferences.disabled.includes(id);
 }
@@ -151,9 +159,8 @@ export function enabledFirstPartyExtensionPaths(
   profile: "normal" | "device-control",
   preferences = readExtensionPreferences(),
 ): string[] {
-  const disabled = new Set(preferences.disabled);
   return FIRST_PARTY_EXTENSIONS
-    .filter((descriptor) => descriptor.profiles.includes(profile) && (descriptor.required || !disabled.has(descriptor.id)))
+    .filter((descriptor) => descriptor.profiles.includes(profile) && isExtensionIdEnabled(descriptor.id, preferences))
     .map(firstPartyExtensionPath);
 }
 
@@ -188,7 +195,7 @@ export function buildExtensionInventory(
       enabled: isExtensionEnabled(extension, preferences),
       tools: [...extension.tools.keys()].sort(),
       commands: [...extension.commands.keys()].sort(),
-      configurable: firstParty?.required !== true,
+      configurable: !firstParty?.betaFeature && firstParty?.required !== true,
     };
   }).sort((left, right) => Number(right.builtIn) - Number(left.builtIn) || left.name.localeCompare(right.name));
 }
@@ -235,8 +242,8 @@ export async function resolveExtensionLoadPlan(options: {
       required: descriptor.required === true,
       description: descriptor.description,
       name: descriptor.name,
-      enabled: isExtensionIdEnabled(descriptor.id, preferences),
-      configurable: descriptor.required !== true,
+      enabled: descriptor.betaFeature ? readBetaFeatures(options.agentDir)[descriptor.betaFeature] : isExtensionIdEnabled(descriptor.id, preferences),
+      configurable: !descriptor.betaFeature && descriptor.required !== true,
     });
   }
 

@@ -12,9 +12,16 @@ export interface FirstPartyExtensionDescriptor {
   required?: boolean;
   /** Optional first-party extensions may stay unloaded until the user enables them. */
   defaultEnabled?: boolean;
+  /** Controlled exclusively by the persisted Beta Features registry. */
+  betaFeature?: "intelligentUi";
 }
 
 export const FIRST_PARTY_EXTENSIONS: readonly FirstPartyExtensionDescriptor[] = [
+  {
+    id: "piora:intelligent-ui", fileName: "piora-intelligent-ui.ts", name: `${APP_DISPLAY_NAME} Intelligent UI`,
+    description: "Interactive answers. Enable in Settings > Beta Features.",
+    profiles: ["normal"], betaFeature: "intelligentUi",
+  },
   {
     id: "piora:computer", fileName: "piora-computer.ts", name: `${APP_DISPLAY_NAME} Computer Control`,
     description: "Optional Windows desktop control with winapp CLI UIA pattern actions and Windows-MCP visual fallback. Requires uv; Windows-MCP downloads on first connection.",

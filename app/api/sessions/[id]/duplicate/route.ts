@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { copyAnswerOutputState } from "@/lib/answer-output-server";
 import { SessionManager, getAgentDir } from "@earendil-works/pi-coding-agent";
 import { readDefaultToolPermission, writeToolPermission } from "@/lib/tool-permission-store";
 import {
@@ -43,6 +44,12 @@ export async function POST(
     if (!duplicatedPath) return NextResponse.json({ error: "Failed to duplicate session" }, { status: 500 });
     const duplicate = SessionManager.open(duplicatedPath);
     const newSessionId = duplicate.getSessionId();
+    try {
+      await copyAnswerOutputState(id, newSessionId, duplicate.getBranch().map(entry => entry.id));
+    } catch (error) {
+      quarantineUnboundSessionFile(duplicatedPath);
+      throw error;
+    }
     const sourceCapabilityPolicy = readLatestSessionCapabilityPolicy(source.getEntries());
     if (sourceCapabilityPolicy) {
       appendSessionCapabilityPolicy(duplicate, copySessionCapabilityPolicy(sourceCapabilityPolicy));

@@ -2,6 +2,20 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from "fs";
 import { dirname, isAbsolute, join, relative, resolve } from "path";
 import { createHash } from "node:crypto";
+import { removeAnswerOutputState } from "./answer-output-paths";
+import { closeSync, openSync, readSync } from "node:fs";
+
+function readSessionHeaderId(path: string): string | undefined {
+  let descriptor: number | undefined;
+  try {
+    descriptor = openSync(path, "r");
+    const buffer = Buffer.alloc(16_384);
+    const length = readSync(descriptor, buffer, 0, buffer.length, 0);
+    const header = JSON.parse(buffer.subarray(0, length).toString("utf8").split("\n", 1)[0]);
+    return header.type === "session" && typeof header.id === "string" ? header.id : undefined;
+  } catch { return undefined; }
+  finally { if (descriptor !== undefined) closeSync(descriptor); }
+}
 
 /**
  * Reversible session deletion (task T-01).
@@ -21,6 +35,8 @@ import { createHash } from "node:crypto";
  */
 
 export interface TrashEntry {
+  /** Sidecar cleanup identity retained even if a previous purge removed JSONL. */
+  sessionId?: string;
   /** Absolute path the file had while it was a live session. */
   original: string;
   /** Absolute path it currently sits at inside the trash root. */
@@ -58,6 +74,7 @@ export function readTrashManifest(id: string): TrashManifest | null {
     const root = resolve(getTrashRoot(), id);
     return parsed.entries.every((entry) => {
       if (typeof entry.original !== "string" || !isAbsolute(entry.original) || typeof entry.trashed !== "string") return false;
+      if (entry.sessionId !== undefined && typeof entry.sessionId !== "string") return false;
       const child = relative(root, resolve(entry.trashed));
       return child !== "" && child !== ".." && !child.startsWith("../") && !child.startsWith("..\\") && !isAbsolute(child);
     }) ? parsed : null;
@@ -85,10 +102,10 @@ function removeManifest(id: string): void {
  */
 export function trashSession(id: string, files: string[], metadata: { title?: string; cwd?: string } = {}): TrashManifest {
   if (readTrashManifest(id)) throw new Error("This conversation is already in the recycle bin");
-  const entries: TrashEntry[] = files.map((original) => ({
-    original,
-    trashed: join(getTrashRoot(), `${id}`, sanitizeSegment(original)),
-  }));
+  const entries: TrashEntry[] = files.map((original) => {
+    const sessionId = readSessionHeaderId(original);
+    return { original, trashed: join(getTrashRoot(), `${id}`, sanitizeSegment(original)), ...(sessionId ? { sessionId } : {}) };
+  });
   const manifest: TrashManifest = { id, trashedAt: Date.now(), entries, ...metadata };
   writeManifest(manifest);
   const moved: TrashEntry[] = [];
@@ -148,7 +165,9 @@ export function purgeExpiredTrash(olderThanMs = TRASH_RETENTION_MS): void {
     let removed = true;
     for (const entry of manifest.entries) {
       try {
+        const sessionId = entry.sessionId ?? readSessionHeaderId(entry.trashed);
         rmSync(entry.trashed, { recursive: true, force: true });
+        if (sessionId) removeAnswerOutputState(sessionId);
       } catch {
         removed = false;
       }

@@ -7,6 +7,7 @@ import { promisify } from "util";
 import { fileURLToPath, pathToFileURL } from "url";
 import { NextResponse } from "next/server";
 import { resolveSessionPath } from "@/lib/session-reader";
+import { answerOutputExportAppendix } from "@/lib/answer-output-server";
 
 const execFileAsync = promisify(execFile);
 
@@ -469,7 +470,8 @@ export async function GET(
       await exportSession(filePath, outputPath);
 
       const html = readFileSync(outputPath, "utf8");
-      const patchedHtml = patchExportHtml(html);
+      const appendix = await answerOutputExportAppendix(id, filePath).catch(() => "");
+      const patchedHtml = patchExportHtml(html).replace("</body>", `${appendix}</body>`);
       const responseHtml = embed ? patchEmbeddedExportHtml(patchedHtml, appearance) : patchedHtml;
       return new Response(responseHtml, {
         headers: {

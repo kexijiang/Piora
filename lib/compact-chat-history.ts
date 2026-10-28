@@ -3,6 +3,7 @@ import type { ChatHistoryRow } from "./chat-history";
 import { isEmptyThinkingBlock, hasAssistantNotice } from "./message-display";
 import { isCommandToolName, toolResultText } from "./command-execution";
 import { toolActivityKind, type ToolActivityKind } from "./tool-activity";
+import { isAnswerOutputBlock } from "./answer-output";
 
 export interface ProcessStep {
   key: string;
@@ -76,10 +77,12 @@ export function buildCompactChatHistoryRows(
         if (Boolean(isEmptyThinkingBlock(original, { isStreaming: i === streamingIndex }))) continue;
         // Splitting rows must not change deferred lookup or disclosure identities.
         const block = original.type === "thinking" ? { ...original, deferredBlockIndex: original.deferredBlockIndex ?? b } : original;
-        const process = block.type === "thinking" || block.type === "toolCall";
+        const process = block.type === "thinking" || block.type === "toolCall" && !isAnswerOutputBlock(block);
         const activity = block.type === "toolCall" ? toolActivityKind(block.toolName) : undefined;
         const previous = segments.at(-1);
-        if (previous?.process === process && previous.activity === activity) previous.blocks.push(block);
+        // Interactive outputs own a stable tool-call row before entry IDs hydrate.
+        // Keep each output separate so adjacent outputs cannot change its identity.
+        if (!isAnswerOutputBlock(block) && previous && !isAnswerOutputBlock(previous.blocks[0]) && previous.process === process && previous.activity === activity) previous.blocks.push(block);
         else segments.push({ offset: b, process, activity, blocks: [block] });
         if (process) {
           attention ||= needsAttention(block, results, active);
@@ -97,7 +100,9 @@ export function buildCompactChatHistoryRows(
       if (!segments.length && hasAssistantNotice(message)) turnRows.push({ key: rowKey, index: i, message });
       for (const [s, segment] of segments.entries()) {
         const last = s === segments.length - 1;
-        turnRows.push({ key: `${rowKey}:${segment.offset}`, index: i, secondary: segment.process,
+        const first = segment.blocks[0];
+        const segmentKey = first.type === "toolCall" && isAnswerOutputBlock(first) ? `answer-output:${first.toolCallId}` : `${rowKey}:${segment.offset}`;
+        turnRows.push({ key: segmentKey, index: i, secondary: segment.process,
           processGroupKey: segment.process ? key : undefined, attachRef: last,
           intermediate: !last || segment.process, isStreaming: i === streamingIndex && last,
           message: { ...message, content: segment.blocks, ...(!last ? { usage: undefined, stopReason: undefined, errorMessage: undefined } : {}) } as AssistantMessage });

@@ -7,6 +7,9 @@
 - [发布与构建](release.md)
 - [Harmony 设备指南](HARMONYOS_DEVICE_AUTOMATION.md)：连接、控制、语音、诊断、场景及验证
 - [SSH 工作台](SSH_WORKBENCH.md)
+- [Intelligent UI 实验功能](intelligent-ui.md)：开关、交互计算、参数保存、分支隔离与实现边界（未发布）
+- [Intelligent UI 阶段成果报告](intelligent-ui-phases.md)：三个交付阶段、当前成果、验证证据与后续验收门槛
+- [Intelligent UI 第一阶段手测](intelligent-ui-testing.md)：专用工作树启动、固定采购示例、参数恢复、追问与引导排队验收
 - [开发约束与架构边界](../AGENTS.md)
 - [聊天命令处理与 UI 重设计](design/chat-command-flow.md)：输入语义、执行状态、接口及验收证据（未发布）
 - [版本更新说明](../CHANGELOG.md)
