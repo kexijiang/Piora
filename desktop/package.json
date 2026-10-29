@@ -42,6 +42,6 @@
   },
   "dependencies": {
     "electron-updater": "6.8.11",
-    "koffi": "3.3.3"
+    "koffi": "3.3.4"
   }
 }
