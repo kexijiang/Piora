@@ -8,7 +8,7 @@ export interface AnswerOutput {
   payload: unknown;
 }
 
-const ANSWER_TOOL_NAMES = new Set(["piora_render_ui"]);
+const ANSWER_TOOL_NAMES = new Set(["piora_render_ui", "piora_render_ui_plan"]);
 const MAX_SNAPSHOT_LENGTH = 128_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {

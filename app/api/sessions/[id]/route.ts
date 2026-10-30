@@ -16,7 +16,9 @@ import {
 import { getRpcSession, stopRpcSessionsForFileMutation } from "@/lib/rpc-manager";
 import { readPendingSessionModel } from "@/lib/session-model-selection";
 import { SessionControlStore } from "@/lib/session-control-store";
-import { acquireSessionMutation, assertSessionNotMutating, collectSessionSubtree } from "@/lib/session-mutation";
+import { acquireSessionMutation, runSessionFileOperation, drainSessionShutdown, collectSessionSubtree } from "@/lib/session-mutation";
+import { openOwnedSessionManager } from "@/lib/session-owned-manager";
+import { isSessionOwnershipError } from "@/lib/session-file-ownership";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { isMissingSessionFileError, resolveSessionDetailSource } from "@/lib/session-detail-source";
 import { purgeExpiredTrash, trashSession } from "@/lib/session-trash";
@@ -385,14 +387,20 @@ export async function PATCH(
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
     const trimmedName = name.trim();
-    assertSessionNotMutating(id);
-    const liveSession = getRpcSession(id);
-    if (liveSession?.isAlive()) liveSession.setSessionName(trimmedName);
-    else SessionManager.open(filePath).appendSessionInfo(trimmedName);
+    await runSessionFileOperation(id, async () => {
+      await drainSessionShutdown(id);
+      const liveSession = getRpcSession(id);
+      if (liveSession?.isAlive()) liveSession.setSessionName(trimmedName);
+      else {
+        const owned = openOwnedSessionManager(filePath);
+        try { owned.manager.appendSessionInfo(trimmedName); }
+        finally { owned.release(); }
+      }
+    });
     invalidateSessionListCache();
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: isSessionOwnershipError(error) ? 409 : 500 });
   }
 }
 
@@ -444,6 +452,7 @@ export async function DELETE(
         }
       }
       const subtreePaths = subtree.length ? subtree.map((session) => session.path) : [filePath];
+      for (const release of releases) release.assertOwned();
       purgeExpiredTrash();
       const root = subtree.find((session) => session.id === id);
       trashSession(id, subtreePaths, { title: root?.name || root?.firstMessage?.slice(0, 120), cwd: root?.cwd });
@@ -457,6 +466,6 @@ export async function DELETE(
       for (const release of releases.reverse()) release();
     }
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return NextResponse.json({ error: String(error) }, { status: isSessionOwnershipError(error) ? 409 : 500 });
   }
 }

@@ -6,9 +6,10 @@ import type { ToolReviewRecord } from "@/lib/tool-review-types";
 
 import { createAgentEventDecoder } from "@/lib/agent-event-transport";
 import { flushPendingAnswerState } from "@/lib/answer-output-client";
+import { AnswerOutputPreviewStore } from "@/lib/answer-output-preview-client";
 import { savePendingPrompt, dismissPendingPrompt, readPendingPrompts, mergePendingPrompts, replaceFailedPromptMessage, confirmPendingPrompts, type PendingPrompt } from "@/lib/prompt-recovery";
 
-import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, useReducer } from "react";
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo, useReducer, useSyncExternalStore } from "react";
 import { invalidatePrefetchedSession, peekPrefetchedSession, takePrefetchedSession } from "@/lib/session-prefetch";
 import type {
   AgentMessage,
@@ -460,6 +461,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   // Only explicit history navigation invalidates optional answer views. Normal
   // streaming/hydration advances the leaf without remounting focused controls.
   const [answerOutputScope, setAnswerOutputScope] = useState(0);
+  const answerPreviewStore = useMemo(() => new AnswerOutputPreviewStore(), []);
+  const answerOutputPreviews = useSyncExternalStore(answerPreviewStore.subscribe, answerPreviewStore.getSnapshot, answerPreviewStore.getSnapshot);
   const [messages, setMessages] = useState<AgentMessage[]>(initialSessionData?.context.messages ?? []);
   const [deletingMessage, setDeletingMessage] = useState(false);
   const messageMutationRef = useRef(false);
@@ -936,9 +939,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [ensureNewSession]);
 
   const closeEvents = useCallback(() => {
+    answerPreviewStore.disconnect();
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
-  }, []);
+  }, [answerPreviewStore]);
 
   const connectEvents = useCallback(function connectEvents(
     sid: string,
@@ -947,6 +951,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const es = new EventSource(`/api/agent/${encodeURIComponent(sid)}/events?transport=delta`);
     eventSourceRef.current = es;
     const decodeEvent = createAgentEventDecoder();
+    const previewConnection = answerPreviewStore.connect(sid);
 
     return new Promise((resolve) => {
       let settled = false;
@@ -963,7 +968,21 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         try {
           const event = decodeEvent(JSON.parse(e.data) as AgentEvent);
           if (!event) return;
-          if (event.type === "connected") settle("connected");
+          if (event.type === "connected") {
+            answerPreviewStore.restore(previewConnection, event.answerOutputPreviews);
+            settle("connected");
+          }
+          if (event.type === "prompt_started") answerPreviewStore.started(previewConnection, event.sessionId, event.runId);
+          if (event.type === "answer_output_preview") {
+            answerPreviewStore.receive(previewConnection, event.preview);
+            return;
+          }
+          if (event.type === "message_end" && (event.message as { role?: string } | undefined)?.role === "toolResult") {
+            answerPreviewStore.handoff(previewConnection, (event.message as { toolCallId?: string }).toolCallId);
+          }
+          if (event.type === "tool_execution_update" && (event.partialResult as { details?: { answerOutput?: unknown } } | undefined)?.details?.answerOutput) {
+            answerPreviewStore.handoff(previewConnection, event.toolCallId);
+          }
           handleAgentEventRef.current?.(event);
         } catch {
           // ignore
@@ -987,7 +1006,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         // connection must be ready before they continue.
       };
     });
-  }, [closeEvents]);
+  }, [closeEvents, answerPreviewStore]);
 
   const ensureEventsConnected = useCallback(async (sid: string) => {
     const current = eventSourceRef.current;
@@ -1204,6 +1223,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     // End the visible run synchronously. History/state hydration is not part
     // of cancellation and can stall independently of the model transport.
     if (promptRunIdRef.current !== runId) return Promise.resolve();
+    answerPreviewStore.stop();
     const wasRunning = agentRunningRef.current;
     agentRunningRef.current = false;
     nestedCallsStore.finish();
@@ -1233,7 +1253,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     })().finally(() => { if (promptRunIdRef.current === runId) setReplyHistorySettling(false); });
     promptSettlementByRunRef.current.set(runId, settlement);
     return settlement;
-  }, [closeEvents, loadSession, nestedCallsStore, onAgentEnd, setExtensionDialog]);
+  }, [closeEvents, loadSession, nestedCallsStore, onAgentEnd, setExtensionDialog, answerPreviewStore]);
 
   const waitForPromptSettlement = useCallback((sid: string, runId = promptRunIdRef.current) => {
     const existing = promptSettlementPollByRunRef.current.get(runId);
@@ -2029,6 +2049,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     }
     if (!agentRunningRef.current) return;
     cancelledPromptRunIdRef.current = runId;
+    answerPreviewStore.stop();
     setAgentPhase({ kind: "stopping" });
     setRetryInfo(null);
     setIsCompacting(false);
@@ -2061,7 +2082,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally {
       if (abortRequestRunIdRef.current === runId) abortRequestRunIdRef.current = null;
     }
-  }, [addNotice, finishPromptWithoutStream, setExtensionDialog, t]);
+  }, [addNotice, finishPromptWithoutStream, setExtensionDialog, t, answerPreviewStore]);
 
   const handleDeleteMessage = useCallback(async (message: AgentMessage, entryId?: string) => {
     if (messageMutationRef.current || agentRunningRef.current || bashRunningRef.current || isCompacting) throw new Error(t("chat.deleteMessageBusy"));
@@ -2084,7 +2105,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // An explicit user deletion can retire a recovery copy without a receipt.
       if (promptId) await confirmPendingPrompts([...new Set([promptId, ...(message.role === "user" ? message.recoveryDraft?.retryOfPromptIds ?? [] : [])])]);
       if (sessionIdRef.current !== sid) return;
-      if (entryId) setAnswerOutputScope(scope => scope + 1);
+      if (entryId) { answerPreviewStore.stop(); setAnswerOutputScope(scope => scope + 1); }
       const remove = new Set(deletedIds);
       const keep = messages.map((entry, index) => !remove.has(entryIds[index]) && !(promptId && entry.role === "user" && entry.clientPromptId === promptId));
       setMessages(messages.filter((_entry, index) => keep[index]));
@@ -2095,7 +2116,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (activeLeafId) { setActiveLeafId(activeLeafId); await loadContext(sid, activeLeafId); }
       }
     } finally { messageMutationRef.current = false; setDeletingMessage(false); }
-  }, [activeLeafId, entryIds, isCompacting, loadContext, loadSession, messages, t]);
+  }, [activeLeafId, entryIds, isCompacting, loadContext, loadSession, messages, t, answerPreviewStore]);
 
   const handleFork = useCallback(async (entryId: string) => {
     if (bashRunningRef.current) return;
@@ -2136,10 +2157,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (result?.cancelled || sessionIdRef.current !== sid) return false;
     editedBranchRef.current = { sid, target: entryId, previousLeaf: editedBranchRef.current?.sid === sid ? editedBranchRef.current.previousLeaf : data?.leafId ?? activeLeafId };
     if (!await loadContext(sid, entryId)) throw new Error(t("history.loadError"));
-    if (activeLeafId !== entryId) setAnswerOutputScope(scope => scope + 1);
+    if (activeLeafId !== entryId) { answerPreviewStore.stop(); setAnswerOutputScope(scope => scope + 1); }
     setActiveLeafId(entryId);
     return true;
-  }, [activeLeafId, data?.leafId, isCompacting, loadContext, t]);
+  }, [activeLeafId, data?.leafId, isCompacting, loadContext, t, answerPreviewStore]);
 
   const handleRewindRecovery = useCallback(async (message: import("@/lib/types").UserMessage) => {
     if (agentRunningRef.current || bashRunningRef.current || isCompacting) throw new Error(t("history.busy"));
@@ -2180,12 +2201,12 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!await loadContext(sid, leafId)) throw new Error(t("history.loadError"));
       if (sessionIdRef.current !== sid) return;
       editedBranchRef.current = null;
-      if (activeLeafId !== leafId) setAnswerOutputScope(scope => scope + 1);
+      if (activeLeafId !== leafId) { answerPreviewStore.stop(); setAnswerOutputScope(scope => scope + 1); }
       setActiveLeafId(leafId);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
     }
-  }, [activeLeafId, isCompacting, loadContext, t]);
+  }, [activeLeafId, isCompacting, loadContext, t, answerPreviewStore]);
 
   const switchHistoryBranch = useCallback(async (leafId: string): Promise<boolean> => {
     const sid = sessionIdRef.current;
@@ -2196,10 +2217,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     if (result?.cancelled || sessionIdRef.current !== sid) return false;
     if (!await loadContext(sid, leafId)) throw new Error(t("history.loadError"));
     editedBranchRef.current = null;
-    if (activeLeafId !== leafId) setAnswerOutputScope(scope => scope + 1);
+    if (activeLeafId !== leafId) { answerPreviewStore.stop(); setAnswerOutputScope(scope => scope + 1); }
     setActiveLeafId(leafId);
     return true;
-  }, [activeLeafId, isCompacting, loadContext, t]);
+  }, [activeLeafId, isCompacting, loadContext, t, answerPreviewStore]);
 
   const forkHistoryQuestion = useCallback(async (entryId: string, draft: ChatDraft): Promise<boolean> => {
     const sid = sessionIdRef.current;
@@ -2768,6 +2789,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       sessionLoadAbortRef.current?.abort();
       sessionLoadAbortRef.current = null;
       if (session) invalidatePrefetchedSession(session.id);
+      answerPreviewStore.stop();
       closeEvents();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2959,7 +2981,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   return {
     // State
     toolPermission, permissionSaving, handleToolPermission, toolReviews,
-    nestedCallsStore, data, loading, error, activeLeafId, answerOutputScope, messages, entryIds, modelChanges, streamState, replyHistorySettling,
+    nestedCallsStore, data, loading, error, activeLeafId, answerOutputScope, answerOutputPreviews, messages, entryIds, modelChanges, streamState, replyHistorySettling,
     agentRunning, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, thinkingLevel,
     retryInfo, contextUsage: effectiveContextUsage, systemPrompt, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactionStartedAt, compactError, compactResult, currentModel, displayModel, sessionStats,

@@ -7,6 +7,10 @@ import { getAgentDir } from "@earendil-works/pi-coding-agent";
 export function answerOutputStatePath(kind: "intelligent-ui", sessionId: string, root = getAgentDir()): string {
   return join(root, "piora", kind, `${createHash("sha256").update(sessionId).digest("hex")}.json`);
 }
+export function answerOutputGenerationPath(sessionId: string, root = getAgentDir()): string {
+  return join(root, "piora", "intelligent-ui", `generation-${createHash("sha256").update(sessionId).digest("hex")}.json`);
+}
 export function removeAnswerOutputState(sessionId: string): void {
   rmSync(answerOutputStatePath("intelligent-ui", sessionId), { force: true });
+  rmSync(answerOutputGenerationPath(sessionId), { force: true });
 }

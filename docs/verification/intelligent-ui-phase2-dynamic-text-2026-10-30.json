@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "date": "2026-10-30",
+  "scope": "bounded-dynamic-prose-and-shared-snapshots",
+  "compiler": "2.5.0",
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "assistantMessagesVerified": 6
+  },
+  "localChecks": {
+    "moduleTests": 101,
+    "browserTests": 2,
+    "totalPassed": 103,
+    "failed": 0,
+    "skipped": 0,
+    "typecheck": "passed",
+    "targetedLint": "passed"
+  },
+  "desktop": {
+    "completed": true,
+    "dynamicText": {
+      "count": 1,
+      "staleTotalInSnapshot": false
+    },
+    "checks": [
+      {
+        "case": "unit-change",
+        "oldParametersPreservedUntilConfirmation": true,
+        "reviewSurvivesReload": true,
+        "explicitCents": 4500,
+        "totalYuan": 270
+      },
+      {
+        "case": "markdown-save",
+        "status": "completed",
+        "approval": "automatic-review"
+      },
+      {
+        "case": "beta-toggle",
+        "offHasSavedSnapshot": true,
+        "offPlainAnswer": true,
+        "onRestoresParameters": true
+      }
+    ],
+    "markdownHash": "f6d106bca8adf8de085ebea112337d563c6994ae3a826f093e8ef5b669569490",
+    "credentialsRemoved": true
+  },
+  "limitations": [
+    "Exposed development regression, not new heldout evidence",
+    "Model may still hardcode changing results in other static prose",
+    "Permission and overwrite capability prose remains inaccurate",
+    "Independent human semantic review remains pending",
+    "No CI, release build, commit or push"
+  ],
+  "hashes": {
+    "lib/intelligent-ui/plan2-expressions.ts": "3a4d5b405ca479f28e54c1a7a2c4a40f29ed82a404eb65f71c96fbe2c2e2dc4f",
+    "lib/intelligent-ui/rich-plan.ts": "ab4eb0630bf75b169af13ca77e1079a8c363e1c7704928b0ed08121b7952b32b",
+    "lib/intelligent-ui/rich-plan-schema.ts": "3e67b87bb6daa7f3335bdbe618a3f5b92ff3b4382c28f64d8f8b1b61b6e23eec",
+    "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
+    "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
+    "lib/intelligent-ui/surface-document.ts": "2d725b97edf25aef9022c670212a757d4fd9ff679574bf6899129cb8ac33f0bb",
+    "lib/intelligent-ui/draft-migration.ts": "fabd2dee0b480019dc810f30b9ac87435e582b444aca768666e717f0c694843d",
+    "lib/intelligent-ui/structure-migration.ts": "64159ab02c7621f879f91a4d7953dd5bf20b3ff8b70a2fd8ee9b63b3bab39066",
+    "lib/intelligent-ui/decision-policy.ts": "debea005066b31a896c00194097f7a738fb76bad3c050ed1b72275aca95c1fd3",
+    "lib/intelligent-ui/dynamic-text.test.mjs": "5d043d2fb43224e40a26d97bf12aba24beb65ad7a91d1d99b329ff54c9251e05",
+    "lib/intelligent-ui/rich-plan.test.mjs": "a8ec2cd5f619ea601b4c664b76c4048887d8a2b4a26ab7e67108a319eb7eb63e",
+    "lib/intelligent-ui/calculation-oracle.mjs": "5ffe1ef0565838f903bebf5826d42235a3778b661ea02071e1660da346866960",
+    "lib/intelligent-ui/calculation-oracle.test.mjs": "8791432a3a6227f08a5782ef2ebedfc4900764bbf868d8304fdd524b87225ab2",
+    "components/intelligent-ui/SurfaceContents.tsx": "c1d9019f3c61cedd92cd4249b825377f331fd464df9e05f39581b2243b03d8ea",
+    "components/intelligent-ui/RichSurfaceLayout.tsx": "abedea625d177561e5dad7ab9b765371853b3cb07d642b8bc8d3438d8107df2d",
+    "lib/answer-output-generation-runtime.test.mjs": "027246e409e24349f220c2a0dd47804473bbf49d544f5e7eaab3fd7e3d360626",
+    "components/intelligent-ui-rich-layout-browser.test.mjs": "6bc66eae1603852e731a54b371aaa2d0f5b82c0870f2189f6e07bc69e6b416ff",
+    ".verification/dynamic-text-tests-final.log": "7666a45de2f0fc5cd1419730d52ff58fd877ea1d72222dcd595dc17d1d8d76d5",
+    ".verification/dynamic-text-oracle.log": "0e4720b9661be45328944e8172a0fcb1a420a509c6d49588b76a318ec01308c3",
+    ".verification/dynamic-text-browser.log": "76b929c9a495993c89d3e0fa6e7522ff175a8318342955430db322377bbcabba",
+    ".verification/dynamic-text-typecheck-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/dynamic-text-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/dynamic-text-oracle-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/dynamic-text-tests.log": "b12835bd71dad82f5ea575d254b52c667be5daac9c35635169639299c6c4ffe5",
+    ".verification/desktop-phase2-migration-flash-dynamic-v1/probe.mjs": "2537fb0ee77c5211ca677f1bdeeeb512c30b67325ef5e6077c2cff491f2a0d44",
+    ".verification/desktop-phase2-migration-flash-dynamic-v1/result.json": "68da52a9807eda1d519a0def434f9698daea9e2eb10d3f21e888ddc19b64e8a9",
+    ".verification/desktop-phase2-migration-flash-dynamic-v1/confirmed.png": "4fdc9c0364df64b685af1ae7295b31077e59707aed98cf29c73e28d1a477d8f9",
+    ".verification/desktop-phase2-migration-flash-dynamic-v1/workspace/trip.md": "f6d106bca8adf8de085ebea112337d563c6994ae3a826f093e8ef5b669569490",
+    ".verification/intelligent-ui-dynamic-text-browser.png": "7d45b52eb1646040b4e560e383000bf967a43e97e6389fb81dc3ddd09a3bd892"
+  },
+  "currentScope": "docs/intelligent-ui-phase2-status.md"
+}

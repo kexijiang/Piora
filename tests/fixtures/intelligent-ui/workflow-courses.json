@@ -1,0 +1,14 @@
+{
+  "id": "workflow-courses-development",
+  "split": "development",
+  "prompt": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+  "changes": [{ "label": "类别|分类", "optionLabel": "^运动(?:类)?$" }, { "label": "最高|费用|预算", "value": 100 }, { "label": "类别|分类", "optionLabel": "^文艺(?:类)?$" }],
+  "followup": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+  "expected": {
+    "initial": ["绘画", "篮球", "羽毛球", "摄影"],
+    "afterCategory": ["篮球", "羽毛球"],
+    "afterMaximum": ["篮球"],
+    "afterArt": ["摄影"],
+    "followup": "Uses the saved category and maximum, recommends only photography at 100 yuan, and does not regenerate the UI. Full original data must remain present while actual visible rows change."
+  }
+}

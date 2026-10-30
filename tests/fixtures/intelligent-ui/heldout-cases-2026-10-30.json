@@ -1,0 +1,373 @@
+{
+  "version": "natural-language-heldout-1",
+  "capabilityVersion": "surface-v1-eight-nodes",
+  "description": "Original 20 heldout tasks plus six new clarification/unsupported families, fixed after compiler 2.4/intent-4 and before this comparison. Semantic business domains are held out; arithmetic operators are shared capabilities, not novel math. No model output from this comparison may inform tuning without retiring the exposed families.",
+  "parentSuiteSha256": "dfeac9e949d416b672e91d4b9e71c8a7f63b1d98b767a9b8f21a2ac3bc2825fd",
+  "tasks": [
+    {
+      "id": "h01",
+      "family": "battery-runtime",
+      "domain": "battery-runtime",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "便携电源标500Wh，先按80%能用来估算。让我调整容量、可用比例和设备功率，看能撑几小时，功率先100W。"
+        }
+      ],
+      "checks": [
+        "初始4小时；容量600比例0.9功率150得3.6小时；零功率有明确错误"
+      ]
+    },
+    {
+      "id": "h02",
+      "family": "image-aspect-ratio",
+      "domain": "image-aspect-ratio",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "只算尺寸，不要真的处理图片。原图4000像素宽、3000高，要等比例缩到800宽。让我改原图宽高和目标宽度，直接看到目标高度。"
+        }
+      ],
+      "checks": [
+        "初始目标高度600；目标宽1200时高度900；原宽不能为零"
+      ]
+    },
+    {
+      "id": "h03",
+      "family": "garden-watering",
+      "domain": "garden-watering",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "我每盆花一次浇0.3升水，每周两次。做个我能改盆数和每周次数的小东西，看每周总用水，先12盆。"
+        }
+      ],
+      "checks": [
+        "初始7.2升；10盆每周3次9升"
+      ]
+    },
+    {
+      "id": "h04",
+      "family": "manufacturing-yield",
+      "domain": "manufacturing-yield",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "做1000件产品，合格率暂估0.96，每件合格品卖3元。想调产量、合格率和单价看看合格件数及预计收入，不要加未知成本。"
+        }
+      ],
+      "checks": [
+        "初始960件2880元；产量500合格率0.9单价4得450件1800元"
+      ]
+    },
+    {
+      "id": "h05",
+      "family": "electricity-usage",
+      "domain": "electricity-usage",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "一个800瓦的电器每天开3小时，电价每度0.6元。让我自己改这些数和天数，看看电量和费用，先30天。"
+        }
+      ],
+      "checks": [
+        "初始72度43.2元；1000瓦2小时10天0.5元得20度10元"
+      ]
+    },
+    {
+      "id": "h06",
+      "family": "audio-storage",
+      "domain": "audio-storage",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "音频文件按每秒320千比特算，8比特是1字节，1000KB是1MB。我想改分钟数和码率来估文件大小，先5分钟。"
+        }
+      ],
+      "checks": [
+        "初始12MB；10分钟128千比特每秒9.6MB"
+      ]
+    },
+    {
+      "id": "h07",
+      "family": "volunteer-shifts",
+      "domain": "volunteer-shifts",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "早班每人4小时、晚班每人3小时，先早班5人晚班6人。给我一个能调两班人数、看各班和合计志愿工时的表。"
+        }
+      ],
+      "checks": [
+        "初始20、18、38小时；早班3晚班4为12、12、24小时"
+      ]
+    },
+    {
+      "id": "h08",
+      "family": "parcel-volume",
+      "domain": "parcel-volume",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "纸箱长40宽30高20厘米。想自己改三个尺寸，看体积多少升，1000立方厘米算1升。"
+        }
+      ],
+      "checks": [
+        "初始24升；长50宽40高30为60升"
+      ]
+    },
+    {
+      "id": "h09",
+      "family": "training-attendance",
+      "domain": "training-attendance",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "label": "text",
+          "user": "一门课12节，我去了9节，出勤率多少？"
+        },
+        {
+          "label": "ui",
+          "user": "之后会补课，给我一个能改总课数和到课数的，直接看百分比，先保留这组数。"
+        }
+      ],
+      "checks": [
+        "首轮75%；最终界面9/12为75%；10/20为50%；零总课数不能显示成功的0%"
+      ]
+    },
+    {
+      "id": "h10",
+      "family": "weighted-course-grade",
+      "domain": "weighted-course-grade",
+      "split": "heldout",
+      "label": "ui",
+      "turns": [
+        {
+          "user": "课程总分是平时成绩占40%、期末占剩下的60%。平时80、期末90，给我个能调两项成绩和平时占比的工具，看看总分。"
+        }
+      ],
+      "checks": [
+        "初始86分；平时80期末70平时占50%时75分；平时占比变化时另一权重同步保持总和100%"
+      ]
+    },
+    {
+      "id": "h11",
+      "family": "grammar-fix",
+      "domain": "grammar-fix",
+      "split": "heldout",
+      "label": "text",
+      "turns": [
+        {
+          "user": "把“他昨天去学校了没”改成书面语。"
+        }
+      ]
+    },
+    {
+      "id": "h12",
+      "family": "fixed-calendar",
+      "domain": "fixed-calendar",
+      "split": "heldout",
+      "label": "text",
+      "turns": [
+        {
+          "user": "我的学习安排是周一阅读、周三写作、周五复习，用普通文字表格排一下，不要可操作界面。"
+        }
+      ]
+    },
+    {
+      "id": "h13",
+      "family": "mathematical-proof",
+      "domain": "mathematical-proof",
+      "split": "heldout",
+      "label": "text",
+      "turns": [
+        {
+          "user": "解释为什么两个奇数的和一定是偶数，文字就可以。"
+        }
+      ]
+    },
+    {
+      "id": "h14",
+      "family": "menu-edit",
+      "domain": "menu-edit",
+      "split": "heldout",
+      "label": "text",
+      "turns": [
+        {
+          "user": "菜单里有炒饭、面条、饺子，帮我把炒饭改成炒面，直接给修改后的三项名称。"
+        }
+      ]
+    },
+    {
+      "id": "h15",
+      "family": "conceptual-choice",
+      "domain": "conceptual-choice",
+      "split": "heldout",
+      "label": "text",
+      "turns": [
+        {
+          "user": "简单比较一下散步和慢跑的日常便利程度，不谈医疗建议，也不用计算。"
+        }
+      ]
+    },
+    {
+      "id": "h16",
+      "family": "units-one-off",
+      "domain": "units-one-off",
+      "split": "heldout",
+      "label": "text",
+      "turns": [
+        {
+          "user": "3500克是多少千克？我只要答案。"
+        }
+      ]
+    },
+    {
+      "id": "h17",
+      "family": "unknown-insurance-plan",
+      "domain": "unknown-insurance-plan",
+      "split": "heldout",
+      "label": "clarify",
+      "turns": [
+        {
+          "user": "做个工具比较我手上这两份保险的保费和保障，但我还没发任何条款和报价。"
+        }
+      ]
+    },
+    {
+      "id": "h18",
+      "family": "unknown-equipment-spec",
+      "domain": "unknown-equipment-spec",
+      "split": "heldout",
+      "label": "clarify",
+      "turns": [
+        {
+          "user": "帮我算这台机器每天耗电多少钱，机器是什么型号、多大功率、电价和开多久我还没说。"
+        }
+      ]
+    },
+    {
+      "id": "h19",
+      "family": "interactive-3d",
+      "domain": "interactive-3d",
+      "split": "heldout",
+      "label": "unsupported",
+      "turns": [
+        {
+          "user": "就在回答里放个能旋转、拆开零件的三维发动机模型，不是图片或文字说明。"
+        }
+      ]
+    },
+    {
+      "id": "h20",
+      "family": "live-multiplayer",
+      "domain": "live-multiplayer",
+      "split": "heldout",
+      "label": "unsupported",
+      "turns": [
+        {
+          "user": "在这条回答里做一场能邀请朋友实时联机、用键盘连续控制角色的小游戏。"
+        }
+      ]
+    },
+    {
+      "id": "h21",
+      "family": "unknown-material-density",
+      "domain": "unknown-material-density",
+      "split": "heldout",
+      "label": "clarify",
+      "turns": [
+        {
+          "user": "给我做个能换材料看工件重量的工具。工件形状、尺寸、材料牌号和密度表我都还没发，你先别自己猜这些数据。"
+        }
+      ],
+      "checks": [
+        "先索取形状尺寸及材料密度依据；不擅自填钢铝密度或默认工件体积，不生成带编造初值的工具"
+      ]
+    },
+    {
+      "id": "h22",
+      "family": "unknown-pigment-recipe",
+      "domain": "unknown-pigment-recipe",
+      "split": "heldout",
+      "label": "clarify",
+      "turns": [
+        {
+          "user": "帮我做个调总量就能看各颜色要用多少的配色工具，按我们店的颜料配方来。配方里有哪些颜色、比例是多少，我还没给你。"
+        }
+      ],
+      "checks": [
+        "先问店内配方的组分及比例；不自造配色配方，不把未知比例改成自行设值的输入"
+      ]
+    },
+    {
+      "id": "h23",
+      "family": "unknown-backup-retention",
+      "domain": "unknown-backup-retention",
+      "split": "heldout",
+      "label": "clarify",
+      "turns": [
+        {
+          "user": "做个可调的备份空间估算表。我们是全量还是增量、每天数据有多少、留几份、压缩系数多少，我都还没告诉你。"
+        }
+      ],
+      "checks": [
+        "询问备份方式和决定空间的关键数据；不擅自假设全量、增量比例或保留份数"
+      ]
+    },
+    {
+      "id": "h24",
+      "family": "raster-inpainting-editor",
+      "domain": "raster-inpainting-editor",
+      "split": "heldout",
+      "label": "unsupported",
+      "turns": [
+        {
+          "user": "就在回答里做个修图工具，上传照片后我能直接拿画笔涂掉路人，画过的位置实时补全，再导出修好的照片。我现在要实际操作，不是看方案。"
+        }
+      ],
+      "checks": [
+        "说明当前组件不能进行图像涂抹补全；不以无功能控件或费用表冒充修图工具"
+      ]
+    },
+    {
+      "id": "h25",
+      "family": "audio-playback-editor",
+      "domain": "audio-playback-editor",
+      "split": "heldout",
+      "label": "unsupported",
+      "turns": [
+        {
+          "user": "在回答里放个音频播放器，我要能真正听见声音、拖动播放进度、选一段反复循环播放。不要只给文字说明或时间计算。"
+        }
+      ],
+      "checks": [
+        "说明当前组件不能实际播放或循环音频；不以数值滑块冒充播放进度"
+      ]
+    },
+    {
+      "id": "h26",
+      "family": "live-geolocation-map",
+      "domain": "live-geolocation-map",
+      "split": "heldout",
+      "label": "unsupported",
+      "turns": [
+        {
+          "user": "做个直接读取我实时定位的地图，跟着我走路不断更新当前位置。我不想手动输入坐标，也不要模拟位置。"
+        }
+      ],
+      "checks": [
+        "说明当前组件不具备持续定位和地图运行能力；不以手填坐标或模拟更新代替明确要求"
+      ]
+    }
+  ]
+}

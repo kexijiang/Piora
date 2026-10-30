@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "date": "2026-10-30",
+  "scope": "generation-context-title-ancestry-and-v41-unit-migration",
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "assistantMessagesVerified": 6,
+    "futureTests": "Flash only; historical Pro evidence retained"
+  },
+  "localChecks": {
+    "reproducedFailuresBeforeFix": 2,
+    "relatedTests": {
+      "passed": 78,
+      "failed": 0,
+      "skipped": 0
+    },
+    "typecheck": "passed",
+    "targetedLint": "passed"
+  },
+  "desktop": {
+    "completed": true,
+    "checks": [
+      {
+        "case": "unit-change",
+        "oldParametersPreservedUntilConfirmation": true,
+        "reviewSurvivesReload": true,
+        "explicitCents": 4500,
+        "totalYuan": 270
+      },
+      {
+        "case": "markdown-save",
+        "status": "completed",
+        "approval": "automatic-review"
+      },
+      {
+        "case": "beta-toggle",
+        "offHasSavedSnapshot": true,
+        "offPlainAnswer": true,
+        "onRestoresParameters": true
+      }
+    ],
+    "userPrompts": 4,
+    "uiCalls": 2,
+    "review": "automatic-review",
+    "errors": [],
+    "credentialsRemoved": true
+  },
+  "limitations": [
+    "One Windows/Electron/provider task; not a new generalization benchmark",
+    "Static generated copy and saved Markdown still mention old total 210 while dynamic total is 270",
+    "Generated permission copy promises a dialog even though review can approve automatically",
+    "Generated migration prose exposes internal status identifiers",
+    "Independent human semantic review remains pending",
+    "CI, release builds, commit and push not performed"
+  ],
+  "hashes": {
+    "lib/intelligent-ui/generation-journal.ts": "c9bb1d72d5fdfd1519830a5cab6f4acb74825ec31ad7a9d627ce331d7a3648fb",
+    "lib/intelligent-ui/generation-runtime.ts": "385e474edf15e0476ec8f78dc629921cce030a8d422ea9127132824e188cd1a9",
+    "lib/intelligent-ui/generation-runtime.test.mjs": "22692cde303a5f342cc6995a3c76a850990624f934e547d9937e6542c277beb5",
+    "lib/answer-output-generation-runtime.test.mjs": "291d0d014725490a95dbbc47c675325b91999a2b775c7372debe7c71a137abf2",
+    "lib/intelligent-ui-generation.test.mjs": "508f010acce1b63612152d7d98c0261d7ef4150f07a6198acc8f7fde7dc88317",
+    "lib/intelligent-ui-generation-copy.test.mjs": "94ac1f4d66215e533b892c12ef425105f2c5410bf21a7a2ba85a4578b5558bb1",
+    "lib/intelligent-ui/structure-migration.test.mjs": "461d424cab9ce842cdb56c9ced3847e38a3b18b83691a127269c8746abd75fad",
+    ".verification/generation-title-tests.log": "44507459e3812a417d50b7fe87c8a0542a7fd74d24bee32eaefeb4a0b9c56e84",
+    ".verification/generation-title-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/generation-title-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/generation-title-before.log": "46dfbd0043d86d606fd73121b6d2ed24b675dd4812cd139e722c7c3241061652",
+    ".verification/desktop-phase2-migration-flash-v1/probe.mjs": "9364a75c8e0623f9c1a77e3f5384bfa8309df84d22bf0be146394abf4c5c8c81",
+    ".verification/desktop-phase2-migration-flash-v1/result.json": "18ee3828dd01bff9d8970a46445c9dd7e2ac49f462ee2425ab211ff6e63f892d",
+    ".verification/desktop-phase2-migration-flash-v1/review.png": "4cd9a48ac47ac6fc6b6df3302f80ce560645ef178be479d7ec225d3a4d8816d0",
+    ".verification/desktop-phase2-migration-flash-v1/confirmed.png": "e4e9646e682d27192d94b6c7435009ccb62b2ce040b6bd4e8d4b0627133d4871",
+    ".verification/desktop-phase2-migration-flash-v1/beta-off.png": "8e09e2cd35550befd3ca2e5c0da6852f7446c74866a29d75229739b60c07e248",
+    ".verification/desktop-phase2-migration-flash-v1/restored.png": "6377373f38a9d60c4047149ff0b7bca8fd1b3a35b91b2ad8b8d5323c5a81f139",
+    ".verification/desktop-phase2-migration-pro-v1/result.json": "7e01eedea7467cd8e14b765be772707a17e641415ae66905bc382580f6a55d83"
+  },
+  "currentScope": "docs/intelligent-ui-phase2-status.md"
+}

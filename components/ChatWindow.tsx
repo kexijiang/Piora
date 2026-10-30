@@ -12,7 +12,7 @@ import { asBracketedPaste, toTerminalKeyData } from "@/lib/terminal-input";
 import { messageFingerprint } from "@/lib/chat-history";
 import { CompactProcessContext } from "./CompactProcessContext";
 import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
-import { AnswerOutputScope } from "./AnswerOutputScope";
+import { AnswerOutputPreviews, AnswerOutputScope } from "./AnswerOutputScope";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
@@ -205,7 +205,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
   }, [chatInputRef]);
 
   const {
-    nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, answerOutputScope, switchHistoryBranch, forkHistoryQuestion,
+    nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, answerOutputScope, answerOutputPreviews, switchHistoryBranch, forkHistoryQuestion,
     toolPermission, permissionSaving, handleToolPermission, toolReviews,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
@@ -834,7 +834,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
             <div className="chat-column">
               <ExtensionWidgets widgets={aboveEditorWidgets} />
 
-            <AnswerOutputScope.Provider value={String(answerOutputScope)}><ChatHistory
+            <AnswerOutputPreviews.Provider value={answerOutputPreviews}><AnswerOutputScope.Provider value={String(answerOutputScope)}><ChatHistory
               key={session?.id ?? sessionIdRef.current ?? "new"}
               operations={chatCommands.records} commandActions={commandActions}
               responseTimings={responseTimings}
@@ -847,7 +847,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               onEditFailed={handleEditFailedMessage} onRetry={handleRetryMessage} retryDisabled={sessionBusy || deletingMessage || preparingRetry}
               onDeleteMessage={handleDeleteMessage} deleteDisabled={sessionBusy || deletingMessage || isCompacting || preparingRetry}
               sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={setCommandExecutionDialog}
-            /></AnswerOutputScope.Provider>
+            /></AnswerOutputScope.Provider></AnswerOutputPreviews.Provider>
 
             {agentRunning && (agentPhase?.kind === "stopping" || (!streamState.streamingMessage && visionStatus?.phase !== "failed")) && (
               visionStatus && agentPhase?.kind !== "stopping" ? (

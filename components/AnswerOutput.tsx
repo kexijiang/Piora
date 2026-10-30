@@ -5,10 +5,11 @@ import { useBetaFeatures } from "@/hooks/useBetaFeatures";
 import { useI18n } from "@/hooks/useI18n";
 import { answerOutputSnapshot, readAnswerOutput } from "@/lib/answer-output";
 import type { ToolResultMessage } from "@/lib/types";
-import { AnswerOutputScope } from "./AnswerOutputScope";
+import { AnswerOutputPreviews, AnswerOutputScope } from "./AnswerOutputScope";
 
 // The loader is invoked only after the enabled feature reaches this output slot.
 const IntelligentUiSurface = lazy(() => import("./intelligent-ui/IntelligentUiSurface"));
+const IntelligentUiPreview = lazy(() => import("./intelligent-ui/IntelligentUiPreview"));
 
 class AnswerOutputBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -47,10 +48,12 @@ function SavedAnswerSnapshot({ snapshot, sessionId, toolCallId }: { snapshot: st
 /** Chat knows only the envelope and fallback; feature code owns its state and controls. */
 export function AnswerOutput({ result, toolCallId, sessionId, entryId, readOnly = false, generating = false }: Props) {
   const branch = useContext(AnswerOutputScope);
+  const previews = useContext(AnswerOutputPreviews);
   const { features, loading } = useBetaFeatures();
   const { t } = useI18n();
   const output = readAnswerOutput(result?.details);
   const snapshot = answerOutputSnapshot(result);
+  const preview = !result && !readOnly ? previews.get(toolCallId) : undefined;
   const fallback = <div data-answer-output-snapshot role={result?.isError ? "alert" : undefined}
     style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", padding: "12px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", background: "var(--bg-panel)", color: "var(--text)", lineHeight: 1.6 }}>
     {!loading && !features.intelligentUi && output?.kind === "intelligent-ui" && !result?.isError && !result?.isStreaming && !readOnly && sessionId
@@ -58,11 +61,16 @@ export function AnswerOutput({ result, toolCallId, sessionId, entryId, readOnly 
       : snapshot || t(generating || result?.isStreaming ? "answerOutput.preparing" : "answerOutput.unavailable")}
   </div>;
 
-  if (loading || !features.intelligentUi || !output || output.kind !== "intelligent-ui" || output.version !== 1 || result?.isError || readOnly) return fallback;
+  if (!loading && features.intelligentUi && preview && preview.sessionId === sessionId) {
+    return <AnswerOutputBoundary key={`preview:${preview.sessionId}:${preview.runId}:${preview.streamId}:${toolCallId}:${branch}`} fallback={fallback}>
+      <Suspense fallback={fallback}><IntelligentUiPreview preview={preview} /></Suspense>
+    </AnswerOutputBoundary>;
+  }
+  if (loading || !features.intelligentUi || !output || output.kind !== "intelligent-ui" || ![1, 2].includes(output.version) || result?.isError || readOnly) return fallback;
   return <AnswerOutputBoundary key={`${toolCallId}:${branch}:${output.kind}:${output.version}:${snapshot}`} fallback={fallback}>
     <Suspense fallback={fallback}>
       <IntelligentUiSurface payload={output.payload} snapshot={snapshot} sessionId={sessionId} toolCallId={toolCallId}
-        entryId={entryId} branchKey={branch ?? undefined} readOnly={Boolean(result?.isStreaming)} />
+        entryId={entryId} branchKey={branch ?? undefined} envelopeVersion={output.version} readOnly={Boolean(result?.isStreaming)} />
     </Suspense>
   </AnswerOutputBoundary>;
 }
