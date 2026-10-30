@@ -1,0 +1,506 @@
+{
+  "version": 1,
+  "date": "2026-10-29T09:00:35.575Z",
+  "scope": "isolated-streaming-generation",
+  "model": "deepseek/deepseek-flash",
+  "prompt": "周末四个人出去玩，门票每人30元，车费总共120元，吃饭每人40元。我想自己改人数和餐费，看看总共花多少、每个人出多少，也把费用明细列出来。",
+  "settings": {
+    "maxTokens": 6000,
+    "reasoning": "low",
+    "maxRetries": 0,
+    "timeoutMs": 90000,
+    "transport": "sse"
+  },
+  "outcome": "toolUse",
+  "committed": false,
+  "browserInteraction": "not-tested-with-this-provider",
+  "firstPartialMs": 12188.9364,
+  "firstToolEndMs": 12648.8864,
+  "advanceMs": 459.9499999999989,
+  "incrementalBeforeToolEnd": true,
+  "partials": [
+    {
+      "atMs": 12188.9364,
+      "nodes": 4,
+      "blocks": 1
+    },
+    {
+      "atMs": 12542.9133,
+      "nodes": 8,
+      "blocks": 3
+    }
+  ],
+  "finalNodes": 9,
+  "finalBlocks": 4,
+  "numericChecks": {
+    "passed": 35,
+    "total": 35,
+    "scenarios": [
+      {
+        "name": "initial",
+        "expected": [
+          400,
+          100,
+          400,
+          100,
+          120,
+          160,
+          120
+        ],
+        "actual": [
+          400,
+          100,
+          400,
+          100,
+          120,
+          160,
+          120
+        ],
+        "passed": true
+      },
+      {
+        "name": "six-people",
+        "expected": [
+          540,
+          90,
+          540,
+          90,
+          180,
+          240,
+          120
+        ],
+        "actual": [
+          540,
+          90,
+          540,
+          90,
+          180,
+          240,
+          120
+        ],
+        "passed": true
+      },
+      {
+        "name": "meal-sixty",
+        "expected": [
+          480,
+          120,
+          480,
+          120,
+          120,
+          240,
+          120
+        ],
+        "actual": [
+          480,
+          120,
+          480,
+          120,
+          120,
+          240,
+          120
+        ],
+        "passed": true
+      },
+      {
+        "name": "ticket-fifty",
+        "expected": [
+          480,
+          120,
+          480,
+          120,
+          200,
+          160,
+          120
+        ],
+        "actual": [
+          480,
+          120,
+          480,
+          120,
+          200,
+          160,
+          120
+        ],
+        "passed": true
+      },
+      {
+        "name": "car-two-forty",
+        "expected": [
+          520,
+          130,
+          520,
+          130,
+          120,
+          160,
+          240
+        ],
+        "actual": [
+          520,
+          130,
+          520,
+          130,
+          120,
+          160,
+          240
+        ],
+        "passed": true
+      }
+    ]
+  },
+  "remainingIssues": [
+    {
+      "kind": "stale-static-copy",
+      "evidence": "人数 × 单价 30 元",
+      "description": "Changing ticketPerPerson to 50 updates the amount but leaves the formula text saying 30. Structural validity is not semantic acceptance."
+    }
+  ],
+  "semanticAcceptance": "pending",
+  "hashes": {
+    "scripts/probe-intelligent-ui-preview.mjs": "c680e777a0a25da9a3003bbed2b02b73f080abff90d8fbc68525db55844c5ad5",
+    "scripts/intelligent-ui-live-evaluation.mjs": "e06de6972e5aaa0d791c2a1197724301cc05a92cdc08c212ed153a87956b607a",
+    "lib/intelligent-ui/decision-policy.ts": "168c9713928a229ee0bfba80ebb023275326a17289d18b777dd0f33b85139f1d",
+    "lib/intelligent-ui/preview-parser.ts": "3bb4677a53966dcd5d520a396fb20ce6e655e61deaa249483cc6b4f1e8f3aa0e",
+    "lib/intelligent-ui/preview-plan.ts": "c775c2a7180ba047032357fafed33126294661fd8c45747e110327fbc467498c",
+    "lib/intelligent-ui/preview-runtime.ts": "99f1a9a9ad8b7e7f39c9835540347f11ac0f41ac459da114b4eb532d68c4f047",
+    "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+    "lib/intelligent-ui/rich-plan.ts": "ecfc7a923b531c3806451ccdaebbf80da4d179e402eac10d2cb503e385b1ec25",
+    "lib/intelligent-ui/rich-plan-schema.ts": "8c48c54704a53e2e298bbd9836a13753735d2dacdda8ea15ea3c388ba2536569",
+    "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+    "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+  },
+  "surface": {
+    "version": 2,
+    "id": "weekend-trip-cost",
+    "revision": 1,
+    "title": "周末出游费用分摊计算",
+    "nodes": [
+      {
+        "id": "people",
+        "label": "人数 (人)",
+        "type": "number",
+        "value": 4,
+        "min": 1,
+        "step": 1
+      },
+      {
+        "id": "ticketPerPerson",
+        "label": "门票单价（每人） (元/人)",
+        "type": "number",
+        "value": 30,
+        "min": 0
+      },
+      {
+        "id": "carFee",
+        "label": "车费（总共） (元)",
+        "type": "number",
+        "value": 120,
+        "min": 0
+      },
+      {
+        "id": "mealPerPerson",
+        "label": "餐费（每人） (元/人)",
+        "type": "number",
+        "value": 40,
+        "min": 0
+      },
+      {
+        "id": "totalMetric",
+        "type": "metric",
+        "label": "总花费 (元)",
+        "value": {
+          "op": "add",
+          "args": [
+            {
+              "op": "multiply",
+              "args": [
+                {
+                  "ref": "people"
+                },
+                {
+                  "ref": "ticketPerPerson"
+                }
+              ]
+            },
+            {
+              "op": "multiply",
+              "args": [
+                {
+                  "ref": "people"
+                },
+                {
+                  "ref": "mealPerPerson"
+                }
+              ]
+            },
+            {
+              "ref": "carFee"
+            }
+          ]
+        }
+      },
+      {
+        "id": "perPersonMetric",
+        "type": "metric",
+        "label": "每人实际出（含车费平摊） (元)",
+        "value": {
+          "op": "divide",
+          "args": [
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "multiply",
+                  "args": [
+                    {
+                      "ref": "people"
+                    },
+                    {
+                      "ref": "ticketPerPerson"
+                    }
+                  ]
+                },
+                {
+                  "op": "multiply",
+                  "args": [
+                    {
+                      "ref": "people"
+                    },
+                    {
+                      "ref": "mealPerPerson"
+                    }
+                  ]
+                },
+                {
+                  "ref": "carFee"
+                }
+              ]
+            },
+            {
+              "ref": "people"
+            }
+          ]
+        }
+      },
+      {
+        "id": "breakdownTable",
+        "type": "table",
+        "columns": [
+          "费用项目",
+          "计算方式",
+          "金额（元）"
+        ],
+        "rows": [
+          [
+            "门票",
+            "人数 × 单价 30 元",
+            {
+              "op": "multiply",
+              "args": [
+                {
+                  "ref": "people"
+                },
+                {
+                  "ref": "ticketPerPerson"
+                }
+              ]
+            }
+          ],
+          [
+            "餐饮",
+            "人数 × 每人餐费",
+            {
+              "op": "multiply",
+              "args": [
+                {
+                  "ref": "people"
+                },
+                {
+                  "ref": "mealPerPerson"
+                }
+              ]
+            }
+          ],
+          [
+            "车费",
+            "包车总价",
+            {
+              "ref": "carFee"
+            }
+          ],
+          [
+            "合计",
+            "以上三项相加",
+            {
+              "op": "add",
+              "args": [
+                {
+                  "op": "multiply",
+                  "args": [
+                    {
+                      "ref": "people"
+                    },
+                    {
+                      "ref": "ticketPerPerson"
+                    }
+                  ]
+                },
+                {
+                  "op": "multiply",
+                  "args": [
+                    {
+                      "ref": "people"
+                    },
+                    {
+                      "ref": "mealPerPerson"
+                    }
+                  ]
+                },
+                {
+                  "ref": "carFee"
+                }
+              ]
+            }
+          ],
+          [
+            "每人应付",
+            "合计 ÷ 人数",
+            {
+              "op": "divide",
+              "args": [
+                {
+                  "op": "add",
+                  "args": [
+                    {
+                      "op": "multiply",
+                      "args": [
+                        {
+                          "ref": "people"
+                        },
+                        {
+                          "ref": "ticketPerPerson"
+                        }
+                      ]
+                    },
+                    {
+                      "op": "multiply",
+                      "args": [
+                        {
+                          "ref": "people"
+                        },
+                        {
+                          "ref": "mealPerPerson"
+                        }
+                      ]
+                    },
+                    {
+                      "ref": "carFee"
+                    }
+                  ]
+                },
+                {
+                  "ref": "people"
+                }
+              ]
+            }
+          ]
+        ]
+      },
+      {
+        "id": "breakdownChart",
+        "type": "barChart",
+        "labels": [
+          "门票",
+          "餐饮",
+          "车费"
+        ],
+        "values": [
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "ref": "people"
+              },
+              {
+                "ref": "ticketPerPerson"
+              }
+            ]
+          },
+          {
+            "op": "multiply",
+            "args": [
+              {
+                "ref": "people"
+              },
+              {
+                "ref": "mealPerPerson"
+              }
+            ]
+          },
+          {
+            "ref": "carFee"
+          }
+        ]
+      },
+      {
+        "id": "noteText",
+        "type": "text",
+        "text": "按你给的规则：门票每人 30 元、餐费每人 40 元（可改）、车费总共 120 元（可改）由大家平摊。每人应付 = 总花费 ÷ 人数，未考虑有人不出某一部分费用的情况。"
+      }
+    ],
+    "layout": [
+      {
+        "id": "inputsGroup",
+        "type": "group",
+        "title": "输入（可修改）",
+        "columns": 2,
+        "nodeIds": [
+          "people",
+          "ticketPerPerson",
+          "carFee",
+          "mealPerPerson"
+        ]
+      },
+      {
+        "id": "resultCompare",
+        "type": "comparison",
+        "title": "结果",
+        "cards": [
+          {
+            "id": "totalCard",
+            "title": "总计",
+            "nodeIds": [
+              "totalMetric"
+            ]
+          },
+          {
+            "id": "ppCard",
+            "title": "人均",
+            "nodeIds": [
+              "perPersonMetric"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "detailGroup",
+        "type": "group",
+        "title": "费用明细",
+        "columns": 1,
+        "nodeIds": [
+          "breakdownTable",
+          "breakdownChart"
+        ]
+      },
+      {
+        "id": "noteGroup",
+        "type": "group",
+        "title": "说明",
+        "columns": 1,
+        "nodeIds": [
+          "noteText"
+        ]
+      }
+    ]
+  }
+}

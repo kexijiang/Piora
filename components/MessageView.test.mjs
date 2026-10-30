@@ -9,7 +9,7 @@ const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
 });
-const { MessageView, getAutomationToolCardDetails, getUserMessagePreview } = await jiti.import("./MessageView.tsx");
+const { MessageView, getAutomationToolCardDetails, getUserMessagePreview, assistantBlockKey } = await jiti.import("./MessageView.tsx");
 // Import through the same tsconfig alias used by the component so Jiti reuses
 // the exact context module instead of creating a second provider instance.
 const { I18nProvider } = await jiti.import("@/hooks/useI18n");
@@ -31,6 +31,35 @@ function renderMessage(message, props = {}) {
     ),
   );
 }
+
+test("answer output group and block identities survive entry hydration while ordinary disclosures keep entry identity", () => {
+  const output = { type: "toolCall", toolCallId: "focused-ui", toolName: "piora_render_ui", input: {} };
+  assert.equal(assistantBlockKey(output, 2), "answer-output:focused-ui");
+  assert.equal(assistantBlockKey(output, 2, "hydrated"), assistantBlockKey(output, 2));
+  assert.notEqual(assistantBlockKey({ ...output, toolCallId: "other-ui" }, 2), assistantBlockKey(output, 2));
+  const normal = { ...output, toolName: "read" };
+  assert.equal(assistantBlockKey(normal, 2, "hydrated"), "hydrated-2");
+  assert.match(messageViewSource, /const key = assistantBlockKey\(group\.items\[0\]\.block/);
+  assert.match(messageViewSource, /<BlockView key=\{assistantBlockKey\(block/);
+});
+
+test("interactive answers have a visible escaped snapshot without loading their runtime", () => {
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "surface", toolName: "piora_render_ui", input: {} }] };
+  const output = { role: "toolResult", toolCallId: "surface", content: [{ type: "text", text: "legacy text" }],
+    details: { answerOutput: { kind: "intelligent-ui", version: 1, snapshot: "Saved <script>alert(1)</script>\nTotal: 42", payload: {} } } };
+  for (const mode of ["chat", "history"]) {
+    const html = renderMessage(message, { mode, toolResults: new Map([["surface", output]]) });
+    assert.match(html, /message-answer-block/);
+    assert.match(html, /data-answer-output-snapshot/);
+    assert.match(html, /Saved &lt;script&gt;alert\(1\)&lt;\/script&gt;/);
+    assert.match(html, /Total: 42/);
+    assert.doesNotMatch(html, /<script>|process-stack|chat-disclosure|aria-expanded/);
+  }
+  const failed = renderMessage(message, { toolResults: new Map([["surface", { ...output, isError: true, content: [{ type: "text", text: "Invalid UI specification" }] }]]) });
+  assert.match(failed, /Invalid UI specification/);
+  assert.match(failed, /role="alert"/);
+  assert.doesNotMatch(failed, /Total: 42/);
+});
 
 test("a running browser wait card shows the reason and resolve buttons", () => {
   const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "wait-1", toolName: "browser", input: { action: "wait_for_user", reason: "请完成登录" } }] };

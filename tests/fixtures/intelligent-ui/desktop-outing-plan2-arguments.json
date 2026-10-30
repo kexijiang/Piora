@@ -1,0 +1,587 @@
+{
+  "source": "Synthetic outing desktop probe v5, Flash, 2026-10-29; both original visible tool arguments, no reasoning",
+  "firstAttempt": {
+    "planVersion": 2,
+    "id": "weekend-trip-cost",
+    "title": "周末出游费用测算（4人）",
+    "inputs": [
+      {
+        "id": "people",
+        "label": "出行人数",
+        "valueType": "number",
+        "value": 4,
+        "min": 1,
+        "step": 1,
+        "unit": "人"
+      },
+      {
+        "id": "mealPerPerson",
+        "label": "每人餐费",
+        "valueType": "number",
+        "value": 40,
+        "min": 0,
+        "unit": "元"
+      }
+    ],
+    "derived": [
+      {
+        "id": "ticketTotal",
+        "op": "multiply",
+        "args": [
+          {
+            "input": "people"
+          },
+          {
+            "literal": 30
+          }
+        ]
+      },
+      {
+        "id": "mealTotal",
+        "op": "multiply",
+        "args": [
+          {
+            "input": "people"
+          },
+          {
+            "input": "mealPerPerson"
+          }
+        ]
+      },
+      {
+        "id": "grandTotal",
+        "op": "add",
+        "args": [
+          {
+            "derived": "ticketTotal"
+          },
+          {
+            "derived": "mealTotal"
+          },
+          {
+            "literal": 120
+          }
+        ]
+      },
+      {
+        "id": "perPerson",
+        "op": "divide",
+        "args": [
+          {
+            "derived": "grandTotal"
+          },
+          {
+            "input": "people"
+          }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "id": "note",
+        "kind": "text",
+        "text": "计算规则：门票 30 元/人（固定），车费按总额 120 元（固定，不随人数变化），餐费 = 人数 × 每人餐费。保存按钮会在项目目录下新建 result.json（已存在同名文件时不会覆盖）。"
+      },
+      {
+        "id": "grandTotal",
+        "kind": "metric",
+        "label": "总费用",
+        "unit": "元",
+        "value": {
+          "derived": "grandTotal"
+        }
+      },
+      {
+        "id": "perPersonView",
+        "kind": "metric",
+        "label": "每人应付",
+        "unit": "元",
+        "value": {
+          "derived": "perPerson"
+        }
+      },
+      {
+        "id": "ticketMetric",
+        "kind": "metric",
+        "label": "门票合计（30 元/人）",
+        "unit": "元",
+        "value": {
+          "derived": "ticketTotal"
+        }
+      },
+      {
+        "id": "mealMetric",
+        "kind": "metric",
+        "label": "餐饮合计",
+        "unit": "元",
+        "value": {
+          "derived": "mealTotal"
+        }
+      },
+      {
+        "id": "carMetric",
+        "kind": "metric",
+        "label": "车费合计（固定）",
+        "unit": "元",
+        "value": {
+          "literal": 120
+        }
+      },
+      {
+        "id": "breakdown",
+        "kind": "table",
+        "columns": [
+          "项目",
+          "金额（元）",
+          "占总额比例"
+        ],
+        "rows": [
+          [
+            "门票",
+            {
+              "derived": "ticketTotal"
+            },
+            {
+              "derived": "ticketShare"
+            }
+          ],
+          [
+            "餐饮",
+            {
+              "derived": "mealTotal"
+            },
+            {
+              "derived": "mealShare"
+            }
+          ],
+          [
+            "车费",
+            {
+              "literal": 120
+            },
+            {
+              "derived": "carShare"
+            }
+          ],
+          [
+            "合计",
+            {
+              "derived": "grandTotal"
+            },
+            {
+              "literal": "100%"
+            }
+          ],
+          [
+            "每人",
+            {
+              "derived": "perPerson"
+            },
+            {
+              "literal": "—"
+            }
+          ]
+        ]
+      },
+      {
+        "id": "chart",
+        "kind": "barChart",
+        "labels": [
+          "门票",
+          "餐饮",
+          "车费",
+          "总费用"
+        ],
+        "values": [
+          {
+            "derived": "ticketTotal"
+          },
+          {
+            "derived": "mealTotal"
+          },
+          {
+            "literal": 120
+          },
+          {
+            "derived": "grandTotal"
+          }
+        ]
+      }
+    ],
+    "layout": [
+      {
+        "id": "inputsGroup",
+        "type": "group",
+        "title": "调整参数",
+        "columns": 2,
+        "nodeIds": [
+          "people",
+          "mealPerPerson"
+        ]
+      },
+      {
+        "id": "resultsGroup",
+        "type": "comparison",
+        "title": "各项费用",
+        "cards": [
+          {
+            "id": "totalCard",
+            "title": "总额",
+            "nodeIds": [
+              "grandTotal",
+              "perPersonView"
+            ]
+          },
+          {
+            "id": "itemsCard",
+            "title": "分项",
+            "nodeIds": [
+              "ticketMetric",
+              "mealMetric",
+              "carMetric"
+            ]
+          },
+          {
+            "id": "chartCard",
+            "title": "费用对比",
+            "nodeIds": [
+              "chart"
+            ]
+          },
+          {
+            "id": "tableCard",
+            "title": "明细表",
+            "nodeIds": [
+              "breakdown"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "noteGroup",
+        "type": "group",
+        "title": "说明",
+        "columns": 1,
+        "nodeIds": [
+          "note"
+        ]
+      }
+    ],
+    "actions": {
+      "version": 1,
+      "actions": [
+        {
+          "id": "saveResult",
+          "label": "保存结果到 result.json",
+          "kind": "save_snapshot",
+          "path": "result.json",
+          "format": "json"
+        }
+      ]
+    }
+  },
+  "correctedAttempt": {
+    "planVersion": 2,
+    "id": "weekend-trip-cost",
+    "title": "周末出游费用测算（4人）",
+    "inputs": [
+      {
+        "id": "people",
+        "label": "出行人数",
+        "valueType": "number",
+        "value": 4,
+        "min": 1,
+        "step": 1,
+        "unit": "人"
+      },
+      {
+        "id": "mealPerPerson",
+        "label": "每人餐费",
+        "valueType": "number",
+        "value": 40,
+        "min": 0,
+        "unit": "元"
+      }
+    ],
+    "derived": [
+      {
+        "id": "ticketTotal",
+        "op": "multiply",
+        "args": [
+          {
+            "input": "people"
+          },
+          {
+            "literal": 30
+          }
+        ]
+      },
+      {
+        "id": "mealTotal",
+        "op": "multiply",
+        "args": [
+          {
+            "input": "people"
+          },
+          {
+            "input": "mealPerPerson"
+          }
+        ]
+      },
+      {
+        "id": "grandTotal",
+        "op": "add",
+        "args": [
+          {
+            "derived": "ticketTotal"
+          },
+          {
+            "derived": "mealTotal"
+          },
+          {
+            "literal": 120
+          }
+        ]
+      },
+      {
+        "id": "perPerson",
+        "op": "divide",
+        "args": [
+          {
+            "derived": "grandTotal"
+          },
+          {
+            "input": "people"
+          }
+        ]
+      },
+      {
+        "id": "carPerPerson",
+        "op": "divide",
+        "args": [
+          {
+            "literal": 120
+          },
+          {
+            "input": "people"
+          }
+        ]
+      },
+      {
+        "id": "mealPerPersonView",
+        "op": "multiply",
+        "args": [
+          {
+            "input": "mealPerPerson"
+          },
+          {
+            "literal": 1
+          }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "id": "note",
+        "kind": "text",
+        "text": "计算规则：门票 30 元/人（固定），车费按总额 120 元（固定，不随人数变化），餐费 = 人数 × 每人餐费。保存按钮会在项目目录下新建 result.json（已存在同名文件时不会覆盖）。"
+      },
+      {
+        "id": "totalMetric",
+        "kind": "metric",
+        "label": "总费用",
+        "unit": "元",
+        "value": {
+          "derived": "grandTotal"
+        }
+      },
+      {
+        "id": "perPersonMetric",
+        "kind": "metric",
+        "label": "每人应付",
+        "unit": "元",
+        "value": {
+          "derived": "perPerson"
+        }
+      },
+      {
+        "id": "ticketMetric",
+        "kind": "metric",
+        "label": "门票合计（30 元/人）",
+        "unit": "元",
+        "value": {
+          "derived": "ticketTotal"
+        }
+      },
+      {
+        "id": "mealMetric",
+        "kind": "metric",
+        "label": "餐饮合计",
+        "unit": "元",
+        "value": {
+          "derived": "mealTotal"
+        }
+      },
+      {
+        "id": "carMetric",
+        "kind": "metric",
+        "label": "车费合计（固定）",
+        "unit": "元",
+        "value": {
+          "literal": 120
+        }
+      },
+      {
+        "id": "breakdown",
+        "kind": "table",
+        "columns": [
+          "项目",
+          "金额（元）",
+          "人均（元）"
+        ],
+        "rows": [
+          [
+            "门票",
+            {
+              "derived": "ticketTotal"
+            },
+            {
+              "literal": 30
+            }
+          ],
+          [
+            "餐饮",
+            {
+              "derived": "mealTotal"
+            },
+            {
+              "derived": "mealPerPersonView"
+            }
+          ],
+          [
+            "车费",
+            {
+              "literal": 120
+            },
+            {
+              "derived": "carPerPerson"
+            }
+          ],
+          [
+            "合计",
+            {
+              "derived": "grandTotal"
+            },
+            {
+              "derived": "perPerson"
+            }
+          ],
+          [
+            "每人应付",
+            {
+              "derived": "perPerson"
+            },
+            {
+              "literal": "—"
+            }
+          ]
+        ]
+      },
+      {
+        "id": "chart",
+        "kind": "barChart",
+        "labels": [
+          "门票",
+          "餐饮",
+          "车费",
+          "总费用"
+        ],
+        "values": [
+          {
+            "derived": "ticketTotal"
+          },
+          {
+            "derived": "mealTotal"
+          },
+          {
+            "literal": 120
+          },
+          {
+            "derived": "grandTotal"
+          }
+        ]
+      }
+    ],
+    "layout": [
+      {
+        "id": "inputsGroup",
+        "type": "group",
+        "title": "调整参数",
+        "columns": 2,
+        "nodeIds": [
+          "people",
+          "mealPerPerson"
+        ]
+      },
+      {
+        "id": "resultsGroup",
+        "type": "comparison",
+        "title": "各项费用",
+        "cards": [
+          {
+            "id": "totalCard",
+            "title": "总额",
+            "nodeIds": [
+              "totalMetric",
+              "perPersonMetric"
+            ]
+          },
+          {
+            "id": "itemsCard",
+            "title": "分项",
+            "nodeIds": [
+              "ticketMetric",
+              "mealMetric",
+              "carMetric"
+            ]
+          },
+          {
+            "id": "chartCard",
+            "title": "费用对比",
+            "nodeIds": [
+              "chart"
+            ]
+          },
+          {
+            "id": "tableCard",
+            "title": "明细表",
+            "nodeIds": [
+              "breakdown"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "noteGroup",
+        "type": "group",
+        "title": "说明",
+        "columns": 1,
+        "nodeIds": [
+          "note"
+        ]
+      }
+    ],
+    "actions": {
+      "version": 1,
+      "actions": [
+        {
+          "id": "saveResult",
+          "label": "保存结果到 result.json",
+          "kind": "save_snapshot",
+          "path": "result.json",
+          "format": "json"
+        }
+      ]
+    }
+  }
+}

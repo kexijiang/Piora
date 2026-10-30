@@ -19,6 +19,8 @@ function historyHarness(overrides = {}) {
   const callbacks = source.slice(source.indexOf("  const switchHistoryBranch = useCallback"), source.indexOf("  const handleModelChange = useCallback"));
   const events = [];
   const env = {
+    flushPendingAnswerState: async () => {},
+    answerOutputScope: 0, setAnswerOutputScope: update => { env.answerOutputScope = update(env.answerOutputScope); },
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 },
     editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [],
     useCallback: callback => callback, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
@@ -27,19 +29,22 @@ function historyHarness(overrides = {}) {
     setDraft: (id, draft) => events.push({ id, draft }), onSessionForked: id => events.push(`open:${id}`), ...overrides,
   };
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return { ...new Function("env", `with(env) { ${js}; return { switchHistoryBranch, forkHistoryQuestion }; }`)(env), events };
+  return { ...new Function("env", `with(env) { ${js}; return { switchHistoryBranch, forkHistoryQuestion }; }`)(env), events, env };
 }
 
 test("history switches only after success and preserves the preview on cancellation or load failure", async () => {
   const success = historyHarness();
   assert.equal(await success.switchHistoryBranch("leaf"), true);
   assert.deepEqual(success.events, ["navigate_tree", "context", "leaf:leaf"]);
+  assert.equal(success.env.answerOutputScope, 1);
   const cancelled = historyHarness({ sendAgentCommand: async () => ({ cancelled: true }) });
   assert.equal(await cancelled.switchHistoryBranch("leaf"), false);
   assert.deepEqual(cancelled.events, []);
+  assert.equal(cancelled.env.answerOutputScope, 0);
   const failed = historyHarness({ loadContext: async () => false });
   await assert.rejects(failed.switchHistoryBranch("leaf"), /history.loadError/);
   assert.deepEqual(failed.events, ["navigate_tree"]);
+  assert.equal(failed.env.answerOutputScope, 0);
 });
 
 test("history fork seeds the original question and attachments without sending; busy sessions cannot fork", async () => {
@@ -88,6 +93,7 @@ test("command catalog requests cannot overwrite a switched session or a newer ca
 function sendHarness(overrides = {}) {
   const send = source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"));
   const env = {
+    flushPendingAnswerState: async () => {},
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 }, buildLocalFilePrompt, useCallback: (callback) => callback, isNew: false, newSessionCwd: null, session: { id: "session" }, crypto: { randomUUID },
     t: (key) => key, userMessageKey: JSON.stringify, dispatch() {}, promoteNewSession() {}, addNotice() {}, closeEvents() {},
     ensureNewSession: async () => "session", ensureEventsConnected: async () => {}, waitForPromptSettlement() {},
@@ -136,6 +142,46 @@ test("actual send callback never starts the network when its durable recovery co
   assert.equal(requested, false);
   assert.equal(env.messages[0].content, "retain me");
   assert.equal(env.messages[0].sendError, "quota exceeded");
+});
+
+test("follow-up saves answer controls after durable recovery and before model submission", async () => {
+  const events = [];
+  const h = sendHarness({
+    savePendingPrompt: async record => { h.env.saved = record; events.push("recovery"); },
+    flushPendingAnswerState: async sid => { assert.equal(sid, "session"); events.push("controls"); },
+    sendAgentCommand: async () => { events.push("prompt"); },
+  });
+  assert.equal(await h.run("Explain my new settings"), true);
+  assert.deepEqual(events, ["recovery", "controls", "prompt"]);
+  let requested = false;
+  const failed = sendHarness({ flushPendingAnswerState: async () => { throw new Error("Control save failed"); }, sendAgentCommand: async () => { requested = true; } });
+  assert.equal(await failed.run("Keep this follow-up"), false);
+  assert.equal(requested, false);
+  assert.equal(failed.env.saved.draft.value, "Keep this follow-up");
+  assert.equal(failed.env.messages[0].sendError, "Control save failed");
+});
+
+test("slash submissions delegate durability and save admission to the command hook without an outer preflight", async () => {
+  let received;
+  let acknowledgements = 0;
+  const onDurable = () => { acknowledgements++; };
+  const images = [{ data: "YWJj", mimeType: "image/png" }];
+  const files = [{ name: "context.txt", text: "full context", size: 12 }];
+  const h = sendHarness({
+    flushPendingAnswerState: async () => assert.fail("the command hook must persist original input before waiting for answer saves"),
+    submitChatCommand: async (...args) => { received = args; args[3]("durable-id"); return true; },
+  });
+  assert.equal(await h.run("/review context", images, files, onDurable, ["failed-original"], { delivery: "followUp" }), true);
+  assert.deepEqual(received, ["/review context", images, files, onDurable, { delivery: "followUp" }, ["failed-original"]]);
+  assert.equal(acknowledgements, 1);
+});
+
+test("failed control saves preserve the current branch and block a fork", async () => {
+  for (const operation of ["switchHistoryBranch", "forkHistoryQuestion"]) {
+    const h = historyHarness({ flushPendingAnswerState: async () => { throw new Error("Control save failed"); } });
+    await assert.rejects(h[operation]("leaf", { value: "question" }), /Control save failed/);
+    assert.deepEqual(h.events, []);
+  }
 });
 
 test("resumed queue text uses durable prompt submission without reinterpreting a leading bang as a shell command", async () => {
@@ -763,6 +809,38 @@ function sessionLoadHarness(overrides = {}) {
   return { env, run };
 }
 
+test("normal hydration and stream settlement advance the leaf without invalidating answer controls", async () => {
+  let scope = 12;
+  const h = sessionLoadHarness({ setAnswerOutputScope: update => { scope = update(scope); } });
+  for (const leafId of ["initial", "tool-result", "assistant-complete"]) {
+    await h.run("session", false, false, Promise.resolve({ leafId, context: { messages: [], entryIds: [] } }));
+    assert.equal(h.env.setActiveLeafIdValue, leafId);
+    assert.equal(scope, 12, "ordinary leaf advances must preserve the mounted output and focus");
+  }
+});
+
+test("successful persisted deletion invalidates answer state but local recovery removal and failure do not", async () => {
+  const callback = source.slice(source.indexOf("  const handleDeleteMessage = useCallback"), source.indexOf("  const handleFork = useCallback"));
+  const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  for (const scenario of ["persisted", "recovery", "failed"]) {
+    const message = { role: "user", content: "question", clientPromptId: "prompt-id" };
+    const env = {
+      useCallback: fn => fn, messageMutationRef: { current: false }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
+      sessionIdRef: { current: "session" }, historyRevisionRef: { current: 0 }, sessionLoadAbortRef: { current: null },
+      t: key => key, activeLeafId: null, messages: [message], entryIds: ["entry"],
+      setDeletingMessage() {}, setMessages() {}, setEntryIds() {}, invalidatePrefetchedSession() {}, loadSession: async () => {}, loadContext: async () => true,
+      setActiveLeafId() {}, confirmPendingPrompts: async () => {},
+      fetch: async () => ({ ok: scenario !== "failed", status: 409, json: async () => ({ success: scenario !== "failed", deletedIds: ["entry"], error: "delete failed" }) }),
+      answerOutputScope: 4, setAnswerOutputScope: update => { env.answerOutputScope = update(env.answerOutputScope); },
+    };
+    const remove = new Function("env", `with(env) { ${js}; return handleDeleteMessage; }`)(env);
+    if (scenario === "failed") await assert.rejects(remove(message, "entry"), /delete failed/);
+    else await remove(message, scenario === "persisted" ? "entry" : undefined);
+    assert.equal(env.answerOutputScope, scenario === "persisted" ? 5 : 4);
+    assert.equal(env.messageMutationRef.current, false);
+  }
+});
+
 test("a stalled prefetch or recovery read releases session loading and reports a retryable timeout", async () => {
   const payload = { context: { messages: [], entryIds: [] }, leafId: null };
   for (const phase of ["prefetch", "recovery"]) {
@@ -983,6 +1061,214 @@ test("shows steering and follow-up messages in the composer tray immediately", (
   assert.match(followUpSource, /setQueuedMessages[\s\S]*appendQueuedMessage\(current, "followUp", message\)[\s\S]*await sendAgentCommand/);
 });
 
+function queueSubmissionHarness(overrides = {}) {
+  const helpers = source.slice(source.indexOf("function appendQueuedMessage"), source.indexOf("type ExtensionUiDialogRequest"));
+  const callbacks = source.slice(source.indexOf("  const handleSteer = useCallback"), source.indexOf("  const handleAbortCompaction = useCallback"));
+  const env = {
+    useCallback: callback => callback, sessionIdRef: { current: "session" }, createdSessionIdRef: { current: null }, promptRunIdRef: { current: 1 }, queueAdmissionRevisionRef: { current: 0 },
+    queue: { steering: ["already queued"], followUp: ["already queued"] }, errors: [], requests: [],
+    setQueuedMessages: update => { env.queue = update(env.queue); }, setError: error => env.errors.push(error),
+    flushPendingAnswerState: async () => {},
+    sendAgentCommand: async (id, command) => { env.requests.push({ id, command }); },
+    console: { error() {} }, ...overrides,
+  };
+  const js = ts.transpileModule(helpers + callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  return { ...new Function("env", `with(env) { ${js}; return { handleSteer, handleFollowUp, handlePromptWithStreamingBehavior }; }`)(env), env };
+}
+
+const queueSubmissionCases = [
+  { name: "steer", kind: "steering", command: { type: "steer" }, invoke: (h, text, images) => h.handleSteer(text, images) },
+  { name: "follow-up", kind: "followUp", command: { type: "follow_up" }, invoke: (h, text, images) => h.handleFollowUp(text, images) },
+  ...["steer", "followUp"].map(behavior => ({ name: `prompt ${behavior}`, kind: behavior === "steer" ? "steering" : "followUp",
+    command: { type: "prompt", streamingBehavior: behavior }, invoke: (h, text, images) => h.handlePromptWithStreamingBehavior(text, behavior, images) })),
+];
+
+test("all queue submissions wait for answer saves and preserve their command, image and success semantics", async () => {
+  for (const entry of queueSubmissionCases) {
+    let release;
+    const h = queueSubmissionHarness({ flushPendingAnswerState: id => { assert.equal(id, "session"); return new Promise(resolve => { release = resolve; }); } });
+    const images = [{ data: "YWJj", mimeType: "image/png" }];
+    const pending = entry.invoke(h, "use edited parameters", images);
+    assert.deepEqual(h.env.requests, [], entry.name);
+    assert.deepEqual(h.env.queue[entry.kind], ["already queued", "use edited parameters"], "optimistic tray remains immediate");
+    release();
+    assert.equal(await pending, true, entry.name);
+    assert.deepEqual(h.env.requests, [{ id: "session", command: { ...entry.command, message: "use edited parameters", images: [{ type: "image", ...images[0] }] } }]);
+  }
+});
+
+test("queue save failures retain composer input and remove only their optimistic row", async () => {
+  for (const entry of queueSubmissionCases) {
+    const h = queueSubmissionHarness({ flushPendingAnswerState: async () => { throw new Error("Unable to save parameters"); } });
+    assert.equal(await entry.invoke(h, "already queued"), false, `${entry.name} must not clear the composer`);
+    assert.deepEqual(h.env.queue, { steering: ["already queued"], followUp: ["already queued"] });
+    assert.deepEqual(h.env.errors, ["Unable to save parameters"]);
+    assert.deepEqual(h.env.requests, []);
+  }
+});
+
+test("switching chats while queue parameters save cannot send into the previous chat", async () => {
+  for (const entry of queueSubmissionCases) {
+    let release;
+    const h = queueSubmissionHarness({ flushPendingAnswerState: () => new Promise(resolve => { release = resolve; }) });
+    const pending = entry.invoke(h, "keep this draft");
+    h.env.sessionIdRef.current = "other";
+    h.env.queue = { steering: [], followUp: ["other chat"] };
+    release();
+    assert.equal(await pending, false, entry.name);
+    assert.deepEqual(h.env.requests, []);
+    assert.deepEqual(h.env.queue, { steering: [], followUp: ["other chat"] });
+  }
+});
+
+test("stop, recall and a newer run cancel queue submissions still waiting for parameter saves", async () => {
+  for (const action of ["stop", "recall", "new run"]) {
+    for (const entry of queueSubmissionCases) {
+      let release;
+      const h = queueSubmissionHarness({ flushPendingAnswerState: () => new Promise(resolve => { release = resolve; }) });
+      const pending = entry.invoke(h, "unsent draft");
+      if (action === "stop") {
+        const abort = abortHarness({ sessionIdRef: h.env.sessionIdRef, promptRunIdRef: h.env.promptRunIdRef, queueAdmissionRevisionRef: h.env.queueAdmissionRevisionRef,
+          setQueuedMessages: value => { h.env.queue = value; } });
+        await abort.run();
+      } else if (action === "recall") {
+        const callback = source.slice(source.indexOf("  const handleRecallQueue = useCallback"), source.indexOf("  const handleThinkingLevelChange = useCallback"));
+        const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+        h.env.addNotice = () => {};
+        await new Function("env", `with(env) { ${js}; return handleRecallQueue; }`)(h.env)();
+      } else h.env.promptRunIdRef.current++;
+      release();
+      assert.equal(await pending, false, `${entry.name}: ${action} retains the composer`);
+      assert.equal(h.env.requests.some(request => request.command.message === "unsent draft"), false);
+      assert.equal(h.env.queue[entry.kind].includes("unsent draft"), false);
+    }
+  }
+});
+
+function pendingInputActionHarness(overrides = {}) {
+  const callback = source.slice(source.indexOf("  const captureAnswerStateSubmissionGuard = useCallback"), source.indexOf("  const chatCommands = useChatCommandOperations"))
+    + source.slice(source.indexOf("  const handlePendingInputAction = useCallback"), source.indexOf("  const handleRecallQueue = useCallback"));
+  const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const pendingInputs = [{ id: "runtime-input", commandId: "existing-command", text: "already queued", kind: "steer" }];
+  const h = queueSubmissionHarness({ queue: { steering: ["already queued"], followUp: [], pendingInputs }, ...overrides });
+  return { ...h, ...new Function("env", `with(env) { ${js}; return { mutate: handlePendingInputAction, prepare: prepareAnswerStateForSubmission, capture: captureAnswerStateSubmissionGuard }; }`)(h.env) };
+}
+
+test("deleting one pending input stays available during answer saves without cancelling unrelated submissions", async () => {
+  for (const entry of queueSubmissionCases) {
+    let release;
+    let saves = 0;
+    const h = pendingInputActionHarness({ flushPendingAnswerState: () => { saves++; return new Promise(resolve => { release = resolve; }); } });
+    const pendingInputs = h.env.queue.pendingInputs;
+    const submitting = entry.invoke(h, "new input after edited parameters");
+    await h.mutate("runtime-input", "delete");
+    assert.deepEqual(h.env.requests, [{ id: "session", command: { type: "pending_input_action", inputId: "runtime-input", action: "delete" } }]);
+    assert.equal(saves, 1, "deleting existing input cannot be blocked by optional answer saves");
+    assert.equal(h.env.queueAdmissionRevisionRef.current, 0, "one input action must not cancel unrelated admission");
+    assert.deepEqual(h.env.queue.pendingInputs, pendingInputs, "optimistic text does not invent or overwrite server identities");
+    release();
+    assert.equal(await submitting, true);
+    assert.equal(h.env.requests[1].command.message, "new input after edited parameters");
+  }
+});
+
+test("moving pending guidance to the next-turn queue waits for parameter saves before promotion", async () => {
+  let release;
+  const h = pendingInputActionHarness({ flushPendingAnswerState: () => new Promise(resolve => { release = resolve; }) });
+  const promotion = h.mutate("runtime-input", "queue");
+  assert.deepEqual(h.env.requests, []);
+  release(); await promotion;
+  assert.deepEqual(h.env.requests, [{ id: "session", command: { type: "pending_input_action", inputId: "runtime-input", action: "queue" } }]);
+  assert.equal(h.env.queueAdmissionRevisionRef.current, 0);
+});
+
+test("queue promotion save and network failures preserve pending input identities for retry", async () => {
+  for (const failure of ["save", "network"]) {
+    const h = pendingInputActionHarness(failure === "save"
+      ? { flushPendingAnswerState: async () => { throw new Error("Save unavailable"); } }
+      : { sendAgentCommand: async () => { throw new Error("Queue archive unavailable"); } });
+    const original = structuredClone(h.env.queue);
+    await assert.rejects(h.mutate("runtime-input", "queue"), failure === "save" ? /Save unavailable/ : /Queue archive unavailable/);
+    assert.deepEqual(h.env.queue, original);
+    assert.equal(h.env.queueAdmissionRevisionRef.current, 0);
+    assert.deepEqual(h.env.requests, []);
+  }
+});
+
+test("the shared queue save guard rejects stale targets and cancels on stop, recall, session or run changes", async () => {
+  const stale = pendingInputActionHarness({ flushPendingAnswerState: async () => assert.fail("stale target must not save another session") });
+  assert.equal(await stale.prepare("other-session"), false);
+  for (const action of ["stop", "recall", "session", "new run"]) {
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    const h = pendingInputActionHarness({ flushPendingAnswerState: () => gate });
+    const prepared = h.prepare("session");
+    const promotion = h.mutate("runtime-input", "queue");
+    if (action === "stop") {
+      await abortHarness({ sessionIdRef: h.env.sessionIdRef, promptRunIdRef: h.env.promptRunIdRef, queueAdmissionRevisionRef: h.env.queueAdmissionRevisionRef }).run();
+    } else if (action === "recall") {
+      const callback = source.slice(source.indexOf("  const handleRecallQueue = useCallback"), source.indexOf("  const handleThinkingLevelChange = useCallback"));
+      const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+      h.env.addNotice = () => {};
+      await new Function("env", `with(env) { ${js}; return handleRecallQueue; }`)(h.env)();
+    } else if (action === "session") h.env.sessionIdRef.current = "other";
+    else h.env.promptRunIdRef.current++;
+    release();
+    assert.equal(await prepared, false, action);
+    await assert.rejects(promotion, /Queue action cancelled/, action);
+    assert.equal(h.env.requests.some(request => request.command.type === "pending_input_action"), false);
+  }
+});
+
+test("captured admission observes cancellation during durable recovery before starting answer saves", async () => {
+  for (const action of ["stop", "recall", "session", "new run"]) {
+    let saves = 0;
+    const h = pendingInputActionHarness({ flushPendingAnswerState: async () => { saves++; } });
+    const guard = h.capture("session");
+    assert.equal(saves, 0, "capture must remain synchronous and side-effect free before recovery commits");
+    if (action === "stop") {
+      await abortHarness({ sessionIdRef: h.env.sessionIdRef, promptRunIdRef: h.env.promptRunIdRef, queueAdmissionRevisionRef: h.env.queueAdmissionRevisionRef }).run();
+    } else if (action === "recall") {
+      const callback = source.slice(source.indexOf("  const handleRecallQueue = useCallback"), source.indexOf("  const handleThinkingLevelChange = useCallback"));
+      const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+      h.env.addNotice = () => {};
+      await new Function("env", `with(env) { ${js}; return handleRecallQueue; }`)(h.env)();
+    } else if (action === "session") h.env.sessionIdRef.current = "other";
+    else h.env.promptRunIdRef.current++;
+    assert.equal(await guard(), false, action);
+    assert.equal(saves, 0, "a cancelled durable submission must not begin optional persistence");
+  }
+  const fresh = pendingInputActionHarness({ sessionIdRef: { current: null }, flushPendingAnswerState: async () => assert.fail("a new chat has no answer state") });
+  assert.equal(await fresh.capture()(), true, "a new chat may proceed from durable input to session creation");
+  const gate = source.slice(source.indexOf("  const chatCommands = useChatCommandOperations"), source.indexOf("  const submitChatCommand = chatCommands.submit"));
+  assert.match(gate, /captureSubmissionGuard: captureAnswerStateSubmissionGuard/);
+});
+
+test("new-chat admission permits its own creation result and rejects other sessions or later cancellation", async () => {
+  const saved = [];
+  const h = pendingInputActionHarness({ sessionIdRef: { current: null }, flushPendingAnswerState: async sid => { saved.push(sid); } });
+  const guard = h.capture();
+  assert.equal(await guard(), true);
+  h.env.createdSessionIdRef.current = "created-for-this-chat";
+  h.env.sessionIdRef.current = "created-for-this-chat";
+  assert.equal(await guard("wrong-returned-id"), false, "the admission must use the actual ensure result");
+  assert.equal(await guard("created-for-this-chat"), true);
+  assert.deepEqual(saved, ["created-for-this-chat"]);
+  h.env.sessionIdRef.current = "other";
+  assert.equal(await guard("other"), false, "a promoted submission stays bound to its own chat");
+  for (const boundary of ["existing session", "stop", "recall", "new run"]) {
+    const fresh = pendingInputActionHarness({ sessionIdRef: { current: null }, flushPendingAnswerState: async () => assert.fail("cancelled or switched admission must not save") });
+    const captured = fresh.capture();
+    fresh.env.sessionIdRef.current = "new-id";
+    if (boundary !== "existing session") fresh.env.createdSessionIdRef.current = "new-id";
+    if (boundary === "stop" || boundary === "recall") fresh.env.queueAdmissionRevisionRef.current++;
+    if (boundary === "new run") fresh.env.promptRunIdRef.current++;
+    assert.equal(await captured("new-id"), false, boundary);
+  }
+  const ensure = source.slice(source.indexOf("  const ensureNewSession = useCallback"), source.indexOf("  const loadSlashCommands = useCallback"));
+  assert.match(ensure, /const realId = result\.sessionId;\s*createdSessionIdRef\.current = realId;\s*sessionIdRef\.current = realId/);
+});
+
 test("waits for the session scroll container before consuming the initial bottom scroll", () => {
   const scrollEffectSource = source.slice(
     source.indexOf("// Loading may publish the message array"),
@@ -1160,19 +1446,66 @@ test("queue receipts do not replace the live transcript before its run settles",
 function editNavigationHarness(overrides = {}) {
   const callback = source.slice(source.indexOf("  const handleNavigate = useCallback"), source.indexOf("  const handleRewindRecovery = useCallback"));
   const events = [];
-  const env = { editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: fn => fn, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
+  const env = { answerOutputScope: 0, setAnswerOutputScope: update => { env.answerOutputScope = update(env.answerOutputScope); }, flushPendingAnswerState: async () => {}, editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: fn => fn, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
     t: key => key, sendAgentCommand: async () => { events.push("navigate"); return {}; }, loadContext: async () => { events.push("context"); return true; }, setActiveLeafId: id => events.push(id), ...overrides };
   const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
-  return { navigate: new Function("env", `with(env) { ${js}; return handleNavigate; }`)(env), events };
+  return { navigate: new Function("env", `with(env) { ${js}; return handleNavigate; }`)(env), events, env };
 }
 test("edit navigation waits for server success and context, and propagates failure without changing the leaf", async () => {
   const ok = editNavigationHarness(); assert.equal(await ok.navigate("parent"), true); assert.deepEqual(ok.events, ["navigate", "context", "parent"]);
+  assert.equal(ok.env.answerOutputScope, 1);
   const rejected = editNavigationHarness({ sendAgentCommand: async () => { throw new Error("provider unavailable"); } });
   await assert.rejects(rejected.navigate("parent"), /provider unavailable/); assert.deepEqual(rejected.events, []);
   const cancelled = editNavigationHarness({ sendAgentCommand: async () => ({ cancelled: true }) });
   assert.equal(await cancelled.navigate("parent"), false); assert.deepEqual(cancelled.events, []);
   const failed = editNavigationHarness({ loadContext: async () => false });
   await assert.rejects(failed.navigate("parent"), /history.loadError/); assert.deepEqual(failed.events, ["navigate"]);
+  assert.equal(failed.env.answerOutputScope, 0);
+});
+
+function leafChangeHarness(overrides = {}) {
+  const callback = source.slice(source.indexOf("  const handleLeafChange = useCallback"), source.indexOf("  const switchHistoryBranch = useCallback"));
+  const events = [];
+  const env = {
+    useCallback: fn => fn, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
+    activeLeafId: "old", editedBranchRef: { current: null }, t: key => key,
+    flushPendingAnswerState: async () => {}, sendAgentCommand: async () => { events.push("navigate"); return {}; },
+    loadContext: async () => { events.push("context"); return true; },
+    answerOutputScope: 3, setAnswerOutputScope: update => { env.answerOutputScope = update(env.answerOutputScope); events.push("scope"); },
+    setActiveLeafId: leaf => { env.activeLeafId = leaf; events.push(`leaf:${leaf}`); },
+    setError: error => { env.error = error; }, ...overrides,
+  };
+  const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  return { change: new Function("env", `with(env) { ${js}; return handleLeafChange; }`)(env), events, env };
+}
+
+test("branch selection waits for navigation before refreshing outputs and preserves the old view on failure", async () => {
+  let release;
+  const response = new Promise(resolve => { release = resolve; });
+  const h = leafChangeHarness({ sendAgentCommand: async () => { h.events.push("navigate"); return response; } });
+  const changing = h.change("new");
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(h.events, ["navigate"]);
+  assert.equal(h.env.activeLeafId, "old");
+  assert.equal(h.env.answerOutputScope, 3);
+  release({}); await changing;
+  assert.deepEqual(h.events, ["navigate", "context", "scope", "leaf:new"]);
+  assert.equal(h.env.answerOutputScope, 4);
+  for (const scenario of [
+    { sendAgentCommand: async () => ({ cancelled: true }) },
+    { sendAgentCommand: async () => { throw new Error("navigation failed"); } },
+    { loadContext: async () => false },
+    { agentRunningRef: { current: true } },
+  ]) {
+    const failed = leafChangeHarness(scenario); await failed.change("new");
+    assert.equal(failed.env.activeLeafId, "old");
+    assert.equal(failed.env.answerOutputScope, 3);
+    assert.equal(failed.events.includes("scope"), false);
+  }
+  const latest = leafChangeHarness(); await latest.change(null);
+  assert.deepEqual(latest.events, ["context", "scope", "leaf:null"], "latest view is a read without a fabricated navigation target");
+  const same = leafChangeHarness(); await same.change("old");
+  assert.equal(same.env.answerOutputScope, 3, "reselecting the same branch does not remount its controls");
 });
 test("historical context excludes unconfirmed recovery copies without deleting them", async () => {
   const callback = source.slice(source.indexOf("  const loadContext = useCallback"), source.indexOf("  const promoteNewSession = useCallback"));

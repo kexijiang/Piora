@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "scope": "real-provider-electron-next-http-action-workflow",
+  "completed": true,
+  "stages": [
+    {
+      "name": "desktop-start",
+      "time": "2026-10-30T02:07:22.436Z"
+    },
+    {
+      "name": "session-setup",
+      "time": "2026-10-30T02:07:36.933Z"
+    },
+    {
+      "name": "generate",
+      "time": "2026-10-30T02:07:43.858Z"
+    },
+    {
+      "name": "actions-setup",
+      "time": "2026-10-30T02:08:06.359Z"
+    },
+    {
+      "name": "read-then-explicit-adoption",
+      "time": "2026-10-30T02:08:06.579Z"
+    },
+    {
+      "name": "decline-save",
+      "time": "2026-10-30T02:08:12.032Z"
+    },
+    {
+      "name": "cancel-save",
+      "time": "2026-10-30T02:08:12.922Z"
+    },
+    {
+      "name": "reject-changed-parameters",
+      "time": "2026-10-30T02:08:13.679Z"
+    },
+    {
+      "name": "save-with-approval",
+      "time": "2026-10-30T02:08:15.237Z"
+    },
+    {
+      "name": "existing-file-not-overwritten",
+      "time": "2026-10-30T02:08:16.126Z"
+    },
+    {
+      "name": "reload",
+      "time": "2026-10-30T02:08:16.314Z"
+    },
+    {
+      "name": "followup",
+      "time": "2026-10-30T02:08:19.254Z"
+    },
+    {
+      "name": "completed",
+      "time": "2026-10-30T02:08:23.256Z"
+    }
+  ],
+  "model": "deepseek/deepseek-flash",
+  "protocolOverride": false,
+  "permissionMode": "ask",
+  "declarations": [
+    {
+      "id": "readParams",
+      "label": "读取 params.json",
+      "path": "params.json",
+      "kind": "read_json_parameters"
+    },
+    {
+      "id": "saveResult",
+      "label": "保存 result.json",
+      "path": "result.json",
+      "kind": "save_snapshot",
+      "format": "json"
+    }
+  ],
+  "initial": {
+    "state": {
+      "people": 4,
+      "mealPerPerson": 40
+    },
+    "snapshot": "周末出游费用分摊\n可调参数\n出行人数 (人): 4\n每人餐费 (元): 40\n计算口径\n门票 30 元/人、车费合计 120 元（按人数均摊）为固定口径；只有人数和每人餐费可调。\n各项合计与人均\n门票合计 (元): 120\n餐饮合计 (元): 160\n车费合计 (元): 120\n总费用 (元): 400\n人均总费用 (元): 100\n明细（合计 / 每人）\n项目 | 合计（元） | 每人（元）\n门票 | 120 | 30\n餐饮 | 160 | 40\n车费 | 120 | 30\n总计 | 400 | 100\n各项费用对比\n门票合计: 120\n餐饮合计: 160\n车费合计: 120",
+    "version": 2
+  },
+  "operationChecks": [
+    {
+      "case": "read-reload-adopt",
+      "status": "completed",
+      "readDidNotApply": true,
+      "reloadPreservedProposal": true
+    },
+    {
+      "case": "decline-save",
+      "status": "failed",
+      "noFile": true,
+      "stateUnchanged": true
+    },
+    {
+      "case": "cancel-save",
+      "status": "cancelled",
+      "noFile": true,
+      "stateUnchanged": true
+    },
+    {
+      "case": "changed-parameters-after-review",
+      "status": "cancelled",
+      "newParametersRetained": true,
+      "noFile": true
+    },
+    {
+      "case": "save-after-approval",
+      "status": "completed",
+      "fileAbsentBeforeApproval": true
+    },
+    {
+      "case": "existing-file",
+      "status": "rejected",
+      "httpStatus": 400,
+      "sha256": "6db848b4be3d38a5c23319e8d08eae76b70ff22db96b300d3dd3812cdd35a11d"
+    }
+  ],
+  "changed": {
+    "state": {
+      "people": 7,
+      "mealPerPerson": 55
+    },
+    "snapshot": "周末出游费用分摊\n可调参数\n出行人数 (人): 7\n每人餐费 (元): 55\n计算口径\n门票 30 元/人、车费合计 120 元（按人数均摊）为固定口径；只有人数和每人餐费可调。\n各项合计与人均\n门票合计 (元): 210\n餐饮合计 (元): 385\n车费合计 (元): 120\n总费用 (元): 715\n人均总费用 (元): 102.14285714285714\n明细（合计 / 每人）\n项目 | 合计（元） | 每人（元）\n门票 | 210 | 30\n餐饮 | 385 | 55\n车费 | 120 | 17.142857142857142\n总计 | 715 | 102.14285714285714\n各项费用对比\n门票合计: 210\n餐饮合计: 385\n车费合计: 120"
+  },
+  "saved": {
+    "version": 1,
+    "surfaceId": "weekend-trip-split",
+    "surfaceRevision": 1,
+    "title": "周末出游费用分摊",
+    "parameters": {
+      "people": 7,
+      "mealPerPerson": 55
+    },
+    "snapshot": "周末出游费用分摊\n可调参数\n出行人数 (人): 7\n每人餐费 (元): 55\n计算口径\n门票 30 元/人、车费合计 120 元（按人数均摊）为固定口径；只有人数和每人餐费可调。\n各项合计与人均\n门票合计 (元): 210\n餐饮合计 (元): 385\n车费合计 (元): 120\n总费用 (元): 715\n人均总费用 (元): 102.14285714285714\n明细（合计 / 每人）\n项目 | 合计（元） | 每人（元）\n门票 | 210 | 30\n餐饮 | 385 | 55\n车费 | 120 | 17.142857142857142\n总计 | 715 | 102.14285714285714\n各项费用对比\n门票合计: 210\n餐饮合计: 385\n车费合计: 120"
+  },
+  "reload": true,
+  "followup": "当前是 **7 人**，总费用 **715 元**（门票 210 + 餐饮 385 + 车费 120），人均约 **102.14 元**。",
+  "followupUiCalls": 0,
+  "serverRuntimeIdleAfterFollowup": true,
+  "credentialsRemoved": {
+    "auth.json": true,
+    "models.json": true
+  },
+  "hashes": {
+    ".verification/desktop-phase2-actions-v10/result.json": "678a3488c60b77a80fabf43059e5767e37494ec9862c155a7f1620be881d753a",
+    ".verification/desktop-phase2-actions-v10/probe.mjs": "f97e0b1e88a42e7c875d75d8b9390a354591b9d2b19aed8c7b8cd808da91a46d",
+    ".verification/desktop-phase2-actions-v10/initial.png": "c91126d00e1f4a5430e6ad29a8171d05e72e356e3ff5e8fdb805c2557d9060fc",
+    ".verification/desktop-phase2-actions-v10/adopted.png": "c5cd0cb3bb45ad4a660247e4a1e0f78b02c711becc1da2e45a4ff6b0da303645",
+    ".verification/desktop-phase2-actions-v10/followup.png": "13a538a66d3f2444609b618cbeea77f16223138b8f2356fbdb59d03781c3c9be",
+    "lib/intelligent-ui/generation-journal.ts": "ec1741d6f2987480619f3bbc27245210eb654142e1151f78445fcb746df2bd82",
+    "lib/intelligent-ui/action-service.ts": "eaa51422a39d108c8b09aaca44d879f121ce979ac7a25ba771082389479f4c4f",
+    "lib/intelligent-ui/action-source.test.mjs": "9c7c90ad937d5aaca412d51a4af722d85a67721e5614e1c545be051b0855164f",
+    "lib/intelligent-ui/action-runtime.test.mjs": "81b15d3ea5e220ba42eeb5d0f65c671d2b37830f624c8d8c0b39a31aa7bfba2d",
+    "lib/intelligent-ui/action-route.test.mjs": "1e939162ee82a5348f087effc0dbebb2600b16655d356b9e168cfafef781d072",
+    ".verification/intelligent-ui-title-action-tests-final.log": "ce4f92709037351a3fde7954f9870b1d919a892f5f126c0f0de83db4cccbb6d4",
+    ".verification/intelligent-ui-title-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/intelligent-ui-title-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "localVerification": {
+    "titleActionTests": {
+      "passed": 24,
+      "failed": 0,
+      "skipped": 0
+    },
+    "typecheck": "passed",
+    "targetedEslint": "passed",
+    "ci": "deferred-until-three-phases-developed"
+  },
+  "priorEvidence": [
+    {
+      "path": ".verification/desktop-phase2-actions-v6/result.json",
+      "outcome": "failed",
+      "reason": "Probe incorrectly expected a permission prompt for a safe project read; expectation corrected, no permission bypass introduced."
+    },
+    {
+      "path": ".verification/desktop-phase2-actions-v7/result.json",
+      "outcome": "failed",
+      "reason": "Title append invalidated action source during save approval."
+    },
+    {
+      "path": ".verification/desktop-phase2-actions-v8/inspect-result.json",
+      "outcome": "reproduced",
+      "reason": "Same parameters and surface; new session_info title changed leaf digest and apply returned 409."
+    },
+    {
+      "path": ".verification/intelligent-ui-title-pre-fix-tests.log",
+      "outcome": "failed",
+      "reason": "17 tests, 15 passed and 2 failed before the fix."
+    },
+    {
+      "path": ".verification/desktop-phase2-actions-v9/result.json",
+      "outcome": "passed",
+      "reason": "Earlier successful workflow; final probe additionally waits for server runtime idle."
+    }
+  ],
+  "fix": "Only trailing linear session_info records are normalized in action identity. Parameter reads still use the actual leaf; sibling branches, other records and changed parameters invalidate old actions. Stale approval cancels its live pending run; simultaneous replies are consumed once.",
+  "limitations": [
+    "One Windows Electron workflow with Flash and JSON files; not a full device/model/permission/format matrix.",
+    "The read fixture uses keys from the generated surface. Most interactions use visible controls; initial session/tool/permission setup uses HTTP.",
+    "Screenshots were inspected. The final screenshot can precede client SSE idle reconciliation even though the server was idle; no assertion of a completed client status indicator is made.",
+    "Assistant prose and the auto-generated chat title contain initial values and are not reactive UI state. Model wording about read approval was imprecise; semantic review remains open.",
+    "No CI, release packaging, external publication or independent human acceptance was performed."
+  ]
+}

@@ -14,12 +14,14 @@ import { assertRemotePolicyCommand, readRemoteSessionPolicy, remotePolicyResourc
 import { RemoteContentProjection } from "./remote-content";
 import { readPendingSessionModel, clearPendingSessionModel } from "./session-model-selection";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
-import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SessionManager, SettingsManager, type AgentSessionServices } from "@earendil-works/pi-coding-agent";
+import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SettingsManager, type AgentSessionServices } from "@earendil-works/pi-coding-agent";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { snapshotQueuedInputs, sameQueuedInputs, prepareQueuedInputRemoval } from "./queued-input-recall";
 import { randomUUID } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
-import { assertSessionNotMutating, drainSessionFileOperations, runSessionFileOperation, trackSessionFileOperation } from "./session-mutation";
+import { assertSessionNotMutating, drainSessionFileOperations, runSessionFileOperation, trackSessionShutdown } from "./session-mutation";
+import { createOwnedSessionManager, openOwnedSessionManager, type OwnedSessionManager } from "./session-owned-manager";
+import { createSessionForkPublication } from "./session-fork-publication";
 import { resolve } from "node:path";
 import { NativeMcpController, getNativeMcpController, setNativeMcpController, nativeMcpResourceCapabilityId } from "./native-mcp";
 import { validateAgentImages } from "./image-attachments";
@@ -27,6 +29,9 @@ import { installImageContextPolicy } from "./image-context";
 import { installModelStallGuard } from "./model-stall-guard";
 import { reloadModelRetrySettings } from "./retry-settings";
 import { invalidateModelsCache } from "./models-cache";
+import { readBetaFeatures } from "./beta-features";
+import { betaFeatureSignature, loadedBetaFeatureSignature } from "./beta-feature-types";
+import { copyAnswerOutputState } from "./answer-output-server";
 import { resolveVisibleModels, selectInitialModelScope } from "./model-scope";
 import { runPromptWithModelFallback } from "./model-fallback";
 import { readModelFallbackConfig } from "./model-fallback-config";
@@ -60,9 +65,14 @@ import {
 import {
   beginPromptRun,
   finishPromptRun,
+  getActivePromptRun,
+  registerPromptRunCleanup,
   type PromptRunIdentity,
 } from "./prompt-run-registry";
 import { beginPromptFileChanges, finishPromptFileChanges } from "./prompt-file-changes";
+import { bindAnswerOutputAdmission } from "./answer-output-admission";
+import { bindAnswerOutputGeneration } from "./answer-output-generation";
+import type { AnswerActionRun } from "./answer-output-action";
 import { bindTeamPromptContext, validateTeamExecutionContext } from "./team-prompt-context";
 import type { TeamExecutionContext } from "./team-types";
 import type { SessionMessageSourceKind, SessionRoomContext } from "./session-message-types";
@@ -256,13 +266,17 @@ export class AgentSessionWrapper {
   private extensionStatuses = new Map<string, string>();
   private extensionWidgets = new Map<string, ExtensionWidgetItem>();
   private promptRunning = false;
+  private betaSignature: string;
   // Synchronous admission guard shared by UI and routed prompts. The guard is
   // set before the async SDK call so two callers cannot both observe idle.
   private promptAdmissionBusy = false;
+  private answerActionRunning = false;
   private stopping = false;
   private abortedQueuedMessages: { id: string; steering: string[]; followUp: string[] } | undefined;
   private abortCleanupTask: Promise<void> = Promise.resolve();
   private shutdownTask: Promise<void> = Promise.resolve();
+  private readonly ownedSessionManager?: OwnedSessionManager;
+  private removeOwnershipListener?: () => void;
   private abortGeneration = 0;
   private promptTasks = new Set<Promise<void>>();
   private inputAdmissions = 0;
@@ -295,6 +309,39 @@ export class AgentSessionWrapper {
   private systemPromptReloading = false;
   private onDestroyCallbacks = new Set<() => void>();
   private activePromptRun: PromptRunIdentity | undefined;
+  private answerAdmission: ReturnType<typeof bindAnswerOutputAdmission> | undefined;
+  private answerGeneration: ReturnType<typeof bindAnswerOutputGeneration> | undefined;
+
+  private bindRunAnswerAdmission(): Promise<void> {
+    const run = this.activePromptRun;
+    if (!run) return Promise.resolve();
+    if (this.answerAdmission?.identity.runId === run.runId) return this.answerGeneration?.ready ?? Promise.resolve();
+    const runId = run.runId;
+    const isActive = () => this._alive && !this.stopping
+      && this.activePromptRun?.runId === runId && getActivePromptRun(run.sessionId)?.runId === runId;
+    const loadedTools = this.inner.getAllTools();
+    const binding = bindAnswerOutputAdmission({
+      agent: this.inner.agent, identity: run, loadedTools, isActive,
+      onRepeatedDenial: () => {
+        if (isActive()) void this.send({ type: "abort" }).catch(() => {});
+      },
+    });
+    const generation = bindAnswerOutputGeneration({
+      manager: this.inner.sessionManager, identity: run, root: getAgentDir(), loadedTools, isActive,
+      assertOwned: () => this.ownedSessionManager?.assertOwned(),
+      emitPreview: preview => this.emit({ type: "answer_output_preview", preview }),
+    });
+    this.answerAdmission = binding;
+    this.answerGeneration = generation;
+    registerPromptRunCleanup(run, reason => {
+      binding.cancel();
+      const cancelled = generation.finish(reason);
+      if (this.answerAdmission === binding) this.answerAdmission = undefined;
+      if (this.answerGeneration === generation) this.answerGeneration = undefined;
+      return cancelled;
+    });
+    return generation.ready;
+  }
   private readonly promptInputEnrichment = new PromptInputEnrichment();
   private activeCommandId: string | undefined;
   private runtimeToolCalls = new Map<string, { toolName: string; args: unknown; outputDetails?: Record<string, unknown> }>();
@@ -364,8 +411,15 @@ export class AgentSessionWrapper {
       nativeMcp?: NativeMcpController;
       /** Host-only dependency injection for deterministic integration tests. Never a model/API option. */
       reviewInvoker?: ToolReviewModel;
+      /** Retained from before SDK construction until all shutdown writers finish. */
+      ownedSessionManager?: OwnedSessionManager;
     } = {},
   ) {
+    this.ownedSessionManager = capabilityOptions.ownedSessionManager;
+    if (this.ownedSessionManager && this.ownedSessionManager.manager !== inner.sessionManager) throw new Error("Session write ownership belongs to a different manager.");
+    this.ownedSessionManager?.assertOwned();
+    this.removeOwnershipListener = this.ownedSessionManager?.onCompromised(() => this.destroy());
+    this.betaSignature = loadedBetaFeatureSignature(inner.getAllTools());
     this.reviewInvoker = capabilityOptions.reviewInvoker ?? runToolReviewModel;
     this.installToolPermissions();
     const reload = inner.reload.bind(inner);
@@ -377,8 +431,15 @@ export class AgentSessionWrapper {
     // active-run state and idle waiters also settle after preflight cancellation.
     const agentPrompt = inner.agent.prompt;
     if (agentPrompt) inner.agent.prompt = new Proxy(agentPrompt, {
-      apply: (target, receiver, args) => {
+      apply: async (target, receiver, args) => {
         if (!this._alive || this.stopping) throw new Error("Prompt cancelled");
+        this.ownedSessionManager?.assertOwned();
+        const origin = this.activePromptRun;
+        await this.bindRunAnswerAdmission();
+        // A lazy capability import must not start an obsolete or cancelled run.
+        if (!this._alive || this.stopping || this.activePromptRun?.runId !== origin?.runId
+          || (origin && getActivePromptRun(origin.sessionId)?.runId !== origin.runId)) throw new Error("Prompt cancelled");
+        this.ownedSessionManager?.assertOwned();
         return Reflect.apply(target, receiver, args);
       },
     });
@@ -462,9 +523,11 @@ export class AgentSessionWrapper {
   }
 
   async executeChatCommand(commandId: string, message: string, onPhase: (phase: ChatCommandPhase) => void = () => {}, activity?: { execute(): Promise<void>; source?: SessionMessageSourceKind }): Promise<void> {
+    if (this.answerActionRunning) throw new Error("Wait for the answer action to finish or cancel it first");
     assertRemotePolicyCommand(this.remotePolicy, { type: "prompt", message });
     await this.waitForExtensionsBound();
     if (!this._alive || this.stopping) throw new Error("Command cancelled");
+    const startsNewRun = this.getRuntime() === "idle";
     const abortGeneration = this.abortGeneration;
     this.reviews().admit({ id: commandId, source: activity?.source ?? "unknown", text: message, timestamp: Date.now() }, !this.activePromptRun);
     if (!this.activePromptRun) this.reviewModel = this.inner.model ? { provider: this.inner.model.provider, id: this.inner.model.id } : undefined;
@@ -473,7 +536,14 @@ export class AgentSessionWrapper {
     let failed = false;
     this.inputAdmissions++;
     notifyRunningChange();
-    const execution = this.chatCommandActivities.run(commandId, activity?.execute ?? (() => this.inner.prompt(message, { source: "rpc", streamingBehavior: "steer" })), {
+    const assertActive = () => {
+      if (!this._alive || this.stopping || abortGeneration !== this.abortGeneration) throw new Error("Command cancelled");
+    };
+    const execution = this.chatCommandActivities.run(commandId, async () => {
+      if (startsNewRun) await this.refreshBetaCapabilities(assertActive);
+      assertActive();
+      return activity?.execute ? activity.execute() : this.inner.prompt(message, { source: "rpc", streamingBehavior: "steer" });
+    }, {
       onPhase: phase => {
         if (phase === "model" && !this.activePromptRun) {
           this.beginRun("prompt", compactTaskActivityText(message) || "Extension request", "waiting_model");
@@ -487,9 +557,7 @@ export class AgentSessionWrapper {
         }
         onPhase(phase);
       },
-      assertActive: () => {
-        if (!this._alive || this.stopping || abortGeneration !== this.abortGeneration) throw new Error("Command cancelled");
-      },
+      assertActive,
       waitForIdle: async () => {
         if (!this.chatCommandActivities.hasModelWork) return;
         await this.inner.waitForIdle?.();
@@ -521,6 +589,69 @@ export class AgentSessionWrapper {
         notifyRunningChange();
       }
     }
+  }
+
+  /** A direct UI click owns a fresh run, independent of the generating model turn. */
+  async executeAnswerAction<T>(id: string, message: string, work: (run: AnswerActionRun) => Promise<T>): Promise<T> {
+    assertRemotePolicyCommand(this.remotePolicy, { type: "prompt", message });
+    await this.waitForExtensionsBound();
+    if (!this._alive || this.getRuntime() !== "idle") throw new Error("Wait for the current task before running an answer action");
+    const identity = beginPromptRun(this.sessionId, { source: "ui" });
+    const generation = this.abortGeneration, controller = new AbortController();
+    this.activePromptRun = identity;
+    this.answerActionRunning = this.promptRunning = true;
+    this.abortedQueuedMessages = undefined;
+    const unregister = registerPromptRunCleanup(identity, () => controller.abort());
+    const assertActive = () => {
+      this.ownedSessionManager?.assertOwned();
+      if (!this._alive || this.stopping || controller.signal.aborted || this.abortGeneration !== generation
+        || getActivePromptRun(this.sessionId)?.runId !== identity.runId) throw new Error("Answer action cancelled");
+    };
+    this.beginRun("prompt", message, "running_command");
+    notifyRunningChange();
+    let failed = false, authorized = false;
+    const execution = Promise.resolve().then(async () => {
+      await this.refreshBetaCapabilities(assertActive);
+      assertActive();
+      this.reviews().admit({ id, source: "ui", text: message, timestamp: Date.now() }, true);
+      this.reviewModel = this.inner.model ? { provider: this.inner.model.provider, id: this.inner.model.id } : undefined;
+      return work({ identity, signal: controller.signal, assertActive, authorize: async input => {
+        assertActive();
+        const assertCapability = () => {
+          assertActive();
+          if (!this.inner.getActiveToolNames().includes(input.name)) throw new Error("The session does not enable this file capability");
+        };
+        assertCapability();
+        const revision = readToolPermission(this.sessionId, getAgentDir()).revision;
+        const allowed = await this.reviews().authorize({ ...input, toolCallId: `answer-action:${id}`, runId: identity.runId,
+          model: this.reviewModel, read: () => readToolPermission(this.sessionId, getAgentDir()),
+          active: () => { try { assertCapability(); return true; } catch { return false; } },
+          grantFull: () => { throw new Error("Answer actions cannot change the conversation permission mode"); } });
+        if (!allowed) throw new Error("Answer action was declined, changed or cancelled");
+        authorized = true;
+        if (readToolPermission(this.sessionId, getAgentDir()).revision !== revision) throw new Error("Permission changed during approval; start a new action");
+        return () => {
+          assertCapability();
+          if (readToolPermission(this.sessionId, getAgentDir()).revision !== revision) throw new Error("Permission changed after approval");
+        };
+      } });
+    }).catch(error => { failed = true; throw error; }).finally(async () => {
+      try {
+        if (authorized) this.toolReviews?.finish(`answer-action:${id}`, failed);
+      } finally {
+        unregister();
+        try { await finishPromptRun(identity, controller.signal.aborted ? "abort" : failed ? "error" : "idle"); }
+        finally {
+          if (this.activePromptRun?.runId === identity.runId) this.activePromptRun = undefined;
+          this.answerActionRunning = this.promptRunning = false;
+          this.emit({ type: "session_idle" });
+          notifyRunningChange();
+        }
+      }
+    });
+    const writer = execution.then(() => undefined, () => undefined);
+    this.promptTasks.add(writer);
+    try { return await execution; } finally { this.promptTasks.delete(writer); }
   }
 
   async executeModelCommand(commandId: string, message: string, options: {
@@ -608,6 +739,17 @@ export class AgentSessionWrapper {
 
   initializeSessionCapabilities(): void {
     this.applySessionCapabilities();
+  }
+
+  /** All idle model-admission paths share the same optional capability refresh. */
+  private async refreshBetaCapabilities(assertActive: () => void): Promise<void> {
+    const nextBetaSignature = betaFeatureSignature(readBetaFeatures());
+    if (nextBetaSignature === this.betaSignature) return;
+    assertActive();
+    await this.inner.reload();
+    this.applySessionCapabilities();
+    this.betaSignature = loadedBetaFeatureSignature(this.inner.getAllTools());
+    assertActive();
   }
 
   applyProjectCapabilitySettings(record: ProjectToolSettingsRecord): "applied" | "deferred" {
@@ -797,6 +939,7 @@ export class AgentSessionWrapper {
   }
 
   setSessionName(name: string): void {
+    this.ownedSessionManager?.assertOwned();
     this.inner.setSessionName(name);
     this.cachedSessionTitle = name.trim() || null;
     notifyRunningChange();
@@ -881,6 +1024,7 @@ export class AgentSessionWrapper {
 
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
+      this.answerGeneration?.observePreviewEvent(event);
       if (event.type === "tool_execution_end" && typeof event.toolCallId === "string") this.toolReviews?.finish(event.toolCallId, event.isError === true);
       // Pi 1.0 emits structured system/loadout messages as transcript events.
       // They remain canonical SDK/provider history but are not chat rows or
@@ -1156,6 +1300,7 @@ export class AgentSessionWrapper {
   }
 
   persistSessionFile(): void {
+    this.ownedSessionManager?.assertOwned();
     const manager = this.inner.sessionManager;
     const sessionFile = persistLazySessionManager(manager);
     if (sessionFile) cacheSessionPath(this.inner.sessionId, sessionFile);
@@ -1187,6 +1332,11 @@ export class AgentSessionWrapper {
     return !this._alive || this.stopping ? null : this.streamingMetrics.getMessage();
   }
 
+  getAnswerOutputPreviewSnapshot() {
+    return this.answerGeneration?.getPreviewSnapshot()
+      ?? { sessionId: this.sessionId, runId: this.activePromptRun?.runId ?? null, seq: 0, previews: [] };
+  }
+
   getStreamingMetrics() {
     return !this._alive || this.stopping ? null : this.streamingMetrics.getMetrics();
   }
@@ -1202,6 +1352,9 @@ export class AgentSessionWrapper {
     this.resetIdleTimer();
     this.flushPendingProjectCapabilitySettings();
     const type = command.type as string;
+    if (this.answerActionRunning && ["prompt", "steer", "follow_up", "bash"].includes(type)) {
+      throw new Error("Wait for the answer action to finish or cancel it first");
+    }
     const abortGeneration = this.abortGeneration;
     if (this.runtimeProfile === "device-control" && DEVICE_CONTROL_DENIED_RPC_COMMANDS.has(type)) {
       throw new Error(`RPC command ${type} is disabled by the device-control runtime profile.`);
@@ -1210,6 +1363,7 @@ export class AgentSessionWrapper {
     if (type !== "abort" && type !== "get_state") {
       assertSessionNotMutating(this.sessionId);
       if (!this._alive) throw new Error("Session has been closed");
+      this.ownedSessionManager?.assertOwned();
     }
 
     if (type === "prompt" || type === "steer" || type === "follow_up") {
@@ -1239,6 +1393,7 @@ export class AgentSessionWrapper {
         const promptImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
         const promptMaterials = command.materials as PromptMaterialReference[] | undefined;
         const streamingBehavior = command.streamingBehavior as "steer" | "followUp" | undefined;
+        const startsNewRun = this.getRuntime() === "idle";
         if (!streamingBehavior) {
           this.assertSessionIdle("send a prompt");
           if (this.promptAdmissionBusy) throw new Error("Cannot send a prompt while the session is starting another prompt");
@@ -1310,6 +1465,7 @@ export class AgentSessionWrapper {
         };
         const promptTask = Promise.resolve().then(async () => {
           if (fileChangeCapture) await fileChangeCapture.initial.catch(() => {});
+          if (startsNewRun) await this.refreshBetaCapabilities(assertNotAborted);
           if (!streamingBehavior) {
             const pendingModel = readPendingSessionModel(this.sessionId);
             if (pendingModel) {
@@ -1640,24 +1796,35 @@ export class AgentSessionWrapper {
         if (!entry) throw new Error("Invalid entry ID for forking");
 
         const sessionDir = sessionManager.getSessionDir();
-        let newSessionFile: string;
-
+        const publication = createSessionForkPublication(currentSessionFile, { sessionDir });
+        let forked: OwnedSessionManager | undefined;
+        try {
+        forked = entry.parentId
+          ? openOwnedSessionManager(currentSessionFile, publication.stagingDir)
+          : createOwnedSessionManager(sessionManager.getCwd(), publication.stagingDir);
+        const forkedManager = forked.manager;
         if (!entry.parentId) {
           // Fork before the first message: create an empty session linked to this one
-          const newManager = SessionManager.create(sessionManager.getCwd(), sessionDir);
-          newManager.newSession({ parentSession: currentSessionFile });
-          newSessionFile = newManager.getSessionFile() as string;
+          forkedManager.newSession({ parentSession: currentSessionFile });
         } else {
           // Fork after some history: copy path up to (but not including) the fork point
-          const sourceManager = SessionManager.open(currentSessionFile, sessionDir);
-          const forkedPath = sourceManager.createBranchedSession(entry.parentId);
+          const forkedPath = forkedManager.createBranchedSession(entry.parentId);
           if (!forkedPath) throw new Error("Failed to create forked session");
-          newSessionFile = forkedPath;
         }
-
-        const newSessionId = SessionManager.open(newSessionFile, sessionDir).getSessionId();
+        forked.assertOwned();
+        const newSessionFile = persistLazySessionManager(forkedManager);
+        if (!newSessionFile) throw new Error("Forked session has no persistent file");
+        const newSessionId = forkedManager.getSessionId();
         writeToolPermission(newSessionId, readDefaultToolPermission(getAgentDir()), getAgentDir());
-        const forkedManager = SessionManager.open(newSessionFile, sessionDir);
+        try {
+          await copyAnswerOutputState(this.sessionId, newSessionId, forkedManager.getBranch().map(entry => entry.id), {
+            sourceFile: currentSessionFile, targetFile: newSessionFile, sourceLeafId: entry.parentId,
+          });
+        } catch (error) {
+          forked.assertOwned();
+          quarantineUnboundSessionFile(newSessionFile);
+          throw error;
+        }
         appendSessionCapabilityPolicy(forkedManager, copySessionCapabilityPolicy(this.capabilityPolicy));
         const sourceSystemPromptBinding = this.getSystemPromptBinding()
           ?? createSessionSystemPromptBinding({ mode: "default" });
@@ -1665,20 +1832,24 @@ export class AgentSessionWrapper {
           forkedManager,
           copySessionSystemPromptBinding(sourceSystemPromptBinding),
         );
-        invalidateSessionListCache();
         try {
           await bindSessionAgentRuntimeProfile(newSessionId, this.runtimeProfile);
         } catch (profileError) {
+          forked.assertOwned();
           quarantineUnboundSessionFile(newSessionFile);
           invalidateSessionListCache();
           throw profileError;
         }
-        cacheSessionPath(newSessionId, newSessionFile);
-        invalidateSessionListCache();
         await finishPromptRun(this.activePromptRun, "fork");
         this.activePromptRun = undefined;
+        const publishedPath = publication.publish(forked);
+        cacheSessionPath(newSessionId, publishedPath);
+        invalidateSessionListCache();
         this.destroy();
         return { cancelled: false, newSessionId, runtimeProfile: this.runtimeProfile };
+        } finally {
+          try { publication.dispose(forked); } finally { forked?.release(); }
+        }
         });
       }
 
@@ -1741,6 +1912,7 @@ export class AgentSessionWrapper {
 
       case "steer":
       case "follow_up": {
+        const startsNewRun = this.getRuntime() === "idle";
         if (typeof command.expectedRunId === "string" && command.expectedRunId !== this.getActivePromptRunId()) throw new Error("Prompt cancelled");
         const queuedCommandId = typeof command.commandId === "string" ? command.commandId : undefined;
         if (queuedCommandId && typeof command.onQueueConsumed === "function" && typeof command.onQueueCancelled === "function") {
@@ -1756,6 +1928,9 @@ export class AgentSessionWrapper {
         this.inputAdmissions++;
         notifyRunningChange();
         const admission = this.queueSource.run(typeof command.commandId === "string" ? command.commandId : undefined, () => Promise.resolve().then(async () => {
+          if (startsNewRun) await this.refreshBetaCapabilities(() => {
+            if (!this._alive || this.stopping || abortGeneration !== this.abortGeneration) throw new Error("Prompt cancelled");
+          });
           const text = String(command.message ?? "").trimStart();
           const invocationName = text.match(/^\/([^\s]+)/)?.[1];
           const extensionCommand = invocationName && this.inner.extensionRunner.getRegisteredCommands().some(item => item.invocationName === invocationName);
@@ -2001,7 +2176,6 @@ export class AgentSessionWrapper {
   /** File mutations must wait for writers and extension shutdown to finish. */
   async shutdownForFileMutation(): Promise<void> {
     if (this._alive) {
-      await this.extensionBindingPromise?.catch(() => undefined);
       await this.send({ type: "abort" });
       await this.abortCleanupTask;
       this.destroy();
@@ -2014,6 +2188,7 @@ export class AgentSessionWrapper {
     this._alive = false;
     this.toolReviews?.cancel();
     const writers: Promise<unknown>[] = [this.abortCleanupTask, ...this.promptTasks];
+    if (this.extensionBindingPromise) writers.push(this.extensionBindingPromise);
     if (this.promptRunning || this.inner.isStreaming) {
       writers.push(this.inner.abort());
     }
@@ -2040,7 +2215,7 @@ export class AgentSessionWrapper {
     // AgentSession.dispose() is synchronous in the SDK, but extension
     // session_shutdown handlers are async. Run the lifecycle in order so a
     // session's handlers finish before its runner is invalidated and disposed.
-    this.shutdownTask = trackSessionFileOperation(this.sessionId, (async () => {
+    this.shutdownTask = trackSessionShutdown(this.sessionId, (async () => {
       await Promise.allSettled(writers);
       try {
         await this.inner.extensionRunner.emit?.({ type: "session_shutdown", reason: "shutdown" });
@@ -2049,6 +2224,9 @@ export class AgentSessionWrapper {
       } finally {
         try { this.inner.dispose?.(); } catch (error) {
           console.error("[pi-web] AgentSession dispose failed:", error instanceof Error ? error.message : error);
+        } finally {
+          this.removeOwnershipListener?.();
+          this.ownedSessionManager?.release();
         }
       }
     })());
@@ -2805,21 +2983,29 @@ export async function startRpcSession(
   const sessionServicesKey = `${runtimeProfile}:${sessionId}`;
   let startupInner: AgentSessionLike | undefined;
   let startupWrapper: AgentSessionWrapper | undefined;
+  let startupOwnedManager: OwnedSessionManager | undefined;
   const finishStartingSession = trackStartingSession(cwd);
   const starting = (async () => {
     // Some extensions access the SDK's global theme even outside the terminal UI.
     initTheme();
     const agentDir = getAgentDir();
     const projectRoot = (await resolveProject(cwd)).projectRoot;
+    // Registry removal precedes async shutdown. Reentrant process ownership
+    // alone must not let a new SDK writer race the previous wrapper's cleanup.
+    await drainSessionFileOperations([sessionId]);
     assertSessionNotMutating(sessionId);
     if (sessionFile && !existsSync(sessionFile)) throw new Error("Session file no longer exists");
     const projectToolRecord = readProjectToolSettings(projectRoot);
 
-    const sessionManager = sessionFile
-      ? SessionManager.open(sessionFile, undefined)
+    startupOwnedManager = sessionFile
+      ? openOwnedSessionManager(sessionFile, undefined, agentDir)
       : options.preparedSessionFile
-        ? SessionManager.open(options.preparedSessionFile, undefined)
-        : SessionManager.create(cwd, undefined);
+        ? openOwnedSessionManager(options.preparedSessionFile, undefined, agentDir)
+        : createOwnedSessionManager(cwd, undefined, agentDir);
+    const sessionManager = startupOwnedManager.manager;
+    if ((sessionFile || options.preparedSessionFile) && sessionManager.getSessionId() !== sessionId) {
+      throw new Error("Session file identity does not match the requested conversation.");
+    }
 
     if (options.preparedSessionFile && (sessionManager.getSessionId() !== sessionId
       || resolve(sessionManager.getCwd()) !== resolve(cwd)
@@ -2970,6 +3156,7 @@ export async function startRpcSession(
     installImageContextPolicy(inner.agent);
     if (pendingModel && inner.model?.provider === pendingModel.provider && inner.model.id === pendingModel.modelId) {
       await inner.setModel(applyConfiguredImageInput(inner.model));
+      startupOwnedManager.assertOwned();
       persistLazySessionManager(inner.sessionManager);
       clearPendingSessionModel(sessionId, pendingModel.revision);
     }
@@ -3020,11 +3207,12 @@ export async function startRpcSession(
     try {
       await bindSessionAgentRuntimeProfile(realSessionId, runtimeProfile);
     } catch (error) {
-      if (!sessionFile && realSessionFile) quarantineUnboundSessionFile(realSessionFile);
+      if (!sessionFile && realSessionFile) { startupOwnedManager.assertOwned(); quarantineUnboundSessionFile(realSessionFile); }
       throw error;
     }
 
     const wrapper = new AgentSessionWrapper(inner, runtimeProfile, {
+      ownedSessionManager: startupOwnedManager,
       policy: restoredPolicy,
       projectRoot,
       projectManaged: Boolean(projectToolRecord),
@@ -3079,6 +3267,8 @@ export async function startRpcSession(
       }
     } catch (cleanupError) {
       console.error("[pi-web] Failed session startup cleanup:", cleanupError instanceof Error ? cleanupError.message : cleanupError);
+    } finally {
+      startupOwnedManager?.release();
     }
     throw error;
   }).finally(() => {

@@ -15,6 +15,7 @@ import { NetworkProxySettings } from "./NetworkProxySettings";
 import { ModelRetrySettings } from "./ModelRetrySettings";
 import { ModelCompactionSettings } from "./ModelCompactionSettings";
 import { ModelFallbackSetting } from "./ModelFallbackSetting";
+import { BetaFeaturesSettings } from "./BetaFeaturesSettings";
 import { ReplySuggestionsSettings } from "./ReplySuggestionsSettings";
 import { SystemPromptEditor } from "./SystemPromptEditor";
 import { PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH, PROMPT_OPTIMIZER_SYSTEM_PROMPT } from "@/lib/prompt-optimizer";
@@ -180,7 +181,7 @@ export function SettingsDialog({
   }))), []);
 
   const availableEntries = useMemo(() => detailEntries.filter((entry) => (
-    ["general", "data", "network", "conversation", "prompts", "modelRuntime"].includes(entry.key)
+    ["general", "data", "network", "conversation", "prompts", "modelRuntime", "beta"].includes(entry.key)
     || sections[entry.key] !== undefined
   )), [detailEntries, sections]);
 
@@ -546,7 +547,7 @@ export function SettingsDialog({
                 </section> : null}
                 {desktop.available ? <RuntimeLogSettings /> : null}
               </>
-              ) : activeKey === "network" ? (
+              ) : activeKey === "beta" ? <BetaFeaturesSettings /> : activeKey === "network" ? (
               <>
                 <div className={styles.contentHeading}><h2>{t("networkProxy.title")}</h2><p>{t("networkProxy.description")}</p></div>
                 <div data-settings-id="general.proxy"><NetworkProxySettings /></div>

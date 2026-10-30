@@ -1,0 +1,493 @@
+{
+  "version": 1,
+  "recordedAt": "2026-10-29T07:58:11.877Z",
+  "scope": "isolated-model-generation",
+  "syntheticTasksOnly": true,
+  "humanAcceptance": "pending",
+  "productionPersistenceAndBrowserAcceptance": "not-tested-by-these-model-runs",
+  "note": "Two development probes with one repetition per model/task. Not heldout, not a production usability or generalization claim. The final wording distinguishing unit prices from one-time charges was clarified after probe 2; its exact source is covered by local checks, not a third model probe.",
+  "experiments": [
+    {
+      "name": "intelligent-ui-rich-pilot",
+      "rawDirectory": ".verification/intelligent-ui-rich-pilot/results",
+      "manifest": {
+        "formatVersion": 2,
+        "suiteVersion": "rich-development-1",
+        "suiteSha256": "7b90140fcede18c9d136bf6bc2b28b0b3d97fd8c197370b1897113101e820815",
+        "capabilityVersion": "surface-v2-groups-comparison-filtered-tables",
+        "baselineSha256": "e257156e8d1934188c34fd5118d4eb05c27212a22d2866eecac345d2d18f7096",
+        "models": [
+          "deepseek/deepseek-flash",
+          "deepseek/deepseek-v4-pro"
+        ],
+        "policyVersions": [
+          "plan-2"
+        ],
+        "repetitions": 1,
+        "split": "development",
+        "scope": "isolated-model-generation",
+        "taskIds": [
+          "rich-outing",
+          "rich-courses",
+          "rich-text",
+          "rich-clarify"
+        ],
+        "taskCount": 4,
+        "familyCount": 4,
+        "expectedRunCount": 8,
+        "humanReview": "Two independent reviewers; disagreements require adjudication. No model self-scoring.",
+        "statistics": "Repeated runs measure consistency. Task families are the independent units; do not treat repeats as additional tasks.",
+        "modelSettings": {
+          "reasoning": "low",
+          "maxTokens": 6000,
+          "timeoutMs": 90000,
+          "maxRequestsPerTurn": 3,
+          "maxToolAttemptsPerTurn": 2,
+          "maxRetries": 0
+        },
+        "baselinePath": "C:\\Users\\shengjiajun\\.codex\\worktrees\\intelligent-ui\\Piora\\tests\\fixtures\\intelligent-ui\\phase1-tool.json",
+        "createdAt": "2026-10-29T07:16:53.647Z",
+        "runnerTimeoutMs": 95000
+      },
+      "sourceHashes": {
+        "manifest.json": "e509cb7f30942848d58ab3da6a44a70f6406cf95dac2416f8fedbe1beccbef59",
+        "adapter.json": "ecc781bbe052a27d4fc9a86a39a0496318bc50aabdac1a5c6ebb882b4748bb1e",
+        "runs.jsonl": "5edc847f2b50faac8b61db92bde4bfcabfc0ce50dd4fdf35f3e3f9cdcafa1754",
+        "summary.json": "349a63df653d103620f9459450c370ef4d7cc844f2f5e558f5f0bcb8fc98f80a"
+      },
+      "effectiveDecisionVersion": "intent-1",
+      "adapterDescriptionSha256": "b538b615e6663c043f468e18e976ac8cdce63cd13d8380608f57b2ed66099f0b",
+      "runs": [
+        {
+          "taskId": "rich-outing",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 8598,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-outing",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 29699,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-courses",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 10260,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-courses",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 26462,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-text",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 803,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        },
+        {
+          "taskId": "rich-text",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 2240,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        },
+        {
+          "taskId": "rich-clarify",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 4556,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        },
+        {
+          "taskId": "rich-clarify",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 6189,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        }
+      ],
+      "review": {
+        "type": "independent-agent-review-with-programmatic-recomputation",
+        "checkedSurfaces": 4,
+        "requiredScenarios": 12,
+        "courseBoundarySweepCount": 0,
+        "dynamicCountSweepCount": 0,
+        "requiredChecksPassed": true,
+        "additionalDynamicCountChecksPassed": null,
+        "findings": [
+          {
+            "severity": "P2",
+            "taskId": "rich-courses",
+            "model": "deepseek/deepseek-flash",
+            "kind": "stale-result-title",
+            "evidence": "符合条件的课程（全部 4 门，费用上限 200 元）",
+            "assessment": "The literal title still says all 4 and a 200 cap when the tested current state selects sports/100 (only basketball), arts/100 (only photography), or 0 (no rows). The computation and dynamic row count are correct, but the title contradicts the current controls.",
+            "suggestion": "Use a state-independent title such as 符合条件的课程; keep values and result counts in existing dynamic controls/results."
+          },
+          {
+            "severity": "P2",
+            "taskId": "rich-outing",
+            "models": [
+              "deepseek/deepseek-flash",
+              "deepseek/deepseek-v4-pro"
+            ],
+            "kind": "unsupported-upper-bound",
+            "evidence": "Both generated people controls have max=200; the user only supplied initial people=4.",
+            "assessment": "Changing the count to 201 is rejected even though the stated pricing formula supports it. min=1 and step=1 are separately consistent with a positive integer person count; the upper bound is not justified by the prompt.",
+            "suggestion": "Prefer an ordinary number control without a domain maximum unless the user or supplied rules specify one."
+          },
+          {
+            "severity": "P2",
+            "taskId": "rich-courses",
+            "models": [
+              "deepseek/deepseek-flash",
+              "deepseek/deepseek-v4-pro"
+            ],
+            "kind": "unsupported-range-and-presentation",
+            "evidence": "Both maxFee controls have max=1000 and step=10; Flash uses a slider. The user supplied initial fee cap=200, no valid range or step.",
+            "assessment": "These restrictions were invented. For this supplied dataset the tested sets remain correct, and a cap above 160 includes all courses; there is no observed arithmetic/filter failure. Flash additionally commits the interaction to an arbitrary slider range.",
+            "suggestion": "Use a number input and avoid unexplained range/step assumptions; use sliders when a meaningful range is provided."
+          },
+          {
+            "severity": "P2",
+            "taskId": "rich-outing",
+            "model": "deepseek/deepseek-v4-pro",
+            "kind": "conditional-copy-ambiguity",
+            "evidence": "加餐后：A 方案 40 元/人，B 方案 55 元/人。餐费已计入上面各总价。",
+            "assessment": "This static text is visible with the default meal=false while totals correctly exclude meal charges. The first sentence is conditional, but the next present-tense sentence can wrongly imply meal charges are already in the current totals.",
+            "suggestion": "Make the entire statement conditional: 勾选加餐时，每人加10元，餐费计入总价。"
+          },
+          {
+            "severity": "P2",
+            "taskId": "rich-outing",
+            "model": "deepseek/deepseek-flash",
+            "kind": "base-price-label-ambiguity",
+            "evidence": "方案 A 总价（30 元/人） / 方案 B 总价（45 元/人）",
+            "assessment": "After meal=true the totals use 40/55 per person while these labels remain 30/45. They can denote the base price, but unlike Pro's cards they do not say 基础. This is a wording ambiguity, not a failed calculation.",
+            "suggestion": "Label these as 基础30/45元每人, or use just 方案A/B总价 beside the explicit meal control."
+          },
+          {
+            "severity": "P2",
+            "taskId": "rich-clarify",
+            "model": "deepseek/deepseek-flash",
+            "kind": "over-clarification",
+            "evidence": "Five numbered requests: billing structure, rates and tier breakpoints, units, additional fees, and expected usage range; plus a detailed invented example and promises about break-even points.",
+            "assessment": "Correctly asks before creating UI and does not fabricate the missing tariffs. It asks for more structure than needed to start and prematurely assumes a slider range. The minimum next step is asking the user to send both original billing rules including units; additional questions should follow only if those rules omit consequential facts.",
+            "suggestion": "Ask one compact question for the two tariffs/rules and units; defer optional usage range and secondary fee questions."
+          },
+          {
+            "severity": "P2",
+            "taskId": "rich-clarify",
+            "model": "deepseek/deepseek-v4-pro",
+            "kind": "over-clarification",
+            "evidence": "Asks for each provider's rate, fixed fee, tier price and unit, then separately asks for the usage unit again and a usage range.",
+            "assessment": "Correctly avoids UI generation without tariffs. Repeats the unit request and makes range feel required before a number-input comparison can be built.",
+            "suggestion": "Request both original rules and their units once; only ask a range if later needed for a requested visualization."
+          }
+        ],
+        "evidenceFile": ".verification/intelligent-ui-rich-pilot/derived-review.json",
+        "evidenceSha256": "cfb382e7df9b400d39052547c7de751f7234e388fa02af5487a2baa12a2f8bd8"
+      }
+    },
+    {
+      "name": "intelligent-ui-rich-pilot-v2",
+      "rawDirectory": ".verification/intelligent-ui-rich-pilot-v2/results",
+      "manifest": {
+        "formatVersion": 2,
+        "suiteVersion": "rich-development-1",
+        "suiteSha256": "7b90140fcede18c9d136bf6bc2b28b0b3d97fd8c197370b1897113101e820815",
+        "capabilityVersion": "surface-v2-groups-comparison-filtered-tables",
+        "baselineSha256": "e257156e8d1934188c34fd5118d4eb05c27212a22d2866eecac345d2d18f7096",
+        "models": [
+          "deepseek/deepseek-flash",
+          "deepseek/deepseek-v4-pro"
+        ],
+        "policyVersions": [
+          "plan-2"
+        ],
+        "repetitions": 1,
+        "split": "development",
+        "scope": "isolated-model-generation",
+        "taskIds": [
+          "rich-outing",
+          "rich-courses",
+          "rich-text",
+          "rich-clarify"
+        ],
+        "taskCount": 4,
+        "familyCount": 4,
+        "expectedRunCount": 8,
+        "humanReview": "Two independent reviewers; disagreements require adjudication. No model self-scoring.",
+        "statistics": "Repeated runs measure consistency. Task families are the independent units; do not treat repeats as additional tasks.",
+        "modelSettings": {
+          "reasoning": "low",
+          "maxTokens": 6000,
+          "timeoutMs": 90000,
+          "maxRequestsPerTurn": 3,
+          "maxToolAttemptsPerTurn": 2,
+          "maxRetries": 0
+        },
+        "baselinePath": "C:\\Users\\shengjiajun\\.codex\\worktrees\\intelligent-ui\\Piora\\tests\\fixtures\\intelligent-ui\\phase1-tool.json",
+        "createdAt": "2026-10-29T07:40:47.068Z",
+        "runnerTimeoutMs": 95000
+      },
+      "sourceHashes": {
+        "manifest.json": "fb8bf25ea427474f3fb6b449953e56935ffb13acdb9c90af200e61158806214e",
+        "adapter.json": "0dfa7374596626b582ea8fb7e306e913bc4378906d4500357819ae3dd938b20e",
+        "runs.jsonl": "2c9162104de9e01c9b65c4afaaf8e7c543b325228f403c76fc38fd2f5ddd5206",
+        "summary.json": "c6fe098104f5f22b39317b7c89dc6955bcf0be452bf4b66038b258833053e018"
+      },
+      "effectiveDecisionVersion": "intent-2",
+      "adapterDescriptionSha256": "f36e3732649d7a0ecb81895cac6963e3df77ab1ad0d7ac60a6ddf3d4674027eb",
+      "runs": [
+        {
+          "taskId": "rich-outing",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 10016,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-outing",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 19349,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-courses",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 12280,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-courses",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 24162,
+          "uiAttempts": 1,
+          "firstAttemptStructurallyValid": true,
+          "publicationClaims": [
+            false
+          ],
+          "persistence": [
+            "not-tested"
+          ],
+          "browserInteraction": [
+            "not-tested"
+          ]
+        },
+        {
+          "taskId": "rich-text",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 990,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        },
+        {
+          "taskId": "rich-text",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 1748,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        },
+        {
+          "taskId": "rich-clarify",
+          "model": "deepseek/deepseek-flash",
+          "outcome": "completed",
+          "durationMs": 2145,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        },
+        {
+          "taskId": "rich-clarify",
+          "model": "deepseek/deepseek-v4-pro",
+          "outcome": "completed",
+          "durationMs": 5943,
+          "uiAttempts": 0,
+          "firstAttemptStructurallyValid": null,
+          "publicationClaims": [],
+          "persistence": [],
+          "browserInteraction": []
+        }
+      ],
+      "review": {
+        "type": "independent-agent-review-with-programmatic-recomputation",
+        "checkedSurfaces": 4,
+        "requiredScenarios": 12,
+        "courseBoundarySweepCount": 66,
+        "dynamicCountSweepCount": 33,
+        "requiredChecksPassed": true,
+        "additionalDynamicCountChecksPassed": true,
+        "findings": [
+          {
+            "priorIssue": "Flash fixed course result title says all 4 and cap 200",
+            "statusInThisSample": "resolved",
+            "taskId": "rich-courses",
+            "model": "deepseek/deepseek-flash",
+            "evidence": "可选课程（全部 4 门为基础数据）",
+            "assessment": "The title now explicitly identifies the four source rows, not the current match count or current cap. The dynamic metric reports the correct changing count. No fixed-200 claim remains in the live Surface."
+          },
+          {
+            "priorIssue": "Unsupported people maximum 200 and fee maximum 1000",
+            "statusInThisSample": "resolved",
+            "models": [
+              "deepseek/deepseek-flash",
+              "deepseek/deepseek-v4-pro"
+            ],
+            "assessment": "All numeric controls omit max; 201 people and cap 1001 are accepted and evaluated correctly. Positive integer person min/step and nonnegative fee min have direct domain meaning."
+          },
+          {
+            "priorIssue": "Flash arbitrary slider; both fee inputs step 10",
+            "statusInThisSample": "resolved",
+            "taskId": "rich-courses",
+            "models": [
+              "deepseek/deepseek-flash",
+              "deepseek/deepseek-v4-pro"
+            ],
+            "assessment": "Both fee controls are number inputs with no max and no step; there are no sliders in any of the four generated Surfaces."
+          },
+          {
+            "priorIssue": "Static outing meal/base-price text can contradict current values",
+            "statusInThisSample": "partly-resolved",
+            "taskId": "rich-outing",
+            "models": [
+              "deepseek/deepseek-flash",
+              "deepseek/deepseek-v4-pro"
+            ],
+            "evidence": {
+              "flash": "基础单价：A 方案 30 元/人，B 方案 45 元/人；两方案都可另加每人 10 元餐费。",
+              "pro": "方案A（每人30元） / 方案B（每人45元）"
+            },
+            "assessment": "Flash clearly distinguishes fixed base prices and uses dynamic per-person metrics. Pro removed the old static claim that meal charges are already included, but its card titles still say 30/45 per person when meal=true shows dynamic prices 40/55. This remains wording ambiguity, not arithmetic failure.",
+            "suggestion": "For Pro use 方案A/B alone or explicitly label 基础30/45元每人."
+          },
+          {
+            "priorIssue": "Clarification asks for range and too much structure",
+            "statusInThisSample": "partly-resolved",
+            "taskId": "rich-clarify",
+            "models": [
+              "deepseek/deepseek-flash",
+              "deepseek/deepseek-v4-pro"
+            ],
+            "evidence": {
+              "flash": "Four numbered tariff requests, qualified 有几项算几项, then promises 可以拖动/输入 and 含分档明细.",
+              "pro": "Requests the two rules, followed by four example categories of tariff information; no separate unit/range question."
+            },
+            "assessment": "Neither model asks for a usage range; Pro no longer repeats the unit question. Flash remains a four-item checklist and prematurely promises dragging and tier details despite unknown rules. Pro's four bullets are examples rather than separate required answers, but neither output demonstrates the intended minimal one-question clarification consistently.",
+            "suggestion": "Ask for both original billing rules once, including their units; defer optional details and interaction promises until the rules are known."
+          }
+        ],
+        "evidenceFile": ".verification/intelligent-ui-rich-pilot-v2/derived-review.json",
+        "evidenceSha256": "14cf1e8f6536c20bcb572f343dbd7a461d65739c72bae13f26c78322177ab77b"
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
+export type SettingsKey = "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash" | "beta";
 
 export interface SettingsPage {
   key: SettingsKey;
@@ -25,6 +25,7 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
     { key: "shell", labelKey: "shell.title", descriptionKey: "shell.description", icon: "code" },
   ] },
   { labelKey: "settings.group.capabilities", pages: [
+    { key: "beta", labelKey: "beta.title", descriptionKey: "beta.description", icon: "build" },
     { key: "tools", labelKey: "projectTools.title", descriptionKey: "projectTools.description", icon: "build" },
     { key: "capabilityBundles", labelKey: "capabilityBundles.title", descriptionKey: "capabilityBundles.description", icon: "package" },
     { key: "extensions", labelKey: "settings.extensions", descriptionKey: "settings.manageExtensionsDescription", icon: "package" },
@@ -61,6 +62,8 @@ export interface SettingsSearchItem {
 }
 
 export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
+  { id: "beta", section: "beta", labelKey: "beta.title", descriptionKey: "beta.description", keywords: ["beta", "实验"] },
+  { id: "beta.intelligentUi", section: "beta", labelKey: "beta.intelligentUiTitle", descriptionKey: "beta.intelligentUiDescription", keywords: ["beta", "intelligent ui", "实验", "交互", "生成界面"] },
   { id: "shell", section: "shell", labelKey: "shell.title", descriptionKey: "shell.description", keywords: ["terminal", "shell", "PowerShell", "终端", "命令"] },
   { id: "shell.history", section: "shell", labelKey: "shell.history", descriptionKey: "shell.nativeHistoryHint", keywords: ["history", "PowerShell", "PSReadLine", "历史", "提示", "补全"] },
   { id: "shell.defaultShell", section: "shell", labelKey: "shell.defaultShell", descriptionKey: "shell.nativeProfileHint", keywords: ["bash", "powershell", "cmd", "wsl", "zsh", "shell", "终端", "切换", "默认"] },

@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "scope": "real-provider-desktop-next-http",
+  "model": "deepseek/deepseek-flash",
+  "protocolOverride": false,
+  "completed": true,
+  "initial": {
+    "state": {
+      "people": 4,
+      "mealPerPerson": 40
+    },
+    "snapshot": "周末出游费用测算（4人）\n调整参数\n出行人数 (人): 4\n每人餐费 (元): 40\n各项费用\n总额\n总费用 (元): 400\n每人应付 (元): 100\n分项\n门票合计（30 元/人） (元): 120\n餐饮合计 (元): 160\n车费合计（固定） (元): 120\n费用对比\n门票: 120\n餐饮: 160\n车费: 120\n总费用: 400\n明细表\n项目 | 金额（元） | 人均（元）\n门票 | 120 | 30\n餐饮 | 160 | 40\n车费 | 120 | 30\n合计 | 400 | 100\n每人应付 | 100 | —\n说明\n计算规则：门票 30 元/人（固定），车费按总额 120 元（固定，不随人数变化），餐费 = 人数 × 每人餐费。保存按钮会在项目目录下新建 result.json（已存在同名文件时不会覆盖）。",
+    "version": 2
+  },
+  "changed": {
+    "state": {
+      "people": 6,
+      "mealPerPerson": 50
+    },
+    "snapshot": "周末出游费用测算（4人）\n调整参数\n出行人数 (人): 6\n每人餐费 (元): 50\n各项费用\n总额\n总费用 (元): 600\n每人应付 (元): 100\n分项\n门票合计（30 元/人） (元): 180\n餐饮合计 (元): 300\n车费合计（固定） (元): 120\n费用对比\n门票: 180\n餐饮: 300\n车费: 120\n总费用: 600\n明细表\n项目 | 金额（元） | 人均（元）\n门票 | 180 | 30\n餐饮 | 300 | 50\n车费 | 120 | 20\n合计 | 600 | 100\n每人应付 | 100 | —\n说明\n计算规则：门票 30 元/人（固定），车费按总额 120 元（固定，不随人数变化），餐费 = 人数 × 每人餐费。保存按钮会在项目目录下新建 result.json（已存在同名文件时不会覆盖）。"
+  },
+  "saved": {
+    "version": 1,
+    "surfaceId": "weekend-trip-cost",
+    "surfaceRevision": 1,
+    "title": "周末出游费用测算（4人）",
+    "parameters": {
+      "people": 6,
+      "mealPerPerson": 50
+    },
+    "snapshot": "周末出游费用测算（4人）\n调整参数\n出行人数 (人): 6\n每人餐费 (元): 50\n各项费用\n总额\n总费用 (元): 600\n每人应付 (元): 100\n分项\n门票合计（30 元/人） (元): 180\n餐饮合计 (元): 300\n车费合计（固定） (元): 120\n费用对比\n门票: 180\n餐饮: 300\n车费: 120\n总费用: 600\n明细表\n项目 | 金额（元） | 人均（元）\n门票 | 180 | 30\n餐饮 | 300 | 50\n车费 | 120 | 20\n合计 | 600 | 100\n每人应付 | 100 | —\n说明\n计算规则：门票 30 元/人（固定），车费按总额 120 元（固定，不随人数变化），餐费 = 人数 × 每人餐费。保存按钮会在项目目录下新建 result.json（已存在同名文件时不会覆盖）。"
+  },
+  "reload": true,
+  "followup": "现在 **6 人**，总共 **600 元**，每人出 **100 元**。\n\n其中门票 180 元、餐饮 300 元、车费 120 元。",
+  "followupUiCalls": 0,
+  "generationCalls": 2,
+  "diagnostics": [
+    {
+      "code": "PLAN_ID",
+      "path": "$.views[1].id",
+      "expected": "Inputs, derived results and views must have distinct identifiers",
+      "repairable": true
+    }
+  ],
+  "stages": [
+    {
+      "name": "desktop-start",
+      "time": "2026-10-29T12:54:10.11Z"
+    },
+    {
+      "name": "session-setup",
+      "time": "2026-10-29T12:54:24.023Z"
+    },
+    {
+      "name": "generate",
+      "time": "2026-10-29T12:54:30.9Z"
+    },
+    {
+      "name": "change-controls",
+      "time": "2026-10-29T12:55:06.384Z"
+    },
+    {
+      "name": "save-action",
+      "time": "2026-10-29T12:55:07.091Z"
+    },
+    {
+      "name": "reload",
+      "time": "2026-10-29T12:55:07.555Z"
+    },
+    {
+      "name": "followup",
+      "time": "2026-10-29T12:55:10.787Z"
+    },
+    {
+      "name": "completed",
+      "time": "2026-10-29T12:55:33.729Z"
+    }
+  ],
+  "semanticAcceptance": "pending; stale initial count in title",
+  "sourceSha256": "aee150857e41b1ef73db88d4b933fee11cebae8fb70c17ec246fbf4575bbe99d"
+}

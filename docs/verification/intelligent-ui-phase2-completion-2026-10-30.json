@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "date": "2026-10-30",
+  "status": "phase-2-feature-development-complete",
+  "acceptance": "pending-after-all-three-phases",
+  "release": "not-published",
+  "userSchedulingDecision": "人工验收和 CI 一起留到三个阶段开发完成后",
+  "scope": [
+    "contextual-form-selection",
+    "bounded-generation-and-durable-recovery",
+    "rich-layout-and-readonly-preview",
+    "registered-actions"
+  ],
+  "compiler": "2.5.0",
+  "decisionPolicy": "intent-4",
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "assistantMessagesVerified": 6
+  },
+  "localChecks": {
+    "moduleTests": 46,
+    "browserTests": 12,
+    "totalPassed": 58,
+    "failed": 0,
+    "skipped": 0,
+    "typecheck": "passed",
+    "targetedLint": "passed"
+  },
+  "desktop": {
+    "firstRun": {
+      "completed": false,
+      "failedStage": "ask-mode-cancel",
+      "reason": "probe expected wrong cancellation label",
+      "cancellation": {
+        "prompt": "再加一张对照表，我想看看1到20个人，票价30、40、50元时总共多少。原工具和保存按钮留着。",
+        "previewBeforeStop": "正在准备预览…\n\n正在生成预览 · 内容可能调整，尚未保存",
+        "newRecords": [],
+        "oldParametersPreserved": true,
+        "reloadPreserved": true
+      },
+      "explanation": {
+        "prompt": "先不改界面了。当前保存的人数和总价各是多少？现在点保存，用生成时的数值还是点击时的数值？会覆盖同名文件吗？当前完全访问模式还需要我确认一次吗？",
+        "answer": "当前界面记录的人数是 **6 人**、票价 **35 元/人**，合计 **210 元**。\n\n几点确认：\n\n- **用哪个数值保存**：点击保存那一刻界面上的数值（现在就是 6 人 / 35 元）。之后你再改数字，已有的 `trip.md` 不会跟着变，想更新得另存新路径。\n- **会覆盖同名文件吗**：不会。这个保存只能新建文件，如果 `trip.md` 已存在会失败而不会覆盖。\n- **完全访问模式是否还要确认**：该模式下保存动作由系统按权限策略直接执行，不需要你再人工确认一次。但前提是 `trip.md` 还不存在。\n\n对照表（1–20 人 × 30/40/50 元）按你说的先不做，需要时再让我加。",
+        "calls": []
+      },
+      "fullSave": {
+        "status": "completed"
+      },
+      "rename": {
+        "prompt": "保存按钮改成写到 trip-next.md，其他内容和参数都保持原样。",
+        "answer": "已更新并发布：按钮现在写入 **`trip-next.md`**，人数/票价（6 人、35 元/人）和计算规则都没变，合计仍是 210 元。\n\n保存行为照旧：按点击那一刻的数值新建文件，不会覆盖已存在的同名文件；当前完全访问模式下不需要你再手动确认一次。",
+        "calls": [
+          {
+            "name": "piora_render_ui_plan",
+            "id": "call_00_s4aEke3WMIFU1WzKlDje4592"
+          }
+        ]
+      }
+    },
+    "firstResume": {
+      "completed": false,
+      "failedStage": "desktop-start",
+      "reason": "probe waited for onboarding already completed"
+    },
+    "finalResume": {
+      "completed": true,
+      "sameSession": true,
+      "newProviderGeneration": false,
+      "interruptedAttempt": "cancelled",
+      "askCancel": {
+        "status": "cancelled",
+        "fileCreated": false
+      },
+      "askApprove": {
+        "status": "completed"
+      }
+    },
+    "credentialsRemoved": true
+  },
+  "limitations": [
+    "Independent human semantic review and CI deferred, not passed",
+    "Final Markdown representation hint passed local checks but has not been re-tested with provider",
+    "Live cancellation happened during preview preparation before any new candidate",
+    "Final resume screenshot was taken during state loading and is not evidence of fully settled refresh",
+    "Prior heldout metrics are compiler 2.4 historical evidence; not rerun on 2.5",
+    "Selected Windows workflows, not complete platform or permissions matrix",
+    "No commit, push, release build or publication"
+  ],
+  "hashes": {
+    "lib/intelligent-ui/action-description.ts": "6f00bc00e5154360fc5f331afbfb4b95e8f44fe075fd5ff46070cd821e5880af",
+    "lib/intelligent-ui/generation-runtime.ts": "1f40e947df4a5bf6d4b11b6783a0682ab961aa1f74209b05b8239d1e888d3c40",
+    "lib/intelligent-ui/generation-journal.ts": "a67409a2d8b3095ccb0ab3e70bca5ec59dbb9ea4ed1fbaa409169fd068f5b1ff",
+    "components/intelligent-ui/SurfaceActions.tsx": "b2b3a1aa9a45eaf6f1cbb90efc4f28c988816db3326cb7d28180a7b1c4ce9bf9",
+    "lib/intelligent-ui/generation-runtime.test.mjs": "27d129d5b37c181b4b813bcc6d85ca2154f866f6dffa4175f02c78361f2d5a4a",
+    "components/intelligent-ui-actions-browser.test.mjs": "432666135ffcac6055de723545956406e936c4336e726f3f7cfa690ddad72a82",
+    "docs/intelligent-ui-phase2-status.md": "333f4bb13ffb64bef966ebeef54fd05ef6e5dbd367e27fa9ee4e21b04b39a384",
+    "docs/intelligent-ui-phase2-progress.md": "94adc18c3c9a6d579a0b996a0c88823054f426d17a3a91bd88174a2bcab91bb4",
+    "docs/intelligent-ui-phase2-design.md": "d820560cc25e313a989faa04e41428df91fd0d472123fe9e2304cc8b8c2b883f",
+    "docs/intelligent-ui-phases.md": "317039608cb9b53f727827fc3a35b1a59e9983b16b2d3e35355c8a1a93f7917a",
+    "docs/intelligent-ui.md": "4cc483918af6b69132fa2cce0ad813506c69ff46ea811bcc05deb7b807710510",
+    "docs/README.md": "ce82b13066a6742553631732958e965191d6986ceb2af421a10acd886371d202",
+    "docs/verification/intelligent-ui-phase2-completion-2026-10-30.md": "16a4018b0c58dd1cf5f4851595c8f3ff6147cb2105b62f4b5e2d453c44d60d66",
+    ".verification/action-facts-tests-final.log": "64154c9cd2a866205435ff4a51782d8e150e93b24f3b2b31c4faeca31baca4d1",
+    ".verification/action-facts-browser.log": "689ccea1e8887f90dd49c7f196929adc7fb810369ab81f5b7f48e3dd2321f712",
+    ".verification/action-facts-typecheck-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/action-facts-lint-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/desktop-phase2-action-cancel-flash-v1/probe.mjs": "f05cb21f061ac49b3ccf679a7bb1906df5409640442621df725a28b419957e1c",
+    ".verification/desktop-phase2-action-cancel-flash-v1/result.json": "d20f85a8bcea02adb3c24189a276b4d6ecda64efd8278b17bf07f3e25b745934",
+    ".verification/desktop-phase2-action-resume-flash-v1/probe.mjs": "4e458427ac9a9ebcea5486a216bb837d6a8c0a78b253de96befdc85fa38a7c38",
+    ".verification/desktop-phase2-action-resume-flash-v1/result.json": "5d5f6099d5c7a8f18182bc4c898ed99754f899ee86dd513512c961acc7bd0f7e",
+    ".verification/desktop-phase2-action-resume-flash-v2/probe.mjs": "43247b93c4e6553feca79cb860f3280f85437a10444e4e42e35941e68f63316a",
+    ".verification/desktop-phase2-action-resume-flash-v2/result.json": "0ef69bfe5d47913d5a3a309a03a56829b04704d5602d163cf8cff97fe6e15cb3",
+    ".verification/desktop-phase2-action-cancel-flash-v1/workspace/trip.md": "ad954811088254b29f4408995250f46500b963900bb3d536a2c91607bf60a72c",
+    ".verification/desktop-phase2-action-cancel-flash-v1/workspace/trip-next.md": "8ef1e73bdd0e643c15fc4e3565141c8113f9730baeae314b68e939ad17e038df"
+  }
+}

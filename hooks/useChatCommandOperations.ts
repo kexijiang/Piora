@@ -19,6 +19,8 @@ interface Options {
   sessionId: string | null;
   scope: string;
   catalog: ChatCommandCatalog;
+  /** Capture cancellation identity synchronously; run its async gate only after recovery commits. */
+  captureSubmissionGuard?(expectedSessionId?: string): (admittedSessionId?: string) => Promise<boolean>;
   ensureSession(): Promise<string | null>;
   loadCatalog(): Promise<ChatCommandCatalog>;
   connectModelEvents(sessionId: string): Promise<void>;
@@ -133,25 +135,41 @@ export function useChatCommandOperations(options: Options) {
   const submit = useCallback(async (message: string, images: AttachedImage[] = [], files: AttachedFile[] = [], onDurable?: (id?: string) => void, inputOptions: ChatInputOptions = {}, retryOfPromptIds?: string[]) => {
     const initial = latest.current;
     const currentGeneration = generation.current;
+    const guard = initial.captureSubmissionGuard?.(initial.sessionId ?? undefined);
     let catalog = initial.catalog;
     let parsed = parseChatInput(message, catalog, { ...inputOptions, hasAttachments: Boolean(images.length || files.length) });
-    if (parsed.kind === "invalid" && parsed.code === "UNKNOWN_COMMAND") {
-      catalog = await initial.loadCatalog();
-      parsed = parseChatInput(message, catalog, { ...inputOptions, hasAttachments: Boolean(images.length || files.length) });
-    }
-    if (parsed.kind === "invalid") throw new Error(t(`chatCommands.error.${parsed.code}`, { name: parsed.name }));
     const id = inputOptions.submissionId ?? crypto.randomUUID();
     const timestamp = Date.now();
-    const operation = parsed.kind === "command" ? createChatCommandOperation(message, catalog, parsed, inputOptions) : undefined;
+    let operation = parsed.kind === "command" ? createChatCommandOperation(message, catalog, parsed, inputOptions) : undefined;
     const draft = { value: message, files: files.map(file => ({ ...file })), images: images.map(({ data, mimeType }) => ({ data, mimeType })), ...(retryOfPromptIds?.length ? { retryOfPromptIds } : {}), commandInput: persistentChatInputOptions(inputOptions) };
     let recovery: PendingPrompt = { id, scope: initial.scope, draft, message: { role: "user", content: message, timestamp, clientPromptId: id, commandSubmission: true, recoveryDraft: draft } };
-    const local: ChatCommandView = { commandId: `pending-${id}`, idempotencyKey: id, targetSessionId: initial.sessionId ?? "", acceptedAt: timestamp, status: "accepted", operation, preview: message, local: true };
+    let local: ChatCommandView = { commandId: `pending-${id}`, idempotencyKey: id, targetSessionId: initial.sessionId ?? "", acceptedAt: timestamp, status: "accepted", operation, preview: message, local: true };
+    const admitted = async (admittedSessionId?: string) => {
+      if (generation.current !== currentGeneration) return false;
+      if (guard && !await guard(admittedSessionId)) {
+        if (generation.current === currentGeneration) setRecords(current => current.map(record => record.idempotencyKey === id && record.local ? { ...record, status: "interrupted" } : record));
+        return false;
+      }
+      return generation.current === currentGeneration;
+    };
     submitting.current.add(id);
     setRecords(current => mergeChatCommandViews(current, [local]));
     try {
       await savePendingPrompt(recovery);
       if (generation.current !== currentGeneration) return false;
       onDurable?.(id);
+      // The composer may already contain a newer draft. Keep this original
+      // submission in its own durable record before any save/network preflight.
+      if (!await admitted()) return false;
+      if (parsed.kind === "invalid" && parsed.code === "UNKNOWN_COMMAND") {
+        catalog = await initial.loadCatalog();
+        parsed = parseChatInput(message, catalog, { ...inputOptions, hasAttachments: Boolean(images.length || files.length) });
+      }
+      if (parsed.kind === "invalid") throw new Error(t(`chatCommands.error.${parsed.code}`, { name: parsed.name }));
+      operation = parsed.kind === "command" ? createChatCommandOperation(message, catalog, parsed, inputOptions) : undefined;
+      local = { ...local, operation };
+      if (!await admitted()) return false;
+      setRecords(current => current.map(record => record.idempotencyKey === id && record.local ? { ...record, operation } : record));
       const sid = await initial.ensureSession();
       if (!sid) throw new Error(t("chatCommands.sessionUnavailable"));
       recovery = { ...recovery, scope: sid };
@@ -161,7 +179,7 @@ export function useChatCommandOperations(options: Options) {
       setRecords(current => current.map(record => record.idempotencyKey === id ? { ...record, targetSessionId: sid } : record));
       const materials = await initial.uploadFiles(files.filter(file => !file.path && file.text != null));
       if (operation?.command.source !== "builtin" || operation.afterPrompt || !operation) await initial.connectModelEvents(sid);
-      if (generation.current !== currentGeneration) return false;
+      if (!await admitted(sid)) return false;
       const localFiles = files.filter(file => file.path);
       const effectiveMessage = message;
       const receipt = await sendAgentCommand<DispatchReceipt>(sid, { type: "submit_input", message: effectiveMessage, rawText: message, idempotencyKey: id, ...inputOptions,

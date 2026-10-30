@@ -1,14 +1,13 @@
 import { randomUUID } from "crypto";
-import { execFile } from "child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync } from "fs";
+import { mkdirSync, readFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
-import { basename, dirname, join } from "path";
-import { promisify } from "util";
-import { fileURLToPath, pathToFileURL } from "url";
+import { basename, join } from "path";
+import { pathToFileURL } from "url";
 import { NextResponse } from "next/server";
 import { resolveSessionPath } from "@/lib/session-reader";
-
-const execFileAsync = promisify(execFile);
+import { answerOutputExportAppendix } from "@/lib/answer-output-server";
+import { intelligentUiSessionReader } from "@/lib/intelligent-ui/session";
+import type { ReadonlySessionManager } from "@/lib/session-readonly-manager";
 
 export const runtime = "nodejs";
 
@@ -17,7 +16,7 @@ type PiCodingAgentModule = {
 };
 
 type ExportHtmlModule = {
-  exportFromFile: (inputPath: string, outputPath: string) => Promise<string>;
+  exportSessionToHtml: (manager: ReadonlySessionManager, state: undefined, options: { outputPath: string }) => Promise<string>;
 };
 
 async function getPiPackageDir(): Promise<string | null> {
@@ -39,43 +38,6 @@ function getContentDisposition(fileName: string, inline: boolean): string {
   const fallback = fileName.replace(/[^\x20-\x7E]|["\\;\r\n]/g, "_") || "session.html";
   const disposition = inline ? "inline" : "attachment";
   return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encodeHeaderValue(fileName)}`;
-}
-
-async function getPiCliPath(): Promise<string | null> {
-  const candidates = new Set<string>();
-  const packageDir = await getPiPackageDir();
-
-  if (packageDir) {
-    candidates.add(join(packageDir, "dist", "cli.js"));
-  }
-
-  try {
-    const resolver = (import.meta as ImportMeta & {
-      resolve?: (specifier: string) => string | Promise<string>;
-    }).resolve;
-    if (typeof resolver === "function") {
-      const indexUrl = await resolver("@earendil-works/pi-coding-agent");
-      candidates.add(join(dirname(fileURLToPath(indexUrl)), "cli.js"));
-    }
-  } catch {
-    // Next.js production bundles can strip import.meta.resolve.
-  }
-
-  candidates.add(
-    join(
-      process.cwd(),
-      "node_modules",
-      "@earendil-works",
-      "pi-coding-agent",
-      "dist",
-      "cli.js"
-    )
-  );
-
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  return null;
 }
 
 /**
@@ -418,28 +380,15 @@ function patchEmbeddedExportHtml(html: string, appearance: "light" | "dark"): st
   );
 }
 
-async function exportSession(filePath: string, outputPath: string): Promise<void> {
-  const cliPath = await getPiCliPath();
-  if (cliPath) {
-    await execFileAsync(process.execPath, [cliPath, "--export", filePath, outputPath], {
-      cwd: process.cwd(),
-      timeout: 30_000,
-      env: {
-        ...process.env,
-        PI_OFFLINE: "1",
-        PI_SKIP_VERSION_CHECK: "1",
-      },
-      maxBuffer: 1024 * 1024,
-    });
-    return;
-  }
-
+async function exportSession(sessionId: string, filePath: string, outputPath: string): Promise<ReadonlySessionManager> {
   const packageDir = await getPiPackageDir();
-  if (!packageDir) throw new Error("pi CLI not found");
+  if (!packageDir) throw new Error("pi HTML exporter not found");
 
   const exporterUrl = pathToFileURL(join(packageDir, "dist", "core", "export-html", "index.js")).href;
-  const { exportFromFile } = (await import(exporterUrl)) as ExportHtmlModule;
-  await exportFromFile(filePath, outputPath);
+  const { exportSessionToHtml } = (await import(exporterUrl)) as ExportHtmlModule;
+  const reader = (await intelligentUiSessionReader(sessionId, filePath))();
+  await exportSessionToHtml(reader, undefined, { outputPath });
+  return reader;
 }
 
 export async function GET(
@@ -466,10 +415,11 @@ export async function GET(
     const outputPath = join(tempDir, `${randomUUID()}.html`);
 
     try {
-      await exportSession(filePath, outputPath);
+      const snapshot = await exportSession(id, filePath, outputPath);
 
       const html = readFileSync(outputPath, "utf8");
-      const patchedHtml = patchExportHtml(html);
+      const appendix = await answerOutputExportAppendix(id, filePath, snapshot);
+      const patchedHtml = patchExportHtml(html).replace("</body>", `${appendix}</body>`);
       const responseHtml = embed ? patchEmbeddedExportHtml(patchedHtml, appearance) : patchedHtml;
       return new Response(responseHtml, {
         headers: {

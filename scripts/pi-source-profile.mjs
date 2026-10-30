@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bashFile, originalBashSource, patchWindowsBash } from "./pi-windows-bash-patch.mjs";
+import { codingAgentAdmissionTreeCommitment, verifyIntelligentUiAdmission } from "./patch-intelligent-ui-admission.mjs";
 
 const certificate = JSON.parse(await readFile(new URL("./pi-source-profile-1.4.0.json", import.meta.url), "utf8"));
 export const piSourceLaunchers = Object.freeze({
@@ -52,8 +53,14 @@ async function verifyOfficialSource(root) {
     || sha256(bytes) !== certificate.packageJsonSha256) {
     throw new Error("Unexpected Pi package manifest; review the source profile before upgrading");
   }
+  // Accept either the exact official tree or the separately reviewed admission
+  // patch. All admission-patched files must agree on pre/post state. The exact
+  // Windows cancellation patch is independently normalized by piTreeCommitment;
+  // no paths are omitted and unknown bytes still fail closed.
+  const admission = await verifyIntelligentUiAdmission(root, { allowOriginal: true });
+  const expectedDist = admission.state === "patched" ? codingAgentAdmissionTreeCommitment : certificate.unbundledDist;
   const commitment = await piTreeCommitment(join(sdk, "dist"), true);
-  if (commitment.files !== certificate.unbundledDist.files || commitment.sha256 !== certificate.unbundledDist.sha256) {
+  if (commitment.files !== expectedDist.files || commitment.sha256 !== expectedDist.sha256) {
     throw new Error("Pi unbundled distribution differs from the verified official npm package");
   }
   // Resolve from Pi, rather than accepting a root label while a nested copy wins.

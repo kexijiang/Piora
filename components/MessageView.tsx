@@ -4,6 +4,8 @@ import { messageImageUrl } from "@/lib/message-images";
 import { NestedToolCalls, useNestedToolCalls } from "./NestedToolCalls";
 import { ProcessStack } from "./ProcessStack";
 import { processTimeRange } from "@/lib/process-duration";
+import { isAnswerOutputBlock } from "@/lib/answer-output";
+import { AnswerOutput } from "./AnswerOutput";
 
 import { createContext, useContext, memo, useState, useRef, useEffect, useMemo, useCallback, type ReactNode } from "react";
 import { useVirtualRowToggle } from "./VirtualRowState";
@@ -582,6 +584,13 @@ function UserMessageView({ messageActions, message, cwd, onOpenFile, entryId, on
   );
 }
 
+/** Output identity exists during streaming; hydration must not remount focused controls. */
+export function assistantBlockKey(block: AssistantContentBlock, index: number, entryId?: string): string {
+  return block.type === "toolCall" && isAnswerOutputBlock(block)
+    ? `answer-output:${block.toolCallId}`
+    : `${entryId ?? "stream"}-${index}`;
+}
+
 function AssistantMessageView({
   messageActions,
   message,
@@ -624,7 +633,7 @@ function AssistantMessageView({
   const blocks = blockItems.map(({ block }) => block);
   const blockGroups: { process: boolean; items: typeof blockItems }[] = [];
   for (const item of blockItems) {
-    const process = item.block.type === "thinking" || item.block.type === "toolCall";
+    const process = item.block.type === "thinking" || item.block.type === "toolCall" && !isAnswerOutputBlock(item.block);
     const previous = blockGroups.at(-1);
     if (process && previous?.process) previous.items.push(item);
     else blockGroups.push({ process, items: [item] });
@@ -732,9 +741,9 @@ function AssistantMessageView({
     >
       <div className="message-assistant-blocks">
         {blockGroups.map((group) => {
-          const key = `${entryId ?? "stream"}-${group.items[0].originalIndex}`;
+          const key = assistantBlockKey(group.items[0].block, group.items[0].originalIndex, entryId);
           const content = group.items.map(({ block, originalIndex }) => (
-          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
+          <BlockView key={assistantBlockKey(block, originalIndex, entryId)} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
           ));
           return group.process ? <ProcessStack key={key} stateKey={key} count={group.items.length}
             timeRanges={[processTimeRange(group.items.map(({ block }) => block), message.timestamp, prevTimestamp, toolResults)]}>{content}</ProcessStack>
@@ -809,6 +818,7 @@ function AssistantMessageView({
 }
 
 function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCallDurations, cwd, onOpenFile, sessionId, entryId, blockIndex, onOpenAutomation, onOpenCommandExecution }: { block: AssistantContentBlock; toolResults?: Map<string, ToolResultMessage>; isStreaming?: boolean; streamingDuration?: number; toolCallDurations?: Map<string, number>; cwd?: string; onOpenFile?: (filePath: string) => void; sessionId?: string; entryId?: string; blockIndex: number; onOpenAutomation?: (automationId: string) => void; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
+  const historyMode = useContext(HistoryModeContext);
   if (block.type === "text") {
     return <TextBlock block={block as TextContent} isStreaming={isStreaming} cwd={cwd} onOpenFile={onOpenFile} />;
   }
@@ -819,6 +829,8 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
   if (block.type === "toolCall") {
     const tc = block as ToolCallContent;
     const result = toolResults?.get(tc.toolCallId);
+    if (isAnswerOutputBlock(tc)) return <AnswerOutput result={result} toolCallId={tc.toolCallId} sessionId={sessionId}
+      entryId={entryId} readOnly={historyMode} generating={isStreaming} />;
     const duration = toolCallDurations?.get(tc.toolCallId);
     return <ToolCallBlock block={tc} result={result} duration={duration} cwd={cwd} sessionId={sessionId} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
   }

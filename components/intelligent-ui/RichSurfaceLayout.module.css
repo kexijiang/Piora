@@ -1,0 +1,15 @@
+.layout { container-type: inline-size; display: grid; gap: 20px; min-width: 0; }
+.group { display: grid; gap: 12px; min-width: 0; }
+.group h4, .card h5 { margin: 0; font-size: var(--text-base); font-weight: 600; overflow-wrap: anywhere; }
+.groupGrid { display: grid; grid-template-columns: repeat(var(--ui-columns, 1), minmax(0, 1fr)); align-items: start; gap: 16px; }
+.node { min-width: 0; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); align-items: start; gap: 12px; }
+.card { display: grid; gap: 12px; min-width: 0; border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--bg); }
+.count, .notice { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--text-muted); overflow-wrap: anywhere; }
+.tableScroll { min-width: 0; max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.tableScroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tableScroll table { border-collapse: collapse; min-width: 100%; font-size: var(--text-sm); }
+.tableScroll th, .tableScroll td { padding: 9px 12px; text-align: start; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.tableScroll th { font-weight: 600; background: var(--bg); }
+.tableScroll tr:last-child td { border-bottom: 0; }
+@container (max-width: 32rem) { .groupGrid { grid-template-columns: minmax(0, 1fr); } }

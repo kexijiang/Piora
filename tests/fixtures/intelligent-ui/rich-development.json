@@ -1,0 +1,41 @@
+{
+  "version": "rich-development-1",
+  "capabilityVersion": "surface-v2-groups-comparison-filtered-tables",
+  "description": "Four development-only task families. This small integration probe is not heldout acceptance. Labels and checks must never be sent to the model.",
+  "tasks": [
+    {
+      "id": "rich-outing",
+      "family": "outing-comparison",
+      "domain": "outing",
+      "split": "development",
+      "label": "ui",
+      "turns": [{ "user": "周末出游有两个方案，A每人30元，B每人45元，都可以另加每人10元的餐。先按4个人、不加餐，把两个方案并排给我看，人数和加不加餐我想自己改，随时看各自总价。", "label": "ui" }],
+      "checks": ["初始A总价120、B总价180；6人加餐时A240、B330。", "两个方案均可见；修改人数和餐饮同时影响两边，不能遗漏固定规则或编造费用。", "检查模型生成的完整布局和计算；隔离生成不能计为实际保存、浏览器或人工验收。"]
+    },
+    {
+      "id": "rich-courses",
+      "family": "course-filtering",
+      "domain": "courses",
+      "split": "development",
+      "label": "ui",
+      "turns": [{ "user": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。", "label": "ui" }],
+      "checks": ["初始显示四门；运动类且最高100元时只剩篮球；文艺类且最高100元时只剩摄影。", "最高费用是包含边界，筛选后仍保留原始四行数据；不能只改变总数而不筛选行。", "检查实际筛选引用及结果；隔离生成不能计为实际保存、浏览器或人工验收。"]
+    },
+    {
+      "id": "rich-text",
+      "family": "one-off-sharing",
+      "domain": "sharing",
+      "split": "development",
+      "label": "text",
+      "turns": [{ "user": "480块六个人均摊，每人多少？", "label": "text" }]
+    },
+    {
+      "id": "rich-clarify",
+      "family": "missing-tariffs",
+      "domain": "tariffs",
+      "split": "development",
+      "label": "clarify",
+      "turns": [{ "user": "我想改用量看看甲乙两家怎么收费，不过两家的计费规则我还没发给你。", "label": "clarify" }]
+    }
+  ]
+}

@@ -1,0 +1,1393 @@
+{
+  "version": 1,
+  "date": "2026-10-29",
+  "scope": "development connected workflow probes; not heldout, desktop or independent human acceptance",
+  "beforeCompilerChange": 6,
+  "afterCompilerChange": 2,
+  "inspection": {
+    "reviewer": "implementing-agent",
+    "independentHumanReviews": [],
+    "knownGaps": [
+      "Pro procurement omitted expected bottle count from follow-up",
+      "Flash outing added unrequested meal step and currency rounding",
+      "Static text generalization remains unverified",
+      "First two probes verify disk reload only; later six also inspect DOM controls"
+    ]
+  },
+  "runs": [
+    {
+      "source": ".verification/workflow-outing-flash-v1/result.json",
+      "sha256": "c96049da96ca70ef2e14a58e274b9b57d25d1f3de51dd487be883bf27ee4aefd",
+      "reportVersion": 1,
+      "model": "deepseek/deepseek-flash",
+      "task": {
+        "id": "workflow-outing-development",
+        "split": "development",
+        "prompt": "周末我们4个人出去玩，门票每人30元，吃饭每人40元，车费一共120元。我想来回改人数和每人餐费，看看各项、总共和每人多少。",
+        "changes": [
+          {
+            "label": "人数",
+            "value": 6
+          },
+          {
+            "label": "餐费|饭费|吃饭",
+            "value": 50
+          }
+        ],
+        "followup": "我刚才自己调了参数。现在多少人，总共花多少、每个人出多少？简单解释下，直接说就行。",
+        "expected": {
+          "initial": {
+            "tickets": 120,
+            "meals": 160,
+            "transport": 120,
+            "total": 400,
+            "perPerson": 100
+          },
+          "afterPeople": {
+            "tickets": 180,
+            "meals": 240,
+            "transport": 120,
+            "total": 540,
+            "perPerson": 90
+          },
+          "afterMeal": {
+            "tickets": 180,
+            "meals": 300,
+            "transport": 120,
+            "total": 600,
+            "perPerson": 100
+          },
+          "followup": "Uses 6 people and the saved 50 yuan meal value. Explains 600 total and 100 each without generating another UI. Static labels and notes must remain true."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "15331478f1797e367927f21db2d9752ddb65ba4fd495864014125967bbbffc28",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "b45681e249f40513749cdf8ff32558659bad822451b2dfc842fbdc5e94863cfd",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "ca41e3af0d6554856b4c66930c783168d4d5c3c79bd5db72c74b76ee97d6d0e4",
+        "lib/intelligent-ui/rich-plan.ts": "713c2a622440ca53e0e36572e4b457f3dbde52e0ad7a0f17fd298e1a85d00421",
+        "lib/intelligent-ui/rich-plan-schema.ts": "4418a9214d3c962055cdb252f670f686743463cfd49079ccb8022d59b4582a78",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "people": 4,
+          "mealPerPerson": 40
+        },
+        "snapshot": "周末出游费用测算\n可调参数\n出行人数 (人): 4\n每人餐费 (元): 40\n费用明细\n门票合计（30 元/人） (元): 120\n餐费合计（按上面每人餐费） (元): 160\n车费合计（固定） (元): 120\n总费用 (元): 400\n每人分摊（四舍五入到分） (元): 100\n车费 120 元按全体平摊；若车费按人数变化，请告诉我规则再调整。\n各项占比\n门票: 120\n吃饭: 160\n车费: 120",
+        "controls": [
+          {
+            "id": "people",
+            "label": "出行人数 (人)",
+            "type": "number",
+            "value": 4,
+            "min": 1,
+            "step": 1
+          },
+          {
+            "id": "mealPerPerson",
+            "label": "每人餐费 (元)",
+            "type": "number",
+            "value": 40,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "86b2c696-cc6f-469a-aa5f-f480beefa160"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": 6,
+          "state": {
+            "people": 6,
+            "mealPerPerson": 40
+          },
+          "snapshot": "周末出游费用测算\n可调参数\n出行人数 (人): 6\n每人餐费 (元): 40\n费用明细\n门票合计（30 元/人） (元): 180\n餐费合计（按上面每人餐费） (元): 240\n车费合计（固定） (元): 120\n总费用 (元): 540\n每人分摊（四舍五入到分） (元): 90\n车费 120 元按全体平摊；若车费按人数变化，请告诉我规则再调整。\n各项占比\n门票: 180\n吃饭: 240\n车费: 120"
+        },
+        {
+          "requestedValue": 50,
+          "state": {
+            "people": 6,
+            "mealPerPerson": 50
+          },
+          "snapshot": "周末出游费用测算\n可调参数\n出行人数 (人): 6\n每人餐费 (元): 50\n费用明细\n门票合计（30 元/人） (元): 180\n餐费合计（按上面每人餐费） (元): 300\n车费合计（固定） (元): 120\n总费用 (元): 600\n每人分摊（四舍五入到分） (元): 100\n车费 120 元按全体平摊；若车费按人数变化，请告诉我规则再调整。\n各项占比\n门票: 180\n吃饭: 300\n车费: 120"
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": null,
+        "observedControls": null
+      },
+      "turns": [
+        {
+          "user": "周末我们4个人出去玩，门票每人30元，吃饭每人40元，车费一共120元。我想来回改人数和每人餐费，看看各项、总共和每人多少。",
+          "assistant": "交互面板已生成并发布 ✅ 默认 4 人、每人餐费 40 元时：\n\n| 项目 | 金额 |\n|---|---|\n| 门票（30×4） | 120 元 |\n| 吃饭（40×4） | 160 元 |\n| 车费（固定） | 120 元 |\n| **总计** | **400 元** |\n| **每人分摊** | **100 元** |\n\n改动「出行人数」或「每人餐费」，各项和人均会自动重算。如果车费也会随人数变化（比如按车算、按人算），告诉我规则我再加进去。",
+          "terminal": "stop",
+          "durationMs": 8934.1644,
+          "toolResults": [
+            {
+              "entryId": "a77563bd",
+              "toolCallId": "call_00_hqtAQWb3by7EVPsg0sQD9713",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "我刚才自己调了参数。现在多少人，总共花多少、每个人出多少？简单解释下，直接说就行。",
+          "assistant": "你现在调成了 **6 人、每人餐费 50 元**：\n\n- 门票：30×6 = 180 元\n- 吃饭：50×6 = 300 元\n- 车费：120 元\n- **总计：600 元**\n- **每人出：100 元**\n\n算法：先加总各项，再除以人数 600÷6=100。",
+          "terminal": "stop",
+          "durationMs": 5422.4956999999995,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    },
+    {
+      "source": ".verification/workflow-procurement-pro-v1/result.json",
+      "sha256": "83e6653de4214bf3e0eb0b05c7156e742662a01ca8e2ae5cc408305c9006bf70",
+      "reportVersion": 1,
+      "model": "deepseek/deepseek-v4-pro",
+      "task": {
+        "id": "workflow-procurement-development",
+        "split": "development",
+        "prompt": "聚会要买12箱饮料，每箱24瓶、每瓶3元；零食每包8元，先买20包。我想自己改饮料箱数和零食包数，马上看到各项费用和总价。",
+        "changes": [
+          {
+            "label": "饮料.*箱|箱数",
+            "value": 8
+          },
+          {
+            "label": "零食.*包|包数",
+            "value": 30
+          }
+        ],
+        "followup": "我调完了。按现在的数量说一下买多少饮料和零食、各多少钱、总价多少，不用再做一个界面。",
+        "expected": {
+          "initial": {
+            "bottles": 288,
+            "drinks": 864,
+            "snacks": 160,
+            "total": 1024
+          },
+          "afterDrinks": {
+            "bottles": 192,
+            "drinks": 576,
+            "snacks": 160,
+            "total": 736
+          },
+          "afterSnacks": {
+            "bottles": 192,
+            "drinks": 576,
+            "snacks": 240,
+            "total": 816
+          },
+          "followup": "Uses 8 boxes, 192 bottles and 30 snack packs; explains 576 plus 240 equals 816 without regenerating the UI. Fixed per-box and unit-price rules remain distinct from current totals."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "15331478f1797e367927f21db2d9752ddb65ba4fd495864014125967bbbffc28",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "b45681e249f40513749cdf8ff32558659bad822451b2dfc842fbdc5e94863cfd",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "ca41e3af0d6554856b4c66930c783168d4d5c3c79bd5db72c74b76ee97d6d0e4",
+        "lib/intelligent-ui/rich-plan.ts": "713c2a622440ca53e0e36572e4b457f3dbde52e0ad7a0f17fd298e1a85d00421",
+        "lib/intelligent-ui/rich-plan-schema.ts": "4418a9214d3c962055cdb252f670f686743463cfd49079ccb8022d59b4582a78",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "drinkCases": 12,
+          "snackPacks": 20
+        },
+        "snapshot": "聚会采购费用计算\n采购数量\n饮料箱数 (箱): 12\n零食包数 (包): 20\n费用明细\n饮料费用 (元): 864\n零食费用 (元): 160\n总价 (元): 1024\n说明\n饮料每箱24瓶、每瓶3元（每箱72元）；零食每包8元。",
+        "controls": [
+          {
+            "id": "drinkCases",
+            "label": "饮料箱数 (箱)",
+            "type": "number",
+            "value": 12,
+            "min": 0,
+            "step": 1
+          },
+          {
+            "id": "snackPacks",
+            "label": "零食包数 (包)",
+            "type": "number",
+            "value": 20,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "37d0daee-15db-41ff-85d0-c032adb3bafd"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": 8,
+          "state": {
+            "drinkCases": 8,
+            "snackPacks": 20
+          },
+          "snapshot": "聚会采购费用计算\n采购数量\n饮料箱数 (箱): 8\n零食包数 (包): 20\n费用明细\n饮料费用 (元): 576\n零食费用 (元): 160\n总价 (元): 736\n说明\n饮料每箱24瓶、每瓶3元（每箱72元）；零食每包8元。"
+        },
+        {
+          "requestedValue": 30,
+          "state": {
+            "drinkCases": 8,
+            "snackPacks": 30
+          },
+          "snapshot": "聚会采购费用计算\n采购数量\n饮料箱数 (箱): 8\n零食包数 (包): 30\n费用明细\n饮料费用 (元): 576\n零食费用 (元): 240\n总价 (元): 816\n说明\n饮料每箱24瓶、每瓶3元（每箱72元）；零食每包8元。"
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": null,
+        "observedControls": null
+      },
+      "turns": [
+        {
+          "user": "聚会要买12箱饮料，每箱24瓶、每瓶3元；零食每包8元，先买20包。我想自己改饮料箱数和零食包数，马上看到各项费用和总价。",
+          "assistant": "已生成可交互的费用计算器，你可以直接调整「饮料箱数」和「零食包数」，各项费用和总价会实时更新。\n\n当前默认值：\n- 饮料 12 箱 → 864 元\n- 零食 20 包 → 160 元\n- 总价 → 1024 元\n\n单价已固定：饮料每箱 24 瓶 × 3 元 = 72 元/箱；零食 8 元/包。",
+          "terminal": "stop",
+          "durationMs": 11261.951099999998,
+          "toolResults": [
+            {
+              "entryId": "2c12d510",
+              "toolCallId": "call_00_rsfdxv8lJTYijohLNkc42705",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "我调完了。按现在的数量说一下买多少饮料和零食、各多少钱、总价多少，不用再做一个界面。",
+          "assistant": "按你调好的数量：\n\n- 饮料：8 箱，576 元（每箱 72 元）\n- 零食：30 包，240 元（每包 8 元）\n- 总价：816 元",
+          "terminal": "stop",
+          "durationMs": 5282.4071,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    },
+    {
+      "source": ".verification/workflow-courses-flash-v2/result.json",
+      "sha256": "3c66fcf42b0dfed7e6b48c47b0f5ecb47e53e16cf862dff269f4292cef9c3261",
+      "reportVersion": 2,
+      "model": "deepseek/deepseek-flash",
+      "task": {
+        "id": "workflow-courses-development",
+        "split": "development",
+        "prompt": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+        "changes": [
+          {
+            "label": "类别|分类",
+            "optionLabel": "^运动(?:类)?$"
+          },
+          {
+            "label": "最高|费用|预算",
+            "value": 100
+          },
+          {
+            "label": "类别|分类",
+            "optionLabel": "^文艺(?:类)?$"
+          }
+        ],
+        "followup": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+        "expected": {
+          "initial": [
+            "绘画",
+            "篮球",
+            "羽毛球",
+            "摄影"
+          ],
+          "afterCategory": [
+            "篮球",
+            "羽毛球"
+          ],
+          "afterMaximum": [
+            "篮球"
+          ],
+          "afterArt": [
+            "摄影"
+          ],
+          "followup": "Uses the saved category and maximum, recommends only photography at 100 yuan, and does not regenerate the UI. Full original data must remain present while actual visible rows change."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "203ddf7dcda6a26f40671cbef69a1cd2b7a993044cb8fe9e12e16847748af0ba",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "b45681e249f40513749cdf8ff32558659bad822451b2dfc842fbdc5e94863cfd",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "ca41e3af0d6554856b4c66930c783168d4d5c3c79bd5db72c74b76ee97d6d0e4",
+        "lib/intelligent-ui/rich-plan.ts": "713c2a622440ca53e0e36572e4b457f3dbde52e0ad7a0f17fd298e1a85d00421",
+        "lib/intelligent-ui/rich-plan-schema.ts": "4418a9214d3c962055cdb252f670f686743463cfd49079ccb8022d59b4582a78",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "category": "全部",
+          "maxFee": 200
+        },
+        "snapshot": "课程筛选：类别与费用上限\n筛选条件\n类别: 全部\n最高费用 (元): 200\n符合条件、仍可选的课程\nRows shown: 4/4; active filters: 1; unknown rows: 0\n课程 | 类别 | 费用（元）\n[shown] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+        "controls": [
+          {
+            "id": "category",
+            "label": "类别",
+            "type": "select",
+            "value": "全部",
+            "options": [
+              "全部",
+              "文艺类",
+              "运动类"
+            ]
+          },
+          {
+            "id": "maxFee",
+            "label": "最高费用 (元)",
+            "type": "number",
+            "value": 200,
+            "min": 0
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "e5a53ffa-c80a-494c-bd58-29e9a15a867b"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": "运动类",
+          "state": {
+            "category": "运动类",
+            "maxFee": 200
+          },
+          "snapshot": "课程筛选：类别与费用上限\n筛选条件\n类别: 运动类\n最高费用 (元): 200\n符合条件、仍可选的课程\nRows shown: 2/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用（元）\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxFee": 200
+          },
+          "browserTables": [
+            "课程\t类别\t费用（元）\n篮球\t运动类\t80\n羽毛球\t运动类\t160"
+          ]
+        },
+        {
+          "requestedValue": 100,
+          "state": {
+            "category": "运动类",
+            "maxFee": 100
+          },
+          "snapshot": "课程筛选：类别与费用上限\n筛选条件\n类别: 运动类\n最高费用 (元): 100\n符合条件、仍可选的课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用（元）\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxFee": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用（元）\n篮球\t运动类\t80"
+          ]
+        },
+        {
+          "requestedValue": "文艺类",
+          "state": {
+            "category": "文艺类",
+            "maxFee": 100
+          },
+          "snapshot": "课程筛选：类别与费用上限\n筛选条件\n类别: 文艺类\n最高费用 (元): 100\n符合条件、仍可选的课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用（元）\n[filtered] 绘画 | 文艺类 | 120\n[filtered] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "文艺类",
+            "maxFee": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用（元）\n摄影\t文艺类\t100"
+          ]
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": true,
+        "observedControls": {
+          "category": "文艺类",
+          "maxFee": 100
+        }
+      },
+      "turns": [
+        {
+          "user": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+          "assistant": "已创建并发布筛选面板（surface: `course-filter`）。\n\n- **类别**默认「全部」：四门课都显示\n- **最高费用**默认 200 元：四门课都在范围内（80–160 元）\n\n调整类别或降低最高费用后，表格会实时只保留符合条件的课程。例如选「运动类」且上限 100 元，就只剩篮球（80 元）；羽毛球 160 元、文艺类两门课会被过滤掉。",
+          "terminal": "stop",
+          "durationMs": 17169.7012,
+          "toolResults": [
+            {
+              "entryId": "beafd79e",
+              "toolCallId": "call_00_wo1s3Xef15YwF2jKL88w5099",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+          "assistant": "当前条件：类别「文艺类」，最高费用 100 元。\n\n只剩 **摄影**（文艺类，100 元）可选。\n\n绘画虽然也是文艺类，但 120 元超过上限，因此被排除。",
+          "terminal": "stop",
+          "durationMs": 4437.762600000002,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    },
+    {
+      "source": ".verification/workflow-courses-pro-v2/result.json",
+      "sha256": "41a138882ba502010c6f5f95a888c0b9d358219a9a2f67970c757d583b084cd4",
+      "reportVersion": 2,
+      "model": "deepseek/deepseek-v4-pro",
+      "task": {
+        "id": "workflow-courses-development",
+        "split": "development",
+        "prompt": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+        "changes": [
+          {
+            "label": "类别|分类",
+            "optionLabel": "^运动(?:类)?$"
+          },
+          {
+            "label": "最高|费用|预算",
+            "value": 100
+          },
+          {
+            "label": "类别|分类",
+            "optionLabel": "^文艺(?:类)?$"
+          }
+        ],
+        "followup": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+        "expected": {
+          "initial": [
+            "绘画",
+            "篮球",
+            "羽毛球",
+            "摄影"
+          ],
+          "afterCategory": [
+            "篮球",
+            "羽毛球"
+          ],
+          "afterMaximum": [
+            "篮球"
+          ],
+          "afterArt": [
+            "摄影"
+          ],
+          "followup": "Uses the saved category and maximum, recommends only photography at 100 yuan, and does not regenerate the UI. Full original data must remain present while actual visible rows change."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "203ddf7dcda6a26f40671cbef69a1cd2b7a993044cb8fe9e12e16847748af0ba",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "b45681e249f40513749cdf8ff32558659bad822451b2dfc842fbdc5e94863cfd",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "ca41e3af0d6554856b4c66930c783168d4d5c3c79bd5db72c74b76ee97d6d0e4",
+        "lib/intelligent-ui/rich-plan.ts": "713c2a622440ca53e0e36572e4b457f3dbde52e0ad7a0f17fd298e1a85d00421",
+        "lib/intelligent-ui/rich-plan-schema.ts": "4418a9214d3c962055cdb252f670f686743463cfd49079ccb8022d59b4582a78",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "category": "全部类别",
+          "maxCost": 200
+        },
+        "snapshot": "课程筛选\n筛选条件\n类别: 全部类别\n最高费用 (元): 200\n可选课程\nRows shown: 4/4; active filters: 1; unknown rows: 0\n课程 | 类别 | 费用\n[shown] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+        "controls": [
+          {
+            "id": "category",
+            "label": "类别",
+            "type": "select",
+            "value": "全部类别",
+            "options": [
+              "全部类别",
+              "文艺类",
+              "运动类"
+            ]
+          },
+          {
+            "id": "maxCost",
+            "label": "最高费用 (元)",
+            "type": "number",
+            "value": 200
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "72f33a24-d4e6-402b-a086-ffaa6cd7aec2"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": "运动类",
+          "state": {
+            "category": "运动类",
+            "maxCost": 200
+          },
+          "snapshot": "课程筛选\n筛选条件\n类别: 运动类\n最高费用 (元): 200\n可选课程\nRows shown: 2/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxCost": 200
+          },
+          "browserTables": [
+            "课程\t类别\t费用\n篮球\t运动类\t80\n羽毛球\t运动类\t160"
+          ]
+        },
+        {
+          "requestedValue": 100,
+          "state": {
+            "category": "运动类",
+            "maxCost": 100
+          },
+          "snapshot": "课程筛选\n筛选条件\n类别: 运动类\n最高费用 (元): 100\n可选课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxCost": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用\n篮球\t运动类\t80"
+          ]
+        },
+        {
+          "requestedValue": "文艺类",
+          "state": {
+            "category": "文艺类",
+            "maxCost": 100
+          },
+          "snapshot": "课程筛选\n筛选条件\n类别: 文艺类\n最高费用 (元): 100\n可选课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用\n[filtered] 绘画 | 文艺类 | 120\n[filtered] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "文艺类",
+            "maxCost": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用\n摄影\t文艺类\t100"
+          ]
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": true,
+        "observedControls": {
+          "category": "文艺类",
+          "maxCost": 100
+        }
+      },
+      "turns": [
+        {
+          "user": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+          "assistant": "已生成可交互的课程筛选器，默认显示全部类别、最高费用 200 元。\n\n当前状态下，4 门课都符合条件（费用均 ≤ 200）：\n- 绘画 · 文艺类 · 120 元\n- 篮球 · 运动类 · 80 元\n- 羽毛球 · 运动类 · 160 元\n- 摄影 · 文艺类 · 100 元\n\n你可以调整「类别」（全部／文艺类／运动类）和「最高费用」，表格会实时过滤出仍可选的课程。",
+          "terminal": "stop",
+          "durationMs": 58667.256,
+          "toolResults": [
+            {
+              "entryId": "d4be1f4a",
+              "toolCallId": "call_00_ImCpOTZGaYS4xLzYdI4B3806",
+              "isError": true,
+              "diagnostic": {
+                "code": "UI_ARGUMENTS_INVALID",
+                "repairable": true
+              }
+            },
+            {
+              "entryId": "a36157ea",
+              "toolCallId": "call_00_S5XnOgKxeqvkchyu2K7C5281",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+          "assistant": "按你现在的条件（文艺类、最高 100 元），只剩 **摄影（文艺类，100 元）** 可选。绘画 120 元超预算，篮球和羽毛球不是文艺类。",
+          "terminal": "stop",
+          "durationMs": 8160.800399999993,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    },
+    {
+      "source": ".verification/workflow-procurement-flash-v2/result.json",
+      "sha256": "7b072491e8174ec07d01abd930397aa2c6887d6931c67d0fdea26618bd3a12fe",
+      "reportVersion": 2,
+      "model": "deepseek/deepseek-flash",
+      "task": {
+        "id": "workflow-procurement-development",
+        "split": "development",
+        "prompt": "聚会要买12箱饮料，每箱24瓶、每瓶3元；零食每包8元，先买20包。我想自己改饮料箱数和零食包数，马上看到各项费用和总价。",
+        "changes": [
+          {
+            "label": "饮料.*箱|箱数",
+            "value": 8
+          },
+          {
+            "label": "零食.*包|包数",
+            "value": 30
+          }
+        ],
+        "followup": "我调完了。按现在的数量说一下买多少饮料和零食、各多少钱、总价多少，不用再做一个界面。",
+        "expected": {
+          "initial": {
+            "bottles": 288,
+            "drinks": 864,
+            "snacks": 160,
+            "total": 1024
+          },
+          "afterDrinks": {
+            "bottles": 192,
+            "drinks": 576,
+            "snacks": 160,
+            "total": 736
+          },
+          "afterSnacks": {
+            "bottles": 192,
+            "drinks": 576,
+            "snacks": 240,
+            "total": 816
+          },
+          "followup": "Uses 8 boxes, 192 bottles and 30 snack packs; explains 576 plus 240 equals 816 without regenerating the UI. Fixed per-box and unit-price rules remain distinct from current totals."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "203ddf7dcda6a26f40671cbef69a1cd2b7a993044cb8fe9e12e16847748af0ba",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "b45681e249f40513749cdf8ff32558659bad822451b2dfc842fbdc5e94863cfd",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "ca41e3af0d6554856b4c66930c783168d4d5c3c79bd5db72c74b76ee97d6d0e4",
+        "lib/intelligent-ui/rich-plan.ts": "713c2a622440ca53e0e36572e4b457f3dbde52e0ad7a0f17fd298e1a85d00421",
+        "lib/intelligent-ui/rich-plan-schema.ts": "4418a9214d3c962055cdb252f670f686743463cfd49079ccb8022d59b4582a78",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "boxes": 12,
+          "packs": 20
+        },
+        "snapshot": "聚会饮料与零食费用\n购买数量\n饮料箱数 (箱): 12\n零食包数 (包): 20\n费用汇总\n饮料瓶数\n饮料总瓶数 (瓶): 288\n饮料\n饮料费用 (元): 864\n零食\n零食费用 (元): 160\n总计\n总价 (元): 1024\n明细与对比\n类别 | 数量 | 单价 | 小计（元）\n饮料 | 288 | 3 | 864\n零食 | 20 | 8 | 160\n合计 | — | — | 1024\n饮料: 864\n零食: 160\n计算说明\n按每箱24瓶、每瓶3元、每包零食8元计算；饮料数量列显示的是瓶数。改动箱数或包数后，费用与总价立即更新。",
+        "controls": [
+          {
+            "id": "boxes",
+            "label": "饮料箱数 (箱)",
+            "type": "number",
+            "value": 12,
+            "min": 0,
+            "step": 1
+          },
+          {
+            "id": "packs",
+            "label": "零食包数 (包)",
+            "type": "number",
+            "value": 20,
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "493ca077-488a-4ace-893c-dd6bdd785dce"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": 8,
+          "state": {
+            "boxes": 8,
+            "packs": 20
+          },
+          "snapshot": "聚会饮料与零食费用\n购买数量\n饮料箱数 (箱): 8\n零食包数 (包): 20\n费用汇总\n饮料瓶数\n饮料总瓶数 (瓶): 192\n饮料\n饮料费用 (元): 576\n零食\n零食费用 (元): 160\n总计\n总价 (元): 736\n明细与对比\n类别 | 数量 | 单价 | 小计（元）\n饮料 | 192 | 3 | 576\n零食 | 20 | 8 | 160\n合计 | — | — | 736\n饮料: 576\n零食: 160\n计算说明\n按每箱24瓶、每瓶3元、每包零食8元计算；饮料数量列显示的是瓶数。改动箱数或包数后，费用与总价立即更新。",
+          "observedControls": {
+            "boxes": 8,
+            "packs": 20
+          },
+          "browserTables": [
+            "类别\t数量\t单价\t小计（元）\n饮料\t192\t3\t576\n零食\t20\t8\t160\n合计\t—\t—\t736"
+          ]
+        },
+        {
+          "requestedValue": 30,
+          "state": {
+            "boxes": 8,
+            "packs": 30
+          },
+          "snapshot": "聚会饮料与零食费用\n购买数量\n饮料箱数 (箱): 8\n零食包数 (包): 30\n费用汇总\n饮料瓶数\n饮料总瓶数 (瓶): 192\n饮料\n饮料费用 (元): 576\n零食\n零食费用 (元): 240\n总计\n总价 (元): 816\n明细与对比\n类别 | 数量 | 单价 | 小计（元）\n饮料 | 192 | 3 | 576\n零食 | 30 | 8 | 240\n合计 | — | — | 816\n饮料: 576\n零食: 240\n计算说明\n按每箱24瓶、每瓶3元、每包零食8元计算；饮料数量列显示的是瓶数。改动箱数或包数后，费用与总价立即更新。",
+          "observedControls": {
+            "boxes": 8,
+            "packs": 30
+          },
+          "browserTables": [
+            "类别\t数量\t单价\t小计（元）\n饮料\t192\t3\t576\n零食\t30\t8\t240\n合计\t—\t—\t816"
+          ]
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": true,
+        "observedControls": {
+          "boxes": 8,
+          "packs": 30
+        }
+      },
+      "turns": [
+        {
+          "user": "聚会要买12箱饮料，每箱24瓶、每瓶3元；零食每包8元，先买20包。我想自己改饮料箱数和零食包数，马上看到各项费用和总价。",
+          "assistant": "已生成互动计算面板，你可以直接修改“饮料箱数”和“零食包数”，费用和总价会实时更新。\n\n当前默认结果：\n- 饮料：12箱 × 24瓶 × 3元 = **864元**（288瓶）\n- 零食：20包 × 8元 = **160元**\n- **总价：1024元**",
+          "terminal": "stop",
+          "durationMs": 23332.9605,
+          "toolResults": [
+            {
+              "entryId": "98e77268",
+              "toolCallId": "call_00_OqpLIecdoTeWQvKp5q5M0536",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "我调完了。按现在的数量说一下买多少饮料和零食、各多少钱、总价多少，不用再做一个界面。",
+          "assistant": "按你现在的设置：\n\n| 项目 | 数量 | 单价 | 小计 |\n|---|---|---|---|\n| 饮料 | 8箱（192瓶） | 3元/瓶 | 576元 |\n| 零食 | 30包 | 8元/包 | 240元 |\n| **合计** | — | — | **816元** |\n\n总价 **816元**。",
+          "terminal": "stop",
+          "durationMs": 12457.483500000002,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    },
+    {
+      "source": ".verification/workflow-outing-pro-v2/result.json",
+      "sha256": "12395a7ec028448f4d7ddfa01968b6f9299d0de70225860d122148046585be6f",
+      "reportVersion": 2,
+      "model": "deepseek/deepseek-v4-pro",
+      "task": {
+        "id": "workflow-outing-development",
+        "split": "development",
+        "prompt": "周末我们4个人出去玩，门票每人30元，吃饭每人40元，车费一共120元。我想来回改人数和每人餐费，看看各项、总共和每人多少。",
+        "changes": [
+          {
+            "label": "人数",
+            "value": 6
+          },
+          {
+            "label": "餐费|饭费|吃饭",
+            "value": 50
+          }
+        ],
+        "followup": "我刚才自己调了参数。现在多少人，总共花多少、每个人出多少？简单解释下，直接说就行。",
+        "expected": {
+          "initial": {
+            "tickets": 120,
+            "meals": 160,
+            "transport": 120,
+            "total": 400,
+            "perPerson": 100
+          },
+          "afterPeople": {
+            "tickets": 180,
+            "meals": 240,
+            "transport": 120,
+            "total": 540,
+            "perPerson": 90
+          },
+          "afterMeal": {
+            "tickets": 180,
+            "meals": 300,
+            "transport": 120,
+            "total": 600,
+            "perPerson": 100
+          },
+          "followup": "Uses 6 people and the saved 50 yuan meal value. Explains 600 total and 100 each without generating another UI. Static labels and notes must remain true."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "203ddf7dcda6a26f40671cbef69a1cd2b7a993044cb8fe9e12e16847748af0ba",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "b45681e249f40513749cdf8ff32558659bad822451b2dfc842fbdc5e94863cfd",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "ca41e3af0d6554856b4c66930c783168d4d5c3c79bd5db72c74b76ee97d6d0e4",
+        "lib/intelligent-ui/rich-plan.ts": "713c2a622440ca53e0e36572e4b457f3dbde52e0ad7a0f17fd298e1a85d00421",
+        "lib/intelligent-ui/rich-plan-schema.ts": "4418a9214d3c962055cdb252f670f686743463cfd49079ccb8022d59b4582a78",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "people": 4,
+          "mealPerPerson": 40
+        },
+        "snapshot": "周末出游费用分摊\n输入\n人数 (人): 4\n每人餐费 (元/人): 40\n明细\n项目 | 金额（元）\n门票（30元/人） | 120\n餐费 | 160\n车费（固定） | 120\n合计 | 400\n结果\n总计 (元): 400\n每人平均 (元): 100",
+        "controls": [
+          {
+            "id": "people",
+            "label": "人数 (人)",
+            "type": "number",
+            "value": 4,
+            "min": 1
+          },
+          {
+            "id": "mealPerPerson",
+            "label": "每人餐费 (元/人)",
+            "type": "number",
+            "value": 40,
+            "min": 0
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "de986634-af97-4c29-bd30-e7c885b8e1e5"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": 6,
+          "state": {
+            "people": 6,
+            "mealPerPerson": 40
+          },
+          "snapshot": "周末出游费用分摊\n输入\n人数 (人): 6\n每人餐费 (元/人): 40\n明细\n项目 | 金额（元）\n门票（30元/人） | 180\n餐费 | 240\n车费（固定） | 120\n合计 | 540\n结果\n总计 (元): 540\n每人平均 (元): 90",
+          "observedControls": {
+            "people": 6,
+            "mealPerPerson": 40
+          },
+          "browserTables": [
+            "项目\t金额（元）\n门票（30元/人）\t180\n餐费\t240\n车费（固定）\t120\n合计\t540"
+          ]
+        },
+        {
+          "requestedValue": 50,
+          "state": {
+            "people": 6,
+            "mealPerPerson": 50
+          },
+          "snapshot": "周末出游费用分摊\n输入\n人数 (人): 6\n每人餐费 (元/人): 50\n明细\n项目 | 金额（元）\n门票（30元/人） | 180\n餐费 | 300\n车费（固定） | 120\n合计 | 600\n结果\n总计 (元): 600\n每人平均 (元): 100",
+          "observedControls": {
+            "people": 6,
+            "mealPerPerson": 50
+          },
+          "browserTables": [
+            "项目\t金额（元）\n门票（30元/人）\t180\n餐费\t300\n车费（固定）\t120\n合计\t600"
+          ]
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": true,
+        "observedControls": {
+          "people": 6,
+          "mealPerPerson": 50
+        }
+      },
+      "turns": [
+        {
+          "user": "周末我们4个人出去玩，门票每人30元，吃饭每人40元，车费一共120元。我想来回改人数和每人餐费，看看各项、总共和每人多少。",
+          "assistant": "已为你生成可交互的费用分摊计算器。\n\n- **输入**：人数、每人餐费，可来回调整。\n- **明细表**：门票（30元/人）、餐费、车费（固定120元）、合计，随人数和餐费自动更新。\n- **结果**：总计和每人平均金额。\n\n当前 4 人、每人餐费 40 元：门票 120 元、餐费 160 元、车费 120 元，合计 400 元，每人平均 100 元。改一下数字就能立刻看到变化。",
+          "terminal": "stop",
+          "durationMs": 23267.828,
+          "toolResults": [
+            {
+              "entryId": "4daee0aa",
+              "toolCallId": "call_00_GFwPFQ7as914nYrp8lh57217",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "我刚才自己调了参数。现在多少人，总共花多少、每个人出多少？简单解释下，直接说就行。",
+          "assistant": "现在 6 个人，每人餐费 50 元。\n\n- 门票：6 × 30 = 180 元\n- 餐费：6 × 50 = 300 元\n- 车费：120 元\n- **总共：600 元**\n- **每人平均：100 元**\n\n车费是固定的 120 元，所以分摊到每个人就是 20 元，加上门票 30 元和餐费 50 元，正好每人 100 元。",
+          "terminal": "stop",
+          "durationMs": 12062.6581,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    },
+    {
+      "source": ".verification/workflow-courses-flash-v3/result.json",
+      "sha256": "751d58b44eab0ee46d4a43baa0062bd43f6c00b137d0966b714bd71f3192b487",
+      "reportVersion": 2,
+      "model": "deepseek/deepseek-flash",
+      "task": {
+        "id": "workflow-courses-development",
+        "split": "development",
+        "prompt": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+        "changes": [
+          {
+            "label": "类别|分类",
+            "optionLabel": "^运动(?:类)?$"
+          },
+          {
+            "label": "最高|费用|预算",
+            "value": 100
+          },
+          {
+            "label": "类别|分类",
+            "optionLabel": "^文艺(?:类)?$"
+          }
+        ],
+        "followup": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+        "expected": {
+          "initial": [
+            "绘画",
+            "篮球",
+            "羽毛球",
+            "摄影"
+          ],
+          "afterCategory": [
+            "篮球",
+            "羽毛球"
+          ],
+          "afterMaximum": [
+            "篮球"
+          ],
+          "afterArt": [
+            "摄影"
+          ],
+          "followup": "Uses the saved category and maximum, recommends only photography at 100 yuan, and does not regenerate the UI. Full original data must remain present while actual visible rows change."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "671a07799f3b89301756d4ec4803e554361df8bf6e2de6074dd96e4bb5948219",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "aba1a885fce69829a65f22f840a04a8c07d7146c9ee67d8f45f1f7e9d3ea8179",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "8498cd13a2642b58e88867e1b5c88efff829f314ad7cf74ce2f5d74c73a39cae",
+        "lib/intelligent-ui/rich-plan.ts": "fb3338d52687cbd547ffea420c344632c765a7c2183ea5aec93c7f101bbb654e",
+        "lib/intelligent-ui/rich-plan-schema.ts": "93222b26b7efbd69dd2ee88b16a4611ed27d7426ef2f194fedd5459f43f49d33",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "lib/answer-output-admission.ts": "b5a52f23ae349428f99eccd4f9c9d7eee8511007e4f1ae4fe7be1f8248b58144",
+        "lib/intelligent-ui/plan-admission.ts": "77dd9ccc9bbde3af7fd7e8ae5ac10d956a0137e5b3b05cf9280f89a4e4eeb5da",
+        "lib/intelligent-ui/admission.ts": "52e467a397ca2244e75089971f68f84a6683f1adbea7cd8a09ab3dc7e671460d",
+        "lib/intelligent-ui/preview-plan.ts": "a322b2184245acb88581467b0f35284b13906cc0c2c21a489a2952239539aff1",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "category": "全部",
+          "maxFee": 200
+        },
+        "snapshot": "选课筛选：类别与最高费用\n筛选条件\n类别: 全部\n最高费用 (元): 200\n可选课程\nRows shown: 4/4; active filters: 1; unknown rows: 0\n课程 | 类别 | 费用（元）\n[shown] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+        "controls": [
+          {
+            "id": "category",
+            "label": "类别",
+            "type": "select",
+            "value": "全部",
+            "options": [
+              "全部",
+              "文艺类",
+              "运动类"
+            ]
+          },
+          {
+            "id": "maxFee",
+            "label": "最高费用 (元)",
+            "type": "number",
+            "value": 200,
+            "min": 0
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "3eb91b60-f293-486b-8350-f1f0bcb3787d"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": "运动类",
+          "state": {
+            "category": "运动类",
+            "maxFee": 200
+          },
+          "snapshot": "选课筛选：类别与最高费用\n筛选条件\n类别: 运动类\n最高费用 (元): 200\n可选课程\nRows shown: 2/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用（元）\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxFee": 200
+          },
+          "browserTables": [
+            "课程\t类别\t费用（元）\n篮球\t运动类\t80\n羽毛球\t运动类\t160"
+          ]
+        },
+        {
+          "requestedValue": 100,
+          "state": {
+            "category": "运动类",
+            "maxFee": 100
+          },
+          "snapshot": "选课筛选：类别与最高费用\n筛选条件\n类别: 运动类\n最高费用 (元): 100\n可选课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用（元）\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxFee": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用（元）\n篮球\t运动类\t80"
+          ]
+        },
+        {
+          "requestedValue": "文艺类",
+          "state": {
+            "category": "文艺类",
+            "maxFee": 100
+          },
+          "snapshot": "选课筛选：类别与最高费用\n筛选条件\n类别: 文艺类\n最高费用 (元): 100\n可选课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用（元）\n[filtered] 绘画 | 文艺类 | 120\n[filtered] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "文艺类",
+            "maxFee": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用（元）\n摄影\t文艺类\t100"
+          ]
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": true,
+        "observedControls": {
+          "category": "文艺类",
+          "maxFee": 100
+        }
+      },
+      "turns": [
+        {
+          "user": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+          "assistant": "已生成筛选界面（已发布）：类别默认“全部”，最高费用默认 200 元，四门课全部可选。切换类别或调低费用上限，列表会实时只显示符合条件的课程。\n\n- 绘画 · 文艺类 · 120 元\n- 篮球 · 运动类 · 80 元\n- 羽毛球 · 运动类 · 160 元\n- 摄影 · 文艺类 · 100 元\n\n例如选“文艺类”且上限 100 元，只剩摄影；上限 130 元则剩绘画和摄影。",
+          "terminal": "stop",
+          "durationMs": 8098.310699999999,
+          "toolResults": [
+            {
+              "entryId": "3470e98e",
+              "toolCallId": "call_00_vEBJRYs9mO95iGY2f4C30898",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+          "assistant": "按当前条件（文艺类，最高 100 元），只剩 **摄影**（文艺类，100 元）可选。\n\n绘画 120 元超出上限，篮球和羽毛球属于运动类，均被筛掉。",
+          "terminal": "stop",
+          "durationMs": 5486.7523,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    },
+    {
+      "source": ".verification/workflow-courses-pro-v3/result.json",
+      "sha256": "b5052e90df4aa17660a494ae87effca1ca2293762a2a428907eda1845372277a",
+      "reportVersion": 2,
+      "model": "deepseek/deepseek-v4-pro",
+      "task": {
+        "id": "workflow-courses-development",
+        "split": "development",
+        "prompt": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+        "changes": [
+          {
+            "label": "类别|分类",
+            "optionLabel": "^运动(?:类)?$"
+          },
+          {
+            "label": "最高|费用|预算",
+            "value": 100
+          },
+          {
+            "label": "类别|分类",
+            "optionLabel": "^文艺(?:类)?$"
+          }
+        ],
+        "followup": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+        "expected": {
+          "initial": [
+            "绘画",
+            "篮球",
+            "羽毛球",
+            "摄影"
+          ],
+          "afterCategory": [
+            "篮球",
+            "羽毛球"
+          ],
+          "afterMaximum": [
+            "篮球"
+          ],
+          "afterArt": [
+            "摄影"
+          ],
+          "followup": "Uses the saved category and maximum, recommends only photography at 100 yuan, and does not regenerate the UI. Full original data must remain present while actual visible rows change."
+        }
+      },
+      "scope": "real-provider-sdk-browser-routes",
+      "settings": {
+        "thinking": "low",
+        "maxTokens": 6000,
+        "maxRetries": 0,
+        "timeoutMs": 120000
+      },
+      "protocol": "plan-2",
+      "outcome": "workflow-completed",
+      "selectedSourceDigests": {
+        "scripts/probe-intelligent-ui-workflow.mjs": "671a07799f3b89301756d4ec4803e554361df8bf6e2de6074dd96e4bb5948219",
+        "extensions/piora-intelligent-ui.ts": "eded01f72cc4cd0061d56b6f544515640d5b7d128b296d5ade1d0b3271669386",
+        "lib/rpc-manager.ts": "0724c4228a958843a59df8ca0e0e08ce7b7ff0e46bafd665e661d2506df9327e",
+        "lib/intelligent-ui/decision-policy.ts": "aba1a885fce69829a65f22f840a04a8c07d7146c9ee67d8f45f1f7e9d3ea8179",
+        "lib/intelligent-ui/plan.ts": "bfda9d4bc2931428c13490d812057958f4cb74ed0d10077c036d4bc740c0245d",
+        "lib/intelligent-ui/plan-schema.ts": "8498cd13a2642b58e88867e1b5c88efff829f314ad7cf74ce2f5d74c73a39cae",
+        "lib/intelligent-ui/rich-plan.ts": "fb3338d52687cbd547ffea420c344632c765a7c2183ea5aec93c7f101bbb654e",
+        "lib/intelligent-ui/rich-plan-schema.ts": "93222b26b7efbd69dd2ee88b16a4611ed27d7426ef2f194fedd5459f43f49d33",
+        "lib/intelligent-ui/rich-protocol.ts": "e649582db9dcbbc8ee69f57a5a3b4194aa398aefecbc2a2b17bf1d42a8c1374e",
+        "lib/intelligent-ui/generation-runtime.ts": "c632e2d4c8606f0f72a1aa6987792d9679011372a3a86980700496c90bedb98f",
+        "lib/intelligent-ui/generation-journal.ts": "21c66371d4775c4db46cd5ecaf8a36a3b1a2e3cb742121d1502401545cbc1d5a",
+        "lib/intelligent-ui/decision-context.ts": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670",
+        "lib/answer-output-admission.ts": "b5a52f23ae349428f99eccd4f9c9d7eee8511007e4f1ae4fe7be1f8248b58144",
+        "lib/intelligent-ui/plan-admission.ts": "77dd9ccc9bbde3af7fd7e8ae5ac10d956a0137e5b3b05cf9280f89a4e4eeb5da",
+        "lib/intelligent-ui/admission.ts": "52e467a397ca2244e75089971f68f84a6683f1adbea7cd8a09ab3dc7e671460d",
+        "lib/intelligent-ui/preview-plan.ts": "a322b2184245acb88581467b0f35284b13906cc0c2c21a489a2952239539aff1",
+        "components/AnswerOutput.tsx": "6215c6549228caabb84cb83350336bab51bcfaf8d81d822f76b47d195548845a",
+        "components/intelligent-ui/IntelligentUiSurface.tsx": "723b79bcd768e7552a1eaa2ea00def5a50066d26daa242193d53c53057c5fea0",
+        "components/intelligent-ui/client-state.ts": "2d3ee37fb65390ecda9247a9a8407c3fb0ea4bdf26287aa513d257c2af3c6d9b",
+        "package-lock.json": "8b68a1f42a83d259337b84c283b7281bb14705993444f162ab8a86f28cb938f6"
+      },
+      "initial": {
+        "state": {
+          "category": "全部",
+          "maxFee": 200
+        },
+        "snapshot": "兴趣课程筛选\n筛选条件\n类别: 全部\n最高费用 (元): 200\n剩余可选课程\nRows shown: 4/4; active filters: 1; unknown rows: 0\n课程 | 类别 | 费用(元)\n[shown] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+        "controls": [
+          {
+            "id": "category",
+            "label": "类别",
+            "type": "select",
+            "value": "全部",
+            "options": [
+              "全部",
+              "文艺类",
+              "运动类"
+            ]
+          },
+          {
+            "id": "maxFee",
+            "label": "最高费用 (元)",
+            "type": "number",
+            "value": 200,
+            "min": 0
+          }
+        ],
+        "publication": {
+          "status": "committed",
+          "operationId": "4061e18f-1a28-45f5-a76b-7690aead9df5"
+        }
+      },
+      "changes": [
+        {
+          "requestedValue": "运动类",
+          "state": {
+            "category": "运动类",
+            "maxFee": 200
+          },
+          "snapshot": "兴趣课程筛选\n筛选条件\n类别: 运动类\n最高费用 (元): 200\n剩余可选课程\nRows shown: 2/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用(元)\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[shown] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxFee": 200
+          },
+          "browserTables": [
+            "课程\t类别\t费用(元)\n篮球\t运动类\t80\n羽毛球\t运动类\t160"
+          ]
+        },
+        {
+          "requestedValue": 100,
+          "state": {
+            "category": "运动类",
+            "maxFee": 100
+          },
+          "snapshot": "兴趣课程筛选\n筛选条件\n类别: 运动类\n最高费用 (元): 100\n剩余可选课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用(元)\n[filtered] 绘画 | 文艺类 | 120\n[shown] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[filtered] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "运动类",
+            "maxFee": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用(元)\n篮球\t运动类\t80"
+          ]
+        },
+        {
+          "requestedValue": "文艺类",
+          "state": {
+            "category": "文艺类",
+            "maxFee": 100
+          },
+          "snapshot": "兴趣课程筛选\n筛选条件\n类别: 文艺类\n最高费用 (元): 100\n剩余可选课程\nRows shown: 1/4; active filters: 2; unknown rows: 0\n课程 | 类别 | 费用(元)\n[filtered] 绘画 | 文艺类 | 120\n[filtered] 篮球 | 运动类 | 80\n[filtered] 羽毛球 | 运动类 | 160\n[shown] 摄影 | 文艺类 | 100",
+          "observedControls": {
+            "category": "文艺类",
+            "maxFee": 100
+          },
+          "browserTables": [
+            "课程\t类别\t费用(元)\n摄影\t文艺类\t100"
+          ]
+        }
+      ],
+      "reload": {
+        "matchesSavedState": true,
+        "matchesBrowserControls": true,
+        "observedControls": {
+          "category": "文艺类",
+          "maxFee": 100
+        }
+      },
+      "turns": [
+        {
+          "user": "有四门课：绘画是文艺类120元，篮球是运动类80元，羽毛球是运动类160元，摄影是文艺类100元。让我自己选类别和最高费用，看看还剩哪些可选，先显示全部类别、最高200元。",
+          "assistant": "已创建课程筛选器：上方可选择**类别**（全部／文艺类／运动类）和**最高费用**（默认 200 元），下方表格会实时显示剩余可选课程。\n\n初始状态下（全部类别、最高 200 元）四门课都可选：\n\n| 课程 | 类别 | 费用 |\n|------|------|------|\n| 绘画 | 文艺类 | 120 |\n| 篮球 | 运动类 | 80 |\n| 羽毛球 | 运动类 | 160 |\n| 摄影 | 文艺类 | 100 |\n\n你可以直接调整筛选条件，比如类别选「文艺类」、最高费用调成 100，就会只剩「绘画」。",
+          "terminal": "stop",
+          "durationMs": 39277.2439,
+          "toolResults": [
+            {
+              "entryId": "9012b6cb",
+              "toolCallId": "call_00_QEziGq5Ooq4wk2o9NN2k7244",
+              "isError": false
+            }
+          ]
+        },
+        {
+          "user": "按我现在选好的条件，还能选哪些课？直接告诉我就行。",
+          "assistant": "按你现在的条件（文艺类、最高 100 元），还能选的是：\n\n**摄影（文艺类，100 元）**\n\n绘画虽然也是文艺类，但 120 元超过了 100 元上限，所以被过滤掉了。",
+          "terminal": "stop",
+          "durationMs": 3152.822199999995,
+          "toolResults": []
+        }
+      ],
+      "browserErrors": [],
+      "independentReviews": [],
+      "desktop": "not-tested"
+    }
+  ]
+}

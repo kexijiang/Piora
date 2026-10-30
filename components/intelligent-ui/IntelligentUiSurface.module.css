@@ -1,0 +1,49 @@
+.surface { margin: 12px 0; border: 1px solid var(--border); border-radius: 12px; background: var(--bg-panel); color: var(--text); min-width: 0; overflow: hidden; font: inherit; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px 10px; flex-wrap: wrap; }
+.header h3 { font-size: var(--text-lg); margin: 0; overflow-wrap: anywhere; }
+.badge { font-size: var(--text-xs); color: var(--text-muted); border: 1px solid var(--border); padding: 3px 7px; border-radius: 20px; white-space: nowrap; }
+.nodes { display: grid; gap: 16px; padding: 12px 18px 18px; }
+.text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.control { display: grid; gap: 7px; font-size: var(--text-sm); min-width: 0; }
+.control > span { display: flex; justify-content: space-between; gap: 10px; overflow-wrap: anywhere; }
+.control input, .control select { min-width: 0; width: 100%; box-sizing: border-box; border: 1px solid var(--border); background: var(--bg); color: var(--text); border-radius: 7px; padding: 8px 10px; font: inherit; }
+.control input[type="range"] { padding: 0; min-height: 28px; accent-color: var(--accent); cursor: pointer; }
+.control input:focus-visible, .control select:focus-visible, .checkbox input:focus-visible, .actions button:focus-visible, .notice button:focus-visible, .tableScroll:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.control input:disabled, .control select:disabled, .checkbox input:disabled { opacity: .55; cursor: default; }
+.sliderValue { font-variant-numeric: tabular-nums; font-weight: 600; }
+.checkbox { display: flex; align-items: center; gap: 9px; font-size: var(--text-sm); }
+.checkbox input { width: 17px; height: 17px; accent-color: var(--accent); }
+.metric { padding: 12px; background: var(--bg); border-radius: 8px; display: grid; gap: 5px; }
+.metric > span { font-size: var(--text-sm); color: var(--text-muted); }
+.metric output { font-size: var(--text-xl); font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.tableScroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
+.tableScroll table { border-collapse: collapse; min-width: 100%; font-size: var(--text-sm); }
+.tableScroll th, .tableScroll td { padding: 9px 12px; text-align: start; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.tableScroll th { font-weight: 600; background: var(--bg); }
+.tableScroll tr:last-child td { border-bottom: 0; }
+.chart { display: grid; gap: 10px; margin: 0; }
+.barRow { display: grid; grid-template-columns: minmax(45px, 1fr) minmax(40px, 3fr) minmax(25px, auto); align-items: center; gap: 10px; font-size: var(--text-sm); }
+.barRow > span, .barRow > output { overflow-wrap: anywhere; }
+.barRow > output { font-variant-numeric: tabular-nums; }
+.barTrack { position: relative; background: var(--bg); height: 16px; border-radius: 3px; overflow: hidden; }
+.bar { position: absolute; height: 100%; background: var(--accent); border-radius: 3px; }
+.barZero { position: absolute; height: 100%; border-left: 1px solid var(--text-dim); }
+.footer { border-top: 1px solid var(--border); padding: 10px 18px; font-size: var(--text-xs); color: var(--text-muted); line-height: 1.5; }
+.notice { display: grid; gap: 10px; min-width: 0; overflow-wrap: anywhere; }
+.notice > * { min-width: 0; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.notice button, .migration button { justify-self: start; max-width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.notice button:hover, .migration button:hover { background: var(--bg-hover); }
+.notice button:disabled, .migration button:disabled { opacity: .55; cursor: default; }
+.notice button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.notice summary { cursor: pointer; }
+.notice summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.snapshot { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; padding: 12px; }
+@media (max-width: 480px) { .header { padding: 12px 12px 8px; } .nodes { padding: 8px 12px 12px; } .footer { padding: 10px 12px; } .barRow { gap: 6px; } }
+.migration { display: grid; gap: 10px; margin-block: 12px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; min-width: 0; }
+.migration h4, .migration p { margin: 0; }
+.migration select { max-width: 100%; min-width: 120px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; font: inherit; }
+.migration select:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.migration input[type="number"] { width: 120px; max-width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px; font: inherit; }
+.migration input[type="checkbox"] { accent-color: var(--accent); }
+.migration input:focus-visible, .migration button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

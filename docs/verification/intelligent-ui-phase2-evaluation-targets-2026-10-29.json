@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "status": "forward-development-targets-not-acceptance-results",
+  "baseline": "intelligent-ui-phase2-baseline-2026-10-29.json",
+  "chronology": "Frozen after the 240-run phase1 development baseline, before subsequent compiler/policy tuning and the full candidate comparison. Earlier candidate prototypes and small workflow probes already existed; this is not a preregistration of those experiments.",
+  "scope": "Each model is assessed separately; failed, timed-out and provider-error UI tasks remain in the denominator. Repetitions do not increase independent task-family counts.",
+  "settings": {
+    "reasoning": "low", "maxTokens": 6000, "maxRequestsPerTurn": 4,
+    "maxToolAttemptsPerTurn": 3, "timeoutMs": 120000, "maxRetries": 0
+  },
+  "technicalDevelopmentTargets": {
+    "completedWithFirstStructurallyValidAttempt": {"minimum": 0.8, "denominator": "all capability-in-scope UI tasks"},
+    "completedWithStructurallyValidAttemptWithinBudget": {"minimum": 0.9, "denominator": "all capability-in-scope UI tasks"},
+    "noUiAttempt": {"maximum": 0.05, "denominator": "all capability-in-scope UI tasks"},
+    "unnecessaryUiAttempt": {"maximum": 0.025, "denominator": "all explicitly text-labeled turns including followups"},
+    "moreThanOneUiAttempt": {"maximum": 0.2, "denominator": "all capability-in-scope UI tasks"},
+    "uiTaskDurationP95Ms": {"maximum": 90000, "includeFailures": true, "method": "nearest-rank; failed tasks are charged at least the 120000ms task budget"}
+  },
+  "productAcceptanceTargets": {
+    "firstUsable": 0.8, "finalUsable": 0.9,
+    "requires": ["independent calculation and changed-input checks", "actual committed state, reload and followup", "two independent human semantic/choice judgments and disagreement adjudication", "heldout family-disjoint comparison with no category regression"],
+    "minimumIndependentFamiliesPerCriticalLabel": 5,
+    "smallCategoryRule": "Expand sealed clarification/unsupported categories before formal acceptance; do not treat repeated runs as additional families.",
+    "status": "pending"
+  },
+  "hardInvariants": ["permissions and capability gates cannot be bypassed", "run budget and cancellation cannot be bypassed", "failed updates preserve previous parameters", "ordinary text remains usable when Beta is off or fails"],
+  "releaseCi": "Deferred until all three feature phases are developed, per user instruction",
+  "interpretation": "These are improvement targets, not measured guarantees. Structural metrics cannot substitute for product usability. If targets are missed, retain the failures and investigate; do not relabel tasks or lower targets to claim acceptance. Provider outages may require a new frozen paired run, preserving this run as evidence."
+}

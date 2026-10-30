@@ -5,6 +5,7 @@ import { cp, lstat, mkdtemp, readFile, realpath, rename, rm, writeFile } from "n
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { patchPiSourceProfile } from "./pi-source-profile.mjs";
+import { patchIntelligentUiAdmission } from "./patch-intelligent-ui-admission.mjs";
 import { patchSharpElectronLinux } from "./patch-sharp-electron-linux.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -257,6 +258,7 @@ async function main() {
     patchNodePtyShutdown().then((result) => ({ package: "node-pty", ...result })),
     patchSharpElectronLinux(projectRoot).then((result) => ({ package: "sharp", ...result })),
   ]);
+  patches.push({ package: "pi-tool-admission", ...await patchIntelligentUiAdmission(projectRoot) });
   patches.push({ package: "pi-source-profile", ...await patchPiSourceProfile(projectRoot) });
   console.log(JSON.stringify({ bundledDependencyPatches: patches }));
 }
