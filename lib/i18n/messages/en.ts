@@ -2300,6 +2300,7 @@ export const enLocale: LocalePlugin = {
     "gitTools.mainCheckout": "Main checkout",
     "gitTools.currentCheckout": "Current checkout",
     "chat.taskDuration.running": "Working through it",
+    "chat.taskDuration.speedHint": "Estimated model output speed over the last 5 seconds, including reasoning and tool arguments. Based on character counts, not billable tokens.",
     "chat.taskDuration.completed": "Completed",
     "chat.taskDuration.failed": "Failed",
     "chat.taskDuration.cancelled": "Stopped",

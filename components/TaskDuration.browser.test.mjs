@@ -22,13 +22,17 @@ import {zhCNLocale} from ${JSON.stringify(path.join(repo, "lib/i18n/messages/zh-
 function App(){
  const [timing,setTiming]=React.useState(()=>JSON.parse(localStorage.getItem('timing')||'null'));
  const [phase,setPhase]=React.useState('正在思考');
+ const [rate,setRate]=React.useState(null);
+ const [hideSettled,setHideSettled]=React.useState(false);
  const update=value=>{localStorage.setItem('timing',JSON.stringify(value));setTiming(value)};
  const start=()=>update({commandId:crypto.randomUUID(),sessionId:'fixture',startedAt:Date.now()});
  const finish=outcome=>update({...timing,outcome,...(outcome==='interrupted'?{}:{finishedAt:Date.now()})});
  const t=key=>zhCNLocale.messages[key]||key;
  return <><nav><b>Piora</b><span>任务用时</span><button onClick={()=>document.body.classList.toggle('dark')}>主题</button></nav>
  <main><div className="user">为 Piora 添加任务总用时</div><p>任务计时现在会贯穿整个执行过程。</p><div className="tool">正在检查任务状态与计时逻辑</div><div className="spacer"/>
- <TaskDuration timing={timing} busy={!!timing&&!timing.outcome} startedAt={timing?.startedAt??null} phase={phase} t={t}/>
+ <TaskDuration timing={timing} busy={!!timing&&!timing.outcome} startedAt={timing?.startedAt??null} phase={phase} tokensPerSecond={rate} hideSettled={hideSettled} t={t}/>
+ <button onClick={()=>setHideSettled(value=>!value)}>回复已有总用时</button>
+ <aside><button onClick={()=>setRate(42.5)}>速度采样</button><button onClick={()=>setRate(7.2)}>速度变化</button><button onClick={()=>setRate(0)}>输出暂停</button><button onClick={()=>setRate(null)}>清除速度</button><button onClick={()=>setRate(NaN)}>无效速度</button><button onClick={()=>setRate(Infinity)}>无限速度</button><button onClick={()=>setRate(-1)}>负速度</button></aside>
  <div className="composer">继续这个任务…<footer>模型 · 默认 <span>↑</span></footer></div>
  <aside><button onClick={start}>开始</button><button onClick={()=>setPhase('正在执行工具：检查需要很长时间的命令输出与测试结果')}>工具</button><button onClick={()=>setPhase('正在重试 1/3')}>重试</button><button onClick={()=>setPhase('正在压缩上下文')}>压缩</button><button onClick={()=>finish('completed')}>完成</button><button onClick={()=>finish('cancelled')}>停止</button><button onClick={()=>finish('failed')}>失败</button><button onClick={()=>finish('interrupted')}>中断</button><button onClick={()=>update(null)}>切换空对话</button></aside></main></>;
 }createRoot(document.getElementById('root')).render(<App/>);`);
@@ -53,6 +57,17 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     await page.getByRole("button", { name: "开始", exact: true }).click();
     await page.clock.runFor(65000);
     assert.equal(await value.innerText(), "1:05");
+    const speed = page.locator("[data-task-token-speed]");
+    assert.equal(await speed.count(), 0, "no invented speed before a server sample");
+    for (const [button, expected] of [["速度采样", "≈42.5 t/s"], ["速度变化", "≈7.2 t/s"], ["输出暂停", "≈0.0 t/s"]]) {
+      await page.getByRole("button", { name: button, exact: true }).click();
+      assert.equal(await speed.innerText(), expected);
+      assert.equal(await value.innerText(), "1:05", "speed updates preserve total elapsed time");
+    }
+    for (const button of ["清除速度", "无效速度", "无限速度", "负速度"]) {
+      await page.getByRole("button", { name: button, exact: true }).click();
+      assert.equal(await speed.count(), 0);
+    }
     for (const name of ["工具", "重试", "压缩"]) {
       await page.getByRole("button", { name, exact: true }).click();
       assert.equal(await value.innerText(), "1:05", `${name} preserves total elapsed`);
@@ -61,6 +76,8 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     assert.equal(await value.innerText(), "1:05");
     await page.clock.runFor(89000);
     assert.equal(await value.innerText(), "2:34");
+    await page.getByRole("button", { name: "速度采样", exact: true }).click();
+    assert.equal(await speed.innerText(), "≈42.5 t/s");
     const artifacts = path.join(repo, ".verification/task-duration"); await mkdir(artifacts, { recursive: true });
     await page.locator("body").evaluate(body => body.classList.add("capture"));
     await page.screenshot({ path: path.join(artifacts, "running-light.png") });
@@ -69,6 +86,10 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     await page.clock.runFor(60000);
     assert.equal(await value.innerText(), "2:34");
     assert.equal(await page.locator("[data-task-duration]").getAttribute("data-state"), "completed");
+    assert.equal(await speed.count(), 0, "terminal tasks hide the last live estimate");
+    await page.getByRole("button", { name: "回复已有总用时", exact: true }).click();
+    assert.equal(await page.locator("[data-task-duration]").count(), 0, "completed timer moves out of the composer when the reply owns it");
+    await page.getByRole("button", { name: "回复已有总用时", exact: true }).click();
     await page.reload(); await value.waitFor();
     assert.equal(await value.innerText(), "2:34");
     for (const [label, outcome] of [["停止", "cancelled"], ["失败", "failed"], ["中断", "interrupted"]]) {
@@ -85,11 +106,15 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     await page.getByRole("button", { name: "工具", exact: true }).click();
     await page.getByRole("button", { name: "主题", exact: true }).click();
     await page.setViewportSize({ width: 390, height: 750 });
+    await page.getByRole("button", { name: "速度采样", exact: true }).click();
+    assert.equal(await speed.innerText(), "≈42.5 t/s");
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.ok(await page.locator("[data-task-duration-phase]").evaluate(el => el.scrollWidth > el.clientWidth), "long phase is ellipsized");
     await page.locator("body").evaluate(body => body.classList.add("capture"));
     await page.screenshot({ path: path.join(artifacts, "running-dark-narrow.png") });
     await page.locator("body").evaluate(body => body.classList.remove("capture"));
+    await page.setViewportSize({ width: 320, height: 750 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "speed wraps on small screens without overflow");
     await page.getByRole("button", { name: "切换空对话", exact: true }).click();
     assert.equal(await page.locator("[data-task-duration]").count(), 0);
     assert.deepEqual(errors, []);

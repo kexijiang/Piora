@@ -299,17 +299,30 @@ test("renders a provider error when the assistant message has no content", () =>
   assert.doesNotMatch(html, /已停止生成/);
 });
 
-test("renders the final response duration in the assistant footer", () => {
+test("renders the authoritative task total in the final reply instead of response latency", () => {
   const html = renderMessage({
     role: "assistant",
     provider: "openai",
     model: "gpt-test",
     timestamp: 12_500,
     content: [{ type: "text", text: "Done" }],
-  }, { showTimestamp: true, responseStartedAt: 10_000 });
+  }, { showTimestamp: true, taskTiming: { commandId: "task", sessionId: "chat", startedAt: 1000, finishedAt: 155000, outcome: "completed" } });
 
-  assert.match(html, /响应耗时 2\.5s/);
+  assert.match(html, /总用时 2:34/);
+  assert.doesNotMatch(html, /响应耗时/);
   assert.match(html, /message-response-meta/);
+});
+
+test("running, intermediate and legacy replies do not invent or duplicate a task total", () => {
+  const message = { role: "assistant", timestamp: 12500, content: [{ type: "text", text: "Done" }] };
+  const taskTiming = { commandId: "task", sessionId: "chat", startedAt: 1000, finishedAt: 155000, outcome: "completed" };
+  for (const props of [{}, { taskTiming: { ...taskTiming, outcome: undefined } }, { taskTiming, intermediate: true }, { taskTiming, isStreaming: true }, { taskTiming: { ...taskTiming, outcome: "interrupted", finishedAt: undefined } }]) {
+    const html = renderMessage(message, { showTimestamp: true, ...props });
+    assert.doesNotMatch(html, /data-response-task-duration|响应耗时/);
+  }
+  for (const outcome of ["cancelled", "failed"]) {
+    assert.match(renderMessage(message, { taskTiming: { ...taskTiming, outcome } }), /总用时 2:34/);
+  }
 });
 
 test("renders partial assistant content before the provider error", () => {

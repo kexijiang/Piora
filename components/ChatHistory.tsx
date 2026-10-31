@@ -11,6 +11,7 @@ import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { AliIcon } from "./AliIcon";
 import { VirtualList, type VirtualListHandle } from "./VirtualList";
 import { ChatCommandCard, type ChatCommandCardActions } from "./ChatCommandCard";
+import type { TaskTiming } from "@/lib/task-timing";
 import type { ChatCommandView } from "@/lib/chat-command-types";
 
 export interface ChatHistoryHandle { revealEntry(id: string): void; cancelNavigation(): void }
@@ -32,6 +33,7 @@ interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" |
   handleRef: Ref<ChatHistoryHandle>;
   onDeleteMessage?: (message: AgentMessage, entryId?: string) => Promise<void>;
   deleteDisabled?: boolean;
+  responseTimings?: Map<number, TaskTiming>;
   operations?: ChatCommandView[];
   commandActions?: ChatCommandCardActions;
 }
@@ -51,7 +53,7 @@ function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message
 }
 
 /** One turn projection for saved history and the live tail in both display modes. */
-export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, ...messageProps }: Props) {
+export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, responseTimings, ...messageProps }: Props) {
   const { t } = useI18n();
   const messages = useMemo(() => streamingMessage ? [...savedMessages, streamingMessage] : savedMessages, [savedMessages, streamingMessage]);
   const streamingIndex = streamingMessage ? messages.length - 1 : -1;
@@ -75,7 +77,6 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
   const metadata = useMemo(() => {
     const toolResults = new Map<string, ToolResultMessage>();
     const userIndices = new Map<number, number>();
-    const responseStarts = new Map<number, number>();
     const showTimestamps = new Set<number>();
     let lastUser = -1;
     let lastAssistant = -1;
@@ -89,11 +90,10 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
       }
       if (message.role === "assistant") {
         lastAssistant = i;
-        if (lastUser >= 0 && messages[lastUser].timestamp !== undefined) responseStarts.set(i, messages[lastUser].timestamp!);
       }
     }
     if (lastAssistant >= 0) showTimestamps.add(lastAssistant);
-    return { toolResults, userIndices, lastUser, responseStarts, showTimestamps };
+    return { toolResults, userIndices, lastUser, showTimestamps };
   }, [messages]);
   useImperativeHandle(handleRef, () => ({
     revealEntry(id) {
@@ -139,7 +139,7 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
           forking={forkingEntryId === entryIds[index]}
           prevAssistantEntryId={!busy && message.role === "user" && messages[index - 1]?.role === "assistant" ? entryIds[index - 1] : undefined}
           showTimestamp={showTimestamp} prevTimestamp={messages[index - 1]?.timestamp}
-          responseStartedAt={showTimestamp && !(busy && index > metadata.lastUser) ? metadata.responseStarts.get(index) : undefined} />
+          taskTiming={responseTimings?.get(index)} />
       </RenderErrorBoundary>
     </div></RevealProcessCommandContext.Provider></CompactProcessContext.Provider>;
   }} />;

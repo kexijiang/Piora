@@ -7,6 +7,7 @@ import { Type } from "@earendil-works/pi-ai";
 import { defineTool, getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright-core";
 import { selectBrowserBackend } from "../lib/browser-backend.ts";
+import { evaluateBrowserPage } from "../lib/browser-evaluate.ts";
 import { readAgentBrowserMode } from "../lib/browser-mode.ts";
 import {
   BROWSER_USER_WAIT_TEXT,
@@ -39,6 +40,7 @@ type BrowserRuntime = {
   persistTimer: ReturnType<typeof setTimeout> | null;
   persistChain: Promise<void>;
   watchedPages: WeakSet<Page>;
+  interruptedPages?: WeakSet<Page>;
   proxySignature?: string;
   proxyReload?: Promise<void>;
   activeActions?: number;
@@ -230,7 +232,7 @@ async function getSession(sessionId: string): Promise<BrowserSession> {
 
   const context = await getBrowserContext();
   const unusedInitialPage = runtime.sessions.size === 0
-    ? context.pages().find((candidate) => candidate.url() === "about:blank")
+    ? context.pages().find((candidate) => candidate.url() === "about:blank" && !runtime.interruptedPages?.has(candidate))
     : undefined;
   const page = unusedInitialPage ?? await context.newPage();
   const session = { context, page, pages: [page] };
@@ -517,6 +519,7 @@ const browserTool = defineTool({
       }
 
       const session = await getSession(sessionId);
+      if (signal?.aborted) throw new Error("Browser action aborted");
       runtime.activeActions = (runtime.activeActions ?? 0) + 1;
       try {
         markActive(sessionId, session);
@@ -561,7 +564,16 @@ const browserTool = defineTool({
           }
           case "evaluate": {
             if (!params.text) throw new Error("evaluate requires a JavaScript expression in text");
-            const value = await page.evaluate((expression) => globalThis.eval(expression), params.text);
+            const value = await evaluateBrowserPage(page, params.text, {
+              signal,
+              onInterrupted: () => {
+                (runtime.interruptedPages ??= new WeakSet()).add(page);
+                session.pages = session.pages.filter((candidate) => candidate !== page && !candidate.isClosed());
+                if (session.page === page && session.pages[0]) session.page = session.pages[0];
+                if (!session.pages.length && runtime.sessions.get(sessionId) === session) runtime.sessions.delete(sessionId);
+                runtime.revision += 1;
+              },
+            });
             return textResult(JSON.stringify(value, null, 2) ?? "undefined", { action: params.action, url: page.url() });
           }
           case "back":

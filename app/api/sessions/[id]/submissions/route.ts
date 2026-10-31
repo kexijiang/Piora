@@ -23,7 +23,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     // Include all waiting input, plus terminal receipts for this renderer's tracked
     // inputs. Do not replay historical ordinary completions on every page mount.
     for (const command of commands) if (!["completed", "failed", "cancelled", "expired", "interrupted"].includes(command.status) || tracked.has(command.commandId) || recovered.has(command.idempotencyKey)) items.set(command.commandId, command);
-    return NextResponse.json({ taskTiming: latestTaskTiming(commands), items: [...items.values()].map(commandOperationView), nextOffset: offset + 50 < operations.length ? offset + 50 : null }, { headers: { "Cache-Control": "no-store" } });
+    const taskTimings = commands.flatMap(command => command.taskTiming ? [{ idempotencyKey: command.idempotencyKey, taskTiming: command.taskTiming }] : []);
+    return NextResponse.json({ taskTiming: latestTaskTiming(commands), taskTimings, items: [...items.values()].map(commandOperationView), nextOffset: offset + 50 < operations.length ? offset + 50 : null }, { headers: { "Cache-Control": "no-store" } });
   }
   const commandId = url.searchParams.get("commandId");
   if (commandId) {

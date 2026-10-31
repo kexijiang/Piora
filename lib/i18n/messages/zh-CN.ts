@@ -2300,6 +2300,7 @@ export const zhCNLocale: LocalePlugin = {
     "gitTools.mainCheckout": "主工作区",
     "gitTools.currentCheckout": "当前工作目录",
     "chat.taskDuration.running": "凝思求解中",
+    "chat.taskDuration.speedHint": "近 5 秒模型输出的估算速度，包含思考和工具参数；按字符量估算，非账单 token 数。",
     "chat.taskDuration.completed": "已完成",
     "chat.taskDuration.failed": "未完成",
     "chat.taskDuration.cancelled": "已停止",

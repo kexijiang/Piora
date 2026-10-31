@@ -1,7 +1,8 @@
 "use client";
 
 import { latestTaskTiming, mergeTaskTiming, type TaskTiming } from "@/lib/task-timing";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { mergeResponseTaskTimings, type ResponseTaskTiming } from "@/lib/response-task-timing";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AgentCommandError, sendAgentCommand } from "@/lib/agent-client";
 import { createChatCommandOperation, parseChatInput, persistentChatInputOptions } from "@/lib/chat-command-input";
 import type { ChatCommandCatalog, ChatCommandView, ChatInputOptions } from "@/lib/chat-command-types";
@@ -34,6 +35,7 @@ export function useChatCommandOperations(options: Options) {
   latest.current = options;
   const [localSessionId, setLocalSessionId] = useState<string | null>(null);
   const [taskTiming, setTaskTiming] = useState<TaskTiming | null>(null);
+  const [taskTimings, setTaskTimings] = useState<ResponseTaskTiming[]>([]);
   const [records, setRecords] = useState<ChatCommandView[]>([]);
   const recordsRef = useRef(records);
   recordsRef.current = records;
@@ -63,10 +65,11 @@ export function useChatCommandOperations(options: Options) {
     for (const record of recordsRef.current.filter(record => record.targetSessionId === sid && record.local).slice(0, 100)) query.append("trackedPromptId", record.idempotencyKey);
     const response = await fetch(`/api/sessions/${encodeURIComponent(sid)}/submissions?${query}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const body = await response.json() as { items: ChatCommandView[]; nextOffset: number | null; taskTiming?: TaskTiming | null };
+    const body = await response.json() as { items: ChatCommandView[]; nextOffset: number | null; taskTiming?: TaskTiming | null; taskTimings?: ResponseTaskTiming[] };
     if (sessionRef.current !== sid) return;
     setRecords(current => mergeChatCommandViews(current.filter(record => record.targetSessionId === sid || record.local && submitting.current.has(record.idempotencyKey)), body.items));
     setTaskTiming(current => mergeTaskTiming(current, body.taskTiming ?? null));
+    setTaskTimings(current => mergeResponseTaskTimings(current.filter(record => record.taskTiming.sessionId === sid), body.taskTimings ?? []));
     setNextOffset(body.nextOffset);
     await Promise.all(body.items.filter(record => !record.operation && record.status === "cancelled").map(record => dismissPendingPrompt(record.idempotencyKey)));
     const completed = body.items.filter(record => record.status === "completed");
@@ -83,6 +86,7 @@ export function useChatCommandOperations(options: Options) {
     setLocalSessionId(null);
     setRecords([]);
     setTaskTiming(null);
+    setTaskTimings([]);
     setNextOffset(null);
     setConnectionError(null);
     notified.current.clear();
@@ -121,6 +125,9 @@ export function useChatCommandOperations(options: Options) {
             acceptedAt: data.acceptedAt ?? data.timestamp, taskTiming: data.taskTiming, status: data.status, revision: data.revision, queuePaused: data.queuePaused, operation: data.operation, errorCode: data.errorCode, errorMessage: data.errorMessage, preview: data.preview };
           setTaskTiming(current => data.taskTiming === null && current?.commandId === data.commandId
             ? null : mergeTaskTiming(current, data.taskTiming ?? null));
+          setTaskTimings(current => data.taskTiming === null
+            ? current.filter(record => record.taskTiming.commandId !== data.commandId)
+            : data.taskTiming ? mergeResponseTaskTimings(current, [{ idempotencyKey: data.idempotencyKey!, taskTiming: data.taskTiming }]) : current);
           setRecords(current => mergeChatCommandViews(current, [record]));
           if (terminal(data.status)) {
             if (!record.operation && !notified.current.has(record.commandId)) { notified.current.add(record.commandId); latest.current.onFinished(record); }
@@ -244,5 +251,6 @@ export function useChatCommandOperations(options: Options) {
     await refresh();
   }, [refresh]);
 
-  return { records, taskTiming: taskTiming?.sessionId === sessionId ? taskTiming : null, connectionError, submit, cancel, restore, queueAction, edit, copy, loadMore: nextOffset === null ? null : () => refresh(nextOffset) };
+  const sessionTaskTimings = useMemo(() => taskTimings.filter(record => record.taskTiming.sessionId === sessionId), [taskTimings, sessionId]);
+  return { records, taskTiming: taskTiming?.sessionId === sessionId ? taskTiming : null, taskTimings: sessionTaskTimings, connectionError, submit, cancel, restore, queueAction, edit, copy, loadMore: nextOffset === null ? null : () => refresh(nextOffset) };
 }

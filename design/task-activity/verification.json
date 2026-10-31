@@ -1,0 +1,41 @@
+{
+  "source": "desktop/build/piora-icon.svg",
+  "outputs": [
+    {
+      "name": "piora-thinking.gif",
+      "width": 96,
+      "frameHeight": 96,
+      "frames": 48,
+      "loop": 0,
+      "durationMs": 2400,
+      "transparent": true
+    },
+    {
+      "name": "piora-thinking-24.gif",
+      "width": 24,
+      "frameHeight": 24,
+      "frames": 48,
+      "loop": 0,
+      "durationMs": 2400,
+      "transparent": true
+    },
+    {
+      "name": "piora-thinking.webp",
+      "width": 96,
+      "frameHeight": 96,
+      "frames": 48,
+      "loop": 0,
+      "durationMs": 2400,
+      "transparent": true
+    },
+    {
+      "name": "preview.gif",
+      "width": 880,
+      "frameHeight": 420,
+      "frames": 48,
+      "loop": 0,
+      "durationMs": 2400,
+      "transparent": true
+    }
+  ]
+}

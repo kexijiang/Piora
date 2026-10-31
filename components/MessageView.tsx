@@ -1,4 +1,7 @@
 "use client";
+
+import { taskElapsedMs, type TaskTiming } from "@/lib/task-timing";
+import { formatStatusDuration } from "@/lib/status-duration";
 import { thinkingPreview } from "@/lib/thinking-preview";
 import { messageImageUrl } from "@/lib/message-images";
 import { NestedToolCalls, useNestedToolCalls } from "./NestedToolCalls";
@@ -152,7 +155,7 @@ interface Props {
   retryDisabled?: boolean;
   showTimestamp?: boolean;
   prevTimestamp?: number;
-  responseStartedAt?: number;
+  taskTiming?: TaskTiming;
   sessionId?: string;
   onOpenAutomation?: (automationId: string) => void;
   onOpenCommandExecution?: (data: CommandExecutionData) => void;
@@ -169,15 +172,6 @@ function formatTime(ts?: number): string | null {
   if (isToday) return time;
   const date = d.toLocaleDateString([], { month: "short", day: "numeric", year: d.getFullYear() !== now.getFullYear() ? "numeric" : undefined });
   return `${date} ${time}`;
-}
-
-function formatResponseDuration(startedAt?: number, finishedAt?: number): string | null {
-  if (startedAt === undefined || finishedAt === undefined || finishedAt < startedAt) return null;
-  const elapsedMs = finishedAt - startedAt;
-  if (elapsedMs < 10_000) return `${Math.max(0.1, elapsedMs / 1_000).toFixed(1)}s`;
-  const seconds = Math.round(elapsedMs / 1_000);
-  if (seconds < 60) return `${seconds}s`;
-  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
 function haveSameRelevantToolResults(
@@ -220,12 +214,12 @@ export const MessageView = memo(function MessageView(props: Props) {
     onOpenAutomation={history ? undefined : props.onOpenAutomation} /></HistoryVersionContext.Provider></HistoryModeContext.Provider>;
 });
 
-const MessageContent = memo(function MessageContent({ mode, messageActions, message, isStreaming, intermediate, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditFailed, onRetry, retryDisabled, showTimestamp, prevTimestamp, responseStartedAt, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
+const MessageContent = memo(function MessageContent({ mode, messageActions, message, isStreaming, intermediate, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditFailed, onRetry, retryDisabled, showTimestamp, prevTimestamp, taskTiming, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
   if (message.role === "user") {
     return <UserMessageView messageActions={messageActions} message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditFailed={onEditFailed} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView messageActions={messageActions} message={message as AssistantMessage} isStreaming={isStreaming} intermediate={intermediate} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} responseStartedAt={responseStartedAt} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
+    return <AssistantMessageView messageActions={messageActions} message={message as AssistantMessage} isStreaming={isStreaming} intermediate={intermediate} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} taskTiming={taskTiming} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -260,7 +254,7 @@ const MessageContent = memo(function MessageContent({ mode, messageActions, mess
     && prev.intermediate === next.intermediate
     && haveSameRelevantToolResults(prev.message, prev.toolResults, next.toolResults)
     && prev.modelNames === next.modelNames
-    && prev.responseStartedAt === next.responseStartedAt
+    && prev.taskTiming === next.taskTiming
     && prev.cwd === next.cwd
     && prev.onOpenFile === next.onOpenFile
     && prev.entryId === next.entryId
@@ -592,7 +586,7 @@ function AssistantMessageView({
   onOpenFile,
   showTimestamp,
   prevTimestamp,
-  responseStartedAt,
+  taskTiming,
   sessionId,
   entryId,
   onOpenAutomation,
@@ -608,7 +602,7 @@ function AssistantMessageView({
   onOpenFile?: (filePath: string) => void;
   showTimestamp?: boolean;
   prevTimestamp?: number;
-  responseStartedAt?: number;
+  taskTiming?: TaskTiming;
   sessionId?: string;
   entryId?: string;
   onOpenAutomation?: (automationId: string) => void;
@@ -617,7 +611,8 @@ function AssistantMessageView({
   const { t } = useI18n();
   const time = showTimestamp ? formatTime(message.timestamp) : null;
   const historyMode = useContext(HistoryModeContext);
-  const responseDuration = showTimestamp ? formatResponseDuration(responseStartedAt, message.timestamp) : null;
+  const elapsed = taskTiming?.outcome ? taskElapsedMs(taskTiming, 0) : null;
+  const responseDuration = elapsed === null ? null : formatStatusDuration(elapsed);
   const blockItems = (Array.isArray(message.content) ? message.content : [])
     .map((block, originalIndex) => ({ block, originalIndex }))
     .filter(({ block }) => !isEmptyThinkingBlock(block, { isStreaming }));
@@ -767,8 +762,8 @@ function AssistantMessageView({
         display: "flex", alignItems: "center", gap: 8, marginTop: 4,
       }}>
         {responseDuration && !isStreaming && (
-          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>
-            {t("i18n.responseTime", { duration: responseDuration })}
+          <span data-response-task-duration title={t("chat.taskDuration.hint")} style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", fontVariantNumeric: "tabular-nums" }}>
+            {t("chat.taskDuration.total")} {responseDuration}
           </span>
         )}
         {textContent && !isStreaming && !historyMode && (

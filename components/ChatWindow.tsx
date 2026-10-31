@@ -25,6 +25,7 @@ import { ChatScrollRail } from "./ChatScrollRail";
 import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
 import { TaskDuration } from "./TaskDuration";
+import { responseTaskTimings } from "@/lib/response-task-timing";
 import { ToolReviewStatus } from "./ToolReviewStatus";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useIsMobile } from "@/hooks/useIsMobile";
@@ -229,6 +230,9 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   });
   const sessionBusy = agentRunning || bashRunning;
+  const responseTimings = useMemo(() => responseTaskTimings(messages, chatCommands.taskTimings), [messages, chatCommands.taskTimings]);
+  const timingInReply = !sessionBusy && [...responseTimings.values()].some(timing =>
+    timing.commandId === chatCommands.taskTiming?.commandId && timing.outcome && timing.finishedAt !== undefined);
   const busySinceRef = useRef<number | null>(null);
   const statusPhaseRef = useRef<string | null>(null);
   const statusPhaseSinceRef = useRef<number | null>(null);
@@ -832,6 +836,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
             <ChatHistory
               key={session?.id ?? sessionIdRef.current ?? "new"}
               operations={chatCommands.records} commandActions={commandActions}
+              responseTimings={responseTimings}
               messages={messages} directProcess compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
@@ -946,8 +951,12 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
             <TaskDuration
               key={session?.id ?? sessionIdRef.current ?? "new"}
               timing={chatCommands.taskTiming}
+              hideSettled={timingInReply}
               busy={sessionBusy}
               startedAt={statusClock?.runStartedAt ?? busySinceRef.current}
+              tokensPerSecond={agentRunning && streamState.isStreaming && streamState.streamingMessage?.role === "assistant"
+                && !isCompacting && !retryInfo && agentPhase?.kind !== "stopping"
+                ? streamState.streamingMessage.streamingMetrics?.tokensPerSecond : null}
               phase={isCompacting ? t("chat.compacting") : extensionDialog ? t("chat.taskDuration.waitingInput") : retryInfo ? t("chat.retrying", { attempt: retryInfo.attempt, max: retryInfo.maxAttempts }) : phaseLabel(agentPhase, t)}
               t={t}
             />
