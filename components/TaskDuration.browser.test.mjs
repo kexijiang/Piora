@@ -40,7 +40,7 @@ function App(){
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     const bundle = await readFile(path.join(root, "bundle.js"));
     const html = `<!doctype html><meta charset="utf-8"><style>
-body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#2f6feb;--status-ready:#16a34a;--status-failed:#dc2626;--text-sm:13px;background:var(--bg);color:var(--text);margin:0;font-family:Inter,'Microsoft YaHei',sans-serif}body.dark{--bg:#18181b;--bg-panel:#27272a;--text:#f4f4f5;--text-muted:#a1a1aa;--accent:#6c9fff}nav{padding:22px 32px;border-bottom:1px solid #8883;display:flex;gap:24px;align-items:center}nav button{margin-left:auto}main{max-width:760px;margin:30px auto;padding:0 24px}.user{margin-left:auto;width:65%;background:var(--bg-panel);padding:16px;border-radius:12px}p{margin:30px 0}.tool{padding:18px;background:var(--bg-panel);border-radius:8px;color:var(--text-muted);font-size:14px}.spacer{height:140px}.composer{border:1px solid #8885;border-radius:16px;padding:20px;color:var(--text-muted)}footer{font-size:12px;display:flex;justify-content:space-between;margin-top:50px}button{border:1px solid #8884;background:var(--bg-panel);color:var(--text);border-radius:6px;padding:7px 10px;cursor:pointer}aside{display:flex;gap:6px;flex-wrap:wrap;margin-top:20px}body.capture aside{visibility:hidden}
+html{font-size:14px}body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#2f6feb;--status-ready:#16a34a;--status-failed:#dc2626;--text-sm:.893rem;--text-md:1.071rem;background:var(--bg);color:var(--text);margin:0;font-family:Inter,'Microsoft YaHei',sans-serif}body.dark{--bg:#18181b;--bg-panel:#27272a;--text:#f4f4f5;--text-muted:#a1a1aa;--accent:#6c9fff}nav{padding:22px 32px;border-bottom:1px solid #8883;display:flex;gap:24px;align-items:center}nav button{margin-left:auto}main{max-width:760px;margin:30px auto;padding:0 24px}.user{margin-left:auto;width:65%;background:var(--bg-panel);padding:16px;border-radius:12px}p{margin:30px 0}.tool{padding:18px;background:var(--bg-panel);border-radius:8px;color:var(--text-muted);font-size:14px}.spacer{height:140px}.composer{border:1px solid #8885;border-radius:16px;padding:20px;color:var(--text-muted)}footer{font-size:12px;display:flex;justify-content:space-between;margin-top:50px}button{border:1px solid #8884;background:var(--bg-panel);color:var(--text);border-radius:6px;padding:7px 10px;cursor:pointer}aside{display:flex;gap:6px;flex-wrap:wrap;margin-top:20px}body.capture aside{visibility:hidden}
 </style><div id="root"></div><script src="/bundle.js"></script>`;
     server = createServer((req, res) => { res.setHeader("Content-Type", req.url === "/bundle.js" ? "text/javascript" : "text/html"); res.end(req.url === "/bundle.js" ? bundle : html); });
     await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
@@ -121,6 +121,15 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
       assert.equal(bounds.border, "0px");
     };
     await checkCenteredSpeed();
+    const readSpeedFontSizes = () => speed.evaluate(el => [...el.children].map(child => parseFloat(getComputedStyle(child).fontSize)));
+    const originalFontSizes = await readSpeedFontSizes();
+    await page.locator("html").evaluate(el => el.style.fontSize = "18px");
+    const enlargedFontSizes = await readSpeedFontSizes();
+    for (let index = 0; index < originalFontSizes.length; index++) {
+      assert.ok(Math.abs(enlargedFontSizes[index] / originalFontSizes[index] - 18 / 14) < .01, "speed number and unit follow the user font scale");
+    }
+    await checkCenteredSpeed();
+    await page.locator("html").evaluate(el => el.style.removeProperty("font-size"));
     const elapsedBounds = await value.boundingBox();
     const phaseBounds = await page.locator("[data-task-duration-phase]").boundingBox();
     const speedBounds = await speed.boundingBox();

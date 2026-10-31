@@ -69,8 +69,8 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
       </span>
       {speed !== null && <span data-task-token-speed className="piora-task-speed" title={t("chat.taskDuration.speedHint")} aria-live="off"
         style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: "var(--text)", lineHeight: "24px" }}>
-        <span style={{ fontSize: 15, fontWeight: 600 }}>≈{speed.toFixed(1)}</span>{" "}
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>t/s</span>
+        <span style={{ fontSize: "var(--text-md)", fontWeight: 600 }}>≈{speed.toFixed(1)}</span>{" "}
+        <span style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)" }}>t/s</span>
       </span>}
       </div>
     </div>
