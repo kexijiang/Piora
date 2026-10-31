@@ -172,6 +172,24 @@ export const CHARACTER_THEMES = [
     "blur": 0
   },
   {
+    "id": "character-seed-scarf",
+    "group": "seed",
+    "nameZh": "豆包娘 · 红围巾发呆",
+    "nameEn": "Doubao · Red Scarf Daydream",
+    "isDark": false,
+    "asset": "/themes/character-backgrounds/seed-scarf.webp",
+    "colors": {
+      "bg": "#F1F6FA",
+      "panel": "#FFFFFF",
+      "accent": "#AA3541",
+      "text": "#303C49"
+    },
+    "overlay": 64,
+    "sidebarOverlay": 36,
+    "filePanelOverlay": 42,
+    "blur": 0
+  },
+  {
     "id": "character-seed-soda",
     "group": "seed",
     "nameZh": "豆包娘 · 紫苏气泡",

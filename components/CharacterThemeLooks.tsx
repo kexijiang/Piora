@@ -45,7 +45,7 @@ export function CharacterThemeLooks() {
 
   return <section className={styles.section} aria-labelledby={titleId}>
     <div className={styles.heading}>
-      <div><h3 id={titleId}>{t("appearance.characters.title")} <span>20</span></h3><p>{t("appearance.characters.hint")}</p></div>
+      <div><h3 id={titleId}>{t("appearance.characters.title")} <span>{CHARACTER_THEMES.length}</span></h3><p>{t("appearance.characters.hint")}</p></div>
       {previous && <button type="button" className={styles.restore} onClick={restore} disabled={!hydrated || busy || (previous.background.source === "custom" && !hasStoredCustom)}>{t("appearance.characters.restore")}</button>}
     </div>
     <div className={styles.groups} role="group" aria-label={t("appearance.characters.title")}>

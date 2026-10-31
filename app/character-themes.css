@@ -179,6 +179,36 @@ html[data-theme="character-kimi-moon"] {
   --radius-panel: 18px;
 }
 
+html[data-theme="character-seed-scarf"] {
+  color-scheme: light;
+  --bg: #F1F6FA;
+  --bg-panel: #FFFFFF;
+  --bg-hover: #e9eff4;
+  --bg-selected: #f5e4e6;
+  --border: #cbd5df;
+  --border-strong: #a9b8c6;
+  --text: #303C49;
+  --text-muted: #536373;
+  --text-dim: #5e6e7e;
+  --accent: #AA3541;
+  --accent-hover: #922d39;
+  --accent-subtle: #f8e9eb;
+  --btn-primary-bg: #AA3541;
+  --btn-primary-fg: #ffffff;
+  --btn-primary-bg-hover: #922d39;
+  --user-bg: #f8e9eb;
+  --assistant-bg: #FFFFFF;
+  --tool-bg: #FFFFFF;
+  --bg-subtle: #f5f8fb;
+  --surface-glass: color-mix(in srgb, var(--bg) 86%, transparent);
+  --surface-highlight: color-mix(in srgb, var(--bg-panel) 72%, transparent);
+  --ambient-primary: transparent;
+  --ambient-secondary: transparent;
+  --radius-control: 10px;
+  --radius-surface: 14px;
+  --radius-panel: 18px;
+}
+
 html[data-theme="character-seed-soda"] {
   color-scheme: light;
   --bg: #F2F3FF;

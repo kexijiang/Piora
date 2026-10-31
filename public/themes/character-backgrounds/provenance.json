@@ -283,6 +283,19 @@
       },
       "originalSha256": "40b4a99e69c5e8639624c37774da84e3da65f02c15322565123bc61470de56d5",
       "prompt": "Use case: stylized-concept. Generate ONE finished wide landscape wallpaper (16:9) for Piora desktop chat application's one-click character theme. Premium polished 2D anime illustration, delicate clean linework, layered painterly light, coherent hands and anatomy. The left 62 percent must be calm low-detail negative space for sidebar and long chat text, seamless atmosphere rather than a blank cutout. Keep the character entirely in the right third, face around 78% x and 35% y, character recognisable at thumbnail size, background details at outer edges only. Full-bleed artwork, no UI mockup, no panels, no collage, no captions, no letters, no watermarks. Wholesome fully clothed adult female character. Hello Kitty humanized fan-art as the same adult woman: silky ivory-white rounded bob, dark brown eyes, white cat-ear headband, recognizable cherry-red bow above her left ear. Fully clothed oversized lavender cardigan over a high-neck ankle-length ivory dress. She sits at far right in a moonlit window nook, both hands curled naturally around a warm mug, serene sleepy smile. Soft velvet plum and dusty lilac room, crescent moon through far-right window, subtle rosy ribbon accent, one cream cushion. Left two thirds nearly uniform deep muted aubergine to charcoal purple for calm nighttime reading. Tasteful soft anime glow, no lettering, no clutter."
+    },
+    {
+      "id": "character-seed-scarf",
+      "date": "2026-10-31",
+      "source": {
+        "url": "https://pbs.twimg.com/media/HNwGyrabgAA6FjD.jpg",
+        "discoveryPage": "https://x.com/holegots",
+        "note": "User-confirmed short-haired red-scarf drooling Doubao meme. Search associated the image with this account; original artist and license unverified. Not part of ai-chan-sheets. Underlying character and source-image rights remain with their owners."
+      },
+      "method": "Codex built-in image_gen reference-guided wallpaper expansion; WebP encoding only",
+      "referenceSha256": "8ffbfc7094944ab6c92544a75b9008fa7eba6dbeeea430e9a1909eabdde35459",
+      "originalSha256": "b0e09ee0beed81f83ed594357fd3ca45b5eac156a6141e45bd08c341f41a5198",
+      "prompt": "Edit/expand the attached confirmed Doubao meme into a polished 16:9 landscape desktop wallpaper, at least 1920x1080. The reference is the exact desired character and expression, NOT a loose inspiration. Preserve the recognizable comically blank, silly face: very round soft cartoon face, huge round dark eyes gazing vacantly, asymmetrical side-part straight dark brown chin-length bob with no bangs across forehead, slightly open slack mouth and a thin little string of drool, vivid RED SCARF and plain WHITE long-sleeve shirt. Preserve the reference's stylized 3D ANIMATED CARTOON proportions and identity, not a realistic adult portrait, not a glamorous pretty anime woman, no change to hairstyle. Keep the humorous vacant expression endearing and recognizable. Place the character at far right, head center x=82%, y=35%, chest-up portrait with whole head visible and scarf visible down to bottom. Give her a slight head tilt just like reference, both arms resting relaxed below frame, no mug or props. Expand into a seamless pale powder-blue and soft white atmospheric background, with extremely subtle winter window light far right only; left 65% almost empty with very low contrast so chat text can be placed there. Clean gentle lighting. No text, no UI, no logos, no watermark, no additional characters. The result should read as the SAME silly short-haired red-scarf Doubao meme in a wide wallpaper, not a different character.\n"
     }
   ]
 }

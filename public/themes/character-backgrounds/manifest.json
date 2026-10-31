@@ -61,6 +61,14 @@
       "fallback": "linear-gradient(135deg, #13192F, #202B44)"
     },
     {
+      "id": "character-seed-scarf",
+      "nameKey": "background.preset.character-seed-scarf",
+      "asset": "/themes/character-backgrounds/seed-scarf.webp",
+      "artworkStatus": "available",
+      "appearance": "light",
+      "fallback": "linear-gradient(135deg, #F1F6FA, #FFFFFF)"
+    },
+    {
       "id": "character-seed-soda",
       "nameKey": "background.preset.character-seed-soda",
       "asset": "/themes/character-backgrounds/seed-soda.webp",

@@ -359,8 +359,12 @@ export class DesktopBrowserManager {
     this.browserSession.cookies.off("changed", this.handleCookieChanged);
     for (const tab of this.tabs.splice(0)) {
       this.settleNavigation(tab, new Error("Browser tab is closed."));
+      // Discarded tabs retain their view record after Electron releases its contents.
+      // Capture a live reference before detaching instead of reading the native getter again.
+      const contents = this.liveContents(tab);
       if (tab.attached && !this.window.isDestroyed()) this.window.contentView.removeChildView(tab.view);
-      if (!tab.view.webContents.isDestroyed()) tab.view.webContents.close();
+      tab.attached = false;
+      if (contents && !contents.isDestroyed()) contents.close();
     }
     this.removeIpc();
   }
@@ -899,11 +903,11 @@ export class DesktopBrowserManager {
   private liveContents(tab: BrowserTab): WebContents | null {
     if (tab.unloaded) return null;
     try {
-      if (tab.view.webContents.isDestroyed()) return null;
+      const contents = tab.view.webContents;
+      return contents && !contents.isDestroyed() ? contents : null;
     } catch {
       return null;
     }
-    return tab.view.webContents;
   }
 
   private tabUrl(tab: BrowserTab): string {

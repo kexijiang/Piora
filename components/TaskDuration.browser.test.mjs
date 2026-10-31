@@ -110,9 +110,43 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     assert.equal(await value.innerText(), "2:34");
     await page.getByRole("button", { name: "速度采样", exact: true }).click();
     assert.equal(await speed.innerText(), "≈42.5 t/s");
+    const checkCenteredSpeed = async () => {
+      const bounds = await speed.evaluate(el => {
+        const item = el.getBoundingClientRect(), line = el.closest("[data-task-duration]").getBoundingClientRect();
+        const style = getComputedStyle(el);
+        return { delta: Math.abs((item.left + item.right - line.left - line.right) / 2), background: style.backgroundColor, border: style.borderTopWidth };
+      });
+      assert.ok(bounds.delta <= 1, "speed stays at the center of the entire line");
+      assert.equal(bounds.background, "rgba(0, 0, 0, 0)");
+      assert.equal(bounds.border, "0px");
+    };
+    await checkCenteredSpeed();
+    const elapsedBounds = await value.boundingBox();
+    const phaseBounds = await page.locator("[data-task-duration-phase]").boundingBox();
+    const speedBounds = await speed.boundingBox();
+    assert.ok(phaseBounds.x > elapsedBounds.x + elapsedBounds.width, "phase follows the elapsed time");
+    assert.ok(phaseBounds.x + phaseBounds.width < speedBounds.x, "phase stays on the left of centered speed");
+    assert.ok(Math.abs(phaseBounds.y - elapsedBounds.y) < 5, "phase remains on the same line at desktop width");
+    // Even when the accent matches the panel, the speed remains legible.
+    const checkSpeedContrast = async () => {
+      const contrast = await speed.evaluate(el => {
+        const style = getComputedStyle(el);
+        const luminance = value => {
+          const channels = value.match(/[\d.]+/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
+          return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+        };
+        const a = luminance(style.color), b = luminance(getComputedStyle(document.body).backgroundColor);
+        return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+      });
+      assert.ok(contrast >= 4.5, `speed text contrast ${contrast} must remain readable`);
+    };
+    await page.locator("body").evaluate(el => el.style.setProperty("--accent", "var(--bg-panel)"));
+    await checkSpeedContrast();
+    await page.locator("body").evaluate(el => el.style.removeProperty("--accent"));
     const artifacts = path.join(repo, ".verification/task-duration"); await mkdir(artifacts, { recursive: true });
     await page.locator("body").evaluate(body => body.classList.add("capture"));
     await page.screenshot({ path: path.join(artifacts, "running-light.png") });
+    await page.locator("[data-task-duration]").screenshot({ path: path.join(artifacts, "speed-centered-light.png") });
     await page.locator("body").evaluate(body => body.classList.remove("capture"));
     await page.getByRole("button", { name: "完成", exact: true }).click();
     await page.clock.runFor(60000);
@@ -143,12 +177,15 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     await page.setViewportSize({ width: 390, height: 750 });
     await page.getByRole("button", { name: "速度采样", exact: true }).click();
     assert.equal(await speed.innerText(), "≈42.5 t/s");
+    await checkSpeedContrast();
+    await checkCenteredSpeed();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert.ok(await page.locator("[data-task-duration-phase]").evaluate(el => el.scrollWidth > el.clientWidth), "long phase is ellipsized");
     await page.locator("body").evaluate(body => body.classList.add("capture"));
     await page.screenshot({ path: path.join(artifacts, "running-dark-narrow.png") });
     await page.locator("body").evaluate(body => body.classList.remove("capture"));
     await page.setViewportSize({ width: 320, height: 750 });
+    await checkCenteredSpeed();
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "speed wraps on small screens without overflow");
     await page.getByRole("button", { name: "切换空对话", exact: true }).click();
     assert.equal(await page.locator("[data-task-duration]").count(), 0);
