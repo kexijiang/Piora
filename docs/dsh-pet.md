@@ -21,11 +21,13 @@
 ## 安装和隔离
 
 - 固定 `dsh-pet@0.3.8`，校验 npm 发布归档的 SHA-512；安装工具使用固定 `npm@11.6.2` 及归档校验，桌面用户不需要另装 Node/npm。依赖安装禁用生命周期脚本；传递依赖按上游版本约束解析。
-- 数据根为 `<Piora userData>/desktop-extensions/dsh-pet`。插件位于 `installed`，上游的 `DSH_HOME` 位于 `home`，npm 配置与缓存也在独立目录中。不会读取现有 DSH 的配置或插件列表。
-- 对固定版本 helper 的唯一源码适配是在 `app.setName('dsh-pet-electron-helper')` 后设置独立 Chromium `userData`；锚点不符则安装失败。原作者 LICENSE 与素材文件保留在安装目录。
+- 数据根为 `<所选 Pi agent 数据目录>/piora/desktop-extensions/dsh-pet`，默认位于 `~/.pi/agent` 下，遵从设置中的数据目录及环境覆盖。插件位于 `installed`，上游的 `DSH_HOME` 位于 `home`，npm 配置、下载暂存和缓存也在此目录下。首次迁移会复制旧版 `<Piora userData>/desktop-extensions/dsh-pet`，保留原副本并记录迁移标记；已有目标目录不会被覆盖。切换 Pi 数据目录前停止桌宠，失败回滚后重新初始化。不会读取现有 DSH 的配置或插件列表。
+- 对固定版本源码做两处隔离适配：helper 设置独立 Chromium `userData`；standalone 的 Electron 下载与缓存清理统一使用 `home/electron-cache`。已有安装在启动前幂等升级；锚点不符则明确失败。原作者 LICENSE 与素材文件保留在安装目录。
 - 仅受信任的 Piora 主窗口可以调用有限的启停、安装、设置 IPC。宠物的本地端口随机分配，使用它自己的令牌；令牌不返回设置页。AI 设置窗口启用隔离和沙箱，不注入 Piora preload。
 - 宠物宿主通过 IPC 管道监测 Piora 退出，透明窗口使用上游的宿主 PID 监测。安装失败/取消只清理暂存区，卸载保留 `home`。
-- 安装和宠物网络连接由独立运行时处理，目前不自动继承 Piora 应用内的代理设置；需要能够访问 npm 及上游 Electron 下载源。
+- registry 优先级：`PIORA_DSH_PET_REGISTRY` → `npm_config_registry`（也支持大写）→ 用户 `.npmrc` 的 `registry` → npm 公网源。可通过 `NPM_CONFIG_USERCONFIG` 指定用户配置文件；镜像需提供标准 npm 归档路径及依赖。不会复制 npm token 或项目脚本配置，也不修改原 `.npmrc`。
+- 安装时统一使用 Piora 的手动/直连代理选择；系统模式读取 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` / `NO_PROXY` 或用户 npmrc 的 `proxy` / `https-proxy` / `noproxy`，不解析操作系统 PAC。支持 URL 中的 Basic 代理认证，特殊字符需 URL 编码；NTLM/Kerberos 代理仍需适配的本地中转。内网 CA 可通过 `NODE_EXTRA_CA_CERTS` 或 npm `cafile` 指定，不关闭 TLS 校验。
+- 首次启动下载 Electron 时传递 `ELECTRON_MIRROR`（或 npm `electron_mirror`）和代理配置，兼容上游新旧代理实现。运行中的桌宠需停止后重新启动以应用网络配置变更。
 
 ## 来源与素材
 

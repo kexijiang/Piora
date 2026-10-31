@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "tar": "7.5.22",
+    "undici": "8.12.3",
     "electron-updater": "6.8.11",
     "koffi": "3.3.3"
   }

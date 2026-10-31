@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { preparePetRoot } from "./dsh-pet-paths.js";
+import { petNetwork, type PetProxySettings } from "./dsh-pet-network.js";
 import { DshPetManager } from "./dsh-pet-manager.js";
 import { createSmokeSessionProbe } from "./smoke-session-probe.js";
 import { SystemLauncher } from "./system-launcher";
@@ -176,6 +178,7 @@ if (desktopDevelopmentRuntime) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let dshPetProxy: PetProxySettings | undefined;
 let dshPet: DshPetManager | undefined;
 let dshPetSettings: BrowserWindow | undefined;
 let harmonyWindows: HarmonyWindows | undefined;
@@ -588,6 +591,7 @@ async function applyDesktopNetworkProxy(input: unknown): Promise<boolean> {
         await target.setProxy({ mode: settings.mode });
       }
     }
+    dshPetProxy = settings;
     // The shell applies these settings while lazy startup chunks and SSE may
     // still be loading. Closing all connections aborts those active requests;
     // let them finish while new connections use the updated proxy settings.
@@ -1070,8 +1074,10 @@ function isTrustedMainWindowSender(event: IpcMainInvokeEvent): boolean {
 }
 
 function initializeDshPet(): void {
+  if (!piAgentDirectoryPath) throw new Error("Pi data directory is unavailable");
   dshPet = new DshPetManager({
-    root: join(app.getPath("userData"), "desktop-extensions", "dsh-pet"),
+    root: preparePetRoot(piAgentDirectoryPath, app.getPath("userData")),
+    network: () => petNetwork(process.env, dshPetProxy),
     tasks: async () => {
       if (!serverUrl || !applicationToken) throw new Error("Piora is restarting");
       const response = await fetch(new URL("/api/desktop/dsh-pet/tasks", serverUrl), {
@@ -1322,6 +1328,7 @@ function currentAgentDataDirectoryInfo(): AgentDataDirectoryInfo {
 }
 
 async function suspendAgentRuntimeForDataMigration(): Promise<void> {
+  await dshPet?.dispose();
   await requestHarmonyEmergencyStop("agent_data_directory_migration");
   const activeServer = server;
   server = undefined;
@@ -1340,6 +1347,7 @@ async function restoreAgentRuntimeAfterDataMigrationFailure(
     const restoredUrl = await restoredRuntime.instance.start();
     serverUrl = restoredUrl;
     activateStandaloneProfile("normal", restoredRuntime.dataDirectory, restoredUrl);
+    initializeDshPet();
     if (mainWindow && !mainWindow.isDestroyed()) {
       let rendererOrigin: string | undefined;
       try {

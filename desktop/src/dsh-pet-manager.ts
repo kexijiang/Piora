@@ -3,12 +3,15 @@ import { mkdirSync, readFileSync, writeFileSync, renameSync, existsSync } from "
 import { join } from "node:path";
 import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
-import { installPet, petEnvironment, removePetDirectory } from "./dsh-pet-install.js";
+import { installPet, petEnvironment, removePetDirectory, preparePetRuntime } from "./dsh-pet-install.js";
 import { DSH_PET_VERSION, PetTaskProjection, type DshPetAction, type DshPetStatus, type DshPetProgress, type PetTaskSnapshot } from "./dsh-pet-types.js";
+
+import { petNetwork, type PetNetwork } from "./dsh-pet-network.js";
 
 interface Runtime { pid: number; port: number; token: string }
 interface Options {
   root: string;
+  network?: () => PetNetwork;
   tasks: () => Promise<PetTaskSnapshot[]>;
   openSettings: (url: string) => Promise<void>;
   openFolder: (path: string) => Promise<void>;
@@ -106,13 +109,14 @@ export class DshPetManager {
     if (action === "install") {
       if (this.installed()) throw new Error("DSH Pet is already installed");
       this.phase = "installing";
-      await installPet(this.options.root, signal, value => { this.progress = value; });
+      await installPet(this.options.root, signal, value => { this.progress = value; }, this.options.network?.() ?? petNetwork());
       this.phase = "stopped";
     } else if (action === "start") {
       if (this.child) return;
       if (!this.installed()) throw new Error("Install DSH Pet first");
       this.phase = "starting";
       this.stdout = "";
+      await preparePetRuntime(join(this.options.root, "installed", "node_modules", "dsh-pet"));
       mkdirSync(join(this.options.root, "home", "electron-profile"), { recursive: true });
       const port = await reservePort();
       signal.throwIfAborted();
@@ -121,7 +125,7 @@ export class DshPetManager {
       const runner = join(this.options.root, "host-runner.cjs");
       writeFileSync(runner, `process.once('disconnect', () => {\n  const force = setTimeout(() => process.exit(1), 5000); force.unref();\n  process.emit('SIGTERM');\n});\nprocess.argv.splice(1, 1);\nimport(require('node:url').pathToFileURL(process.argv[1]).href).catch(() => process.exit(1));\n`);
       const child = spawn(process.execPath, [runner, this.entry(), "--port", String(port)], {
-        cwd: this.options.root, env: petEnvironment(this.options.root), windowsHide: true, stdio: ["pipe", "pipe", "pipe", "ipc"],
+        cwd: this.options.root, env: petEnvironment(this.options.root, process.env, this.options.network?.() ?? petNetwork()), windowsHide: true, stdio: ["pipe", "pipe", "pipe", "ipc"],
       });
       this.child = child;
       const collect = (data: Buffer) => { this.stdout = (this.stdout + data.toString()).slice(-3000); };
