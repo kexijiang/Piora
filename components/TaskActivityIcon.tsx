@@ -1,0 +1,71 @@
+"use client";
+
+import { useId } from "react";
+
+const animationCss = `
+    .piora-task-orbit { transform-origin:64px 64px; animation:piora-task-orbit 2.4s linear infinite; }
+    .piora-task-breath { transform-origin:512px 512px; animation:piora-task-breath 2.4s ease-in-out infinite; }
+    @keyframes piora-task-orbit { from{transform:rotate(-90deg)} to{transform:rotate(270deg)} }
+    @keyframes piora-task-breath { 0%,100%{transform:scale(1)} 25%{transform:scale(1.015)} 75%{transform:scale(.985)} }
+    .piora-task-trace-0{animation:piora-task-trace-0 2.4s linear infinite;animation-delay:0s} @keyframes piora-task-trace-0{from{stroke-dashoffset:616.4}to{stroke-dashoffset:-616.4}}
+.piora-task-trace-1{animation:piora-task-trace-1 2.4s linear infinite;animation-delay:0.552s} @keyframes piora-task-trace-1{from{stroke-dashoffset:553.15}to{stroke-dashoffset:-553.15}}
+.piora-task-trace-2{animation:piora-task-trace-2 2.4s linear infinite;animation-delay:1.104s} @keyframes piora-task-trace-2{from{stroke-dashoffset:562.3499999999999}to{stroke-dashoffset:-562.3499999999999}}
+    @media(prefers-reduced-motion:reduce){.piora-task-orbit,.piora-task-breath,.piora-task-trace{animation:none}.piora-task-trace{display:none}}
+  `;
+
+/** Inline SVG keeps reduced-motion changes live and gradients unique per chat. */
+export function TaskActivityIcon() {
+  const id = useId();
+  return (
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 128 128" aria-hidden="true" focusable="false" data-task-running-icon style={{ flexShrink: 0 }}>
+    <style>{animationCss}</style>
+    <circle cx="64" cy="64" r="59" fill="none" stroke="#8273d6" strokeOpacity=".14" strokeWidth="1.5"/>
+    <svg x="14" y="14" width="100" height="100" viewBox="0 0 1024 1024" overflow="visible">
+      <g className="piora-task-breath">
+  <defs>
+    <linearGradient id={`${id}-bg`} x1="128" y1="96" x2="896" y2="928" gradientUnits="userSpaceOnUse">
+      <stop stopColor="#17162F"/>
+      <stop offset="0.52" stopColor="#0D1630"/>
+      <stop offset="1" stopColor="#07111F"/>
+    </linearGradient>
+    <radialGradient id={`${id}-aura`} cx="0" cy="0" r="1" gradientTransform="translate(760 210) rotate(132) scale(570 520)" gradientUnits="userSpaceOnUse">
+      <stop stopColor="#7C5CFF" stopOpacity="0.38"/>
+      <stop offset="0.46" stopColor="#4B3CC4" stopOpacity="0.13"/>
+      <stop offset="1" stopColor="#10162B" stopOpacity="0"/>
+    </radialGradient>
+    <linearGradient id={`${id}-pi`} x1="230" y1="264" x2="810" y2="807" gradientUnits="userSpaceOnUse">
+      <stop stopColor="#FFF3DC"/>
+      <stop offset="0.32" stopColor="#EFCBFF"/>
+      <stop offset="0.68" stopColor="#B69AFF"/>
+      <stop offset="1" stopColor="#68E4FF"/>
+    </linearGradient>
+    <linearGradient id={`${id}-shine`} x1="250" y1="265" x2="770" y2="700" gradientUnits="userSpaceOnUse">
+      <stop stopColor="#FFFFFF" stopOpacity="0.72"/>
+      <stop offset="0.58" stopColor="#FFFFFF" stopOpacity="0.08"/>
+      <stop offset="1" stopColor="#FFFFFF" stopOpacity="0"/>
+    </linearGradient>
+    <filter id={`${id}-softGlow`} x="-25%" y="-25%" width="150%" height="150%" colorInterpolationFilters="sRGB">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+
+  <rect x="48" y="48" width="928" height="928" rx="228" fill={`url(#${id}-bg)`}/>
+  <rect x="48" y="48" width="928" height="928" rx="228" fill={`url(#${id}-aura)`}/>
+  <path d="M246 310C364 274 655 274 778 310M363 326C362 507 337 680 256 789M655 326C653 523 681 693 790 786"
+        fill="none" stroke="#815FFF" strokeOpacity="0.28" strokeWidth="132" strokeLinecap="round" filter={`url(#${id}-softGlow)`}/>
+  <path d="M246 310C364 274 655 274 778 310M363 326C362 507 337 680 256 789M655 326C653 523 681 693 790 786"
+        fill="none" stroke={`url(#${id}-pi)`} strokeWidth="108" strokeLinecap="round" strokeLinejoin="round"/>
+  <path d="M251 296C372 265 650 265 773 296M351 332C349 488 330 631 281 734M644 331C643 493 659 630 718 718"
+        fill="none" stroke={`url(#${id}-shine)`} strokeWidth="15" strokeLinecap="round"/>
+  <rect x="49.5" y="49.5" width="925" height="925" rx="226.5" fill="none" stroke="#FFFFFF" strokeOpacity="0.09" strokeWidth="3"/>
+<path className="piora-task-trace piora-task-trace-0" d="M246 310C364 274 655 274 778 310" fill="none" stroke="#eaffff" strokeWidth="34" strokeLinecap="round" strokeOpacity=".78" strokeDasharray="107.2 1286.3999999999999" strokeDashoffset="616.4"/><path className="piora-task-trace piora-task-trace-1" d="M363 326C362 507 337 680 256 789" fill="none" stroke="#eaffff" strokeWidth="34" strokeLinecap="round" strokeOpacity=".78" strokeDasharray="96.2 1154.3999999999999" strokeDashoffset="553.15"/><path className="piora-task-trace piora-task-trace-2" d="M655 326C653 523 681 693 790 786" fill="none" stroke="#eaffff" strokeWidth="34" strokeLinecap="round" strokeOpacity=".78" strokeDasharray="97.80000000000001 1173.6" strokeDashoffset="562.3499999999999"/></g>
+    </svg>
+    <g className="piora-task-orbit">
+      <circle cx="108.86395197040183" cy="25.682565148519167" r="1.3" fill="#9a7bff" opacity="0.07"/><circle cx="110.61914573016574" cy="27.83848383447439" r="1.4000000000000001" fill="#9a7bff" opacity="0.10500000000000001"/><circle cx="112.27083332807638" cy="30.074690129446566" r="1.5" fill="#9a7bff" opacity="0.14"/><circle cx="113.81534760461889" cy="32.3862190962392" r="1.6" fill="#9a7bff" opacity="0.17500000000000002"/><circle cx="115.24925935185328" cy="34.767938562487956" r="1.7000000000000002" fill="#9a7bff" opacity="0.21000000000000002"/><circle cx="116.5693849271137" cy="37.21456051536674" r="1.8" fill="#9a7bff" opacity="0.24500000000000002"/><circle cx="117.77279332149126" cy="39.72065284229858" r="1.9000000000000001" fill="#9a7bff" opacity="0.28"/><circle cx="118.85681266740684" cy="42.280651391604" r="2" fill="#63d8f3" opacity="0.31500000000000006"/><circle cx="119.81903617082517" cy="44.88887232630918" r="2.1" fill="#63d8f3" opacity="0.35000000000000003"/><circle cx="120.65732745493963" cy="47.53952474368547" r="2.2" fill="#63d8f3" opacity="0.38500000000000006"/><circle cx="121.36982530346292" cy="50.22672353250158" r="2.3" fill="#63d8f3" opacity="0.42000000000000004"/><circle cx="121.95494779299264" cy="52.944502439442246" r="2.4000000000000004" fill="#63d8f3" opacity="0.455"/><circle cx="122.4113958052769" cy="55.68682731568262" r="2.5" fill="#63d8f3" opacity="0.49000000000000005"/><circle cx="122.73815591158171" cy="58.447609514207656" r="2.6" fill="#63d8f3" opacity="0.5250000000000001"/><circle cx="122.93450262275624" cy="61.22071940813108" r="2.7" fill="#63d8f3" opacity="0.56"/>
+      <circle cx="123" cy="64" r="5" fill="#66d8ef" opacity=".22"/>
+      <circle cx="123" cy="64" r="3.3" fill="#55c9eb"/>
+      <circle cx="122.3" cy="63.3" r="1.15" fill="#efffff"/>
+    </g>
+  </svg>
+  );
+}

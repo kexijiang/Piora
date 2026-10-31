@@ -4,6 +4,9 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 将「凝思求解中」前的运行圆点替换为 Piora「流光 π」动效，包含环绕光点、笔画流光与轻微呼吸；任务结束后停止动画，系统开启减少动态效果时静态显示。
+- 为「正在思考」等运行阶段增加三个依次亮起、轻微上浮的呼吸圆点，固定宽度避免文字跳动，兼容窄窗口与减少动态效果设置。
+
 ## [0.5.7-beta.5] - 2026-10-31
 
 - 修复 DSH Pet 安装器固定连接公网 npm 源导致内网安装失败：读取用户 npm 镜像配置，统一归档下载与依赖安装的代理设置，支持带认证的 HTTP/HTTPS 代理及 Electron 镜像，继续校验固定版本归档的 SHA-512。

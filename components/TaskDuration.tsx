@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TaskActivityIcon } from "./TaskActivityIcon";
+import { TaskPhaseActivity } from "./TaskPhaseActivity";
 import { formatStatusDuration } from "@/lib/status-duration";
 import { taskElapsedMs, type TaskTiming } from "@/lib/task-timing";
 
@@ -38,7 +40,7 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
   return (
     <div data-task-duration data-state={outcome ?? "running"} title={t("chat.taskDuration.hint")}
       style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, minHeight: 30, padding: "4px 2px 8px", fontSize: "var(--text-sm)", color: "var(--text-muted)", minWidth: 0 }}>
-      <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />
+      {running ? <TaskActivityIcon /> : <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />}
       <span role="status" style={{ flexShrink: 0 }}>{label}</span>
       {elapsed !== null && <span aria-hidden="true" style={{ opacity: 0.4 }}>·</span>}
       {elapsed !== null && <span style={{ flexShrink: 0 }}>{t(running ? "chat.taskDuration.elapsed" : "chat.taskDuration.total")}</span>}
@@ -47,7 +49,10 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
       </span>
       {running && <>
         <span aria-hidden="true" style={{ opacity: 0.4 }}>·</span>
-        <span data-task-duration-phase style={{ flex: "1 1 64px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{phase}</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 4, flex: "1 1 84px", minWidth: 0 }}>
+          <span data-task-duration-phase style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{phase}</span>
+          <TaskPhaseActivity />
+        </span>
       </>}
       {speed !== null && <span data-task-token-speed title={t("chat.taskDuration.speedHint")} aria-live="off"
         style={{ marginLeft: "auto", flexShrink: 0, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: "var(--accent)" }}>

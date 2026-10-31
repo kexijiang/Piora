@@ -55,6 +55,38 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     const value = page.locator("[data-task-duration-value]");
     assert.equal(await page.locator("[data-task-duration]").count(), 0);
     await page.getByRole("button", { name: "开始", exact: true }).click();
+    const icon = page.locator("[data-task-running-icon]");
+    await icon.waitFor();
+    assert.equal(await icon.getAttribute("aria-hidden"), "true");
+    assert.equal(await icon.getAttribute("width"), "24");
+    assert.equal(await icon.locator(".piora-task-orbit").evaluate(el => getComputedStyle(el).animationName), "piora-task-orbit");
+    const dots = page.locator("[data-task-phase-activity] .piora-phase-dot");
+    assert.equal(await dots.count(), 3);
+    assert.deepEqual(await dots.evaluateAll(els => els.map(el => getComputedStyle(el).animationDelay)), ["0s", "0.2s", "0.4s"]);
+    const dotFrames = await dots.first().evaluate(el => {
+      const animation = el.getAnimations()[0];
+      animation.pause(); animation.currentTime = 0;
+      const first = [getComputedStyle(el).opacity, getComputedStyle(el).transform];
+      animation.currentTime = 540;
+      const second = [getComputedStyle(el).opacity, getComputedStyle(el).transform];
+      animation.play(); return [first, second];
+    });
+    assert.notDeepEqual(dotFrames[0], dotFrames[1], "phase dots breathe across animation frames");
+    const transforms = await icon.locator(".piora-task-orbit").evaluate(el => {
+      const animation = el.getAnimations()[0];
+      animation.pause(); animation.currentTime = 0;
+      const first = getComputedStyle(el).transform;
+      animation.currentTime = 600;
+      const second = getComputedStyle(el).transform;
+      animation.play();
+      return [first, second];
+    });
+    assert.notEqual(transforms[0], transforms[1], "orbit changes across animation frames");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.waitForFunction(() => [...document.querySelectorAll("[data-task-running-icon] .piora-task-orbit, [data-task-running-icon] .piora-task-breath, [data-task-running-icon] .piora-task-trace")].every(el => getComputedStyle(el).animationName === "none"));
+    assert.ok(await dots.evaluateAll(els => els.every(el => getComputedStyle(el).animationName === "none")));
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.waitForFunction(() => getComputedStyle(document.querySelector(".piora-task-orbit")).animationName === "piora-task-orbit");
     await page.clock.runFor(65000);
     assert.equal(await value.innerText(), "1:05");
     const speed = page.locator("[data-task-token-speed]");
@@ -87,6 +119,8 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
     assert.equal(await value.innerText(), "2:34");
     assert.equal(await page.locator("[data-task-duration]").getAttribute("data-state"), "completed");
     assert.equal(await speed.count(), 0, "terminal tasks hide the last live estimate");
+    assert.equal(await icon.count(), 0, "completed tasks remove the animated icon");
+    assert.equal(await dots.count(), 0, "completed tasks remove phase motion");
     await page.getByRole("button", { name: "回复已有总用时", exact: true }).click();
     assert.equal(await page.locator("[data-task-duration]").count(), 0, "completed timer moves out of the composer when the reply owns it");
     await page.getByRole("button", { name: "回复已有总用时", exact: true }).click();
@@ -98,6 +132,7 @@ body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-muted:#52525b;--accent:#
       await page.getByRole("button", { name: label, exact: true }).click();
       await page.clock.runFor(10000);
       assert.equal(await page.locator("[data-task-duration]").getAttribute("data-state"), outcome);
+      assert.equal(await icon.count(), 0, "cancelled and failed tasks remove the animated icon");
       assert.equal(await value.innerText(), outcome === "interrupted" ? "用时未记录" : "4s");
     }
     await page.getByRole("button", { name: "开始", exact: true }).click();
