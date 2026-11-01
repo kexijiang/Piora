@@ -48,7 +48,7 @@ jobs:
         run: node scripts/create-release-notes.mjs "$GITHUB_REF_NAME" release-notes.md
 
       - name: Upload version release notes
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: piora-release-notes-${{ github.ref_name }}
           path: release-notes.md
@@ -66,7 +66,7 @@ jobs:
         run: npm run audit:runtime
 
       - name: Upload release assembly tooling
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: brand-release-tooling-${{ github.ref_name }}
           path: scripts/assemble-brand-release.mjs
@@ -241,7 +241,7 @@ jobs:
           Set-Content -LiteralPath desktop/release/SHA256SUMS.txt -Value $lines -Encoding ascii
 
       - name: Upload verified release payload
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.brand }}-windows-${{ github.ref_name }}
           path: |
@@ -330,7 +330,7 @@ jobs:
           printf '%s  %s\n' "$hash" "$(basename "$artifact")" > desktop/release/SHA256SUMS-linux.txt
 
       - name: Upload verified Linux payload
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.brand }}-linux-${{ github.ref_name }}
           path: |

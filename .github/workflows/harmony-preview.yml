@@ -187,7 +187,7 @@ jobs:
         run: node scripts/create-release-notes.mjs $env:GITHUB_REF_NAME desktop/release/release-notes.md
 
       - name: Upload verified preview payload
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.brand }}-windows-${{ github.ref_name }}
           path: |
@@ -203,7 +203,7 @@ jobs:
 
       - name: Upload release assembly tooling
         if: matrix.brand == 'piora'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: brand-release-tooling-${{ github.ref_name }}
           path: scripts/assemble-brand-release.mjs
