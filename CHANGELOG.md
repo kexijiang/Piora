@@ -4,7 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
-## [0.5.7] - 2026-11-02
+## [0.5.8] - 2026-11-02
 
 - 为 OpenAI 兼容接口中的 DeepSeek V4.1 Flash（含 1017 与量化模型 ID）补齐默认思考档位，隐藏不支持的 minimal/medium 并将旧档位请求归到相邻有效档位，避免 reasoning_effort 报错；保留服务商和用户明确设置的档位映射。
 - 将居中的实时 token 速度恢复为高对比底色胶囊标签，浅色与深色主题使用配对前景/背景色，保留字号缩放与窄窗口换行。
@@ -18,6 +18,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 - DSH Pet 安装与归档下载遵从 npm 镜像和代理设置，数据与下载缓存跟随 Pi 数据目录，首次切换目录迁移旧数据并保留原副本。
 - 鸿蒙侧栏与悬浮投屏共用设备视频流，增加首帧交接、断线重连窗口与解码兼容处理，减少重复查询和相互断流；平板兼容性与长期真机稳定性仍待设备验收。
 - 同步模型配置、字体缩放、工作树和投屏相关回归检查，覆盖配置持久化、主题对比度与交互状态，防止旧测试与新行为不一致。
+
+## [0.5.7] - 2026-11-02
+
+- 未发布候选：主分支 CI 已通过，打标时发现本地历史 v0.5.7 标签已被旧提交占用；保留原标签，本次改动纳入未占用的 0.5.8 正式版。
 
 ## [0.5.7-beta.9] - 2026-11-02
 
