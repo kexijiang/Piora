@@ -134,6 +134,8 @@ node --test lib/desktop-e2e.test.mjs
 
 ### 原生窗口恢复场景（开发中）
 
+2026-11-03 增加 Windows 启动层的遮挡计算兼容处理后，`y85I5f` 与 `FCn6fg` 两次完整五步通过，覆盖最小化、关闭隐藏、同实例恢复、保存、刷新及追问；未弱化可见性与输入释放断言。独立 Electron 回归 `node --test lib/desktop-window-visibility.test.mjs` 另外检查显式隐藏时停止帧交付，后台节流仍开启。首次 `sbTmee` 在保存环节失败，原因未确定，保留记录；场景现会采集状态、运行器及动作错误码并立即失败。处理会使被其他窗口遮住但未最小化/隐藏的窗口继续绘制。详见[本批报告](verification/intelligent-ui-phase3-native-window-2026-11-03.md)，并不代表全部恢复矩阵或其他平台完成。以下原生窗口记录为本次修复前的历史证据。
+
 `npm run test:desktop:e2e -- --scenario intelligent-ui-window` 使用本机固定模型夹具，在 Windows 独立开发桌面检查持键操作、最小化、关闭隐藏、恢复及保存。PowerShell 7 辅助器仅操作本次 launcher 子进程中、调试端口及应用窗口标题匹配的 Electron 主窗口；不操作其他桌面实例。此场景通过 `noDefaults: true` 连接 CDP，避免 Playwright 的焦点模拟掩盖原生页面隐藏事件。
 
 恢复使用相同隔离 profile 的第二实例激活生产单实例处理器，并核对原有进程和窗口身份；第二实例只有测试凭据，不使用服务器认证令牌。隐藏期间、恢复前即核对输入释放与暂停，再检查原生窗口、页面可见性和焦点。页面可见性不一致仍使场景失败，不能仅凭窗口重新出现判定通过。

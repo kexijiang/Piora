@@ -42,7 +42,7 @@ export const intelligentUiWindow={
  },
  async run({page,step,waitUntil,reload,screenshot,directory,signal}){
   const {APP_DISPLAY_NAME}=createRequire(import.meta.url)(resolve('desktop/dist/generated/brand.js'));
-  const {report,paths}=this.context;let handle;const windows=[],checkpoints=[],activations=[],interruptions=[];
+  const {report,paths}=this.context;let handle;const windows=[],checkpoints=[],activations=[],interruptions=[],saveFailures=[];
   // Playwright normally forces focused/visible documents. This scenario must
   // observe the actual native window, not that automation-only override.
   const nativePage=await page.context().newCDPSession(page);
@@ -52,7 +52,7 @@ export const intelligentUiWindow={
    firstReportedContext:page.context()===page.context().browser().contexts()[0]};
   report.focusEmulation='noDefaults CDP connection; no additional emulation override';
   this.context.registerCleanup(()=>nativePage.detach().catch(()=>{}));
-  const record=()=>writeFile(join(directory,'window-lifecycle.json'),JSON.stringify({scope:this.scope,limits:this.limits,windows,checkpoints,activations,interruptions},null,2)+'\n');
+  const record=()=>writeFile(join(directory,'window-lifecycle.json'),JSON.stringify({scope:this.scope,limits:this.limits,windows,checkpoints,activations,interruptions,saveFailures},null,2)+'\n');
   const native=async(action='inspect')=>{
    const result=await execute('pwsh.exe',['-NoProfile','-NonInteractive','-File',resolve('scripts/desktop-e2e/native-window.ps1'),'-LauncherPid',String(report.launchPid),'-DebugPort',String(paths.debugPort),'-ExpectedTitle',`${APP_DISPLAY_NAME} Dev`,'-Action',action,...(handle?['-WindowHandle',String(handle)]:[])],{windowsHide:true,timeout:15000,signal});
    const state=JSON.parse(result.stdout);handle=state.handle;
@@ -80,7 +80,11 @@ export const intelligentUiWindow={
   const ready=async()=>{await frame.getByRole('button',{name:'Other control'}).waitFor();assert.ok(!await surface.getAttribute('data-mini-app-runtime-error'));};
   const save=async()=>{
    await surface.getByRole('button',{name:/^(Save|保存)$/}).click();
-   await surface.getByText(/^(Saved · ready for your next message|已保存 · 后续追问可读取当前状态)$/).waitFor();
+   await waitUntil(async()=>{
+    const error=await surface.getAttribute('data-mini-app-state-error'),runtime=await surface.getAttribute('data-mini-app-runtime-error'),action=await surface.getAttribute('data-mini-app-action-error');
+    if(error||runtime||action){saveFailures.push({at:new Date().toISOString(),error,runtime,action,text:await surface.innerText()});await record();throw new Error(`Checkpoint save failed: state=${error}, runtime=${runtime}, action=${action}`);}
+    return surface.getByText(/^(Saved · ready for your next message|已保存 · 后续追问可读取当前状态)$/).isVisible();
+   },'checkpoint saved without state or runtime errors');
    await waitUntil(()=>surface.getByRole('button',{name:/^(Save|保存)$/}).isEnabled(),'checkpoint saved');
    const sessionId=new URL(page.url()).searchParams.get('session');assert.ok(sessionId);
    const output=await page.evaluate(async path=>{const r=await fetch(path,{cache:'no-store'});if(!r.ok)throw new Error(`Checkpoint read ${r.status}`);return r.json();},`/api/sessions/${sessionId}/mini-app?toolCallId=${callId}`);
@@ -141,6 +145,8 @@ export const intelligentUiWindow={
    const after=await save();assert.deepEqual(after,before);
    await page.locator('textarea').first().fill('Explain my saved current state without rebuilding the interface.');await page.getByRole('button',{name:/^(Send|发送)$/}).click();
    await page.getByText(`Observed lifecycle state: ${JSON.stringify(before.state)}`,{exact:true}).waitFor();
+   await waitUntil(async()=>await page.locator('[data-answer-output-interaction-paused]').count()===0,'follow-up and output state settled');
+   assert.deepEqual(await state(),before.state);await save();
    assert.ok(report.fixture.requests.some(r=>r.savedState?.summary===JSON.stringify(before.state)));await screenshot('window-reloaded-followup.png');
   });
  },

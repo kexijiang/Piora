@@ -1,0 +1,3650 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "baseCommit": "219d4b7b356bf4acb01628bda556a50acb80f68e",
+  "phaseComplete": false,
+  "sources": {
+    "desktop/src/main.ts": "ae1a18b49f279621a0d9dd3670a2dbc948d5d26b65eb99ead3e44e297d9e3c3b",
+    "desktop/src/window-visibility.ts": "28185b44cb9fb2a9a95ed15ea22a94b10bbe225725035b6c1224c6f5557f4b8a",
+    "lib/desktop-window-visibility.test.mjs": "6ad89c44710cd28c743b1862911beab917802bc1925c2447dfe62663139f9ac4",
+    "scripts/desktop-e2e/scenarios/intelligent-ui-window.mjs": "200c2bfa81ba86797541ce54973e52387c695fc12f056f7b4fa10878e0fd4722"
+  },
+  "checks": {
+    "native": {
+      "path": ".verification/phase3-window-visibility-regression-final.log",
+      "sha256": "d88c9b88e94e2f47077c17404ca58e44d958ae7226660a9796348d1188341c4a",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "cancelled": 0
+    },
+    "related": {
+      "path": ".verification/phase3-window-visibility-related-tests.log",
+      "sha256": "04a2fe3c8df94a8c87e1dedc9a737c4f6c7d5e40c5a87745dcda629a28390745",
+      "tests": 40,
+      "passed": 40,
+      "failed": 0,
+      "cancelled": 0
+    },
+    "desktopTypecheck": {
+      "exitCode": 0,
+      "path": ".verification/phase3-window-visibility-desktop-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "lint": {
+      "first": {
+        "exitCode": 1,
+        "path": ".verification/phase3-window-visibility-lint.log",
+        "sha256": "90c7d55a96aebf50d254b2e20e9e31ad227c68119912d485915aaf5d84e4be16"
+      },
+      "final": {
+        "exitCode": 0,
+        "path": ".verification/phase3-window-visibility-lint-final.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "existingCapabilities": {
+      "count": 14,
+      "sourceSetsMatch": true,
+      "rerun": false
+    }
+  },
+  "attempts": [
+    {
+      "directory": ".verification/desktop-e2e-sbTmee",
+      "result": {
+        "path": ".verification/desktop-e2e-sbTmee/result.json",
+        "sha256": "742c28d29f7bb8c3084274fb8c533cbb41fd7482243e16befb3d1d727708c373"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-sbTmee/desktop.log",
+        "sha256": "d5af663727ca740655198f0aa3ef1f31574c53d9c6de88475cc3f359f33bc8c7"
+      },
+      "windowEvidence": {
+        "path": ".verification/desktop-e2e-sbTmee/window-lifecycle.json",
+        "sha256": "d342946a940a32aa9a4bd3b22f22e2a905d4f5965a8134f0284c2808e92a96da"
+      },
+      "status": "failed",
+      "failedStep": "native-minimize-releases-and-pauses",
+      "error": {
+        "name": "TimeoutError",
+        "message": "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator('[data-mini-app-surface]').first().getByText(/^(Saved · ready for your next message|已保存 · 后续追问可读取当前状态)$/) to be visible\n"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 28656
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed",
+          "durationMs": 18301
+        },
+        {
+          "name": "native-minimize-releases-and-pauses",
+          "status": "failed",
+          "durationMs": 56351
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "windows": [
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "minimize",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        }
+      ],
+      "interruptions": [
+        {
+          "kind": "minimize",
+          "state": {
+            "x": 52,
+            "held": false,
+            "drag": false
+          },
+          "document": {
+            "hidden": true,
+            "focused": false
+          },
+          "syntheticKeyupSent": false,
+          "native": {
+            "visible": true,
+            "minimized": true
+          }
+        }
+      ],
+      "activations": [
+        {
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "sameProcess": true,
+          "sameWindow": true
+        }
+      ],
+      "checkpoints": [],
+      "saveFailures": null,
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-sbTmee/failure.png",
+          "sha256": "0297d985c303ee0fe7eb158886655a99c244a433833dabf38532f57c3f26c77a"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-y85I5f",
+      "result": {
+        "path": ".verification/desktop-e2e-y85I5f/result.json",
+        "sha256": "a4a2cbeeca1236304d72ac8e35199553617a414707d3eb2271f632e163829eb7"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-y85I5f/desktop.log",
+        "sha256": "652158425fbd9d91de1a01a5b5ff9499c6a19beb889eab4bd0c7f8c2e51eeb27"
+      },
+      "windowEvidence": {
+        "path": ".verification/desktop-e2e-y85I5f/window-lifecycle.json",
+        "sha256": "e59aaa4eac2001d8bdce73a3b762c6409ded877c6fc1cc0692024bb8d55b8bb9"
+      },
+      "status": "passed",
+      "failedStep": null,
+      "error": null,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 26938
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed",
+          "durationMs": 17965
+        },
+        {
+          "name": "native-minimize-releases-and-pauses",
+          "status": "passed",
+          "durationMs": 11918
+        },
+        {
+          "name": "native-close-hides-and-releases",
+          "status": "passed",
+          "durationMs": 10965
+        },
+        {
+          "name": "saved-reload-and-followup",
+          "status": "passed",
+          "durationMs": 8025
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "windows": [
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "minimize",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "close",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        }
+      ],
+      "interruptions": [
+        {
+          "kind": "minimize",
+          "state": {
+            "x": 55,
+            "held": false,
+            "drag": false
+          },
+          "document": {
+            "hidden": true,
+            "focused": false
+          },
+          "syntheticKeyupSent": false,
+          "native": {
+            "visible": true,
+            "minimized": true
+          }
+        },
+        {
+          "kind": "close",
+          "state": {
+            "x": 82,
+            "held": false,
+            "drag": false
+          },
+          "document": {
+            "hidden": true,
+            "focused": false
+          },
+          "syntheticKeyupSent": false,
+          "native": {
+            "visible": false,
+            "minimized": false
+          }
+        }
+      ],
+      "activations": [
+        {
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "sameProcess": true,
+          "sameWindow": true
+        },
+        {
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "sameProcess": true,
+          "sameWindow": true
+        }
+      ],
+      "checkpoints": [
+        {
+          "stateRevision": 2,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 55,
+              "held": false,
+              "drag": false
+            },
+            "tick": 52,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 82,
+              "held": false,
+              "drag": false
+            },
+            "tick": 97,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 82,
+              "held": false,
+              "drag": false
+            },
+            "tick": 97,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 82,
+              "held": false,
+              "drag": false
+            },
+            "tick": 97,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 82,
+              "held": false,
+              "drag": false
+            },
+            "tick": 97,
+            "rng": 1346981714
+          }
+        }
+      ],
+      "saveFailures": [],
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-y85I5f/closed-restored.png",
+          "sha256": "cf9c99af090890253f4395800f9a18238062e35411634c2f8f9660620cb4ccda"
+        },
+        {
+          "path": ".verification/desktop-e2e-y85I5f/minimized-restored.png",
+          "sha256": "779bc32d02ca53dbdaba09bdcec36080c26c2f844d8f69e07373d24143e43e77"
+        },
+        {
+          "path": ".verification/desktop-e2e-y85I5f/window-reloaded-followup.png",
+          "sha256": "9f585eabd0394614842863031036ff1c1469de33990e0f19a6742e4d5c6a266e"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-FCn6fg",
+      "result": {
+        "path": ".verification/desktop-e2e-FCn6fg/result.json",
+        "sha256": "947b3f2cbb216cfe8905d64ff2d5382a79ee581a2d632b9e76711fa3989ff852"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-FCn6fg/desktop.log",
+        "sha256": "2f825a0a8a5690bbaba9124a9bc7a04160fc34911fe4b8f086df55cbe653be24"
+      },
+      "windowEvidence": {
+        "path": ".verification/desktop-e2e-FCn6fg/window-lifecycle.json",
+        "sha256": "02b99cf560f21dd2c8209c5dca2c31656549ad054163d755b28082f81255e3f4"
+      },
+      "status": "passed",
+      "failedStep": null,
+      "error": null,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 26884
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed",
+          "durationMs": 17539
+        },
+        {
+          "name": "native-minimize-releases-and-pauses",
+          "status": "passed",
+          "durationMs": 12023
+        },
+        {
+          "name": "native-close-hides-and-releases",
+          "status": "passed",
+          "durationMs": 11020
+        },
+        {
+          "name": "saved-reload-and-followup",
+          "status": "passed",
+          "durationMs": 8293
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "windows": [
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "minimize",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": true,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "close",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": false,
+          "minimized": false,
+          "document": {
+            "hidden": true,
+            "visibility": "hidden",
+            "focused": false
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        },
+        {
+          "action": "inspect",
+          "visible": true,
+          "minimized": false,
+          "document": {
+            "hidden": false,
+            "visibility": "visible",
+            "focused": true
+          }
+        }
+      ],
+      "interruptions": [
+        {
+          "kind": "minimize",
+          "state": {
+            "x": 59,
+            "held": false,
+            "drag": false
+          },
+          "document": {
+            "hidden": true,
+            "focused": false
+          },
+          "syntheticKeyupSent": false,
+          "native": {
+            "visible": true,
+            "minimized": true
+          }
+        },
+        {
+          "kind": "close",
+          "state": {
+            "x": 86,
+            "held": false,
+            "drag": false
+          },
+          "document": {
+            "hidden": true,
+            "focused": false
+          },
+          "syntheticKeyupSent": false,
+          "native": {
+            "visible": false,
+            "minimized": false
+          }
+        }
+      ],
+      "activations": [
+        {
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "sameProcess": true,
+          "sameWindow": true
+        },
+        {
+          "exit": {
+            "code": 0,
+            "signal": null
+          },
+          "sameProcess": true,
+          "sameWindow": true
+        }
+      ],
+      "checkpoints": [
+        {
+          "stateRevision": 2,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 59,
+              "held": false,
+              "drag": false
+            },
+            "tick": 55,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 86,
+              "held": false,
+              "drag": false
+            },
+            "tick": 100,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 86,
+              "held": false,
+              "drag": false
+            },
+            "tick": 100,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 86,
+              "held": false,
+              "drag": false
+            },
+            "tick": 100,
+            "rng": 1346981714
+          }
+        },
+        {
+          "stateRevision": 4,
+          "snapshot": {
+            "inputs": {},
+            "state": {
+              "x": 86,
+              "held": false,
+              "drag": false
+            },
+            "tick": 100,
+            "rng": 1346981714
+          }
+        }
+      ],
+      "saveFailures": [],
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-FCn6fg/closed-restored.png",
+          "sha256": "6161556ac7b671591b5f12510ab4a7c1a520b1d807e978df2b8b24da3574fcc3"
+        },
+        {
+          "path": ".verification/desktop-e2e-FCn6fg/minimized-restored.png",
+          "sha256": "d2870f22e22e75a3c20e595231a803977b2c8d34bb1dea60cf1fe21ab9b8a612"
+        },
+        {
+          "path": ".verification/desktop-e2e-FCn6fg/window-reloaded-followup.png",
+          "sha256": "d967905f97164d7fd68f46bf6195a20ad43777c03f447477ea8de413d7761391"
+        }
+      ]
+    }
+  ],
+  "diagnostic": {
+    "baseline": {
+      "path": ".verification/visibility-minimal-8o8w7X/result.json",
+      "sha256": "fb1477b77d73d7dd19283ed7e9511d929cb2ddc9c3058563d8ad5ea47e4e92c7"
+    },
+    "record": {
+      "path": ".verification/window-visibility-probe-faEsVJ/result.json",
+      "sha256": "be290485b4e25fd3507407d568cab9a732042c2edae1da1841c9be15eccd8004"
+    },
+    "source": {
+      "path": ".verification/window-visibility-probe.cjs",
+      "sha256": "a0f6c610f7194cc1d3d4425caddbbe0af46691661739bf898b3287c65d6e1822"
+    },
+    "runner": {
+      "path": ".verification/run-window-visibility-probe.mjs",
+      "sha256": "74f4f77eecc502f0d8b5ce70a3fa8b66eba48ed2f137be227781f5ea0cc3f201"
+    },
+    "probes": [
+      {
+        "mode": "baseline",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "error": null,
+        "actions": [
+          {
+            "action": "observe",
+            "samples": [
+              {
+                "afterMs": 501,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 32
+                }
+              },
+              {
+                "afterMs": 1011,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 61
+                }
+              },
+              {
+                "afterMs": 1526,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 90
+                }
+              },
+              {
+                "afterMs": 2040,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 119
+                }
+              }
+            ]
+          },
+          {
+            "action": "minimize",
+            "samples": [
+              {
+                "afterMs": 518,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 150
+                }
+              },
+              {
+                "afterMs": 1021,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 179
+                }
+              },
+              {
+                "afterMs": 1536,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 208
+                }
+              },
+              {
+                "afterMs": 2040,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 236
+                }
+              }
+            ]
+          },
+          {
+            "action": "restore",
+            "samples": [
+              {
+                "afterMs": 530,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              },
+              {
+                "afterMs": 1041,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              },
+              {
+                "afterMs": 1544,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              },
+              {
+                "afterMs": 2058,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              }
+            ]
+          },
+          {
+            "action": "hide",
+            "samples": [
+              {
+                "afterMs": 517,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              },
+              {
+                "afterMs": 1032,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              },
+              {
+                "afterMs": 1546,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              },
+              {
+                "afterMs": 2049,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 240
+                }
+              }
+            ]
+          },
+          {
+            "action": "show",
+            "samples": [
+              {
+                "afterMs": 532,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649801232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649801249,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 242
+                }
+              },
+              {
+                "afterMs": 1047,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649801232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649801249,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 242
+                }
+              },
+              {
+                "afterMs": 1564,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649801232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649801249,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 242
+                }
+              },
+              {
+                "afterMs": 2065,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649797028,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649801232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649801249,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 242
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "mode": "no-paint",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "error": null,
+        "actions": [
+          {
+            "action": "observe",
+            "samples": [
+              {
+                "afterMs": 500,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 31
+                }
+              },
+              {
+                "afterMs": 1014,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 60
+                }
+              },
+              {
+                "afterMs": 1516,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 88
+                }
+              },
+              {
+                "afterMs": 2028,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 117
+                }
+              }
+            ]
+          },
+          {
+            "action": "minimize",
+            "samples": [
+              {
+                "afterMs": 515,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 149
+                }
+              },
+              {
+                "afterMs": 1032,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 178
+                }
+              },
+              {
+                "afterMs": 1548,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 207
+                }
+              },
+              {
+                "afterMs": 2052,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 236
+                }
+              }
+            ]
+          },
+          {
+            "action": "restore",
+            "samples": [
+              {
+                "afterMs": 539,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              },
+              {
+                "afterMs": 1047,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              },
+              {
+                "afterMs": 1557,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              },
+              {
+                "afterMs": 2061,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              }
+            ]
+          },
+          {
+            "action": "hide",
+            "samples": [
+              {
+                "afterMs": 511,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              },
+              {
+                "afterMs": 1016,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              },
+              {
+                "afterMs": 1531,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              },
+              {
+                "afterMs": 2032,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 241
+                }
+              }
+            ]
+          },
+          {
+            "action": "show",
+            "samples": [
+              {
+                "afterMs": 531,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649812232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649812244,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 243
+                }
+              },
+              {
+                "afterMs": 1032,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649812232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649812244,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 243
+                }
+              },
+              {
+                "afterMs": 1548,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649812232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649812244,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 243
+                }
+              },
+              {
+                "afterMs": 2061,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649803795,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649808107,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649812232,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649812244,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 243
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "mode": "visible-start",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "error": null,
+        "actions": [
+          {
+            "action": "observe",
+            "samples": [
+              {
+                "afterMs": 513,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 31
+                }
+              },
+              {
+                "afterMs": 1015,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 60
+                }
+              },
+              {
+                "afterMs": 1531,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 89
+                }
+              },
+              {
+                "afterMs": 2047,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 118
+                }
+              }
+            ]
+          },
+          {
+            "action": "minimize",
+            "samples": [
+              {
+                "afterMs": 521,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 120
+                }
+              },
+              {
+                "afterMs": 1022,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 120
+                }
+              },
+              {
+                "afterMs": 1537,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 120
+                }
+              },
+              {
+                "afterMs": 2053,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 120
+                }
+              }
+            ]
+          },
+          {
+            "action": "restore",
+            "samples": [
+              {
+                "afterMs": 520,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              },
+              {
+                "afterMs": 1034,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              },
+              {
+                "afterMs": 1546,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              },
+              {
+                "afterMs": 2049,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              }
+            ]
+          },
+          {
+            "action": "hide",
+            "samples": [
+              {
+                "afterMs": 506,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              },
+              {
+                "afterMs": 1020,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              },
+              {
+                "afterMs": 1523,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              },
+              {
+                "afterMs": 2037,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 122
+                }
+              }
+            ]
+          },
+          {
+            "action": "show",
+            "samples": [
+              {
+                "afterMs": 519,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649823170,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649823181,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 124
+                }
+              },
+              {
+                "afterMs": 1037,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649823170,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649823181,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 124
+                }
+              },
+              {
+                "afterMs": 1544,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649823170,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649823181,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 124
+                }
+              },
+              {
+                "afterMs": 2051,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649814768,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649816924,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649819004,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649819046,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649823170,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649823181,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 124
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "mode": "no-occlusion",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "error": null,
+        "actions": [
+          {
+            "action": "observe",
+            "samples": [
+              {
+                "afterMs": 502,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 31
+                }
+              },
+              {
+                "afterMs": 1005,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 60
+                }
+              },
+              {
+                "afterMs": 1516,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 89
+                }
+              },
+              {
+                "afterMs": 2027,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 118
+                }
+              }
+            ]
+          },
+          {
+            "action": "minimize",
+            "samples": [
+              {
+                "afterMs": 519,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 121
+                }
+              },
+              {
+                "afterMs": 1022,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 121
+                }
+              },
+              {
+                "afterMs": 1532,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 121
+                }
+              },
+              {
+                "afterMs": 2043,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 121
+                }
+              }
+            ]
+          },
+          {
+            "action": "restore",
+            "samples": [
+              {
+                "afterMs": 516,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 150
+                }
+              },
+              {
+                "afterMs": 1027,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 179
+                }
+              },
+              {
+                "afterMs": 1529,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 207
+                }
+              },
+              {
+                "afterMs": 2044,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 236
+                }
+              }
+            ]
+          },
+          {
+            "action": "hide",
+            "samples": [
+              {
+                "afterMs": 507,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 238
+                }
+              },
+              {
+                "afterMs": 1013,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 238
+                }
+              },
+              {
+                "afterMs": 1522,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 238
+                }
+              },
+              {
+                "afterMs": 2024,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 238
+                }
+              }
+            ]
+          },
+          {
+            "action": "show",
+            "samples": [
+              {
+                "afterMs": 514,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649834028,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 267
+                }
+              },
+              {
+                "afterMs": 1015,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649834028,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 295
+                }
+              },
+              {
+                "afterMs": 1531,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649834028,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 325
+                }
+              },
+              {
+                "afterMs": 2045,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [
+                    {
+                      "at": 1793649827816,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649829872,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649831945,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649834028,
+                      "visibility": "visible"
+                    }
+                  ],
+                  "frames": 354
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "mode": "software",
+        "electron": "45.0.0",
+        "chrome": "156.0.8078.48",
+        "error": null,
+        "actions": [
+          {
+            "action": "observe",
+            "samples": [
+              {
+                "afterMs": 516,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 35
+                }
+              },
+              {
+                "afterMs": 1030,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 66
+                }
+              },
+              {
+                "afterMs": 1543,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 96
+                }
+              },
+              {
+                "afterMs": 2057,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": true,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 127
+                }
+              }
+            ]
+          },
+          {
+            "action": "minimize",
+            "samples": [
+              {
+                "afterMs": 519,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 159
+                }
+              },
+              {
+                "afterMs": 1034,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 190
+                }
+              },
+              {
+                "afterMs": 1547,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 221
+                }
+              },
+              {
+                "afterMs": 2060,
+                "native": {
+                  "minimized": true,
+                  "visible": false,
+                  "focused": true
+                },
+                "frameVisibility": "visible",
+                "state": {
+                  "hidden": false,
+                  "focused": false,
+                  "visibility": "visible",
+                  "events": [],
+                  "frames": 252
+                }
+              }
+            ]
+          },
+          {
+            "action": "restore",
+            "samples": [
+              {
+                "afterMs": 512,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              },
+              {
+                "afterMs": 1022,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              },
+              {
+                "afterMs": 1526,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              },
+              {
+                "afterMs": 2032,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              }
+            ]
+          },
+          {
+            "action": "hide",
+            "samples": [
+              {
+                "afterMs": 509,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              },
+              {
+                "afterMs": 1023,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              },
+              {
+                "afterMs": 1532,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              },
+              {
+                "afterMs": 2034,
+                "native": {
+                  "minimized": false,
+                  "visible": false,
+                  "focused": false
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": false,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 255
+                }
+              }
+            ]
+          },
+          {
+            "action": "show",
+            "samples": [
+              {
+                "afterMs": 530,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649845009,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649845019,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 256
+                }
+              },
+              {
+                "afterMs": 1035,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649845009,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649845019,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 256
+                }
+              },
+              {
+                "afterMs": 1542,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649845009,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649845019,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 256
+                }
+              },
+              {
+                "afterMs": 2049,
+                "native": {
+                  "minimized": false,
+                  "visible": true,
+                  "focused": true
+                },
+                "frameVisibility": "hidden",
+                "state": {
+                  "hidden": true,
+                  "focused": true,
+                  "visibility": "hidden",
+                  "events": [
+                    {
+                      "at": 1793649840885,
+                      "visibility": "hidden"
+                    },
+                    {
+                      "at": 1793649845009,
+                      "visibility": "visible"
+                    },
+                    {
+                      "at": 1793649845019,
+                      "visibility": "hidden"
+                    }
+                  ],
+                  "frames": 256
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "nativeRegression": {
+    "record": {
+      "path": ".verification/window-visibility-regression-xgqEt3/result.json",
+      "sha256": "45a50fa2503fd7ce8bb139e62645a8004ec9b8a21ef58f45f20558d1a2d5fbc4"
+    },
+    "observations": [
+      {
+        "action": "initial-show",
+        "native": {
+          "visible": true,
+          "minimized": false
+        },
+        "before": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 2
+        },
+        "after": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 8
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "minimize-0",
+        "native": {
+          "visible": false,
+          "minimized": true
+        },
+        "before": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 8
+        },
+        "after": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 8
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "restore-0",
+        "native": {
+          "visible": true,
+          "minimized": false
+        },
+        "before": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 24
+        },
+        "after": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 39
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "hide-0",
+        "native": {
+          "visible": false,
+          "minimized": false
+        },
+        "before": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 39
+        },
+        "after": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 39
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "show-0",
+        "native": {
+          "visible": true,
+          "minimized": false
+        },
+        "before": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 56
+        },
+        "after": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 70
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "minimize-1",
+        "native": {
+          "visible": false,
+          "minimized": true
+        },
+        "before": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 70
+        },
+        "after": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 70
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "restore-1",
+        "native": {
+          "visible": true,
+          "minimized": false
+        },
+        "before": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 85
+        },
+        "after": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 100
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "hide-1",
+        "native": {
+          "visible": false,
+          "minimized": false
+        },
+        "before": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 100
+        },
+        "after": {
+          "hidden": true,
+          "visibility": "hidden",
+          "frames": 100
+        },
+        "backgroundThrottling": true
+      },
+      {
+        "action": "show-1",
+        "native": {
+          "visible": true,
+          "minimized": false
+        },
+        "before": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 116
+        },
+        "after": {
+          "hidden": false,
+          "visibility": "visible",
+          "frames": 131
+        },
+        "backgroundThrottling": true
+      }
+    ],
+    "scope": "Real isolated Windows Electron with sandboxed iframe, no CDP, actual production visibility configuration; two minimize/restore and hide/show cycles"
+  },
+  "evidenceNotes": [
+    "All desktop runs use the local synthetic held-input fixture and no provider credentials",
+    "First desktop save failure remains unresolved; subsequent passes do not establish its cause",
+    "Native and document visibility, focus, key release, paused state and full checkpoint equality assertions retained",
+    "Disabling native occlusion can keep fully covered but shown windows rendering; explicit hide/minimize still throttle",
+    "Full model semantics, tray menu, process/crash restart, release packages and other platform acceptance not covered"
+  ],
+  "report": {
+    "path": "docs/verification/intelligent-ui-phase3-native-window-2026-11-03.md",
+    "sha256": "cc907ce6d2d102c4d70b708c3606728bb88d756cee5f997811131a3f91a55ea3"
+  },
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-native-window-2026-11-03.md",
+    "sourceSha256": "cc907ce6d2d102c4d70b708c3606728bb88d756cee5f997811131a3f91a55ea3",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-native-window-2026-11-03.pdf",
+    "pdfSha256": "025814af4fb4d8d23bf66f91e5304b0182c309fbc093a24712f9fdbe866abcc2",
+    "pages": 2,
+    "pageTextLengths": [
+      1022,
+      1326
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed",
+    "reviewedPages": [
+      1,
+      2
+    ],
+    "visualNotes": "Both rendered pages inspected; readable text and tables, no clipping or overlap."
+  }
+}
