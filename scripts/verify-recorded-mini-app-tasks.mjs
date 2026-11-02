@@ -174,7 +174,7 @@ const scenario={
           if(spec.expectInspection===true)assert.ok(calls.length>0,'Requested future effects must be inspected');
         }else assert.ok(followups().every(r=>!r.tools?.length),'Explanation must preserve the existing app');
         const contexts=taskRequests.flatMap(r=>r.savedContext).map(text=>JSON.parse(text.slice(text.indexOf('\n')+1)));
-        assert.ok(contexts.some(c=>c.apps?.some(app=>app.id===record.plan.id&&app.tick===saved.result.snapshot.tick&&app.summary===saved.result.frame.summary.slice(0,2000))),'Real request includes the exact current saved summary and tick');
+        assert.ok(contexts.some(c=>c.apps?.some(app=>app.id===record.plan.id&&!Object.hasOwn(app,'tick')&&app.runtimeMetadata?.tick===saved.result.snapshot.tick&&app.runtimeMetadata?.playbackMode===(record.plan.playback?.mode??'legacy')&&app.summary===saved.result.frame.summary.slice(0,2000))),'Real request includes the exact saved summary and separately labelled host clock');
         const actionEvidence=onDemand?[...new Set(taskRequests.flatMap(request=>request.inspectionResults))].map(text=>JSON.parse(text.slice(text.indexOf('\n')+1)))
           :[contexts.flatMap(c=>c.apps??[]).find(app=>app.id===record.plan.id)?.localActionPreviews];
         if(onDemand)assert.ok(contexts.flatMap(c=>c.apps??[]).every(app=>!app.localActionPreviews),'Default saved-state messages contain no executed alternatives');

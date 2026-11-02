@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "recordedAt": "2026-11-02T20:49:34.999Z",
+  "recordedAt": "2026-11-02T21:28:49.557Z",
   "entries": [
     {
       "id": "document",
@@ -93,7 +93,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -110,7 +110,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -177,9 +177,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -273,7 +273,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -290,7 +290,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -357,9 +357,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -453,7 +453,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -470,7 +470,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -537,9 +537,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -633,7 +633,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -650,7 +650,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -717,9 +717,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -813,7 +813,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -830,7 +830,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -897,9 +897,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -993,7 +993,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -1010,7 +1010,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -1077,9 +1077,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -1173,7 +1173,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -1190,7 +1190,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -1257,9 +1257,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -1353,7 +1353,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -1370,7 +1370,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -1437,9 +1437,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -1533,7 +1533,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -1550,7 +1550,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -1617,9 +1617,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -1713,7 +1713,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -1730,7 +1730,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -1797,9 +1797,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -1893,7 +1893,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -1910,7 +1910,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -1977,9 +1977,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -2073,7 +2073,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -2090,7 +2090,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -2157,9 +2157,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -2253,7 +2253,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -2270,7 +2270,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -2337,9 +2337,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     },
     {
@@ -2433,7 +2433,7 @@
         "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
         "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
         "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
-        "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+        "lib/answer-output-decision.ts": "8d8e109f43c224f0ab9855ec5482f6792bf6147e0ba96521cec203e47e241554",
         "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
         "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
         "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
@@ -2450,7 +2450,7 @@
         "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
         "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
-        "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+        "lib/mini-app/action-inspection.ts": "8ec7a2b5bd17b9d4b97b5b593b6b3343a3a1763e32932bf0843813dd6311b500",
         "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
         "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
         "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
@@ -2517,9 +2517,9 @@
         "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
         "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
-        "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+        "lib/mini-app/decision-policy.ts": "5fb532dfed5c674775f312cde2166f275d9ea6405219a8eb0b6313c8393268b7",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878"
+        "lib/mini-app/generation-runtime.ts": "7eef613a53270556300cdd7c95ab866a0f58b49449ffe6bc5d922365de52c90a"
       }
     }
   ]

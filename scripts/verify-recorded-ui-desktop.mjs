@@ -114,7 +114,7 @@ const scenario = {
       const contexts = taskRequests.flatMap(request => request.savedContext).map(text => JSON.parse(text.slice(text.indexOf('\n') + 1)));
       if (sample.taskId === 'sorting' || sample.taskId === 'shopping-list') {
         const saved = row.checkpoints.at(-1).saved, id = saved.plan.id;
-        assert.ok(contexts.some(context => context.apps?.some(app => app.id === id && app.tick === saved.result.snapshot.tick && app.summary === saved.result.frame.summary.slice(0, 2000))), 'Actual follow-up contains the latest saved mini-app summary and tick');
+        assert.ok(contexts.some(context => context.apps?.some(app => app.id === id && !Object.hasOwn(app,'tick') && app.runtimeMetadata?.tick === saved.result.snapshot.tick && app.runtimeMetadata?.playbackMode === (saved.plan.playback?.mode ?? 'legacy') && app.summary === saved.result.frame.summary.slice(0, 2000))), 'Actual follow-up contains the latest saved mini-app summary and separately labelled host clock');
         if (sample.taskId === 'shopping-list') {
           const [listId, savedRows] = Object.entries(saved.result.frame.repeats)[0];
           assert.ok(contexts.some(context => context.apps?.some(app => app.id === id && app.lists?.some(list => list.id === listId && list.omittedRows === 0 && JSON.stringify(list.rows.map(({key,bindings})=>({key,bindings}))) === JSON.stringify(savedRows)))), 'Actual follow-up contains current row values and order');
