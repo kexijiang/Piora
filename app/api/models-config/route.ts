@@ -9,6 +9,7 @@ import { normalizeModelConfigCosts } from "@/lib/model-config-cost";
 import { omitUnchangedIncompleteModels, stripModelLimitUiMeta, validateCustomModelLimits } from "@/lib/model-limits";
 import { validateModelSamplingConfig } from "@/lib/model-sampling";
 import { stripJsonComments } from "@/lib/mcp-capabilities";
+import { setProviderRemoved } from "@/lib/removed-providers";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,9 @@ export async function PUT(req: Request) {
   }
   try {
     writeModelsJson(stripModelLimitUiMeta(body));
+    for (const provider of Object.keys((body.providers ?? {}) as object)) {
+      if (!Object.hasOwn((previous.providers ?? {}) as object, provider)) setProviderRemoved(provider, false);
+    }
     invalidateModelsCache();
     invalidateServicesCache();
     return NextResponse.json({ success: true });
@@ -108,6 +112,9 @@ export async function DELETE(req: Request) {
     if (target.id === undefined ? savedProvider !== undefined : savedProvider?.models?.some(model => model.id === target.id)) {
       throw new Error("删除结果尚未写入配置，请检查文件是否被其他程序修改。");
     }
+    // Removing an override must not reveal a same-id built-in provider supplied
+    // by environment credentials, OAuth, or an extension after the next refresh.
+    if (target.id === undefined) setProviderRemoved(target.provider, true);
     invalidateModelsCache();
     invalidateServicesCache();
     return NextResponse.json({ success: true });

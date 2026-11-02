@@ -6,6 +6,7 @@ import {
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { resolveDefaultModelPreference } from "./model-policy";
 import { modelScopeWarnings } from "./model-scope";
+import { readRemovedProviders } from "./removed-providers";
 
 export interface ModelScopeModelView {
   provider: string;
@@ -30,6 +31,7 @@ interface PersistenceEntry {
 }
 
 export interface ModelScopeSettingsState {
+  removedProviders: string[];
   models: ModelScopeModelView[];
   enabledPatterns: string[] | null;
   warnings: string[];
@@ -130,6 +132,7 @@ export async function buildModelScopeSettingsState(options: {
   defaultProvider?: string;
   defaultModel?: string;
   environment?: Record<string, string | undefined>;
+  removedProviders?: string[];
 }): Promise<ModelScopeSettingsState> {
   const available = [...await options.runtime.getAvailable()];
   const availableByKey = new Map<string, Model<Api>>();
@@ -150,9 +153,11 @@ export async function buildModelScopeSettingsState(options: {
   // that safety invariant so a stale setting cannot leave the application with
   // no selectable model.
   const hasResolvedScope = Boolean(resolved?.scopedModels.length);
-  const enabledModels = hasResolvedScope
+  const removedProviders = options.removedProviders ?? readRemovedProviders();
+  const removed = new Set(removedProviders);
+  const enabledModels = (hasResolvedScope
     ? resolved!.scopedModels.map((scoped) => scoped.model)
-    : orderedAvailable;
+    : orderedAvailable).filter(model => !removed.has(model.provider));
   const enabledModelKeys = new Set(enabledModels.map(modelKey));
   const stalePatterns = unique(
     (resolved?.diagnostics ?? [])
@@ -182,6 +187,7 @@ export async function buildModelScopeSettingsState(options: {
       : undefined);
 
   return {
+    removedProviders,
     models: orderedAvailable.map((model) => ({
       provider: model.provider,
       id: model.id,

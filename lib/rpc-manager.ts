@@ -28,6 +28,7 @@ import { installModelStallGuard } from "./model-stall-guard";
 import { reloadModelRetrySettings } from "./retry-settings";
 import { invalidateModelsCache } from "./models-cache";
 import { resolveVisibleModels, selectInitialModelScope } from "./model-scope";
+import { readRemovedProviders } from "./removed-providers";
 import { runPromptWithModelFallback } from "./model-fallback";
 import { readModelFallbackConfig } from "./model-fallback-config";
 import { applyConfiguredImageInput, modelSupportsImages } from "./model-capabilities";
@@ -1235,6 +1236,7 @@ export class AgentSessionWrapper {
 
     switch (type) {
       case "prompt": {
+        if (this.inner.model && readRemovedProviders().includes(this.inner.model.provider)) throw new Error("当前渠道已移除，请选择其他模型或在模型设置中恢复该渠道。");
         // Fire and forget — events come via subscribe
         const promptImages = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
         const promptMaterials = command.materials as PromptMaterialReference[] | undefined;
@@ -1558,6 +1560,7 @@ export class AgentSessionWrapper {
       case "set_model": {
         this.assertSessionIdle("change model");
         const { provider, modelId } = command as { provider: string; modelId: string };
+        if (readRemovedProviders().includes(provider)) throw new Error("该渠道已移除，请先在模型设置中恢复渠道。");
         // Live sessions retain a private runtime after settings caches are
         // invalidated. Existing IDs must be refreshed too, not just new models.
         await this.inner.modelRuntime.refresh({ allowNetwork: false });
@@ -2938,6 +2941,7 @@ export async function startRpcSession(
       services.modelRuntime,
       services.settingsManager.getEnabledModels(),
     );
+    if (scope.providerRestricted && !scope.visible.length) throw new Error("没有可用渠道，请在模型设置中添加或恢复渠道。");
     const defaultProvider = services.settingsManager.getDefaultProvider();
     const defaultModelId = services.settingsManager.getDefaultModel();
     const preferredDefault = resolveDefaultModelPreference({

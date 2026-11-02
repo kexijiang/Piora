@@ -18,6 +18,7 @@ import type {
   SessionTreeNode,
 } from "@/lib/types";
 import { normalizeToolCalls } from "@/lib/normalize";
+import type { ModelChangeNotice } from "@/lib/model-change-notices";
 import { AgentCommandError, createAgentSessionRequest, sendAgentCommand } from "@/lib/agent-client";
 import type { DispatchReceipt } from "@/lib/session-message-types";
 import { setDraft, type ChatDraft } from "@/lib/draft-store";
@@ -60,6 +61,7 @@ export interface SessionData {
   leafId: string | null;
   systemPromptBinding?: SessionSystemPromptBinding | null;
   context: {
+    modelChanges?: ModelChangeNotice[];
     messages: AgentMessage[];
     entryIds: string[];
     thinkingLevel: string;
@@ -460,6 +462,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const historyRevisionRef = useRef(0);
   const editedBranchRef = useRef<{ sid: string; target: string; previousLeaf: string | null } | null>(null);
   const [entryIds, setEntryIds] = useState<string[]>(initialSessionData?.context.entryIds ?? []);
+  const [modelChanges, setModelChanges] = useState<ModelChangeNotice[]>(initialSessionData?.context.modelChanges ?? []);
   const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
   const [agentRunning, setAgentRunning] = useState(false);
   const [replyHistorySettling, setReplyHistorySettling] = useState(false);
@@ -702,6 +705,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
           if (recovered.messages.length) { setMessages(recovered.messages); setEntryIds(recovered.entryIds); }
           if (showLoading) {
+            setModelChanges([]);
             setData(null);
             setActiveLeafId(null);
             if (!recovered.messages.length) setMessages([]);
@@ -726,6 +730,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
       nestedCallsStore.reset();
       setData(d);
+      setModelChanges(d.context.modelChanges ?? []);
       if (statsSequence === statsRefreshSequence.current) setSessionStatsOverride(d.stats ?? null);
       setActiveLeafId(d.leafId);
       setMessages(recovered.messages);
@@ -802,13 +807,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const url = `/api/sessions/${encodeURIComponent(sid)}/context?${params}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[] }; persistedPromptIds?: string[] };
+      const d = await res.json() as { context: { messages: AgentMessage[]; entryIds: string[]; modelChanges?: ModelChangeNotice[] }; persistedPromptIds?: string[] };
       const recovered = mergePendingPrompts(d.context.messages, d.context.entryIds ?? [], await readPendingPrompts(sid), d.persistedPromptIds);
       if (sessionIdRef.current !== sid || promptRunIdRef.current !== runId || historyRevisionRef.current !== revision) return;
       // An explicit historical position contains only its persisted ancestry.
       // Recovery copies stay stored and return in the normal conversation view.
       setMessages(leafId ? d.context.messages : recovered.messages);
       setEntryIds(leafId ? d.context.entryIds : recovered.entryIds);
+      setModelChanges(d.context.modelChanges ?? []);
       void confirmPendingPrompts(recovered.confirmedIds).catch(console.error);
       return true;
     } catch (e) {
@@ -2188,7 +2194,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
             throw error;
           }
           setCurrentModelOverride({ provider, modelId });
-          if (result?.compacted) await loadSession(sid, true).catch(() => undefined);
+          // Re-read the persisted model_change metadata only after selection succeeds.
+          // Keep the conversation visible while its lightweight divider is hydrated.
+          await loadSession(sid, Boolean(result?.compacted)).catch(() => undefined);
           await refreshContextUsage(sid);
         } finally {
           if (!agentRunningRef.current && !bashRunningRef.current) closeEvents();
@@ -2859,7 +2867,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   return {
     // State
     toolPermission, permissionSaving, handleToolPermission, toolReviews,
-    nestedCallsStore, data, loading, error, activeLeafId, messages, entryIds, streamState, replyHistorySettling,
+    nestedCallsStore, data, loading, error, activeLeafId, messages, entryIds, modelChanges, streamState, replyHistorySettling,
     agentRunning, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, newSessionModel, thinkingLevel,
     retryInfo, contextUsage: effectiveContextUsage, systemPrompt, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactionStartedAt, compactError, compactResult, currentModel, displayModel, sessionStats,

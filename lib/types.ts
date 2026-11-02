@@ -344,6 +344,7 @@ export interface SessionInfo {
 }
 
 export interface SessionContext {
+  modelChanges?: import("./model-change-notices").ModelChangeNotice[];
   messages: AgentMessage[];
   entryIds: string[]; // parallel to messages — the session entry id for each message
   thinkingLevel: string;

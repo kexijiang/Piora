@@ -8,6 +8,7 @@ export function isChatTurnAnchor(message: AgentMessage): boolean {
 }
 
 export interface ChatHistoryRow {
+  modelChange?: import("./model-change-notices").ModelChangeNotice;
   operation?: ChatCommandView;
   key: string;
   index: number;

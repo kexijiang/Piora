@@ -22,7 +22,7 @@ export async function availableFallbackModels(runtime: ModelRuntime, patterns?: 
   const scope = await resolveVisibleModels(runtime, patterns);
   // Unlike the interactive selector, an invalid explicit scope must not silently
   // authorize every model for unattended execution.
-  if (patterns?.some((pattern) => pattern.trim()) && scope.scopedModels.length === 0) return [];
+  if (scope.unresolvedScope || patterns?.some((pattern) => pattern.trim()) && scope.scopedModels.length === 0) return [];
   const authenticated = new Set((await runtime.getAvailable()).map(key));
   return scope.visible.filter((model) => authenticated.has(key(model))).map((model) => applyConfiguredImageInput(model));
 }

@@ -6,6 +6,7 @@ import {
 import { closeSync, openSync, readSync } from "node:fs";
 import { join, normalize as normalizePath } from "node:path";
 import type { AgentMessage, SessionEntry, SessionHeader, SessionInfo, SessionContext } from "./types";
+import { collectModelChangeNotices } from "./model-change-notices";
 import type { SessionEntry as PiSessionEntry } from "@earendil-works/pi-coding-agent";
 import { SessionCatalogIndex } from "./session-catalog-index";
 import { normalizeToolCalls } from "./normalize";
@@ -277,6 +278,7 @@ export function buildSessionContext(
   return {
     messages,
     entryIds,
+    modelChanges: collectModelChangeNotices(entries, leafId, entryIds),
     thinkingLevel: settings.thinkingLevel,
     model: settings.model,
   };

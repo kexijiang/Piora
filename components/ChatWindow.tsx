@@ -204,7 +204,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
   }, [chatInputRef]);
 
   const {
-    nestedCallsStore, loading, error, messages, entryIds, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
+    nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
     toolPermission, permissionSaving, handleToolPermission, toolReviews,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
@@ -837,6 +837,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               key={session?.id ?? sessionIdRef.current ?? "new"}
               operations={chatCommands.records} commandActions={commandActions}
               responseTimings={responseTimings}
+              modelChanges={modelChanges}
               messages={messages} directProcess compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}

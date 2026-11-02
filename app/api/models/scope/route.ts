@@ -1,6 +1,7 @@
 import { createGlobalModelServices } from "@/lib/global-model-services";
 import type { SettingsManager } from "@earendil-works/pi-coding-agent";
 import { invalidateModelsCache } from "@/lib/models-cache";
+import { setProviderRemoved, restoreRemovedProviders } from "@/lib/removed-providers";
 import {
   createTrustedModelServices,
   ModelRequestCwdError,
@@ -39,6 +40,7 @@ function publicState(
   changed?: boolean,
 ) {
   return {
+    removedProviders: state.removedProviders,
     models: state.models,
     enabledPatterns: state.enabledPatterns,
     projectOverride,
@@ -51,9 +53,15 @@ function publicState(
   };
 }
 
-type SettingsMutation = ModelScopeMutation | { action: "set-default"; provider: string; id: string };
+type SettingsMutation = ModelScopeMutation | { action: "set-default"; provider: string; id: string }
+  | { action: "remove-provider"; provider: string }
+  | { action: "restore-removed-provider"; provider: string };
 
 function readMutation(body: PatchBody): SettingsMutation {
+  if (body.action === "remove-provider" || body.action === "restore-removed-provider") {
+    if (typeof body.provider !== "string" || !body.provider.trim()) throw new TypeError("provider is required");
+    return { action: body.action, provider: body.provider.trim() };
+  }
   if (body.action === "restore-all") return { action: "restore-all" };
   if (body.action === "set-default") {
     if (typeof body.provider !== "string" || !body.provider.trim()) throw new TypeError("provider is required for setting a default model");
@@ -161,6 +169,14 @@ export async function PATCH(req: Request) {
   try {
     const cwd = body.scope === "global" ? null : await resolveModelRequestCwd(body.cwd);
     const { services, settings, state, projectOverride } = await loadState(cwd);
+    if (mutation.action === "remove-provider" || mutation.action === "restore-removed-provider") {
+      // This preference is independent of auth, catalog availability and the
+      // positive-only SDK scope, which cannot represent removing the last model.
+      const changed = setProviderRemoved(mutation.provider, mutation.action === "remove-provider");
+      if (changed) invalidateModelsCache();
+      const next = await loadState(cwd);
+      return Response.json(publicState(next.state, next.projectOverride, changed));
+    }
     if (projectOverride && mutation.action !== "set-default") {
       return jsonError(
         "project_scope_override",
@@ -183,14 +199,16 @@ export async function PATCH(req: Request) {
     }
 
     const result = mutateModelScopeSettings(state, mutation);
-    if (!result.changed) {
+    const restoreRemoved = mutation.action === "restore-all" && state.removedProviders.length > 0;
+    if (!result.changed && !restoreRemoved) {
       return Response.json(publicState(state, false, false));
     }
 
     // Invalidate only after SettingsManager has flushed successfully and
     // reported no queued write errors. The cache generation also prevents an
     // older in-flight load from repopulating stale data.
-    await persistEnabledModelPatterns(settings, result.patterns, invalidateModelsCache);
+    if (result.changed) await persistEnabledModelPatterns(settings, result.patterns, invalidateModelsCache);
+    if (restoreRemoved && restoreRemovedProviders()) invalidateModelsCache();
 
     const nextState = await buildModelScopeSettingsState({
       runtime: services.modelRuntime,

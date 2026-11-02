@@ -763,6 +763,32 @@ function sessionLoadHarness(overrides = {}) {
   return { env, run };
 }
 
+test("session hydration restores model-change metadata and clears it for an older branch", async () => {
+  const { env, run } = sessionLoadHarness();
+  const notices = [{ id: "switch", afterEntryId: "reply", from: { provider: "p", modelId: "a" }, to: { provider: "p", modelId: "b" } }];
+  await run("session", false, false, Promise.resolve({ context: { messages: [], entryIds: [], modelChanges: notices }, leafId: "switch" }));
+  assert.deepEqual(env.setModelChangesValue, notices);
+  await run("session", false, false, Promise.resolve({ context: { messages: [], entryIds: [] }, leafId: "reply" }));
+  assert.deepEqual(env.setModelChangesValue, []);
+});
+
+test("model selection refreshes saved notices after success and keeps the reply visible", async () => {
+  const { runModelChange } = await createJiti(import.meta.url).import("../lib/model-change-coordinator.ts");
+  const callback = source.slice(source.indexOf("  const handleModelChange = useCallback"), source.indexOf("  const handleCompact = useCallback"));
+  const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  for (const compacted of [false, true]) {
+    const events = [];
+    const env = { useCallback: fn => fn, runModelChange, isNew: false, sessionIdRef: { current: "session" },
+      ensureEventsConnected: async () => {}, sendAgentCommand: async () => { events.push("saved"); return { compacted }; },
+      setCurrentModelOverride: model => events.push(model), loadSession: async (sid, loading) => events.push({ sid, loading }),
+      refreshContextUsage: async () => {}, agentRunningRef: { current: false }, bashRunningRef: { current: false }, closeEvents() {},
+      addNotice() {}, newSessionDefaultModel: null, setNewSessionModel() {}, t: key => key };
+    const change = new Function("env", `with(env) { ${js}; return handleModelChange; }`)(env);
+    assert.equal(await change("provider", "model"), true);
+    assert.deepEqual(events, ["saved", { provider: "provider", modelId: "model" }, { sid: "session", loading: compacted }]);
+  }
+});
+
 test("a stalled prefetch or recovery read releases session loading and reports a retryable timeout", async () => {
   const payload = { context: { messages: [], entryIds: [] }, leafId: null };
   for (const phase of ["prefetch", "recovery"]) {
@@ -1181,9 +1207,10 @@ test("historical context excludes unconfirmed recovery copies without deleting t
   const env = { editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: fn => fn, promptRunIdRef: { current: 1 }, historyRevisionRef: { current: 0 }, sessionIdRef: { current: "session" }, URLSearchParams,
     fetch: async () => ({ ok: true, json: async () => ({ context: { messages: ["ancestor"], entryIds: ["parent"] } }) }),
     readPendingPrompts: async () => pending, mergePendingPrompts: () => ({ messages: ["ancestor", "later failure"], entryIds: ["parent", ""], confirmedIds: [] }),
-    setMessages: value => { env.messages = value; }, setEntryIds: value => { env.ids = value; }, confirmPendingPrompts: async ids => { assert.deepEqual(ids, []); } };
+    setMessages: value => { env.messages = value; }, setEntryIds: value => { env.ids = value; }, setModelChanges: value => { env.modelChanges = value; }, confirmPendingPrompts: async ids => { assert.deepEqual(ids, []); } };
   const load = new Function("env", `with(env) { ${js}; return loadContext; }`)(env);
   assert.equal(await load("session", "parent"), true); assert.deepEqual(env.messages, ["ancestor"]); assert.deepEqual(env.ids, ["parent"]);
+  assert.deepEqual(env.modelChanges, [], "a historical branch clears unrelated switch notices");
   assert.equal(await load("session", null), true); assert.deepEqual(env.messages, ["ancestor", "later failure"]); assert.equal(pending.length, 1);
 });
 

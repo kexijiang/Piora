@@ -6,6 +6,7 @@ import {
   type ScopedModel,
 } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
+import { readRemovedProviders } from "./removed-providers";
 
 /**
  * Model scoping shared by the UI selector and AgentSession startup.
@@ -29,6 +30,8 @@ export interface ModelScopeResult {
   warnings: string[];
   /** A saved scope matched nothing; retain this state independently of UI warnings. */
   unresolvedScope: boolean;
+  /** Explicit channel removal must never fall back to the SDK's unfiltered catalog. */
+  providerRestricted?: boolean;
 }
 
 export function modelScopeWarnings(diagnostics: readonly ModelScopeDiagnostic[]): string[] {
@@ -68,6 +71,22 @@ function matchesModel(
  * the UI without any selectable model.
  */
 export async function resolveVisibleModels(
+  modelRuntime: ModelRuntime,
+  patterns: string[] | undefined,
+  removedProviders = readRemovedProviders(),
+): Promise<ModelScopeResult> {
+  const scope = await resolveUnfilteredModels(modelRuntime, patterns);
+  if (!removedProviders.length) return scope;
+  const removed = new Set(removedProviders);
+  const visible = scope.visible.filter(model => !removed.has(model.provider));
+  const scopedModels = scope.scopedModels.length
+    ? scope.scopedModels.filter(item => !removed.has(item.model.provider))
+    : visible.map(model => ({ model }));
+  return { ...scope, visible, scopedModels, providerRestricted: true,
+    thinkingLevelPins: Object.fromEntries(Object.entries(scope.thinkingLevelPins).filter(([key]) => visible.some(model => `${model.provider}/${model.id}` === key))) };
+}
+
+async function resolveUnfilteredModels(
   modelRuntime: ModelRuntime,
   patterns: string[] | undefined,
 ): Promise<ModelScopeResult> {
@@ -128,6 +147,7 @@ export function selectInitialModelScope(
   scope: ModelScopeResult,
   options: InitialModelScopeOptions = {},
 ): InitialModelScopeResult {
+  if (scope.providerRestricted && !scope.visible.length) throw new Error("没有可用渠道，请在模型设置中添加或恢复渠道。");
   const requestedRef = options.requestedModel;
   const defaultRef = options.defaultModel;
   const requested = requestedRef

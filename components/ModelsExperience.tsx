@@ -34,7 +34,7 @@ async function jsonRequest<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export function ModelsExperience({ cwd, onClose, onModelsChanged, embedded = false }: { cwd?: string; onClose: () => void; onModelsChanged?: () => void; embedded?: boolean }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const c = { ...(locale === "zh-CN" ? copy.zh : copy.en), ...(locale === "zh-CN" ? {
     importHint: "选择要添加的模型。接口缺失的参数已默认填入上下文 512K、最大输出 65536，可直接修改。", selectShown: "全选当前结果", pendingLimits: "待补全", importCount: "个模型",
     title: "模型设置", subtitle: "管理模型供应商，配置后可在聊天时选择使用。", add: "添加供应商", custom: "创建自定义供应商", name: "供应商名称", address: "Base URL", key: "API Key", protocol: "API 格式", context: "上下文窗口", output: "最大输出 Token", edit: "编辑模型配置", save: "保存", fetch: "一键识别可用模型", fetching: "正在识别…", limitsHint: "接口未提供完整参数，请按服务商文档补全以下字段。", endpointOnly: "以下模型来自当前接口。识别模型列表不会发送对话测试请求。",
@@ -126,7 +126,8 @@ export function ModelsExperience({ cwd, onClose, onModelsChanged, embedded = fal
     await mutate(async () => { await jsonRequest("/api/models-config", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ provider, ...(id ? { id } : {}) }) }); onModelsChanged?.(); if (!id) setView({ kind: "home" }); });
   };
 
-  const providerIds = [...new Set([...Object.keys(config.providers ?? {}), ...apiKeys.filter(item => item.configured).map(item => item.id), ...oauth.filter(item => item.loggedIn).map(item => item.id)])];
+  const removedProviders = new Set(scope?.removedProviders ?? []);
+  const providerIds = [...new Set([...Object.keys(config.providers ?? {}), ...apiKeys.filter(item => item.configured).map(item => item.id), ...oauth.filter(item => item.loggedIn).map(item => item.id)])].filter(id => !removedProviders.has(id));
   const authRefresh = () => { onModelsChanged?.(); void reload(); };
   const leaveView = async () => {
     if (dirty && !await requestConfirmation({ title: locale === "zh-CN" ? "放弃未保存的修改？" : "Discard unsaved changes?", message: locale === "zh-CN" ? "返回后，本次填写的内容不会保存。" : "Your changes will be lost when you leave.", confirmLabel: locale === "zh-CN" ? "放弃修改" : "Discard", tone: "danger" })) return false;
@@ -140,7 +141,7 @@ export function ModelsExperience({ cwd, onClose, onModelsChanged, embedded = fal
     setDirty(false); setError(null); setView({ kind: "manage", id });
   };
 
-  const catalogIds = [...new Set([...apiKeys.map(p => p.id), ...oauth.map(p => p.id)])];
+  const catalogIds = [...new Set([...apiKeys.map(p => p.id), ...oauth.map(p => p.id), ...Object.keys(config.providers ?? {}).filter(id => removedProviders.has(id))])];
   const displayName = (id: string) => apiKeys.find(p => p.id === id)?.displayName ?? oauth.find(p => p.id === id)?.name ?? id;
   const openCatalog = async () => { if (await leaveView()) setView({ kind: "picker" }); };
   const custom = config.providers?.[selectedProvider];
@@ -155,22 +156,25 @@ export function ModelsExperience({ cwd, onClose, onModelsChanged, embedded = fal
       <div className={styles.workspace}>
         <nav className={styles.sidebar} aria-label={c.providers}>
           {providerIds.some(id => !config.providers?.[id]) && <><h3>{c.providers}</h3>{providerIds.filter(id => !config.providers?.[id]).map(navItem)}</>}
-          <h3>{c.customGroup}</h3>{Object.keys(config.providers ?? {}).map(navItem)}
+          <h3>{c.customGroup}</h3>{Object.keys(config.providers ?? {}).filter(id => !removedProviders.has(id)).map(navItem)}
           {view.kind === "wizard" && !view.id && <button className={styles.navItem} aria-current="page"><ModelProviderIcon provider="custom" size={18} /><span>{c.newName}</span><i className={styles.pendingDot} /></button>}
           <button className={styles.navItem} disabled={busy} onClick={() => void openCatalog()}><Glyph name="plus" /><span>{c.add}</span></button>
           <button className={`${styles.navItem} ${styles.secondaryNav}`} disabled={busy || dirty} aria-current={view.kind === "vision" ? "page" : undefined} onClick={() => setView({ kind: "vision" })}>{c.vision}</button>
         </nav>
         <main className={styles.detail}>
           {loading && !providerIds.length && <p className={styles.hint}>{c.loading}</p>}
-          {(view.kind === "picker" || (view.kind === "home" && !selectedProvider && !loading)) && <><h3 className={styles.panelTitle}>{c.add}</h3><p className={styles.groupLabel}>{c.other}</p><div className={styles.catalog}><button className={styles.catalogItem} onClick={() => setView({ kind: "wizard" })}><Glyph name="plus" /><span>{c.custom}</span><span>›</span></button>{catalogIds.map(id => <button className={styles.catalogItem} key={id} onClick={() => void selectProvider(id)}><ModelProviderIcon provider={id} size={28} /><span>{displayName(id)}</span><span>›</span></button>)}</div></>}
+          {(view.kind === "picker" || (view.kind === "home" && !selectedProvider && !loading)) && <><h3 className={styles.panelTitle}>{c.add}</h3><p className={styles.groupLabel}>{c.other}</p><div className={styles.catalog}><button className={styles.catalogItem} onClick={() => setView({ kind: "wizard" })}><Glyph name="plus" /><span>{c.custom}</span><span>›</span></button>{catalogIds.map(id => <button className={styles.catalogItem} key={id} disabled={busy} onClick={() => {
+            if (removedProviders.has(id)) void mutate(async () => { await scopeAction("restore-removed-provider", id); setView({ kind: "manage", id }); });
+            else void selectProvider(id);
+          }}><ModelProviderIcon provider={id} size={28} /><span>{displayName(id)}</span><span>{removedProviders.has(id) ? c.restore : "›"}</span></button>)}</div></>}
           {view.kind === "vision" && <div className={styles.extras}><h3>{c.vision}</h3><ModelFallbackSetting /><VisionAgentDetail cwd={cwd} /></div>}
           {((["home", "manage"].includes(view.kind) && custom) || view.kind === "wizard") && <ProviderPanel key={custom ? `${selectedProvider}:${JSON.stringify(custom)}` : "new"} c={c}
             initialName={custom ? selectedProvider : undefined} initial={custom} scope={scope} busy={busy} onDirty={setDirty} onModal={setModalOpen} saveError={error}
             onScope={switchScope} onRemove={id => void remove(selectedProvider, id)}
             saveProvider={async (name, provider, additions, original) => { const saved = await saveProvider(name, provider, additions, original); if (saved) setView({ kind: "manage", id: name }); return saved; }} />}
-          {["home", "manage"].includes(view.kind) && selectedProvider && !custom && <BuiltinPanel key={selectedProvider} c={c} id={selectedProvider} name={displayName(selectedProvider)} api={apiKeys.find(p => p.id === selectedProvider)} oauth={oauth.find(p => p.id === selectedProvider)} scope={scope} busy={busy} onRefresh={authRefresh} onScope={switchScope} onRemove={async (kind) => {
-            if (!await requestConfirmation({ title: c.remove, message: c.removeQuestion, confirmLabel: c.remove, tone: "danger" })) return;
-            await mutate(async () => { await jsonRequest(kind === "oauth" ? `/api/auth/logout/${encodeURIComponent(selectedProvider)}` : `/api/auth/api-key/${encodeURIComponent(selectedProvider)}`, { method: kind === "oauth" ? "POST" : "DELETE" }); onModelsChanged?.(); setView({ kind: "home" }); });
+          {["home", "manage"].includes(view.kind) && selectedProvider && !custom && <BuiltinPanel key={selectedProvider} c={c} id={selectedProvider} name={displayName(selectedProvider)} api={apiKeys.find(p => p.id === selectedProvider)} oauth={oauth.find(p => p.id === selectedProvider)} scope={scope} busy={busy} onRefresh={authRefresh} onScope={switchScope} onRemove={async () => {
+            if (!await requestConfirmation({ title: t("models.removeProvider"), message: t("models.removeProviderConfirm", { name: displayName(selectedProvider) }), confirmLabel: t("models.removeProvider"), tone: "danger" })) return;
+            await mutate(async () => { await scopeAction("remove-provider", selectedProvider); setView({ kind: "home" }); });
           }} />}
         </main>
       </div>
@@ -310,11 +314,12 @@ function ProviderPanel({ c, initialName, initial, scope, busy, saveProvider, onD
 
 function BuiltinPanel({ c, id, name, api, oauth, scope, busy, onRefresh, onScope, onRemove }: {
   c: Text; id: string; name: string; api?: ApiKeyProvider; oauth?: OAuthProvider; scope: ModelScopeResponse | null; busy: boolean;
-  onRefresh: () => void; onScope: (action: string, id?: string) => void; onRemove: (kind: "api" | "oauth") => Promise<void>;
+  onRefresh: () => void; onScope: (action: string, id?: string) => void; onRemove: () => Promise<void>;
 }) {
   const [mode, setMode] = useState(oauth?.loggedIn || !api ? "oauth" : "api");
+  const { t } = useI18n();
   const models = (scope?.models ?? []).filter(m => m.provider === id), enabled = models.some(m => m.enabled);
-  return <><div className={styles.providerHeader}><ModelProviderIcon provider={id} size={20} /><h3>{name}</h3>{api && oauth && <select aria-label={c.settings} value={mode} onChange={e => setMode(e.target.value)}><option value="api">API Key</option><option value="oauth">OAuth</option></select>}<Toggle checked={enabled} label={enabled ? c.disableProvider : c.enableProvider} disabled={busy || !models.length || scope?.projectOverride} onChange={() => onScope(enabled ? "hide-provider" : "restore-provider")} />{(api?.canRemoveStoredCredential || oauth?.loggedIn) && <IconButton label={c.remove} icon="trash" disabled={busy} onClick={() => void onRemove(oauth?.loggedIn ? "oauth" : "api")} />}</div>
+  return <><div className={styles.providerHeader}><ModelProviderIcon provider={id} size={20} /><h3>{name}</h3>{api && oauth && <select aria-label={c.settings} value={mode} onChange={e => setMode(e.target.value)}><option value="api">API Key</option><option value="oauth">OAuth</option></select>}<Toggle checked={enabled} label={enabled ? c.disableProvider : c.enableProvider} disabled={busy || !models.length || scope?.projectOverride} onChange={() => onScope(enabled ? "hide-provider" : "restore-provider")} /><IconButton label={t("models.removeProvider")} icon="trash" disabled={busy} onClick={() => void onRemove()} /></div>
     <div className={styles.auth}>{mode === "api" && api ? <ApiKeyDetail provider={api} onRefresh={onRefresh} /> : oauth ? <OAuthDetail provider={oauth} onRefresh={onRefresh} /> : null}</div>
     <div className={styles.listHeading}>{c.models}</div><div className={styles.modelList}>{models.length ? models.map(model => <div className={styles.modelRow} key={model.id}><div className={styles.modelLine}><div className={styles.modelIdentity}>{model.name || model.id}</div>{scope?.effectiveDefault?.provider === id && scope.effectiveDefault.modelId === model.id ? <span title={c.defaultModel}>★</span> : model.enabled && <IconButton label={`${c.setDefault} ${model.id}`} icon="star" disabled={busy} onClick={() => onScope("set-default", model.id)} />}<Toggle checked={model.enabled} label={`${model.enabled ? c.hideModel : c.enable} ${model.id}`} disabled={busy || scope?.projectOverride} onChange={() => onScope(model.enabled ? "hide" : "restore", model.id)} /></div></div>) : <p className={styles.empty}>{c.modelEmpty}</p>}</div></>;
 }

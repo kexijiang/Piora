@@ -11,6 +11,8 @@ import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { AliIcon } from "./AliIcon";
 import { VirtualList, type VirtualListHandle } from "./VirtualList";
 import { ChatCommandCard, type ChatCommandCardActions } from "./ChatCommandCard";
+import { ModelChangeNotice } from "./ModelChangeNotice";
+import { insertModelChangeRows, type ModelChangeNotice as ModelChange } from "@/lib/model-change-notices";
 import type { TaskTiming } from "@/lib/task-timing";
 import type { ChatCommandView } from "@/lib/chat-command-types";
 
@@ -18,6 +20,7 @@ export interface ChatHistoryHandle { revealEntry(id: string): void; cancelNaviga
 type MessageProps = ComponentProps<typeof MessageView>;
 interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "onEditFailed" | "onRetry" | "retryDisabled" | "sessionId" | "onOpenAutomation" | "onOpenCommandExecution"> {
   messages: AgentMessage[];
+  modelChanges?: ModelChange[];
   compactProcess?: boolean;
   directProcess?: boolean;
   streamingMessage?: AgentMessage | null;
@@ -53,7 +56,7 @@ function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message
 }
 
 /** One turn projection for saved history and the live tail in both display modes. */
-export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, responseTimings, ...messageProps }: Props) {
+export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, modelChanges = [], compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, responseTimings, ...messageProps }: Props) {
   const { t } = useI18n();
   const messages = useMemo(() => streamingMessage ? [...savedMessages, streamingMessage] : savedMessages, [savedMessages, streamingMessage]);
   const streamingIndex = streamingMessage ? messages.length - 1 : -1;
@@ -62,8 +65,8 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
   const list = useRef<VirtualListHandle>(null);
   const { rows, entryRows, entryGroups } = useMemo(() => {
     const plan = buildCompactChatHistoryRows(messages, entryIds, busy || streaming, expanded, streamingIndex, compactProcess, directProcess);
-    return { ...plan, rows: layoutChatResponseRows(insertCommandHistoryRows(plan.rows, messages, entryIds, operations), messages, busy || streaming) };
-  }, [messages, entryIds, busy, streaming, expanded, compactProcess, directProcess, streamingIndex, operations]);
+    return { ...plan, rows: insertModelChangeRows(layoutChatResponseRows(insertCommandHistoryRows(plan.rows, messages, entryIds, operations), messages, busy || streaming), entryIds, modelChanges) };
+  }, [messages, entryIds, busy, streaming, expanded, compactProcess, directProcess, streamingIndex, operations, modelChanges]);
   const visibleRows = rows;
   const keys = useMemo(() => visibleRows.map((row) => row.key), [visibleRows]);
   const pendingReveal = useRef<string | null>(null);
@@ -112,6 +115,7 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
   const pendingUserKey = pendingScrollToUserRef.current ? rows.find((row) => !row.process && row.index === metadata.lastUser)?.key : undefined;
   return <VirtualList keys={keys} pinnedKeys={pendingUserKey ? [pendingUserKey] : []} estimate={160} initialTail scrollContainer={scrollContainer} handleRef={list} renderItem={(_key, rowIndex) => {
     const row = visibleRows[rowIndex];
+    if (row.modelChange) return <ModelChangeNotice notice={row.modelChange} modelNames={messageProps.modelNames} />;
     if (row.operation) return commandActions ? <ChatCommandCard record={row.operation} actions={commandActions} /> : null;
     if (row.compactProcess) return <CompactProcessSummary group={row.compactProcess}
       onToggle={() => { setInspectCommand(null); toggle(row.key, !row.compactProcess!.expanded); }}

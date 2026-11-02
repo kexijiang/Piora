@@ -123,6 +123,7 @@ export interface ManagedModel {
 }
 
 export interface ModelScopeResponse {
+  removedProviders?: string[];
   models: ManagedModel[];
   enabledPatterns: string[] | null;
   projectOverride: boolean;
@@ -2001,13 +2002,14 @@ function AddProviderPicker({
   useEffect(() => { setTimeout(() => inputRef.current?.focus(), 30); }, []);
 
   const q = search.trim().toLowerCase();
+  const hiddenIds = new Set(hiddenProviders.map(provider => provider.id));
 
   const availableOAuth = prioritizeProvider(
-    oauthProviders.filter((p) => !p.loggedIn && (!q || p.name.toLowerCase().includes(q))),
+    oauthProviders.filter((p) => !p.loggedIn && !hiddenIds.has(p.id) && (!q || p.name.toLowerCase().includes(q))),
     (provider) => provider.id,
   );
   const availableApiKey = prioritizeProvider(
-    apiKeyProviders.filter((p) => !p.configured && (!q || p.displayName.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))),
+    apiKeyProviders.filter((p) => !p.configured && !hiddenIds.has(p.id) && (!q || p.displayName.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))),
     (provider) => provider.id,
   );
   const visibleHiddenProviders = prioritizeProvider(
@@ -2448,7 +2450,7 @@ export function ModelsConfig({
   }, [config.providers, persistDeletion]);
 
   const updateModelScope = useCallback(async (
-    action: "set-default" | "hide" | "restore" | "hide-provider" | "restore-provider" | "restore-all",
+    action: "set-default" | "hide" | "restore" | "hide-provider" | "restore-provider" | "restore-all" | "remove-provider" | "restore-removed-provider",
     target?: Pick<ManagedModel, "provider" | "id"> | { provider: string },
   ): Promise<boolean> => {
     if (modelScopeMutationRef.current) return false;
@@ -2480,6 +2482,7 @@ export function ModelsConfig({
         throw new Error(message);
       }
       setModelScope(body);
+      if (action === "remove-provider") setSelection(null);
       if (
         (action === "hide" || action === "hide-provider")
         && target?.provider
@@ -2726,10 +2729,10 @@ export function ModelsConfig({
     [...new Set((modelScope?.models ?? []).map((model) => model.provider))],
     (provider) => provider,
   );
-  const hiddenProviderIds = managedProviderIds.filter((providerId) => {
+  const hiddenProviderIds = [...new Set([...(modelScope?.removedProviders ?? []), ...managedProviderIds.filter((providerId) => {
     const providerModels = (modelScope?.models ?? []).filter((model) => model.provider === providerId);
     return providerModels.length > 0 && providerModels.every((model) => !model.enabled);
-  });
+  })])];
   const hiddenProviderIdSet = new Set(hiddenProviderIds);
   const providers = configuredProviders.filter(([provider]) => !hiddenProviderIdSet.has(provider));
   const activeOAuth = prioritizeProvider(
@@ -2747,7 +2750,8 @@ export function ModelsConfig({
   ]);
   const scopeOnlyProviderIds = managedProviderIds.filter((provider) =>
     !representedProviderIds.has(provider) && !hiddenProviderIdSet.has(provider));
-  const hiddenProviders = hiddenProviderIds.map((providerId) => ({
+  const hiddenProviders = hiddenProviderIds.filter(id => managedProviderIds.includes(id) || configuredProviders.some(([name]) => name === id)
+    || apiKeyProviders.some(provider => provider.id === id) || oauthProviders.some(provider => provider.id === id)).map((providerId) => ({
     id: providerId,
     label: apiKeyProviders.find((provider) => provider.id === providerId)?.displayName
       ?? oauthProviders.find((provider) => provider.id === providerId)?.name
@@ -2757,6 +2761,17 @@ export function ModelsConfig({
   const firstOAuthProviderId = activeOAuth[0]?.id;
   const firstScopeOnlyProviderId = scopeOnlyProviderIds[0];
   const firstCustomProviderName = providers[0]?.[0];
+
+  const removeManagedProvider = (id: string, name: string) => <button
+    type="button" aria-label={t("models.removeProviderNamed", { name })} title={t("models.removeProvider")}
+    disabled={modelScopeBusyKey !== null || saving}
+    onClick={async event => {
+      event.stopPropagation();
+      if (!await requestConfirmation({ title: t("models.removeProvider"), message: t("models.removeProviderConfirm", { name }), confirmLabel: t("models.removeProvider"), tone: "danger" })) return;
+      await updateModelScope("remove-provider", { provider: id });
+    }}
+    style={{ flexShrink: 0, display: "inline-flex", padding: 4, border: 0, background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}
+  ><AliIcon name="delete" size={13} /></button>;
 
   useEffect(() => {
     if (selection) return;
@@ -3190,6 +3205,7 @@ export function ModelsConfig({
                     <ModelProviderIcon provider={p.id} size={16} />
                     <span style={{ fontSize: "var(--text-sm)", color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.displayName}</span>
                     {scopedModels.length > 0 && <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>{visibleModels}/{scopedModels.length}</span>}
+                    {removeManagedProvider(p.id, p.displayName)}
                   </div>
                 );
               })}
@@ -3210,6 +3226,7 @@ export function ModelsConfig({
                     <ModelProviderIcon provider={p.id} size={16} />
                     <span style={{ fontSize: "var(--text-sm)", color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</span>
                     {scopedModels.length > 0 && <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>{visibleModels}/{scopedModels.length}</span>}
+                    {removeManagedProvider(p.id, p.name)}
                   </div>
                 );
               })}
@@ -3230,6 +3247,7 @@ export function ModelsConfig({
                     <ModelProviderIcon provider={providerId} size={16} />
                     <span style={{ fontSize: "var(--text-sm)", color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{providerId}</span>
                     <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>{visibleModels}/{scopedModels.length}</span>
+                    {removeManagedProvider(providerId, providerId)}
                   </div>
                 );
               })}
@@ -3420,6 +3438,7 @@ export function ModelsConfig({
         {/* Footer */}
         {loadError && <div role="alert" style={{ padding: 20, color: "#f87171", flex: 1 }}><ModelErrorText value={loadError} /><button onClick={() => setReloadConfig(n => n + 1)}>{t("common.retry")}</button></div>}
         <div className={styles.footer} style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, padding: "10px 18px", borderTop: "1px solid var(--border)", flexShrink: 0 }}>
+          {modelScopeError && detailTab !== "models" && selection?.type !== "managed" && <span role="alert" style={{ fontSize: "var(--text-sm)", color: "#f87171", flex: 1 }}><ModelErrorText value={modelScopeError} /></span>}
           {saveError && <span role="alert" style={{ fontSize: "var(--text-sm)", color: "#f87171", flex: 1 }}>{<ModelErrorText value={saveError} />}</span>}
           {!embedded && <button onClick={onClose} disabled={modelScopeBusyKey !== null || saving} style={{ padding: "6px 14px", background: "none", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", color: "var(--text-muted)", cursor: modelScopeBusyKey !== null || saving ? "not-allowed" : "pointer", opacity: modelScopeBusyKey !== null || saving ? 0.55 : 1, fontSize: "var(--text-base)" }}>
              {t("i18n.close")}
@@ -3452,7 +3471,9 @@ export function ModelsConfig({
         onSelectOAuth={(id) => setSelection({ type: "oauth", providerId: id })}
         onSelectApiKey={(id) => setSelection({ type: "apikey", providerId: id })}
         onRestoreProvider={async (id) => {
-          const restored = await updateModelScope("restore-provider", { provider: id });
+          const restored = modelScope?.removedProviders?.includes(id)
+            ? await updateModelScope("restore-removed-provider", { provider: id })
+            : await updateModelScope("restore-provider", { provider: id });
           if (!restored) return false;
           if (config.providers?.[id]) setSelection({ type: "provider", name: id });
           else if (apiKeyProviders.some((provider) => provider.id === id && provider.configured)) {
