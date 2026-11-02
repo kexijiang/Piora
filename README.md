@@ -17,7 +17,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-最新正式版与当前源码版本为 `0.5.8`。本次正式版修复 DeepSeek V4.1 Flash 思考档位兼容问题，恢复醒目的实时 token 速度标签，并合入任务总用时、模型切换提示、渠道持久移除及近期 beta 的桌面体验改进。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
+最新正式版为 `0.5.8`，当前源码与 beta 版本为 [`0.5.9-beta.2`](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.2)。本次 beta 补齐 DeepSeek V4.1 与自部署 dsv4.1 别名的思考档位兼容，避免发送不支持的 reasoning_effort。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
 
 正式版由 GitHub Actions 构建和校验 Windows 与 Linux 包；beta 候选构建完成后由独立工作流发布，下载见[所有发布](https://github.com/kexijiang/Piora/releases)。Windows 原生投屏使用随包 Hypium 采集库，兼容设备无需在电脑安装 DevEco Studio。需要手机端 HAP 的兼容路径仍要求用户明确初始化并准备对应签名工具。华为系统录屏、原生投屏画质与延迟、平板兼容性和浏览器窗口外渲染仍待硬件验收，见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)。
 

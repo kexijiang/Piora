@@ -207,6 +207,7 @@ let server: StandaloneServer | undefined;
 let serverUrl: URL | undefined;
 let shutdownPromise: Promise<void> | undefined;
 let shutdownComplete = false;
+let restartRequested = false;
 let applicationMenu: Menu | null = null;
 let applicationMenuLocale: "en" | "zh-CN" | undefined;
 let keyboardShortcutBindings: DesktopShortcutBindings = { ...DEFAULT_DESKTOP_SHORTCUT_BINDINGS };
@@ -1988,14 +1989,15 @@ function createCompanionPanelWindow(url: URL, log: Logger, initialTool?: "clipbo
   window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   window.webContents.on("will-navigate", (event, requestedUrl) => { if (!isAllowedAppUrl(requestedUrl, url.origin)) event.preventDefault(); });
   window.once("ready-to-show", () => {
-    window.show();
-    window.focus();
+    revealCompanionPanel(window);
   });
   window.on("blur", () => {
     if (!companionPanelKeepVisibleUntilClose && companionPanelNativeDialogDepth === 0 && !window.isDestroyed() && window.isVisible()) window.hide();
   });
   window.on("maximize", () => { companionPanelKeepVisibleUntilClose = true; });
-  window.on("unmaximize", () => { companionPanelKeepVisibleUntilClose = false; });
+  window.on("unmaximize", () => { companionPanelKeepVisibleUntilClose = window.isFullScreen(); });
+  window.on("enter-full-screen", () => { companionPanelKeepVisibleUntilClose = true; });
+  window.on("leave-full-screen", () => { companionPanelKeepVisibleUntilClose = window.isMaximized(); });
   window.on("close", (event) => {
     if (quitRequested || shutdownComplete) return;
     event.preventDefault();
@@ -2010,16 +2012,22 @@ function createCompanionPanelWindow(url: URL, log: Logger, initialTool?: "clipbo
   return window;
 }
 
+function revealCompanionPanel(window: BrowserWindow): void {
+  if (window.isDestroyed() || quitRequested || shutdownComplete) return;
+  if (window.isMinimized()) window.restore();
+  companionPanelKeepVisibleUntilClose = true;
+  window.setFullScreen(true);
+  window.show();
+  window.focus();
+}
+
 function showCompanionPanel(initialTool?: "clipboard"): boolean {
   if (!serverUrl || !logger) return false;
   if (!companionPanelWindow || companionPanelWindow.isDestroyed()) {
     companionPanelWindow = createCompanionPanelWindow(serverUrl, logger, initialTool);
     return true;
   }
-  if (companionPanelWindow.isMinimized()) companionPanelWindow.restore();
-  companionPanelKeepVisibleUntilClose = companionPanelWindow.isMaximized();
-  companionPanelWindow.show();
-  companionPanelWindow.focus();
+  revealCompanionPanel(companionPanelWindow);
   return true;
 }
 
@@ -2185,6 +2193,17 @@ function updateTrayMenu(): void {
     },
     { label: isChinese ? `运行中任务：${runningTaskCount}` : `Running tasks: ${runningTaskCount}`, enabled: false },
     { type: "separator" },
+    {
+      label: isChinese ? brandText("重启 Piora") : brandText("Restart Piora"),
+      enabled: !quitRequested,
+      click: () => {
+        if (quitRequested || shutdownPromise || shutdownComplete) return;
+        restartRequested = true;
+        quitRequested = true;
+        updateTrayMenu();
+        app.quit();
+      },
+    },
     {
       label: isChinese ? brandText("彻底退出 Piora") : brandText("Quit Piora completely"),
       click: () => {
@@ -3071,20 +3090,31 @@ if (!hasSingleInstanceLock) {
     event.preventDefault();
 
     shutdownPromise ??= (async () => {
-      if (harmonyWindows && !await harmonyWindows.prepareQuit()) { quitRequested = false; shutdownPromise = undefined; return false; }
+      if (harmonyWindows && !await harmonyWindows.prepareQuit()) { restartRequested = false; quitRequested = false; shutdownPromise = undefined; updateTrayMenu(); return false; }
       harmonyWindows?.destroy();
       await stopApplication(); return true;
     })()
       .then((completed) => {
         if (!completed) return;
+        // Schedule a fresh Electron process only after the browser, workers and
+        // local server have finished shutting down. A cancelled quit must never
+        // leave a relaunch queued for some unrelated later exit.
+        if (restartRequested) {
+          app.relaunch();
+          restartRequested = false;
+        }
         shutdownComplete = true;
         app.quit();
       }).catch((error) => {
         logger?.error("Desktop shutdown failed", error);
         if (error instanceof ClipboardDraftFlushError) {
-          quitRequested = false; shutdownPromise = undefined;
+          restartRequested = false; quitRequested = false; shutdownPromise = undefined; updateTrayMenu();
           const chinese = app.getLocale().toLowerCase().startsWith("zh");
           dialog.showErrorBox(chinese ? "编辑草稿尚未保存" : "Edit draft is not saved", chinese ? "请回到剪贴板重试保存草稿，再退出应用。应用仍保持打开。" : error.message);
+        } else if (restartRequested) {
+          restartRequested = false; quitRequested = false; shutdownPromise = undefined; updateTrayMenu();
+          const chinese = app.getLocale().toLowerCase().startsWith("zh");
+          dialog.showErrorBox(chinese ? "无法重启 Piora" : "Unable to restart Piora", error instanceof Error ? error.message : String(error));
         } else { shutdownComplete = true; app.quit(); }
       });
   });

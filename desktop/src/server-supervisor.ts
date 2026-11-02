@@ -181,6 +181,7 @@ async function stopChild(child: ChildProcess, logger: Logger, timeoutMs: number)
   logger.warn("Web server did not stop in time; terminating it");
   child.kill("SIGKILL");
   await Promise.race([exitPromise, delay(1_000)]);
+  if (isRunning(child)) throw new Error("The Piora web server did not exit after termination; restart was cancelled.");
 }
 
 interface ShutdownMessage {
@@ -208,6 +209,7 @@ export class StandaloneServer {
 
     let lastError: unknown;
     for (let attempt = 1; attempt <= MAX_START_ATTEMPTS; attempt += 1) {
+      if (this.stopping) throw new Error("Web server startup was cancelled");
       let port: number;
       try {
         port = await reservePort(attempt === 1 ? this.options.preferredPort : undefined);
@@ -217,6 +219,7 @@ export class StandaloneServer {
         continue;
       }
 
+      if (this.stopping) throw new Error("Web server startup was cancelled");
       const url = new URL(`http://${LOOPBACK_HOST}:${port}/`);
       let resolveRuntimeReady!: () => void;
       const runtimeReady = new Promise<void>((resolveReady) => {
@@ -245,6 +248,7 @@ export class StandaloneServer {
           earlyExit,
         ]);
         healthAbort.abort();
+        if (this.stopping) throw new Error("Web server startup was cancelled");
         this.ready = true;
         this.serverUrl = url;
         this.options.logger.info("Web server is ready", {
@@ -259,6 +263,7 @@ export class StandaloneServer {
         this.options.logger.warn(`Web server start attempt ${attempt} failed`, error);
         await stopChild(child, this.options.logger, 1_000);
         if (this.child === child) this.child = undefined;
+        if (this.stopping) throw new Error("Web server startup was cancelled", { cause: error });
         if (attempt < MAX_START_ATTEMPTS) {
           // Portable builds can be scanned immediately after extraction. A
           // short increasing delay gives Defender and third-party scanners
@@ -278,11 +283,11 @@ export class StandaloneServer {
     this.serverUrl = undefined;
 
     const child = this.child;
-    this.child = undefined;
     if (!child) return;
 
     this.options.logger.info("Stopping web server", { pid: child.pid });
     await stopChild(child, this.options.logger, 6_000);
+    if (this.child === child) this.child = undefined;
   }
 
   private spawnServer(port: number, onRuntimeReady: () => void): ChildProcess {
