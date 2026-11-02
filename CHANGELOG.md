@@ -5,6 +5,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 ## [Unreleased]
 
 - 设置新增运行状态文案，可自定义「凝思求解中」，即时生效并在当前设备持久保存；留空恢复当前语言默认文案。
+- 移除应用自行设置的单轮 20 张图片硬限制，允许第 21 张及以上用户附件和工具图片继续进入模型请求；保留图片校验、压缩及整轮体积预算，避免工具连续读图被数量限制中断。
 
 ## [0.5.9-beta.2] - 2026-11-02
 
