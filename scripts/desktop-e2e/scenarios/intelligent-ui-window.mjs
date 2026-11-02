@@ -7,13 +7,15 @@ import {readFile,writeFile} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
 import {heldInputPlan} from '../../../lib/mini-app-fixtures.mjs';
+import {abortable,isolatedEnvironment,startProcess,stopProcess} from '../lifecycle.mjs';
+import {desktopDevelopmentEnvironment} from '../../desktop-dev-environment.mjs';
 
 const execute=promisify(execFile),provider='desktop-window-fixture',model='held-input-fixture',callId='window-held-input';
 const text=m=>typeof m.content==='string'?[m.content]:(m.content??[]).filter(p=>p.type==='text').map(p=>p.text);
 export const intelligentUiWindow={
  nativeWindowState:true,
  id:'intelligent-ui-window',mode:'local-model-fixture',scope:'Windows native commands against the exact owned Electron process; real chat, runtime, held keys and saved checkpoint',
- coverage:['native minimize and restore','native close-to-tray and restore','held-input release','paused progress','saved checkpoint and reload','follow-up contains released saved state'],
+ coverage:['native minimize and restore','native close-to-tray and second-instance activation','native and document visibility','held-input release','paused progress','saved checkpoint and reload','follow-up contains released saved state'],
  limits:['real model generation','tray menu clicking','full process restart or crash','other platforms','release packages','full recovery matrix'],
  async prepare(context){
   assert.equal(process.platform,'win32','Native window scenario requires Windows');
@@ -40,17 +42,38 @@ export const intelligentUiWindow={
  },
  async run({page,step,waitUntil,reload,screenshot,directory,signal}){
   const {APP_DISPLAY_NAME}=createRequire(import.meta.url)(resolve('desktop/dist/generated/brand.js'));
-  const {report,paths}=this.context;let handle;const windows=[],checkpoints=[];
+  const {report,paths}=this.context;let handle;const windows=[],checkpoints=[],activations=[],interruptions=[];
   // Playwright normally forces focused/visible documents. This scenario must
   // observe the actual native window, not that automation-only override.
   const nativePage=await page.context().newCDPSession(page);
-  await nativePage.send('Emulation.setFocusEmulationEnabled',{enabled:false});
-  report.focusEmulation='disabled for native lifecycle checks';
+  const target=await nativePage.send('Target.getTargetInfo');
+  report.nativeTarget={browserContextId:target.targetInfo.browserContextId??null,
+   contextCount:page.context().browser().contexts().length,
+   firstReportedContext:page.context()===page.context().browser().contexts()[0]};
+  report.focusEmulation='noDefaults CDP connection; no additional emulation override';
   this.context.registerCleanup(()=>nativePage.detach().catch(()=>{}));
-  const record=()=>writeFile(join(directory,'window-lifecycle.json'),JSON.stringify({scope:this.scope,limits:this.limits,windows,checkpoints},null,2)+'\n');
+  const record=()=>writeFile(join(directory,'window-lifecycle.json'),JSON.stringify({scope:this.scope,limits:this.limits,windows,checkpoints,activations,interruptions},null,2)+'\n');
   const native=async(action='inspect')=>{
    const result=await execute('pwsh.exe',['-NoProfile','-NonInteractive','-File',resolve('scripts/desktop-e2e/native-window.ps1'),'-LauncherPid',String(report.launchPid),'-DebugPort',String(paths.debugPort),'-ExpectedTitle',`${APP_DISPLAY_NAME} Dev`,'-Action',action,...(handle?['-WindowHandle',String(handle)]:[])],{windowsHide:true,timeout:15000,signal});
-   const state=JSON.parse(result.stdout);handle=state.handle;windows.push({at:new Date().toISOString(),...state});await record();return state;
+   const state=JSON.parse(result.stdout);handle=state.handle;
+   const documentState=await page.evaluate(()=>({hidden:document.hidden,visibility:document.visibilityState,focused:document.hasFocus()}));
+   windows.push({at:new Date().toISOString(),...state,document:documentState});await record();return state;
+  };
+  const activate=async()=>{
+   const owner=await native(),root=resolve('.'),base=isolatedEnvironment(process.env,paths);
+   // Reopening the same isolated app uses Electron's production single-instance
+   // handler. A Win32 ShowWindow call cannot undo BrowserWindow.hide()'s state.
+   // This secondary process exits at the existing lock; it never authenticates
+   // to the server and receives no live server token or user credentials.
+   const env={...base,...desktopDevelopmentEnvironment(root,base),
+    PI_DESKTOP_DEV_SERVER_URL:report.origin+'/',PI_DESKTOP_TOKEN:'isolated-window-activation-fixture-token'};
+   const secondary=startProcess(createRequire(import.meta.url)('electron'),[join(root,'desktop')],{cwd:root,env,stdio:'ignore'});
+   this.context.registerCleanup(()=>stopProcess(secondary));
+   const exit=await abortable(()=>secondary.exited,AbortSignal.any([signal,AbortSignal.timeout(15000)]));
+   assert.equal(exit.code,0,'Secondary instance must forward activation and exit');
+   const current=await native();assert.equal(current.processId,owner.processId,'Activation must preserve the owned main process');
+   assert.equal(current.handle,owner.handle,'Activation must restore the same window');
+   activations.push({at:new Date().toISOString(),secondaryPid:secondary.child.pid,exit,mainProcessId:current.processId,handle:current.handle});await record();
   };
   const surface=page.locator('[data-mini-app-surface]').first(),frame=surface.frameLocator('iframe[title="Interactive answer"]');
   const state=async()=>JSON.parse(await frame.locator('[data-text="state"]').innerText());
@@ -64,13 +87,29 @@ export const intelligentUiWindow={
    assert.deepEqual(output.result.snapshot.state,await state());checkpoints.push(output);await record();return output.result.snapshot;
   };
   const hold=async()=>{
+   const before=await state();
    await surface.getByRole('button',{name:/^(Play|播放)$/}).click();
    await frame.locator('[data-event="keys"]').click();await page.keyboard.down('ArrowRight');
-   await waitUntil(async()=>{const current=await state();return current.held&&current.x>20;},'native keydown advances state');
+   await waitUntil(async()=>{const current=await state();return current.held&&current.x>before.x;},'native keydown advances state');
+  };
+  const interrupted=async(kind)=>{
+   // Record native state and release/pause before any restore or synthetic keyup.
+   // A mismatch with document visibility must remain a failure, even when the
+   // program correctly releases its inputs on blur.
+   await waitUntil(async()=>{const current=await state();return !current.held&&!current.drag;},`${kind} releases held inputs before restore`);
+   await surface.getByRole('button',{name:/^(Play|播放)$/}).waitFor();
+   const before=await state();await delay(600,undefined,{signal});assert.deepEqual(await state(),before,`${kind} must pause before restore`);
+   const window=await native();assert.ok(kind==='minimize'?window.minimized:!window.visible,'Native interruption must still be in effect');
+   const documentState=await page.evaluate(()=>({hidden:document.hidden,focused:document.hasFocus()}));
+   assert.equal(documentState.focused,false,'Interrupted window must lose focus');
+   interruptions.push({kind,state:before,native:window,document:documentState,syntheticKeyupSent:false});await record();
+   await waitUntil(()=>page.evaluate(()=>document.hidden),`${kind} document hidden`);
   };
   const restored=async()=>{
-   await native('restore');await waitUntil(async()=>{const window=await native();return window.visible&&!window.minimized;},'native window restored');
-   await waitUntil(async()=>!await page.evaluate(()=>document.hidden),'document visible');
+   await activate();
+   await waitUntil(async()=>{const window=await native();return window.visible&&!window.minimized;},'native window restored');
+   await waitUntil(()=>page.evaluate(()=>document.hasFocus()),'restored application focus');
+   await waitUntil(async()=>!await page.evaluate(()=>document.hidden),'restored document visible');
    await ready();
    await waitUntil(async()=>{const current=await state();return !current.held&&!current.drag;},'all inputs released');
    const before=await state();await delay(600,undefined,{signal});assert.deepEqual(await state(),before,'Restored program must remain paused');
@@ -89,12 +128,12 @@ export const intelligentUiWindow={
   });
   await step('native-minimize-releases-and-pauses',async()=>{
    await hold();await native('minimize');await waitUntil(async()=>(await native()).minimized,'native minimized');
-   await waitUntil(()=>page.evaluate(()=>document.hidden),'minimized document hidden');await delay(250,undefined,{signal});
+   await interrupted('minimize');
    await restored();await save();await screenshot('minimized-restored.png');
   });
   await step('native-close-hides-and-releases',async()=>{
    await hold();await native('close');await waitUntil(async()=>!(await native()).visible,'close hides window to tray');
-   await waitUntil(()=>page.evaluate(()=>document.hidden),'hidden document');await delay(250,undefined,{signal});
+   await interrupted('close');
    await restored();await save();await screenshot('closed-restored.png');
   });
   await step('saved-reload-and-followup',async()=>{

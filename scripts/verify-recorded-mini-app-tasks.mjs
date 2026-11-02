@@ -84,10 +84,14 @@ const scenario={
           for(const name of ['runtime','state','action'])assert.ok(!await surface.getAttribute(`data-mini-app-${name}-error`),`Host ${name} error`);
         };
         const ready=()=>waitUntil(async()=>{if(!await surface.count())return false;await healthy();return frame.locator(spec.readySelector).isVisible();},'recorded mini app ready');
-        const assertUi=async expectations=>{
+        const assertUi=async(expectations,patterns)=>{
           for(const [selector,expected] of Object.entries(expectations??{}))await waitUntil(async()=>{
             await healthy();const locator=frame.locator(selector);return await locator.count()===1&&(await locator.innerText()).trim()===String(expected);
           },`UI value ${selector}`);
+          for(const [selector,pattern] of Object.entries(patterns??{}))await waitUntil(async()=>{
+            await healthy();const locator=frame.locator(selector);
+            return await locator.count()===1&&new RegExp(pattern).test((await locator.innerText()).trim());
+          },`UI text ${selector}`);
         };
         const save=async()=>{
           await healthy();const button=surface.getByRole('button',{name:/^(Save|保存)$/});await button.click();
@@ -100,7 +104,7 @@ const scenario={
           else if(operation.kind==='host')await surface.getByRole('button',{name:new RegExp(operation.name)}).click();
           else if(operation.kind==='reload')await reload();
           else throw new Error(`Unknown fixture operation ${operation.kind}`);
-          await ready();await assertUi(operation.ui);
+          await ready();await assertUi(operation.ui,operation.uiPatterns);
           const saved=await save();
           const checkpoint={index,operation:operation.kind,saved,uiText:await frame.locator('body').innerText()};
           row.checkpoints.push(checkpoint);await persist();

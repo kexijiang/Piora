@@ -33,7 +33,6 @@ public static class PioraTestWindow {
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
   [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr h);
   [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
-  [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr h, int command);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   public static string Title(IntPtr h) { var text=new StringBuilder(2048);GetWindowText(h,text,text.Capacity);return text.ToString(); }
   public static long[] Find(uint process, string title) {
@@ -55,6 +54,6 @@ if ($actualOwner -ne $targetProcessId) { throw 'Window ownership changed; refusi
 switch ($Action) {
   'minimize' { if (-not [PioraTestWindow]::PostMessage($nativeWindow, 0x0112, [IntPtr]::new(0xF020), [IntPtr]::Zero)) { throw 'Minimize command failed' } }
   'close' { if (-not [PioraTestWindow]::PostMessage($nativeWindow, 0x0112, [IntPtr]::new(0xF060), [IntPtr]::Zero)) { throw 'Close command failed' } }
-  'restore' { [void][PioraTestWindow]::ShowWindowAsync($nativeWindow, 9); [void][PioraTestWindow]::SetForegroundWindow($nativeWindow) }
+  'restore' { if (-not [PioraTestWindow]::PostMessage($nativeWindow, 0x0112, [IntPtr]::new(0xF120), [IntPtr]::Zero)) { throw 'Restore command failed' }; [void][PioraTestWindow]::SetForegroundWindow($nativeWindow) }
 }
 @{ handle=$WindowHandle; processId=$targetProcessId; title=[PioraTestWindow]::Title($nativeWindow); visible=[PioraTestWindow]::IsWindowVisible($nativeWindow); minimized=[PioraTestWindow]::IsIconic($nativeWindow); action=$Action } | ConvertTo-Json -Compress

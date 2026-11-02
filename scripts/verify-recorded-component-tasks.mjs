@@ -67,8 +67,13 @@ const scenario={
    const row={id:spec.id,source:spec.source,sha256:spec.sha256,status:'running',checkpoints:[],semanticFindings:[...(spec.findings??[])],semanticReview:'pending-independent-human-review'};rows.push(row);await persist();
    try{await step(spec.id,async()=>{
     await page.goto(`${origin}/?session=${encodeURIComponent(original.sessionId)}`,{waitUntil:'domcontentloaded'});
-    const surface=page.getByRole('region',{name:output.surface.title,exact:true}),input=output.surface.nodes.find(n=>n.id===spec.inputId);
+    const input=output.surface.nodes.find(n=>n.id===spec.inputId);
     assert.equal(input.type,'number','These supplied discrete/threshold tasks do not require sliders');
+    // A repaired original transcript can also contain read-only failed previews
+    // with the same title. Require one writable answer, never choose first().
+    const writable=page.getByRole('spinbutton',{name:input.label,exact:true}).and(page.locator(':enabled'));
+    const surface=page.getByRole('region',{name:output.surface.title,exact:true}).filter({has:writable});
+    await waitUntil(async()=>await surface.count()===1,'exactly one writable recorded component');
     const control=surface.getByRole('spinbutton',{name:input.label,exact:true});
     await control.waitFor();await waitUntil(()=>control.isEnabled(),'component writable');
     const check=async expectation=>{
