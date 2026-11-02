@@ -1,14 +1,14 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 
-/** Defaults for the open-weight Flash/1017 family, including quantized model IDs.
+/** Defaults for DeepSeek V4.1 and its Flash/1017 family, including quantized IDs and the self-hosted dsv4.1 alias.
  * https://recipes.vllm.ai/deepseek-ai/DeepSeek-V4.1-Flash
  * Explicit maps belong to the user/provider and always take precedence.
  */
 export function withModelThinkingCompat<T extends Model<Api> | undefined>(model: T): T {
   if (!model?.reasoning || model.thinkingLevelMap !== undefined
     || !["openai-completions", "openai-responses", "azure-openai-responses"].includes(model.api)
-    || !/(?:^|\/)deepseek[-_. ]*v4[._]1[-_. ]*flash(?:$|[-_. :])/i.test(model.id)) return model;
+    || !/(?:^|\/)(?:deepseek|ds)[-_. ]*v4[._]1(?:$|[-_. ]*flash(?:$|[-_. :])|[-_. :](?=[0-9]))/i.test(model.id)) return model;
   const format = model.compat && "thinkingFormat" in model.compat ? model.compat.thinkingFormat : undefined;
   // Hosted gateways with their own protocol retain their own effort semantics.
   if (format && !["openai", "chat-template", "deepseek"].includes(format)) return model;
