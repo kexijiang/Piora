@@ -4,6 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复自定义模型开启图片输入后已有会话仍使用旧能力的问题；下一次发送前刷新模型目录，无需新建会话。
 - 移除应用自行设置的单轮 20 张图片硬限制，允许第 21 张及以上用户附件和工具图片继续进入模型请求；保留图片校验、压缩及整轮体积预算，避免工具连续读图被数量限制中断。
 
 ## [0.5.9-beta.2] - 2026-11-02
