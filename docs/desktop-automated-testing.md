@@ -124,6 +124,12 @@ node --test lib/desktop-e2e.test.mjs
 
 ## 后续范围
 
+### 会话复制、导出与回收站组合（开发中）
+
+`npm run test:desktop:e2e -- --scenario intelligent-ui-session-lifecycle` 复用独立开发桌面和确定性本地模型，通过真实 UI 串联复制、消息内分叉、历史 HTML 下载、子树回收与恢复。发送前返回 503 的传输夹具检查保存失败是否阻止后续操作，接口读取仅核对结果；保存失败后应验证保留的静态检查点，不应假定 iframe 仍可操作。HTML 下载通过 CDP 定向到隔离目录，不覆盖原生保存对话框。
+
+2026-11-03 最新运行 `.verification/desktop-e2e-me9R4C` 在追问后的保存收到 409，并因等待已保存超时失败；后续分叉、下载、回收与恢复没有执行。此前一轮曾执行分叉隔离及阻止导出，但实际下载返回 500；模块加载已调整，尚未通过完整桌面复测。所有失败与范围见[会话生命周期报告](verification/intelligent-ui-phase3-session-lifecycle-2026-11-03.md)，不能把场景的 coverage 声明当作通过记录。历史原始报告误继承其他场景的 transport 说明，本场景报告说明已修正，旧结果不覆盖。
+
 ### 原生窗口恢复场景（开发中）
 
 `npm run test:desktop:e2e -- --scenario intelligent-ui-window` 使用本机固定模型夹具，在 Windows 独立开发桌面检查持键操作、最小化、关闭隐藏、恢复及保存。PowerShell 7 辅助器仅操作本次 launcher 子进程中、调试端口及应用窗口标题匹配的 Electron 主窗口；不操作其他桌面实例。此场景通过 `noDefaults: true` 连接 CDP，避免 Playwright 的焦点模拟掩盖原生页面隐藏事件。

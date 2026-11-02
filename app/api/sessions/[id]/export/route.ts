@@ -385,7 +385,9 @@ async function exportSession(sessionId: string, filePath: string, outputPath: st
   if (!packageDir) throw new Error("pi HTML exporter not found");
 
   const exporterUrl = pathToFileURL(join(packageDir, "dist", "core", "export-html", "index.js")).href;
-  const { exportSessionToHtml } = (await import(exporterUrl)) as ExportHtmlModule;
+  // The SDK resolves its own templates relative to the installed package.
+  // Preserve the native file URL import instead of bundling a dynamic context.
+  const { exportSessionToHtml } = (await import(/* webpackIgnore: true */ exporterUrl)) as ExportHtmlModule;
   const reader = (await intelligentUiSessionReader(sessionId, filePath))();
   await exportSessionToHtml(reader, undefined, { outputPath });
   return reader;

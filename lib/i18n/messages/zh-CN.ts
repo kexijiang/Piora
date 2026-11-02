@@ -1707,6 +1707,7 @@ export const zhCNLocale: LocalePlugin = {
     "sidebar.archivedTasks": "已归档",
     "sidebar.taskArchived": "任务已归档",
     "sidebar.duplicateTask": "复制任务",
+    "sidebar.duplicateFailed": "复制任务失败：{error}",
     "sidebar.copySessionPath": "复制会话路径",
     "sidebar.revealSession": "在文件资源管理器中显示",
     "sidebar.searchChats": "搜索",

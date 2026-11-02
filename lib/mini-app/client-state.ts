@@ -41,6 +41,7 @@ export class MiniAppStateClient {
   private timer?: ReturnType<typeof setTimeout>;
   private unregister?: () => void;
   private checkpointGate?: (work: () => Promise<void>) => Promise<void>;
+  private refreshing?: Promise<void>;
   private ended = false;
   private ignoreRecovery = false;
   private resolving = false;
@@ -163,12 +164,19 @@ export class MiniAppStateClient {
    * runtime while reading so a user event cannot be overwritten by a late GET.
    * Pending writes and recovery copies keep their original branch identity. */
   refresh(): Promise<void> {
+    if (this.refreshing) return this.refreshing;
+    // Both operations acquire the controller's checkpoint gate. Join the
+    // outstanding operation instead of turning ordinary overlap into BUSY.
+    if (this.flushing) return this.flushing.then(() => this.refresh());
     const work = async () => {
       this.active();
-      if (this.pending || this.flight || this.operation || this.flushing || this.resolving || this.view.needsRecovery) return;
+      if (this.pending || this.flight || this.operation || this.resolving || this.view.needsRecovery) return;
       await this.load();
     };
-    return this.checkpointGate ? this.checkpointGate(work) : work();
+    const task = this.checkpointGate ? this.checkpointGate(work) : work();
+    this.refreshing = task;
+    void task.then(() => { if (this.refreshing === task) this.refreshing = undefined; }, () => { if (this.refreshing === task) this.refreshing = undefined; });
+    return task;
   }
   update(value: MiniAppResult): void {
     try {
@@ -261,7 +269,10 @@ export class MiniAppStateClient {
     };
     if (this.timer) clearTimeout(this.timer); this.timer = undefined;
     const task = (async () => {
-      try { if (this.checkpointGate) await this.checkpointGate(work); else await work(); }
+      try {
+        await this.refreshing;
+        if (this.checkpointGate) await this.checkpointGate(work); else await work();
+      }
       catch (error) { this.block(error); throw error; }
     })();
     this.flushing = task;

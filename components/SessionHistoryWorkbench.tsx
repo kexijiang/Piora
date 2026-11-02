@@ -10,6 +10,7 @@ import { createVirtualRowState } from "@/lib/virtual-row-state";
 import { historyLocationUrl, type HistoryChatControls, type HistoryLocation } from "@/lib/history-navigation";
 import { prepareMessageRetry } from "@/lib/message-retry";
 import { copyText } from "@/lib/clipboard";
+import { flushPendingAnswerState } from "@/lib/answer-output-client";
 import { VirtualList, type VirtualListHandle } from "./VirtualList";
 import { ChatDisclosureTrigger } from "./ChatDisclosure";
 import { HistoryEntryCard } from "./history/HistoryEntryCard";
@@ -222,6 +223,7 @@ export function SessionHistoryWorkbench({ sessionId, sessionName, location, cont
   });
   const download = (format: "html" | "json" | "markdown") => void perform("export", async () => {
     setExportOpen(false);
+    await flushPendingAnswerState(sessionId);
     const response = await fetchExport(format === "html" ? `/api/sessions/${encodeURIComponent(sessionId)}/export` : exportUrl(format));
     const url = URL.createObjectURL(await response.blob());
     const link = document.createElement("a"); link.href = url; link.download = `piora-history-${sessionId}.${format === "markdown" ? "md" : format}`;

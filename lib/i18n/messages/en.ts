@@ -1707,6 +1707,7 @@ export const enLocale: LocalePlugin = {
     "sidebar.archivedTasks": "Archived",
     "sidebar.taskArchived": "Task archived",
     "sidebar.duplicateTask": "Duplicate task",
+    "sidebar.duplicateFailed": "Could not duplicate task: {error}",
     "sidebar.copySessionPath": "Copy session path",
     "sidebar.revealSession": "Reveal in File Explorer",
     "sidebar.searchChats": "Search",

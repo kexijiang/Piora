@@ -25,6 +25,7 @@ import { isProjectlessChatCwd } from "@/lib/projectless-chat-path";
 import { ConversationSearchDialog } from "./ConversationSearchDialog";
 import type { SessionMoveTarget } from "./sidebar/TaskContextMenu";
 import { useProjectNotificationPreferences } from "@/hooks/useProjectNotificationPreferences";
+import { requestSessionDuplication } from "@/lib/session-duplicate-client";
 
 export type { SessionSidebarHandle } from "./sidebar/sidebar-types";
 
@@ -45,6 +46,8 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
   const [deletedSessionToast, setDeletedSessionToast] = useState<{ session: SessionInfo; key: number } | null>(null);
   const [archivedSessionToast, setArchivedSessionToast] = useState<SessionInfo | null>(null);
   const [conversationSearchOpen, setConversationSearchOpen] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
+  const duplicating = useRef(new Set<string>());
   const { mutedProjectRoots, toggleProjectMuted } = useProjectNotificationPreferences();
   const deletedSessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
@@ -244,13 +247,15 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
   }, [archivedSessionToast, patchSessionFlag]);
 
   const duplicateSession = useCallback(async (session: SessionInfo) => {
+    if (duplicating.current.has(session.id)) return;
+    duplicating.current.add(session.id);
+    setDuplicateError(null);
     try {
-      const response = await fetch(`/api/sessions/${encodeURIComponent(session.id)}/duplicate`, { method: "POST" });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      await requestSessionDuplication(session.id);
       await loadSessions();
-    } catch {
-      // Keep the current task list intact if the source is still being written.
-    }
+    } catch (error) {
+      setDuplicateError(error instanceof Error ? error.message : String(error));
+    } finally { duplicating.current.delete(session.id); }
   }, [loadSessions]);
 
   const handleNewSessionInProject = useCallback((cwd: string) => {
@@ -413,6 +418,7 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
   return (
     <>
     <SidebarShell>
+      {duplicateError && <div role="alert" style={{ padding: "8px 12px", color: "var(--status-failed)", fontSize: "var(--text-xs)" }}>{t("sidebar.duplicateFailed", { error: duplicateError })}</div>}
       <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
         {completionAnnouncement
           ? completionAnnouncement.count === 1
