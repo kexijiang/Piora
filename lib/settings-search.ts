@@ -77,6 +77,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "general.onboarding", section: "general", labelKey: "settings.firstRunGuideTitle", descriptionKey: "settings.firstRunGuideDescription", keywords: ["welcome", "guide", "新手", "引导"] },
   { id: "network", section: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", keywords: ["http", "https", "network", "代理", "网络"] },
   { id: "general.proxy", section: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", keywords: ["http", "https", "network", "代理", "网络"] },
+  { id: "general.runningStatusLabel", section: "modelRuntime", labelKey: "settings.runningStatusLabel", descriptionKey: "settings.runningStatusLabelHint", keywords: ["thinking", "凝思求解中", "文案"] },
   { id: "general.modelRetry", section: "modelRuntime", labelKey: "modelRetry.title", descriptionKey: "modelRetry.description", keywords: ["retry", "timeout", "backoff", "retries", "重试", "超时", "退避", "卡住"] },
   { id: "modelRuntime", section: "modelRuntime", labelKey: "settings.tab.modelRuntime", descriptionKey: "settings.page.modelRuntimeDescription", keywords: ["model runtime", "strategy", "模型", "运行策略"] },
   { id: "models.compaction", section: "modelRuntime", labelKey: "modelCompaction.title", descriptionKey: "modelCompaction.description", keywords: ["context", "compaction", "compression", "threshold", "reserve tokens", "上下文", "压缩", "阈值", "预留"] },

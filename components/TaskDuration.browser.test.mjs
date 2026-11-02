@@ -17,9 +17,11 @@ test("task timer keeps elapsed time across phase changes, refresh, completion an
     await writeFile(path.join(root, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root, "entry.tsx"), `
 import React from 'react'; import {createRoot} from 'react-dom/client';
+import {useRunningStatusLabel} from ${JSON.stringify(path.join(repo, 'hooks/useRunningStatusLabel.ts'))};
 import {TaskDuration} from ${JSON.stringify(path.join(repo, "components/TaskDuration.tsx"))};
 import {zhCNLocale} from ${JSON.stringify(path.join(repo, "lib/i18n/messages/zh-CN.ts"))};
 function App(){
+ const {label,setLabel}=useRunningStatusLabel();
  const [timing,setTiming]=React.useState(()=>JSON.parse(localStorage.getItem('timing')||'null'));
  const [phase,setPhase]=React.useState('正在思考');
  const [rate,setRate]=React.useState(null);
@@ -28,7 +30,7 @@ function App(){
  const start=()=>update({commandId:crypto.randomUUID(),sessionId:'fixture',startedAt:Date.now()});
  const finish=outcome=>update({...timing,outcome,...(outcome==='interrupted'?{}:{finishedAt:Date.now()})});
  const t=key=>zhCNLocale.messages[key]||key;
- return <><nav><b>Piora</b><span>任务用时</span><button onClick={()=>document.body.classList.toggle('dark')}>主题</button></nav>
+ return <><input aria-label="状态文案" value={label} onChange={e=>setLabel(e.target.value)}/><nav><b>Piora</b><span>任务用时</span><button onClick={()=>document.body.classList.toggle('dark')}>主题</button></nav>
  <main><div className="user">为 Piora 添加任务总用时</div><p>任务计时现在会贯穿整个执行过程。</p><div className="tool">正在检查任务状态与计时逻辑</div><div className="spacer"/>
  <TaskDuration timing={timing} busy={!!timing&&!timing.outcome} startedAt={timing?.startedAt??null} phase={phase} tokensPerSecond={rate} hideSettled={hideSettled} t={t}/>
  <button onClick={()=>setHideSettled(value=>!value)}>回复已有总用时</button>
@@ -55,6 +57,15 @@ html{font-size:14px}body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-mute
     const value = page.locator("[data-task-duration-value]");
     assert.equal(await page.locator("[data-task-duration]").count(), 0);
     await page.getByRole("button", { name: "开始", exact: true }).click();
+    const status = page.locator('[data-task-duration] [role="status"]');
+    assert.equal(await status.textContent(), "凝思求解中");
+    await page.getByLabel("状态文案").fill("正在认真思考");
+    assert.equal(await status.textContent(), "正在认真思考");
+    await page.reload();
+    await page.getByLabel("状态文案").waitFor();
+    assert.equal(await status.textContent(), "正在认真思考");
+    await page.getByLabel("状态文案").fill("   ");
+    assert.equal(await status.textContent(), "凝思求解中");
     const icon = page.locator("[data-task-running-icon]");
     await icon.waitFor();
     assert.equal(await icon.getAttribute("aria-hidden"), "true");

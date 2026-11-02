@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 设置新增运行状态文案，可自定义「凝思求解中」，即时生效并在当前设备持久保存；留空恢复当前语言默认文案。
+
 ## [0.5.8] - 2026-11-02
 
 - 为 OpenAI 兼容接口中的 DeepSeek V4.1 Flash（含 1017 与量化模型 ID）补齐默认思考档位，隐藏不支持的 minimal/medium 并将旧档位请求归到相邻有效档位，避免 reasoning_effort 报错；保留服务商和用户明确设置的档位映射。
