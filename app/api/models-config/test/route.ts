@@ -4,6 +4,7 @@ import { tmpdir } from "os";
 import { join } from "path";
 import type { AssistantMessage } from "@earendil-works/pi-ai/compat";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { installModelThinkingCompat } from "@/lib/model-thinking-compat";
 import { clampThinkingLevel, getSupportedThinkingLevels } from "@earendil-works/pi-ai/models";
 import { resolveSamplingParams } from "@earendil-works/pi-ai/api/simple-options";
 import { modelSamplingError, samplingParamsError, SAMPLING_APIS, SAMPLING_THINKING_LEVELS, type SamplingThinkingLevel } from "@/lib/model-sampling";
@@ -95,6 +96,7 @@ export async function POST(req: Request) {
       modelRuntime = (await createTrustedModelServices(cwd)).modelRuntime;
     }
 
+    installModelThinkingCompat(modelRuntime);
     const loadError = modelRuntime.getError();
     if (loadError) return NextResponse.json({ ok: false, error: loadError });
 

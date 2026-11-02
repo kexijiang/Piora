@@ -7,6 +7,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { readRemovedProviders } from "./removed-providers";
+import { installModelThinkingCompat } from "./model-thinking-compat";
 
 /**
  * Model scoping shared by the UI selector and AgentSession startup.
@@ -75,6 +76,7 @@ export async function resolveVisibleModels(
   patterns: string[] | undefined,
   removedProviders = readRemovedProviders(),
 ): Promise<ModelScopeResult> {
+  installModelThinkingCompat(modelRuntime);
   const scope = await resolveUnfilteredModels(modelRuntime, patterns);
   if (!removedProviders.length) return scope;
   const removed = new Set(removedProviders);

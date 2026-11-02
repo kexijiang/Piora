@@ -9,6 +9,7 @@ import {
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "@/lib/file-access";
 import { getProjectlessChatWorkspace } from "@/lib/projectless-chat-server";
 import { sessionPathKey } from "@/lib/session-path";
+import { installModelThinkingCompat } from "./model-thinking-compat";
 
 export class ModelRequestCwdError extends Error {
   constructor(
@@ -59,12 +60,14 @@ export async function resolveModelRequestCwd(requestedCwd?: string | null): Prom
 }
 
 /** Build Pi services for the validated workspace. */
-export function createTrustedModelServices(cwd: string) {
+export async function createTrustedModelServices(cwd: string) {
   const agentDir = getAgentDir();
-  return createAgentSessionServices({
+  const services = await createAgentSessionServices({
     cwd,
     agentDir,
   });
+  installModelThinkingCompat(services.modelRuntime);
+  return services;
 }
 
 /**
@@ -78,6 +81,7 @@ export async function createCoreModelServices(cwd: string) {
     authPath: join(agentDir, "auth.json"),
     modelsPath: join(agentDir, "models.json"),
   });
+  installModelThinkingCompat(modelRuntime);
   return {
     modelRuntime,
     settingsManager: SettingsManager.create(cwd, agentDir),

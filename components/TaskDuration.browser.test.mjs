@@ -117,7 +117,7 @@ html{font-size:14px}body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-mute
         return { delta: Math.abs((item.left + item.right - line.left - line.right) / 2), background: style.backgroundColor, border: style.borderTopWidth };
       });
       assert.ok(bounds.delta <= 1, "speed stays at the center of the entire line");
-      assert.equal(bounds.background, "rgba(0, 0, 0, 0)");
+      assert.notEqual(bounds.background, "rgba(0, 0, 0, 0)", "speed has a visible solid label background");
       assert.equal(bounds.border, "0px");
     };
     await checkCenteredSpeed();
@@ -144,7 +144,7 @@ html{font-size:14px}body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-mute
           const channels = value.match(/[\d.]+/g).slice(0, 3).map(Number).map(v => { v /= 255; return v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; });
           return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
         };
-        const a = luminance(style.color), b = luminance(getComputedStyle(document.body).backgroundColor);
+        const a = luminance(style.color), b = luminance(style.backgroundColor);
         return (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
       });
       assert.ok(contrast >= 4.5, `speed text contrast ${contrast} must remain readable`);

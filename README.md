@@ -7,7 +7,7 @@
 <p align="center">本地优先的开源 AI 桌面工作台</p>
 
 <p align="center">
-  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.6"><img alt="稳定版 0.5.6" src="https://img.shields.io/badge/release-0.5.6-2563eb.svg"></a>
+  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.7"><img alt="稳定版 0.5.7" src="https://img.shields.io/badge/release-0.5.7-2563eb.svg"></a>
   <a href="https://github.com/kexijiang/Piora/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kexijiang/Piora/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <a href="#下载与安装"><img alt="Windows / Linux x64" src="https://img.shields.io/badge/Desktop-Windows%20%7C%20Linux%20x64-555.svg"></a>
@@ -17,7 +17,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-最新正式版为 `0.5.6`，当前源码版本为 `0.5.7-beta.9`。本次 beta 新增回复后的模型切换提示，修复 Claude 等外部凭据渠道无法移除的问题；移除记录持久保存，可在添加渠道时恢复。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
+最新正式版与当前源码版本为 `0.5.7`。本次正式版修复 DeepSeek V4.1 Flash 思考档位兼容问题，恢复醒目的实时 token 速度标签，并合入任务总用时、模型切换提示、渠道持久移除及近期 beta 的桌面体验改进。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
 
 正式版由 GitHub Actions 构建和校验 Windows 与 Linux 包；beta 候选构建完成后由独立工作流发布，下载见[所有发布](https://github.com/kexijiang/Piora/releases)。Windows 原生投屏使用随包 Hypium 采集库，兼容设备无需在电脑安装 DevEco Studio。需要手机端 HAP 的兼容路径仍要求用户明确初始化并准备对应签名工具。华为系统录屏、原生投屏画质与延迟、平板兼容性和浏览器窗口外渲染仍待硬件验收，见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)。
 
@@ -25,23 +25,23 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 ## 下载与安装
 
-日常使用推荐 **Windows 安装版**。以下链接均对应已发布的 [Piora 0.5.6 正式版](https://github.com/kexijiang/Piora/releases/tag/v0.5.6)：
+日常使用推荐 **Windows 安装版**。以下链接均对应已发布的 [Piora 0.5.7 正式版](https://github.com/kexijiang/Piora/releases/tag/v0.5.7)：
 
 | 平台与形式 | 下载 | 使用方式 |
 | --- | --- | --- |
-| Windows x64 安装版 | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.6/Piora-0.5.6-win-x64-setup.exe) | 安装后启动，支持选择目录和应用内更新 |
-| Windows x64 单文件便携版 | [下载 portable.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.6/Piora-0.5.6-win-x64-portable.exe) | 直接运行，升级时手动替换 |
-| Windows x64 免安装目录 | [下载 ZIP](https://github.com/kexijiang/Piora/releases/download/v0.5.6/Piora-0.5.6-win-x64.zip) | 解压后运行 `Piora.exe` |
-| Linux x64 | [下载 AppImage](https://github.com/kexijiang/Piora/releases/download/v0.5.6/Piora-0.5.6-linux-x64-portable.AppImage) | 赋予执行权限后运行 |
-| 文件校验 | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.6/SHA256SUMS.txt) | 核对下载文件的 SHA-256 |
+| Windows x64 安装版 | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.7/Piora-0.5.7-win-x64-setup.exe) | 安装后启动，支持选择目录和应用内更新 |
+| Windows x64 单文件便携版 | [下载 portable.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.7/Piora-0.5.7-win-x64-portable.exe) | 直接运行，升级时手动替换 |
+| Windows x64 免安装目录 | [下载 ZIP](https://github.com/kexijiang/Piora/releases/download/v0.5.7/Piora-0.5.7-win-x64.zip) | 解压后运行 `Piora.exe` |
+| Linux x64 | [下载 AppImage](https://github.com/kexijiang/Piora/releases/download/v0.5.7/Piora-0.5.7-linux-x64-portable.AppImage) | 赋予执行权限后运行 |
+| 文件校验 | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.7/SHA256SUMS.txt) | 核对下载文件的 SHA-256 |
 
 Windows 支持 Windows 10/11 x64。桌面包已包含应用运行时，普通使用不需要另装 Node.js；Windows 包还内置 PowerShell 7；首次开启本地听写时会下载离线语音资源。Git、项目编译器以及第三方工具需要的程序，请按实际任务安装。
 
 Linux 下载后可在文件属性中允许执行，或运行：
 
 ```bash
-chmod +x Piora-0.5.6-linux-x64-portable.AppImage
-./Piora-0.5.6-linux-x64-portable.AppImage
+chmod +x Piora-0.5.7-linux-x64-portable.AppImage
+./Piora-0.5.7-linux-x64-portable.AppImage
 ```
 
 其他版本和 Beta 预览版见 [所有发布](https://github.com/kexijiang/Piora/releases)。目前正式版提供 Windows 和 Linux x64，Beta 提供 Windows x64；没有 macOS 安装包。Windows 安装包尚未启用代码签名，首次启动可能出现系统信誉提示。
