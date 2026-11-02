@@ -168,6 +168,8 @@ node --test lib/desktop-e2e.test.mjs
 
 ## 原始 Intelligent UI 任务的桌面重放与真实追问
 
+组件、小程序及非 UI 会话的入口选择、绑定说明、坐标精度与失败诊断见[原始任务复测说明](intelligent-ui-recorded-task-testing.md)。其中非 UI 入口只覆盖生产 SDK 会话，不计为桌面操作通过；运行真实开发桌面时保持 checkout 不变，避免热编译干扰保存请求。
+
 `scripts/verify-recorded-ui-desktop.mjs` 显式读取已有生成批次，复制所选原始会话及已发布界面数据到隔离 profile，验证原始输出在当前代码上的操作、保存、刷新及新发起的真实模型追问。它不是新一轮生成评估，不应把这两类成功率混算，也不加入默认测试入口。
 
 ```powershell

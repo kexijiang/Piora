@@ -85,6 +85,16 @@ const scenario={
     await persist();
   },
   async run({page,origin,step,waitUntil,reload,screenshot}){
+    const networkFailure=(request,details)=>{
+      const url=new URL(request.url());
+      if(url.origin!==origin||!url.pathname.includes('/mini-app'))return;
+      const sample=samples.find(item=>url.pathname.includes(`/sessions/${item.original.sessionId}/`));
+      const row=sample&&rows.find(item=>item.id===sample.spec.id);if(!row)return;
+      row.networkFailures??=[];
+      if(row.networkFailures.length<50)row.networkFailures.push({at:new Date().toISOString(),method:request.method(),path:url.pathname,...details});
+    };
+    page.on('requestfailed',request=>networkFailure(request,{failure:request.failure()?.errorText??'unknown'}));
+    page.on('response',response=>{if(response.status()>=400)networkFailure(response.request(),{status:response.status()});});
     const api=async path=>{
       const r=await page.evaluate(async path=>{const r=await fetch(path,{cache:'no-store'});return {status:r.status,data:await r.json()};},path);
       assert.equal(r.status,200);return r.data;
@@ -97,7 +107,11 @@ const scenario={
         await page.goto(`${origin}/?session=${encodeURIComponent(original.sessionId)}`,{waitUntil:'domcontentloaded'});
         const surface=page.locator('[data-mini-app-surface]').first(),frame=surface.frameLocator('iframe[title="Interactive answer"]');
         const healthy=async()=>{
-          for(const name of ['runtime','state','action'])assert.ok(!await surface.getAttribute(`data-mini-app-${name}-error`),`Host ${name} error`);
+          const errors=await surface.evaluate(node=>Object.fromEntries(['runtime','state','action'].map(name=>[name,node.getAttribute(`data-mini-app-${name}-error`)])));
+          for(const [name,code] of Object.entries(errors))if(code){
+            row.hostFailure={at:new Date().toISOString(),kind:name,code,operation:row.activeOperation};
+            assert.fail(`Host ${name} error: ${code}`);
+          }
         };
         const ready=()=>waitUntil(async()=>{if(!await surface.count())return false;await healthy();return frame.locator(spec.readySelector).isVisible();},'recorded mini app ready');
         const pointerPoint=async operation=>{
@@ -135,6 +149,7 @@ const scenario={
         };
         await ready();await screenshot(`${spec.id}-initial.png`);
         for(const [index,operation] of spec.operations.entries()){
+          row.activeOperation={index,kind:operation.kind};
           if(operation.kind==='click')await frame.locator(operation.selector).click();
           else if(operation.kind==='key')await frame.locator(operation.selector).press(operation.key);
           else if(operation.kind==='select')await frame.locator(operation.selector).selectOption(operation.value);
@@ -151,6 +166,14 @@ const scenario={
           const checkpoint={index,operation:operation.kind,saved,uiText:await frame.locator('body').innerText()};
           row.checkpoints.push(checkpoint);await persist();
           for(const [path,expected] of Object.entries(operation.expected??{}))assert.deepEqual(at(saved.result,path),expected,`Independent oracle at ${index}: ${path}`);
+          for(const [path,expected] of Object.entries(operation.approximate??{})){
+            const actual=at(saved.result,path),{value,tolerance,reason}=expected;
+            assert.ok(Number.isFinite(value)&&Number.isFinite(tolerance)&&tolerance>0&&typeof reason==='string'&&reason.trim(),'Approximate oracle needs a finite value, positive absolute tolerance and reason');
+            assert.ok(Number.isFinite(actual),`Finite numeric value at ${index}: ${path}`);
+            const difference=Math.abs(actual-value);
+            checkpoint.approximateChecks??=[];checkpoint.approximateChecks.push({path,actual,value,tolerance,difference,reason});
+            assert.ok(difference<=tolerance,`Independent oracle at ${index}: ${path}: ${actual} differs from ${value} by ${difference}, tolerance ${tolerance}`);
+          }
           for(const check of operation.proseChecks??[]){
             const actual=String(at(saved.result,check.path));
             if(!new RegExp(check.pattern).test(actual))row.semanticFindings.push({index,path:check.path,expected:check.explanation,actual});
@@ -158,6 +181,7 @@ const scenario={
           if(operation.sameAs!==undefined)assert.deepEqual(saved.result.snapshot,row.checkpoints[operation.sameAs].saved.result.snapshot,`Checkpoint preserved at ${index}`);
           checkpoint.status='passed';await persist();
         }
+        delete row.activeOperation;
         await screenshot(`${spec.id}-operated.png`);
         const saved=row.checkpoints.at(-1).saved,before=responses.length;
         currentPrompt=spec.followup;
