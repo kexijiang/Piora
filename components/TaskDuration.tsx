@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRunningStatusLabel } from "@/hooks/useRunningStatusLabel";
 import { TaskActivityIcon } from "./TaskActivityIcon";
 import { TaskPhaseActivity } from "./TaskPhaseActivity";
 import { formatStatusDuration } from "@/lib/status-duration";
@@ -32,6 +33,7 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
   hideSettled?: boolean;
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
+  const { label: runningLabel } = useRunningStatusLabel();
   const [now, setNow] = useState(() => Date.now());
   // A fresh send may be preparing before its durable dispatch receipt arrives.
   const current = busy && timing?.outcome && startedAt !== null && startedAt > timing.startedAt ? null : timing;
@@ -51,8 +53,8 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
   const outcome = running ? undefined : current?.outcome;
   const speed = running && busy && typeof tokensPerSecond === "number" && Number.isFinite(tokensPerSecond) && tokensPerSecond >= 0
     ? tokensPerSecond : null;
+  const label = outcome ? t(`chat.taskDuration.${outcome}`) : runningLabel.trim() || t("chat.taskDuration.running");
   const speedBand = speed !== null && speed > 60 ? "green" : speed !== null && speed >= 30 ? "yellow" : "red";
-  const label = t(outcome ? `chat.taskDuration.${outcome}` : "chat.taskDuration.running");
   const color = running ? "var(--accent)" : outcome === "failed" ? "var(--status-failed)"
     : outcome === "completed" ? "var(--status-ready)" : "var(--text-muted)";
   return (
@@ -62,7 +64,7 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
       <div className="piora-task-line">
       <span className="piora-task-summary">
       {running ? <TaskActivityIcon /> : <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: "50%", background: color, flexShrink: 0 }} />}
-      <span role="status" style={{ flexShrink: 0 }}>{label}</span>
+      <span role="status" style={{ overflowWrap: "anywhere", minWidth: 0 }}>{label}</span>
       {elapsed !== null && <span aria-hidden="true" style={{ opacity: 0.4 }}>·</span>}
       {elapsed !== null && <span style={{ flexShrink: 0 }}>{t(running ? "chat.taskDuration.elapsed" : "chat.taskDuration.total")}</span>}
       <span data-task-duration-value role="timer" aria-live="off" style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600, color: running ? "var(--accent)" : "var(--text)", flexShrink: 0 }}>

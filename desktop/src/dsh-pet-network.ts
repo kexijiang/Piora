@@ -1,4 +1,6 @@
 import { readFileSync } from "node:fs";
+import { mkdir, rename, writeFile } from "node:fs/promises";
+import { getCACertificates } from "node:tls";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { EnvHttpProxyAgent } from "undici";
@@ -34,8 +36,9 @@ export function petNetwork(environment: NodeJS.ProcessEnv = process.env, proxy?:
   };
   const mirror = env.electron_mirror || env.npm_config_electron_mirror || config.electron_mirror;
   if (mirror) { network.ELECTRON_MIRROR = mirror; network.DSH_PET_ELECTRON_MIRROR = mirror; }
-  const ca = env.node_extra_ca_certs || env.npm_config_cafile || config.cafile;
-  if (ca) { network.NODE_EXTRA_CA_CERTS = ca; network.NPM_CONFIG_CAFILE = ca; }
+  if (env.node_extra_ca_certs) network.NODE_EXTRA_CA_CERTS = env.node_extra_ca_certs;
+  const ca = env.npm_config_cafile || config.cafile;
+  if (ca) network.NPM_CONFIG_CAFILE = ca;
   if (http || https) {
     network.ELECTRON_GET_USE_PROXY = "1";
     // @electron/get 2/3 uses global-agent; newer releases use undici.
@@ -46,11 +49,30 @@ export function petNetwork(environment: NodeJS.ProcessEnv = process.env, proxy?:
   return { registry: registry.href, environment: network };
 }
 
+/** Explicit CA options replace Node defaults, so always retain the default and system roots. */
+export function petCertificates(network: PetNetwork, certificates = getCACertificates): string[] {
+  const roots = [...certificates("default"), ...certificates("system")];
+  for (const file of new Set([network.environment.NODE_EXTRA_CA_CERTS, network.environment.NPM_CONFIG_CAFILE])) {
+    if (file) roots.push(readFileSync(file, "utf8"));
+  }
+  return [...new Set(roots)];
+}
+
+/** Electron's Node mode need not honor --use-system-ca. Give npm and Electron downloads the same explicit bundle. */
+export async function preparePetNetwork(root: string, network: PetNetwork, certificates = getCACertificates): Promise<PetNetwork> {
+  const ca = petCertificates(network, certificates);
+  await mkdir(root, { recursive: true });
+  const file = join(root, "trusted-ca.pem");
+  await writeFile(`${file}.tmp`, ca.join("\n"), { mode: 0o600 });
+  await rename(`${file}.tmp`, file);
+  return { ...network, environment: { ...network.environment, NODE_EXTRA_CA_CERTS: file, NPM_CONFIG_CAFILE: file } };
+}
+
 export function petDispatcher(network: PetNetwork): EnvHttpProxyAgent {
-  const ca = network.environment.NODE_EXTRA_CA_CERTS;
+  const ca = petCertificates(network);
   return new EnvHttpProxyAgent({
     httpProxy: network.environment.HTTP_PROXY || "", httpsProxy: network.environment.HTTPS_PROXY || "",
     noProxy: network.environment.NO_PROXY || "",
-    ...(ca ? { requestTls: { ca: readFileSync(ca) }, proxyTls: { ca: readFileSync(ca) }, connect: { ca: readFileSync(ca) } } : {}),
+    requestTls: { ca }, proxyTls: { ca }, connect: { ca },
   });
 }
