@@ -160,13 +160,22 @@ function bindEvents(target: Element,id: string) {
   target.addEventListener("click",event=>{if(event.isTrusted&&owns(event))send({type:"event",event:{type:"click",id}});});
   const point=(event:PointerEvent)=>{
     const svg=target instanceof SVGElement?(target instanceof SVGSVGElement?target:target.ownerSVGElement):null;
+    if(svg){
+      // SVG may letterbox its viewBox inside the CSS box. Use the browser's
+      // viewport transform so responsive sizes, origins and transforms agree
+      // with the geometry the user actually sees.
+      const matrix=svg.getScreenCTM();if(!matrix)return null;
+      const position=new DOMPoint(event.clientX,event.clientY).matrixTransform(matrix.inverse());
+      return Number.isFinite(position.x)&&Number.isFinite(position.y)?{x:position.x,y:position.y}:null;
+    }
     const canvas=target instanceof HTMLCanvasElement?target:target.querySelector("canvas");
-    const bounds=(svg??canvas??target).getBoundingClientRect();const view=svg?.viewBox.baseVal;
-    return {x:(event.clientX-bounds.left)/Math.max(1,bounds.width)*(view?.width??canvas?.width??bounds.width)+(view?.x??0),y:(event.clientY-bounds.top)/Math.max(1,bounds.height)*(view?.height??canvas?.height??bounds.height)+(view?.y??0)};
+    const bounds=(canvas??target).getBoundingClientRect();
+    return {x:(event.clientX-bounds.left)/Math.max(1,bounds.width)*(canvas?.width??bounds.width),y:(event.clientY-bounds.top)/Math.max(1,bounds.height)*(canvas?.height??bounds.height)};
   };
   for(const name of ["pointerdown","pointermove","pointerup","pointercancel"] as const)target.addEventListener(name,(event:Event)=>{
     if(!event.isTrusted||!owns(event))return;const pointer=event as PointerEvent;
     const position=point(pointer);
+    if(!position){releaseInputState();return;}
     if(name==="pointerdown"){target.setPointerCapture(pointer.pointerId);capturedPointers.set(pointer.pointerId,{target,id,...position});}
     else if(name==="pointermove"&&capturedPointers.has(pointer.pointerId))capturedPointers.set(pointer.pointerId,{target,id,...position});
     else if(name==="pointerup"||name==="pointercancel")capturedPointers.delete(pointer.pointerId);
@@ -185,7 +194,8 @@ function bindEvents(target: Element,id: string) {
     const key=id+"\0"+keyboard.key;
     if(type==="keydown"){if(keyboard.repeat&&!heldKeys.has(key))return;heldKeys.add(key);}
     else heldKeys.delete(key);
-    if(["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(keyboard.key))keyboard.preventDefault();
+    const nativeActivation=keyboard.key===" "&&target instanceof HTMLButtonElement;
+    if(!nativeActivation&&["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"," "].includes(keyboard.key))keyboard.preventDefault();
     send({type:"event",event:{type,id,key:keyboard.key,repeat:keyboard.repeat}});
   });
 }

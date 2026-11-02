@@ -84,6 +84,25 @@ const scenario={
           for(const name of ['runtime','state','action'])assert.ok(!await surface.getAttribute(`data-mini-app-${name}-error`),`Host ${name} error`);
         };
         const ready=()=>waitUntil(async()=>{if(!await surface.count())return false;await healthy();return frame.locator(spec.readySelector).isVisible();},'recorded mini app ready');
+        const pointerPoint=async operation=>{
+          const target=frame.locator(operation.space);
+          await target.scrollIntoViewIfNeeded();
+          const box=await target.boundingBox();assert.ok(box,'Pointer coordinate space must be visible');
+          const points=await target.evaluate((node,{from,to,size})=>{
+            const bounds=node.getBoundingClientRect();
+            const point=([x,y])=>{
+              if(node instanceof SVGSVGElement){
+                const matrix=node.getScreenCTM();if(!matrix)throw new Error('SVG transform is unavailable');
+                const transformed=new DOMPoint(x,y).matrixTransform(matrix);
+                return {x:transformed.x-bounds.x,y:transformed.y-bounds.y};
+              }
+              if(!(node instanceof HTMLCanvasElement)||!size)throw new Error('Explicit canvas coordinate size is required');
+              return {x:x*bounds.width/size.width,y:y*bounds.height/size.height};
+            };
+            return [point(from),point(to)];
+          },operation);
+          return points.map(p=>({x:box.x+p.x,y:box.y+p.y}));
+        };
         const assertUi=async(expectations,patterns)=>{
           for(const [selector,expected] of Object.entries(expectations??{}))await waitUntil(async()=>{
             await healthy();const locator=frame.locator(selector);return await locator.count()===1&&(await locator.innerText()).trim()===String(expected);
@@ -101,6 +120,13 @@ const scenario={
         await ready();await screenshot(`${spec.id}-initial.png`);
         for(const [index,operation] of spec.operations.entries()){
           if(operation.kind==='click')await frame.locator(operation.selector).click();
+          else if(operation.kind==='key')await frame.locator(operation.selector).press(operation.key);
+          else if(operation.kind==='select')await frame.locator(operation.selector).selectOption(operation.value);
+          else if(operation.kind==='drag'){
+            const [from,to]=await pointerPoint(operation);
+            await page.mouse.move(from.x,from.y);await page.mouse.down();
+            try{await page.mouse.move(to.x,to.y,{steps:8});}finally{await page.mouse.up();}
+          }
           else if(operation.kind==='host')await surface.getByRole('button',{name:new RegExp(operation.name)}).click();
           else if(operation.kind==='reload')await reload();
           else throw new Error(`Unknown fixture operation ${operation.kind}`);
