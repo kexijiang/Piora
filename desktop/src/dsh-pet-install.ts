@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile, rename, rm } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
 import { spawn } from "node:child_process";
 import { x } from "tar";
-import { petNetwork, petDispatcher, type PetNetwork } from "./dsh-pet-network.js";
+import { petNetwork, petDispatcher, preparePetNetwork, type PetNetwork } from "./dsh-pet-network.js";
 import { fetch, type Dispatcher, type Response } from "undici";
 import { DSH_PET_VERSION, type DshPetProgress } from "./dsh-pet-types.js";
 
@@ -92,6 +92,7 @@ export async function installPet(root: string, signal: AbortSignal, progress: (v
   await writeFile(join(root, "npmrc-global"), "");
   let dispatcher: Dispatcher | undefined;
   try {
+    network = await preparePetNetwork(root, network);
     dispatcher = petDispatcher(network);
     progress({ stage: "installer", received: 0, total: null });
     await download(new URL(`npm/-/npm-${NPM_VERSION}.tgz`, network.registry).href, join(staging, "npm.tgz"), NPM_INTEGRITY, 20 * 1024 * 1024, signal,

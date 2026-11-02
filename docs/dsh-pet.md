@@ -28,6 +28,7 @@
 - registry 优先级：`PIORA_DSH_PET_REGISTRY` → `npm_config_registry`（也支持大写）→ 用户 `.npmrc` 的 `registry` → npm 公网源。可通过 `NPM_CONFIG_USERCONFIG` 指定用户配置文件；镜像需提供标准 npm 归档路径及依赖。不会复制 npm token 或项目脚本配置，也不修改原 `.npmrc`。
 - 安装时统一使用 Piora 的手动/直连代理选择；系统模式读取 `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` / `NO_PROXY` 或用户 npmrc 的 `proxy` / `https-proxy` / `noproxy`，不解析操作系统 PAC。支持 URL 中的 Basic 代理认证，特殊字符需 URL 编码；NTLM/Kerberos 代理仍需适配的本地中转。内网 CA 可通过 `NODE_EXTRA_CA_CERTS` 或 npm `cafile` 指定，不关闭 TLS 校验。
 - 首次启动下载 Electron 时传递 `ELECTRON_MIRROR`（或 npm `electron_mirror`）和代理配置，兼容上游新旧代理实现。运行中的桌宠需停止后重新启动以应用网络配置变更。
+- 安装和启动时读取系统信任证书（Windows 证书库等），与 Node 默认 CA、`NODE_EXTRA_CA_CERTS` 和 npm `cafile` 合并，刷新数据根下的 `trusted-ca.pem`。归档下载器、npm 和桌宠子进程共用该信任集合，不依赖 Electron 是否采纳 `--use-system-ca`，也不会关闭 TLS 验证；两种显式 CA 文件可同时配置。公司证书未安装或服务端证书链不完整时仍需由 IT 补齐，不会自动信任网络返回的未知证书。
 
 ## 来源与素材
 

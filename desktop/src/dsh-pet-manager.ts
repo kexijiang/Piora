@@ -6,7 +6,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { installPet, petEnvironment, removePetDirectory, preparePetRuntime } from "./dsh-pet-install.js";
 import { DSH_PET_VERSION, PetTaskProjection, type DshPetAction, type DshPetStatus, type DshPetProgress, type PetTaskSnapshot } from "./dsh-pet-types.js";
 
-import { petNetwork, type PetNetwork } from "./dsh-pet-network.js";
+import { petNetwork, preparePetNetwork, type PetNetwork } from "./dsh-pet-network.js";
 
 interface Runtime { pid: number; port: number; token: string }
 interface Options {
@@ -124,8 +124,10 @@ export class DshPetManager {
       // upstream helper, whose own parent-PID guard only watches this host.
       const runner = join(this.options.root, "host-runner.cjs");
       writeFileSync(runner, `process.once('disconnect', () => {\n  const force = setTimeout(() => process.exit(1), 5000); force.unref();\n  process.emit('SIGTERM');\n});\nprocess.argv.splice(1, 1);\nimport(require('node:url').pathToFileURL(process.argv[1]).href).catch(() => process.exit(1));\n`);
+      const network = await preparePetNetwork(this.options.root, this.options.network?.() ?? petNetwork());
+      signal.throwIfAborted();
       const child = spawn(process.execPath, [runner, this.entry(), "--port", String(port)], {
-        cwd: this.options.root, env: petEnvironment(this.options.root, process.env, this.options.network?.() ?? petNetwork()), windowsHide: true, stdio: ["pipe", "pipe", "pipe", "ipc"],
+        cwd: this.options.root, env: petEnvironment(this.options.root, process.env, network), windowsHide: true, stdio: ["pipe", "pipe", "pipe", "ipc"],
       });
       this.child = child;
       const collect = (data: Buffer) => { this.stdout = (this.stdout + data.toString()).slice(-3000); };
