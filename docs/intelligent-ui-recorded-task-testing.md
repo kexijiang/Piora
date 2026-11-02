@@ -8,6 +8,7 @@
 |---|---|---|
 | 计算、比较组件 | `scripts/verify-recorded-component-tasks.mjs --bindings <json>` | 独立开发桌面的实际输入、保存、刷新和真实模型追问 |
 | 有任务状态的小程序 | `scripts/verify-recorded-mini-app-tasks.mjs --bindings <json>` | 实际点击、键盘、拖动、播放、保存、刷新和真实模型追问 |
+| 小程序自然语言修订 | `scripts/verify-recorded-mini-app-revisions.mjs --bindings <json>` | 量杯提示修订、取消、过期核对、进度迁移、保存、刷新和真实追问 |
 | 直接回答、先澄清再计算 | `scripts/verify-recorded-text-tasks.mjs --bindings <json>` | 复制原始会话后使用生产 SDK、会话包装器及扩展；不启动桌面 |
 
 在本聊天独立 worktree 中运行。桌面重放期间保持 checkout 不变，不同时运行同一 checkout 的交互式 dev launcher，也不要写入其他脚本或文档触发开发服务编译。先等待公共 `result.json` 和进程退出，再继续编辑。临时结果缺失不代表进程已停止。
@@ -67,3 +68,31 @@ node scripts/verify-recorded-text-tasks.mjs --bindings .verification/text-bindin
 公共场景 step 的 `passed` 只表示该回调走完。若 `task-replay.json` 的样本为 `semantic-failed`，或整批为 `failed`，仍必须按失败报告。预声明的文字问题、实际文本不符、机械中断和复测分别保留。
 
 本轮 24 个原始样本的逐项状态、失败反例与范围见[任务矩阵报告](verification/intelligent-ui-phase3-task-matrix-2026-11-03.md)及其脱敏 JSON。桌面生命周期和隔离配置见[自动化测试说明](desktop-automated-testing.md)。
+
+## 真实模型修订与迁移
+
+```powershell
+node scripts/verify-recorded-mini-app-revisions.mjs --bindings .verification/revision-bindings.json
+```
+
+```json
+{
+  "version": 1,
+  "thinking": "enabled",
+  "scenario": "jug-no-op-revision",
+  "source": ".verification/mini-app-live-EXAMPLE/result.json",
+  "sha256": "REPLACE_WITH_SHA256_OF_SOURCE",
+  "cancelFirst": true,
+  "staleReview": true
+}
+```
+
+此入口明确绑定原始合成量杯样本，不能直接用于任意小程序。样本须使用 `j3/j5/steps/next/note/history` 状态和 `fill3/fill5/pour3to5/pour5to3/empty3/empty5/reset` 操作；预期原程序两杯为空时错误提示目标杯已满。新生成结构或状态重构应独立审阅绑定，不能修改业务预期以迎合生成结果。
+
+运行器复制会话和界面存储到隔离 profile，先通过 UI 达到 3/4 升、6 步，再用自然语言要求修复两个方向的无效提示并保留进度。模型固定为配置名称含 V4.1 的 `deepseek/deepseek-flash`，任务开启思考、无 Pro/回退；后台标题请求单独记录。源文件摘要和 sidecar 身份在模型调用前校验，原始生成记录不改写。
+
+两个可选开关默认不启用。`cancelFirst` 取消第一份候选、刷新并再次请求真实修订；`staleReview` 在保持核对面板挂载时，通过第二个应用视图将旧版改为 3/5 升、7 步，要求旧确认返回 409、刷新核对后迁移最新进度。第二视图由测试临时挂载为同源 iframe，使用同一个 Electron profile 内的独立 React 客户端，操作和保存通过 UI 完成；它不代表两个原生窗口验收。聊天虚拟列表会卸载屏外行，因此定位绑定会话条目并通过真实滚动寻找，不依赖第一张卡片。
+
+随后检查四种空杯/满杯无效操作、重置、达成与失去当前目标、完整快照刷新恢复和真实模型追问。API 和存储仅用于准备与结果核对。总场景期限 15 分钟、步骤期限 4 分钟；不能将机械 `completed` 视作语义通过。原始回答、候选说明与追问仍需独立审阅，双人人工验收另行安排。
+
+输出位于 `.verification/desktop-e2e-*/revision-replay.json` 和公共 `result.json`，含本地合成会话内容，发布前应提取脱敏摘要；不要提交模型配置、认证、完整请求或私人会话。本轮成功、三次夹具失败及复测边界见[真实修订报告](verification/intelligent-ui-phase3-real-revision-2026-11-03.md)。
