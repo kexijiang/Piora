@@ -2,7 +2,7 @@ import type { PromptRunIdentity } from "./prompt-run-registry";
 import type { UiAdmissionHook } from "./intelligent-ui/admission";
 
 /** Shared chat code knows capability names, not component or expression protocols. */
-const UI_TOOLS = ["piora_render_ui", "piora_render_ui_plan"] as const;
+const UI_TOOLS = ["piora_render_ui", "piora_render_ui_plan", "piora_render_mini_app"] as const;
 export interface AnswerOutputAdmissionAgent {
   pioraToolAdmissionVersion?: number;
   admitToolCall?: UiAdmissionHook;
@@ -32,7 +32,8 @@ export function bindAnswerOutputAdmission(options: {
     if (!isActive() || !toolNames.includes(context.toolCall.name as typeof UI_TOOLS[number])) {
       return { immediate: { isError: true, result: {
         content: [{ type: "text", text: "Intelligent UI is unavailable for this originating task. Do not retry this operation." }],
-        details: { intelligentUiDiagnostic: { code: "UI_RUN_UNAVAILABLE", repairable: false } }, isError: true,
+        details: { answerOutputDiagnostic: { code: "UI_RUN_UNAVAILABLE", repairable: false },
+          intelligentUiDiagnostic: { code: "UI_RUN_UNAVAILABLE", repairable: false } }, isError: true,
       } } };
     }
     loading ??= import("./intelligent-ui/admission").then(({ UiAdmissionBudget }) => {
@@ -43,12 +44,16 @@ export function bindAnswerOutputAdmission(options: {
     });
     await loading;
     const admission = await budget!.admit(context, signal);
-    if (admission && !("immediate" in admission) && context.toolCall.name === "piora_render_ui_plan") {
-      const { originalUiPlanDiagnostic } = await import("./intelligent-ui/plan-admission");
-      const diagnostic = originalUiPlanDiagnostic(context.toolCall.arguments);
+    if (admission && !("immediate" in admission)) {
+      const diagnostic = context.toolCall.name === "piora_render_ui_plan"
+        ? (await import("./intelligent-ui/plan-admission")).originalUiPlanDiagnostic(context.toolCall.arguments)
+        : context.toolCall.name === "piora_render_mini_app"
+          ? (await import("./mini-app/plan-admission")).originalMiniAppPlanDiagnostic(context.toolCall.arguments, identity)
+          : undefined;
       if (diagnostic) return { immediate: admission.settle({ isError: true,
         result: { content: [{ type: "text", text: JSON.stringify(diagnostic) }],
-          details: { intelligentUiDiagnostic: diagnostic }, isError: true } }, "execution") };
+          details: { answerOutputDiagnostic: diagnostic,
+            ...(context.toolCall.name === "piora_render_ui_plan" ? { intelligentUiDiagnostic: diagnostic } : {}) }, isError: true } }, "execution") };
     }
     return admission;
   };

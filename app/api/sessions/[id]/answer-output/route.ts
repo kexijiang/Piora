@@ -1,5 +1,6 @@
 import { resolveSessionPath } from "@/lib/session-reader";
 import { isApiRequestAllowed } from "@/lib/request-security";
+import { answerOutputDescriptor } from "@/lib/answer-output-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +10,14 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   if (!isApiRequestAllowed(request)) return json({ error: "Forbidden" }, 403);
   const query = new URL(request.url).searchParams;
   const toolCallId = query.get("toolCallId");
-  if (query.get("kind") !== "intelligent-ui" || !toolCallId || toolCallId.length > 256) return json({ error: "Unknown answer output" }, 400);
+  const kind = query.get("kind") ?? "";
+  if (!answerOutputDescriptor(kind) || !toolCallId || toolCallId.length > 256) return json({ error: "Unknown answer output" }, 400);
   try {
     const { id } = await context.params;
     const path = await resolveSessionPath(id);
     if (!path) return json({ error: "Session not found" }, 404);
-    const { readUiOutput } = await import("@/lib/intelligent-ui/read-output");
-    const { intelligentUiSessionReader } = await import("@/lib/intelligent-ui/session");
-    const manager = (await intelligentUiSessionReader(id, path))();
-    const { snapshot } = await readUiOutput(manager, toolCallId);
+    const { readAnswerOutputSavedSnapshot } = await import("@/lib/answer-output-server");
+    const snapshot = await readAnswerOutputSavedSnapshot(kind, id, path, toolCallId);
     return json({ snapshot });
   } catch {
     return json({ error: "Saved output is unavailable on the current branch" }, 404);

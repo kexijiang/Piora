@@ -1,0 +1,660 @@
+{
+  "date": "2026-10-31",
+  "designVersion": "v3.5",
+  "phase": "3B",
+  "phase3Complete": false,
+  "worktree": "C:\\Users\\shengjiajun\\.codex\\worktrees\\intelligent-ui\\Piora",
+  "branch": "codex/intelligent-ui",
+  "head": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "containsUncommittedChanges": true,
+  "checks": [
+    {
+      "command": "node --test lib/mini-app-runtime.test.mjs lib/mini-app-server-trial.test.mjs lib/mini-app-document.test.mjs lib/mini-app-generation-runtime.test.mjs lib/mini-app-renderer-browser.test.mjs lib/mini-app-controller-browser.test.mjs",
+      "exitCode": 0,
+      "tests": 27,
+      "passed": 27,
+      "failed": 0,
+      "log": {
+        "path": ".verification/phase3-appearance-generation-current.log",
+        "sha256": "2512ef5f59f9f1a94e705a7d3c2eaa2047cc0dcbb20950f066a265845d3bf388"
+      }
+    },
+    {
+      "command": "node_modules/.bin/tsc.cmd --noEmit",
+      "exitCode": 0,
+      "log": {
+        "path": ".verification/phase3-appearance-typecheck-current.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "command": "node node_modules/eslint/bin/eslint.js lib/mini-app/appearance.ts lib/mini-app/frame-host.ts lib/mini-app/renderer-runtime.ts lib/mini-app/document.ts lib/mini-app/document-capabilities.ts lib/mini-app/vm.ts lib/mini-app/decision-policy.ts lib/mini-app-generation-runtime.test.mjs lib/mini-app-document.test.mjs lib/mini-app-runtime.test.mjs lib/mini-app-renderer-browser.test.mjs lib/mini-app-controller-browser.test.mjs scripts/probe-mini-app-generation.mjs scripts/desktop-e2e/scenarios/intelligent-ui-mini-app.mjs",
+      "exitCode": 0,
+      "fileCount": 14,
+      "log": {
+        "path": ".verification/phase3-appearance-lint-current.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "sourceFiles": [
+    {
+      "path": "lib/mini-app/appearance.ts",
+      "sha256": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919"
+    },
+    {
+      "path": "lib/mini-app/frame-host.ts",
+      "sha256": "f476076ed0138a7f0066ed09302d76a6088f18c50ba63b680b1c7335b74051ca"
+    },
+    {
+      "path": "lib/mini-app/renderer-runtime.ts",
+      "sha256": "58de6348047af4d6cf85712bf6fa65608c71edb39c0108446552ec6c5718c4a6"
+    },
+    {
+      "path": "lib/mini-app/document.ts",
+      "sha256": "fb5a8804aa162d5e2bdba586b5395361e548f281212f4cd0ea2fc30c0191a75e"
+    },
+    {
+      "path": "lib/mini-app/document-capabilities.ts",
+      "sha256": "2ca121f39ccab2ea0d13cc983239788b94532484626ecab0b8d67267df7659e3"
+    },
+    {
+      "path": "lib/mini-app/vm.ts",
+      "sha256": "56913b1a2f75e19238643534075d6be7e6cec57924abd63e4809b1c0bae0dddd"
+    },
+    {
+      "path": "lib/mini-app/decision-policy.ts",
+      "sha256": "76514c342e1faa4a3c8fdb8db4cf2bf81195120fa552aa7c0fccac258b0229c0"
+    },
+    {
+      "path": "lib/mini-app-generation-runtime.test.mjs",
+      "sha256": "eeab5dd7e11eacd2e03583c8e9efd630b837b60a7a249d85dee267bbea11bfac"
+    },
+    {
+      "path": "lib/mini-app-document.test.mjs",
+      "sha256": "b9d83e1e0d2dab4751e9ef0cb83e2b744f2d305246bf8f0e95c414df52c2791e"
+    },
+    {
+      "path": "lib/mini-app-runtime.test.mjs",
+      "sha256": "81585aa79f08e7d719ea78f62e4c5e40af2e6d9429625c99d47bffd2447cc296"
+    },
+    {
+      "path": "lib/mini-app-renderer-browser.test.mjs",
+      "sha256": "22ebe7eef363b2e43cd33fdb44923ee7598858cfb43fe8c9a54a7241c9dbfa36"
+    },
+    {
+      "path": "lib/mini-app-controller-browser.test.mjs",
+      "sha256": "2c99f14f6f7b24841fbcfd41d261003d048b3cba59c988a492defe24f4b13405"
+    },
+    {
+      "path": "scripts/probe-mini-app-generation.mjs",
+      "sha256": "d607141329dc37ce3a742e6de3a9131a17cd721a82671e9374c28c10d20722c2"
+    },
+    {
+      "path": "scripts/desktop-e2e/scenarios/intelligent-ui-mini-app.mjs",
+      "sha256": "4344e4022d6204097c693539b7c932c4c5d4714bbefdc28ea982d94027cb9dfa"
+    }
+  ],
+  "desktopCommand": "node scripts/run-desktop-e2e.mjs --scenario intelligent-ui-mini-app --timeout-ms 600000 --step-timeout-ms 60000",
+  "desktopRuns": [
+    {
+      "path": ".verification/desktop-e2e-R9OEFU/result.json",
+      "sha256": "f7a5348cf6f922496e3fd017efcf8f3b031e783788dadcb1b7561e31ccc72614",
+      "status": "failed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "startedAt": "2026-10-31T07:52:57.577Z",
+          "durationMs": 19098
+        },
+        {
+          "name": "enable-beta",
+          "status": "passed",
+          "startedAt": "2026-10-31T07:53:16.676Z",
+          "durationMs": 877
+        },
+        {
+          "name": "generate-mini-app",
+          "status": "passed",
+          "startedAt": "2026-10-31T07:53:17.554Z",
+          "durationMs": 14541
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed",
+          "startedAt": "2026-10-31T07:53:32.096Z",
+          "durationMs": 2204
+        },
+        {
+          "name": "appearance-keeps-checkpoint",
+          "status": "failed",
+          "startedAt": "2026-10-31T07:53:34.301Z",
+          "durationMs": 61106
+        }
+      ],
+      "pageErrors": [],
+      "cleanupErrors": [],
+      "scope": "Real Windows Electron development app; local fixed model; UI operations; later CSS capability additions were checked by targeted tests, not this earlier desktop run."
+    },
+    {
+      "path": ".verification/desktop-e2e-N1H3Gf/result.json",
+      "sha256": "6b09b5703c1b7d1665a576e82937e9d24523c393edbc706f5dc9ac10794668d9",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:00:20.081Z",
+          "durationMs": 21665
+        },
+        {
+          "name": "enable-beta",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:00:41.747Z",
+          "durationMs": 873
+        },
+        {
+          "name": "generate-mini-app",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:00:42.621Z",
+          "durationMs": 14515
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:00:57.137Z",
+          "durationMs": 1746
+        },
+        {
+          "name": "appearance-keeps-checkpoint",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:00:58.884Z",
+          "durationMs": 3033
+        },
+        {
+          "name": "reload-checkpoint",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:01:01.917Z",
+          "durationMs": 4218
+        },
+        {
+          "name": "explain-saved-result",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:01:06.136Z",
+          "durationMs": 1142
+        },
+        {
+          "name": "disable-beta-keeps-snapshot",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:01:07.279Z",
+          "durationMs": 4689
+        },
+        {
+          "name": "re-enable-restores-checkpoint",
+          "status": "passed",
+          "startedAt": "2026-10-31T08:01:11.969Z",
+          "durationMs": 3342
+        }
+      ],
+      "pageErrors": [],
+      "cleanupErrors": [],
+      "scope": "Real Windows Electron development app; local fixed model; UI operations; later CSS capability additions were checked by targeted tests, not this earlier desktop run."
+    }
+  ],
+  "realModelTrials": [
+    {
+      "path": ".verification/mini-app-live-2PJTPa/result.json",
+      "sha256": "3c110b0cb4f47253e27a894c2176d0376cb7a83bd89930646288f3f42563f045",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "identityLimit": "Configured display name is DeepSeek V4.1 Flash; server returned deepseek-flash without a separate 4.1 release identifier.",
+      "reportedStatus": "completed",
+      "evaluatedGenerationOutcome": "failed",
+      "reason": "8192-token output budget exhausted by reasoning; no answer or tool publication.",
+      "maxOutputTokens": 8192,
+      "requestCount": 1,
+      "committedPublications": 0,
+      "stopReason": "length",
+      "requestSettings": [
+        null
+      ]
+    },
+    {
+      "path": ".verification/mini-app-live-NroUSL/result.json",
+      "sha256": "f44ec2a72ec158af68780a2ecf5969eefed48d461fbb5a17855e73095176434b",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "identityLimit": "Configured display name is DeepSeek V4.1 Flash; server returned deepseek-flash without a separate 4.1 release identifier.",
+      "reportedStatus": "completed",
+      "evaluatedGenerationOutcome": "failed",
+      "reason": "Binding selectors and header were rejected; correction budget exhausted.",
+      "maxOutputTokens": 32768,
+      "requestCount": 4,
+      "committedPublications": 0,
+      "stopReason": "stop",
+      "requestSettings": [
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        }
+      ]
+    },
+    {
+      "path": ".verification/mini-app-live-uNwq5S/result.json",
+      "sha256": "0e0296ac870b1bf9c74a673f0772c912cbe54b3ecea32a5c386003cc5830d50e",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "identityLimit": "Configured display name is DeepSeek V4.1 Flash; server returned deepseek-flash without a separate 4.1 release identifier.",
+      "reportedStatus": "failed",
+      "evaluatedGenerationOutcome": "failed",
+      "reason": "font:inherit was rejected; correction omitted purpose; no publication.",
+      "maxOutputTokens": 32768,
+      "requestCount": 4,
+      "committedPublications": 0,
+      "stopReason": "stop",
+      "requestSettings": [
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        }
+      ]
+    },
+    {
+      "path": ".verification/mini-app-live-17R6q9/result.json",
+      "sha256": "c62408fdbef29b52ac4e8fcef81428fb6d9b679144de1c0edf7798ad104a0fe9",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "identityLimit": "Configured display name is DeepSeek V4.1 Flash; server returned deepseek-flash without a separate 4.1 release identifier.",
+      "reportedStatus": "failed",
+      "evaluatedGenerationOutcome": "failed",
+      "reason": "letter-spacing was rejected; correction omitted purpose; no publication.",
+      "maxOutputTokens": 32768,
+      "requestCount": 4,
+      "committedPublications": 0,
+      "stopReason": "stop",
+      "requestSettings": [
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        }
+      ]
+    },
+    {
+      "path": ".verification/mini-app-live-1uNRvv/result.json",
+      "sha256": "fdc6f878ddb2cb60256dbf48dd0a75389ee5fc73ab15b8d52090fbfd8f2c1fd8",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "identityLimit": "Configured display name is DeepSeek V4.1 Flash; server returned deepseek-flash without a separate 4.1 release identifier.",
+      "reportedStatus": "completed",
+      "evaluatedGenerationOutcome": "published",
+      "reason": "First tool call published a mini app; one development task only.",
+      "maxOutputTokens": 32768,
+      "requestCount": 2,
+      "committedPublications": 1,
+      "stopReason": "stop",
+      "requestSettings": [
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        },
+        {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "low"
+        }
+      ]
+    }
+  ],
+  "modelTrialInterpretation": "Sequential trials changed implementation and output budget. Do not aggregate them as a fixed-version success rate. No V4 Pro, fallback model, full dataset or human acceptance was used.",
+  "generatedSortingBrowserRuns": [
+    {
+      "path": ".verification/phase3-live-sorting-browser/result.json",
+      "sha256": "79173a3c17ed6ad3bc7de9a292e1d3a813a6d662d298378cb5492ce225892614",
+      "status": "failed",
+      "hostStepChangesAlgorithm": null,
+      "scope": "Real generated plan, production controller/Worker/iframe, headless Edge UI clicks; fixture HTTP and in-memory checkpoint recreation; not full desktop history or disk recovery.",
+      "observedSteps": []
+    },
+    {
+      "path": ".verification/phase3-live-sorting-browser-v2/result.json",
+      "sha256": "66cc21c5ecb4dc61bf5f755901ec13111d345dcc1939c99d74378d1500c18881",
+      "status": "passed",
+      "hostStepChangesAlgorithm": false,
+      "scope": "Real generated plan, production controller/Worker/iframe, headless Edge UI clicks; fixture HTTP and in-memory checkpoint recreation; not full desktop history or disk recovery.",
+      "observedSteps": [
+        {
+          "step": 1,
+          "array": [
+            2,
+            6,
+            5,
+            1
+          ],
+          "swaps": 1
+        },
+        {
+          "step": 2,
+          "array": [
+            2,
+            5,
+            6,
+            1
+          ],
+          "swaps": 2
+        },
+        {
+          "step": 3,
+          "array": [
+            2,
+            5,
+            1,
+            6
+          ],
+          "swaps": 3
+        },
+        {
+          "step": 4,
+          "array": [
+            2,
+            5,
+            1,
+            6
+          ],
+          "swaps": 3
+        },
+        {
+          "step": 5,
+          "array": [
+            2,
+            1,
+            5,
+            6
+          ],
+          "swaps": 4
+        },
+        {
+          "step": 6,
+          "array": [
+            1,
+            2,
+            5,
+            6
+          ],
+          "swaps": 5
+        }
+      ]
+    },
+    {
+      "path": ".verification/phase3-live-sorting-browser-v3/result.json",
+      "sha256": "66cc21c5ecb4dc61bf5f755901ec13111d345dcc1939c99d74378d1500c18881",
+      "status": "passed",
+      "hostStepChangesAlgorithm": false,
+      "scope": "Real generated plan, production controller/Worker/iframe, headless Edge UI clicks; fixture HTTP and in-memory checkpoint recreation; not full desktop history or disk recovery.",
+      "observedSteps": [
+        {
+          "step": 1,
+          "array": [
+            2,
+            6,
+            5,
+            1
+          ],
+          "swaps": 1
+        },
+        {
+          "step": 2,
+          "array": [
+            2,
+            5,
+            6,
+            1
+          ],
+          "swaps": 2
+        },
+        {
+          "step": 3,
+          "array": [
+            2,
+            5,
+            1,
+            6
+          ],
+          "swaps": 3
+        },
+        {
+          "step": 4,
+          "array": [
+            2,
+            5,
+            1,
+            6
+          ],
+          "swaps": 3
+        },
+        {
+          "step": 5,
+          "array": [
+            2,
+            1,
+            5,
+            6
+          ],
+          "swaps": 4
+        },
+        {
+          "step": 6,
+          "array": [
+            1,
+            2,
+            5,
+            6
+          ],
+          "swaps": 5
+        }
+      ]
+    }
+  ],
+  "initialFailures": [
+    "SDK test first read obsolete context.tools; fixed to system toolsAdded while retaining shared-rule uniqueness assertions.",
+    "Desktop scenario omitted navigation to Font tab; fixed via real UI navigation, not forced clicks.",
+    "First generated-plan browser fixture used wrong resource hash/routes and WASM response format; retained initial failure and separate retest reports.",
+    "Offline replay initially used a wrong function name and inherited --input-type=module in Worker; these attempts are not passing product checks."
+  ],
+  "knownIssue": "Generated sorting advances via its own reduce(step) button but advance is a no-op. Host step increments tick without advancing the algorithm. Full task acceptance remains incomplete.",
+  "remaining": [
+    "Unify application and host advancement semantics; verify discrete and continuous control applicability.",
+    "First eight natural-language tasks repeated three times under a fixed implementation.",
+    "Versioned planned/implemented/verified capability gating.",
+    "Full recovery matrix, draft pagination, multi-window conflicts, revision migration and registered actions.",
+    "Dynamic lists, geometry dragging, sustained games/simulations and 3D picking/camera/teaching.",
+    "Canvas/3D semantic appearance, full font layout, accessibility and performance.",
+    "Full CI, sealed evaluation and human semantic acceptance after three phases are developed."
+  ],
+  "pdfs": [
+    {
+      "source": "docs\\verification\\intelligent-ui-phase3-appearance-2026-10-31.md",
+      "sourceSha256": "22b602990c36c23f234d75e005fdf80398d169d6f0f8ee51d0eb6c7e187408a3",
+      "output": "output\\pdf\\piora-intelligent-ui-phase3-appearance-2026-10-31.pdf",
+      "pdfSha256": "d30f43fd04aadb9ce9146f637d2c5703d270b4c159b5079518b95b2259cfbb7f",
+      "pages": 4,
+      "pageTextLengths": [
+        638,
+        996,
+        461,
+        1530
+      ],
+      "textChecks": "passed",
+      "visualReview": "passed",
+      "visualPagesReviewed": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "checks": {
+        "path": ".verification/phase3-appearance-pdf/checks.json",
+        "sha256": "6c69ede0ac4d857dd388023c5048f7fb164f3e43a79223d5006ab49643561502"
+      }
+    },
+    {
+      "source": "docs\\intelligent-ui-phase3-design-v3.5.md",
+      "sourceSha256": "530d63378632478b03134a439c5bf136047b63089060170783cc15c1dfe49635",
+      "output": "output\\pdf\\piora-intelligent-ui-phase3-design-v3.5.pdf",
+      "pdfSha256": "2189d3e89d0758266520131f483e56050acbe2be0e7e7a64d0d01bcd61b00158",
+      "pages": 7,
+      "pageTextLengths": [
+        964,
+        1028,
+        900,
+        1171,
+        938,
+        1122,
+        1546
+      ],
+      "textChecks": "passed",
+      "visualReview": "passed",
+      "visualPagesReviewed": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ],
+      "checks": {
+        "path": ".verification/phase3-design-v3.5-pdf/checks.json",
+        "sha256": "bc6c7b2db60dc0d6f24ce32e7287707b162d0a2d09e98eef2f33fe561eea315d"
+      }
+    }
+  ],
+  "notPerformed": [
+    "commit",
+    "push",
+    "full CI",
+    "local release packaging",
+    "human semantic acceptance"
+  ]
+}

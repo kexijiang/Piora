@@ -11,6 +11,28 @@ function gitIdentity(root) {
   catch { return { unavailable: true }; }
 }
 
+/** Dev compilation can restart Electron before the application is mounted.
+ * Reconnect only during startup; a restart during a scenario remains a failure. */
+export async function waitForDesktopWindow({ connect, checkAlive, origin, registerCleanup, signal, timeoutMs = 600_000 }) {
+  let browser;
+  return waitUntil(async () => {
+    checkAlive();
+    if (!browser?.isConnected()) {
+      try {
+        browser = await connect();
+        const connection = browser;
+        registerCleanup(async () => { if (connection.isConnected()) await connection.close(); });
+      } catch (error) { signal?.throwIfAborted(); if (browser?.isConnected()) throw error; return false; }
+    }
+    for (const page of browser.contexts().flatMap(context => context.pages())) {
+      if (page.isClosed() || !page.url().startsWith(origin + '/')) continue;
+      try { if (await page.locator('.app-shell').isVisible()) return page; }
+      catch (error) { if (browser.isConnected() && !page.isClosed()) throw error; }
+    }
+    return false;
+  }, { signal, timeoutMs, label: 'mounted Piora application window' });
+}
+
 async function launchDesktop({ root, directory, signal, registerCleanup, report, stepTimeoutMs, port, debugPort, scenario }) {
   const appPort = await reservePort(port);
   let debugLease;
@@ -29,6 +51,7 @@ async function launchDesktop({ root, directory, signal, registerCleanup, report,
   const origin = `http://127.0.0.1:${appPort.port}`, debugging = `http://127.0.0.1:${debugLease.port}`;
   report.origin = origin;
   report.debugging = debugging;
+  report.desktopCompilation = 'single development fixture compilation; desktop hot restart disabled for this scenario';
   report.credentials = 'not-copied-or-injected';
   if (scenario?.prepare) await scenario.prepare({ paths, directory, signal, registerCleanup, report });
   const log = createWriteStream(join(directory, 'desktop.log'), { flags: 'wx' });
@@ -67,13 +90,14 @@ async function launchDesktop({ root, directory, signal, registerCleanup, report,
     try { return (await fetch(`${debugging}/json/version`, { signal: AbortSignal.any([signal, AbortSignal.timeout(1_000)]) })).ok; }
     catch (error) { if (signal.aborted) throw error; return false; }
   }, { signal, timeoutMs: 600_000, label: 'Electron CDP endpoint' });
-  const browser = await chromium.connectOverCDP(debugging, { timeout: 10_000 });
-  registerCleanup(() => browser.close());
-  checkAlive();
-  const page = await waitUntil(() => {
-    checkAlive();
-    return browser.contexts().flatMap(context => context.pages()).find(candidate => candidate.url().startsWith(origin + '/'));
-  }, { signal, timeoutMs: 600_000, label: 'Piora application window' });
+  const page = await waitForDesktopWindow({
+    connect: async () => {
+      const connection = await chromium.connectOverCDP(debugging, { timeout: 10_000,
+        ...(scenario.nativeWindowState ? { noDefaults: true } : {}) });
+      report.cdpConnections = (report.cdpConnections ?? 0) + 1;
+      return connection;
+    }, checkAlive, origin, registerCleanup, signal,
+  });
   page.setDefaultTimeout(stepTimeoutMs);
   page.setDefaultNavigationTimeout(stepTimeoutMs);
   const pageErrors = [];

@@ -7,8 +7,15 @@ import { getRpcSession } from "../rpc-manager";
 import { assertUiAction } from "./action-contract";
 import { intelligentUiSessionReader } from "./session";
 import { UiGenerationPrototype, isUiGenerationError } from "./generation-journal";
-import { recoverUiAction, runUiAction } from "./action-runtime";
+import { recoverUiAction, runAnswerAction, componentActionData } from "./action-runtime";
 import type { UiActionOperation, UiActionStart } from "./action-operation";
+import type { AnswerActionData, AnswerActionHost, AnswerActionSource } from "./action-host";
+import { isMiniAppError } from "../mini-app/limits";
+import { betaFeatureRevision } from "../beta-feature-events";
+
+export interface ActionSessionManager {
+  getSessionId(): string; getSessionFile(): string | undefined; getLeafId(): string | null; getCwd(): string;
+}
 
 interface LiveAction {
   sessionId: string; input: UiActionStart; runId?: string;
@@ -18,22 +25,25 @@ interface LiveAction {
 }
 declare global { var __pioraUiActions: Map<string, LiveAction> | undefined; }
 const liveActions = () => globalThis.__pioraUiActions ??= new Map();
-const key = (sessionId: string, id: string) => `${sessionId}:${id}`;
 const enabled = () => readBetaFeatures().intelligentUi;
 const isLive = (sessionId: string, runId: string) => getActivePromptRun(sessionId)?.runId === runId;
+export function createAnswerActionService<S extends AnswerActionSource>(adapter: {
+  kind: string; tool: string; host(manager: ActionSessionManager, root: string): AnswerActionHost<S>; data: AnswerActionData<S>;
+}) {
+const key = (sessionId: string, id: string) => `${adapter.kind}:${sessionId}:${id}`;
 async function reader(sessionId: string, path: string) {
   const manager = (await intelligentUiSessionReader(sessionId, path))();
-  return { manager, host: new UiGenerationPrototype({ manager, root: getAgentDir() }) };
+  return { manager, host: adapter.host(manager, getAgentDir()) };
 }
 function sameIntent(a: UiActionStart, b: UiActionStart) {
   return a.actionId === b.actionId && a.sourceDigest === b.sourceDigest && a.toolCallId === b.toolCallId && a.requestId === b.requestId;
 }
 
-export async function readUiActions(sessionId: string, path: string, toolCallId: string) {
+async function readUiActions(sessionId: string, path: string, toolCallId: string) {
   const { host } = await reader(sessionId, path);
   let source;
   try { source = await host.readActionSource(toolCallId); }
-  catch (error) { if (!isUiGenerationError(error) || !["CONFLICT", "IDENTITY"].includes(error.code)) throw error; }
+  catch (error) { if (!(isUiGenerationError(error) || isMiniAppError(error)) || !["CONFLICT", "IDENTITY", "NOT_FOUND"].includes(error.code)) throw error; }
   const operations = await host.readActions(toolCallId);
   return { source: source ? { digest: source.digest, actions: source.actions, state: source.state, revision: source.revision } : null,
     operations: operations.map(operation => {
@@ -46,7 +56,7 @@ export async function readUiActions(sessionId: string, path: string, toolCallId:
     }) };
 }
 
-export async function startUiAction(sessionId: string, path: string, input: UiActionStart): Promise<UiActionOperation> {
+async function startUiAction(sessionId: string, path: string, input: UiActionStart): Promise<UiActionOperation> {
   const { host } = await reader(sessionId, path);
   const existing = (await host.readActions(input.toolCallId)).find(item => item.id === input.requestId);
   if (existing) {
@@ -61,9 +71,10 @@ export async function startUiAction(sessionId: string, path: string, input: UiAc
   const live: LiveAction = { sessionId, input, ready, cancel: () => { cancelled = true; live.pending?.resolve("deny"); cancelRun?.(); } };
   liveActions().set(actionKey, live);
   void (async () => {
+    const featureRevision = betaFeatureRevision(getAgentDir());
     assertUiAction(enabled() && !cancelled, "CANCELLED", "Action cancelled or disabled");
     const { session, cwd } = await resolveOrStartRpcSession(sessionId);
-    const actual = new UiGenerationPrototype({ manager: session.inner.sessionManager, root: getAgentDir() });
+    const actual = adapter.host(session.inner.sessionManager, getAgentDir());
     const source = await actual.readActionSource(input.toolCallId);
     assertUiAction(source.digest === input.sourceDigest, "CONFLICT", "UI changed before the click was admitted");
     const action = source.actions.actions.find(item => item.id === input.actionId);
@@ -73,8 +84,8 @@ export async function startUiAction(sessionId: string, path: string, input: UiAc
     await session.executeAnswerAction(input.requestId, message, async run => {
       live.runId = run.identity.runId;
       cancelRun = () => { if (isLive(sessionId, run.identity.runId)) void session.send({ type: "abort" }).catch(() => undefined); };
-      const available = () => enabled() && !cancelled && session.inner.getActiveToolNames().includes("piora_render_ui_plan");
-      const operation = await runUiAction({ host: actual, cwd, input, run, enabled: available, prepared: accept,
+      const available = () => enabled() && !cancelled && betaFeatureRevision(getAgentDir()) === featureRevision && session.inner.getActiveToolNames().includes(adapter.tool);
+      const operation = await runAnswerAction({ host: actual, data: adapter.data, cwd, input, run, enabled: available, prepared: accept,
         ask: (text, signal) => new Promise<"once" | "deny">((resolve) => {
           if (signal.aborted || run.signal.aborted || cancelled) { resolve("deny"); return; }
           const approvalId = randomUUID();
@@ -96,12 +107,13 @@ export async function startUiAction(sessionId: string, path: string, input: UiAc
   return ready;
 }
 
-export async function controlUiAction(sessionId: string, path: string, input: {
+async function controlUiAction(sessionId: string, path: string, input: {
   operationId: string; command: "approve" | "deny" | "cancel" | "reconcile" | "apply"; approvalId?: string;
 }, signal?: AbortSignal) {
   const { host, manager } = await reader(sessionId, path);
+  const featureRevision = betaFeatureRevision(getAgentDir());
   const allowed = () => {
-    assertUiAction(enabled() && !signal?.aborted, "CANCELLED", "Action cancelled or disabled");
+    assertUiAction(enabled() && !signal?.aborted && betaFeatureRevision(getAgentDir()) === featureRevision, "CANCELLED", "Action cancelled or disabled");
     const current = getRpcSession(sessionId);
     assertUiAction(!current?.isAlive() || current.inner.sessionManager.getLeafId() === manager.getLeafId(), "CONFLICT", "Conversation branch changed during the request");
   };
@@ -129,3 +141,9 @@ export async function controlUiAction(sessionId: string, path: string, input: {
   }
   return recoverUiAction(host, input.operationId, manager.getCwd(), runId => isLive(sessionId, runId), input.command === "reconcile");
 }
+return { readUiActions, startUiAction, controlUiAction };
+}
+export const { readUiActions, startUiAction, controlUiAction } = createAnswerActionService({
+  kind: "intelligent-ui", tool: "piora_render_ui_plan", data: componentActionData,
+  host: (manager, root) => new UiGenerationPrototype({ manager, root }),
+});

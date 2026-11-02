@@ -2,22 +2,26 @@ import { compilePlan2Core, parsePlan2CoreFragment } from "./plan";
 import { UI_PLAN_LIMITS, UiPlanError, type CompiledUiPlan, type UiPlanDiagnostic, type UiPlanV1, type UiPlanAtom, type UiPlanView, type UiPlanDerived } from "./plan-types";
 import { RichProtocolError, validateRichSurface, type RichBlock, type UiRichSurface, type UiRichNode } from "./rich-protocol";
 import { validateUiActions, UiActionError, type UiActionDeclaration } from "./action-contract";
-import { plan2JsonDepthLimit, projectPlan2Core, type JsonPath } from "./plan2-expressions";
+import { plan2JsonDepthLimit, projectPlan2Core, type JsonPath, type UiPlan2Comparison } from "./plan2-expressions";
+import { parseAnswerConversionSpec, type AnswerConversionSpec } from "../answer-output-conversion-types";
 
 export const UI_RICH_PLAN_VERSION = 2 as const;
 export const UI_RICH_PLAN_COMPILER_VERSION = "2.5.0";
-export type UiPlanV2Atom = UiPlanAtom | string | number | boolean | { op: UiPlanDerived["op"]; args: UiPlanV2Atom[] };
+export type UiPlanV2Operation = UiPlanDerived["op"] | UiPlan2Comparison;
+export type UiPlanV2Atom = UiPlanAtom | string | number | boolean | { op: UiPlanV2Operation; args: UiPlanV2Atom[] };
 type UiPlanV2View = Extract<UiPlanView, { kind: "text" }>
   | { id: string; kind: "dynamicText"; parts: UiPlanV2Atom[] }
   | (Omit<Extract<UiPlanView, { kind: "metric" }>, "value"> & { value: UiPlanV2Atom })
   | (Omit<Extract<UiPlanView, { kind: "table" }>, "rows"> & { rows: UiPlanV2Atom[][] })
   | (Omit<Extract<UiPlanView, { kind: "barChart" }>, "values"> & { values: UiPlanV2Atom[] });
 export interface UiPlanV2 extends Omit<UiPlanV1, "planVersion" | "derived" | "views"> {
+  conversion?: AnswerConversionSpec;
   planVersion: 2; layout: RichBlock[]; actions?: UiActionDeclaration;
-  derived: Array<Omit<UiPlanDerived, "args"> & { args: UiPlanV2Atom[] }>; views: UiPlanV2View[];
+  derived: Array<Omit<UiPlanDerived, "args" | "op"> & { op: UiPlanV2Operation; args: UiPlanV2Atom[] }>; views: UiPlanV2View[];
 }
 export interface CompiledUiRichPlan {
-  planVersion: 2; compilerVersion: typeof UI_RICH_PLAN_COMPILER_VERSION; surface: UiRichSurface;
+  planVersion: 2; compilerVersion: typeof UI_RICH_PLAN_COMPILER_VERSION | "2.6.0" | "2.7.0"; surface: UiRichSurface;
+  conversion?: AnswerConversionSpec;
   inputSemantics: CompiledUiPlan["inputSemantics"];
   actions?: UiActionDeclaration;
   cost: CompiledUiPlan["cost"];
@@ -97,8 +101,8 @@ function restoreDynamicText(nodes: CompiledUiPlan["surface"]["nodes"], ids: Read
 export function compileUiRichPlan(input: unknown, options: { revision: number }): CompiledUiRichPlan {
   const reserved = preflight(input);
   check(object(input), "PLAN_SHAPE", "$", "Expected a complete Plan2 object");
-  check(Object.keys(input).every(key => ["planVersion", "id", "title", "inputs", "derived", "views", "layout", "actions"].includes(key)), "PLAN_SHAPE", "$", "Object contains unsupported properties");
-  check(input.planVersion === UI_RICH_PLAN_VERSION, "PLAN_VERSION", "$.planVersion", "Expected plan version 2", false);
+  check(Object.keys(input).every(key => ["planVersion", "id", "title", "inputs", "derived", "views", "layout", "actions", "conversion"].includes(key)), "PLAN_SHAPE", "$", "Object contains unsupported properties");
+  check(input.planVersion === UI_RICH_PLAN_VERSION, "PLAN_VERSION", "$.planVersion", "Expected planVersion:2. Resubmit the entire component plan: planVersion,id,title,inputs,derived,views,layout; never submit a partial correction", input.planVersion === undefined || input.planVersion === 1);
   check(Array.isArray(input.layout), "PLAN_SHAPE", "$.layout", "Expected a complete explicit layout");
   const projected = projectPlan2Core(input, reserved);
   let core: CompiledUiPlan;
@@ -132,7 +136,12 @@ export function compileUiRichPlan(input: unknown, options: { revision: number })
       throw error;
     }
   }
-  return { planVersion: 2, compilerVersion: UI_RICH_PLAN_COMPILER_VERSION, surface, ...(actions ? { actions } : {}),
+  let conversion: AnswerConversionSpec | undefined;
+  if (input.conversion !== undefined) {
+    try { conversion = parseAnswerConversionSpec(input.conversion, "intelligent-ui"); }
+    catch (error) { throw new UiPlanError("PLAN_SHAPE", "$.conversion", error instanceof Error ? error.message : "Invalid conversion"); }
+  }
+  return { planVersion: 2, compilerVersion: projected.hasComparisons ? "2.7.0" : conversion ? "2.6.0" : UI_RICH_PLAN_COMPILER_VERSION, surface, ...(actions ? { actions } : {}), ...(conversion ? { conversion } : {}),
     inputSemantics: core.inputSemantics,
     cost: { ...core.cost, surfaceCharacters: JSON.stringify(surface).length } };
 }

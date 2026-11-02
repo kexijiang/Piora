@@ -23,6 +23,9 @@ export function plan2JsonDepthLimit(path: JsonPath): number {
 
 const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
 const operations = new Set(["add", "subtract", "multiply", "divide", "round", "min", "max", "if", "equals"]);
+export const UI_PLAN2_COMPARISONS = ["lt", "lte", "gt", "gte"] as const;
+export type UiPlan2Comparison = typeof UI_PLAN2_COMPARISONS[number];
+const comparisons = new Set<string>(UI_PLAN2_COMPARISONS);
 function check(condition: unknown, code: UiPlanDiagnostic["code"], path: string, expected: string, repairable = true): asserts condition {
   if (!condition) throw new UiPlanError(code, path, expected, repairable);
 }
@@ -34,6 +37,19 @@ export function projectPlan2Core(input: Record<string, unknown>, reserved: Set<s
   const dynamicTextIds = new Set<string>(), dynamicTextViews = new Set<number>();
   const originalCount = Array.isArray(input.derived) ? input.derived.length : 0;
   let sequence = 0;
+  let hasComparisons = false;
+  function lowerComparison(value: Record<string, unknown>, path: string): Record<string, unknown> {
+    if (typeof value.op !== "string" || !comparisons.has(value.op)) return value;
+    check(Array.isArray(value.args) && value.args.length === 2, "PLAN_ARITY", `${path}.args`, "Numeric comparison requires exactly two operands");
+    hasComparisons = true;
+    const [left, right] = value.args;
+    // min/max enforce numeric operand types in the existing graph compiler.
+    // The persisted protocol and its runtime semantics remain unchanged.
+    const extremum = { op: value.op === "lt" || value.op === "lte" ? "min" : "max", args: [left, right] };
+    const strict = value.op === "lt" || value.op === "gt";
+    const equality = { op: "equals", args: [extremum, strict ? right : left] };
+    return { ...value, ...(strict ? { op: "if", args: [equality, false, true] } : equality) };
+  }
   function atom(value: unknown, path: string, depth = 0): unknown {
     if (["string", "number", "boolean"].includes(typeof value)) return { literal: value };
     if (!object(value)) return value;
@@ -45,11 +61,12 @@ export function projectPlan2Core(input: Record<string, unknown>, reserved: Set<s
     }
     check(Object.keys(value).length === 2 && Object.hasOwn(value, "op") && Object.hasOwn(value, "args"),
       "PLAN_SHAPE", path, "An inline operation contains exactly op and args; use the derived list for named declarations");
-    check(typeof value.op === "string" && operations.has(value.op), "PLAN_TYPE", `${path}.op`, "Expected a supported arithmetic, conditional or equality operation");
-    check(Array.isArray(value.args) && value.args.length >= 1 && value.args.length <= 32,
+    const lowered = lowerComparison(value, path);
+    check(typeof lowered.op === "string" && operations.has(lowered.op), "PLAN_TYPE", `${path}.op`, "Expected a supported arithmetic, conditional, equality or numeric comparison operation");
+    check(Array.isArray(lowered.args) && lowered.args.length >= 1 && lowered.args.length <= 32,
       "PLAN_ARITY", `${path}.args`, "Expected 1 to 32 operands");
     check(depth < UI_PLAN_LIMITS.expressionDepth, "PLAN_COMPLEXITY", path, "Inline expressions must fit depth 12", false);
-    const args = value.args.map((arg, index) => atom(arg, `${path}.args[${index}]`, depth + 1));
+    const args = lowered.args.map((arg, index) => atom(arg, `${path}.args[${index}]`, depth + 1));
     check(originalCount + generated.length < UI_PLAN_LIMITS.derived, "PLAN_COMPLEXITY", path,
       "Named and inline operations together must fit 256 calculations", false);
     let id: string;
@@ -57,12 +74,15 @@ export function projectPlan2Core(input: Record<string, unknown>, reserved: Set<s
     // name can never accidentally define a missing user-provided reference.
     do { id = `pioraInline${sequence++}`; } while (reserved.has(id));
     reserved.add(id);
-    generated.push({ id, op: value.op, args }); paths.push(path);
+    generated.push({ id, op: lowered.op, args }); paths.push(path);
     return { derived: id };
   }
   const atoms = (value: unknown, path: string) => Array.isArray(value) ? value.map((v, i) => atom(v, `${path}[${i}]`)) : value;
-  const derived = Array.isArray(input.derived) ? input.derived.map((item, index) => object(item)
-    ? { ...item, args: atoms(item.args, `$.derived[${index}].args`) } : item) : input.derived;
+  const derived = Array.isArray(input.derived) ? input.derived.map((item, index) => {
+    if (!object(item)) return item;
+    const lowered = lowerComparison(item, `$.derived[${index}]`);
+    return { ...lowered, args: atoms(lowered.args, `$.derived[${index}].args`) };
+  }) : input.derived;
   const views = Array.isArray(input.views) ? input.views.map((item, index) => {
     if (!object(item)) return item;
     const path = `$.views[${index}]`;
@@ -83,6 +103,7 @@ export function projectPlan2Core(input: Record<string, unknown>, reserved: Set<s
   }) : input.views;
   return {
     dynamicTextIds,
+    hasComparisons,
     core: { planVersion: 1, id: input.id, title: input.title, inputs: input.inputs,
       derived: Array.isArray(derived) ? [...derived, ...generated] : derived, views },
     rethrow(error: unknown): never {

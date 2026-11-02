@@ -6,6 +6,7 @@ export interface UiPublication {
   status: "candidate" | "awaiting_confirmation" | "committed" | "aborted" | "superseded";
   operationId?: string;
   currentToolCallId?: string;
+  conversion?: boolean;
 }
 export type SaveStatus = "loading" | "saved" | "saving" | "error" | "conflict" | "candidate" | "awaiting_confirmation" | "aborted" | "superseded";
 export interface RetainedDraft {
@@ -42,7 +43,8 @@ function parsePublication(value: unknown): UiPublication | undefined {
   if (!data || !["candidate", "awaiting_confirmation", "committed", "aborted", "superseded"].includes(data.status)
     || (data.operationId !== undefined && (typeof data.operationId !== "string" || !data.operationId))
     || (data.currentToolCallId !== undefined && (typeof data.currentToolCallId !== "string" || !data.currentToolCallId))) throw new Error("Invalid publication state");
-  return { status: data.status, operationId: data.operationId, ...(data.currentToolCallId ? { currentToolCallId: data.currentToolCallId } : {}) };
+  if (data.conversion !== undefined && data.conversion !== true) throw new Error("Invalid conversion state");
+  return { status: data.status, operationId: data.operationId, ...(data.conversion ? { conversion: true } : {}), ...(data.currentToolCallId ? { currentToolCallId: data.currentToolCallId } : {}) };
 }
 function parseSaved(value: unknown, envelopeVersion = 1): SavedSurface {
   const data = value as SavedSurface;

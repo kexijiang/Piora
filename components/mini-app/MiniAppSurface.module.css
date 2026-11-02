@@ -1,0 +1,28 @@
+.surface { color: var(--text); background: var(--bg-panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; min-width: 0; margin-block: 10px; }
+.header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; }
+.header h3 { margin: 0; font-size: 1rem; font-weight: 600; overflow-wrap: anywhere; }
+.badge { flex: none; border: 1px solid var(--border); border-radius: 999px; padding: 3px 9px; color: var(--text-muted); font-size: 0.72rem; }
+.document { min-width: 0; }
+.message, .snapshot { margin: 0; padding: 12px 20px; line-height: 1.6; overflow-wrap: anywhere; white-space: pre-wrap; }
+.footer { padding: 10px 20px; border-top: 1px solid var(--border); font-size: 0.78rem; color: var(--text-muted); }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 20px; }
+.controls button { padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.controls button:hover:not(:disabled) { background: var(--bg-hover); }
+.controls button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.controls button:disabled { opacity: 0.55; cursor: default; }
+.status { flex: 1; min-width: 10em; font-size: 0.78rem; color: var(--text-muted); }
+.footer p { margin: 4px 0 8px; }
+.footer .controls { padding: 8px 0; }
+.footer summary { cursor: pointer; padding-block: 6px; }
+.footer summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.recovery { margin-top: 8px; }
+.draft { padding: 8px 0; border-top: 1px solid var(--border); white-space: pre-wrap; overflow-wrap: anywhere; }
+.currentSummary { white-space: pre-wrap; overflow-wrap: anywhere; }
+.migration { margin-block: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); }
+.migrationFields { display: grid; gap: 8px; }
+.migrationField { display: grid; gap: 5px; padding-block: 8px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.migrationField > label { display: grid; gap: 6px; }
+.migrationField > label > span { color: var(--text-muted); line-height: 1.5; }
+.migrationField input, .migrationField select { max-width: 100%; width: 240px; padding: 6px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.migrationField input[type="checkbox"] { width: auto; justify-self: start; }
+@media (max-width: 480px) { .header, .message, .snapshot, .controls, .footer { padding-inline: 12px; } }

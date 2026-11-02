@@ -1,30 +1,34 @@
 import { existsSync } from "node:fs";
-import { answerOutputStatePath, answerOutputGenerationPath } from "./answer-output-paths";
+import { answerOutputStatePath, answerOutputGenerationPath, answerOutputMiniAppPublicationPath } from "./answer-output-paths";
 import type { ReadonlySessionManager } from "./session-readonly-manager";
+import type { AnswerOutputCopyOptions, AnswerOutputPersistenceAdapter } from "./answer-output-persistence";
 
 /** Persistence adapters are separate from feature renderers and agent tools. */
 const adapters = [{
-  hasState: (sessionId: string) => existsSync(answerOutputStatePath("intelligent-ui", sessionId)),
-  load: () => import("./intelligent-ui/store"),
+  kind: "intelligent-ui",
+  hasState: (sessionId: string) => existsSync(answerOutputStatePath("intelligent-ui", sessionId)) || existsSync(answerOutputGenerationPath(sessionId)),
+  load: async (): Promise<AnswerOutputPersistenceAdapter> => (await import("./intelligent-ui/answer-output-adapter")).persistence,
+}, {
+  kind: "mini-app",
+  hasState: (sessionId: string) => existsSync(answerOutputStatePath("mini-app", sessionId)) || existsSync(answerOutputMiniAppPublicationPath(sessionId)),
+  load: async (): Promise<AnswerOutputPersistenceAdapter> => (await import("./mini-app/answer-output-adapter")).persistence,
 }];
-export async function copyAnswerOutputState(source: string, target: string, retainedEntryIds: readonly string[], options: { sourceFile?: string; targetFile?: string; sourceLeafId?: string | null } = {}) {
-  let anchorMap: ReadonlyMap<string, string> | undefined;
-  if (existsSync(answerOutputGenerationPath(source)) || options.sourceFile && options.targetFile) {
-    if (!options.sourceFile || !options.targetFile) throw new Error("Generation inheritance requires the source and target session files");
-    const { getAgentDir } = await import("@earendil-works/pi-coding-agent");
-    const { copyGenerationJournal } = await import("./intelligent-ui/generation-journal");
-    anchorMap = (await copyGenerationJournal({ source, target, retainedEntryIds, sourceFile: options.sourceFile, targetFile: options.targetFile, sourceLeafId: options.sourceLeafId, root: getAgentDir(), includeLegacy: true })).anchorMap;
-  }
+export async function copyAnswerOutputState(source: string, target: string, retainedEntryIds: readonly string[], options: AnswerOutputCopyOptions = {}) {
   for (const adapter of adapters) {
-    if (!anchorMap && adapter.hasState(source)) (await adapter.load()).copyIntelligentUiState(source, target, retainedEntryIds);
+    if (adapter.hasState(source) || options.sourceFile && options.targetFile) {
+      await (await adapter.load()).copy(source, target, retainedEntryIds, options);
+    }
   }
 }
+export async function readAnswerOutputSavedSnapshot(kind: string, sessionId: string, sessionFile: string, toolCallId: string): Promise<string> {
+  const adapter = adapters.find(item => item.kind === kind);
+  if (!adapter) throw new Error("Unknown answer output");
+  return (await adapter.load()).readSnapshot(sessionId, sessionFile, toolCallId);
+}
 export async function answerOutputExportAppendix(sessionId: string, sessionFile: string, snapshot?: ReadonlySessionManager): Promise<string> {
-  if (!adapters.some(adapter => adapter.hasState(sessionId)) && !existsSync(answerOutputGenerationPath(sessionId))) return "";
-  const { intelligentUiSessionReader } = await import("./intelligent-ui/session");
-  const manager = snapshot ?? (await intelligentUiSessionReader(sessionId, sessionFile))();
-  const { readUiSnapshots } = await import("./intelligent-ui/read-output");
-  const snapshots = await readUiSnapshots(manager);
+  const active = adapters.filter(adapter => adapter.hasState(sessionId));
+  if (!active.length) return "";
+  const snapshots = (await Promise.all(active.map(async adapter => (await adapter.load()).snapshots(sessionId, sessionFile, snapshot)))).flat();
   if (!snapshots.length) return "";
   const escape = (text: string) => text.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
   return `<section aria-label="Saved interactive parameters" style="padding:24px"><h2>Saved interactive parameters / 已保存的交互参数</h2><p>Current branch snapshot; interactive controls require Piora. / 当前分支快照，交互控件需在 Piora 中使用。</p>${snapshots.map(snapshot => `<pre style="white-space:pre-wrap;overflow-wrap:anywhere">${escape(snapshot)}</pre>`).join("")}</section>`;

@@ -1453,6 +1453,7 @@ export class AgentSessionWrapper {
         const promptRun = ownsPromptRun
           ? beginPromptRun(this.inner.sessionId, {
               ...(promptSource ? { source: promptSource } : {}),
+              ...(promptSource === "ui" && typeof command.clientPromptId === "string" ? { submissionId: command.clientPromptId } : {}),
               ...(roomContext ? { roomContext } : {}),
             })
           : this.activePromptRun!;

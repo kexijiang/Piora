@@ -25,6 +25,7 @@
 
 # desktop build output (electron-builder + tsc)
 /desktop/dist/
+/.mini-app-runtime/
 /desktop/release/
 /desktop/node_modules/
 /desktop/build/whisper/

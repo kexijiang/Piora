@@ -1,6 +1,8 @@
 import { Type } from "@earendil-works/pi-ai";
+import { answerConversionSchema } from "../answer-output-conversion-schema";
 import { createUiPlanSchema, uiPlanAtomSchema, uiPlanOperationSchema } from "./plan-schema";
 import { UI_RICH_LIMITS } from "./rich-protocol";
+import { UI_PLAN2_COMPARISONS } from "./plan2-expressions";
 
 const strict = { additionalProperties: false };
 const id = Type.String({ pattern: "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$" });
@@ -29,7 +31,10 @@ export const uiRichLayoutBlockSchema = Type.Union([
 // Keep the provider schema finite and compact. The mandatory original-plan
 // compiler validates every nested operand before SDK coercion or execution;
 // preview likewise parses all closed operands, including non-visible ones.
-const inlineOperation = Type.Object({ op: uiPlanOperationSchema,
+const richOperation = Type.Union([...uiPlanOperationSchema.anyOf, ...UI_PLAN2_COMPARISONS.map(op => Type.Literal(op))], {
+  description: "lt/lte/gt/gte compare exactly two numeric operands and return boolean. Use them for known thresholds; no string coercion or inferred business rules.",
+});
+const inlineOperation = Type.Object({ op: richOperation,
   args: Type.Array(Type.Unknown(), { minItems: 1, maxItems: 32,
     description: "Each operand is a literal, an explicit input/derived reference, or another {op,args} operation. Host validates types, references, depth and total cost." }),
 }, strict);
@@ -37,11 +42,13 @@ const richAtom = Type.Union([uiPlanAtomSchema, Type.String({ maxLength: 2000 }),
 const coreSchema = createUiPlanSchema(richAtom);
 export const uiRichPlanSchema = Type.Object({
   ...coreSchema.properties,
+  derived: Type.Array(Type.Object({ ...coreSchema.properties.derived.items.properties, op: richOperation }, strict), { maxItems: 256 }),
   views: Type.Array(Type.Union([...coreSchema.properties.views.items.anyOf,
     Type.Object({ id, kind: Type.Literal("dynamicText"), parts: Type.Array(richAtom, { minItems: 1, maxItems: 12,
       description: "Literal prose interleaved with explicit input/derived references or bounded expressions. Values update with controls; never hardcode the current result in prose." }) }, strict),
   ]), { maxItems: 64 }),
   planVersion: Type.Literal(2),
+  conversion: answerConversionSchema("intelligent-ui"),
   layout: Type.Array(uiRichLayoutBlockSchema, { minItems: 1, maxItems: UI_RICH_LIMITS.blocks }),
   actions: Type.Optional(Type.Object({ version: Type.Literal(1), actions: Type.Array(Type.Union([
     Type.Object({ id, label: Type.String({ minLength: 1, maxLength: 120 }), kind: Type.Literal("read_json_parameters"), path: Type.String({ minLength: 1, maxLength: 240 }) }, strict),

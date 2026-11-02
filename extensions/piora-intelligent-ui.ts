@@ -9,7 +9,7 @@ import { formatUiDecisionContext } from "../lib/intelligent-ui/decision-context.
 import { readSurfaceState } from "../lib/intelligent-ui/store.ts";
 import { uiPlanSchema } from "../lib/intelligent-ui/plan-schema.ts";
 import { uiRichPlanSchema } from "../lib/intelligent-ui/rich-plan-schema.ts";
-import { getAnswerOutputGeneration } from "../lib/answer-output-generation.ts";
+import { getUiGenerationRuntime } from "../lib/intelligent-ui/generation-runtime.ts";
 import { uiInputProtocol } from "../lib/intelligent-ui/input-protocol.ts";
 
 function unavailableResult() {
@@ -24,7 +24,7 @@ function registerPlan(api: ExtensionAPI, planVersion: 1 | 2): void {
     executionMode: "sequential",
     parameters: planVersion === 2 ? uiRichPlanSchema : uiPlanSchema,
     async execute(toolCallId, params, signal, onUpdate, ctx) {
-      const runtime = getAnswerOutputGeneration(ctx.sessionManager);
+      const runtime = getUiGenerationRuntime(ctx.sessionManager);
       if (!runtime || signal?.aborted) return unavailableResult();
       const result = await runtime.executePlan(toolCallId, params, signal, planVersion);
       if (!result.isError) onUpdate?.(result);
@@ -32,7 +32,7 @@ function registerPlan(api: ExtensionAPI, planVersion: 1 | 2): void {
     },
   }));
   api.on("context", async (event, ctx) => {
-    const runtime = getAnswerOutputGeneration(ctx.sessionManager);
+    const runtime = getUiGenerationRuntime(ctx.sessionManager);
     let content: string;
     try {
       if (!runtime) throw new Error("No originating generation run");
@@ -44,7 +44,7 @@ function registerPlan(api: ExtensionAPI, planVersion: 1 | 2): void {
     return { messages: content ? [...messages, { role: "custom" as const, customType: "piora-ui-state", content, display: false, timestamp: Date.now() }] : messages };
   });
   api.on("turn_end", async (event, ctx) => {
-    const runtime = getAnswerOutputGeneration(ctx.sessionManager);
+    const runtime = getUiGenerationRuntime(ctx.sessionManager);
     if (!runtime) return;
     await runtime.onTurnEnd({ messageEntryId: event.messageEntryId, toolResultEntryIds: event.toolResultEntryIds, outcome: event.outcome });
   });

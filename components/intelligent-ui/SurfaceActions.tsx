@@ -7,7 +7,7 @@ import type { UiActionOperation, UiActionStart } from "../../lib/intelligent-ui/
 import { actionTerminal } from "../../lib/intelligent-ui/action-operation";
 import { actionProblemText, readUiActionProblem, type UiActionProblem } from "../../lib/intelligent-ui/action-feedback";
 import { uiActionBehaviorText } from "../../lib/intelligent-ui/action-description";
-import { refreshSessionSurfaces, type SurfaceState } from "./client-state";
+import { refreshSessionSurfaces } from "./client-state";
 import styles from "./IntelligentUiSurface.module.css";
 
 type Operation = UiActionOperation & { approval?: { id: string; message: string } };
@@ -32,12 +32,19 @@ const messages = {
 };
 
 /** The action lifecycle belongs to the surface, independently of chat rendering. */
-export function SurfaceActions({ store, locale }: { store: SurfaceState; locale: "en" | "zh-CN" }) {
+export interface SurfaceActionStore {
+  sessionId: string; toolCallId: string;
+  subscribe(listener: () => void): () => void;
+  getSnapshot(): { revision: number; status: string; hasPendingDraft: boolean; surface: { nodes: Array<{ id: string; label?: string }> } };
+}
+export function SurfaceActions({ store, locale, kind = "intelligent-ui", refreshResults = refreshSessionSurfaces }: {
+  store: SurfaceActionStore; locale: "en" | "zh-CN"; kind?: "intelligent-ui" | "mini-app"; refreshResults?(sessionId: string): Promise<void>;
+}) {
   const copy = messages[locale], view = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const [data, setData] = useState<ActionView | null>(null), [error, setError] = useState<Feedback | null>(null), [busy, setBusy] = useState(false);
   const [unknown, setUnknown] = useState<UiActionStart | null>(null);
   const alive = useRef(false), locked = useRef(false), sequence = useRef({ value: 0 });
-  const endpoint = `/api/sessions/${encodeURIComponent(store.sessionId)}/intelligent-ui/actions`;
+  const endpoint = `/api/sessions/${encodeURIComponent(store.sessionId)}/${kind}/actions`;
   const refresh = useCallback(async () => {
     const request = ++sequence.current.value;
     const response = await fetch(`${endpoint}?toolCallId=${encodeURIComponent(store.toolCallId)}`, { cache: "no-store" });
@@ -109,28 +116,29 @@ export function SurfaceActions({ store, locale }: { store: SurfaceState; locale:
     }
     await post({ command, operationId: operation.id, ...(operation.approval ? { approvalId: operation.approval.id } : {}) });
     if (!alive.current) return;
-    if (command === "apply") await refreshSessionSurfaces(store.sessionId);
+    if (command === "apply") await refreshResults(store.sessionId);
     await refresh();
   }
   if (!data?.source?.actions.actions.length && !data?.operations.length && !error) return null;
-  return <section className={styles.notice} aria-label={copy.title}>
+  return <section className={styles.notice} aria-label={copy.title} onClickCapture={event => { if (!event.isTrusted) event.stopPropagation(); }}>
     <h4>{copy.title}</h4>
-    {data?.source?.actions.actions.map(action => <div key={action.id}>
+    <div className={styles.actionChoices}>{data?.source?.actions.actions.map(action => <div className={styles.actionCard} key={action.id}>
       <button type="button" disabled={busy || running || !!unknown || view.status !== "saved" || view.hasPendingDraft}
         onClick={() => act(() => start(action.id))}>{action.label}</button>
       <p>{copy.target}: <code>{action.path}</code></p>
       <p>{uiActionBehaviorText(action.kind, locale)}</p>
-    </div>)}
-    {data?.operations.map(operation => <div key={operation.id}>
+    </div>)}</div>
+    {data?.operations.map(operation => <div className={styles.actionCard} key={operation.id}>
       <p><strong>{operation.action.label}</strong> · <span role="status">{copy[operation.status]}</span></p>
       <p><code>{operation.file.path}</code></p>
       {operation.error || operation.problem ? <FailureMessage locale={locale} feedback={{
         problem: readUiActionProblem(operation.problem) ?? (operation.status === "uncertain" ? "uncertain" : operation.status === "cancelled" ? "cancelled" : "interrupted"),
         details: typeof operation.error === "string" ? operation.error.slice(0, 2000) : undefined,
       }} /> : null}
-      {operation.approval ? <div><pre className={styles.snapshot}>{operation.approval.message}</pre>
+      {operation.approval ? <div>
         <button disabled={busy} onClick={() => act(() => control(operation, "approve"))}>{copy.allow}</button>
-        <button disabled={busy} onClick={() => act(() => control(operation, "deny"))}>{copy.deny}</button></div> : null}
+        <button disabled={busy} onClick={() => act(() => control(operation, "deny"))}>{copy.deny}</button>
+        <details><summary>{locale === "en" ? "Review operation details" : "查看操作详情"}</summary><pre className={styles.snapshot}>{operation.approval.message}</pre></details></div> : null}
       {!actionTerminal(operation.status) ? <button disabled={busy} onClick={() => act(() => control(operation, "cancel"))}>{copy.cancel}</button> : null}
       {operation.status === "uncertain" ? <button disabled={busy} onClick={() => act(() => control(operation, "reconcile"))}>{copy.verify}</button> : null}
       {operation.reconciliation ? <p>{copy[operation.reconciliation]}</p> : null}

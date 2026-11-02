@@ -15,6 +15,8 @@ npm run test:desktop:e2e
 
 命令会打开可见的 Piora Dev 窗口。不要在测试期间手动操作这个窗口。首次启动可能需要下载仓库指定版本的 Electron，并等待 Next 冷编译；默认整次运行期限为 10 分钟。这里编译的是开发所需的 worker 和桌面代码，不运行 `next build`，不生成发布安装包。
 
+自动化环境设置 `PIORA_DESKTOP_DEV_COMPILE_ONCE=1`，桌面代码仅在启动前编译一次，避免 TypeScript 监听中的目录变化在操作途中重启 Electron；Next 仍运行开发服务器。测试期间固定被测源码。普通 `npm run dev:desktop` 不设置此选项，继续提供桌面热重载。
+
 ```powershell
 npm run test:desktop:e2e -- --list
 npm run test:desktop:e2e -- --scenario settings-theme --timeout-ms 600000 --step-timeout-ms 30000
@@ -60,6 +62,14 @@ npm run test:desktop:e2e -- --fail-at theme-dark
 此命令应非零退出，报告包含 `Intentional failure` 和失败截图；它是失败机制检查，不能作为功能通过记录。不存在的步骤名称也会失败。
 
 ## 增加场景
+
+### Intelligent UI 小程序
+
+`npm run test:desktop:e2e -- --scenario intelligent-ui-mini-app` 在隔离配置中运行真实 Next/Electron、生产小程序扩展、QuickJS/WASM 和 iframe。模型服务是仅监听 loopback 的固定响应夹具，不复制用户凭据；此场景不代表 DeepSeek V4.1 的形式选择或生成质量验收。
+
+被验证的操作通过 UI 完成：开启 Beta、发送请求、修改起始值、点击加一、保存、刷新、追问当前结果、关闭并重新开启 Beta。模型夹具根据生产上下文中的已确认结果回答，测试断言恢复后的值和追问结果，同时确认解释没有生成第二个界面。配置读取只核对开关是否持久化。
+
+报告记录固定模型请求摘要、步骤、截图和清理结果。三维、持续模拟、多窗口恢复、迁移、安装包和其他平台不在此场景内。开发编译可能在主界面挂载前重启 Electron；启动器此时重新连接 CDP，进入场景后的重启仍按失败处理，不重放已执行步骤。
 
 ### DSH Pet 桌面扩展
 
@@ -114,6 +124,39 @@ node --test lib/desktop-e2e.test.mjs
 
 ## 后续范围
 
-当前 PR 仅交付公共生命周期与一个非 Intelligent UI 桌面场景，不关闭 #247。待后续补充通用聊天操作、可控模型响应夹具、按需真实模型模式及预算、更多权限/文件场景、trace、自动重连和平台矩阵。首次引导由运行器正常跳过；本场景中的刷新验证也覆盖同一 profile 已完成引导后的入口，不等于跨进程重启恢复已验收。
+### 原生窗口恢复场景（开发中）
+
+`npm run test:desktop:e2e -- --scenario intelligent-ui-window` 使用本机固定模型夹具，在 Windows 独立开发桌面检查持键操作、最小化、关闭隐藏、恢复及保存。PowerShell 7 辅助器仅操作本次 launcher 子进程中、调试端口及应用窗口标题匹配的 Electron 主窗口；不操作其他桌面实例。此场景通过 `noDefaults: true` 连接 CDP，避免 Playwright 的焦点模拟掩盖原生页面隐藏事件。
+
+2026-11-02 最近一次结果仍为失败：原生最小化后的按键释放与暂停通过，关闭隐藏后用原生窗口 API 恢复未能等到页面变为可见，后续保存、刷新及追问未执行。需要继续核对 Electron 恢复路径，不能据此认定产品恢复通过或直接归因于产品缺陷；这也不是托盘菜单点击、完整进程重启或发布包验收。原始结果为 `.verification/desktop-e2e-yMysWr/result.json`，清理无错误。
+
+最初独立 PR 交付公共生命周期与一个非 Intelligent UI 桌面场景，不关闭 #247。后续增量按各自报告说明范围；通用权限/文件场景、trace、自动重连和平台矩阵仍待补齐。首次引导由运行器正常跳过；同一 profile 内的页面刷新不等于跨进程重启恢复已验收。
 
 真实模型接入后需明确记录实际模型、请求和失败，并遵守场景指定的模型和预算。语义、原生系统、硬件和发布包分别验收。CI 集成按项目安排另行处理，本次不修改工作流，也不把这个入口加入每次默认全量运行。
+
+## 原始 Intelligent UI 任务的桌面重放与真实追问
+
+`scripts/verify-recorded-ui-desktop.mjs` 显式读取已有生成批次，复制所选原始会话及已发布界面数据到隔离 profile，验证原始输出在当前代码上的操作、保存、刷新及新发起的真实模型追问。它不是新一轮生成评估，不应把这两类成功率混算，也不加入默认测试入口。
+
+```powershell
+node scripts/verify-recorded-ui-desktop.mjs --batch .verification/mini-app-evaluation-di2ENh/result.json
+node scripts/verify-recorded-ui-desktop.mjs --batch .verification/mini-app-evaluation-di2ENh/result.json --cases sorting-1,sorting-2,sorting-3
+```
+
+运行前需具备对应批次引用的原始记录、已准备的小程序运行资源，以及已配置的 `deepseek/deepseek-flash`。入口支持原批次的出行、优惠与排序样本，以及显式批次中的 `shopping-list` 采购清单任务；不同任务需增加对应 UI 操作和独立预期结果，不能仅修改样本名。采购清单会编辑、勾选、排序、增删、保存、刷新，并核对实际追问请求中的行数据和顺序。使用本任务独立 worktree，不与同一 checkout 的其他开发桌面并行运行。
+
+真实模型固定配置名称 DeepSeek V4.1 Flash、provider/id 为 `deepseek/deepseek-flash`；未回退到 Pro 或其他模型。服务返回的 `deepseek-flash` 只能证明返回 ID，不能独立证明版本号。入口最多允许 36 次模型请求，包括后台命名，单次等待最多 180 秒；不是 token 费用上限。`real-model-proxy.mjs` 在进程内读取现有凭据并仅用于指定上游，临时 profile 保存合成令牌；不复制原始认证配置。
+
+测试通过 UI 改参数、点击、播放和发送追问；读取接口时使用桌面页面的同源上下文。追问断言匹配实际用户消息及当前确认的参数或摘要/tick，后台命名请求单独标记。报告保留原始 UI 文本、保存状态、实际模型 ID 和回答，源文件摘要用于核对原始记录未改变。原始输出不符合独立预期时保留失败，不替换程序或放宽断言。
+
+结果位于 `.verification/desktop-e2e-*/recorded-tasks.json` 与公共 `result.json`；语义发现、失败、复测和清理分别记录。真实 UI 工作流完成不代表全部文字、颜色或公式正确；人工语义审阅保持独立。首批结果及局限见 [2026-11-02 报告](verification/intelligent-ui-phase3-recorded-desktop-2026-11-02.md)。
+
+模型转发以 SSE 的 `[DONE]` 或 `finish_reason` 确认模型流结束，在转发终止块给客户端前记录结果；客户端读完后关闭 HTTP 不再误记为失败。终止块之后才出现的用量信息可能没有读取，报告 usage 可为空，不能据此报告零费用。真正的失败保留请求编号、阶段和安全错误类型，不保留服务端错误详情。测试报告中的非 200 结果不会计为通过。
+
+### 自然语言三维任务入口
+
+`node scripts/verify-spatial-ui-desktop.mjs` 在独立开发桌面提交飞机姿态任务，计划检查窗口环境上报、真实模型生成、改角度、选择对象、换镜头、保存刷新及真实追问。产物为 `spatial-task.json` 和公共报告。尚未走到的步骤不计为通过；本批真实生成仍有协议/纠错失败，详见[环境协商报告](verification/intelligent-ui-phase3-environment-2026-11-02.md)。
+
+该入口保留本机 DeepSeek V4.1 Flash 模型的 reasoning/compat 元数据，默认 thinking level 为 off，记录实际请求的 thinking/maxTokens；仅更换为本地中继地址和临时令牌，测试输出上限为配置值与 32768 的较小者。把 reasoning 标为 false 不等于给供应方发送关闭思考参数，因此不要随意覆盖模型兼容配置。
+
+中继分别限制总流量与生成增量为 8 Mi / 2 Mi 字符（JavaScript 字符串长度），避免重复 SSE 元数据占满原内容额度；两种超限、没有终止事件及供应端失败仍会记录失败。该调整仅用于测试中继，不改变产品执行预算或 UI 纠错次数。

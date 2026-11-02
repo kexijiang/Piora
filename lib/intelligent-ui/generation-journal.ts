@@ -17,6 +17,9 @@ import { assessUiMigration, type UiMigrationField, type UiMigrationReview } from
 import { assertUiMigrationAuthorization, type UiMigrationAuthorization } from "./migration-authorization";
 import { validateUiActions, type UiActionDeclaration, type UiActionSource } from "./action-contract";
 import type { UiActionOperation, UiActionStart } from "./action-operation";
+import { answerConversionOutcome, answerConversionCurrentKind, ANSWER_CONVERSION_INTENT } from "../answer-output-conversion-receipts";
+import { componentConversionSource, answerConversionContext } from "../answer-output-conversion-data";
+import { parseAnswerConversionSpec, type AnswerConversionSpec, type AnswerConversionIntent, type AnswerConversionIdentity } from "../answer-output-conversion-types";
 import { uiActionFacts } from "./action-description";
 
 type Manager = Pick<SessionManager, "getSessionId" | "getSessionFile" | "getLeafId"> & Partial<Pick<SessionManager, "appendMessage" | "appendCustomEntry">>;
@@ -29,7 +32,7 @@ export interface UiGenerationRequestContext {
 export interface UiGenerationTurnReceipt { messageEntryId: string; toolResultEntryIds: readonly string[] }
 export interface UiGenerationOutput {
   surface: UiSurface; state: UiState; revision: number; leafId: string; snapshot: string;
-  publication: { status: "candidate" | "awaiting_confirmation" | "committed" | "aborted" | "superseded"; operationId: string; currentToolCallId?: string };
+  publication: { status: "candidate" | "awaiting_confirmation" | "committed" | "aborted" | "superseded"; operationId: string; currentToolCallId?: string; conversion?: boolean };
 }
 export interface UiDecisionSnapshot {
   leafId: string | null;
@@ -63,6 +66,7 @@ interface GenerationRecord {
   planVersion: 1 | 2; compilerVersion: string;
   surface: UiSurface; surfaceHash: string; semantics: Semantics;
   actions?: UiActionDeclaration;
+  conversion?: AnswerConversionSpec;
   receipt?: Receipt; state?: UiState; stateRevision?: number; abortReason?: string;
   turnReceipt?: { leafId: string; entryIds: string[]; entryHashes: string[] };
   migration?: MigrationRecord;
@@ -109,7 +113,7 @@ export function generationDigest(value: unknown): string { return createHash("sh
 const copy = <T>(value: T): T => JSON.parse(JSON.stringify(value)) as T;
 /** Capture human meanings with the same source values, without retaining a full
  * large table for every provider request. Omission must never look like a default. */
-function decisionSummary(surface: UiSurface, state: UiState, actions?: UiActionDeclaration) {
+function decisionSummary(surface: UiSurface, state: UiState, actions?: UiActionDeclaration, conversionSource?: Omit<AnswerConversionIdentity, "operationId">) {
   const controls = surface.nodes.filter(node => ["number", "slider", "select", "checkbox"].includes(node.type)).map(node => {
     const description = { ...node } as Record<string, unknown>;
     delete description.value;
@@ -117,7 +121,7 @@ function decisionSummary(surface: UiSurface, state: UiState, actions?: UiActionD
   });
   const snapshot = formatSnapshot(surface, state);
   const summary = { title: surface.title, controls, omittedControls: 0, snapshot: snapshot.slice(0, 2000), snapshotTruncated: snapshot.length > 2000,
-    ...(actions ? { actions: actions.actions.map(uiActionFacts), omittedActions: 0 } : {}) };
+    ...(actions ? { actions: actions.actions.map(uiActionFacts), omittedActions: 0 } : {}), ...(conversionSource ? { conversionSource } : {}) };
   if (JSON.stringify(summary).length > 6000) { summary.snapshot = ""; summary.snapshotTruncated = true; }
   while (JSON.stringify(summary).length > 6000 && summary.controls.length) { summary.controls.pop(); summary.omittedControls++; }
   while (JSON.stringify(summary).length > 6000 && summary.actions?.length) { summary.actions.pop(); summary.omittedActions!++; }
@@ -167,6 +171,10 @@ function readJournal(path: string, sessionId: string): Journal {
     if (record.actions !== undefined) {
       try { validateUiActions(record.actions); } catch { throw new UiGenerationError("CORRUPT", "Invalid saved action declarations"); }
     }
+    if (record.conversion !== undefined) {
+      try { parseAnswerConversionSpec(record.conversion, "intelligent-ui"); } catch { throw new UiGenerationError("CORRUPT", "Invalid conversion declaration"); }
+      check(!record.migration, "CORRUPT", "Cross-form conversion cannot use same-form migration");
+    }
     check(record.planVersion === record.surface.version && typeof record.compilerVersion === "string" && record.compilerVersion.length > 0 && record.compilerVersion.length <= 80,
       "CORRUPT", "Saved compiler and surface versions are incompatible");
     check(record.source?.sessionId === sessionId && typeof record.source.leafId === "string" && typeof record.epoch === "string" && typeof record.toolCallId === "string" && Array.isArray(record.semantics) && generationDigest(record.surface) === record.surfaceHash, "CORRUPT", "Generation metadata does not match the saved candidate");
@@ -188,7 +196,7 @@ function readJournal(path: string, sessionId: string): Journal {
       if (confirmation) check(typeof confirmation.requestId === "string" && typeof confirmation.runId === "string"
         && generationDigest({ decision: confirmation.decision, state: confirmation.state }) === confirmation.choiceDigest
         && ["confirm", "cancel"].includes(confirmation.decision), "CORRUPT", "Invalid confirmation intent");
-    } else check(record.status !== "awaiting_confirmation" && !record.publicationAnchor, "CORRUPT", "Migration proof is missing");
+    } else check((record.status !== "awaiting_confirmation" || record.conversion) && !record.publicationAnchor, "CORRUPT", "Migration proof is missing");
   }
   for (const pointer of journal.active) {
     const record = journal.records.find(item => item.operationId === pointer.operationId);
@@ -248,7 +256,7 @@ function saveJournal(path: string, journal: Journal, assertOwned: () => void): v
 }
 function envelope(record: GenerationRecord) {
   return { answerOutput: { kind: "intelligent-ui", version: 2, operationId: record.operationId, surfaceHash: record.surfaceHash, snapshot: formatSnapshot(record.surface), payload: record.surface,
-    ...(record.actions ? { actions: record.actions } : {}) } };
+    ...(record.actions ? { actions: record.actions } : {}), ...(record.conversion ? { conversion: record.conversion } : {}) } };
 }
 type BoundEntry = Pick<GenerationRecord, "callEntryId" | "callEntryHash" | "forkCall"> & { source: { leafId: string } };
 function verifyCall(disk: Disk, record: BoundEntry & { contextTitles?: ContextTitleReceipt[] }): void {
@@ -389,7 +397,11 @@ export class UiGenerationPrototype {
     let record: GenerationRecord | undefined;
     for (const entry of entries) {
       const pointer = pointerByAnchor.get(entry.id);
-      if (pointer) record = journal.records.find(item => item.operationId === pointer.operationId);
+      if (pointer) {
+        const candidate = journal.records.find(item => item.operationId === pointer.operationId);
+        const outcome = answerConversionOutcome(disk, leafId, "intelligent-ui", pointer.operationId);
+        if (candidate && outcome !== "superseded" && (!candidate.conversion || outcome === "confirmed")) record = candidate;
+      }
     }
     if (!record) return undefined;
     check(record.status === "committed" && record.receipt && ancestry.has(publicationEntry(record)!), "CORRUPT", "Published generation is not on this branch");
@@ -400,9 +412,12 @@ export class UiGenerationPrototype {
     return { record, state, revision };
   }
   private source(journal: Journal, disk: Disk, leafId: string, surfaceId: string): { source: Source; state: UiState; surface?: UiSurface; semantics?: Semantics; actions?: UiActionDeclaration } {
+    const kind = answerConversionCurrentKind(disk, leafId, surfaceId);
+    if (kind && kind !== "intelligent-ui") return { source: { origin: "none", surfaceId, surfaceRevision: 0, stateRevision: 0, stateHash: generationDigest({}) }, state: {} };
     const latest = this.active(journal, disk, leafId, surfaceId);
     const entries = branch(disk, leafId);
-    const legacy = branchSurfaces(entries).filter(item => item.surface.id === surfaceId).at(-1);
+    const legacy = branchSurfaces(entries).filter(item => item.surface.id === surfaceId
+      && answerConversionOutcome(disk, leafId, "intelligent-ui", `legacy:${item.toolCallId}`) !== "superseded").at(-1);
     // Protocol rollbacks may produce a later legacy result. Branch order, not
     // protocol version, determines which committed structure is current.
     if (latest && (!legacy || entries.findIndex(entry => entry.id === publicationEntry(latest.record)) > entries.findIndex(entry => entry.id === legacy.entryId))) {
@@ -430,7 +445,7 @@ export class UiGenerationPrototype {
     return this.locked((journal, _disk, assertOwned) => {
       if (journal.epoch === this.epoch) {
         journal.epoch = null;
-        for (const record of journal.records) if ((record.status === "candidate" || record.migration?.status === "provisional") && record.epoch === this.epoch) {
+        for (const record of journal.records) if ((record.status === "candidate" || record.migration?.status === "provisional" || record.conversion && record.status === "awaiting_confirmation") && record.epoch === this.epoch) {
           record.status = "aborted"; record.abortReason = "cancelled";
           if (record.migration) record.migration.status = "cancelled";
         }
@@ -464,8 +479,12 @@ export class UiGenerationPrototype {
       for (const pointer of journal.active) if (ancestry.has(pointer.anchor)) ids.add(pointer.surfaceId);
       check(ids.size <= 256, "LIMIT", "Request exceeds the source identity snapshot limit");
       const snapshot: UiGenerationRequestContext = { requestId: randomUUID(), sessionId: this.sessionId, leafId, epoch: this.epoch!, surfaces: [...ids].map(id => {
-        const { source, state, surface, actions } = this.source(journal, disk, leafId, id);
-        return { source, state, ...(surface ? { summary: decisionSummary(surface, state, actions) } : {}) };
+        const { source, state, surface, actions, semantics } = this.source(journal, disk, leafId, id);
+        const toolCallId = source.operationId ? journal.records.find(item => item.operationId === source.operationId)?.toolCallId
+          : branchSurfaces(entries).filter(item => item.surface.id === id).at(-1)?.toolCallId;
+        const conversionSource = surface && toolCallId ? componentConversionSource({ operationId: source.operationId ?? `legacy:${toolCallId}`,
+          toolCallId, surface, state, revision: source.stateRevision, ...(semantics ? { semantics } : {}) }).identity : undefined;
+        return { source, state, ...(surface ? { summary: decisionSummary(surface, state, actions, conversionSource ? answerConversionContext(conversionSource) : undefined) } : {}) };
       }) };
       this.requests.set(snapshot.requestId, copy(snapshot)); return copy(snapshot);
     });
@@ -479,12 +498,13 @@ export class UiGenerationPrototype {
     return copy({ contextId: requestId, sessionId: this.sessionId, leafId: snapshot.leafId, epoch: snapshot.epoch,
       source: captured?.source ?? { origin: "none", surfaceId, surfaceRevision: 0, stateRevision: 0, stateHash: generationDigest({}) }, state: captured?.state ?? {} });
   }
-  async createCandidate(contextId: string, toolCallId: string, compiled: Pick<CompiledUiPlan | CompiledUiRichPlan, "surface" | "inputSemantics" | "planVersion" | "compilerVersion" | "actions">): Promise<{ operationId: string; messageEntryId: string; details: ReturnType<typeof envelope> }> {
+  async createCandidate(contextId: string, toolCallId: string, compiled: Pick<CompiledUiPlan | CompiledUiRichPlan, "surface" | "inputSemantics" | "planVersion" | "compilerVersion" | "actions" | "conversion">): Promise<{ operationId: string; messageEntryId: string; details: ReturnType<typeof envelope> }> {
     return this.locked((journal, disk, assertOwned) => {
       this.admitted(journal);
       check(typeof toolCallId === "string" && toolCallId.length > 0 && toolCallId.length <= 256, "IDENTITY", "Candidate requires a bounded tool call identity");
       const surface = validateSurface(compiled.surface), semantics = copy(compiled.inputSemantics);
       const actions = compiled.actions === undefined ? undefined : validateUiActions(compiled.actions);
+      const conversion = compiled.conversion === undefined ? undefined : parseAnswerConversionSpec(compiled.conversion, "intelligent-ui");
       const context = this.contexts.get(contextId) ?? (this.requests.has(contextId) ? this.contextForSurface(contextId, surface.id) : undefined);
       check(context && context.epoch === this.epoch, "IDENTITY", "Candidate requires a host-captured context");
       check(compiled.planVersion === surface.version && typeof compiled.compilerVersion === "string" && compiled.compilerVersion.length > 0 && compiled.compilerVersion.length <= 80, "IDENTITY", "A compatible versioned host compiler result is required");
@@ -492,6 +512,7 @@ export class UiGenerationPrototype {
       const surfaceHash = generationDigest(surface);
       const replay = journal.records.find(item => item.epoch === this.epoch && item.toolCallId === toolCallId);
       if (replay) {
+        check(generationDigest(replay.conversion ?? null) === generationDigest(conversion ?? null), "CONFLICT", "Conversion declaration changed");
         check(generationDigest(replay.actions ?? null) === generationDigest(actions ?? null), "CONFLICT", "Tool call identity was reused with different actions");
         check(replay.surfaceHash === surfaceHash && replay.planVersion === compiled.planVersion && replay.compilerVersion === compiled.compilerVersion && generationDigest(replay.semantics) === generationDigest(semantics) && replay.source.contextId === contextId && replay.status !== "aborted", "CONFLICT", "Tool call identity was reused with different content");
         return { operationId: replay.operationId, messageEntryId: replay.callEntryId, details: envelope(replay) };
@@ -511,9 +532,13 @@ export class UiGenerationPrototype {
       check(calls.some(call => call.id === toolCallId && call.name === "piora_render_ui_plan"), "CONFLICT", "Assistant did not declare this candidate UI tool call");
       turnPath(disk, callEntryId, leaf);
       const current = this.source(journal, disk, leaf, surface.id);
+      const kind = answerConversionCurrentKind(disk, leaf, surface.id);
+      check(!kind || kind === "intelligent-ui" || conversion, "CONFLICT", "Changing this answer back to components requires explicit conversion metadata");
+      check(!conversion || !current.surface, "CONFLICT", "This answer already has active components; use ordinary revision");
       check(generationDigest(current.source) === generationDigest(context.source), "CONFLICT", "Saved parameters changed after context capture");
       check(current.surface?.version !== 2 || surface.version === 2, "UI_PROTOCOL_UNAVAILABLE", "This saved UI requires the rich layout protocol. Preserve its layout and parameters instead of replacing it with a legacy surface.");
       const record: GenerationRecord = { operationId: randomUUID(), epoch: this.epoch!, status: "candidate", source: copy(context), callEntryId, callEntryHash: generationDigest(call), toolCallId, surface, surfaceHash, semantics, planVersion: compiled.planVersion, compilerVersion: compiled.compilerVersion, ...(actions ? { actions } : {}), ...(contextTitles.length ? { contextTitles } : {}) };
+      if (conversion) record.conversion = conversion;
       journal.records.push(record); saveJournal(this.path, journal, assertOwned); this.options.fault?.("candidate-written");
       return { operationId: record.operationId, messageEntryId: record.callEntryId, details: envelope(record) };
     });
@@ -598,6 +623,7 @@ export class UiGenerationPrototype {
       } else check(leafId === record.receipt.entryId, "CONFLICT", "Conversation moved after candidate generation");
       const current = this.source(journal, disk, leafId, record.surface.id);
       check(generationDigest(current.source) === generationDigest(record.source.source), "CONFLICT", "Saved parameters changed during generation");
+      check(!record.conversion, "MIGRATION_REQUIRED", "Changing output form requires explicit confirmation");
       const migration = assessUiMigration(current.surface ? { ...current, surface: current.surface } : undefined, record);
       check(!migration.requiresConfirmation, "MIGRATION_REQUIRED", "Changed or removed inputs require explicit migration");
       const state = migration.suggestedState;
@@ -613,6 +639,19 @@ export class UiGenerationPrototype {
     });
   }
   /** Preserve a verified incompatible candidate; only normal run completion can make it confirmable. */
+  async stageCandidateConfirmation(operationId: string): Promise<void> {
+    const conversion = await this.locked((journal, disk, assertOwned) => {
+      this.admitted(journal);
+      const record = journal.records.find(item => item.operationId === operationId);
+      if (!record?.conversion) return false;
+      check(record.epoch === this.epoch && record.status === "candidate", "CANCELLED", "Candidate cannot request conversion");
+      verifyReceipt(disk, record); verifyTurnReceipt(disk, record, true);
+      check(this.currentLeaf(disk, true) === record.turnReceipt!.leafId, "CONFLICT", "Conversion branch changed");
+      record.status = "awaiting_confirmation";
+      saveJournal(this.path, journal, assertOwned); return true;
+    });
+    if (!conversion) await this.prepareMigration(operationId);
+  }
   async prepareMigration(operationId: string): Promise<UiMigrationReview> {
     return this.locked((journal, disk, assertOwned) => {
       this.admitted(journal);
@@ -849,8 +888,64 @@ export class UiGenerationPrototype {
         }
       }
       return copy({ surface: record.surface, state, revision, leafId, snapshot: formatSnapshot(record.surface, state),
-        publication: { status, operationId: record.operationId, ...(currentToolCallId ? { currentToolCallId } : {}) } });
+        publication: { status: record.conversion && record.status !== "aborted"
+          && !["confirmed", "superseded"].includes(answerConversionOutcome(disk, leafId, "intelligent-ui", record.operationId) ?? "")
+          ? answerConversionOutcome(disk, leafId, "intelligent-ui", record.operationId) === "cancelled" ? "aborted" : "awaiting_confirmation" : status,
+          operationId: record.operationId, ...(record.conversion ? { conversion: true } : {}), ...(currentToolCallId ? { currentToolCallId } : {}) } });
     }, true);
+  }
+  async readConversionSource(toolCallId: string) {
+    return this.locked((journal, disk) => {
+      const leaf = this.currentLeaf(disk), entries = branch(disk, leaf);
+      const generated = journal.records.find(item => item.toolCallId === toolCallId);
+      const legacy = branchSurfaces(entries).find(item => item.toolCallId === toolCallId);
+      const id = generated?.surface.id ?? legacy?.surface.id;
+      if (!id) return undefined;
+      const current = this.source(journal, disk, leaf, id);
+      if (!current.surface || (generated ? current.source.operationId !== generated.operationId : current.source.origin !== "legacy"
+        || branchSurfaces(entries).filter(item => item.surface.id === id).at(-1)?.toolCallId !== toolCallId)) return undefined;
+      return componentConversionSource({ operationId: generated?.operationId ?? `legacy:${toolCallId}`, toolCallId,
+        surface: current.surface, state: current.state, revision: current.source.stateRevision,
+        ...(current.semantics ? { semantics: current.semantics } : {}) });
+    }, true);
+  }
+  async readConversionTarget(toolCallId: string) {
+    return this.locked((journal, disk) => {
+      const leaf = this.currentLeaf(disk), entries = new Set(branch(disk, leaf).map(entry => entry.id));
+      const record = journal.records.find(item => item.toolCallId === toolCallId);
+      check(record?.conversion && record.receipt && entries.has(record.receipt.entryId)
+        && ["awaiting_confirmation", "committed"].includes(record.status), "CONFLICT", "No conversion is available for this output");
+      verifyReceipt(disk, record);
+      return { spec: record.conversion, surface: record.surface,
+        target: componentConversionSource({ operationId: record.operationId, toolCallId, surface: record.surface,
+          state: initialState(record.surface), revision: 0, semantics: record.semantics }) };
+    }, true);
+  }
+  /** Install the chosen state; a separate durable completion makes it active. */
+  async commitConversionTarget(options: { target: AnswerConversionIdentity; intentId: string; intent: AnswerConversionIntent;
+    requestDigest: string; authorization: UiMigrationAuthorization }) {
+    return this.locked((journal, disk, owned) => {
+      check(this.options.mutationOwner, "IDENTITY", "Conversion needs session mutation ownership");
+      assertUiMigrationAuthorization(options.authorization, { sessionId: this.sessionId, proposalId: options.target.operationId,
+        digest: options.target.digest, choiceDigest: options.requestDigest });
+      const record = journal.records.find(item => item.operationId === options.target.operationId);
+      check(record?.conversion && record.receipt && ["awaiting_confirmation", "committed"].includes(record.status), "CONFLICT", "Conversion candidate changed");
+      verifyReceipt(disk, record);
+      const target = componentConversionSource({ operationId: record.operationId, toolCallId: record.toolCallId, surface: record.surface,
+        state: initialState(record.surface), revision: 0, semantics: record.semantics }).identity;
+      const entry = disk.byId.get(options.intentId), intent = options.intent;
+      check(generationDigest(target) === generationDigest(options.target) && generationDigest(intent.target) === generationDigest(target)
+        && entry?.type === "custom" && entry.customType === ANSWER_CONVERSION_INTENT && generationDigest(entry.data) === generationDigest(intent)
+        && branch(disk, this.currentLeaf(disk)).some(item => item.id === entry.id) && intent.decision === "confirm", "CONFLICT", "Conversion intent changed");
+      const state = validateState(record.surface, intent.inputs);
+      check(generationDigest(state) === intent.resultDigest, "RECEIPT", "Chosen conversion values changed");
+      const prior = journal.states.find(item => item.operationId === record.operationId && item.anchor === entry.id);
+      if (prior) { check(generationDigest(prior.state) === intent.resultDigest, "RECEIPT", "Conversion state changed"); return; }
+      record.status = "committed"; record.state = initialState(record.surface); record.stateRevision = 0;
+      if (!journal.active.some(item => item.operationId === record.operationId)) journal.active.push({ anchor: record.receipt.entryId, surfaceId: record.surface.id, operationId: record.operationId });
+      journal.states.push({ anchor: entry.id, operationId: record.operationId, revision: ++journal.revision, state });
+      saveJournal(this.path, journal, owned);
+    });
   }
   private actionSource(journal: Journal, disk: Disk, toolCallId: string): UiActionSource {
     const leafId = this.currentLeaf(disk), entries = branch(disk, leafId), ancestry = new Set(entries.map(entry => entry.id));
@@ -1006,8 +1101,11 @@ export function assertLegacySurfaceWritable(sessionId: string, entries: readonly
   const journal = readJournal(generationJournalPath(sessionId, root), sessionId);
   const index = entries.findIndex(item => item.id === old.entryId);
   const disk = { entries: entries as DiskEntry[], byId: new Map(entries.map(entry => [entry.id, entry as DiskEntry])) };
+  const leaf = entries.at(-1)?.id;
+  check(!leaf || answerConversionCurrentKind(disk, leaf, old.surface.id) !== "mini-app", "CONFLICT", "This answer is now a mini app; use the active output");
   for (const record of journal.records) {
     if (record.status !== "committed" || record.surface.id !== old.surface.id || !record.receipt) continue;
+    if (record.conversion && (!leaf || !["confirmed", "superseded"].includes(answerConversionOutcome(disk, leaf, "intelligent-ui", record.operationId) ?? ""))) continue;
     if (entries.findIndex(entry => entry.id === publicationEntry(record)) <= index) continue;
     verifyPublication(disk, record);
     throw new UiGenerationError("CONFLICT", "This UI has a newer committed revision; use the latest output");
@@ -1068,7 +1166,8 @@ export async function copyGenerationJournal(options: {
       // verified SDK label transformation may explain a different call parent.
       verifyReceipt(targetDisk, clone, result.id);
       verifiedResults.add(result.id);
-      if (record.status !== "committed" || !retained.has(publicationEntry(record)!)) {
+      if (record.status !== "committed" || !retained.has(publicationEntry(record)!) || record.conversion
+        && !["confirmed", "superseded"].includes(answerConversionOutcome(targetDisk, targetDisk.entries.at(-1)!.id, "intelligent-ui", record.operationId) ?? "")) {
         inherited.excludedOutputs.push({ reason: "uncommitted-at-fork", sourceSessionId: options.source, sourceStatus: record.status === "committed" ? "candidate" : record.status, evidenceOrigin: record.receipt ? "source-receipt" : "fork-observed-jsonl",
           operationId: record.operationId, toolCallId: record.toolCallId, surfaceHash: record.surfaceHash,
           callEntryId: record.callEntryId, callEntryHash: record.callEntryHash, source: { leafId: record.source.leafId }, forkCall: clone.forkCall,

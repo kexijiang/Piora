@@ -1,0 +1,370 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "status": "partial-phase-progress",
+  "phaseComplete": false,
+  "branch": "codex/intelligent-ui",
+  "baseCommit": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "committed": false,
+  "feature": "Bounded editable keyed lists with frame identity, focus, native input acknowledgement, saved row context and compatible runtime selection",
+  "sourceHashes": {
+    ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
+    ".mini-app-runtime/renderer.js": "e495d3428b040878f245e00ad2c634b8954999a50954e60d914ecf6dd4e0a8da",
+    ".mini-app-runtime/server-worker.cjs": "a89b426afde9695d0bd448fe3cd436cdd746b9750dabd2f516360488ac5f35b9",
+    "extensions/piora-mini-app.ts": "4f2a09b0110c3c9260a7c1fb69e191e0b5e3a1c11c6afa256689b1c06c3a785a",
+    "lib/answer-output-admission.ts": "3b37a18738894a0ab87b2ebeca53b1b64eb7f1f078a90b26143bbe46b93875d3",
+    "lib/mini-app/appearance.ts": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919",
+    "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
+    "lib/mini-app/capabilities.ts": "cbbee706bfb47b6ad729ce6e1f655b7e4ff39aee1fd865f7574bf9de26db29ec",
+    "lib/mini-app/capability-host.ts": "9c88d852491265f293d44fa0a62606273eaeef7b54ad05154dad310340cdf773",
+    "lib/mini-app/capability-manifest.ts": "675234a971a86cbd00f27be2fc8576316c85b826042a60a39eb81cf3de497017",
+    "lib/mini-app/controller.ts": "678869091ae5986ee82db86f6b26547c0a1d99aaff9cbe94575265add23b69d5",
+    "lib/mini-app/decision-policy.ts": "1e4fbbd349076dabd1d0c71f73e9dd6e9be6305551799e73017629376a4c43f6",
+    "lib/mini-app/document-capabilities.ts": "3a1f78e18de9b3d152f57c779d8fd13b9ac35eb453457b17f66ffa2d7e362179",
+    "lib/mini-app/document.ts": "8ca7100ee79231eef55ebfe01bb48c59a3702485b19a7897e15cfb8d9c1c0cf8",
+    "lib/mini-app/events.ts": "79e058f6e8e5583ccf1e749c7eee97274fa907810c54c0b1f96c7e2c84cb8af7",
+    "lib/mini-app/frame-host.ts": "e79d29a92eaf3403729706d735b89431793e52a7ddb3d011799169346ea0130c",
+    "lib/mini-app/frame.ts": "7898387e0931bf77b7fddf0deeee54d51b6109503599420523de96305bbc5dcd",
+    "lib/mini-app/generation-runtime.ts": "4e2d9610c09ee93736800c27d891a9ee5599c3705fadf8ea5cd649fcf95a153d",
+    "lib/mini-app/guest-runtime.ts": "5238a3bb69e85a05310e5ad4ca59b667235df446697b5c30a34405bd9f6b40fd",
+    "lib/mini-app/json.ts": "d69be1140f8da80559da63f5d5a98f893105c667869f0aa6da3ef6bff81b5144",
+    "lib/mini-app/limits.ts": "58c296c0b3119db4fe3287303f72016468d970752dbbc4b72d067d5bc63c9334",
+    "lib/mini-app/plan-admission.ts": "16687fd313c6d7ec570332045dae737132b86cf1845d5b2d372eb1670377648d",
+    "lib/mini-app/plan-schema.ts": "774b66f36555793051bc1467f5c37c542950944dd3863b38d531f264fbee4d4d",
+    "lib/mini-app/plan.ts": "a658cc8fbbc9479dae7f3af0dd51bf0be08e5603e7ec047775b6003eaa58a340",
+    "lib/mini-app/playback.ts": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78",
+    "lib/mini-app/program.ts": "461e17ccbf9a96326b95a364b851c200167141a6a3dd4b5f10a269018e6b1bdb",
+    "lib/mini-app/renderer-runtime.ts": "d6a5da71a5869eea691dfacf5e3f65e017a7601592f356b0fd4722f81e79efc1",
+    "lib/mini-app/repeat-example.ts": "d219da4b93ed144e9d35f469d36a1e5c627362ca4d05791d8d301b98ae4cfb13",
+    "lib/mini-app/repeat-renderer.ts": "1adb95d34d30204c6114a4bdf5742d032f9d24c2ae5ccca1253af3b9dd91fe19",
+    "lib/mini-app/repeat.ts": "a63ad7c7b6a0dd1b6e8c659097eb753cc6a28c7a348cbaf843ac3c2fdd7d7281",
+    "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+    "lib/mini-app/runtime-worker.ts": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8",
+    "lib/mini-app/state-schema.ts": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b",
+    "lib/mini-app/vm.ts": "d1b3d510ca3562bfdc3af8dd41ed3960b00c20f07e8e8d5d0fb5c62e5c43b7e9",
+    "lib/mini-app/wasm-memory.ts": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e",
+    "lib/mini-app/worker-client.ts": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb",
+    "scripts/verify-recorded-ui-desktop.mjs": "680f30bf69fddc1c881a2f2bd09f56e0df7ada8d07f32ffca123ece05f0c4985",
+    "scripts/desktop-e2e/real-model-proxy.mjs": "789789782ea45b07670f8f0bd208158518e15f5462ceea65cb68d582e5312dea",
+    "scripts/probe-mini-app-generation.mjs": "f475b75bbbe7150f8d2228d837029da1c46ffaa7db6a45088042a302135c45f0",
+    "lib/mini-app/answer-output-adapter.ts": "3f68c544f0d29014a60c067e62ea081a41713b839388353051a22d2a411f03f4"
+  },
+  "generation": [
+    {
+      "evidence": {
+        "path": ".verification/mini-app-live-qQIxA0/result.json",
+        "sha256": "72f661c0640d31a02f95507b49677794fc180d7fbd83571c7b0aaf2539737833"
+      },
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "attempts": [
+        {
+          "toolCallId": "call_00_A0dLxGl12dtdGrXELKwH3598",
+          "toolName": "piora_render_mini_app",
+          "isError": true,
+          "diagnostic": {
+            "code": "SCHEMA",
+            "message": "Use element/class/id selectors or data-input/event/viewport/text presence/equality selectors",
+            "path": "document/css",
+            "repairable": true,
+            "issues": [
+              {
+                "code": "SCHEMA",
+                "message": "Use element/class/id selectors or data-input/event/viewport/text presence/equality selectors",
+                "path": "document/css",
+                "repairable": true
+              }
+            ],
+            "contract": {
+              "tool": "piora_render_mini_app",
+              "planVersion": 1,
+              "resubmit": "complete plan including purpose, stateSchema, playback and initialSnapshot"
+            }
+          }
+        },
+        {
+          "toolCallId": "call_00_JLYRNdc6V3nUFB9kILZR2346",
+          "toolName": "piora_render_mini_app",
+          "isError": true,
+          "diagnostic": {
+            "code": "SCHEMA",
+            "message": "Unsupported CSS property",
+            "path": "document/css/list-style",
+            "repairable": true,
+            "issues": [
+              {
+                "code": "SCHEMA",
+                "message": "Unsupported CSS property",
+                "path": "document/css/list-style",
+                "repairable": true
+              }
+            ],
+            "contract": {
+              "tool": "piora_render_mini_app",
+              "planVersion": 1,
+              "resubmit": "complete plan including purpose, stateSchema, playback and initialSnapshot"
+            }
+          }
+        },
+        {
+          "toolCallId": "call_00_rL3KNHY0oCJLdKqlX9BR7265",
+          "toolName": "piora_render_mini_app",
+          "isError": true,
+          "diagnostic": {
+            "code": "UI_CORRECTIONS_EXHAUSTED",
+            "repairable": false
+          }
+        }
+      ]
+    },
+    {
+      "evidence": {
+        "path": ".verification/mini-app-live-Y23vKI/result.json",
+        "sha256": "f86514ec4e5798e80a3348c214a846675e52d59fd8fb4dc3a9daa576a3e1f81f"
+      },
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "attempts": [
+        {
+          "toolCallId": "call_00_zkWqvgdLvvbuzVEzJkQg8530",
+          "toolName": "piora_render_mini_app",
+          "isError": true,
+          "diagnostic": {
+            "code": "SCHEMA",
+            "message": "Expected MiniAppPlan version 1",
+            "path": "planVersion",
+            "repairable": true,
+            "contract": {
+              "tool": "piora_render_mini_app",
+              "planVersion": 1,
+              "resubmit": "complete plan including purpose, stateSchema, playback and initialSnapshot"
+            }
+          }
+        },
+        {
+          "toolCallId": "call_00_msY49myUNyl9cTV5kk3C9797",
+          "toolName": "piora_render_mini_app",
+          "isError": false,
+          "diagnostic": null
+        }
+      ]
+    }
+  ],
+  "desktop": [
+    {
+      "directory": ".verification/desktop-e2e-L3b1XT",
+      "status": "interrupted-unsettled",
+      "cleanupErrors": null,
+      "evidence": {
+        "path": ".verification/desktop-e2e-L3b1XT/recorded-tasks.json",
+        "sha256": "fba0c23b4c93682e55e8e61bd898c2bbd53ff8c9ac1b4f3409a038a6f9926e68"
+      },
+      "rows": [
+        {
+          "id": "shopping-list-1",
+          "status": "running",
+          "reload": "passed",
+          "checkpoints": 1
+        }
+      ],
+      "responses": [
+        {
+          "id": 1,
+          "purpose": "background",
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "status": "failed"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-Ori5cX",
+      "status": "failed",
+      "cleanupErrors": [],
+      "evidence": {
+        "path": ".verification/desktop-e2e-Ori5cX/recorded-tasks.json",
+        "sha256": "03e7a342138e6f8a3fb150afb06bd4813b1cb53d6d01d1292635cc75513e7c90"
+      },
+      "rows": [
+        {
+          "id": "shopping-list-1",
+          "status": "failed",
+          "reload": "passed",
+          "checkpoints": 1,
+          "error": "Real follow-up provider failed; inspect retained status"
+        }
+      ],
+      "responses": [
+        {
+          "id": 1,
+          "purpose": "background",
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "id": 2,
+          "purpose": "follow-up",
+          "status": "failed",
+          "stage": "stream",
+          "errorType": "AbortError",
+          "cancelled": true
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-3Gxxsc",
+      "status": "passed",
+      "cleanupErrors": [],
+      "evidence": {
+        "path": ".verification/desktop-e2e-3Gxxsc/recorded-tasks.json",
+        "sha256": "e57133eb4fa6a12f5d8443e896a059817b346b9ba711403acaa37de2821e4be3"
+      },
+      "rows": [
+        {
+          "id": "shopping-list-1",
+          "status": "completed",
+          "reload": "passed",
+          "checkpoints": 1,
+          "followup": {
+            "prompt": "现在清单里按顺序有哪些东西？哪些已经买了？直接告诉我，不用再做界面。",
+            "answer": "当前清单共 3 项，按顺序是：\n\n| 顺序 | 名称 | 状态 |\n|---|---|---|\n| 1 | 鸡蛋 | 未买 |\n| 2 | 低脂牛奶 | 已买 ✅ |\n| 3 | 苹果 | 未买 |\n\n已买的只有 **低脂牛奶**（已改名），待买 2 项：鸡蛋和苹果。原来的面包已被删除，输入框里还留着「苹果」这个待添加名称。",
+            "semanticReview": "pending-independent-review",
+            "requestIds": [
+              3
+            ]
+          }
+        }
+      ],
+      "responses": [
+        {
+          "id": 1,
+          "purpose": "background",
+          "status": "failed",
+          "stage": "upstream",
+          "errorType": "AbortError",
+          "cancelled": true
+        },
+        {
+          "id": 2,
+          "purpose": "background",
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "id": 3,
+          "purpose": "follow-up",
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ]
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "capabilities": {
+      "passed": 75,
+      "failed": 0,
+      "evidence": {
+        "path": ".verification/mini-app-capabilities-faL1zL/result.json",
+        "sha256": "d96adaaa74c1e63b2916d9353ebafcc43754ad2ecff3487dc280db9e537167d0"
+      }
+    },
+    "relay": {
+      "passed": 4,
+      "failed": 0,
+      "evidence": {
+        "path": ".verification/phase3-repeat-relay-terminal.log",
+        "sha256": "498e03e866399cbb0a565854a8825d51b9f2c4616b280276fda7eb3ba87b2590"
+      }
+    },
+    "typecheck": {
+      "status": "passed",
+      "evidence": {
+        "path": ".verification/phase3-repeat-typecheck-complete.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "lint": {
+      "status": "passed",
+      "files": 27,
+      "evidence": {
+        "path": ".verification/phase3-repeat-lint-complete.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "browserFixture": {
+    "evidence": {
+      "path": ".verification/mini-app-repeat-browser-Rw6jIr/observations.json",
+      "sha256": "cd38fdc9e76068e57cb5d075c3e17496f9327603715d6560ed3ddeb988c5dfd0"
+    },
+    "screenshot": {
+      "path": ".verification/mini-app-repeat-browser-Rw6jIr/edited-reordered.png",
+      "sha256": "050490cc19dbed17572eee93f251615d4f07b28322ae91c3c6084d4e49ff3773"
+    },
+    "scope": "Real renderer/Controller/QuickJS, localStorage checkpoint fixture; production file persistence tested separately"
+  },
+  "failures": {
+    "syntaxRegression": ".verification/mini-app-capabilities-fxDifY/tests.log",
+    "interruption": ".verification/desktop-e2e-L3b1XT/interruption-audit.json",
+    "staleLockOwner": ".verification/desktop-e2e-L3b1XT/stale-lock-owner.json",
+    "falseStreamCancellation": ".verification/desktop-e2e-Ori5cX/recorded-tasks.json"
+  },
+  "independentTaskExpectation": {
+    "order": [
+      "鸡蛋",
+      "低脂牛奶",
+      "苹果"
+    ],
+    "purchased": [
+      false,
+      true,
+      false
+    ],
+    "deleted": "面包",
+    "reload": "preserves saved values, identities and order",
+    "followup": "matches current rows without invoking a new UI"
+  },
+  "semanticReview": {
+    "method": "AI comparison to independent expected UI operations and saved row data",
+    "humanAcceptance": "deferred",
+    "remaining": [
+      "Model still produced a malformed first call",
+      "Generated initial explanation mischaracterizes host persistence",
+      "Adding an item leaves the source text input populated",
+      "Only one real task variant has a complete passing workflow; no generalization claim"
+    ]
+  },
+  "limits": [
+    "Non-nested lists only",
+    "No cross-list drag or virtual scrolling",
+    "No full CI or human semantic acceptance",
+    "No other operating systems or release packages",
+    "Other phase-three tasks and capabilities remain incomplete"
+  ]
+}

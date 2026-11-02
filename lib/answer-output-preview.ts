@@ -1,7 +1,9 @@
+import { answerOutputDescriptor } from "./answer-output-catalog";
+
 /** Transient host output. Never a durable answerOutput or a publication receipt. */
 export interface AnswerOutputPreview {
   version: 1;
-  kind: "intelligent-ui";
+  kind: string;
   sessionId: string;
   runId: string;
   streamId: string;
@@ -25,16 +27,18 @@ const sequence = (value: unknown): value is number => Number.isSafeInteger(value
 
 /** Feature payload validation remains in its lazy renderer; shared chat checks scope. */
 export function readAnswerOutputPreview(value: unknown): AnswerOutputPreview | null {
-  if (!record(value) || value.version !== 1 || value.kind !== "intelligent-ui"
+  if (!record(value) || value.version !== 1 || typeof value.kind !== "string"
     || !identity(value.sessionId) || !identity(value.runId) || !identity(value.streamId) || !identity(value.toolCallId)
     || !sequence(value.seq) || value.seq === 0
     || !["preparing", "partial", "complete", "cleared"].includes(String(value.phase))) return null;
+  const descriptor = answerOutputDescriptor(value.kind);
+  if (!descriptor) return null;
   const hasContent = value.phase === "partial" || value.phase === "complete";
   if (hasContent) {
     if (!record(value.payload) || typeof value.snapshot !== "string" || value.snapshot.length > 128_000) return null;
-    try { if (JSON.stringify(value.payload).length > 64_000) return null; } catch { return null; }
+    try { if (JSON.stringify(value.payload).length > descriptor.previewBytes) return null; } catch { return null; }
   } else if (value.payload !== undefined || value.snapshot !== undefined) return null;
-  return { version: 1, kind: "intelligent-ui", sessionId: value.sessionId, runId: value.runId,
+  return { version: 1, kind: value.kind, sessionId: value.sessionId, runId: value.runId,
     streamId: value.streamId, toolCallId: value.toolCallId, seq: value.seq,
     phase: value.phase as AnswerOutputPreview["phase"],
     ...(hasContent ? { payload: value.payload, snapshot: value.snapshot as string } : {}) };

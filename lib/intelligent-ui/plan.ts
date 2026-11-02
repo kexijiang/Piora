@@ -162,7 +162,7 @@ function parse(inputValue: unknown, fragment = false, separateDerivedIds = false
   preflight(inputValue);
   const value = object(inputValue, "$");
   keys(value, ["planVersion", "id", "title", "inputs", "derived", "views"], "$");
-  requirePlan(value.planVersion === UI_PLAN_VERSION, "PLAN_VERSION", "$.planVersion", "Expected plan version 1", false);
+  requirePlan(value.planVersion === UI_PLAN_VERSION, "PLAN_VERSION", "$.planVersion", "Expected planVersion:1. Resubmit the entire component plan: planVersion,id,title,inputs,derived,views; never submit a partial correction", value.planVersion === undefined || value.planVersion === 2);
   const plan: UiPlanV1 = {
     planVersion: 1, id: id(value.id, "$.id"), title: string(value.title, "$.title", 160, true),
     inputs: array(value.inputs, "$.inputs", 0, limits.inputs).map((value, i) => input(value, `$.inputs[${i}]`)),

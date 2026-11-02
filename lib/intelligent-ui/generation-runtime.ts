@@ -5,6 +5,7 @@ import { isSessionOwnershipError } from "../session-file-ownership";
 import { UiGenerationError, UiGenerationPrototype, type UiGenerationRequestContext, type UiGenerationTurnReceipt } from "./generation-journal";
 import { compileUiPlan, UiPlanError } from "./plan";
 import { compileUiRichPlan } from "./rich-plan";
+import { trialUiInputBoundaries } from "./input-trial";
 import { formatSnapshot, type UiState } from "./surface-document";
 import { UiPreviewRuntime } from "./preview-runtime";
 import type { AnswerOutputPreview, AnswerOutputPreviewSnapshot } from "../answer-output-preview";
@@ -34,6 +35,7 @@ export interface UiGenerationTurnResult {
 }
 interface PendingCandidate {
   operationId: string; toolCallId: string; messageEntryId: string; signal?: AbortSignal;
+  conversion?: boolean;
 }
 export interface UiGenerationRuntimeOptions {
   manager: Manager;
@@ -196,6 +198,14 @@ export class UiGenerationRuntime {
       // switch the contract captured for the originating request.
       const compile = planVersion === 2 ? compileUiRichPlan : compileUiPlan;
       const preview = compile(plan, { revision: 1 });
+      if (preview.conversion) {
+        const { readMiniAppCapabilities } = await import("../mini-app/capability-host");
+        const { hasMiniAppCapability } = await import("../mini-app/capabilities");
+        if (!hasMiniAppCapability(readMiniAppCapabilities(), "outputConversion")) throw new UiGenerationError("UI_PROTOCOL_UNAVAILABLE", "Output conversion is unavailable; preserve the current answer");
+        const { validateAnswerConversionProposal } = await import("../answer-output-conversion-service");
+        await validateAnswerConversionProposal(this.options.manager, this.options.root, preview.conversion, preview.surface.id);
+      }
+      trialUiInputBoundaries(preview.surface);
       const source = this.host.contextForSurface(request.requestId, preview.surface.id);
       // Recompile with the authoritative revision so size checks include it.
       const compiled = source.source.surfaceRevision === 0 ? preview : compile(plan, { revision: source.source.surfaceRevision + 1 });
@@ -205,7 +215,7 @@ export class UiGenerationRuntime {
       this.assertBoundary();
       const candidate = await this.host.createCandidate(request.requestId, toolCallId, compiled);
       this.assertBoundary();
-      this.candidates.set(candidate.operationId, { operationId: candidate.operationId, toolCallId, messageEntryId: candidate.messageEntryId, signal });
+      this.candidates.set(candidate.operationId, { operationId: candidate.operationId, toolCallId, messageEntryId: candidate.messageEntryId, signal, ...(compiled.conversion ? { conversion: true } : {}) });
       const actionFacts = formatUiActionContext(compiled.actions, this.actionPermissionMode());
       return { content: [{ type: "text" as const, text: "Candidate UI awaiting host publication. Do not claim it is saved or published yet.\n" + formatSnapshot(compiled.surface)
         + (actionFacts ? "\n\n" + actionFacts : "") }], details: candidate.details };
@@ -237,6 +247,11 @@ export class UiGenerationRuntime {
           this.operationSignal = candidate.signal;
           this.assertBoundary();
           if (receipt.outcome && receipt.outcome !== "completed") throw unavailable();
+          if (candidate.conversion) {
+            const { readMiniAppCapabilities } = await import("../mini-app/capability-host");
+            const { hasMiniAppCapability } = await import("../mini-app/capabilities");
+            if (!hasMiniAppCapability(readMiniAppCapabilities(), "outputConversion")) throw new UiGenerationError("UI_PROTOCOL_UNAVAILABLE", "Output conversion became unavailable before publication");
+          }
           await this.host!.observePersistedCandidate(candidate.operationId, receipt);
           this.assertBoundary();
           const committed = await this.host!.commitCandidate(candidate.operationId);
@@ -245,7 +260,7 @@ export class UiGenerationRuntime {
           let code = failureCode(error);
           if (code === "MIGRATION_REQUIRED") {
             try {
-              this.assertBoundary(); await this.host!.prepareMigration(candidate.operationId); this.assertBoundary();
+              this.assertBoundary(); await this.host!.stageCandidateConfirmation(candidate.operationId); this.assertBoundary();
               (result.awaitingConfirmation ??= []).push({ operationId: candidate.operationId, toolCallId: candidate.toolCallId });
               continue;
             } catch (migrationError) { code = failureCode(migrationError); }

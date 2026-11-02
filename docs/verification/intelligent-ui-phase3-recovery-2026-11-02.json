@@ -1,0 +1,123 @@
+{
+  "date": "2026-11-02",
+  "phase": "3B/3C",
+  "phaseComplete": false,
+  "branch": "codex/intelligent-ui",
+  "head": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "uncommitted": true,
+  "sourceHashes": {
+    "lib/mini-app/drafts.ts": "a971e457c611d73fc37ee9ee1f218fc3498d13357ba1fae80cb2629783d14025",
+    "lib/mini-app/client-state.ts": "15bd57d856742cc21e4130a0a03083c858a0437bc129df6d33c97c2bca2bec1d",
+    "lib/mini-app/controller.ts": "ecc0942ed6c7eb9dac509689cfe1ac543339d6c9e07f0787ec19fcc3fa8f4e6b",
+    "lib/mini-app/frame-host.ts": "d67b93246b985de7299f83611db3a21cacc546a0986ce261278f78d3b4807f6f",
+    "lib/mini-app/renderer-runtime.ts": "306cfdd527c3435615109569074b9886e4e9a564910e696459c019fbe64a4e5f",
+    "components/mini-app/MiniAppSurface.tsx": "82d0124f03155d2ebba395e42eed6047b82127b1e15ad4dc1091816bdcbaeeaf",
+    "lib/mini-app-client-browser.test.mjs": "7a4b3aa1f4c12892afa326c2871505264a62d0d1a4de5061e13d42a35663c3b8",
+    "lib/mini-app-controller-browser.test.mjs": "1c58c4f5676e8d3b9350406c3ac04897e5b2580f46b024ad045b12bcb97723fd",
+    "lib/mini-app-fixtures.mjs": "4b0325ed13d1efdb2e2e4bf3279cdb7c575fbfd7f0a0fa01de94186c9781705a"
+  },
+  "sourceFingerprint": "699a85ca6598ab010c1c9761d2a3731474f8f6511856ff31f71fcc65b1af9026",
+  "checks": [
+    {
+      "file": ".verification/phase3-recovery-browser-initial.log",
+      "status": "passed",
+      "tests": 15,
+      "scope": "Earlier browser and client checks; lifecycle additions not yet present",
+      "sha256": "7e3904429ce156cf4f1ba20982473371ad1d87709165ffec22dc266e08fff6f7"
+    },
+    {
+      "file": ".verification/phase3-recovery-lifecycle-initial.log",
+      "status": "passed",
+      "tests": 5,
+      "scope": "Initial lifecycle tests before stronger visibility isolation",
+      "sha256": "cff26164c3755f10ec3a73ec76e59d18c35d1efa34f0553e681854e4a5ccc443"
+    },
+    {
+      "file": ".verification/phase3-recovery-integration.log",
+      "status": "failed",
+      "tests": 30,
+      "passed": 28,
+      "failed": 2,
+      "command": "node --test lib/mini-app-controller-browser.test.mjs lib/mini-app-client-browser.test.mjs lib/mini-app-frame.test.mjs lib/mini-app-state.test.mjs lib/mini-app-route.test.mjs",
+      "reason": "One visibility child and its parent failed: the fixture exposed an old snapshot during asynchronous recreation and started overlapping controllers",
+      "sha256": "3f6025259392ecf70186450c788cddd49e40fc19f65b4585e7460579f5080a12"
+    },
+    {
+      "file": ".verification/phase3-recovery-integration-retest.log",
+      "status": "passed",
+      "tests": 30,
+      "command": "node --test lib/mini-app-controller-browser.test.mjs lib/mini-app-client-browser.test.mjs lib/mini-app-frame.test.mjs lib/mini-app-state.test.mjs lib/mini-app-route.test.mjs",
+      "scope": "Browser, production React Surface/API with isolated disk fixtures, controller lifecycle, frame/state/route regressions",
+      "sha256": "37740d710c799a5847880a8b2e3ba21f243c06a636f706c1f3e7cc5a4ae69d01"
+    },
+    {
+      "file": ".verification/phase3-recovery-typecheck-current.log",
+      "status": "passed",
+      "command": "node_modules/.bin/tsc.cmd --noEmit",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": ".verification/phase3-recovery-lint-initial.log",
+      "status": "passed",
+      "command": "node_modules/.bin/eslint.cmd lib/mini-app/drafts.ts lib/mini-app/client-state.ts lib/mini-app/controller.ts lib/mini-app/frame-host.ts lib/mini-app/renderer-runtime.ts components/mini-app/MiniAppSurface.tsx lib/mini-app-client-browser.test.mjs lib/mini-app-controller-browser.test.mjs lib/mini-app-fixtures.mjs",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": ".verification/phase3-recovery-lifecycle-lint-current.log",
+      "status": "passed",
+      "command": "node_modules/.bin/eslint.cmd lib/mini-app-controller-browser.test.mjs",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "evidence": {
+    "drafts": {
+      "currentScope": 45,
+      "otherScope": 2,
+      "visiblePages": [
+        20,
+        40,
+        45
+      ],
+      "recoveredCheckpoint": 45,
+      "recoveredValue": 47,
+      "retainedAfterConfirmation": 44
+    },
+    "restoredInput": {
+      "before": {
+        "x": 77,
+        "held": true,
+        "drag": true,
+        "rng": 123456,
+        "tick": 42
+      },
+      "after": {
+        "x": 77,
+        "held": false,
+        "drag": false,
+        "rng": 123456,
+        "tick": 42
+      },
+      "cleanupMarkedDirty": true
+    },
+    "visibility": "Injected document.hidden and visibilitychange; actual keyboard focus stays inside the frame"
+  },
+  "notRun": [
+    "real model generation",
+    "Electron/desktop window lifecycle",
+    "native OS minimization",
+    "full CI",
+    "human semantic acceptance",
+    "release package",
+    "other platforms"
+  ],
+  "pending": [
+    "capability manifest",
+    "first 8 tasks x 3 complete interaction/recovery/follow-up",
+    "complete recovery matrix",
+    "migration and registered actions",
+    "dynamic lists",
+    "sustained simulation and games",
+    "3D picking/camera/teaching",
+    "full acceptance"
+  ]
+}

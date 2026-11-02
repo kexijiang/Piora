@@ -1,4 +1,5 @@
 import type { AssistantContentBlock, ToolResultMessage } from "./types";
+import { answerOutputToolDescriptor } from "./answer-output-catalog";
 
 /** Host-owned envelope. Payload validation and interaction belong to its renderer. */
 export interface AnswerOutput {
@@ -8,7 +9,6 @@ export interface AnswerOutput {
   payload: unknown;
 }
 
-const ANSWER_TOOL_NAMES = new Set(["piora_render_ui", "piora_render_ui_plan"]);
 const MAX_SNAPSHOT_LENGTH = 128_000;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -17,7 +17,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Names are known before a result arrives, keeping streamed answers out of process folds. */
 export function isAnswerOutputBlock(block: AssistantContentBlock): boolean {
-  return block.type === "toolCall" && ANSWER_TOOL_NAMES.has(block.toolName);
+  return block.type === "toolCall" && !!answerOutputToolDescriptor(block.toolName);
 }
 
 export function readAnswerOutput(details: unknown): AnswerOutput | null {

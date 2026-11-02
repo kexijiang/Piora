@@ -67,6 +67,10 @@ export function inspectActionFile(cwd: string, action: UiAction): UiActionFileEv
 /** The query returns proposed values. Applying them still requires the normal state CAS. */
 export function readActionParameters(cwd: string, action: Extract<UiAction, { kind: "read_json_parameters" }>,
   surface: UiSurface, expected: UiActionFileEvidence): { state: UiState; evidence: UiActionFileEvidence } {
+  return readActionParameterData(cwd, action, expected, parsed => validateState(validateSurface(surface), parsed));
+}
+export function readActionParameterData<T>(cwd: string, action: Extract<UiAction, { kind: "read_json_parameters" }>,
+  expected: UiActionFileEvidence, validate: (parsed: unknown) => T): { state: T; evidence: UiActionFileEvidence } {
   const result = readStable(cwd, action.path);
   assertUiAction(result.bytes && same(result.evidence, expected), "CONFLICT", "Parameter file is missing or changed after review");
   let parsed: unknown;
@@ -76,7 +80,7 @@ export function readActionParameters(cwd: string, action: Extract<UiAction, { ki
     assertUiAction(decoded.status === "complete", "INVALID", "Parameter JSON must be complete, bounded and contain no duplicate keys");
     parsed = decoded.values;
   } catch { throw new UiActionError("INVALID", "Parameter file must contain valid UTF-8 JSON", "parameters_invalid"); }
-  try { return { state: validateState(validateSurface(surface), parsed), evidence: result.evidence }; }
+  try { return { state: validate(parsed), evidence: result.evidence }; }
   catch { throw new UiActionError("INVALID", "JSON must contain exactly the current input IDs and valid values", "parameters_invalid"); }
 }
 

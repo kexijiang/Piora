@@ -8,6 +8,7 @@ import { DraftMigration } from "./DraftMigration";
 import { StructureMigration } from "./StructureMigration";
 import { SurfaceContents } from "./SurfaceContents";
 import { SurfaceActions } from "./SurfaceActions";
+import AnswerConversion from "../AnswerConversion";
 import styles from "./IntelligentUiSurface.module.css";
 
 export interface IntelligentUiSurfaceProps {
@@ -75,7 +76,9 @@ function InteractiveSurface({ store, copy, branchKey }: { store: SurfaceState; c
     <footer className={styles.footer}>
       {unpublished ? <div className={styles.notice}><span role="status" aria-live="polite">{copy[view.status]}</span>{view.hasPendingDraft ? <button type="button" onClick={() => act(store.retainDraft)}>{copy.retain}</button> : view.status === "candidate" ? <button type="button" onClick={() => act(() => store.load(true))}>{copy.refresh}</button> : null}</div> : view.status === "conflict" ? <div role="alert" className={styles.notice}><span>{copy.conflict}</span><div className={styles.actions}><button type="button" onClick={() => act(() => store.resolve(true))}>{copy.keep}</button><button type="button" onClick={() => act(() => store.resolve(false))}>{copy.reload}</button></div></div> : view.status === "error" ? <div role="alert" className={styles.notice}><span>{copy.error}</span><div className={styles.actions}><button type="button" onClick={() => act(store.retry)}>{copy.retry}</button>{view.leafId ? <button type="button" onClick={() => act(() => store.resolve(false))}>{copy.reload}</button> : null}</div></div> : <span role="status" aria-live="polite">{copy[view.status]}</span>}
       {actionError ? <span role="alert">{copy.actionFailed}</span> : null}
-      {view.status === "awaiting_confirmation" ? <StructureMigration key={branchKey} store={store} english={copy === messages.en} /> : null}
+      {view.status === "awaiting_confirmation" ? view.publication?.conversion
+        ? <AnswerConversion key={branchKey} kind="intelligent-ui" sessionId={store.sessionId} toolCallId={store.toolCallId} english={copy === messages.en} />
+        : <StructureMigration key={branchKey} store={store} english={copy === messages.en} /> : null}
       {view.status === "superseded" && view.hasPendingDraft ? <div className={styles.notice}><button type="button" onClick={() => act(() => store.prepareMigration())}>{migrateLabel}</button></div> : null}
       {view.migration ? <DraftMigration key={view.migration.id} review={view.migration} store={store} english={copy === messages.en} /> : null}
       {view.migrationSaved ? <p role="status">{copy === messages.en ? "Selected values are saved in the latest version. The original draft is retained." : "所选参数已保存到新版本，原稿仍在本机保留。"}</p> : null}

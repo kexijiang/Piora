@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 /** A host-owned budget lasts for a PromptRun, including retries and model fallback. */
 export const UI_ADMISSION_DEFAULTS = Object.freeze({ attempts: 3, corrections: 1, windowMs: 60_000 });
+// Covers the largest registered plan; each compiler applies its narrower limits.
+const MAX_ARGUMENT_BYTES = 256 * 1024;
 export interface UiAdmissionResult {
   content: unknown[];
   details?: unknown;
@@ -39,7 +41,7 @@ interface Attempt {
 function failure(code: string, repairable = false, terminate = false): UiAdmissionOutcome {
   return { isError: true, result: {
     content: [{ type: "text", text: `Intelligent UI: ${code}. ${repairable ? "Correct the arguments once using the tool contract." : "Do not retry this UI operation; preserve the existing answer and explain the limitation."}` }],
-    details: { intelligentUiDiagnostic: { code, repairable } }, isError: true,
+    details: { answerOutputDiagnostic: { code, repairable }, intelligentUiDiagnostic: { code, repairable } }, isError: true,
     ...(terminate ? { terminate: true } : {}),
   } };
 }
@@ -51,13 +53,13 @@ function digestCall(call: UiAdmissionCall): string {
   const seen = new Set<object>();
   const hash = createHash("sha256");
   const add = (part: string) => {
-    bytes += part.length;
-    if (bytes > 256_000) throw new Error("UI_INPUT_TOO_LARGE");
+    bytes += Buffer.byteLength(part, "utf8");
+    if (bytes > MAX_ARGUMENT_BYTES) throw new Error("UI_INPUT_TOO_LARGE");
     hash.update(part);
   };
   const visit = (value: unknown, depth: number): void => {
     if (++nodes > 20_000 || depth > 64) throw new Error("UI_INPUT_TOO_LARGE");
-    if (typeof value === "string" && value.length > 256_000) throw new Error("UI_INPUT_TOO_LARGE");
+    if (typeof value === "string" && value.length > MAX_ARGUMENT_BYTES) throw new Error("UI_INPUT_TOO_LARGE");
     if (value === null || typeof value === "boolean" || typeof value === "string" || (typeof value === "number" && Number.isFinite(value))) {
       add(JSON.stringify(value)); return;
     }
@@ -65,28 +67,38 @@ function digestCall(call: UiAdmissionCall): string {
     if (!Array.isArray(value) && Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null) throw new Error("UI_ARGUMENTS_INVALID");
     seen.add(value);
     if (Array.isArray(value)) {
+      if (value.length > 20_000) throw new Error("UI_INPUT_TOO_LARGE");
       add("[");
-      for (const item of value) { visit(item, depth + 1); add(","); }
+      for (let index = 0; index < value.length; index++) {
+        const descriptor = Object.getOwnPropertyDescriptor(value, index);
+        if (!descriptor || !("value" in descriptor)) throw new Error("UI_ARGUMENTS_INVALID");
+        if (index) add(",");
+        visit(descriptor.value, depth + 1);
+      }
       add("]");
     } else {
       add("{");
+      let first = true;
       for (const key of Object.keys(value).sort()) {
         const descriptor = Object.getOwnPropertyDescriptor(value, key);
         if (!descriptor || !("value" in descriptor)) throw new Error("UI_ARGUMENTS_INVALID");
-        add(JSON.stringify(key)); add(":"); visit(descriptor.value, depth + 1); add(",");
+        if (!first) add(",");
+        first = false;
+        add(JSON.stringify(key)); add(":"); visit(descriptor.value, depth + 1);
       }
       add("}");
     }
     seen.delete(value);
   };
-  add(call.name); add("\0"); visit(call.arguments, 0);
+  hash.update(call.name); hash.update("\0"); visit(call.arguments, 0);
   return hash.digest("hex");
 }
 
 function repairable(outcome: UiAdmissionOutcome): boolean {
   const details = outcome.result.details;
   if (!details || typeof details !== "object") return false;
-  const diagnostic = (details as Record<string, unknown>).intelligentUiDiagnostic;
+  const diagnostic = (details as Record<string, unknown>).answerOutputDiagnostic
+    ?? (details as Record<string, unknown>).intelligentUiDiagnostic;
   return !!diagnostic && typeof diagnostic === "object" && (diagnostic as Record<string, unknown>).repairable === true;
 }
 

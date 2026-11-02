@@ -1,5 +1,6 @@
 import type { UiExpression, UiSurface, UiValue } from "./protocol";
 import type { UiActionDeclaration } from "./action-contract";
+import type { AnswerConversionSpec } from "../answer-output-conversion-types";
 
 /** Authoring and persisted surface versions deliberately have separate lifecycles. */
 export const UI_PLAN_VERSION = 1 as const;
@@ -31,7 +32,7 @@ export interface UiPlanV1 {
 export type UiPlanErrorCode =
   | "PLAN_SHAPE" | "PLAN_VERSION" | "PLAN_LIMIT" | "PLAN_ID" | "PLAN_RANGE"
   | "PLAN_REFERENCE" | "PLAN_CYCLE" | "PLAN_TYPE" | "PLAN_ARITY"
-  | "PLAN_COMPLEXITY" | "PLAN_DEFAULT_EVALUATION" | "PLAN_SURFACE";
+  | "PLAN_COMPLEXITY" | "PLAN_DEFAULT_EVALUATION" | "PLAN_INPUT_EVALUATION" | "PLAN_SURFACE";
 export interface UiPlanDiagnostic {
   code: UiPlanErrorCode;
   /** Structural index path only; never includes model-provided identifiers or values. */
@@ -48,6 +49,7 @@ export class UiPlanError extends Error {
   }
 }
 export interface CompiledUiPlan {
+  conversion?: AnswerConversionSpec;
   planVersion: 1;
   compilerVersion: string;
   surface: UiSurface;

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { writePrivateFileAtomicSync } from "./atomic-file";
 import { BETA_FEATURES, DEFAULT_BETA_FEATURES, type BetaFeatures } from "./beta-feature-types";
+import { publishBetaFeatureChange } from "./beta-feature-events";
 
 const configPath = (root: string) => join(root, "piora", "beta-features.json");
 export function readBetaFeatures(root = getAgentDir()): BetaFeatures {
@@ -19,8 +20,10 @@ export function writeBetaFeatures(value: unknown, root = getAgentDir()): BetaFea
     throw new Error("Expected boolean values for the registered beta features");
   }
   const features: BetaFeatures = { intelligentUi: (value as BetaFeatures).intelligentUi };
+  const previous = readBetaFeatures(root);
   const path = configPath(root);
   mkdirSync(dirname(path), { recursive: true });
   writePrivateFileAtomicSync(path, `${JSON.stringify({ version: 1, ...features }, null, 2)}\n`);
+  if (previous.intelligentUi !== features.intelligentUi) publishBetaFeatureChange(root, features);
   return features;
 }

@@ -2,6 +2,8 @@ import { getAgentDir, type SessionManager } from "@earendil-works/pi-coding-agen
 import { readExcludedGenerationOutput, UiGenerationPrototype, type UiGenerationOutput } from "./generation-journal";
 import { branchSurfaces, getSurfaceState, UiStateError, type UiBranchEntry } from "./store";
 import { formatSnapshot, type UiSurface } from "./surface-document";
+import { answerConversionCurrentKind, readAnswerConversionReceipts } from "../answer-output-conversion-receipts";
+import { readAnswerDisk } from "../answer-output-receipts";
 
 type Manager = Pick<SessionManager, "getSessionId" | "getSessionFile" | "getLeafId" | "getBranch" | "getEntry">;
 export type SavedUiOutput = Omit<ReturnType<typeof getSurfaceState>, "surface"> & { surface: UiSurface; publication?: UiGenerationOutput["publication"] | { status: "superseded"; currentToolCallId: string; operationId?: undefined } };
@@ -24,6 +26,11 @@ export async function readUiOutput(manager: Manager, toolCallId: string, options
   const found = branch.find(entry => generationResult(entry)?.toolCallId === toolCallId);
   if (!found) {
     const saved = getSurfaceState(manager.getSessionId(), branch, toolCallId, options.root);
+    const disk = readAnswerDisk(manager.getSessionFile()!, manager.getSessionId());
+    if (answerConversionCurrentKind(disk, selected.getLeafId()!, saved.surface.id) === "mini-app") {
+      const current = readAnswerConversionReceipts(disk, selected.getLeafId()!).filter(item => item.intent.decision === "confirm" && item.intent.target.appId === saved.surface.id).at(-1)!;
+      return { ...saved, publication: { status: "superseded", currentToolCallId: current.intent.target.toolCallId } };
+    }
     const legacy = branchSurfaces(branch), source = legacy.find(item => item.toolCallId === toolCallId)!;
     let latestToolCallId = toolCallId;
     const oldByEntry = new Map(legacy.map(item => [item.entryId, item]));

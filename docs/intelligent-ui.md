@@ -1,5 +1,27 @@
 # Intelligent UI（实验功能）
 
+2026-11-02 三维交互增量：已实现对象拾取、键盘选择、轨道镜头与独立视图状态，保存刷新可恢复；软件 WebGL 浏览器流程、生产文件保存及相关能力检查 83/83 通过，类型与本批 lint 通过。普通新生成仍等待按提交窗口绑定的环境协商，真实模型/原生桌面三维任务尚未验证。见 [协议](intelligent-ui-spatial-interaction.md) / [成果报告](verification/intelligent-ui-phase3-scene-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-scene-2026-11-02.pdf)。第三阶段尚未完成；下文保留历史批次记录。
+
+2026-11-02 动态列表：小程序支持编辑、勾选、增删和调整条目顺序，保存后可恢复并供模型解释当前清单。宿主维护行身份、焦点和输入确认，不通过重新生成 HTML 更新列表。见 [使用与协议](intelligent-ui-dynamic-lists.md) / [本批成果](verification/intelligent-ui-phase3-repeat-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-repeat-2026-11-02.pdf)。真实模型首试仍可能失败，第三阶段继续开发。
+
+2026-11-02 最新进展：原始生成界面的桌面复测发现并修复冷恢复投影超时；新离散程序发布前最多试运行 32 步，报告后续状态越界。六份计算组件完成操作、保存、刷新和真实追问，两份排序在修复后完成推进与恢复；第三份排序保留原有声明错误，未算通过。文字与图形语义仍有缺陷，详见 [本批报告](verification/intelligent-ui-phase3-recorded-desktop-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-recorded-desktop-2026-11-02.pdf)。第三阶段尚未完成，以下为各批历史进展。
+
+2026-11-02：小程序生成现在按当前能力及验证范围开放；提示与接纳使用同一状态，尚未实现的动作不进入执行，历史小程序仍可读取。当前文档、事件、播放、SVG 和 Canvas 已有对应证据，基础三维等待渲染端环境协商。验证范围见 [成果报告](verification/intelligent-ui-phase3-capabilities-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-capabilities-2026-11-02.pdf)，第三阶段继续开发。
+
+2026-11-02：小程序恢复区支持继续读取首批 20 条以外的检查点、刷新和读取重试；失焦与恢复会释放旧按键/拖动，停止前保留一致检查点。相关 30/30、类型检查及 lint 通过，范围和未覆盖项见 [本批报告](verification/intelligent-ui-phase3-recovery-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-recovery-2026-11-02.pdf)。第三阶段仍在开发。
+
+当前方案：[第三阶段 v3.8](intelligent-ui-phase3-design-v3.8.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-design-v3.8.pdf)。结合 OpenIntelligentUI 与已落地的能力清单，明确按窗口协商三维环境、动态列表与视图状态协议，以及修订和动作的接入边界。下一批先完成原始生成任务的操作、结果、保存、刷新与真实追问。2026-11-02 本次仅修订方案和检查 PDF；历史报告保留各自验证范围，第三阶段尚未完成。
+
+2026-10-31 最新进展：完整工具示例、顶层只读常量、多问题诊断与生成前输入边界检查已实现。相同 24 次真实模型复测中，UI 首试发布由 7/18 增至 13/18，最终发布由 14/18 增至 18/18；6 次文字/澄清请求均未调用 UI。六份组件匹配指定数值轨迹，一份真实排序程序通过六步浏览器核对；完整逐样本操作、保存和追问仍待完成。相关回归、类型检查及 lint 通过，详见 [本批报告](verification/intelligent-ui-phase3-contract-2026-10-31.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-contract-2026-10-31.pdf)。第三阶段尚未完成。
+
+此前基线进展（2026-10-31）：首批 8 个自然表达任务各运行 3 次，共 24 次固定版本真实模型记录。18 次 UI 请求首试发布 7 次、最终发布 14 次；6 次文字/澄清请求未调用 UI。组件边界检查发现 0 输入除零，完整交互与恢复尚未验证。后续依据更新为 [第三阶段方案 v3.6](intelligent-ui-phase3-design-v3.6.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-design-v3.6.pdf)，优先完整协议示例、共性诊断与边界验证；详见 [本批报告](verification/intelligent-ui-phase3-first-tasks-2026-10-31.md)。第三阶段尚未完成。
+
+此前推进契约进展（2026-10-31）：新程序已统一离散按钮、宿主单步与播放，完成后停止；仅响应操作的工具隐藏播放控件，历史程序保持原语义。相关 75/75、类型检查和 lint 通过，固定模型 Windows 桌面 11 步通过；真实模型排序一次生成及六步独立核对通过。见 [推进契约报告](verification/intelligent-ui-phase3-playback-2026-10-31.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-playback-2026-10-31.pdf)。该报告形成时首批重复任务尚待开展；完整第三阶段仍未完成。
+
+此前外观进展（2026-10-31）：小程序已同步主题与字号，实际 SDK 公共策略去重断言、27 项相关检查及固定模型桌面流程通过；真实模型生成的排序已核对六步，宿主单步语义仍待完善。见 [本批报告](verification/intelligent-ui-phase3-appearance-2026-10-31.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-appearance-2026-10-31.pdf)。第三阶段仍在开发。
+
+2026-10-31：第三阶段小程序工具与聊天适配已接通，真实 SDK 和 Windows 开发桌面的固定模型流程已验证生成、操作、保存、刷新、追问及 Beta 恢复；真实模型与复杂任务尚待验证。见 [聊天接入报告](verification/intelligent-ui-phase3-chat-2026-10-31.md) 及 [第三阶段实施进展](intelligent-ui-phase3-progress.md)。实施依据为 [第三阶段设计 v3.6](intelligent-ui-phase3-design-v3.6.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-design-v3.6.pdf)，保留既定全部范围和历史成果快照。
+
 状态：第一阶段已由用户实测；第二阶段功能开发完成，尚未发布，对应 [需求 #235](https://github.com/kexijiang/Piora/issues/235)。第二阶段改进自然表达的触发判断与生成稳定性，增加布局、预览、迁移和登记动作。完整交付分为三个阶段，当前证据与限制见 [第二阶段开发完成报告](verification/intelligent-ui-phase2-completion-2026-10-30.md)。人工验收与 CI 按用户要求留到三个阶段开发完成后。
 
 提交基线已同步至 `upstream/main` 的 `4ba01185`（`0.5.5-beta.59`），并保留运行中引导与排队的参数保存顺序。体验入口与逐步操作见 [第一阶段手测指南](intelligent-ui-testing.md)；此前阶段报告与验证记录保留为历史快照。

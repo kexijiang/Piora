@@ -83,6 +83,10 @@ export async function sendAgentCommand<T = unknown>(
     controller.abort(new AgentCommandError("Command acknowledgement timed out", 0, "COMMAND_TIMEOUT"));
   }, options.timeoutMs);
   try {
+    if ((command.type === "prompt" || command.type === "submit_input") && typeof command.idempotencyKey === "string") {
+      await (await import("./answer-output-client")).prepareAnswerOutputSubmission(sessionId, command.idempotencyKey);
+      controller.signal.throwIfAborted();
+    }
     const res = await fetch(`/api/agent/${encodeURIComponent(sessionId)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
