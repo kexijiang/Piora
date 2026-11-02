@@ -5,7 +5,6 @@ import { getBase64DecodedByteLength, MAX_ATTACHED_IMAGE_BYTES } from "./image-at
 export const MODEL_IMAGE_MAX_EDGE = 1568;
 export const MODEL_IMAGE_MAX_BYTES = 3 * 1024 * 1024;
 export const MODEL_IMAGE_TOTAL_BYTES = 12 * 1024 * 1024;
-export const MODEL_IMAGE_MAX_COUNT = 20;
 type ImageBlock = { type: "image"; data: string; mimeType: string; [key: string]: unknown };
 type PreparedImage = { image: ImageBlock; note?: string };
 export type ModelImageCache = WeakMap<object, { maxBytes: number; value: Promise<PreparedImage> }>;
@@ -50,7 +49,8 @@ export async function prepareModelImageContext<T>(messages: readonly T[], signal
   });
   const count = contents.reduce((total, content) => total + (content?.filter(block => block?.type === "image").length ?? 0), 0);
   if (!count) return [...messages];
-  if (count > MODEL_IMAGE_MAX_COUNT) throw new Error(`本轮图片超过 ${MODEL_IMAGE_MAX_COUNT} 张，请分批处理或开始新一轮提问。`);
+  // Providers have different count limits. Bound transport bytes without imposing
+  // an arbitrary global count cap on user attachments or tool-loop images.
   const maxBytes = Math.min(MODEL_IMAGE_MAX_BYTES, Math.floor(MODEL_IMAGE_TOTAL_BYTES / count));
   const result: T[] = [];
   let imageIndex = 0;
