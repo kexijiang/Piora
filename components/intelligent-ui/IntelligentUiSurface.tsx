@@ -20,6 +20,7 @@ export interface IntelligentUiSurfaceProps {
   branchKey?: string;
   readOnly?: boolean;
   envelopeVersion?: number;
+  interactionPaused?: boolean;
 }
 
 const baseMessages = {

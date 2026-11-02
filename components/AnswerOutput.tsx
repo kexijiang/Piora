@@ -5,7 +5,7 @@ import { useBetaFeatures } from "@/hooks/useBetaFeatures";
 import { useI18n } from "@/hooks/useI18n";
 import { answerOutputSnapshot, readAnswerOutput } from "@/lib/answer-output";
 import type { ToolResultMessage } from "@/lib/types";
-import { AnswerOutputPreviews, AnswerOutputScope } from "./AnswerOutputScope";
+import { AnswerOutputInteractionPaused, AnswerOutputPreviews, AnswerOutputScope } from "./AnswerOutputScope";
 import { answerOutputDescriptor } from "@/lib/answer-output-catalog";
 import { answerOutputRenderer } from "./answer-output-renderers";
 
@@ -46,6 +46,7 @@ function SavedAnswerSnapshot({ kind, snapshot, sessionId, toolCallId }: { kind: 
 /** Chat knows only the envelope and fallback; feature code owns its state and controls. */
 export function AnswerOutput({ result, toolCallId, sessionId, entryId, readOnly = false, generating = false }: Props) {
   const branch = useContext(AnswerOutputScope);
+  const interactionPaused = useContext(AnswerOutputInteractionPaused);
   const previews = useContext(AnswerOutputPreviews);
   const { features, loading } = useBetaFeatures();
   const { t } = useI18n();
@@ -72,8 +73,13 @@ export function AnswerOutput({ result, toolCallId, sessionId, entryId, readOnly 
   const Surface = renderer.Surface;
   return <AnswerOutputBoundary key={`${toolCallId}:${branch}:${output.kind}:${output.version}:${snapshot}`} fallback={fallback}>
     <Suspense fallback={fallback}>
-      <Surface payload={output.payload} snapshot={snapshot} sessionId={sessionId} toolCallId={toolCallId}
-        entryId={entryId} branchKey={branch ?? undefined} envelopeVersion={output.version} readOnly={Boolean(result?.isStreaming)} />
+      <div data-answer-output-interaction-paused={interactionPaused || undefined} aria-busy={interactionPaused}>
+        <div inert={interactionPaused}>
+          <Surface payload={output.payload} snapshot={snapshot} sessionId={sessionId} toolCallId={toolCallId}
+            entryId={entryId} branchKey={branch ?? undefined} envelopeVersion={output.version} readOnly={Boolean(result?.isStreaming)} interactionPaused={interactionPaused} />
+        </div>
+        {interactionPaused && <p role="status" style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "6px 12px" }}>{t("answerOutput.waitForConversation")}</p>}
+      </div>
     </Suspense>
   </AnswerOutputBoundary>;
 }

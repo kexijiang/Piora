@@ -101,18 +101,36 @@ export const intelligentUiSessionLifecycle={
       await fault(false);await retry(12);
       const downloads=join(directory,'downloads');await mkdir(downloads);
       const cdp=await page.context().newCDPSession(page);
-      try{await cdp.send('Browser.setDownloadBehavior',{behavior:'allow',downloadPath:downloads,eventsEnabled:true});
+      const downloadEvents=[];
+      const onDownload=download=>downloadEvents.push({filename:download.suggestedFilename()});
+      page.on('download',onDownload);
+      await page.evaluate(()=>{
+        window.__lifecycleDownloads=[];
+        const create=URL.createObjectURL,click=HTMLAnchorElement.prototype.click;
+        URL.createObjectURL=function(blob){window.__lifecycleDownloads.push({kind:'blob',bytes:blob.size,type:blob.type});return create.call(this,blob);};
+        HTMLAnchorElement.prototype.click=function(){if(this.download)window.__lifecycleDownloads.push({kind:'anchor',filename:this.download,scheme:new URL(this.href).protocol});return click.call(this);};
+      });
+      // Electron partitions appear in Target metadata but are not necessarily
+      // Browser-domain contexts. Configure the actual page's download manager.
+      try{await cdp.send('Page.setDownloadBehavior',{behavior:'allow',downloadPath:downloads});
         await openExport();await waitUntil(()=>exports.length===1,'HTML export response');assert.equal(exports[0].status,200);
-        assert.match(exports[0].html,/Current branch snapshot; interactive controls require Piora/);assert.match(exports[0].html,/Count: 12/);
         const file=join(downloads,`piora-history-${fork}.html`);
-        await waitUntil(async()=>{try{return (await readFile(file,'utf8')).includes('Count: 12');}catch{return false;}},'downloaded HTML contains confirmed state');
-      }finally{await cdp.detach();}
+        await waitUntil(async()=>{try{await readFile(file);return true;}catch{return false;}},'HTML download completes');
+        // The delivered file is the user-visible export. CDP may report an
+        // empty response body for attachment transfers; never infer success
+        // from the HTTP status or relax the content checks on that account.
+        const html=await readFile(file,'utf8');
+        assert.match(html,/Current branch snapshot; interactive controls require Piora/);assert.match(html,/Count: 12/);
+      }finally{await writeFile(join(directory,'download-observation.json'),JSON.stringify({scope:'page',downloadEvents,renderer:await page.evaluate(()=>window.__lifecycleDownloads),exportResponses:exports.map(({html,...response})=>({...response,bytes:Buffer.byteLength(html)}))},null,2));page.off('download',onDownload);await cdp.detach();}
       assert.equal((await output(fork)).result.snapshot.state.count,12);await back();await count(12);await screenshot('lifecycle-exported.png');
     });
     const trashCopy=async()=>{await menu('Lifecycle copy',/^(Delete|删除)$/);const dialog=page.getByRole('dialog',{name:/^(Move conversation to recycle bin\?|移入回收站？)$/});await dialog.getByRole('button',{name:/^(Delete|删除)$/}).click();};
     await step('failed-descendant-save-blocks-subtree-trash',async()=>{
       await fault(true);await frame.getByLabel('Starting value').fill('13');await count(13);await trashCopy();
-      await row('Lifecycle copy').getByRole('alert').waitFor();assert.equal(deletions.length,0);assert.equal((await output(fork)).result.snapshot.state.count,12);await retained(13);
+      await row('Lifecycle copy').getByRole('alert').waitFor();assert.equal(deletions.length,0);assert.equal((await output(fork)).result.snapshot.state.count,12);
+      // Opening the parent's context menu selects it. Return to the affected
+      // child through the UI to inspect its retained, still-unsaved checkpoint.
+      await row('Lifecycle fork').click();await waitUntil(()=>current()===fork,'retained child selected');await retained(13);
     });
     await step('trash-retry-preserves-descendant',async()=>{
       await fault(false);await retry(13);await trashCopy();await waitUntil(()=>deletions.length===1,'subtree deletion acknowledged');assert.equal(deletions[0].status,200);
@@ -131,6 +149,8 @@ export const intelligentUiSessionLifecycle={
       await row('Lifecycle fork').click();await waitUntil(()=>current()===fork,'restored fork selected');await count(13);
       await reload();await count(13);await frame.getByRole('button',{name:'Add one'}).click();await count(14);await save();
       await send();await page.getByText('Recovery fixture observed: Count: 14',{exact:true}).waitFor();
+      await waitUntil(async()=>await page.locator('[data-answer-output-interaction-paused]').count()===0,'final reply and output state settled');
+      await count(14);await saved();
       const states=await record('restored-and-continued',[original,duplicate,fork]);
       assert.equal(states[original].result.snapshot.state.count,10);assert.equal(states[duplicate].result.snapshot.state.count,12);assert.equal(states[fork].result.snapshot.state.count,14);
       assert.deepEqual(errors,[]);await screenshot('lifecycle-restored.png');

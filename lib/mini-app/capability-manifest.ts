@@ -2,6 +2,7 @@ import { MINI_APP_LIMITS } from "./limits";
 
 export const MINI_APP_CAPABILITY_MANIFEST_VERSION = 1;
 const common = ["lib/mini-app/capability-manifest.ts", "lib/mini-app/capabilities.ts", "lib/mini-app/capability-host.ts",
+  "components/AnswerOutput.tsx", "components/AnswerOutputScope.tsx",
   "lib/answer-output-conversion-types.ts", "lib/answer-output-conversion-schema.ts", "lib/answer-output-conversion-data.ts",
   "lib/answer-output-conversion-receipts.ts", "lib/answer-output-conversion-service.ts", "components/AnswerConversion.tsx",
   "app/api/sessions/[id]/answer-output/conversion/route.ts", "lib/intelligent-ui/generation-journal.ts", "lib/intelligent-ui/generation-runtime.ts",

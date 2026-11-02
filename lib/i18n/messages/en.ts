@@ -27,6 +27,7 @@ export const enLocale: LocalePlugin = {
     "beta.saved": "Preference saved. The next agent run will use this setting.",
     "beta.disableKeepDraft": "Turn off and retain unsaved parameters on this device",
     "answerOutput.preparing": "Generating interactive view…",
+    "answerOutput.waitForConversation": "Controls will be available when this reply and its saved state are ready.",
     "answerOutput.unavailable": "No saved view is available",
     "answerOutput.failed": "The interactive view is unavailable. Saved content follows.",
     "permission.label": "Tool permissions",

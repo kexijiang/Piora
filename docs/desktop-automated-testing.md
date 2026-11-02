@@ -126,9 +126,11 @@ node --test lib/desktop-e2e.test.mjs
 
 ### 会话复制、导出与回收站组合（开发中）
 
+2026-11-03 后续修复通过公共回答上下文协调生成及历史/状态同步期间的操作，保留界面与草稿，并暂停自动播放。生命周期场景最终 RV39D2 完成 11 步，包含最终追问完全收尾；修订与恢复场景 lJHHGD 完成 10 步。复测与失败记录见[对话边界报告](verification/intelligent-ui-phase3-conversation-boundary-2026-11-03.md)。Electron 的持久分区不能直接使用 Target 返回的 context ID 配置 Browser 下载行为；本场景使用 Page.setDownloadBehavior 指向隔离目录，并核对实际 HTML 文件的静态说明和确认值。CDP response.text() 在本机返回空内容，不用它代替真实文件检查。右键父会话会选中父会话，核对子会话保留草稿前需通过 UI 切回子会话。
+
 `npm run test:desktop:e2e -- --scenario intelligent-ui-session-lifecycle` 复用独立开发桌面和确定性本地模型，通过真实 UI 串联复制、消息内分叉、历史 HTML 下载、子树回收与恢复。发送前返回 503 的传输夹具检查保存失败是否阻止后续操作，接口读取仅核对结果；保存失败后应验证保留的静态检查点，不应假定 iframe 仍可操作。HTML 下载通过 CDP 定向到隔离目录，不覆盖原生保存对话框。
 
-2026-11-03 最新运行 `.verification/desktop-e2e-me9R4C` 在追问后的保存收到 409，并因等待已保存超时失败；后续分叉、下载、回收与恢复没有执行。此前一轮曾执行分叉隔离及阻止导出，但实际下载返回 500；模块加载已调整，尚未通过完整桌面复测。所有失败与范围见[会话生命周期报告](verification/intelligent-ui-phase3-session-lifecycle-2026-11-03.md)，不能把场景的 coverage 声明当作通过记录。历史原始报告误继承其他场景的 transport 说明，本场景报告说明已修正，旧结果不覆盖。
+2026-11-03 修复前运行 `.verification/desktop-e2e-me9R4C` 在追问后的保存收到 409，并因等待已保存超时失败；后续分叉、下载、回收与恢复没有执行。更早一轮曾执行分叉隔离及阻止导出，但实际下载返回 500；当时模块加载已调整，尚未通过完整桌面复测。所有历史失败与范围见[会话生命周期报告](verification/intelligent-ui-phase3-session-lifecycle-2026-11-03.md)，本批完整复测见上段，不能把场景的 coverage 声明当作通过记录。历史原始报告误继承其他场景的 transport 说明，本场景报告说明已修正，旧结果不覆盖。
 
 ### 原生窗口恢复场景（开发中）
 

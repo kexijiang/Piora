@@ -16,6 +16,7 @@ import MiniAppActions from "./MiniAppActions";
 interface Props {
   payload: unknown; snapshot: string; sessionId?: string; toolCallId: string;
   entryId?: string; branchKey?: string; envelopeVersion?: number; readOnly?: boolean;
+  interactionPaused?: boolean;
 }
 const empty: MiniAppClientView = { status: "loading", drafts: [], needsRecovery: false };
 const noSubscribe = () => () => {};
@@ -29,7 +30,7 @@ const copy = {
     play: "播放", pause: "暂停并保存", step: "单步", reset: "复位", stop: "停止", resume: "从检查点恢复", save: "保存", retry: "重试", useSaved: "保留本机草稿并使用已保存状态", refresh: "刷新发布状态", export: "另存检查点", recover: "恢复这份检查点", recovery: "有本机检查点需要核对", recoveryHint: "可以恢复检查点，也可以先保留它并继续使用已保存状态。", retained: "保留的本机检查点", paused: "已暂停", ready: "已就绪", finished: "已完成", playing: "正在播放", stopped: "已停止", pending: "正在等待发布确认", aborted: "此版本未发布", superseded: "已有新版本，此版本仅供查看", review: "此变更需要确认", unavailable: "交互界面暂不可用", failure: "操作未完成，检查点仍已保留。", summary: "当前结果" },
 };
 
-function ConnectedSurface({ sessionId, toolCallId, payload, branchKey, snapshot }: Props & { sessionId: string }) {
+function ConnectedSurface({ sessionId, toolCallId, payload, branchKey, snapshot, interactionPaused }: Props & { sessionId: string }) {
   const { locale } = useI18n(), text = copy[locale === "en" ? "en" : "zh-CN"];
   const { operationId, planDigest, revision, runtimeVersion } = miniAppEnvelopeIdentity(payload);
   const container = useRef<HTMLDivElement>(null), controller = useRef<MiniAppController | undefined>(undefined), execution = useRef<AbortController | undefined>(undefined);
@@ -43,6 +44,10 @@ function ConnectedSurface({ sessionId, toolCallId, payload, branchKey, snapshot 
   const playable = !!view.output && miniAppPlaybackMode(view.output.plan) !== "none";
   const finished = view.current?.frame.playback?.finished === true;
   const usable = !!view.output?.writable && publication === "committed" && !view.needsRecovery && view.status !== "error" && view.status !== "conflict";
+
+  // The generic host keeps controls inert until history and state settle.
+  // Stop autonomous advancement too; retaining the runtime preserves its draft.
+  useEffect(() => { if (interactionPaused) controller.current?.pause(); }, [interactionPaused]);
 
   useEffect(() => {
     const lease = acquireMiniAppClient(sessionId, toolCallId, { operationId, planDigest, revision, runtimeVersion }, branchKey ?? "", () => { execution.current?.abort(); controller.current?.stop(); });

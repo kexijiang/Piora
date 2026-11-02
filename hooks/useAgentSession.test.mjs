@@ -367,6 +367,21 @@ test("settled outputs refresh once after history and ignore superseded runs or s
   });
 });
 
+test("settlement keeps output interactions paused through delayed history and state refresh", async () => {
+  const h = promptSettlementHarness(), flags = [];
+  let historyReady, stateReady;
+  h.env.setReplyHistorySettling = value => flags.push(value);
+  h.env.loadSession = () => new Promise(resolve => { historyReady = resolve; });
+  h.env.refreshAnswerState = () => new Promise(resolve => { stateReady = resolve; });
+  const pending = h.finishPromptWithoutStream("session-a", 1);
+  assert.equal(h.env.agentRunningRef.current, false, "The visible model run may already be over");
+  assert.deepEqual(flags, [true]);
+  historyReady(); await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(flags, [true], "History readiness alone cannot enable output controls");
+  stateReady(); await pending;
+  assert.deepEqual(flags, [true, false]);
+});
+
 test("reconciliation keeps SSE open while server runtime is running after the model ends, then closes once at idle", async () => {
   const h = promptSettlementHarness();
   await h.reconcileAgentState("session-a");

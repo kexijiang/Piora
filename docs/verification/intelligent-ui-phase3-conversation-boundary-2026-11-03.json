@@ -1,0 +1,1052 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "baseCommit": "87ea6d988d7f5d69740a9645f906fc6075a414ad",
+  "phaseComplete": false,
+  "change": "Generic conversation interaction pause retains mounted outputs, pauses autonomous playback, and waits for history plus output refresh before allowing new edits. Server branch and revision checks are unchanged.",
+  "sources": {
+    "components/AnswerOutput.tsx": "fbdc8b1c93cd0340445a1a9dd421525e0ceff097bd8ae14306aeb26ebe38ffa3",
+    "components/AnswerOutputScope.tsx": "ac6dd9b8c059e0d8ed620c167ee12afbbcb298f6f48128dca297d87bf264562f",
+    "components/ChatWindow.tsx": "e0af0d9a1ca0b4d3d4883850eced1a8b2dbc90d556d4e637ee48cf4240dcc540",
+    "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
+    "components/mini-app/MiniAppSurface.tsx": "1e2a81df79b442707e8980e58b2540672f958d7423d571b4f7f87dfcb09a1317",
+    "hooks/useAgentSession.test.mjs": "ce610ad47c91aa29774712b1c14fc51dcb13ad05928cbd373fce6da69ad5416c",
+    "lib/i18n/messages/en.ts": "0c9ca2030ef0c79c7316416cced118e95e8d752f2e6bf9ed6981a2544559fe58",
+    "lib/i18n/messages/zh-CN.ts": "d147b679cf79449a7d8d5d8988671d746ce64e2f140a219e31d5d9ee5dd66c15",
+    "lib/mini-app-client-browser.test.mjs": "b8414a28dc3f266d37e1a7378364e46f6aaab65cd250556f4310f91ee84a15a5",
+    "lib/mini-app/capability-evidence.json": "34a7dd6bf9930522573d96a9a386f3459bfa6b1b5eb24ed9407065f8790bc6cf",
+    "lib/mini-app/capability-manifest.ts": "7b564b02a8a2430d60a1f2b92330caaf1dcbf7656272064af908e7156170be1e",
+    "scripts/desktop-e2e/scenarios/intelligent-ui-session-lifecycle.mjs": "65a8885f9d0306678c257f035c9ad811b4df7e8d25769aeb0721fe7422542e98"
+  },
+  "checks": {
+    "browser": {
+      "path": ".verification/phase3-conversation-boundary-browser-first.log",
+      "sha256": "bd7f68f1f195b51e1923aac01e6486599fe21a1cd65081181df311ad3004b44c",
+      "tests": 19,
+      "passed": 19,
+      "failed": 0,
+      "cancelled": 0
+    },
+    "selectedHook": {
+      "path": ".verification/phase3-conversation-boundary-hook.log",
+      "sha256": "0e49668f06532410c3db0f1fd292bca00b26f1320c51570a358f5446a86594e9",
+      "tests": 5,
+      "passed": 5,
+      "failed": 0,
+      "cancelled": 0
+    },
+    "capabilities": {
+      "path": ".verification/mini-app-capabilities-psVVz6/tests.log",
+      "sha256": "e807570ca0e4ef1524419fcac26bb9513e03ddcd9907423b3a6786283fc53afe",
+      "tests": 517,
+      "passed": 517,
+      "failed": 0,
+      "cancelled": 0,
+      "record": {
+        "path": ".verification/mini-app-capabilities-psVVz6/result.json",
+        "sha256": "86e54921efcdbb0b7e9a8371540c048b7f389c4629db2fada2805db7fb7f72fe"
+      },
+      "sourcesVerified": 168,
+      "capabilities": 14,
+      "scope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+    },
+    "typecheck": {
+      "exitCode": 0,
+      "log": {
+        "path": ".verification/phase3-conversation-boundary-typecheck-final.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "lint": {
+      "exitCode": 0,
+      "log": {
+        "path": ".verification/phase3-conversation-boundary-lint.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "scenario": {
+        "path": ".verification/phase3-conversation-boundary-scenario-lint.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "attempts": [
+    {
+      "directory": ".verification/desktop-e2e-EMhq4P",
+      "result": {
+        "path": ".verification/desktop-e2e-EMhq4P/result.json",
+        "sha256": "1adf86b56dd3939458480845a471c8c0b459e34f83dbd86b4f04f7c524b78ce2"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-EMhq4P/desktop.log",
+        "sha256": "d2fcee5226c72f7e510a4470097122a3b9e13ba45cccba1025e5a61268ba5cdc"
+      },
+      "status": "failed",
+      "scenario": "intelligent-ui-session-lifecycle",
+      "failedStep": "export-confirms-state-and-static-scope",
+      "error": {
+        "name": "AssertionError",
+        "message": "The input did not match the regular expression /Current branch snapshot; interactive controls require Piora/. Input:\n\n''\n"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "install-save-failure-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-copy",
+          "status": "passed"
+        },
+        {
+          "name": "copy-retries-pending-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "fork-keeps-branch-visible-state",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-export",
+          "status": "passed"
+        },
+        {
+          "name": "export-confirms-state-and-static-scope",
+          "status": "failed"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "checkpoints": {
+        "path": ".verification/desktop-e2e-EMhq4P/session-lifecycle-checkpoints.json",
+        "sha256": "2fd84250e315afa170bb437a4e09f532aabcb9824162e8b43ddb508bb0302f5e"
+      },
+      "observations": [
+        {
+          "label": "copied-current-state",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 10,
+              "stateRevision": 2
+            }
+          ]
+        },
+        {
+          "label": "independent-fork",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 11,
+              "stateRevision": 3
+            }
+          ]
+        }
+      ],
+      "downloads": [],
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-EMhq4P/failure.png",
+          "sha256": "b8503b5c501ab1dd2c5d52685484b169b0522f066e55941cae18b249cb943765"
+        },
+        {
+          "path": ".verification/desktop-e2e-EMhq4P/lifecycle-copy-blocked.png",
+          "sha256": "7775eaf84ef5b7c880adb2052a5707abe2e53801ce700c1a9c9b052ae3175f71"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-nJGjKx",
+      "result": {
+        "path": ".verification/desktop-e2e-nJGjKx/result.json",
+        "sha256": "5a21607d4b298433855f5577ff658c0e9730f5153a0e86797b89d97a0fb1145b"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-nJGjKx/desktop.log",
+        "sha256": "42119ebdc2355e0d6d35bd16275e4bad15f3ffeabbba3bca3caacd59c9b879e4"
+      },
+      "status": "failed",
+      "scenario": "intelligent-ui-session-lifecycle",
+      "failedStep": "export-confirms-state-and-static-scope",
+      "error": {
+        "name": "Error",
+        "message": "Timed out waiting for HTML download completes"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "install-save-failure-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-copy",
+          "status": "passed"
+        },
+        {
+          "name": "copy-retries-pending-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "fork-keeps-branch-visible-state",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-export",
+          "status": "passed"
+        },
+        {
+          "name": "export-confirms-state-and-static-scope",
+          "status": "failed"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "checkpoints": {
+        "path": ".verification/desktop-e2e-nJGjKx/session-lifecycle-checkpoints.json",
+        "sha256": "56b9df8bbd5d7dc966be706024d4a9a848c5d52172b18240618c83e31af6dfc7"
+      },
+      "observations": [
+        {
+          "label": "copied-current-state",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 10,
+              "stateRevision": 2
+            }
+          ]
+        },
+        {
+          "label": "independent-fork",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 11,
+              "stateRevision": 3
+            }
+          ]
+        }
+      ],
+      "downloads": [],
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-nJGjKx/failure.png",
+          "sha256": "ee5a6f19971993b2cab766d99d06638ec7620fd2cbbd63c4ea2f8242ce6ec63a"
+        },
+        {
+          "path": ".verification/desktop-e2e-nJGjKx/lifecycle-copy-blocked.png",
+          "sha256": "728f717aa00fb4dd72b9177a56d3978af3d3e72b031b94d0fa3b5aca2b5185cd"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-RTq7eL",
+      "result": {
+        "path": ".verification/desktop-e2e-RTq7eL/result.json",
+        "sha256": "076cda2b3a3898cbbe35e47fb5689bcb0bb84562658d9ed0014fb3d7b8399940"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-RTq7eL/desktop.log",
+        "sha256": "1085e3fbc9c0a2b03beefffa8f6a7eb39f66b7a68ea33a4dcad3330a54c0def7"
+      },
+      "status": "failed",
+      "scenario": "intelligent-ui-session-lifecycle",
+      "failedStep": "export-confirms-state-and-static-scope",
+      "error": {
+        "name": "Error",
+        "message": "cdpSession.send: Protocol error (Browser.setDownloadBehavior): Failed to find browser context for id D7B920786B3AC82BF9BBF3E10AD3B743"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "install-save-failure-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-copy",
+          "status": "passed"
+        },
+        {
+          "name": "copy-retries-pending-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "fork-keeps-branch-visible-state",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-export",
+          "status": "passed"
+        },
+        {
+          "name": "export-confirms-state-and-static-scope",
+          "status": "failed"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "checkpoints": {
+        "path": ".verification/desktop-e2e-RTq7eL/session-lifecycle-checkpoints.json",
+        "sha256": "997682f2fe1f84cc5922d074180f03b89d3fc839751c87c811bd549aaf3bbec5"
+      },
+      "observations": [
+        {
+          "label": "copied-current-state",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 10,
+              "stateRevision": 2
+            }
+          ]
+        },
+        {
+          "label": "independent-fork",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 11,
+              "stateRevision": 3
+            }
+          ]
+        }
+      ],
+      "downloads": [],
+      "downloadObservation": {
+        "scopedToBrowserContext": true,
+        "downloadEvents": [],
+        "exportResponses": []
+      },
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-RTq7eL/failure.png",
+          "sha256": "f70386da79ffb289815cf9fb5ef1a797f582dc5d02248dbb4713e221f4763ab5"
+        },
+        {
+          "path": ".verification/desktop-e2e-RTq7eL/lifecycle-copy-blocked.png",
+          "sha256": "0ef077cf70cb2ab5ad76e57b481f633023a3b99bccca24b23fc3ffe2c8991eee"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-8O5ax1",
+      "result": {
+        "path": ".verification/desktop-e2e-8O5ax1/result.json",
+        "sha256": "bad8dd21db846f863bcefe48e04ec34519cabcf3b1e271dabae382f59091c217"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-8O5ax1/desktop.log",
+        "sha256": "cbcbbb363a057e1a2d3d97a7a58da4ffaa18082da11303451766d2e4142c8017"
+      },
+      "status": "failed",
+      "scenario": "intelligent-ui-session-lifecycle",
+      "failedStep": "failed-descendant-save-blocks-subtree-trash",
+      "error": {
+        "name": "TimeoutError",
+        "message": "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator('[data-mini-app-surface]').filter({ has: getByRole('heading', { name: 'Recovery counter', exact: true }) }).getByText('Count: 13', { exact: true }) to be visible\n"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "install-save-failure-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-copy",
+          "status": "passed"
+        },
+        {
+          "name": "copy-retries-pending-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "fork-keeps-branch-visible-state",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-export",
+          "status": "passed"
+        },
+        {
+          "name": "export-confirms-state-and-static-scope",
+          "status": "passed"
+        },
+        {
+          "name": "failed-descendant-save-blocks-subtree-trash",
+          "status": "failed"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "checkpoints": {
+        "path": ".verification/desktop-e2e-8O5ax1/session-lifecycle-checkpoints.json",
+        "sha256": "e5ab19a51c685596574b58c9f28345a2d58cb57f93134faaa924568e862cfd77"
+      },
+      "observations": [
+        {
+          "label": "copied-current-state",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 10,
+              "stateRevision": 2
+            }
+          ]
+        },
+        {
+          "label": "independent-fork",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 11,
+              "stateRevision": 3
+            }
+          ]
+        }
+      ],
+      "downloads": [
+        {
+          "path": ".verification/desktop-e2e-8O5ax1/downloads/piora-history-01a19dc8-924d-7779-a17d-3ea3ca5b2fdc.html",
+          "sha256": "7a73370dc17dd81083c597c96b7a01df1585fac4b9f16db31cf6a2dae74db42b",
+          "bytes": 571553,
+          "hasStaticScope": true,
+          "hasConfirmedCount": true
+        }
+      ],
+      "downloadObservation": {
+        "scope": "page",
+        "downloadEvents": [
+          {
+            "filename": "piora-history-01a19dc8-924d-7779-a17d-3ea3ca5b2fdc.html"
+          }
+        ],
+        "renderer": [
+          {
+            "kind": "blob",
+            "bytes": 571553,
+            "type": "text/html; charset=utf-8"
+          },
+          {
+            "kind": "anchor",
+            "filename": "piora-history-01a19dc8-924d-7779-a17d-3ea3ca5b2fdc.html",
+            "scheme": "blob:"
+          }
+        ],
+        "exportResponses": [
+          {
+            "path": "/api/sessions/01a19dc8-924d-7779-a17d-3ea3ca5b2fdc/export",
+            "status": 200,
+            "bytes": 0
+          }
+        ]
+      },
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-8O5ax1/failure.png",
+          "sha256": "ca59aed54dca0445ee25e9cd4f623dc220dd9915786dc8555683c9ec030b9f3f"
+        },
+        {
+          "path": ".verification/desktop-e2e-8O5ax1/lifecycle-copy-blocked.png",
+          "sha256": "9767d9523575e9270a1a553c84141f345a86fef5627faec84dfa3471c269ca46"
+        },
+        {
+          "path": ".verification/desktop-e2e-8O5ax1/lifecycle-exported.png",
+          "sha256": "34e81526078cd6a23cfdca1ef6deb5fdd024d59896e6024ea2e9f53c36f7228a"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-hGwGqL",
+      "result": {
+        "path": ".verification/desktop-e2e-hGwGqL/result.json",
+        "sha256": "2354fc9cd9fb663fbbcbc470260dfe17173db1e02df1a00c1ce8b42bcda493a6"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-hGwGqL/desktop.log",
+        "sha256": "e30b1868f18f94e2fbac86f55810fa63f8b4eef5a10e0fae971c8e31a48ed27f"
+      },
+      "status": "passed",
+      "scenario": "intelligent-ui-session-lifecycle",
+      "failedStep": null,
+      "error": null,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "install-save-failure-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-copy",
+          "status": "passed"
+        },
+        {
+          "name": "copy-retries-pending-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "fork-keeps-branch-visible-state",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-export",
+          "status": "passed"
+        },
+        {
+          "name": "export-confirms-state-and-static-scope",
+          "status": "passed"
+        },
+        {
+          "name": "failed-descendant-save-blocks-subtree-trash",
+          "status": "passed"
+        },
+        {
+          "name": "trash-retry-preserves-descendant",
+          "status": "passed"
+        },
+        {
+          "name": "restore-subtree-and-continue",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "checkpoints": {
+        "path": ".verification/desktop-e2e-hGwGqL/session-lifecycle-checkpoints.json",
+        "sha256": "e1eaa2183984d316a957069b41de55d5a1fb9e3acfdb9bdf8688286006c533e2"
+      },
+      "observations": [
+        {
+          "label": "copied-current-state",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 10,
+              "stateRevision": 2
+            }
+          ]
+        },
+        {
+          "label": "independent-fork",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 11,
+              "stateRevision": 3
+            }
+          ]
+        },
+        {
+          "label": "restored-and-continued",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 14,
+              "stateRevision": 6
+            }
+          ]
+        }
+      ],
+      "downloads": [
+        {
+          "path": ".verification/desktop-e2e-hGwGqL/downloads/piora-history-01a19dcb-5c46-7708-8e65-8aca548f78df.html",
+          "sha256": "d00539c4fe2a56a0d5f58ad190d7e73e3dae2878c6d3223138a4c6bf73b1e560",
+          "bytes": 571553,
+          "hasStaticScope": true,
+          "hasConfirmedCount": true
+        }
+      ],
+      "downloadObservation": {
+        "scope": "page",
+        "downloadEvents": [
+          {
+            "filename": "piora-history-01a19dcb-5c46-7708-8e65-8aca548f78df.html"
+          }
+        ],
+        "renderer": [
+          {
+            "kind": "blob",
+            "bytes": 571553,
+            "type": "text/html; charset=utf-8"
+          },
+          {
+            "kind": "anchor",
+            "filename": "piora-history-01a19dcb-5c46-7708-8e65-8aca548f78df.html",
+            "scheme": "blob:"
+          }
+        ],
+        "exportResponses": [
+          {
+            "path": "/api/sessions/01a19dcb-5c46-7708-8e65-8aca548f78df/export",
+            "status": 200,
+            "bytes": 0
+          }
+        ]
+      },
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-hGwGqL/lifecycle-copy-blocked.png",
+          "sha256": "d7e96d60fd247274f6c78e7af893bd75e89afb9cb2c11e64eb75d52417518060"
+        },
+        {
+          "path": ".verification/desktop-e2e-hGwGqL/lifecycle-exported.png",
+          "sha256": "76bcc583d7d08c8da6782b954d73e8dc4bc9ae452a95128a943d03ef6ab9bf3c"
+        },
+        {
+          "path": ".verification/desktop-e2e-hGwGqL/lifecycle-restored.png",
+          "sha256": "7ad728222f6920c7ba7896ba48c3d9f07644b23519d00b7954797639a6421570"
+        },
+        {
+          "path": ".verification/desktop-e2e-hGwGqL/lifecycle-trashed.png",
+          "sha256": "4ae9d9904f36cd86a43e6c00255ba7491b8fdbadbcb4c28e7431c67e62f39e7d"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-lJHHGD",
+      "result": {
+        "path": ".verification/desktop-e2e-lJHHGD/result.json",
+        "sha256": "3d6e5e87e7fc6ef041a86fcde8324ca049e224f4d527bdc0ebcb7ef3eeaf8d20"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-lJHHGD/desktop.log",
+        "sha256": "a8ee096c6f8c4c1b891cdc37183daa5132f692dd82e67fab81cecdaf1ce9434d"
+      },
+      "status": "passed",
+      "scenario": "intelligent-ui-recovery",
+      "failedStep": null,
+      "error": null,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "install-response-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "lost-save-response-retains-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "reload-recovers-receipt-without-second-write",
+          "status": "passed"
+        },
+        {
+          "name": "cancel-candidate-preserves-progress",
+          "status": "passed"
+        },
+        {
+          "name": "source-edit-invalidates-an-open-review",
+          "status": "passed"
+        },
+        {
+          "name": "refresh-review-and-migrate-current-progress",
+          "status": "passed"
+        },
+        {
+          "name": "reload-edit-and-follow-up",
+          "status": "passed"
+        },
+        {
+          "name": "continue-editing-after-follow-up",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "recovery": {
+        "path": ".verification/desktop-e2e-lJHHGD/recovery-checkpoints.json",
+        "sha256": "72e5da5fd05a43546be715930f7121b8e1be8706437b39bf32088d79b501ef55"
+      },
+      "recoveryStates": [
+        {
+          "label": "saved-with-lost-response",
+          "count": 9
+        },
+        {
+          "label": "receipt-recovered",
+          "count": 9
+        },
+        {
+          "label": "cancelled-then-edited",
+          "count": 11
+        },
+        {
+          "label": "confirmed-migration",
+          "count": 15
+        },
+        {
+          "label": "edited-after-reload",
+          "count": 16
+        },
+        {
+          "label": "after-follow-up",
+          "count": 16
+        },
+        {
+          "label": "edited-after-follow-up",
+          "count": 17
+        }
+      ],
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-lJHHGD/recovery-continued.png",
+          "sha256": "379ad08ea19a10dce63b04e560704acca9a90e7f91d3c4eaa4739f1af513411a"
+        },
+        {
+          "path": ".verification/desktop-e2e-lJHHGD/recovery-follow-up.png",
+          "sha256": "d0e00cb3b63eaf428a16cb4f7a0e8cb2f1328b0971f7400cf5065aad8bc6fd48"
+        },
+        {
+          "path": ".verification/desktop-e2e-lJHHGD/recovery-lost-response.png",
+          "sha256": "53731f24e972a2c1514c4156a45d3219a68bb2e48fc67be2b094e9b0b7a4a4e2"
+        },
+        {
+          "path": ".verification/desktop-e2e-lJHHGD/recovery-migrated.png",
+          "sha256": "b67777d11ef073b31e461d79c06df3d387ad6fd5503ea0a006a9eef7bc3b8494"
+        },
+        {
+          "path": ".verification/desktop-e2e-lJHHGD/recovery-stale-review.png",
+          "sha256": "2d212228fe60b63cbf5a5205295909986a52cc6a9c1d9415de751aeb000d4a2f"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-RV39D2",
+      "result": {
+        "path": ".verification/desktop-e2e-RV39D2/result.json",
+        "sha256": "59aa3c76a9fed0a8ff1ad58754764115a251b4a62328460126d908462cab24e6"
+      },
+      "desktopLog": {
+        "path": ".verification/desktop-e2e-RV39D2/desktop.log",
+        "sha256": "6dfe92fb2213791b94ff3140913cce199390c821303b8b715f6d42173037f4e2"
+      },
+      "status": "passed",
+      "scenario": "intelligent-ui-session-lifecycle",
+      "failedStep": null,
+      "error": null,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "install-save-failure-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-copy",
+          "status": "passed"
+        },
+        {
+          "name": "copy-retries-pending-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "fork-keeps-branch-visible-state",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-export",
+          "status": "passed"
+        },
+        {
+          "name": "export-confirms-state-and-static-scope",
+          "status": "passed"
+        },
+        {
+          "name": "failed-descendant-save-blocks-subtree-trash",
+          "status": "passed"
+        },
+        {
+          "name": "trash-retry-preserves-descendant",
+          "status": "passed"
+        },
+        {
+          "name": "restore-subtree-and-continue",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "checkpoints": {
+        "path": ".verification/desktop-e2e-RV39D2/session-lifecycle-checkpoints.json",
+        "sha256": "8ad33ec2bfb3e1fafbacae87c23985e78684750617dd2e84616a627a16fe56ac"
+      },
+      "observations": [
+        {
+          "label": "copied-current-state",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 10,
+              "stateRevision": 2
+            }
+          ]
+        },
+        {
+          "label": "independent-fork",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 11,
+              "stateRevision": 3
+            }
+          ]
+        },
+        {
+          "label": "restored-and-continued",
+          "states": [
+            {
+              "role": "original",
+              "count": 10,
+              "stateRevision": 2
+            },
+            {
+              "role": "copy",
+              "count": 12,
+              "stateRevision": 4
+            },
+            {
+              "role": "fork",
+              "count": 14,
+              "stateRevision": 6
+            }
+          ]
+        }
+      ],
+      "downloads": [
+        {
+          "path": ".verification/desktop-e2e-RV39D2/downloads/piora-history-01a19dcf-2334-776e-91a8-51069e264198.html",
+          "sha256": "3ebca4e296bf946fab4ffac25a63d040bd13f4c03b7aa2a695bbc6853579bc5b",
+          "bytes": 571553,
+          "hasStaticScope": true,
+          "hasConfirmedCount": true
+        }
+      ],
+      "downloadObservation": {
+        "scope": "page",
+        "downloadEvents": [
+          {
+            "filename": "piora-history-01a19dcf-2334-776e-91a8-51069e264198.html"
+          }
+        ],
+        "renderer": [
+          {
+            "kind": "blob",
+            "bytes": 571553,
+            "type": "text/html; charset=utf-8"
+          },
+          {
+            "kind": "anchor",
+            "filename": "piora-history-01a19dcf-2334-776e-91a8-51069e264198.html",
+            "scheme": "blob:"
+          }
+        ],
+        "exportResponses": [
+          {
+            "path": "/api/sessions/01a19dcf-2334-776e-91a8-51069e264198/export",
+            "status": 200,
+            "bytes": 0
+          }
+        ]
+      },
+      "screenshots": [
+        {
+          "path": ".verification/desktop-e2e-RV39D2/lifecycle-copy-blocked.png",
+          "sha256": "e65ad57e59e23b96181ef17f0c52ab9444bc6ae2de36ed5ba570604c77330875"
+        },
+        {
+          "path": ".verification/desktop-e2e-RV39D2/lifecycle-exported.png",
+          "sha256": "1f5c4a4cce2a3cf0d55b9e080a1a4aa849d3fafca339c5d99328f192e8b708d6"
+        },
+        {
+          "path": ".verification/desktop-e2e-RV39D2/lifecycle-restored.png",
+          "sha256": "a1e8776fb4636c04157409ca530d03964cd523a5c0eb62a66273c283a306fc4f"
+        },
+        {
+          "path": ".verification/desktop-e2e-RV39D2/lifecycle-trashed.png",
+          "sha256": "4ae9d9904f36cd86a43e6c00255ba7491b8fdbadbcb4c28e7431c67e62f39e7d"
+        }
+      ]
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-conversation-boundary-2026-11-03.md",
+    "sourceSha256": "06859eab1f2db68151af07fbbb71b9460073e71146b38e9bffb2823f7ef9a1d4",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-conversation-boundary-2026-11-03.pdf",
+    "pdfSha256": "f81ca96cbb785aa0b275446fefdb025cb1358ea2460f19c87270ca9c274a25bd",
+    "pages": 2,
+    "pageTextLengths": [
+      1012,
+      1412
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed",
+    "reviewedPages": [
+      1,
+      2
+    ],
+    "visualNotes": "Both rendered pages inspected; readable Chinese text and table, no clipping or overlap."
+  },
+  "evidenceNotes": [
+    "All desktop runs use synthetic local recovery-fixture model; no real provider credentials or model calls",
+    "First export observation read an empty CDP response body; final content assertions inspect the actual downloaded HTML",
+    "Unscoped Browser.setDownloadBehavior did not configure the Electron partition; Browser command with Target context id was rejected. Page-scoped configuration is used",
+    "Renderer Blob and anchor wrappers only record metadata and call the original functions; tested actions remain native UI operations",
+    "The selected hook check is not a full historical hook integration rerun; test groups overlap"
+  ],
+  "remaining": [
+    "3B complete task semantics and broader follow-up generalization",
+    "3C native window recovery and full revision/conversion/registered-action combinations",
+    "3D complex list, continuous simulation/game, 2D/3D teaching correctness, visual and keyboard evidence",
+    "Full CI repair, sealed evaluation and two-human acceptance after development per user instruction"
+  ],
+  "report": {
+    "path": "docs/verification/intelligent-ui-phase3-conversation-boundary-2026-11-03.md",
+    "sha256": "06859eab1f2db68151af07fbbb71b9460073e71146b38e9bffb2823f7ef9a1d4"
+  }
+}

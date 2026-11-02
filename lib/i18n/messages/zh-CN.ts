@@ -27,6 +27,7 @@ export const zhCNLocale: LocalePlugin = {
     "beta.saved": "偏好已保存，将用于下一轮智能体运行。",
     "beta.disableKeepDraft": "关闭并在本机保留未保存参数",
     "answerOutput.preparing": "正在生成交互界面…",
+    "answerOutput.waitForConversation": "回答和状态同步完成后，可继续操作。",
     "answerOutput.unavailable": "尚无已保存的界面结果",
     "answerOutput.failed": "交互界面暂不可用，以下为已保存内容。",
     "permission.label": "工具操作权限",
