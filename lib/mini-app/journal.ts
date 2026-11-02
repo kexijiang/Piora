@@ -361,10 +361,11 @@ export function readMiniAppMigrationBase(sessionId: string, file: string, toolCa
     ? { description: record.plan.migration!.description, clock: record.plan.migration!.clock } : undefined;
   const digest = answerDataDigest({ publicationId: record.operationId, planDigest: record.planDigest, leafId, source: sourceIdentity, ...assessment, ...(progress ? { progress } : {}) });
   const review: MiniAppMigrationReview = { toolCallId, publicationId: record.operationId, digest, leafId, ...assessment,
+    ...(saved ? { sourceSummary: saved.result.frame.summary } : {}),
     status: record.migration?.anchor ? ancestry.has(record.migration.anchor.id) ? record.status === "committed" ? "committed" : "cancelled" : "stale"
       : record.status === "awaiting_confirmation" && source?.operationId === record.source.operationId ? "ready" : "stale",
     ...(progress ? { progress } : {}), ...(record.migration && !record.migration.anchor ? { pending: record.migration.choice } : {}) };
-  return { review, record, source: sourceIdentity, sourcePlan: source?.plan, sourceSnapshot: saved?.result.snapshot, disk };
+  return { review, record, source: sourceIdentity, sourcePlan: source?.plan, sourceSnapshot: saved?.result.snapshot, sourceResult: saved?.result, disk };
 }
 
 /** An owned host click supplies the exact reviewed choice and server trial result. */

@@ -16,6 +16,7 @@ tests.push('lib/mini-app-groups.test.mjs','lib/mini-app-groups-browser.test.mjs'
 tests.push('lib/mini-app-presets.test.mjs');
 tests.push('lib/mini-app-migration.test.mjs','lib/mini-app-migration-browser.test.mjs','lib/mini-app-journal.test.mjs','lib/mini-app-inheritance.test.mjs','lib/mini-app-client-browser.test.mjs','lib/mini-app-route.test.mjs');
 tests.push('lib/mini-app-progress-migration.test.mjs');
+tests.push('lib/mini-app-migration-preview.test.mjs');
 tests.push('lib/mini-app-authoring-repair.test.mjs','lib/mini-app-plan.test.mjs','lib/intelligent-ui-plan.test.mjs','lib/intelligent-ui-admission.test.mjs');
 tests.push('lib/mini-app-input-ordering.test.mjs');
 tests.push('lib/intelligent-ui/comparisons.test.mjs','lib/intelligent-ui/preview-plan.test.mjs');
@@ -29,7 +30,8 @@ const sources=[...new Set(MINI_APP_CAPABILITIES.flatMap(cap=>[...cap.sources]))]
 const sha=buffer=>createHash('sha256').update(buffer).digest('hex');
 const hashes=async files=>Object.fromEntries(await Promise.all(files.map(async file=>[file,sha(await readFile(join(root,file)))])));
 await prepareMiniAppRuntime(root);
-const before=await hashes([...sources,...tests]);
+const verificationSources=[...sources,...tests,'lib/mini-app-migration-fixtures.mjs'];
+const before=await hashes(verificationSources);
 await mkdir(join(root,'.verification'),{recursive:true});
 const run=await mkdtemp(join(root,'.verification','mini-app-capabilities-')),agent=await mkdtemp(join(tmpdir(),'piora-capability-agent-'));
 console.log(JSON.stringify({run,scope:'isolated development capability verification',tests:tests.length}));
@@ -40,7 +42,7 @@ try{
  const code=await new Promise((done,fail)=>{child.on('error',fail);child.on('close',done);});
  await writeFile(join(run,'tests.log'),output);
  if(code!==0)throw new Error('Capability checks failed; evidence was not promoted. Read '+join(run,'tests.log'));
- const after=await hashes([...sources,...tests]);
+ const after=await hashes(verificationSources);
  if(JSON.stringify(before)!==JSON.stringify(after))throw new Error('Sources changed during verification; evidence was not promoted');
  const verified=MINI_APP_CAPABILITIES.filter(cap=>['document','events','playback','svg','canvas2d','repeat','scene3d','scenePicking','cameraControls','sceneGroups','inputPresets','stateMigration','registeredActions','outputConversion'].includes(cap.id));
  const proof={manifestVersion:MINI_APP_CAPABILITY_MANIFEST_VERSION,recordedAt:new Date().toISOString(),entries:verified.map(cap=>({id:cap.id,version:cap.version,result:'passed',platform:process.platform,scope:'Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility',checks:tests,sources:Object.fromEntries(cap.sources.map(file=>[file,before[file]]))}))};

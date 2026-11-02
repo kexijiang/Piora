@@ -8,15 +8,16 @@ import { authorizeUiMigration, revokeUiMigrationAuthorization, type UiMigrationA
 import { betaFeatureRevision, subscribeBetaFeatureChanges } from "../beta-feature-events";
 import { answerDataDigest } from "../answer-output-receipts";
 import { boundedJson, exactKeys, jsonRecord } from "./json";
-import { validateMiniAppInputs } from "./plan";
+import { validateMiniAppInputs, type MiniAppResult } from "./plan";
 import { MINI_APP_LIMITS, MiniAppError } from "./limits";
 import { readMiniAppMigrationBase, commitMiniAppMigration } from "./journal";
 import { trialMiniApp } from "./server-trial";
-import type { MiniAppMigrationChoice } from "./migration-types";
+import type { MiniAppMigrationChoice, MiniAppMigrationPreview } from "./migration-types";
+import { miniAppCheckpointChanges } from "./checkpoint-changes";
 
 export function parseMiniAppMigrationChoice(value: unknown): MiniAppMigrationChoice {
   const choice = jsonRecord(JSON.parse(boundedJson(value, MINI_APP_LIMITS.replyBytes)), "migration");
-  exactKeys(choice, ["toolCallId", "publicationId", "digest", "leafId", "requestId", "decision", "inputs", "progress"], "migration");
+  exactKeys(choice, ["toolCallId", "publicationId", "digest", "leafId", "requestId", "decision", "inputs", "progress", "previewDigest"], "migration");
   for (const key of ["toolCallId", "publicationId", "leafId", "requestId"]) {
     if (typeof choice[key] !== "string" || !choice[key] || choice[key].length > 256) throw new MiniAppError("IDENTITY", "Invalid migration identity", key);
   }
@@ -27,7 +28,53 @@ export function parseMiniAppMigrationChoice(value: unknown): MiniAppMigrationCho
   if (choice.progress !== undefined && choice.progress !== "reset" && choice.progress !== "migrate") throw new MiniAppError("SCHEMA", "Invalid progress choice");
   if (choice.decision === "cancel" && choice.progress === "migrate") throw new MiniAppError("SCHEMA", "Cancellation cannot migrate progress");
   if (choice.decision === "cancel" && Object.keys(choice.inputs as object).length) throw new MiniAppError("SCHEMA", "Cancellation cannot change inputs");
+  if (choice.previewDigest !== undefined && (choice.decision !== "confirm" || typeof choice.previewDigest !== "string" || !/^[a-f0-9]{64}$/.test(choice.previewDigest))) {
+    throw new MiniAppError("SCHEMA", "Invalid migration preview identity");
+  }
   return choice as unknown as MiniAppMigrationChoice;
+}
+
+/** Bind the actual isolated result, not a model's description or a mutable UI label. */
+function previewDigest(choice: MiniAppMigrationChoice, result: MiniAppResult) {
+  return answerDataDigest({ publicationId: choice.publicationId, toolCallId: choice.toolCallId, digest: choice.digest,
+    leafId: choice.leafId, inputs: choice.inputs, progress: choice.progress ?? "reset", result });
+}
+
+/** Explicit host preview. No session owner, prompt run, journal intent or saved state is created. */
+export async function previewMiniAppMigration(options: {
+  sessionId: string; sessionFile: string; input: unknown; root?: string; enabled(): boolean; signal?: AbortSignal;
+}): Promise<MiniAppMigrationPreview> {
+  const choice = parseMiniAppMigrationChoice(options.input), root = options.root ?? getAgentDir();
+  if (choice.decision !== "confirm" || choice.previewDigest) throw new MiniAppError("SCHEMA", "Expected an unconfirmed preview choice");
+  const { answerOutputSessionReader } = await import("../answer-output-session");
+  const { getRpcSession } = await import("../rpc-manager");
+  const read = await answerOutputSessionReader(options.sessionId, options.sessionFile);
+  const revision = betaFeatureRevision(root), cancellation = new AbortController();
+  const unsubscribe = subscribeBetaFeatureChanges(root, features => { if (!features.intelligentUi) cancellation.abort(); });
+  const signal = options.signal ? AbortSignal.any([options.signal, cancellation.signal]) : cancellation.signal;
+  const current = () => {
+    if (!options.enabled() || betaFeatureRevision(root) !== revision) throw new MiniAppError("DISABLED", "Intelligent UI changed during preview");
+    if (signal.aborted) throw new MiniAppError("STOPPED", "Preview stopped");
+    if (getRpcSession(options.sessionId)?.isRunning() || getActivePromptRun(options.sessionId)) throw new MiniAppError("CONFLICT", "Wait for the current task before previewing");
+    const leaf = read().getLeafId();
+    if (leaf !== choice.leafId) throw new MiniAppError("CONFLICT", "The selected branch changed; refresh the review");
+    const base = readMiniAppMigrationBase(options.sessionId, options.sessionFile, choice.toolCallId, leaf, root);
+    if (base.record.migration || base.review.status !== "ready" || base.review.publicationId !== choice.publicationId || base.review.digest !== choice.digest
+      || !base.sourceSnapshot || !base.sourcePlan || !base.sourceResult) throw new MiniAppError("CONFLICT", "Source state changed; refresh the review");
+    if (choice.progress === "migrate" && !base.review.progress) throw new MiniAppError("CONFLICT", "Progress preservation is unavailable for this source");
+    validateMiniAppInputs(base.record.plan, choice.inputs);
+    return base;
+  };
+  try {
+    const base = await withUiSessionReadLock(options.sessionId, root, current);
+    const result = await trialMiniApp(base.record.plan, { inputs: choice.inputs, signal,
+      ...(choice.progress === "migrate" ? { migration: { sourcePlan: base.sourcePlan!, snapshot: base.sourceSnapshot! } } : {}) });
+    return await withUiSessionReadLock(options.sessionId, root, () => {
+      current(); // A save, navigation, cancellation or confirmation while the worker ran invalidates its result.
+      return { digest: previewDigest(choice, result), sourceSummary: base.sourceResult!.frame.summary, resultSummary: result.frame.summary,
+        changes: miniAppCheckpointChanges(base.sourceSnapshot!, result.snapshot) };
+    });
+  } finally { unsubscribe(); }
 }
 
 export async function readMiniAppMigration(options: { sessionId: string; sessionFile: string; toolCallId: string; root?: string }) {
@@ -88,6 +135,11 @@ export async function confirmMiniAppMigration(options: {
     const result = choice.decision === "confirm" && !base.record.migration
       ? await trialMiniApp(base.record.plan, { inputs: choice.inputs, signal,
         ...(choice.progress === "migrate" ? { migration: { sourcePlan: base.sourcePlan!, snapshot: base.sourceSnapshot! } } : {}) }) : base.record.migration?.result;
+    // Older clients/receipts omit this field. New host choices bind exactly what
+    // the user previewed; retries retain the original durable choice/result.
+    if (!base.record.migration && choice.previewDigest && (!result || previewDigest(choice, result) !== choice.previewDigest)) {
+      throw new MiniAppError("CONFLICT", "The result differs from its preview; review the selected changes again");
+    }
     return await withUiSessionMutationLock(options.sessionId, root, { assertOwned: assertAllowed }, lease => {
       const response = commitMiniAppMigration({ manager, root, choice, result, authorization: authorization!, assertOwned: () => { lease(); assertAllowed(); } });
       invalidateSessionListCache(); return response;

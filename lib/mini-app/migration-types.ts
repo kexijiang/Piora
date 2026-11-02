@@ -1,5 +1,6 @@
 import { compileMiniAppPlan, validateMiniAppInputs, type MiniAppInput, type MiniAppPlan1 } from "./plan";
 import type { JsonRecord } from "./json";
+import type { MiniAppCheckpointChanges } from "./checkpoint-changes";
 
 export interface MiniAppMigrationField {
   id: string; change: "compatible" | "changed" | "added" | "removed";
@@ -11,12 +12,17 @@ export interface MiniAppMigrationReview {
   fields: MiniAppMigrationField[]; suggestedInputs: JsonRecord;
   resets: readonly ["state", "tick", "rng", "view"];
   progress?: { description: string; clock: "reset" | "preserve" };
+  sourceSummary?: string;
   pending?: MiniAppMigrationChoice;
 }
 export interface MiniAppMigrationChoice {
   toolCallId: string; publicationId: string; digest: string; leafId: string; requestId: string;
   decision: "confirm" | "cancel"; inputs: JsonRecord;
   progress?: "reset" | "migrate";
+  previewDigest?: string;
+}
+export interface MiniAppMigrationPreview {
+  digest: string; sourceSummary: string; resultSummary: string; changes: MiniAppCheckpointChanges;
 }
 function stable(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;

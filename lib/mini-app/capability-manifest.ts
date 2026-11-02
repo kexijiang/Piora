@@ -19,7 +19,7 @@ const common = ["lib/mini-app/capability-manifest.ts", "lib/mini-app/capabilitie
   "lib/mini-app/server-trial.ts", "lib/mini-app/journal.ts", "lib/mini-app/state-store.ts", "lib/mini-app/state-service.ts",
   "lib/mini-app/migration-types.ts", "lib/mini-app/migration-service.ts", "lib/mini-app/client-cache.ts", "lib/mini-app/client-state.ts",
   "components/mini-app/MiniAppSurface.tsx", "components/mini-app/MiniAppMigration.tsx", "components/mini-app/MiniAppSurface.module.css",
-  "app/api/sessions/[id]/mini-app/migration/route.ts",
+  "app/api/sessions/[id]/mini-app/migration/route.ts", "app/api/sessions/[id]/mini-app/migration/preview/route.ts",
   "lib/mini-app/action-host.ts", "lib/mini-app/action-service.ts", "components/mini-app/MiniAppActions.tsx",
   "app/api/sessions/[id]/mini-app/actions/route.ts", "components/intelligent-ui/SurfaceActions.tsx",
   "lib/intelligent-ui/action-host.ts", "lib/intelligent-ui/action-runtime.ts", "lib/intelligent-ui/action-service.ts",

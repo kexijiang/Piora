@@ -20,6 +20,11 @@
 .currentSummary { white-space: pre-wrap; overflow-wrap: anywhere; }
 .migration { margin-block: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; color: var(--text); }
 .migrationFields { display: grid; gap: 8px; }
+.migrationOutcome { padding: 10px 12px; margin-block: 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); overflow-wrap: anywhere; white-space: pre-wrap; }
+.migrationChangeTable { overflow-x: auto; }
+.migrationChangeTable table { width: 100%; border-collapse: collapse; text-align: start; color: inherit; font: inherit; }
+.migrationChangeTable th { text-align: inherit; }
+.migrationChangeTable th, .migrationChangeTable td { border-bottom: 1px solid var(--border); padding: 6px; vertical-align: top; max-width: 22em; overflow-wrap: anywhere; }
 .migrationField { display: grid; gap: 5px; padding-block: 8px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
 .migrationField > label { display: grid; gap: 6px; }
 .migrationField > label > span { color: var(--text-muted); line-height: 1.5; }

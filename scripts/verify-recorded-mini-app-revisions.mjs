@@ -185,6 +185,22 @@ const scenario = {
       await step('explicitly-confirm-and-preserve-current-progress', async () => {
         await candidateSurface.getByRole('button', { name: /^(Review changes \/ refresh|核对变化 \/ 刷新)$/ }).click();
         await candidateSurface.getByRole('combobox', { name: /^(Task progress|任务进度)$/ }).selectOption('migrate');
+        const preview = async () => {
+          const before = await read(record.toolCallId);
+          const responding = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/mini-app/migration/preview'));
+          await candidateSurface.getByRole('button', { name: /^(Preview selected changes|预演所选变化)$/ }).click();
+          const response = await responding; assert.equal(response.status(), 200);
+          const { preview: evidence } = await response.json();
+          const panel = candidateSurface.getByRole('region', { name: /^(Revision preview|修订预演)$/ }); await panel.waitFor();
+          assert.equal(evidence.changes.complete, true, 'This small message-only repair needs complete change evidence');
+          assert.ok(evidence.changes.items.every(item => !/^\/state\/(j3|j5|steps|next|history)(\/|$)/.test(item.path)), 'Preview preserves water, task steps and history');
+          assert.equal(evidence.sourceSummary, before.result.frame.summary);
+          (report.previews ??= []).push({ text: await panel.innerText(), evidence, source: before.result.snapshot });
+          assert.deepEqual((await read(record.toolCallId)).result.snapshot, before.result.snapshot, 'Preview does not modify the source');
+          await screenshot(`repair-preview-${report.previews.length}.png`);
+          await persist();
+        };
+        await preview();
         if (bindings.staleReview) {
           // Prepare a second same-origin application view, not another native
           // window. Its own React/IndexedDB clients let the original review
@@ -212,6 +228,7 @@ const scenario = {
           await screenshot('repair-stale-review.png');
           await candidateSurface.getByRole('button', { name: /^(Review changes \/ refresh|核对变化 \/ 刷新)$/ }).click();
           await candidateSurface.getByRole('combobox', { name: /^(Task progress|任务进度)$/ }).selectOption('migrate');
+          await preview();
         }
         await candidateSurface.getByRole('button', { name: /^(Confirm revision and migrate progress|确认新版并迁移进度)$/ }).click();
         await ready(candidateSurface, 'down');

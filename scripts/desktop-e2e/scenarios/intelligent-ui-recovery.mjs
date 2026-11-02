@@ -141,6 +141,8 @@ export const intelligentUiRecovery = {
       await send('migrate'); await review(candidate).waitFor();
       await waitUntil(() => !!loaded.get('recovery-create')?.leafId && loaded.get('recovery-create').leafId !== before.leafId, 'existing source rebinds after the new conversation turn');
       await review(candidate).click(); await candidate.locator('input[type="number"]').waitFor();
+      await candidate.getByRole('button', { name: /^(Preview selected changes|预演所选变化)$/ }).click();
+      await candidate.getByRole('region', { name: /^(Revision preview|修订预演)$/ }).waitFor();
       await frame(old).getByRole('button', { name: 'Add one' }).click(); await count(old, 12); await save(old);
       await candidate.getByRole('button', { name: /^(Confirm revision and restart progress|确认新版并重新开始进度)$/ }).click(); await candidate.getByRole('alert').waitFor();
       assert.equal((await read('recovery-migrate')).publication.status, 'awaiting_confirmation'); assert.equal((await read('recovery-create')).result.snapshot.state.count, 12);
@@ -151,6 +153,8 @@ export const intelligentUiRecovery = {
     await step('refresh-review-and-migrate-current-progress', async () => {
       await review(candidate).click(); const choice = candidate.locator('input[type="number"]'); await choice.waitFor(); assert.equal(await choice.inputValue(), '9');
       await choice.fill('12'); await candidate.getByRole('combobox', { name: /^(Task progress|任务进度)$/ }).selectOption('migrate');
+      await candidate.getByRole('button', { name: /^(Preview selected changes|预演所选变化)$/ }).click();
+      await candidate.getByRole('region', { name: /^(Revision preview|修订预演)$/ }).getByText('Count: 15', { exact: true }).waitFor();
       await candidate.getByRole('button', { name: /^(Confirm revision and migrate progress|确认新版并迁移进度)$/ }).click(); await count(candidate, 15);
       migrated = await record('confirmed-migration', 'recovery-migrate'); const source = await read('recovery-create');
       assert.equal(migrated.result.snapshot.inputs.start, 12); assert.equal(migrated.result.snapshot.state.count, 15);
