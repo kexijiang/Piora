@@ -202,6 +202,20 @@ export class MiniAppJournal {
       return { context: clone(context), apps: clone(apps) };
     });
   }
+  /** Read the exact request's saved source under the session lock; no writes. */
+  inspectSource(requestId: string, appId: string): Promise<{ record: MiniAppRecord; saved: MiniAppSavedState }> {
+    return this.write((journal, disk) => {
+      const context = this.contexts.get(requestId);
+      assertAnswerReceipt(context && journal.epoch === this.options.runId, "Mini app request is no longer current");
+      const leaf = this.options.manager.getLeafId(); assertAnswerReceipt(leaf, "Missing mini app inspection leaf");
+      assertAnswerReceipt(answerDiskBranch(disk, leaf).some(entry => entry.id === context.leafId), "Mini app source is not on this branch");
+      requestStillMatches(context, journal, disk, leaf, this.options.root);
+      const record = activeRecords(journal, disk, leaf).get(appId);
+      assertAnswerReceipt(record && context.sources[appId]?.operationId === record.operationId, "The requested app is not active in this captured context");
+      const saved = miniAppSavedStateReader(this.sessionId, this.options.root)(record, disk, leaf);
+      return clone({ record, saved });
+    });
+  }
   create(requestId: string, toolCallId: string, plan: MiniAppPlan1, initial: MiniAppResult): Promise<MiniAppRecord> {
     return this.write((journal, disk, owned) => {
       const context = this.contexts.get(requestId);

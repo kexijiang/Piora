@@ -8,7 +8,7 @@ import { miniAppStepRequest } from "./playback";
 import { miniAppPresetTrials, miniAppScenePickTrials } from "./interaction-trial";
 import { miniAppEventRequest } from "./events";
 import { answerDataDigest } from "../answer-output-receipts";
-import { MINI_APP_ACTION_PREVIEW_LIMITS, miniAppPreviewChoices, miniAppPreviewOutcome, type MiniAppActionEvidence } from "./action-preview";
+import { MINI_APP_ACTION_PREVIEW_LIMITS, miniAppPreviewChoices, selectMiniAppPreviewChoices, miniAppPreviewOutcome, type MiniAppActionEvidence } from "./action-preview";
 
 void (async () => {
   let vm: MiniAppVm | undefined;
@@ -36,9 +36,10 @@ void (async () => {
     if (data.preview === true) {
       if (!restoring || data.parameterInputs !== undefined) throw new MiniAppError("SCHEMA", "Local previews require an unchanged saved checkpoint");
       const choices = miniAppPreviewChoices(compiled, initial.frame);
+      const selected = selectMiniAppPreviewChoices(choices, data.previewActionIds as string[] | undefined);
       const preview: MiniAppActionEvidence = { version: 2, sourceCheckpointDigest: answerDataDigest(initial.snapshot),
-        eligibleActions: choices.length, omittedActions: Math.max(0, choices.length - MINI_APP_ACTION_PREVIEW_LIMITS.actions), actions: [] };
-      for (const choice of choices.slice(0, MINI_APP_ACTION_PREVIEW_LIMITS.actions)) {
+        eligibleActions: choices.length, omittedActions: choices.length - selected.length, actions: [] };
+      for (const choice of selected) {
         if (choice.disabled) { preview.actions.push({ ...choice, status: "disabled" }); continue; }
         // Every VM invocation recreates the program closure and decodes a fresh
         // snapshot. No result feeds the next alternative, including tick/RNG.

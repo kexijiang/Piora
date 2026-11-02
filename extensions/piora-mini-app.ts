@@ -4,9 +4,24 @@ import { miniAppPlanSchema } from "../lib/mini-app/plan-schema.ts";
 import { miniAppDecisionPrompt, miniAppEnvironmentContext } from "../lib/mini-app/decision-policy.ts";
 import { readMiniAppCapabilities } from "../lib/mini-app/capability-host.ts";
 import { getMiniAppGenerationRuntime } from "../lib/mini-app/generation-runtime.ts";
+import { MINI_APP_INSPECT_TOOL, MINI_APP_INSPECTION_GUIDANCE, miniAppInspectionSchema } from "../lib/mini-app/action-inspection.ts";
 
 export default function miniAppExtension(api: ExtensionAPI): void {
   if (!readBetaFeatures().intelligentUi) return;
+  api.registerTool(defineTool({
+    name: MINI_APP_INSPECT_TOOL, label: "Inspect saved mini app", executionMode: "sequential",
+    description: "Inspect selected local button effects from the current confirmed mini app checkpoint without changing it. Use only when the question needs future action effects; current-state explanations already have saved values. No file actions, arbitrary code, sequence simulation or UI regeneration.",
+    promptSnippet: "Inspect selected local action effects only when needed to explain an existing mini app",
+    promptGuidelines: [MINI_APP_INSPECTION_GUIDANCE], parameters: miniAppInspectionSchema,
+    async execute(_toolCallId, params, signal, _onUpdate, ctx) {
+      const runtime = getMiniAppGenerationRuntime(ctx.sessionManager);
+      if (!runtime || signal?.aborted) {
+        const problem = { code: "UI_RUN_UNAVAILABLE", message: "Saved mini app inspection is unavailable for this originating task. Do not guess action effects.", repairable: false };
+        return { isError: true, content: [{ type: "text" as const, text: JSON.stringify(problem) }], details: { answerOutputDiagnostic: problem } };
+      }
+      return runtime.inspectActions(params, signal);
+    },
+  }));
   api.registerTool(defineTool({
     name: "piora_render_mini_app", label: "Intelligent UI mini app", executionMode: "sequential",
     ...miniAppDecisionPrompt(), parameters: miniAppPlanSchema,

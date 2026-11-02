@@ -14,14 +14,14 @@ declare global { var __pioraMiniAppTrialCapacity: { active: number } | undefined
 const capacity = () => globalThis.__pioraMiniAppTrialCapacity ??= { active: 0 };
 
 interface TrialOptions { snapshot?: MiniAppCheckpoint; inputs?: JsonRecord; parameterInputs?: JsonRecord;
-  migration?: { sourcePlan: MiniAppPlan1; snapshot: MiniAppCheckpoint }; signal?: AbortSignal; assetDirectory?: string }
+  migration?: { sourcePlan: MiniAppPlan1; snapshot: MiniAppCheckpoint }; signal?: AbortSignal; assetDirectory?: string; actionIds?: readonly string[] }
 interface TrialReply { result: MiniAppResult; preview?: MiniAppActionEvidence }
 
 export async function trialMiniApp(plan: unknown, options: TrialOptions = {}): Promise<MiniAppResult> {
   return (await runTrial(plan, options)).result;
 }
 /** Read-only alternatives, all starting from the same copied, confirmed checkpoint. */
-export async function previewMiniAppActions(plan: unknown, snapshot: MiniAppCheckpoint, options: Pick<TrialOptions, "signal" | "assetDirectory"> = {}): Promise<MiniAppActionEvidence> {
+export async function previewMiniAppActions(plan: unknown, snapshot: MiniAppCheckpoint, options: Pick<TrialOptions, "signal" | "assetDirectory" | "actionIds"> = {}): Promise<MiniAppActionEvidence> {
   return (await runTrial(plan, { ...options, snapshot }, true)).preview!;
 }
 
@@ -31,7 +31,7 @@ async function runTrial(plan: unknown, options: TrialOptions, preview = false): 
   if (capacity().active >= 2) throw new MiniAppError("BUSY", "Mini app trial capacity is in use");
   if (options.snapshot && (options.inputs || options.migration)) throw new MiniAppError("SCHEMA", "Initialization inputs or migration cannot accompany a restored checkpoint");
   if (options.parameterInputs && !options.snapshot) throw new MiniAppError("SCHEMA", "Parameter application requires saved progress");
-  const request = boundedJson({ plan, ...(preview ? { preview: true } : {}), ...(options.snapshot ? { snapshot: options.snapshot } : {}), ...(options.inputs ? { inputs: options.inputs } : {}),
+  const request = boundedJson({ plan, ...(preview ? { preview: true, ...(options.actionIds ? { previewActionIds: options.actionIds } : {}) } : {}), ...(options.snapshot ? { snapshot: options.snapshot } : {}), ...(options.inputs ? { inputs: options.inputs } : {}),
     ...(options.parameterInputs ? { parameterInputs: options.parameterInputs } : {}),
     ...(options.migration ? { migration: options.migration } : {}) }, MINI_APP_LIMITS.replyBytes);
   // Only the pure bounded compiler runs here. A second compile inside the worker
@@ -81,7 +81,7 @@ async function runTrial(plan: unknown, options: TrialOptions, preview = false): 
           } else if (typeof value?.result === "string" && value.result.length <= MINI_APP_LIMITS.replyBytes) {
             const result = validateMiniAppResult(compiled, JSON.parse(value.result) as MiniAppVmReply);
             if (preview && answerDataDigest(result.snapshot) !== answerDataDigest(options.snapshot)) throw new MiniAppError("PROTOCOL", "Preview changed its source checkpoint");
-            finish(undefined, { result, ...(preview ? { preview: validateMiniAppActionEvidence(compiled, result, value.preview) } : {}) });
+            finish(undefined, { result, ...(preview ? { preview: validateMiniAppActionEvidence(compiled, result, value.preview, options.actionIds) } : {}) });
           } else finish(new MiniAppError("PROTOCOL", "Invalid mini app trial result"));
         } catch (error) { finish(error instanceof MiniAppError ? error : new MiniAppError("PROTOCOL", "Invalid mini app trial response")); }
       });

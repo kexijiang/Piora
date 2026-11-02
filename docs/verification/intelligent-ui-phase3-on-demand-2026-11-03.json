@@ -1,0 +1,2710 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "status": "development-checkpoint-not-phase-complete",
+  "baseCommit": "d2e67c9f0742a9ec47406272c3c88c374fbd69ce",
+  "upstreamBase": "9540f859501f0923af379c4060aee0e79bf3c640",
+  "pr": "https://github.com/kexijiang/Piora/pull/238",
+  "policies": {
+    "answerForm": "answer-form-5",
+    "miniApp": "mini-app-intent-22"
+  },
+  "implementationSources": {
+    "lib/mini-app/capability-manifest.ts": "9a26dddffb43037a5ace9bcd66d23d55126dd226560df3a91ceebbeee4c42476",
+    "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
+    "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
+    "components/AnswerOutput.tsx": "fbdc8b1c93cd0340445a1a9dd421525e0ceff097bd8ae14306aeb26ebe38ffa3",
+    "components/AnswerOutputScope.tsx": "ac6dd9b8c059e0d8ed620c167ee12afbbcb298f6f48128dca297d87bf264562f",
+    "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
+    "lib/answer-output-conversion-schema.ts": "3d2a8e9da2b8a88120088bf5edb5956579b4a0c66068c44ec02272ac57bbff85",
+    "lib/answer-output-conversion-data.ts": "218df1bd6acd89d368b8a529e29247ab16c9df4cbc2e9e2796f170c211878614",
+    "lib/answer-output-conversion-receipts.ts": "576128b6971ddf6089f76baa4468a291ce5f934132df690b7a0a5c58ac6f22a8",
+    "lib/answer-output-conversion-service.ts": "8a1780399fef75845415dd527edc7c7d679529d887ca7b6a9fae2278d3cfde6f",
+    "components/AnswerConversion.tsx": "37116f46f29a4cb261da9e21211ecb3decb63885cf2dbd15b9c8ab02d0909a7e",
+    "app/api/sessions/[id]/answer-output/conversion/route.ts": "3ba127e4dbc3910da6005fb1656691d45d5c6656ae78e60bb534f7ddaca015c4",
+    "lib/intelligent-ui/generation-journal.ts": "08f78552739289db541e6b8c7380a124c97c52f6cc0eeef1b660fee9cb248bf7",
+    "lib/intelligent-ui/generation-runtime.ts": "453be0a8caedca8322b9a6cbff759b37b2c760ec7e196f84c9b2a2900034f6af",
+    "lib/intelligent-ui/read-output.ts": "ab7d90528065044c8ebe4cd7373c8c24717f1e1e5e3af160ec913fc60403dcda",
+    "lib/intelligent-ui/rich-plan.ts": "f567922243030b95238a0695422845e4119343b162ee76e5f29a56751f79104e",
+    "lib/intelligent-ui/rich-plan-schema.ts": "b99b557bf7198b6d600ce3c5ad7ce42183429b947cb26581e9f7e9a089e86eb9",
+    "lib/intelligent-ui/plan.ts": "d9929cd250407ca8f9f9c28c83ee32acb6b8874993a48a5094a1419fc8debd8a",
+    "lib/intelligent-ui/plan-types.ts": "8106d52f5e44b58d433ca1007958f28f6ef583c9127e7fe2c12db5f3f2e4bd94",
+    "lib/intelligent-ui/plan-schema.ts": "e5bc43bbe47f4f1a277027012a6a615a2ff2dd1f82e109378f02fc688c1dba74",
+    "lib/intelligent-ui/plan2-expressions.ts": "270344149771a72c56841f27b43a61db6d82d9d5902a4230aa5dddf09ebbf7fe",
+    "lib/intelligent-ui/protocol.ts": "200289cd52ed51f06382ca00bfb3c7e26028813b86b5109574ff48a2334cee69",
+    "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
+    "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
+    "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
+    "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+    "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
+    "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
+    "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
+    "extensions/piora-mini-app.ts": "4ee8a06163fbda998f0c45f07ae37fdb568b7b0801027dd55795179ee8bb67bc",
+    "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
+    ".mini-app-runtime/renderer.js": "a29aa91f8b4e988c467816174a6905e6c6861b6119105691b0d7e09e3c8ebd6b",
+    ".mini-app-runtime/server-worker.cjs": "6be9cbfdb7082daf86d91e22fb75d94ae7412c83593ced8141d2d3f7c1ac7493",
+    ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
+    "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
+    "lib/mini-app/plan-schema.ts": "80c937188fc2a5bd4aef125d66b23287d54777807601bc237b70dfc526d43dc7",
+    "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
+    "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
+    "lib/mini-app/authoring-contract.ts": "c84f0d3bc5374f2380aec2fc51103faeaa3c0f44c4dc8c379eda6546eecd882e",
+    "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
+    "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
+    "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
+    "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+    "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+    "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
+    "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
+    "lib/mini-app/journal.ts": "fa30173948b3e6e3d78aa68791ed9a1423f7d118d379909818a69b44e489e546",
+    "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
+    "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
+    "lib/mini-app/migration-types.ts": "c8ce8be9e49a534536ef6dd656616db2c3179afdb8f463c54bb9429f08ca73f5",
+    "lib/mini-app/migration-service.ts": "f0dfdd67adc968af9376572d21b376f8ab3b46424f8e02742729bad684e6e6c3",
+    "lib/mini-app/client-cache.ts": "a6e77557973002362b62bc083f8cde440b0250dab114f11305425b7ecaa39436",
+    "lib/mini-app/client-state.ts": "8f7bce4d64e6fdf81da357521f3e58546787e51a63a789dc5b7844c19568bc56",
+    "components/mini-app/MiniAppSurface.tsx": "1e2a81df79b442707e8980e58b2540672f958d7423d571b4f7f87dfcb09a1317",
+    "components/mini-app/MiniAppMigration.tsx": "4bcc34458bb56cf480b4152e49c8602c3cdd319fa0a2b2f8f6f991e95ee26b9b",
+    "components/mini-app/MiniAppSurface.module.css": "8e31417f53c01abca555ad4891e6a281c183f0cc621504e3c7947126d4568633",
+    "app/api/sessions/[id]/mini-app/migration/route.ts": "2a31ef459b8fea057df1c3c4d3b768a7003e83ef5d99b7018c24812dce44559f",
+    "lib/mini-app/action-host.ts": "e0eeab60838d80bece9dc26f827af722a8ba82811fa3ba53acfb8f02f6f5e376",
+    "lib/mini-app/action-service.ts": "4947bd6c4a3bb659475520266dc2f196b94d25aa9eebe93df775226a2aad27c6",
+    "components/mini-app/MiniAppActions.tsx": "aee8dc12b927df5411695c744e48e697a75583fe23462f34922f8d2b29d431e3",
+    "app/api/sessions/[id]/mini-app/actions/route.ts": "b1800c4e8fa1ee1eb9e780904dd6d946e456acf9ddba2acaba977f97aa59f3e2",
+    "components/intelligent-ui/SurfaceActions.tsx": "e3bbdeca1ca68b8d03e7456b569a77bd19d927f7cf7134a55a6bd3dacc22054c",
+    "lib/intelligent-ui/action-host.ts": "5cc9b0fd4bd6d26540026985318682ecc7c6507dc06828e4d49ef702f9377434",
+    "lib/intelligent-ui/action-runtime.ts": "6ed63078732b1d2eaad59bf11612ffad534cf587ab1f9d24909f822421af8cb6",
+    "lib/intelligent-ui/action-service.ts": "deb6dcd74e7ae1c3bf6abf279ceb4cd780747186ca443207691acebe5424a194",
+    "lib/intelligent-ui/action-contract.ts": "8e05a9f4cdcf99f5bbc47c376fb93212bb1579a507c92c9464cd0e842f5116ab",
+    "lib/intelligent-ui/action-operation.ts": "faca4cab3c723a305f6bcdc9612e0061000550e294509abc072c036b5c4b7af5",
+    "lib/intelligent-ui/action-files.ts": "63fea8daacb05f299cb68ef4f37e51c94858a296f68e902391cc18b62bc0b658",
+    "components/intelligent-ui/IntelligentUiSurface.module.css": "fb26f37ad8afe376df302f6afad75cfe192ed86c5057d334deef8181ef2de3e1",
+    "lib/tool-permission-policy.ts": "8410b974b3cb6c771536c98bbcfb0a0192dcc36b9f3e342a5b841e54a3a454fe",
+    "lib/tool-permission-store.ts": "2288a6c74500e3af9429bf4a60577b9ef65ed043878cad6d80b865a416dd06ec",
+    "lib/tool-permission-gate.ts": "bd49bcb11f8dc81cb935caed3c3fbeb5f86cc1fb5184f22667f1c23554afc8bd",
+    "lib/tool-review-model.ts": "18bfe3ad53180430c814b9a1ce5d8866cb648a361d56034df8c55f216fe1d9db",
+    "lib/tool-review-evidence.ts": "e154f59870de212c63a5973f4738a3361fc113ddd500c917f262f053ba416ae8",
+    "lib/tool-review-store.ts": "09c28f4aee5454678ab270214fdc233046f169399f7c70da810849c94e335b63",
+    "lib/tool-review-types.ts": "9a0b085ad05a94eac88dcad4c1e3cf41cc5f8687769c57367870612dce982b11",
+    "lib/mini-app/program.ts": "fd95f937fb9c38c264e9417a2baf29925bfc1ff395e500844d77980c34a45dd5",
+    "lib/mini-app/state-schema.ts": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b",
+    "lib/mini-app/vm.ts": "2ca61f3f551b4a7c5b029be7330062fdcf879838b9373c5a44e3c53236bdf464",
+    "lib/mini-app/guest-runtime.ts": "c1c9375adda918ee5e05aa94e567322235470b65f3efba3c9ffb4b65a23ecf84",
+    "lib/mini-app/wasm-memory.ts": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e",
+    "lib/mini-app/worker-client.ts": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb",
+    "lib/mini-app/runtime-worker.ts": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8",
+    "lib/mini-app/document.ts": "ed7f04527c347ac807f70289ecedc56f7518133cc0a6358f9fb2789424f2a81a",
+    "lib/mini-app/document-capabilities.ts": "3a1f78e18de9b3d152f57c779d8fd13b9ac35eb453457b17f66ffa2d7e362179",
+    "lib/mini-app/frame.ts": "c3b565311c29607b99f4a4b44c5960fa1eaa1a8edcb11d947a1d065061376754",
+    "lib/mini-app/frame-host.ts": "7007331ff5b3a0d74cc09bf462b8bfc38ef0ef00ce6cd1034111039de8b23f34",
+    "lib/mini-app/renderer-runtime.ts": "f2399fc9a899c46d0bff57c27333104722d93834b2694385cd28dec5d50872ab",
+    "lib/mini-app/controller.ts": "21d5caa9cba9a2568a9e3f7a447ca43754392e1bf6395e2d4d627eec0a8eb571",
+    "lib/mini-app/events.ts": "658538820d22b101c5c98d735eb8af33368315bd35a01366e830b070de600e91",
+    "lib/mini-app/playback.ts": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78",
+    "lib/mini-app/appearance.ts": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919",
+    "lib/mini-app/repeat.ts": "a63ad7c7b6a0dd1b6e8c659097eb753cc6a28c7a348cbaf843ac3c2fdd7d7281",
+    "lib/mini-app/repeat-renderer.ts": "1adb95d34d30204c6114a4bdf5742d032f9d24c2ae5ccca1253af3b9dd91fe19",
+    "lib/mini-app/repeat-example.ts": "d219da4b93ed144e9d35f469d36a1e5c627362ca4d05791d8d301b98ae4cfb13",
+    "lib/mini-app/scene-state.ts": "b70c4c07f78164a27ef42ff6f92718b1838f34d5d94c80f2c876f2558559b747",
+    "lib/mini-app/scene-renderer.ts": "a17dab09bbad68a6544c61517530698db257f5b821b90ca2c312e3db937d7946",
+    "lib/mini-app/scene-example.ts": "01bb0b80af2163bdb44584ada2a32d69074219b7f527f91e550fdc65bc8c88cd",
+    "lib/mini-app/scene-groups-example.ts": "cb958b2f89f966f0d0496ec3d3a92751cc7ecb7b4644fb4b3b9230a1f46975d9",
+    "lib/mini-app/environment-protocol.ts": "7ce9aea94eb3ddefab98c11b276e93ab5cd5ceae83e02f52549e2fa65b10478e",
+    "lib/mini-app/environment-store.ts": "18f169395b5b0942ef7e065036b94c628f3275a5f1327f54b2566547dbc5861f",
+    "lib/mini-app/environment-client.ts": "3781c170d415ad15a733ebf4ae7818a95ccc110d81b8afc42bb15f5fec95ad79",
+    "app/api/mini-app/environment/route.ts": "4bb20319df118cec4a26b685f8e71a7d0d6d80f135c77b2383bc914688b628d4",
+    "lib/answer-output-client.ts": "7bb6443d2325e4c102db94ecf48f428117244f83a234d5cfc6848a1d2e8bd884",
+    "lib/agent-client.ts": "e0574392c90b87c1bc7c9e6a4930a52caf2f9caecf363608efa676f44434fa0a",
+    "lib/prompt-run-registry.ts": "cf0e7e950377d2ed7f8095951916a128b115fd528edcb884801d0bb93f55bd14",
+    "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
+    "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+    "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
+    "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+    "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
+    "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878",
+    "scripts/verify-recorded-mini-app-tasks.mjs": "9616cf90243c9b511cdda1f00600cac8fdb54f61a99540a1b4839d1f53d83fe3",
+    "scripts/desktop-e2e/real-model-proxy.mjs": "d24216274ba25354689b35f944c522868cea44ff0ed0563d45319f4ffef798b3",
+    ".verification/phase3-on-demand-bindings.json": "3d7a7094eef28b142d2613caacb2cb7de05d19569fdec88bb29f63f0ff0befa8",
+    ".verification/phase3-on-demand-action-bindings.json": "76150892be54de320323c9333606538b095fb866382d1a6153d6008f26e04406",
+    "lib/mini-app-action-preview.test.mjs": "90da37d98e40f18099331101d9177fa816d94e46f02f06173e34c09d71049251",
+    "lib/mini-app-generation.test.mjs": "2f1b263dab5bccbc6fd377fc3a8bbd2a761ce93c6419d928a9c0d9814ee09360",
+    "lib/mini-app-generation-runtime.test.mjs": "c978b102e83f942c0bd39766d0889e0ddcc87eb65c0bf322968a347dd0c79404"
+  },
+  "capabilityVerification": {
+    "status": "passed",
+    "files": 57,
+    "tests": 520,
+    "passed": 520,
+    "failed": 0,
+    "sourceHashes": {
+      ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
+      ".mini-app-runtime/renderer.js": "a29aa91f8b4e988c467816174a6905e6c6861b6119105691b0d7e09e3c8ebd6b",
+      ".mini-app-runtime/server-worker.cjs": "6be9cbfdb7082daf86d91e22fb75d94ae7412c83593ced8141d2d3f7c1ac7493",
+      "app/api/mini-app/environment/route.ts": "4bb20319df118cec4a26b685f8e71a7d0d6d80f135c77b2383bc914688b628d4",
+      "app/api/sessions/[id]/answer-output/conversion/route.ts": "3ba127e4dbc3910da6005fb1656691d45d5c6656ae78e60bb534f7ddaca015c4",
+      "app/api/sessions/[id]/mini-app/actions/route.ts": "b1800c4e8fa1ee1eb9e780904dd6d946e456acf9ddba2acaba977f97aa59f3e2",
+      "app/api/sessions/[id]/mini-app/migration/route.ts": "2a31ef459b8fea057df1c3c4d3b768a7003e83ef5d99b7018c24812dce44559f",
+      "components/AnswerConversion.tsx": "37116f46f29a4cb261da9e21211ecb3decb63885cf2dbd15b9c8ab02d0909a7e",
+      "components/AnswerOutput.tsx": "fbdc8b1c93cd0340445a1a9dd421525e0ceff097bd8ae14306aeb26ebe38ffa3",
+      "components/AnswerOutputScope.tsx": "ac6dd9b8c059e0d8ed620c167ee12afbbcb298f6f48128dca297d87bf264562f",
+      "components/intelligent-ui/IntelligentUiSurface.module.css": "fb26f37ad8afe376df302f6afad75cfe192ed86c5057d334deef8181ef2de3e1",
+      "components/intelligent-ui/IntelligentUiSurface.tsx": "c5c4b593052056d386e5e3a0af79547fdfba1acf9ee8b88764b1914a025d8c91",
+      "components/intelligent-ui/SurfaceActions.tsx": "e3bbdeca1ca68b8d03e7456b569a77bd19d927f7cf7134a55a6bd3dacc22054c",
+      "components/intelligent-ui/client-state.ts": "2b375127082cfceb8596e27d29d4dbab4647d61d19b64adee49bbd7ddd334f7a",
+      "components/mini-app/MiniAppActions.tsx": "aee8dc12b927df5411695c744e48e697a75583fe23462f34922f8d2b29d431e3",
+      "components/mini-app/MiniAppMigration.tsx": "4bcc34458bb56cf480b4152e49c8602c3cdd319fa0a2b2f8f6f991e95ee26b9b",
+      "components/mini-app/MiniAppSurface.module.css": "8e31417f53c01abca555ad4891e6a281c183f0cc621504e3c7947126d4568633",
+      "components/mini-app/MiniAppSurface.tsx": "1e2a81df79b442707e8980e58b2540672f958d7423d571b4f7f87dfcb09a1317",
+      "extensions/piora-mini-app.ts": "4ee8a06163fbda998f0c45f07ae37fdb568b7b0801027dd55795179ee8bb67bc",
+      "lib/agent-client.ts": "e0574392c90b87c1bc7c9e6a4930a52caf2f9caecf363608efa676f44434fa0a",
+      "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
+      "lib/answer-output-client.ts": "7bb6443d2325e4c102db94ecf48f428117244f83a234d5cfc6848a1d2e8bd884",
+      "lib/answer-output-conversion-data.ts": "218df1bd6acd89d368b8a529e29247ab16c9df4cbc2e9e2796f170c211878614",
+      "lib/answer-output-conversion-receipts.ts": "576128b6971ddf6089f76baa4468a291ce5f934132df690b7a0a5c58ac6f22a8",
+      "lib/answer-output-conversion-schema.ts": "3d2a8e9da2b8a88120088bf5edb5956579b4a0c66068c44ec02272ac57bbff85",
+      "lib/answer-output-conversion-service.ts": "8a1780399fef75845415dd527edc7c7d679529d887ca7b6a9fae2278d3cfde6f",
+      "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
+      "lib/answer-output-decision.ts": "bcadaebf2a7ffdeed80df43aa6b80f56021d29abc37a83826616d83186c76b5c",
+      "lib/intelligent-ui/action-contract.ts": "8e05a9f4cdcf99f5bbc47c376fb93212bb1579a507c92c9464cd0e842f5116ab",
+      "lib/intelligent-ui/action-files.ts": "63fea8daacb05f299cb68ef4f37e51c94858a296f68e902391cc18b62bc0b658",
+      "lib/intelligent-ui/action-host.ts": "5cc9b0fd4bd6d26540026985318682ecc7c6507dc06828e4d49ef702f9377434",
+      "lib/intelligent-ui/action-operation.ts": "faca4cab3c723a305f6bcdc9612e0061000550e294509abc072c036b5c4b7af5",
+      "lib/intelligent-ui/action-runtime.ts": "6ed63078732b1d2eaad59bf11612ffad534cf587ab1f9d24909f822421af8cb6",
+      "lib/intelligent-ui/action-service.ts": "deb6dcd74e7ae1c3bf6abf279ceb4cd780747186ca443207691acebe5424a194",
+      "lib/intelligent-ui/decision-policy.ts": "2bc9a22c36114f7ad8c203cbb44458f7f2ce57f657ee87a39051a3fdfe321d74",
+      "lib/intelligent-ui/generation-journal.ts": "08f78552739289db541e6b8c7380a124c97c52f6cc0eeef1b660fee9cb248bf7",
+      "lib/intelligent-ui/generation-runtime.ts": "453be0a8caedca8322b9a6cbff759b37b2c760ec7e196f84c9b2a2900034f6af",
+      "lib/intelligent-ui/plan-schema.ts": "e5bc43bbe47f4f1a277027012a6a615a2ff2dd1f82e109378f02fc688c1dba74",
+      "lib/intelligent-ui/plan-types.ts": "8106d52f5e44b58d433ca1007958f28f6ef583c9127e7fe2c12db5f3f2e4bd94",
+      "lib/intelligent-ui/plan.ts": "d9929cd250407ca8f9f9c28c83ee32acb6b8874993a48a5094a1419fc8debd8a",
+      "lib/intelligent-ui/plan2-expressions.ts": "270344149771a72c56841f27b43a61db6d82d9d5902a4230aa5dddf09ebbf7fe",
+      "lib/intelligent-ui/preview-parser.ts": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5",
+      "lib/intelligent-ui/preview-plan.ts": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682",
+      "lib/intelligent-ui/protocol.ts": "200289cd52ed51f06382ca00bfb3c7e26028813b86b5109574ff48a2334cee69",
+      "lib/intelligent-ui/read-output.ts": "ab7d90528065044c8ebe4cd7373c8c24717f1e1e5e3af160ec913fc60403dcda",
+      "lib/intelligent-ui/rich-plan-schema.ts": "b99b557bf7198b6d600ce3c5ad7ce42183429b947cb26581e9f7e9a089e86eb9",
+      "lib/intelligent-ui/rich-plan.ts": "f567922243030b95238a0695422845e4119343b162ee76e5f29a56751f79104e",
+      "lib/intelligent-ui/rich-protocol.ts": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec",
+      "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
+      "lib/mini-app/action-host.ts": "e0eeab60838d80bece9dc26f827af722a8ba82811fa3ba53acfb8f02f6f5e376",
+      "lib/mini-app/action-inspection.ts": "df087e808bbc2561596cc6f4ed4b6465c68fb93786a58bae2d5ede7ac015013b",
+      "lib/mini-app/action-preview.ts": "129339fa671f00aabbcd1d1817d81c9b22a5e36643403228287288c68eb059fd",
+      "lib/mini-app/action-service.ts": "4947bd6c4a3bb659475520266dc2f196b94d25aa9eebe93df775226a2aad27c6",
+      "lib/mini-app/appearance.ts": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919",
+      "lib/mini-app/authoring-contract.ts": "c84f0d3bc5374f2380aec2fc51103faeaa3c0f44c4dc8c379eda6546eecd882e",
+      "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
+      "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
+      "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
+      "lib/mini-app/capability-manifest.ts": "9a26dddffb43037a5ace9bcd66d23d55126dd226560df3a91ceebbeee4c42476",
+      "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+      "lib/mini-app/client-cache.ts": "a6e77557973002362b62bc083f8cde440b0250dab114f11305425b7ecaa39436",
+      "lib/mini-app/client-state.ts": "8f7bce4d64e6fdf81da357521f3e58546787e51a63a789dc5b7844c19568bc56",
+      "lib/mini-app/controller.ts": "21d5caa9cba9a2568a9e3f7a447ca43754392e1bf6395e2d4d627eec0a8eb571",
+      "lib/mini-app/decision-policy.ts": "842e1cdea9b0f3463fbc9c91096891dd24b052c624a72d4edba774605f89a0fa",
+      "lib/mini-app/document-capabilities.ts": "3a1f78e18de9b3d152f57c779d8fd13b9ac35eb453457b17f66ffa2d7e362179",
+      "lib/mini-app/document.ts": "ed7f04527c347ac807f70289ecedc56f7518133cc0a6358f9fb2789424f2a81a",
+      "lib/mini-app/environment-client.ts": "3781c170d415ad15a733ebf4ae7818a95ccc110d81b8afc42bb15f5fec95ad79",
+      "lib/mini-app/environment-protocol.ts": "7ce9aea94eb3ddefab98c11b276e93ab5cd5ceae83e02f52549e2fa65b10478e",
+      "lib/mini-app/environment-store.ts": "18f169395b5b0942ef7e065036b94c628f3275a5f1327f54b2566547dbc5861f",
+      "lib/mini-app/events.ts": "658538820d22b101c5c98d735eb8af33368315bd35a01366e830b070de600e91",
+      "lib/mini-app/frame-host.ts": "7007331ff5b3a0d74cc09bf462b8bfc38ef0ef00ce6cd1034111039de8b23f34",
+      "lib/mini-app/frame.ts": "c3b565311c29607b99f4a4b44c5960fa1eaa1a8edcb11d947a1d065061376754",
+      "lib/mini-app/generation-runtime.ts": "c606e0808066eaf3ad07a6d00dc23c30ed9cccb8da6464f713c5ce90b73a7878",
+      "lib/mini-app/guest-runtime.ts": "c1c9375adda918ee5e05aa94e567322235470b65f3efba3c9ffb4b65a23ecf84",
+      "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
+      "lib/mini-app/journal.ts": "fa30173948b3e6e3d78aa68791ed9a1423f7d118d379909818a69b44e489e546",
+      "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
+      "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
+      "lib/mini-app/migration-service.ts": "f0dfdd67adc968af9376572d21b376f8ab3b46424f8e02742729bad684e6e6c3",
+      "lib/mini-app/migration-types.ts": "c8ce8be9e49a534536ef6dd656616db2c3179afdb8f463c54bb9429f08ca73f5",
+      "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
+      "lib/mini-app/plan-schema.ts": "80c937188fc2a5bd4aef125d66b23287d54777807601bc237b70dfc526d43dc7",
+      "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
+      "lib/mini-app/playback.ts": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78",
+      "lib/mini-app/program.ts": "fd95f937fb9c38c264e9417a2baf29925bfc1ff395e500844d77980c34a45dd5",
+      "lib/mini-app/renderer-runtime.ts": "f2399fc9a899c46d0bff57c27333104722d93834b2694385cd28dec5d50872ab",
+      "lib/mini-app/repeat-example.ts": "d219da4b93ed144e9d35f469d36a1e5c627362ca4d05791d8d301b98ae4cfb13",
+      "lib/mini-app/repeat-renderer.ts": "1adb95d34d30204c6114a4bdf5742d032f9d24c2ae5ccca1253af3b9dd91fe19",
+      "lib/mini-app/repeat.ts": "a63ad7c7b6a0dd1b6e8c659097eb753cc6a28c7a348cbaf843ac3c2fdd7d7281",
+      "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+      "lib/mini-app/runtime-worker.ts": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8",
+      "lib/mini-app/scene-example.ts": "01bb0b80af2163bdb44584ada2a32d69074219b7f527f91e550fdc65bc8c88cd",
+      "lib/mini-app/scene-groups-example.ts": "cb958b2f89f966f0d0496ec3d3a92751cc7ecb7b4644fb4b3b9230a1f46975d9",
+      "lib/mini-app/scene-renderer.ts": "a17dab09bbad68a6544c61517530698db257f5b821b90ca2c312e3db937d7946",
+      "lib/mini-app/scene-state.ts": "b70c4c07f78164a27ef42ff6f92718b1838f34d5d94c80f2c876f2558559b747",
+      "lib/mini-app/server-trial.ts": "0281a3f34817ea69d240468d9a3cf579207a33dddae9c72319bfe575d0e45ca2",
+      "lib/mini-app/server-worker.ts": "e334d1f8868fb4eb8e52cec4a18e7d843d9c092c30cf986e176338ad4547688a",
+      "lib/mini-app/state-schema.ts": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b",
+      "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
+      "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
+      "lib/mini-app/vm.ts": "2ca61f3f551b4a7c5b029be7330062fdcf879838b9373c5a44e3c53236bdf464",
+      "lib/mini-app/wasm-memory.ts": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e",
+      "lib/mini-app/worker-client.ts": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb",
+      "lib/prompt-run-registry.ts": "cf0e7e950377d2ed7f8095951916a128b115fd528edcb884801d0bb93f55bd14",
+      "lib/rpc-manager.ts": "151e8dd86c66de9ab8d134181433dcf9ac5d57cb9c10622f2be40bd9b612900f",
+      "lib/tool-permission-gate.ts": "bd49bcb11f8dc81cb935caed3c3fbeb5f86cc1fb5184f22667f1c23554afc8bd",
+      "lib/tool-permission-policy.ts": "8410b974b3cb6c771536c98bbcfb0a0192dcc36b9f3e342a5b841e54a3a454fe",
+      "lib/tool-permission-store.ts": "2288a6c74500e3af9429bf4a60577b9ef65ed043878cad6d80b865a416dd06ec",
+      "lib/tool-review-evidence.ts": "e154f59870de212c63a5973f4738a3361fc113ddd500c917f262f053ba416ae8",
+      "lib/tool-review-model.ts": "18bfe3ad53180430c814b9a1ce5d8866cb648a361d56034df8c55f216fe1d9db",
+      "lib/tool-review-store.ts": "09c28f4aee5454678ab270214fdc233046f169399f7c70da810849c94e335b63",
+      "lib/tool-review-types.ts": "9a0b085ad05a94eac88dcad4c1e3cf41cc5f8687769c57367870612dce982b11",
+      "lib/mini-app-capabilities.test.mjs": "faa539b6e16b218e242b58ab7d3a89ac58a89abeffd747386796e8ca79f123f1",
+      "lib/mini-app-contract.test.mjs": "b5fc3275a25618d5bbc9aea0b882eaa0d3f54d884582e81b1bd3537e254d70f4",
+      "lib/mini-app-generation.test.mjs": "2f1b263dab5bccbc6fd377fc3a8bbd2a761ce93c6419d928a9c0d9814ee09360",
+      "lib/mini-app-generation-runtime.test.mjs": "c978b102e83f942c0bd39766d0889e0ddcc87eb65c0bf322968a347dd0c79404",
+      "lib/mini-app-admission.test.mjs": "8342b40b2d187647a3de5df1438c27b8cff4a86ae6208ec02f4881fcad5649f9",
+      "lib/mini-app-controller-browser.test.mjs": "7e8376b160f1b58d4cfd203bb90ab8fb0cb2b9d81da333801cbf305d00d71c2b",
+      "lib/mini-app-renderer-browser.test.mjs": "899f6b659d655cde8ee6773e5af6a5add1733c34a2c13ce380db838ef87df128",
+      "lib/mini-app-worker-browser.test.mjs": "d9fff6b6c2a89124e26fd503fa831d5e9a65073b713304036f9917ff47f5cda3",
+      "lib/mini-app-runtime.test.mjs": "ae1128dcc1b62c795301ed8319367a21a75532f809c3589e6c0d9f07ab740551",
+      "lib/mini-app-restore-budget.test.mjs": "0b09c907c22667858cd289d644ea69144129ae305aa88d3dfbfcb02d07c62be9",
+      "lib/mini-app-document.test.mjs": "7927f23e947cd8196b87d584610884e46b0c202eaed6fca8c45839956ab0f1cf",
+      "lib/mini-app-frame.test.mjs": "a4b1607db4f68c9e4018a6822cd756e1be0f1f01635956d2f6bc755360c6925b",
+      "lib/mini-app-server-trial.test.mjs": "fed1758eee92130f6fe1575e530228a8539e9775ef2d86e00a905c0f43121e32",
+      "lib/mini-app-repeat.test.mjs": "9e272d477f3f9b22498d04d4d1c3af08968dd60fb51724ec038acb698b4d2c34",
+      "lib/mini-app-repeat-browser.test.mjs": "d293bbab51305cf0fa06b657969f0d9ad65ea9046c7abc8b65a2b12c4493554f",
+      "lib/mini-app-state.test.mjs": "dd5c7e8ad5ecd8de1eca27b7d20276ebd4210b4bb9e57bead5db02cb469ed219",
+      "lib/mini-app-scene.test.mjs": "b1bc1618fbd2900de0812afa51108140d509d7acd861b4261117629af975e817",
+      "lib/mini-app-scene-browser.test.mjs": "492a252df9e9eb1439c8c47836f6c4ed36e62717222b0abd938f35b2ef393f21",
+      "lib/mini-app-action-preview.test.mjs": "90da37d98e40f18099331101d9177fa816d94e46f02f06173e34c09d71049251",
+      "lib/answer-output-client.test.mjs": "215c47e007fd6d14bbafe0e9ddf43b8b0bc6068db4bfeb4a9bf91b9ebe69e50b",
+      "lib/mini-app-groups.test.mjs": "c7272086334f1706b78db24097bef376c6219461da7e98c57239a1fc321801ad",
+      "lib/mini-app-groups-browser.test.mjs": "536c2209664b32add4b8902554bceaad30e035edad53f11e104752447695d4a6",
+      "lib/mini-app-presets.test.mjs": "52b56510904ff745ce243099d869b32caf4d23c59078cf7a26d015b99d55030c",
+      "lib/mini-app-migration.test.mjs": "19da0dbebd3dbdcc9f2534e8426af3e2c4a4f693e8fe588292a51f99dce8f14c",
+      "lib/mini-app-migration-browser.test.mjs": "e105bf2f0d53acf2b529c06e386ac62d7844e6e2dee8de83b5c7c46c5ba53f4f",
+      "lib/mini-app-journal.test.mjs": "82d3c617a5ec1b8b9f5377ed1362978a5b4dbd8635dc3e1e0912c2b236caa551",
+      "lib/mini-app-inheritance.test.mjs": "c7683b95e618fa9efbd500731f31f3c2d1e139f9f8e80e61daa3feb3cb068341",
+      "lib/mini-app-client-browser.test.mjs": "b8414a28dc3f266d37e1a7378364e46f6aaab65cd250556f4310f91ee84a15a5",
+      "lib/mini-app-route.test.mjs": "c1e8777eaa9bd48a9231b9ffdf558d1902609fffdb22c85bf3eaa1cceab80c51",
+      "lib/mini-app-progress-migration.test.mjs": "c91bee9c2d2c3ab78f8a1642e1c09ca48595fa1dfd8614689695c99c29a704bc",
+      "lib/mini-app-authoring-repair.test.mjs": "05d6ea1cfd57362ce4b9dcc6437b4a46fd20fb0d92326fb28b3542ee3d8c3853",
+      "lib/mini-app-plan.test.mjs": "abe3278008e872a4e8f3f981a3e3b295d2f7baf7645c9c3e2349a95f8c789f4f",
+      "lib/intelligent-ui-plan.test.mjs": "ede6419bf94f6dcb355b0d96684f851eb9cfacfd722bdf115a1507e981b8b66e",
+      "lib/intelligent-ui-admission.test.mjs": "b71c3320ca1c1b8d6df658b86fd49be492214867fc6e02e4eb16a2633cfeb1a8",
+      "lib/mini-app-input-ordering.test.mjs": "9fccce7512d6e15a5cbf9f65d9def01e37b7a95fd3eadd3d8051167416399fa3",
+      "lib/intelligent-ui/comparisons.test.mjs": "3f69858dbf0969302fd90c4374d54e9efe3a7c67be85fd8092d4432246456ea4",
+      "lib/intelligent-ui/preview-plan.test.mjs": "34cd98acfa902177ae59360a99c26870381028e105141c5e3ca47b2b106d2c32",
+      "lib/mini-app-actions.test.mjs": "7a37683b22305fac0f1d810e3d2321da2041982d028d254fb9ffae0e61464d5b",
+      "lib/mini-app-actions-route.test.mjs": "db5cbaa4cae2e0996d1d7dbd9e8e0de79987e939f380e60eadff732979acb2d2",
+      "lib/mini-app-actions-browser.test.mjs": "eb885ec07d6d6a49c4545b738b94b4d7866367c8d9aaf98f8ed924576483673d",
+      "lib/intelligent-ui/action-runtime.test.mjs": "ff0c587a61e33655acf2063c4eee54844ffc0fce841a4f9bbb081d0c8ecedd45",
+      "lib/intelligent-ui/action-route.test.mjs": "dec6c664197091f627d3caf36a5af2e809688b5087e10659efa5000980bebd83",
+      "lib/intelligent-ui/action-files.test.mjs": "3d9d4899959163a943763e63e093493cd4380f6336868d40fb230ad555565be9",
+      "components/intelligent-ui-actions-browser.test.mjs": "432666135ffcac6055de723545956406e936c4336e726f3f7cfa690ddad72a82",
+      "lib/mini-app-environment.test.mjs": "c3198e0bf9faebc1de44c404ca54971be8046fc8131a12cc752618fb8f3ceea7",
+      "lib/mini-app-environment-route.test.mjs": "6cf93ec261cc14a4e7eb67161aa76b28c19037fb9ef0f4767be3786866e57ec4",
+      "lib/mini-app-environment-browser.test.mjs": "eb461f8a698bc6cbf005f0689638253c14e596a3735b7ec5477a38f0017fad87",
+      "lib/prompt-run-registry.test.mjs": "5f5ca7317991d81cf6fef060d23f077a43e958647cb0464c99be8c12755141c7",
+      "lib/agent-client.test.mjs": "238afed4e6a58c6adeba9377e04e58b64b6710b546961af475e5d504b34d6e51",
+      "lib/rpc-manager-behavior.test.mjs": "3330aaad207b92bcb0ca80b810dece84d5a6d784ab0223d8b7888e1c502587f0",
+      "lib/answer-output-conversion-receipts.test.mjs": "65dd52fe20d7b272c467019c56fdb4e1d0370f69cf4c77c9ff40fd9a0a5f5b01",
+      "lib/answer-output-conversion.test.mjs": "3e4aacbd542b372a644900f49ecb88c0b0dcfecbfa93f046d36e686336523e70",
+      "lib/answer-output-conversion-browser.test.mjs": "6099c9437bbe3f72145397cafb625b916e493173cb6ef074fb326d080a3753e1",
+      "lib/intelligent-ui/generation-runtime.test.mjs": "bfe1e3fa066cf980c6c4c8db0714bd7cc06f80d116a431e786e1f7f8dd8bc16f",
+      "lib/intelligent-ui-generation.test.mjs": "508f010acce1b63612152d7d98c0261d7ef4150f07a6198acc8f7fde7dc88317",
+      "lib/intelligent-ui-generation-copy.test.mjs": "94ac1f4d66215e533b892c12ef425105f2c5410bf21a7a2ba85a4578b5558bb1",
+      "lib/intelligent-ui/rich-plan.test.mjs": "3c4d915e271d14681fc18ee30d365793f90fdb46070e669bd726f9a7db073b11"
+    },
+    "capabilities": [
+      "document",
+      "events",
+      "playback",
+      "svg",
+      "canvas2d",
+      "scene3d",
+      "repeat",
+      "scenePicking",
+      "cameraControls",
+      "sceneGroups",
+      "inputPresets",
+      "registeredActions",
+      "stateMigration",
+      "outputConversion"
+    ],
+    "scope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+  },
+  "sourceAudit": {
+    "checkedAt": "2026-11-02T21:15:39.683Z",
+    "desktopFiles": 119,
+    "capabilityFiles": 169,
+    "mismatches": []
+  },
+  "initialFailures": [
+    {
+      "kind": "focused-tests",
+      "pass": 24,
+      "fail": 7,
+      "reason": "Non-isolated agent profile rejected stale capability evidence; final verifier uses an isolated agent directory."
+    },
+    {
+      "kind": "typecheck",
+      "reason": "Missing details in unavailable-tool result; corrected before final typecheck."
+    }
+  ],
+  "generation": {
+    "status": "incomplete-enospc",
+    "exitCode": 1,
+    "sourceSha256": "fcd8d98b5aa17466fdd6e7bda31ed1d50ef74a3321e38fe6ccc1bcc119a4bf60",
+    "sourceUnchanged": true,
+    "expected": 24,
+    "completed": 20,
+    "uiExpected": 18,
+    "uiPublished": 14,
+    "uiFirstAttempt": 13,
+    "nonUiCompleted": 6,
+    "originalManifestBytes": 0,
+    "missingCompletionEvidence": [
+      "sorting-3",
+      "triangle-3",
+      "jugs-3",
+      "board-3"
+    ],
+    "recovery": "Separate report reconstructed from sequential log and individual result files. Original empty manifest is preserved; no rerun or successful result inferred.",
+    "rows": [
+      {
+        "id": "direct-1",
+        "status": "completed",
+        "outcome": "no-ui",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 3050,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-4LpHBG/result.json",
+        "sourceSha256": "597eebd93fd5feaaa04b82bae4476dc2ded3d909dec99f92fb4927591c4274b9",
+        "finalText": "每人 **80 块**（480 ÷ 6 = 80）。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "clarification-1",
+        "status": "completed",
+        "outcome": "no-ui",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 5478,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-zucGYf/result.json",
+        "sourceSha256": "9c7043146428bf4d77cdd7c56c400439c73ed50fbb80a2ef741d7c8963a8ee34",
+        "finalText": "提成规则还没定，我无法给出一个真实的提成金额。不同规则算出的结果差别很大，比如：\n\n- **固定比例**：12 万 × 比例（例如 3% → 3,600 元）\n- **阶梯制**：前 8 万按 2%、超出部分按 5% → 1,600 + 2,000 = 3,600 元（同样 3% 的“感觉”，结果可能不同）\n- **有责任底薪 / 目标值**：只有超过目标额的部分才计提\n- **按产品/品类不同比例**：需要拆分明细\n\n请补充一下规则，我就能立刻算：\n\n1. 是单一固定比例，还是分档阶梯？各档的**区间边界**和**对应比例**是多少？\n2. 比例按**全部销售额**计提，还是只按**超过某一档/目标额的部分**计提？\n3. 有没有起提门槛（如低于 5 万不提）、封顶，或按不同品类拆分的比例？\n4. 12 万是含税还是不含税、是否含退货？（如果公司口径有规定）\n\n只要给出边界和比例，我就能算出这个月的提成，也可以做成一个可以调整销售额、按档位实时显示提成和各档明细的小工具，方便你试算后续月份。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "outing-1",
+        "status": "completed",
+        "outcome": "published-components",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 25036,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-ESbUTP/result.json",
+        "sourceSha256": "fe915bcc9e304d1f7ceb8ab0d6291cf71dc87f5c1b174b669992af5bdda8c8dc",
+        "finalText": "交互式比价卡片已发布，打开后可以直接修改人数。\n\n- 按 2 人计算：A 方案总计 180 元，B 方案总计 150 元；B 方案比 A 方案省 30 元。\n- 两种方案的费用相等时是 4 人（各 240 元）；4 人以下时 B 方案更省，超过 4 人时 A 方案更省。\n\n人数不同，结论也会随之改变，卡片里的结论文字和对比表也会实时更新。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "discount-1",
+        "status": "completed",
+        "outcome": "published-components",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 12224,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-UURHwp/result.json",
+        "sourceSha256": "9f90de5feba133382e4a4066be905dd654fb203e7cc668069ad22b1129479e4a",
+        "finalText": "已按 18 元/杯、满 100 减 20（每单限一次）建好可调杯数的计算面板。\n\n按 6 杯：\n- 原价：108 元，已满 100 元，减 20 元\n- 实付：88 元\n- 平均每杯：约 14.67 元\n\n把「杯数」改成其他数值，实付、均价和明细会同步更新；少于 6 杯（原价不足 100 元）时不再减 20。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "sorting-1",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 81383,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-yLF7wR/result.json",
+        "sourceSha256": "de1fe1110997b746afd488239c21ecdb76602c0afa37621e224c906617af51f0",
+        "finalText": "已生成并可用的演示（冒泡排序，数组固定为 6、2、5、1）：\n\n- **柱状图**：蓝色是还没定好的部分，绿色是已经确定位置的部分；刚比较的两个数用深色标出。\n- **点“下一步”**：每点一次只做一次相邻比较，然后告诉你：\n  - 刚才比的是第几位和第几位、两个数分别是多少；\n  - 为什么要交换（左边更大 → 大的该往后，所以交换）或为什么不动（左边更小 → 顺序已对）。\n- **当前趟数 / 剩余提示 / 统计**：显示第几趟（共 3 趟）、下一步会比较谁、已比较和交换各多少次。\n- **比较记录**：下面按顺序累积每次比较的结论，方便回头对照。\n- 也可以点播放键让它自动一步步走，或按“重新开始”回到 6、2、5、1。\n\n规则一句话：每次只看相邻两个数，左边比右边大就交换；一趟走完，这一趟最大的数就被送到最右边，右侧绿色区域因此从右往左一点点变长。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "triangle-1",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 2,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": false,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 3,
+          "elapsedMs": 92005,
+          "diagnostics": [
+            {
+              "code": "FRAME",
+              "message": "Expected a supported literal color",
+              "path": "frame/canvases/board/22",
+              "repairable": true,
+              "contract": {
+                "tool": "piora_render_mini_app",
+                "planVersion": 1,
+                "resubmit": "Resubmit a complete plan including purpose and all required keys below, not a patch. Keep planVersion:1; correct all issues together without changing the task.",
+                "required": [
+                  "planVersion",
+                  "id",
+                  "title",
+                  "purpose",
+                  "assumptions",
+                  "inputs",
+                  "stateSchema",
+                  "document",
+                  "viewports",
+                  "playback",
+                  "program",
+                  "initialSnapshot"
+                ],
+                "omitUnused": [
+                  "inputPresets",
+                  "migration",
+                  "conversion",
+                  "actions"
+                ]
+              }
+            }
+          ],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-s41a1n/result.json",
+        "sourceSha256": "485a164e6575c0e843f7f533fbc0ed9560a27154e8432070db24f597e67a0cef",
+        "finalText": "画好了，底 6、高 4 的直角三角形，面积 12。\n\n怎么用：\n- 拖右下白点 B → 改底；拖上方白点 C → 改高（直角在左下角固定，拖不坏）\n- 点一下图形后用方向键微调：← → 改底，↑ ↓ 改高（每次 0.1）\n- 「回到 6 × 4」可复位\n\n观察点：只把底或高加倍，面积加倍；底和高同时变成 k 倍，面积变 k² 倍；面积始终等于 底 × 高 ÷ 2。底的范围 0.5–12，高的范围 0.5–8。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "jugs-1",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 77138,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-udlKai/result.json",
+        "sourceSha256": "4a4607035d7d06cfe1e50828c73c63ef3a3dc7a7b2bfc9fb416906fa99c45138",
+        "finalText": "已经给你做好了一个可以点击试的量水小工具（已发布），左边 3 升杯、右边 5 升杯，水位会随操作实时变化。\n\n能点的操作只有四类（真实倒水的规则）：\n- **装满 / 倒空**：任一杯子一次装满到杯口，或一次倒光\n- **互相倒**：一直倒到目标杯满或源杯空为止\n- **两个杯子都倒空**：回到初始状态，重新开始\n\n每次操作都会记在下方「操作记录」里，杯壁细线每格 1 升方便看水位；勾选「显示解法提示」可以看到一种 6 步走法。\n\n你现在可以自己试着点按钮——提示一下：装满 5 升杯，往空着的 3 升杯里倒，5 升杯里会剩下 2 升；接下来怎么利用这 2 升，就是这道题的关键。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "board-1",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 56353,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-0RXVeJ/result.json",
+        "sourceSha256": "3246a066b40e955f63b11573f2180f7294cfbd6b2a093cd0d3e2cb42e277ce03",
+        "finalText": "井字棋已经生成并生效了。\n\n**玩法**\n- 九宫格中点击空格落子，X、O 自动轮流（默认 X 先手）。\n- 任一方横、竖、斜连成三格，顶部立刻显示「玩家 X/O 获胜！」，并列出获胜的三个格子编号。\n- 九格填满还没连成线时显示「平局」。\n- 一局结束后，空格不再接受落子，点「重新来一局」开新局。\n\n**附加功能**\n- **先手切换**：下拉框可选 X 或 O 先手，切换后立即开始新的一局。\n- **比分栏**：实时累计 X 胜、O 胜、平局和当前局号，方便打多局比赛。\n- **清空比分**：清零战绩并同时开新局。\n\n需要注意：比分只在当前这次对话会话内累计，重新加载或重置后从 0 开始。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "direct-2",
+        "status": "completed",
+        "outcome": "no-ui",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 2690,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-sOqfed/result.json",
+        "sourceSha256": "b1dbdf5741169460b3ee31b04f0b8903c56b672e6db00426a69b1ca5e7b1a62c",
+        "finalText": "480 ÷ 6 = **80 块/人**",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "clarification-2",
+        "status": "completed",
+        "outcome": "no-ui",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 3576,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-eyW2xX/result.json",
+        "sourceSha256": "27f55aa64fb0c576a4189d9f7233aacdda50261d9f9a6921d807f6c9d80f4225",
+        "finalText": "提成规则还没确定，所以我没法给出具体金额。120,000 的销售额本身不足以算出提成。\n\n请告诉我计算规则，例如：\n- **统一比例**：比如按销售额的 3% 计算\n- **阶梯或分档比例**：比如 0–5 万按 2%，5–10 万按 4%，10 万以上按 6%\n- **固定部分与比例组合**：比如底薪外的固定提成，再加一个比例\n\n另外需要确认：提成按**当月销售额全额**计算，还是**只对超过某个目标的部分**计算？是否是税前金额？\n\n你给出规则后，我就可以算出 12 万对应的提成；如果需要调整销售额、档位并实时换算，我也可以做成可交互的可视化计算方案。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "outing-2",
+        "status": "completed",
+        "outcome": "published-components",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 23231,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-yrKKkk/result.json",
+        "sourceSha256": "0fe07b437ef57bc06673c287f5ac443befad80ebed400b28d3a92adfe8d4b4ce",
+        "finalText": "工具已发布，可以直接在“出行人数”里改数字。\n\n**结论速览**\n- 2 人：A 180 元，B 150 元 → **B 省 30 元**\n- 3 人：A 210，B 195 → B 省 15 元\n- 4 人：A 240，B 240 → **打平**\n- 5 人起：A 开始省，且每多一人多省 15 元（8 人时 A 省 60 元）\n\n原因是 A 门票便宜 15 元/人，但车费固定多花 60 元，需要 4 人才能“摊平”这个差；人数越多，A 的优势越大。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "discount-2",
+        "status": "completed",
+        "outcome": "published-components",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 20360,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-dKNhKS/result.json",
+        "sourceSha256": "9b0cb93e918c6b6c3b24f562fc07c5bc8947e7704649ffdeb235a217cc94e89a",
+        "finalText": "面板已上线（杯数默认 6）。\n\n按 6 杯：\n- 原价合计：108 元\n- 满减：20 元（已满 100，每单只减一次）\n- 实付：88 元\n- 平均每杯（按实付算）：约 14.67 元\n\n改杯数时注意门槛点：5 杯=90 元无优惠（实付 90，每杯 18 元），6 杯=108 元触发满减后反而更划算（实付 88）。平均每杯按\"实付÷杯数\"计，四舍五入到分。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "sorting-2",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 101073,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-BsmRbW/result.json",
+        "sourceSha256": "28b08218b55d432b1476cb9af16254dd7bd6ed6c10f3422b1f7fe5a3e9566409",
+        "finalText": "已经生成一个可点击的逐步演示（放在上面）。它只做一件事：每点一次“下一步”，只执行**一次相邻比较**，并说明这一比较在比较哪两个数、为什么交换或不交换。\n\n**简单说明一下规则**\n\n- 每次比较相邻的两个数：左边比右边**大** → 交换（谁大谁往右“冒”）；左边更小或相等 → 不动。\n- 一趟从最左边走到末尾，这一趟里最大的数一定会被挤到末尾固定下来；下一趟就不用再管末尾了。\n- 所以：第 1 趟比 3 次 → 第 4 位固定；第 2 趟比 2 次 → 第 3 位固定；第 3 趟比 1 次 → 第 2 位固定。共 6 次比较，剩下的第 1 位自然就对了。\n\n**用这个演示看**\n\n1. 点“下一步”到第 6 次，看“操作记录”里的六行：每一步都写明了 `几趟几次：左数 与 右数，是否交换，得 ⇒ 新数组`。\n2. 柱状图里深色的两根就是这一步正在比较的两个数；绿色是从右往左慢慢变多的“已归位”部分，它解释了为什么后面要比较的次数越来越少。\n3. 想再看一遍就点“重新开始”。\n\n如果你点完发现某一步和你想的不一样，把那一行贴给我，我们单独说那一步。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "triangle-2",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 93075,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-xdcy8s/result.json",
+        "sourceSha256": "ce50a07a644a7f36df064c37baec1d5326c7b7e0fa3b5b0b5922c3e787bef498",
+        "finalText": "已生成并发布（运行中的底 6、高 4 直角三角形演示）。\n\n初始状态（已验证数据）：\n- A(0,0)、B(6,0)、C(0,4)\n- 底 AB = 6.00，高 = 4.00，面积 = 12.00 平方单位，A 处为直角\n\n交互方式：\n- 拖动带圈顶点 A、B、C 中任意一个（可拖范围 x∈[0,9]、y∈[0,6]，每格 1 单位）\n- 或用「当前顶点」+ 方向按钮/方向键移动，每次移动距离可调（默认 0.5）\n- 「恢复 6×4」回到初始三角形\n\n面积始终按 ½·底·高 计算，其中底取 AB，高取 C 到 AB 所在直线的垂距（图中淡色直线标出）；六个卡片实时显示底、高、面积、AC、BC 以及 A 处是否仍为直角。细淡线是初始 6×4 三角形作参照，方便对比形状变化。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "jugs-2",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 61194,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-Uc6VLY/result.json",
+        "sourceSha256": "66dad4bd2167e8f61d3d20d06f9b4ca7d65960b33d0fc1e34a4829e9b205b5d4",
+        "finalText": "操作台已经发布了（杯子水量、按钮和步骤记录都能用）。\n\n当前状态：3 升杯 0 升，5 升杯 0 升，已走 0 步，还没有量出 4 升。\n\n面板上的按钮：\n- 装满 / 倒空 3 升杯、5 升杯\n- 两杯互倒（3→5、5→3，一直倒到一方空或另一方满）\n- 撤销一步、重新开始\n\n记录区按操作顺序倒序列出最近 40 步，可以随时撤销回退。5 升杯上那条黄色横线是 4 升目标水位，方便你对照读数——但换算和倒水仍得靠按钮完成，不能直接照线装水。\n\n这里只有一个不变的事实：4 升只可能出现在 5 升杯里（3 升杯装不下 4 升）。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "board-2",
+        "status": "completed",
+        "outcome": "published-mini-app",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 44507,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-E8w8rj/result.json",
+        "sourceSha256": "83977b5d0b1a9ff2adcbb1135e74f5860fa3407f10fd300132362842d6053771",
+        "finalText": "已保存并启用（修订 1）。当前状态：空棋盘、X 先手、比分 0–0–0。\n\n玩法与提醒\n- 两人轮流点击空格落子：X 先手，标记为 ✕ / ○。\n- 某方在横、竖或斜线连成三子，状态区立刻提示“提醒：X（或 O）获胜！”，并写出获胜连线（如“左上 → 中间 → 右下”）。\n- 九格填满且无人连成三子时提示平局。\n- 本局结束后格子不再接受落子，点“重新来一局”清空棋盘。\n- 累计比分（X 胜 · O 胜 · 平局）跨局保留，作为历史记录。\n\n如果你希望“重新来一局”同时把比分也清零，或想加先手方选择（X/O 谁先），告诉我，我再改。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "direct-3",
+        "status": "completed",
+        "outcome": "no-ui",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 2638,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-IcOQIF/result.json",
+        "sourceSha256": "bfec3722f5cbacaff238cb5f1ded3fcf2eac4c46b8a8475abd4c64b2331573b1",
+        "finalText": "480 ÷ 6 = **80 元**，每人分 80 块。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "clarification-3",
+        "status": "completed",
+        "outcome": "no-ui",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 3448,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-eOeIjW/result.json",
+        "sourceSha256": "350cfda005aca94890e4dfa1b00e54e40a808dca3a1785beed9a6ecf775e99bd",
+        "finalText": "提成规则还没定，我暂时没法算出具体金额。12 万销售额已经记下，但缺少把销售额换算成提成的规则。请告诉我按哪种方式计算：\n\n1. **统一比例**：例如全部按 3%，则 120000 × 3% = 3600 元。\n2. **阶梯比例**：例如 0–5 万按 2%、5–10 万按 3%、超出 10 万部分按 5%（需要门槛和每档比例，并明确是“分段累进”还是“达到某档后全额按该档比例”）。\n3. **固定金额 + 比例**：例如底薪补贴 2000 元 + 销售额的 1.5%。\n4. **按毛利而非销售额**：此时还需要毛利率或毛利额。\n\n请提供比例（以及阶梯门槛、是否累进）。你定好规则后，我可以做成一个小工具，让你改销售额或比例就能实时看到提成。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "outing-3",
+        "status": "completed",
+        "outcome": "published-components",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 24414,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-Q4zsNV/result.json",
+        "sourceSha256": "2ad8fe74c16b00acde3786aaf95840fe07dc50509986edce6da92afcaa8e5dad",
+        "finalText": "对比工具已经发布。可以直接在“人数”里改数字，总价、差额、柱状图和 1–8 人一览表会一起变。\n\n按你给的价格算出的关键点：\n\n- A：30×人数 + 120\n- B：45×人数 + 60\n- **分界点正好是 4 人**：4 人时两方案都是 240 元\n- 少于 4 人：B 更省（现在 2 人：A 180 元，B 150 元，差 30 元）\n- 多于 4 人：A 更省（6 人：A 300 元，B 330 元）\n\n原因就是 A 门票便宜 15 元/人但固定车费贵 60 元，60 ÷ 15 = 4 人才能把差价摊平。以上只算门票和车费，不含吃饭、停车等其他开销。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      },
+      {
+        "id": "discount-3",
+        "status": "completed",
+        "outcome": "published-components",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 10841,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        },
+        "result": ".verification/mini-app-live-dJvBL6/result.json",
+        "sourceSha256": "8bfa951b880aa57856d476a569c9e1bceacab6a7ec5075ffd75db6fd1b3474e1",
+        "finalText": "计算器已就绪，改动“杯数”会即时更新实付金额、平均每杯和明细表。\n\n参考几个档位（每杯 18 元，满 100 减 20，整单一次）：\n\n| 杯数 | 原价 | 优惠 | 实付 | 平均每杯 |\n|---|---|---|---|---|\n| 5 | 90 | 0 | 90 | 18.00 |\n| 6 | 108 | 20 | 88 | 14.67 |\n| 7 | 126 | 20 | 106 | 15.14 |\n| 8 | 144 | 20 | 124 | 15.50 |\n\n可见 6 杯时均价最低（14.67 元/杯）；再往上加杯，均价反而回升，优惠被摊薄。如果想摊到最低，可以先试试 5→6 这一档的临界点（刚好满 100 元的那一单）。",
+        "model": {
+          "provider": "deepseek",
+          "id": "deepseek-flash",
+          "name": "DeepSeek V4.1 Flash"
+        },
+        "thinking": "enabled",
+        "providerModelIds": [
+          "deepseek-flash"
+        ]
+      }
+    ]
+  },
+  "desktop": [
+    {
+      "id": "F8c9eK",
+      "status": "passed",
+      "operations": 58,
+      "reloads": 12,
+      "rows": [
+        {
+          "id": "jugs-1",
+          "status": "completed",
+          "source": ".verification/mini-app-live-vph3zd/result.json",
+          "sha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+            "answer": "当前状态已确认：\n\n- **3 升杯：3 升（满）**\n- **5 升杯：4 升**\n- 已用 **6 步**，系统提示「成功！5 升杯里正好 4 升水」\n\n所以 4 升**已经量出来了**，就在 5 升杯里，不用再倒了——这也刚好是最短解法的 6 步。\n\n如果还想继续操作，只有「倒空 3 升杯」「点提示」「装满 3 升杯 / 5→3」（后两个此刻是无效点击）不会影响那 4 升；而「装满 5 升杯」「倒空 5 升杯」「3→5」「重新开始」都会把这 4 升弄掉（3→5 只能倒进 1 升就会把 5 升杯变满）。要保留结果，就停在这里。",
+            "requestIds": [
+              2
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "jugs-2",
+          "status": "completed",
+          "source": ".verification/mini-app-live-005vkb/result.json",
+          "sha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+            "answer": "当前状态：\n\n| 杯子 | 当前水量 | 容量 |\n|---|---|---|\n| 3 升杯 | 3 升（满） | 3 升 |\n| 5 升杯 | **4 升** | 5 升 |\n\n**已经量出 4 升了**，不需要再倒。目标要求 5 升杯中恰好有 4 升，现在正是这个结果（水面正好在橙色 4 升刻度线上），界面也显示已完成，累计操作 6 步。\n\n要继续操作只会改变这个结果——例如倒空 5 升杯，那 4 升就没了；想重新演练可以点「全部倒空重来」。",
+            "requestIds": [
+              4
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "jugs-3",
+          "status": "completed",
+          "source": ".verification/mini-app-live-DzQKbZ/result.json",
+          "sha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+            "answer": "**当前状态：**\n\n| 杯子 | 水量 |\n|---|---|\n| 3 升杯 | 3 升（满） |\n| 5 升杯 | **4 升** |\n\n**已经量出 4 升了。** 5 升杯里正好 4 升，第 6 步完成时达成：装满 5 升 → 倒 3 升入 3 升杯（剩 2）→ 倒空 3 升杯 → 2 升倒入 3 升杯 → 再装满 5 升 → 用 5 升杯补满 3 升杯（只倒出 1 升），5 升杯剩 4 升。\n\n**不需要再倒了。** 现在两个杯子共装 7 升水，目标已经完成。要注意：3 升杯是满的，所以此刻再往 3 升杯倒水是倒不进去的；而继续倒腾（比如把 5 升杯的水倒掉）会让这 4 升消失——只有「倒空 3 升杯」这一步会保留 5 升杯里的 4 升。想重新练一遍就点「全部清空重来」。",
+            "requestIds": [
+              6
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "board-2",
+          "status": "completed",
+          "source": ".verification/mini-app-live-51dGCn/result.json",
+          "sha256": "a439eb109ae6e05ccb309eee531026a8184e51cf06592ab0a6cae61bdec76bc6",
+          "checkpoints": 22,
+          "followup": {
+            "prompt": "现在轮到谁？棋盘上有几颗棋子，分别在哪里？只解释当前状态，不要重建界面。",
+            "answer": "现在轮到 **O** 落子（第 2 手，X 先手）。\n\n棋盘上只有 **1 颗**棋子：\n\n| 位置 | 内容 |\n|---|---|\n| 第 2 行第 2 列（中心格，编号 5） | **X** |\n\n其余 8 格都还是空的，目前没有任何一方连成三子。",
+            "requestIds": [
+              8
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "sorting-1",
+          "status": "completed",
+          "source": ".verification/mini-app-live-X940ig/result.json",
+          "sha256": "df6b3b5955c4393485027327711a9bdcab1944de973463b7e6bf1084982d571d",
+          "checkpoints": 12,
+          "followup": {
+            "prompt": "看我现在停的这一步，已经比较和交换了几次？刚才比的是哪两个数，为什么交换，下一步会比谁？不要重建界面。",
+            "answer": "\n**当前这一步（数组 2、5、6、1）：已比较 2 次，已交换 2 次**（两次比较都发生了交换）。现在是第 1 轮，`j = 2`，即下一次比较从下标 2 开始；还没有任何位置被固定。\n\n**刚才比的是：** 下标 1 的 **6** 和下标 2 的 **5**。因为 6 > 5，左边比右边大，冒泡排序要把大的往右挪，所以交换了两个数，数组从 `2、6、5、1` 变成 `2、5、6、1`。此刻 6 正处在下标 2，而它还是这一轮里最大的数；它会被继续向右比较，直到比较到最右端。\n\n**下一步会比：** 下标 2 的 **6** 和下标 3 的 **1**。6 更大，所以会再次交换，数组变成 `2、5、1、6`。这一步同时会结束第 1 轮：6 冒到最右边，之后固定在最后一位，不再参与比较，这个已固定位置会在面板上变绿。第 2 轮就只比较前三个数（2、5、1）。",
+            "requestIds": [
+              10,
+              11
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [
+            {
+              "id": "call_00_TjTdw2G7JF4Sg4iFWvZK0067",
+              "name": "piora_inspect_mini_app",
+              "arguments": "{\"appId\":\"bubbleSortWalkthrough\",\"actionIds\":[\"next\"]}"
+            }
+          ],
+          "semanticFindings": []
+        }
+      ],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "followupRequestCount": 6,
+      "requests": [
+        {
+          "id": 2,
+          "caseId": "jugs-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "1fdfcf3a0b21006170f01fd06869a288f6c3130a2ed9595699985c70a6abfdf0"
+        },
+        {
+          "id": 4,
+          "caseId": "jugs-2",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "6c7eff7f34acc91d238e6bb558e826b4e325ea1ec69bc386fca9a681738d9a52"
+        },
+        {
+          "id": 6,
+          "caseId": "jugs-3",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "8d7b180ddd8834d5701e26389ab0f848f040a588bcba97f06fe65cd6daefe93e"
+        },
+        {
+          "id": 8,
+          "caseId": "board-2",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "5feaa6d1c258cabd720c5fb5090c38583fd4c4248acbce8298aff842f5f0130f"
+        },
+        {
+          "id": 10,
+          "caseId": "sorting-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "2a9d0c6fecdcbd4f2942ec95d54b36d82a1a01dc3e6e0fc0f9be411241e74ee6"
+        },
+        {
+          "id": 11,
+          "caseId": "sorting-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [
+            "call_00_TjTdw2G7JF4Sg4iFWvZK0067"
+          ],
+          "digest": "40039fb64b8454fecebf4f48ca0fa3ea610a8554213f18881b2866b30d669e44"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": []
+    },
+    {
+      "id": "DcqEBV",
+      "status": "passed",
+      "operations": 58,
+      "reloads": 12,
+      "rows": [
+        {
+          "id": "jugs-1",
+          "status": "completed",
+          "source": ".verification/mini-app-live-vph3zd/result.json",
+          "sha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+            "answer": "当前状态（已用 6 步）：\n\n- **3 升杯：3 升**（满）\n- **5 升杯：4 升**\n- 提示面板处于收起状态，4 升刻度线保持显示\n\n**已经量出 4 升了**：目标是在 5 升杯里得到正好 4 升，现在 5 升杯恰好是 4 升，条件已经满足，不需要再倒了。",
+            "requestIds": [
+              3
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "jugs-2",
+          "status": "completed",
+          "source": ".verification/mini-app-live-005vkb/result.json",
+          "sha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+            "answer": "当前 3 升杯装满 **3 升**，5 升杯里有 **4 升**，已操作 6 步。\n\n已经量出 4 升了，不需要再倒——目标就是让 5 升杯恰好有 4 升，现在正好满足。",
+            "requestIds": [
+              5
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "jugs-3",
+          "status": "completed",
+          "source": ".verification/mini-app-live-DzQKbZ/result.json",
+          "sha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+            "answer": "当前状态（已操作 6 步）：\n\n| 杯子 | 水量 |\n| --- | --- |\n| 3 升杯 | 3 升（满） |\n| 5 升杯 | **4 升** |\n\n**已经量出 4 升了。**\n\n第 6 步「5 升杯倒入 3 升杯 1 升」之后，5 升杯里剩下的正好是 4 升，目标线已经满足。\n\n因此不需要再倒水了。接下来怎么处理这 4 升水由你决定；如果想再验证一次，可以点「全部清空重来」从头试。",
+            "requestIds": [
+              7
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "board-2",
+          "status": "completed",
+          "source": ".verification/mini-app-live-51dGCn/result.json",
+          "sha256": "a439eb109ae6e05ccb309eee531026a8184e51cf06592ab0a6cae61bdec76bc6",
+          "checkpoints": 22,
+          "followup": {
+            "prompt": "现在轮到谁？棋盘上有几颗棋子，分别在哪里？只解释当前状态，不要重建界面。",
+            "answer": "当前状态（第 1 手已落子）：\n\n- **轮到谁**：轮到 **O** 落子（X 先手已经下过一手）。\n- **棋子数量**：棋盘上只有 **1 颗棋子**，是 **X**。\n- **位置**：X 在正中间的格子（第 5 格，中间一行中间一列）。\n- **局面**：其余 8 格都空着，还没有出现三连，也没有分出胜负。",
+            "requestIds": [
+              9
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [],
+          "semanticFindings": []
+        },
+        {
+          "id": "sorting-1",
+          "status": "completed",
+          "source": ".verification/mini-app-live-X940ig/result.json",
+          "sha256": "df6b3b5955c4393485027327711a9bdcab1944de973463b7e6bf1084982d571d",
+          "checkpoints": 12,
+          "followup": {
+            "prompt": "看我现在停的这一步，已经比较和交换了几次？刚才比的是哪两个数，为什么交换，下一步会比谁？不要重建界面。",
+            "answer": "\n到你停的这一步（第 11 步，画面上数组是 **2、5、6、1**）：\n\n- **已经比较 2 次，交换 2 次。**（两次都是“左边大 → 交换”）\n- **刚才比的是下标 1 和下标 2：左边 6，右边 5。** 那时数组是 2、6、5、1，6 > 5，所以左边更大就调换，结果变成 2、5、6、1。\n- **下一步比下标 2 和下标 3：左边 6，右边 1。** 这次 6 > 1，仍然会交换；换完之后 6 就到了最右边（下标 3），第 1 轮结束，后 1 个位置固定。之后第 2 轮只需要比前三个数。",
+            "requestIds": [
+              11,
+              12
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [
+            {
+              "id": "call_00_ny3G9OukFXGAkXH5g81q5275",
+              "name": "piora_inspect_mini_app",
+              "arguments": "{\"appId\":\"bubbleSortWalkthrough\",\"actionIds\":[\"next\"]}"
+            }
+          ],
+          "semanticFindings": []
+        }
+      ],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "followupRequestCount": 6,
+      "requests": [
+        {
+          "id": 3,
+          "caseId": "jugs-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "db6c26a0cc7a6be968c463d5776049cd2c1a8efb613bce52f183583778f54b99"
+        },
+        {
+          "id": 5,
+          "caseId": "jugs-2",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "19c35a229c84c66b1da013726ee362cc76e3d82c157e439ef50654c50c533eb3"
+        },
+        {
+          "id": 7,
+          "caseId": "jugs-3",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "2f3b2a4333f1d9fc0a17772780e16f87df09b3d74d9c4ccbcee0e1552958bc05"
+        },
+        {
+          "id": 9,
+          "caseId": "board-2",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "c6c71b909723dda2b2c8f3792f463e8c37c8495f364f0e7c5638c4466d3f2bb0"
+        },
+        {
+          "id": 11,
+          "caseId": "sorting-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "d7ac925c8d060c5827969d703ac9cff110e700dff8f964f3cd5f39ecb2462a89"
+        },
+        {
+          "id": 12,
+          "caseId": "sorting-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [
+            "call_00_ny3G9OukFXGAkXH5g81q5275"
+          ],
+          "digest": "c2d8cd30dcb30784ca3bc2d521343ca25d98a7f451d5e8a6a8cbb756eaa84cff"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": []
+    },
+    {
+      "id": "lp93uA",
+      "status": "passed",
+      "operations": 38,
+      "reloads": 7,
+      "rows": [
+        {
+          "id": "jugs-2-action",
+          "status": "completed",
+          "source": ".verification/mini-app-live-005vkb/result.json",
+          "sha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "如果现在把3升杯倒空，5升杯里的4升还在吗？先别实际操作，告诉我两个杯子会各剩多少。",
+            "answer": "\n还在。只倒 3 升杯，5 升杯不受影响。\n\n| 杯子 | 现在 | 倒空 3 升杯后 |\n|---|---|---|\n| 3 升杯 | 3 升 | 0 升 |\n| 5 升杯 | 4 升 | 4 升（不变） |\n\n顺带说明：操作步数会从 6 步变成 7 步，4 升水量本身不会因为倒掉另一只杯而减少；只有把 5 升杯倒空或往 3 升杯里倒，才会改变它。这是按规则推算的结果，还没有在你的界面上实际点击。",
+            "requestIds": [
+              2,
+              3
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [
+            {
+              "id": "call_00_5ewSGSLD50ar1cp0mFT40844",
+              "name": "piora_inspect_mini_app",
+              "arguments": "{\"appId\":\"jugPour4\",\"actionIds\":[\"empty3\"]}"
+            }
+          ],
+          "semanticFindings": []
+        },
+        {
+          "id": "jugs-3-action",
+          "status": "completed",
+          "source": ".verification/mini-app-live-DzQKbZ/result.json",
+          "sha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+          "checkpoints": 8,
+          "followup": {
+            "prompt": "如果现在把3升杯倒空，5升杯里的4升还在吗？先别实际操作，告诉我两个杯子会各剩多少。",
+            "answer": "\n我不执行实际操作，只说明结果：此时 3 升杯有 3 升水，5 升杯有 4 升水。\n\n如果把 3 升杯倒空，只会有 3 升杯发生变化，5 升杯不受影响：\n- 3 升杯：0 升\n- 5 升杯：仍然 **4 升**\n\n倒空 3 升杯只会倒掉它自己的 3 升水，不会碰到另一个杯子，所以刚量出的 4 升仍然留在 5 升杯里。",
+            "requestIds": [
+              5,
+              6
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [
+            {
+              "id": "call_00_ElWJwI3yS2gHM3IuJxIL6210",
+              "name": "piora_inspect_mini_app",
+              "arguments": "{\"appId\":\"waterJug43\",\"actionIds\":[\"empty3\"]}"
+            }
+          ],
+          "semanticFindings": []
+        },
+        {
+          "id": "board-2-action",
+          "status": "completed",
+          "source": ".verification/mini-app-live-51dGCn/result.json",
+          "sha256": "a439eb109ae6e05ccb309eee531026a8184e51cf06592ab0a6cae61bdec76bc6",
+          "checkpoints": 22,
+          "followup": {
+            "prompt": "我如果下一手下在左上角，会放上哪种棋子，接下来轮到谁？先别替我下。",
+            "answer": "\n你这一手会落下 **O**（现在是 O 的回合，X 已在正中间），落完之后轮到 **X**。\n\n- 左上角当前是空格，可以落子\n- 不会触发胜负判定，对局继续\n\n棋盘我没有替你动，还是 O 的回合。",
+            "requestIds": [
+              8,
+              9
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "inspectionCalls": [
+            {
+              "id": "call_00_zNCsvqfBStIcs9oSlPfP1978",
+              "name": "piora_inspect_mini_app",
+              "arguments": "{\"appId\":\"ticTacToeTwoPlayer\",\"actionIds\":[\"cell0\"]}"
+            }
+          ],
+          "semanticFindings": []
+        }
+      ],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "followupRequestCount": 6,
+      "requests": [
+        {
+          "id": 2,
+          "caseId": "jugs-2-action",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "e6f3d64644da72ec15d308d26a5ca1e5ac4b1dc20ea42aa641db3a630056e237"
+        },
+        {
+          "id": 3,
+          "caseId": "jugs-2-action",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [
+            "call_00_5ewSGSLD50ar1cp0mFT40844"
+          ],
+          "digest": "d74c3dc6409587b2a4102cd7ac03c606fbbacbceeb9d66ec48068bfff4d2a348"
+        },
+        {
+          "id": 5,
+          "caseId": "jugs-3-action",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "34554f95eb83cc179fb49b165754d992c100a971b87e4c3a9fa9639ed6badbac"
+        },
+        {
+          "id": 6,
+          "caseId": "jugs-3-action",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [
+            "call_00_ElWJwI3yS2gHM3IuJxIL6210"
+          ],
+          "digest": "6ac7f81f267f5ea3ab841778900b914079090a7a7fffc1a0ed193c98b906edd6"
+        },
+        {
+          "id": 8,
+          "caseId": "board-2-action",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [],
+          "digest": "9e76f9efc7e4f4251c1ddedf520fe6c3c25167b3c084fcb512047fcc640d0112"
+        },
+        {
+          "id": 9,
+          "caseId": "board-2-action",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "policy": {
+            "version": "answer-form-5",
+            "shared": [
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true,
+              true
+            ],
+            "inspection": true,
+            "systemCharacters": 79517,
+            "tools": [
+              "piora_render_ui_plan",
+              "bash",
+              "browser",
+              "edit",
+              "find",
+              "grep",
+              "harmony_control",
+              "ls",
+              "piora_inspect_mini_app",
+              "piora_render_mini_app",
+              "powershell",
+              "read",
+              "ssh",
+              "write"
+            ]
+          },
+          "inspectionToolCallIds": [
+            "call_00_zNCsvqfBStIcs9oSlPfP1978"
+          ],
+          "digest": "e30dfaff83bf67dcb1539042d21c22ee37d52afe015148f8bc308f2eb56a2c63"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": []
+    },
+    {
+      "id": "5yxALr",
+      "status": "passed",
+      "operations": 15,
+      "reloads": 4,
+      "rows": [
+        {
+          "id": "outing-1",
+          "status": "completed",
+          "source": ".verification/mini-app-live-ESbUTP/result.json",
+          "sha256": "fe915bcc9e304d1f7ceb8ab0d6291cf71dc87f5c1b174b669992af5bdda8c8dc",
+          "checkpoints": 4,
+          "followup": {
+            "prompt": "按我现在改好的人数，两个方案分别多少钱，哪个更省？只解释当前结果，不要重建界面。",
+            "answer": "按你当前设置的 4 人计算：\n\n- A 方案：门票 30 × 4 = 120 元，加车费 120 元，合计 **240 元**\n- B 方案：门票 45 × 4 = 180 元，加车费 60 元，合计 **240 元**\n\n两个方案一样贵，差额为 0 元，没有哪一个更省。4 人正好是这两种计费方式相等的人数（30n + 120 = 45n + 60，解得 n = 4）。",
+            "requestIds": [
+              2
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "semanticFindings": []
+        },
+        {
+          "id": "outing-2",
+          "status": "completed",
+          "source": ".verification/mini-app-live-yrKKkk/result.json",
+          "sha256": "0fe07b437ef57bc06673c287f5ac443befad80ebed400b28d3a92adfe8d4b4ce",
+          "checkpoints": 4,
+          "followup": {
+            "prompt": "按我现在改好的人数，两个方案分别多少钱，哪个更省？只解释当前结果，不要重建界面。",
+            "answer": "按你现在设置的 **4 人**：\n\n| 方案 | 门票 | 车费 | 合计 | 人均 |\n|---|---|---|---|---|\n| A | 4 × 30 = 120 | 120 | **240 元** | 60 元 |\n| B | 4 × 45 = 180 | 60 | **240 元** | 60 元 |\n\n**两边一样贵，都是 240 元，人均 60 元，谁都不比谁省。** 4 人正好是临界点：少一个人 B 更省（3 人时省 15 元），多一个人 A 更省（5 人时省 15 元）。",
+            "requestIds": [
+              4
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "semanticFindings": []
+        },
+        {
+          "id": "discount-1",
+          "status": "completed",
+          "source": ".verification/mini-app-live-UURHwp/result.json",
+          "sha256": "9f90de5feba133382e4a4066be905dd654fb203e7cc668069ad22b1129479e4a",
+          "checkpoints": 4,
+          "followup": {
+            "prompt": "现在是几杯，实付多少、平均每杯多少？比6杯时平均每杯更贵还是更便宜？不要重建界面。",
+            "answer": "当前是 **8 杯**：\n\n- 原价 144 元，满 100 减 20，**实付 124 元**\n- **平均每杯 15.5 元**\n\n比 6 杯时（均价约 14.67 元）**更贵**，每杯约多 0.83 元。原因是满减仍是固定 20 元，多加两杯（36 元）只摊到一次优惠上，被摊薄了。",
+            "requestIds": [
+              6
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "semanticFindings": []
+        },
+        {
+          "id": "discount-2",
+          "status": "completed",
+          "source": ".verification/mini-app-live-dKNhKS/result.json",
+          "sha256": "9b0cb93e918c6b6c3b24f562fc07c5bc8947e7704649ffdeb235a217cc94e89a",
+          "checkpoints": 3,
+          "followup": {
+            "prompt": "现在是几杯，实付多少、平均每杯多少？比6杯时平均每杯更贵还是更便宜？不要重建界面。",
+            "answer": "当前是 **8 杯**（面板里的实际输入）：\n\n| 项目 | 数值 |\n|---|---|\n| 原价合计 | 144 元 |\n| 满减 | 20 元（已满 100，每单只减一次） |\n| 实付 | 124 元 |\n| 平均每杯 | 15.5 元 |\n\n对比 6 杯时的平均每杯 14.67 元：**8 杯更贵，每杯贵约 0.83 元**。\n\n原因是满减 20 元只减一次，杯数越多，这 20 元摊到每杯越薄：6 杯时每杯少摊约 3.33 元，8 杯时只摊 2.5 元。单杯优惠最大的就是刚过门槛的 6 杯。",
+            "requestIds": [
+              8
+            ],
+            "semanticReview": "pending-independent-human-review"
+          },
+          "semanticFindings": []
+        }
+      ],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "followupRequestCount": 4,
+      "requests": [
+        {
+          "id": 2,
+          "caseId": "outing-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "cd10fbdabe816d38efcd770a8ee019c8c033a5ef21e1137697bafbdcf2f334bc"
+        },
+        {
+          "id": 4,
+          "caseId": "outing-2",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "471d74d19221bda8530660567a5f0aba3e37b503de6d000bc106472e5fb8e60e"
+        },
+        {
+          "id": 6,
+          "caseId": "discount-1",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "90c2479cbd61a982db82b282f81a84a02b15736f742cb06b17cb1ff74aea6ede"
+        },
+        {
+          "id": 8,
+          "caseId": "discount-2",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "inspectionToolCallIds": [],
+          "digest": "fbfa2c3a6055fe4930506ad357785ea3b1245057481f48d273bff36e7d92b936"
+        }
+      ],
+      "cleanupErrors": [],
+      "pageErrors": []
+    },
+    {
+      "id": "xD5UTR",
+      "status": "failed",
+      "operations": 0,
+      "reloads": 0,
+      "rows": [],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "followupRequestCount": 0,
+      "requests": [],
+      "error": {
+        "name": "Error",
+        "message": "ENOSPC: no space left on device, write"
+      },
+      "cleanupErrors": [
+        "ENOSPC: no space left on device, write"
+      ],
+      "pageErrors": [],
+      "lockRetained": true
+    }
+  ],
+  "semanticReviews": [
+    {
+      "version": 1,
+      "run": ".verification/desktop-e2e-F8c9eK/task-replay.json",
+      "scope": "Developer semantic review against the user prompts, confirmed checkpoints and independent vessel/sorting/board oracles; not the deferred two-human acceptance",
+      "rows": [
+        {
+          "id": "jugs-1",
+          "requestedFactsCorrect": true,
+          "extraUnrequestedContent": true,
+          "verdict": "requested-facts-correct",
+          "findings": []
+        },
+        {
+          "id": "jugs-2",
+          "requestedFactsCorrect": true,
+          "extraUnrequestedContent": true,
+          "verdict": "failed",
+          "findings": [
+            {
+              "claim": "要继续操作只会改变这个结果",
+              "counterexample": "Emptying the 3L vessel changes 3/4 to 0/4, preserving the requested 4L."
+            }
+          ]
+        },
+        {
+          "id": "jugs-3",
+          "requestedFactsCorrect": true,
+          "extraUnrequestedContent": true,
+          "verdict": "failed",
+          "findings": [
+            {
+              "claim": "只有「倒空 3 升杯」这一步会保留5升杯里的4升",
+              "counterexample": "Filling the already-full 3L vessel and pouring into it also preserve the 5L vessel at 4L."
+            }
+          ]
+        },
+        {
+          "id": "board-2",
+          "requestedFactsCorrect": true,
+          "extraUnrequestedContent": false,
+          "verdict": "requested-facts-correct",
+          "findings": []
+        },
+        {
+          "id": "sorting-1",
+          "requestedFactsCorrect": true,
+          "extraUnrequestedContent": true,
+          "verdict": "requested-facts-correct",
+          "findings": []
+        }
+      ],
+      "correction": "The first review draft incorrectly treated the jugs-3 route as inferred from a count. Inspection of actual requests shows six saved log entries in both the earlier field-effects run and this run. That route is supported by the embedded task log; the false only-one-action-preserves claim remains the semantic failure."
+    },
+    {
+      "version": 1,
+      "run": ".verification/desktop-e2e-DcqEBV/task-replay.json",
+      "policy": "answer-form-5 / mini-app-intent-22",
+      "scope": "Developer review of requested facts and response scope, not the deferred two-human acceptance",
+      "rows": [
+        {
+          "id": "jugs-1",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "requested-facts-correct",
+          "remaining": [],
+          "answer": "当前状态（已用 6 步）：\n\n- **3 升杯：3 升**（满）\n- **5 升杯：4 升**\n- 提示面板处于收起状态，4 升刻度线保持显示\n\n**已经量出 4 升了**：目标是在 5 升杯里得到正好 4 升，现在 5 升杯恰好是 4 升，条件已经满足，不需要再倒了。"
+        },
+        {
+          "id": "jugs-2",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "requested-facts-correct",
+          "remaining": [],
+          "answer": "当前 3 升杯装满 **3 升**，5 升杯里有 **4 升**，已操作 6 步。\n\n已经量出 4 升了，不需要再倒——目标就是让 5 升杯恰好有 4 升，现在正好满足。"
+        },
+        {
+          "id": "jugs-3",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "requested-facts-correct",
+          "remaining": [
+            "Adds an unrequested reset suggestion after the current-state answer. Its last-step explanation is supported by six saved log rows, not inferred from the count alone."
+          ],
+          "answer": "当前状态（已操作 6 步）：\n\n| 杯子 | 水量 |\n| --- | --- |\n| 3 升杯 | 3 升（满） |\n| 5 升杯 | **4 升** |\n\n**已经量出 4 升了。**\n\n第 6 步「5 升杯倒入 3 升杯 1 升」之后，5 升杯里剩下的正好是 4 升，目标线已经满足。\n\n因此不需要再倒水了。接下来怎么处理这 4 升水由你决定；如果想再验证一次，可以点「全部清空重来」从头试。"
+        },
+        {
+          "id": "board-2",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "requested-facts-correct",
+          "remaining": [],
+          "answer": "当前状态（第 1 手已落子）：\n\n- **轮到谁**：轮到 **O** 落子（X 先手已经下过一手）。\n- **棋子数量**：棋盘上只有 **1 颗棋子**，是 **X**。\n- **位置**：X 在正中间的格子（第 5 格，中间一行中间一列）。\n- **局面**：其余 8 格都空着，还没有出现三连，也没有分出胜负。"
+        },
+        {
+          "id": "sorting-1",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "failed-extra-claim",
+          "remaining": [
+            "Calls the current point step 11, borrowing the internal snapshot tick. The visible task is pass 1 with 2 comparisons and 2 swaps; the host clock persists across the earlier reset and is not a domain step count. Requested comparison and next-action facts remain correct."
+          ],
+          "answer": "\n到你停的这一步（第 11 步，画面上数组是 **2、5、6、1**）：\n\n- **已经比较 2 次，交换 2 次。**（两次都是“左边大 → 交换”）\n- **刚才比的是下标 1 和下标 2：左边 6，右边 5。** 那时数组是 2、6、5、1，6 > 5，所以左边更大就调换，结果变成 2、5、6、1。\n- **下一步比下标 2 和下标 3：左边 6，右边 1。** 这次 6 > 1，仍然会交换；换完之后 6 就到了最右边（下标 3），第 1 轮结束，后 1 个位置固定。之后第 2 轮只需要比前三个数。"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "run": ".verification/desktop-e2e-lp93uA/task-replay.json",
+      "scope": "Developer review of explicit action questions, distinct from verified tool effects and deferred human acceptance",
+      "rows": [
+        {
+          "id": "jugs-2-action",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "failed-extra-claim",
+          "findings": [
+            {
+              "claim": "只有把5升杯倒空或往3升杯里倒，才会改变它",
+              "counterexample": "Filling the 5L vessel also changes 4 to 5, and pouring into the currently full 3L vessel does not change it. The requested empty3 result 0/4 is correct; the unrequested restriction is not supported."
+            }
+          ],
+          "answer": "\n还在。只倒 3 升杯，5 升杯不受影响。\n\n| 杯子 | 现在 | 倒空 3 升杯后 |\n|---|---|---|\n| 3 升杯 | 3 升 | 0 升 |\n| 5 升杯 | 4 升 | 4 升（不变） |\n\n顺带说明：操作步数会从 6 步变成 7 步，4 升水量本身不会因为倒掉另一只杯而减少；只有把 5 升杯倒空或往 3 升杯里倒，才会改变它。这是按规则推算的结果，还没有在你的界面上实际点击。"
+        },
+        {
+          "id": "jugs-3-action",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "requested-facts-correct",
+          "findings": [],
+          "answer": "\n我不执行实际操作，只说明结果：此时 3 升杯有 3 升水，5 升杯有 4 升水。\n\n如果把 3 升杯倒空，只会有 3 升杯发生变化，5 升杯不受影响：\n- 3 升杯：0 升\n- 5 升杯：仍然 **4 升**\n\n倒空 3 升杯只会倒掉它自己的 3 升水，不会碰到另一个杯子，所以刚量出的 4 升仍然留在 5 升杯里。"
+        },
+        {
+          "id": "board-2-action",
+          "requestedFactsCorrect": true,
+          "semanticVerdict": "requested-facts-correct",
+          "findings": [],
+          "answer": "\n你这一手会落下 **O**（现在是 O 的回合，X 已在正中间），落完之后轮到 **X**。\n\n- 左上角当前是空格，可以落子\n- 不会触发胜负判定，对局继续\n\n棋盘我没有替你动，还是 O 的回合。"
+        }
+      ]
+    },
+    {
+      "run": "5yxALr",
+      "scope": "Developer review; independent human acceptance remains pending",
+      "rows": [
+        {
+          "id": "outing-1",
+          "requestedFactsCorrect": true,
+          "wholeAnswerFinding": "No factual error found in developer review",
+          "scopeNotes": null
+        },
+        {
+          "id": "outing-2",
+          "requestedFactsCorrect": true,
+          "wholeAnswerFinding": "No factual error found in developer review",
+          "scopeNotes": "Adds correct but unrequested 3/5-person comparisons."
+        },
+        {
+          "id": "discount-1",
+          "requestedFactsCorrect": true,
+          "wholeAnswerFinding": "No factual error found in developer review",
+          "scopeNotes": null
+        },
+        {
+          "id": "discount-2",
+          "requestedFactsCorrect": true,
+          "wholeAnswerFinding": "No factual error found in developer review",
+          "scopeNotes": null
+        }
+      ]
+    }
+  ],
+  "ci": {
+    "previousRun": 41518912045,
+    "runNumber": 928,
+    "status": "completed",
+    "conclusion": "failure",
+    "fixesDeferred": true
+  },
+  "limits": [
+    "Third phase remains unfinished",
+    "Full 24-generation run interrupted",
+    "New mini-app replay failed at launch; zero completed cases",
+    "Runtime tick mislabel and extra universal claim remain",
+    "No two-human acceptance or sealed evaluation",
+    "No release build or other-platform acceptance"
+  ],
+  "cacheRecovery": {
+    "method": "Reversible relocation of four terminated runs Next caches to D drive; reports/profile/screenshots retained",
+    "runs": [
+      "5yxALr",
+      "lp93uA",
+      "DcqEBV",
+      "xD5UTR"
+    ],
+    "destination": "D:/workspace/Piora-intelligent-ui-test-cache-20261103",
+    "freedBytesApprox": 1027534848
+  },
+  "evidenceFiles": [
+    {
+      "path": ".verification/desktop-e2e-5yxALr/component-replay.json",
+      "sha256": "9b958de0df5a2712fc6152fa5180412c4435dbe0612dcc1f1715a0c67ab8c6aa",
+      "bytes": 50864
+    },
+    {
+      "path": ".verification/desktop-e2e-5yxALr/result.json",
+      "sha256": "340ad75601a0b4201cd258fd37b2d30de6b6ed434deb37c45d6685f3b2de6a8c",
+      "bytes": 3242
+    },
+    {
+      "path": ".verification/desktop-e2e-DcqEBV/result.json",
+      "sha256": "4b58d2428437e9f45ec10e8ede5b8005711b7ac9ff967eaf3dc4d2acc27437e9",
+      "bytes": 3605
+    },
+    {
+      "path": ".verification/desktop-e2e-DcqEBV/task-replay.json",
+      "sha256": "d9d1f4d645c8aef17b68e1fc7971187a31727993067aa536b5953bb1b1362195",
+      "bytes": 912507
+    },
+    {
+      "path": ".verification/desktop-e2e-F8c9eK/result.json",
+      "sha256": "65edd1c4f1b85062c5c982729a8751fbcecef9f033e2a8b1fdb7b9dbfc4cfcc4",
+      "bytes": 3571
+    },
+    {
+      "path": ".verification/desktop-e2e-F8c9eK/task-replay.json",
+      "sha256": "89d7617262555b99233816328f497cf29d4fdda3e2a2103a4b6bde8b1111f044",
+      "bytes": 905799
+    },
+    {
+      "path": ".verification/desktop-e2e-lp93uA/result.json",
+      "sha256": "79f275768207f1eab605f08d97c4499799746b615ac82766fcfcb93c50507a0f",
+      "bytes": 2997
+    },
+    {
+      "path": ".verification/desktop-e2e-lp93uA/task-replay.json",
+      "sha256": "38f1008202d616d66c9987456deca0f2bbfb116cbd4177ed91c88f2c950b9ef4",
+      "bytes": 550820
+    },
+    {
+      "path": ".verification/desktop-e2e-xD5UTR/result.json",
+      "sha256": "149d1863d44646cc8a47dd843fe0033a0009c65a0ea8eaa7d6135a6643162f8c",
+      "bytes": 2559
+    },
+    {
+      "path": ".verification/desktop-e2e-xD5UTR/task-replay.json",
+      "sha256": "a1780ec5f05a744fcf679d5481622d5ab683d7c0b7302055c945cfe3d5f3b75f",
+      "bytes": 627
+    },
+    {
+      "path": ".verification/mini-app-capabilities-cqASrU/result.json",
+      "sha256": "3b7d143ceeeaba079f63c2967dc31193dbeebfc01cc8afbd68182fa4182e902f",
+      "bytes": 21531
+    },
+    {
+      "path": ".verification/mini-app-live-005vkb/result.json",
+      "sha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+      "bytes": 280459
+    },
+    {
+      "path": ".verification/mini-app-live-0RXVeJ/result.json",
+      "sha256": "3246a066b40e955f63b11573f2180f7294cfbd6b2a093cd0d3e2cb42e277ce03",
+      "bytes": 303290
+    },
+    {
+      "path": ".verification/mini-app-live-4LpHBG/result.json",
+      "sha256": "597eebd93fd5feaaa04b82bae4476dc2ded3d909dec99f92fb4927591c4274b9",
+      "bytes": 186950
+    },
+    {
+      "path": ".verification/mini-app-live-51dGCn/result.json",
+      "sha256": "a439eb109ae6e05ccb309eee531026a8184e51cf06592ab0a6cae61bdec76bc6",
+      "bytes": 275306
+    },
+    {
+      "path": ".verification/mini-app-live-BsmRbW/result.json",
+      "sha256": "28b08218b55d432b1476cb9af16254dd7bd6ed6c10f3422b1f7fe5a3e9566409",
+      "bytes": 334752
+    },
+    {
+      "path": ".verification/mini-app-live-DzQKbZ/result.json",
+      "sha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+      "bytes": 298489
+    },
+    {
+      "path": ".verification/mini-app-live-E8w8rj/result.json",
+      "sha256": "83977b5d0b1a9ff2adcbb1135e74f5860fa3407f10fd300132362842d6053771",
+      "bytes": 291179
+    },
+    {
+      "path": ".verification/mini-app-live-ESbUTP/result.json",
+      "sha256": "fe915bcc9e304d1f7ceb8ab0d6291cf71dc87f5c1b174b669992af5bdda8c8dc",
+      "bytes": 530230
+    },
+    {
+      "path": ".verification/mini-app-live-IcOQIF/result.json",
+      "sha256": "bfec3722f5cbacaff238cb5f1ded3fcf2eac4c46b8a8475abd4c64b2331573b1",
+      "bytes": 186835
+    },
+    {
+      "path": ".verification/mini-app-live-Q4zsNV/result.json",
+      "sha256": "2ad8fe74c16b00acde3786aaf95840fe07dc50509986edce6da92afcaa8e5dad",
+      "bytes": 350542
+    },
+    {
+      "path": ".verification/mini-app-live-UURHwp/result.json",
+      "sha256": "9f90de5feba133382e4a4066be905dd654fb203e7cc668069ad22b1129479e4a",
+      "bytes": 291347
+    },
+    {
+      "path": ".verification/mini-app-live-Uc6VLY/result.json",
+      "sha256": "66dad4bd2167e8f61d3d20d06f9b4ca7d65960b33d0fc1e34a4829e9b205b5d4",
+      "bytes": 303032
+    },
+    {
+      "path": ".verification/mini-app-live-X940ig/result.json",
+      "sha256": "df6b3b5955c4393485027327711a9bdcab1944de973463b7e6bf1084982d571d",
+      "bytes": 325205
+    },
+    {
+      "path": ".verification/mini-app-live-dJvBL6/result.json",
+      "sha256": "8bfa951b880aa57856d476a569c9e1bceacab6a7ec5075ffd75db6fd1b3474e1",
+      "bytes": 332652
+    },
+    {
+      "path": ".verification/mini-app-live-dKNhKS/result.json",
+      "sha256": "9b0cb93e918c6b6c3b24f562fc07c5bc8947e7704649ffdeb235a217cc94e89a",
+      "bytes": 309215
+    },
+    {
+      "path": ".verification/mini-app-live-eOeIjW/result.json",
+      "sha256": "350cfda005aca94890e4dfa1b00e54e40a808dca3a1785beed9a6ecf775e99bd",
+      "bytes": 188566
+    },
+    {
+      "path": ".verification/mini-app-live-eyW2xX/result.json",
+      "sha256": "27f55aa64fb0c576a4189d9f7233aacdda50261d9f9a6921d807f6c9d80f4225",
+      "bytes": 188486
+    },
+    {
+      "path": ".verification/mini-app-live-s41a1n/result.json",
+      "sha256": "485a164e6575c0e843f7f533fbc0ed9560a27154e8432070db24f597e67a0cef",
+      "bytes": 400951
+    },
+    {
+      "path": ".verification/mini-app-live-sOqfed/result.json",
+      "sha256": "b1dbdf5741169460b3ee31b04f0b8903c56b672e6db00426a69b1ca5e7b1a62c",
+      "bytes": 186801
+    },
+    {
+      "path": ".verification/mini-app-live-udlKai/result.json",
+      "sha256": "4a4607035d7d06cfe1e50828c73c63ef3a3dc7a7b2bfc9fb416906fa99c45138",
+      "bytes": 322205
+    },
+    {
+      "path": ".verification/mini-app-live-vph3zd/result.json",
+      "sha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+      "bytes": 370572
+    },
+    {
+      "path": ".verification/mini-app-live-xdcy8s/result.json",
+      "sha256": "ce50a07a644a7f36df064c37baec1d5326c7b7e0fa3b5b0b5922c3e787bef498",
+      "bytes": 335967
+    },
+    {
+      "path": ".verification/mini-app-live-yLF7wR/result.json",
+      "sha256": "de1fe1110997b746afd488239c21ecdb76602c0afa37621e224c906617af51f0",
+      "bytes": 323338
+    },
+    {
+      "path": ".verification/mini-app-live-yrKKkk/result.json",
+      "sha256": "0fe07b437ef57bc06673c287f5ac443befad80ebed400b28d3a92adfe8d4b4ce",
+      "bytes": 530681
+    },
+    {
+      "path": ".verification/mini-app-live-zucGYf/result.json",
+      "sha256": "9c7043146428bf4d77cdd7c56c400439c73ed50fbb80a2ef741d7c8963a8ee34",
+      "bytes": 189529
+    },
+    {
+      "path": ".verification/phase3-on-demand-action-bindings.json",
+      "sha256": "76150892be54de320323c9333606538b095fb866382d1a6153d6008f26e04406",
+      "bytes": 27759
+    },
+    {
+      "path": ".verification/phase3-on-demand-actions-semantic-review.json",
+      "sha256": "237b30d47ac3fd965c2e15ce1495b9f05f5205e0a8c05d184cd16de1905121f1",
+      "bytes": 2135
+    },
+    {
+      "path": ".verification/phase3-on-demand-bindings.json",
+      "sha256": "3d7a7094eef28b142d2613caacb2cb7de05d19569fdec88bb29f63f0ff0befa8",
+      "bytes": 36317
+    },
+    {
+      "path": ".verification/phase3-on-demand-capabilities-final.log",
+      "sha256": "4b2d2b29a439d251dde944bb685a6a211450badd81ba7dd80b6140961c00b772",
+      "bytes": 583
+    },
+    {
+      "path": ".verification/phase3-on-demand-component-bindings.json",
+      "sha256": "96757a6c3363f04c31ce99cde7a086cede677298995be63df16501b649e948eb",
+      "bytes": 8592
+    },
+    {
+      "path": ".verification/phase3-on-demand-final-semantic-review.json",
+      "sha256": "b7f13e8241691b5f9a12e2d131a1fe5419c2752ef6bb954641b793662bb988fa",
+      "bytes": 3418
+    },
+    {
+      "path": ".verification/phase3-on-demand-final-sources.json",
+      "sha256": "f7dfd44b1065c78189b930b6242cf26616bfb38ad7f7900344f3da16983cf6eb",
+      "bytes": 12945
+    },
+    {
+      "path": ".verification/phase3-on-demand-first-semantic-review.json",
+      "sha256": "6bcba37170d02618dcd6ab9cac860b90ffab47c4e6c85ec8f11bc5aa39ba8c85",
+      "bytes": 1880
+    },
+    {
+      "path": ".verification/phase3-on-demand-focused-first.log",
+      "sha256": "402bfa7f68f9ffed3ab0fff010e8d2d513916fe0d681c554d2a8c41e3f81f404",
+      "bytes": 9427
+    },
+    {
+      "path": ".verification/phase3-on-demand-generation.log",
+      "sha256": "3de4c33edce146d70fd6796578de92a9b9fc2fe097ff009edf1d003679b2780d",
+      "bytes": 11377
+    },
+    {
+      "path": ".verification/phase3-on-demand-lint-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".verification/phase3-on-demand-lint-first.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".verification/phase3-on-demand-new-mini-bindings.json",
+      "sha256": "eeb3c68d0943b1b865192c6acbb6695a07ba0e27c2bfc1b9bf3e1f8cd532bb35",
+      "bytes": 10568
+    },
+    {
+      "path": ".verification/phase3-on-demand-policy-tests.log",
+      "sha256": "bb8d8f05a9fc2a4071cef589e25ccfea41940dd88efce32321a2f25d4568e944",
+      "bytes": 546
+    },
+    {
+      "path": ".verification/phase3-on-demand-scope-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".verification/phase3-on-demand-typecheck-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": ".verification/phase3-on-demand-typecheck-first.log",
+      "sha256": "282407884d77e6bfeda53a86101ee20d5c725ae1a5fe907bca88c8010416bf44",
+      "bytes": 1277
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-on-demand-2026-11-03.md",
+    "sourceSha256": "bc670b7af46a6ba127366a0f72ea399bcd072a744b25d117f414ec3920d33d74",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-on-demand-2026-11-03.pdf",
+    "pdfSha256": "74e8da1b0c6ad248c4c4f6680b5faeb18707367148a7d95b8f9fed09dfb25b9f",
+    "pages": 3,
+    "pageTextLengths": [
+      1155,
+      1145,
+      1264
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed-all-3-rendered-pages",
+    "reviewedAt": "2026-11-02T21:16:29.477Z"
+  }
+}

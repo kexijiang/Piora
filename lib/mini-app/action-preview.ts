@@ -43,6 +43,17 @@ export function miniAppPreviewChoices(compiled: CompiledMiniApp, frame: MiniAppF
   return choices;
 }
 
+/** Resolve a bounded subset without executing unrequested alternatives. */
+export function selectMiniAppPreviewChoices(choices: MiniAppPreviewChoice[], actionIds?: readonly string[]): MiniAppPreviewChoice[] {
+  const bounded = choices.slice(0, MINI_APP_ACTION_PREVIEW_LIMITS.actions);
+  if (actionIds === undefined) return bounded;
+  if (!Array.isArray(actionIds) || actionIds.length < 1 || actionIds.length > MINI_APP_ACTION_PREVIEW_LIMITS.actions
+    || new Set(actionIds).size !== actionIds.length || actionIds.some(id => typeof id !== "string" || !bounded.some(choice => choice.id === id))) {
+    throw new MiniAppError("SCHEMA", "Choose distinct IDs from the bounded local action catalog", "actionIds", true);
+  }
+  return bounded.filter(choice => actionIds.includes(choice.id));
+}
+
 export function miniAppPreviewOutcome(choice: MiniAppPreviewChoice, source: MiniAppCheckpoint, result: MiniAppResult): MiniAppActionPreview {
   return { ...choice, status: "ok", summary: result.frame.summary.slice(0, MINI_APP_ACTION_PREVIEW_LIMITS.summaryCharacters),
     summaryComplete: result.frame.summary.length <= MINI_APP_ACTION_PREVIEW_LIMITS.summaryCharacters,
@@ -52,17 +63,18 @@ export function miniAppPreviewOutcome(choice: MiniAppPreviewChoice, source: Mini
 }
 
 /** Validate the trusted worker's bounded evidence without accepting arbitrary events or source identities. */
-export function validateMiniAppActionEvidence(compiled: CompiledMiniApp, initial: MiniAppResult, value: unknown): MiniAppActionEvidence {
+export function validateMiniAppActionEvidence(compiled: CompiledMiniApp, initial: MiniAppResult, value: unknown, actionIds?: readonly string[]): MiniAppActionEvidence {
   boundedJson(value, MINI_APP_ACTION_PREVIEW_LIMITS.bytes);
   const evidence = jsonRecord(value, "preview"), choices = miniAppPreviewChoices(compiled, initial.frame);
+  const selected = selectMiniAppPreviewChoices(choices, actionIds);
   exactKeys(evidence, ["version", "sourceCheckpointDigest", "eligibleActions", "omittedActions", "actions"], "preview");
   const fail = () => { throw new MiniAppError("PROTOCOL", "Invalid local action preview evidence"); };
   if (evidence.version !== 2 || evidence.sourceCheckpointDigest !== answerDataDigest(initial.snapshot)
     || evidence.eligibleActions !== choices.length || !Array.isArray(evidence.actions)
-    || evidence.actions.length !== Math.min(choices.length, MINI_APP_ACTION_PREVIEW_LIMITS.actions)
+    || evidence.actions.length !== selected.length
     || evidence.omittedActions !== choices.length - evidence.actions.length) fail();
   for (const [index, item] of (evidence.actions as unknown[]).entries()) {
-    const action = jsonRecord(item, "preview/action"), choice = choices[index];
+    const action = jsonRecord(item, "preview/action"), choice = selected[index];
     exactKeys(action, ["id", "label", "disabled", "status", "summary", "summaryComplete", "checkpointUnchanged", "snapshot", "changes"], "preview/action");
     if (action.id !== choice.id || action.label !== choice.label || action.disabled !== choice.disabled) fail();
     if (choice.disabled) { if (action.status !== "disabled" || Object.keys(action).length !== 4) fail(); continue; }

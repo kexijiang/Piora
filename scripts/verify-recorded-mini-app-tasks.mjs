@@ -3,17 +3,23 @@ import {cp,mkdir,readFile,readdir,writeFile} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import {dirname,join,resolve} from 'node:path';
 import {getAgentDir,ModelRuntime} from '@earendil-works/pi-coding-agent';
+import {createJiti} from 'jiti';
 import {runDesktopScenario} from './desktop-e2e/harness.mjs';
 import {startRealModelProxy} from './desktop-e2e/real-model-proxy.mjs';
 
 // Bindings describe how to address an untouched generated artifact. Expected
 // results are independent task oracles, never computed from its program.
 const root=process.cwd(),args=process.argv.slice(2);
+const jiti=createJiti(import.meta.url);
+const {ANSWER_FORM_POLICY_VERSION,ANSWER_FORM_GUIDELINES}=await jiti.import('../lib/answer-output-decision.ts');
+const {MINI_APP_INSPECTION_GUIDANCE}=await jiti.import('../lib/mini-app/action-inspection.ts');
 assert.ok(args.includes('--bindings'),'Explicit --bindings <json> is required');
 const bindingsPath=resolve(args[args.indexOf('--bindings')+1]);
 const bindings=JSON.parse(await readFile(bindingsPath,'utf8'));
 assert.equal(bindings.version,1);assert.ok(bindings.cases.length>0);
 const thinking=bindings.thinking??'disabled';assert.ok(['enabled','disabled'].includes(thinking));
+const onDemand=bindings.actionEvidenceMode==='on-demand';
+assert.ok(bindings.actionEvidenceMode===undefined||onDemand,'Unknown action evidence contract');
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const samples=await Promise.all(bindings.cases.map(async spec=>{
   const path=resolve(spec.source),bytes=await readFile(path),original=JSON.parse(bytes);
@@ -57,8 +63,18 @@ const scenario={
         assert.equal(body.model,'deepseek-flash');
         const texts=(body.messages??[]).flatMap(parts),purpose=currentPrompt&&texts.includes(currentPrompt)?'follow-up':'background';
         if(purpose==='follow-up')assert.equal(body.thinking?.type,thinking,'Inspect actual request, not just UI configuration');
+        const promptIndex=(body.messages??[]).findLastIndex(message=>parts(message).includes(currentPrompt));
+        const followupMessages=promptIndex>=0?body.messages.slice(promptIndex+1):[];
+        const system=(body.messages??[]).filter(message=>['system','developer'].includes(message.role)).flatMap(parts).join('\n');
+        const policy={version:ANSWER_FORM_POLICY_VERSION,shared:ANSWER_FORM_GUIDELINES.map(rule=>system.includes(rule)),inspection:system.includes(MINI_APP_INSPECTION_GUIDANCE),systemCharacters:system.length,
+          tools:(body.tools??[]).map(tool=>tool.function?.name)};
+        if(purpose==='follow-up'&&onDemand){assert.ok(policy.shared.every(Boolean),'Actual provider request carries every current shared scope rule');assert.ok(policy.inspection,'Actual provider request carries inspection guidance');assert.ok(policy.tools.includes('piora_inspect_mini_app'));}
         requests.push({id,caseId:currentCase,purpose,model:body.model,thinking:body.thinking,at:new Date().toISOString(),
-          savedContext:texts.filter(text=>/^Saved (?:interactive UI|mini app) parameters and host publication results/.test(text)),digest:sha(JSON.stringify(body))});await persist();
+          policy,
+          savedContext:texts.filter(text=>/^Saved (?:interactive UI|mini app) parameters and host publication results/.test(text)),
+          inspectionResults:followupMessages.filter(message=>message.role==='tool').flatMap(parts).filter(text=>text.startsWith('Read-only local action observations follow')),
+          followupToolCalls:followupMessages.flatMap(message=>message.tool_calls??[]).map(call=>({id:call.id,name:call.function?.name,arguments:call.function?.arguments})),
+          digest:sha(JSON.stringify(body))});await persist();
       },
       onResponse:async response=>{const request=requests.find(r=>r.id===response.id);responses.push({...response,caseId:request?.caseId,purpose:request?.purpose});await persist();},
     });
@@ -147,21 +163,38 @@ const scenario={
         currentPrompt=spec.followup;
         await page.locator('textarea').first().fill(currentPrompt);await page.getByRole('button',{name:/^(Send|发送)$/}).click();
         const followups=()=>responses.slice(before).filter(r=>r.caseId===spec.id&&r.purpose==='follow-up');
-        await waitUntil(()=>{assert.ok(!followups().some(r=>r.status!==200),'Real model follow-up failed');return followups().some(r=>r.text);},'real model response');
+        await waitUntil(()=>{assert.ok(!followups().some(r=>r.status!==200),'Real model follow-up failed');return followups().some(r=>r.text&&r.finishReasons?.includes('stop'));},'real model final response');
         await waitUntil(()=>page.getByRole('button',{name:/^(Send|发送)$/}).isVisible(),'follow-up settled');
-        assert.ok(followups().every(r=>!r.tools?.length),'Explanation must preserve the existing app');
+        await waitUntil(async()=>await page.locator('[data-answer-output-interaction-paused]').count()===0,'follow-up state synchronization settled');
         const taskRequests=requests.filter(r=>r.caseId===spec.id&&r.purpose==='follow-up');
+        const calls=[...new Map(taskRequests.flatMap(request=>request.followupToolCalls).map(call=>[call.id,call])).values()];
+        if(onDemand){
+          assert.ok(calls.every(call=>call.name==='piora_inspect_mini_app'),'Explanation may only inspect saved local effects, never regenerate or perform external actions');
+          if(spec.expectInspection===false)assert.equal(calls.length,0,'Current-state question needs no inspection');
+          if(spec.expectInspection===true)assert.ok(calls.length>0,'Requested future effects must be inspected');
+        }else assert.ok(followups().every(r=>!r.tools?.length),'Explanation must preserve the existing app');
         const contexts=taskRequests.flatMap(r=>r.savedContext).map(text=>JSON.parse(text.slice(text.indexOf('\n')+1)));
         assert.ok(contexts.some(c=>c.apps?.some(app=>app.id===record.plan.id&&app.tick===saved.result.snapshot.tick&&app.summary===saved.result.frame.summary.slice(0,2000))),'Real request includes the exact current saved summary and tick');
-        if(spec.actionPreviews||spec.actionChanges){
-          const evidence=contexts.flatMap(c=>c.apps??[]).find(app=>app.id===record.plan.id)?.localActionPreviews;
+        const actionEvidence=onDemand?[...new Set(taskRequests.flatMap(request=>request.inspectionResults))].map(text=>JSON.parse(text.slice(text.indexOf('\n')+1)))
+          :[contexts.flatMap(c=>c.apps??[]).find(app=>app.id===record.plan.id)?.localActionPreviews];
+        if(onDemand)assert.ok(contexts.flatMap(c=>c.apps??[]).every(app=>!app.localActionPreviews),'Default saved-state messages contain no executed alternatives');
+        const checkedActions=new Set();
+        if(spec.actionPreviews||spec.actionChanges)for(const evidence of actionEvidence){
           assert.ok(evidence&&!evidence.unavailable,'Real request includes local VM action evidence');
           assert.equal(evidence.source.planDigest,saved.publication.planDigest);assert.equal(evidence.source.stateRevision,saved.stateRevision);
+          if(onDemand){
+            assert.equal(evidence.appId,record.plan.id);
+            assert.ok(calls.some(call=>{const args=JSON.parse(call.arguments);return args.appId===evidence.appId&&JSON.stringify(args.actionIds)===JSON.stringify(evidence.requestedActionIds);}), 'Inspection corresponds to an actual model request');
+            for(const action of evidence.actions){assert.ok(evidence.requestedActionIds.includes(action.id));assert.ok(Object.hasOwn(spec.actionChanges??{},action.id)||Object.hasOwn(spec.actionPreviews??{},action.id),'Every inspected action has an independent oracle');}
+          }
+          for(const action of evidence.actions)checkedActions.add(action.id);
           for(const [id,expected] of Object.entries(spec.actionPreviews??{})){
+            if(onDemand&&!evidence.actions.some(action=>action.id===id))continue;
             const action=evidence.actions.find(action=>action.id===id);assert.ok(action,`Preview ${id} is present`);assert.equal(action.status,'ok');
             for(const [path,value] of Object.entries(expected))assert.deepEqual(at(action,path),value,`Independent preview oracle ${id}: ${path}`);
           }
           for(const [id,expected] of Object.entries(spec.actionChanges??{})){
+            if(onDemand&&!evidence.actions.some(action=>action.id===id))continue;
             assert.equal(evidence.version,2);
             const action=evidence.actions.find(action=>action.id===id);assert.ok(action,`Preview ${id} is present`);assert.equal(action.status,'ok');
             for(const [path,values] of Object.entries(expected)){
@@ -172,11 +205,11 @@ const scenario={
               else {assert.equal(action.changes.complete,true,'Only exhaustive differences prove an unlisted field unchanged');assert.deepEqual(values.before,values.after,`Expected changed field is missing: ${id} ${path}`);}
             }
           }
-          row.actionPreviews=evidence;
           for(const path of spec.fieldEffectPaths??[]){
             const field=evidence.fieldEffects?.fields.find(field=>field.path===path);
             assert.ok(field,`Field effects include ${path}`);
             for(const [actionId,changes] of Object.entries(spec.actionChanges??{})){
+              if(onDemand&&!evidence.actions.some(action=>action.id===actionId))continue;
               const expected=changes[path];if(!expected)continue;
               assert.deepEqual(field.current,expected.before,`Field baseline ${actionId}: ${path}`);
               assert.ok(!field.unknown.includes(actionId),`Field result is known: ${actionId} ${path}`);
@@ -190,6 +223,8 @@ const scenario={
             }
           }
         }
+        for(const id of spec.expectedInspectionActions??[])assert.ok(checkedActions.has(id),`Requested action ${id} was inspected and independently checked`);
+        row.actionPreviews=onDemand?actionEvidence:actionEvidence[0];row.inspectionCalls=calls;
         const afterFollowup=await api(`/api/sessions/${original.sessionId}/mini-app?toolCallId=${encodeURIComponent(record.toolCallId)}`);
         assert.deepEqual(afterFollowup.result.snapshot,saved.result.snapshot,'Explanation and read-only preview preserve saved progress');
         assert.equal(afterFollowup.stateRevision,saved.stateRevision,'Explanation does not write a new state revision');

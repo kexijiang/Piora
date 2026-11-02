@@ -148,6 +148,8 @@ node --test lib/desktop-e2e.test.mjs
 
 该场景发现并验证了普通对话结束后旧小程序保存位置未刷新的问题；最终也检查追问后再次编辑能成功保存。夹具准备失败、修复前产品失败和修复后通过分别记录，见[恢复与修订交叉报告](verification/intelligent-ui-phase3-recovery-cross-2026-11-03.md)。
 
+按需试算使用绑定顶层 `actionEvidenceMode: "on-demand"`。用例的 `expectInspection: false` 要求当前状态问题不调用工具；`true` 要求明确后果问题实际调用只读工具。`expectedInspectionActions` 指定必须核对的按钮，仍用 `actionChanges` / `fieldEffectPaths` 给出独立预期。运行器核对实际供应商请求包含当前策略、默认状态没有自动预演、工具调用与结果一一对应、没有重建界面或外部动作，并等待最终回答与状态同步结束后检查原快照和版本未改变。未请求的操作不执行，也不伪装为已覆盖。未指定此模式时保留历史验证行为。见[按需试算报告](verification/intelligent-ui-phase3-on-demand-2026-11-03.md)；功能断言通过不能代替整份回答的语义审阅。
+
 预演 version 2 的绑定使用 `actionChanges`：按事件 ID 和 JSON Pointer 指定独立的 before/after 值。运行器核对真实请求中的变化；只有变化完整时，才允许用“没有该条变化”验证值不变。数组路径按位置解释，不推断稳定行身份。五份原始量杯/棋盘/排序的差异验证及语义问题见[差异复测报告](verification/intelligent-ui-phase3-action-changes-2026-11-03.md)。旧 `actionPreviews` 保留用于完整快照格式的历史验证，版本间不能直接混用断言。
 
 可选 `fieldEffectPaths` 列出应出现在宿主字段表中的 JSON Pointer；运行器用相同 `actionChanges` 独立预期检查保留集合、新值和未知边界，不从模型文字生成预期。被省略字段不等于不变；这仍是证据传输检查。本批真实复测仍有明确错误解释，另发现原程序混淆历史达成与当前条件，见[字段影响报告](verification/intelligent-ui-phase3-field-effects-2026-11-03.md)。
