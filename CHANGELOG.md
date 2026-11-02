@@ -4,6 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复自定义模型开启图片输入后已有会话仍使用旧能力的问题；下一次发送前刷新模型目录，无需新建会话。
 - 设置新增运行状态文案，可自定义「凝思求解中」，即时生效并在当前设备持久保存；留空恢复当前语言默认文案。
 - 移除应用自行设置的单轮 20 张图片硬限制，允许第 21 张及以上用户附件和工具图片继续进入模型请求；保留图片校验、压缩及整轮体积预算，避免工具连续读图被数量限制中断。
 - 修复公司 CA 已安装到系统证书库时 DSH Pet 仍报 `UNABLE_TO_VERIFY_LEAF_SIGNATURE` 的问题：安装和启动时合并系统、Node 默认及用户指定的 CA，归档下载、npm 依赖安装与 Electron 下载使用同一份证书包；保留 TLS 验证，不继承任意 Node 启动参数。

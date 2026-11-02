@@ -1218,6 +1218,17 @@ export class AgentSessionWrapper {
       if (this.stopping || abortGeneration !== this.abortGeneration) {
         throw new Error("Cannot send a prompt while the session is busy stopping");
       }
+      // Custom model edits update the catalog, while live sessions retain a
+      // private runtime and model object. Refresh before image admission too.
+      if (type === "prompt" && !command.streamingBehavior) {
+        this.assertSessionIdle("send a prompt");
+        if (this.inner.model && readRemovedProviders().includes(this.inner.model.provider)) throw new Error("当前渠道已移除，请选择其他模型或在模型设置中恢复该渠道。");
+        await this.inner.modelRuntime.refresh({ allowNetwork: false });
+        this.assertSessionIdle("send a prompt");
+        if (!this._alive || abortGeneration !== this.abortGeneration) throw new Error("Prompt cancelled");
+        const configError = this.inner.modelRuntime.getError?.();
+        if (configError) throw new Error(configError);
+      }
       const imageError = validateAgentImages(command.images);
       if (imageError) throw new Error(imageError);
       if (Array.isArray(command.images) && command.images.length > 0) {
@@ -1228,7 +1239,9 @@ export class AgentSessionWrapper {
         const pending = isNewTurn ? readPendingSessionModel(this.sessionId) : undefined;
         const targetModel = pending
           ? this.inner.modelRuntime.getModel(pending.provider, pending.modelId)
-          : this.inner.model;
+          : isNewTurn && this.inner.model
+            ? this.inner.modelRuntime.getModel(this.inner.model.provider, this.inner.model.id) ?? this.inner.model
+            : this.inner.model;
         if (!(isNewTurn ? modelSupportsImages(targetModel) : targetModel?.input?.includes("image"))) {
           throw new Error("The selected model does not support image input. Choose an image-capable model.");
         }
@@ -1329,7 +1342,11 @@ export class AgentSessionWrapper {
               assertNotAborted();
             }
             if (this.inner.model) {
-              const configuredModel = applyConfiguredImageInput(this.inner.model);
+              const catalogModel = this.inner.modelRuntime.getModel(this.inner.model.provider, this.inner.model.id) ?? this.inner.model;
+              const configuredModel = applyConfiguredImageInput(
+                catalogModel.provider === this.inner.model.provider && catalogModel.id === this.inner.model.id
+                  ? catalogModel : this.inner.model,
+              );
               if (configuredModel !== this.inner.model) {
                 assertNotAborted();
                 await this.inner.setModel(configuredModel);
