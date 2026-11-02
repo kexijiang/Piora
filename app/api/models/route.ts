@@ -86,8 +86,6 @@ async function loadModels(cwd: string): Promise<ModelsData> {
   });
   if (initial.model) {
     defaultModel = { provider: initial.model.provider, modelId: initial.model.id };
-    const isDefault = (model: typeof modelList[number]) => model.provider === defaultModel?.provider && model.id === defaultModel.modelId;
-    modelList = [...modelList.filter(isDefault), ...modelList.filter((model) => !isDefault(model))];
   }
 
   return withModelRuntimeError(

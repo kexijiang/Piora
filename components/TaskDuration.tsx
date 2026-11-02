@@ -17,6 +17,12 @@ const layoutCss = `
 }
 `;
 
+const speedColors = {
+  red: { background: "#b91c1c", color: "#ffffff" },
+  yellow: { background: "#facc15", color: "#422006" },
+  green: { background: "#15803d", color: "#ffffff" },
+} as const;
+
 export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, hideSettled = false, t }: {
   timing: TaskTiming | null;
   busy: boolean;
@@ -45,6 +51,7 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
   const outcome = running ? undefined : current?.outcome;
   const speed = running && busy && typeof tokensPerSecond === "number" && Number.isFinite(tokensPerSecond) && tokensPerSecond >= 0
     ? tokensPerSecond : null;
+  const speedBand = speed !== null && speed > 60 ? "green" : speed !== null && speed >= 30 ? "yellow" : "red";
   const label = t(outcome ? `chat.taskDuration.${outcome}` : "chat.taskDuration.running");
   const color = running ? "var(--accent)" : outcome === "failed" ? "var(--status-failed)"
     : outcome === "completed" ? "var(--status-ready)" : "var(--text-muted)";
@@ -67,10 +74,10 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
         <TaskPhaseActivity />
       </span>}
       </span>
-      {speed !== null && <span data-task-token-speed className="piora-task-speed" title={t("chat.taskDuration.speedHint")} aria-live="off"
-        style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: "var(--bg)", background: "var(--text)", borderRadius: 999, padding: "2px 12px", lineHeight: "24px" }}>
+      {speed !== null && <span data-task-token-speed data-speed-band={speedBand} className="piora-task-speed" title={t("chat.taskDuration.speedHint")} aria-live="off"
+        style={{ whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", ...speedColors[speedBand], borderRadius: 999, padding: "2px 12px", lineHeight: "24px" }}>
         <span style={{ fontSize: "var(--text-md)", fontWeight: 600 }}>≈{speed.toFixed(1)}</span>{" "}
-        <span style={{ fontSize: "var(--text-sm)", opacity: 0.85 }}>t/s</span>
+        <span style={{ fontSize: "var(--text-sm)" }}>t/s</span>
       </span>}
       </div>
     </div>

@@ -14,6 +14,10 @@
 .navItem:hover, .iconButton:hover, .quiet:hover { background: var(--bg-hover); }
 .readyDot, .pendingDot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: #d89614; }
 .readyDot { background: #49ae7d; }
+.providerOrderList .navItem { touch-action: none; user-select: none; }
+.providerOrderList .navItem[data-dragging=true] { opacity: .6; cursor: grabbing; border-color: var(--accent); }
+.providerOrderList .navItem[data-drop-target=true] { box-shadow: inset 0 2px var(--accent); background: var(--bg-hover); }
+.orderHint { margin: 4px 8px 10px; color: var(--text-muted); font-size: var(--text-xs); line-height: 1.5; }
 .secondaryNav { color: var(--text-muted); margin-top: 28px; }
 .detail { padding: 22px 24px 32px; min-width: 0; }
 .panelTitle { margin: 3px 0 26px; font-size: var(--text-md); font-weight: 600; }
@@ -121,6 +125,8 @@
   .workspace { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid var(--border); display: flex; gap: 4px; overflow-x: auto; align-items: center; }
   .sidebar h3 { display: none; }
+  .sidebar > .orderHint, .providerOrderList > .orderHint { display: none; }
+  .providerOrderList { display: flex; gap: 4px; flex-shrink: 0; }
   .navItem { width: auto; flex-shrink: 0; margin: 0; max-width: 180px; }
   .secondaryNav { margin: 0; }
   .detail { padding: 18px 14px 28px; }

@@ -8,6 +8,8 @@ import {
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { readRemovedProviders } from "./removed-providers";
 import { installModelThinkingCompat } from "./model-thinking-compat";
+import { orderByProvider } from "./provider-order";
+import { readProviderOrder } from "./provider-order-store";
 
 /**
  * Model scoping shared by the UI selector and AgentSession startup.
@@ -77,7 +79,14 @@ export async function resolveVisibleModels(
   removedProviders = readRemovedProviders(),
 ): Promise<ModelScopeResult> {
   installModelThinkingCompat(modelRuntime);
-  const scope = await resolveUnfilteredModels(modelRuntime, patterns);
+  const rawScope = await resolveUnfilteredModels(modelRuntime, patterns);
+  // Scope patterns control visibility and thinking pins, not display order.
+  const available = rawScope.scopedModels.length ? await modelRuntime.getAvailable() : rawScope.visible;
+  const catalog = orderByProvider(available, readProviderOrder(), model => model.provider);
+  const ranks = new Map(catalog.map((model, index) => [`${model.provider}/${model.id}`, index]));
+  const rank = (model: { provider: string; id: string }) => ranks.get(`${model.provider}/${model.id}`) ?? ranks.size;
+  const scope = { ...rawScope, visible: [...rawScope.visible].sort((a, b) => rank(a) - rank(b)),
+    scopedModels: [...rawScope.scopedModels].sort((a, b) => rank(a.model) - rank(b.model)) };
   if (!removedProviders.length) return scope;
   const removed = new Set(removedProviders);
   const visible = scope.visible.filter(model => !removed.has(model.provider));

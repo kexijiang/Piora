@@ -32,7 +32,7 @@ function App(){
  <main><div className="user">为 Piora 添加任务总用时</div><p>任务计时现在会贯穿整个执行过程。</p><div className="tool">正在检查任务状态与计时逻辑</div><div className="spacer"/>
  <TaskDuration timing={timing} busy={!!timing&&!timing.outcome} startedAt={timing?.startedAt??null} phase={phase} tokensPerSecond={rate} hideSettled={hideSettled} t={t}/>
  <button onClick={()=>setHideSettled(value=>!value)}>回复已有总用时</button>
- <aside><button onClick={()=>setRate(42.5)}>速度采样</button><button onClick={()=>setRate(7.2)}>速度变化</button><button onClick={()=>setRate(0)}>输出暂停</button><button onClick={()=>setRate(null)}>清除速度</button><button onClick={()=>setRate(NaN)}>无效速度</button><button onClick={()=>setRate(Infinity)}>无限速度</button><button onClick={()=>setRate(-1)}>负速度</button></aside>
+ <aside>{[0,29.9,30,60,60.1,80].map(rate=><button key={rate} onClick={()=>setRate(rate)}>采样 {rate}</button>)}<button onClick={()=>setRate(42.5)}>速度采样</button><button onClick={()=>setRate(7.2)}>速度变化</button><button onClick={()=>setRate(0)}>输出暂停</button><button onClick={()=>setRate(null)}>清除速度</button><button onClick={()=>setRate(NaN)}>无效速度</button><button onClick={()=>setRate(Infinity)}>无限速度</button><button onClick={()=>setRate(-1)}>负速度</button></aside>
  <div className="composer">继续这个任务…<footer>模型 · 默认 <span>↑</span></footer></div>
  <aside><button onClick={start}>开始</button><button onClick={()=>setPhase('正在执行工具：检查需要很长时间的命令输出与测试结果')}>工具</button><button onClick={()=>setPhase('正在重试 1/3')}>重试</button><button onClick={()=>setPhase('正在压缩上下文')}>压缩</button><button onClick={()=>finish('completed')}>完成</button><button onClick={()=>finish('cancelled')}>停止</button><button onClick={()=>finish('failed')}>失败</button><button onClick={()=>finish('interrupted')}>中断</button><button onClick={()=>update(null)}>切换空对话</button></aside></main></>;
 }createRoot(document.getElementById('root')).render(<App/>);`);
@@ -59,6 +59,13 @@ html{font-size:14px}body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-mute
     await icon.waitFor();
     assert.equal(await icon.getAttribute("aria-hidden"), "true");
     assert.equal(await icon.getAttribute("width"), "24");
+    const iconBounds = await icon.boundingBox();
+    const coreBounds = await icon.locator("[data-task-icon-core]").boundingBox();
+    assert.ok(coreBounds.width <= iconBounds.width * .65, "center mark leaves room for the orbit at the real 24px size");
+    assert.ok(await icon.locator("[data-task-orbit-arc]").evaluate(el => {
+      const scale = el.ownerSVGElement.getBoundingClientRect().width / el.ownerSVGElement.viewBox.baseVal.width;
+      return parseFloat(getComputedStyle(el).strokeWidth) * scale >= 1;
+    }), "rotating arc remains at least one rendered pixel wide");
     assert.equal(await icon.locator(".piora-task-orbit").evaluate(el => getComputedStyle(el).animationName), "piora-task-orbit");
     const dots = page.locator("[data-task-phase-activity] .piora-phase-dot");
     assert.equal(await dots.count(), 3);
@@ -153,6 +160,21 @@ html{font-size:14px}body{--bg:#fff;--bg-panel:#f7f7f8;--text:#18181b;--text-mute
     await checkSpeedContrast();
     await page.locator("body").evaluate(el => el.style.removeProperty("--accent"));
     const artifacts = path.join(repo, ".verification/task-duration"); await mkdir(artifacts, { recursive: true });
+    for (const dark of [false, true]) {
+      await page.locator("body").evaluate((body, dark) => body.classList.toggle("dark", dark), dark);
+      for (const [rate, band, background] of [[0, "red", "rgb(185, 28, 28)"], [29.9, "red", "rgb(185, 28, 28)"], [30, "yellow", "rgb(250, 204, 21)"], [60, "yellow", "rgb(250, 204, 21)"], [60.1, "green", "rgb(21, 128, 61)"], [80, "green", "rgb(21, 128, 61)"]]) {
+        await page.getByRole("button", { name: `采样 ${rate}`, exact: true }).click();
+        assert.equal(await speed.getAttribute("data-speed-band"), band, `${rate} t/s uses ${band}`);
+        assert.equal(await speed.innerText(), `≈${rate.toFixed(1)} t/s`);
+        assert.equal(await speed.evaluate(el => getComputedStyle(el).backgroundColor), background);
+        assert.ok(await speed.locator("span").last().evaluate(el => getComputedStyle(el).opacity === "1"), "unit retains the same contrast as the speed number");
+        await checkSpeedContrast();
+        await checkCenteredSpeed();
+        if (!dark && [29.9, 60, 80].includes(rate)) await speed.screenshot({ path: path.join(artifacts, `speed-${band}.png`) });
+      }
+    }
+    await page.locator("body").evaluate(body => body.classList.remove("dark"));
+    await page.getByRole("button", { name: "速度采样", exact: true }).click();
     await page.locator("body").evaluate(body => body.classList.add("capture"));
     await page.screenshot({ path: path.join(artifacts, "running-light.png") });
     await page.locator("[data-task-duration]").screenshot({ path: path.join(artifacts, "speed-centered-light.png") });

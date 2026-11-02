@@ -30,18 +30,6 @@ function asReference(
     : undefined;
 }
 
-function findAvailableReference(
-  models: readonly ModelIdentity[],
-  reference: ModelReference | undefined,
-): ModelReference | undefined {
-  if (!reference) return undefined;
-  const match = models.find((model) => (
-    model.provider.toLocaleLowerCase() === reference.provider.toLocaleLowerCase()
-      && model.id === reference.modelId
-  ));
-  return match ? { provider: match.provider, modelId: match.id } : undefined;
-}
-
 /** Read the non-secret desktop default packaged or supplied by the launcher. */
 export function readPioraDefaultModel(environment: Environment): ModelReference | undefined {
   return asReference(
@@ -53,9 +41,8 @@ export function readPioraDefaultModel(environment: Environment): ModelReference 
 /**
  * Resolve the default for a new desktop session.
  *
- * A valid explicit pi setting always wins. The desktop launcher can supply a
- * versioned default through PIORA_DEFAULT_PROVIDER / PIORA_DEFAULT_MODEL.
- * When neither is usable, the first available DeepSeek model is preferred.
+ * The first available model in display order is the default. Legacy settings
+ * and launcher defaults must not silently override the user's channel order.
  */
 export function resolveDefaultModelPreference(options: {
   models: readonly ModelIdentity[];
@@ -64,24 +51,8 @@ export function resolveDefaultModelPreference(options: {
   environment: Environment;
   preferredProvider?: string;
 }): ModelReference | undefined {
-  const settingsDefault = findAvailableReference(
-    options.models,
-    asReference(options.settingsProvider, options.settingsModel),
-  );
-  if (settingsDefault) return settingsDefault;
-
-  const desktopDefault = findAvailableReference(
-    options.models,
-    readPioraDefaultModel(options.environment),
-  );
-  if (desktopDefault) return desktopDefault;
-
-  const preferredProvider = nonEmpty(options.preferredProvider)
-    ?? DEFAULT_PREFERRED_PROVIDER;
-  const preferred = options.models.find((model) => (
-    model.provider.toLocaleLowerCase() === preferredProvider.toLocaleLowerCase()
-  ));
-  return preferred ? { provider: preferred.provider, modelId: preferred.id } : undefined;
+  const first = options.models[0];
+  return first ? { provider: first.provider, modelId: first.id } : undefined;
 }
 
 /**

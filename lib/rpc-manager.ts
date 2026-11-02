@@ -17,6 +17,7 @@ import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SessionManager, SettingsManager, type AgentSessionServices } from "@earendil-works/pi-coding-agent";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { snapshotQueuedInputs, sameQueuedInputs, prepareQueuedInputRemoval } from "./queued-input-recall";
+import { omitFailedPromptHistory } from "./failed-prompt-context";
 import { randomUUID } from "node:crypto";
 import { existsSync, realpathSync } from "node:fs";
 import { assertSessionNotMutating, drainSessionFileOperations, runSessionFileOperation, trackSessionFileOperation } from "./session-mutation";
@@ -1244,6 +1245,9 @@ export class AgentSessionWrapper {
         if (!streamingBehavior) {
           this.assertSessionIdle("send a prompt");
           if (this.promptAdmissionBusy) throw new Error("Cannot send a prompt while the session is starting another prompt");
+          // A new submission must not revive requests that exhausted retries.
+          // Keep raw chat rows while excluding those turns from SDK context.
+          if (omitFailedPromptHistory(this.inner.sessionManager)) this.persistSessionFile();
           this.abortedQueuedMessages = undefined;
         }
         const teamExecution = command.teamExecution as TeamExecutionContext | undefined;

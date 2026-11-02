@@ -5,6 +5,8 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { resolveDefaultModelPreference } from "./model-policy";
+import { orderByProvider } from "./provider-order";
+import { readProviderOrder } from "./provider-order-store";
 import { modelScopeWarnings } from "./model-scope";
 import { readRemovedProviders } from "./removed-providers";
 
@@ -140,7 +142,7 @@ export async function buildModelScopeSettingsState(options: {
     const key = modelKey(model);
     if (!availableByKey.has(key)) availableByKey.set(key, model);
   }
-  const orderedAvailable = [...availableByKey.values()];
+  const orderedAvailable = orderByProvider([...availableByKey.values()], readProviderOrder(), model => model.provider);
   const availableModelKeys = new Set(availableByKey.keys());
   const cleanedPatterns = unique(
     (options.enabledPatterns ?? []).map((pattern) => pattern.trim()).filter(Boolean),
@@ -176,7 +178,7 @@ export async function buildModelScopeSettingsState(options: {
 
   const rawDefault = configuredDefault(options.defaultProvider, options.defaultModel);
   const preferredDefault = resolveDefaultModelPreference({
-    models: enabledModels,
+    models: orderedAvailable.filter(model => enabledModelKeys.has(modelKey(model))),
     settingsProvider: rawDefault?.provider,
     settingsModel: rawDefault?.modelId,
     environment: options.environment ?? process.env,

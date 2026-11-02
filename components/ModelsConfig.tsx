@@ -2885,8 +2885,6 @@ export function ModelsConfig({
           <div className={styles.modelTable} style={{ display: "flex", flexDirection: "column", border: "1px solid var(--border)", borderRadius: "var(--radius-control)", overflow: "hidden" }}>
             <div className={styles.tableHeader}><span>{t("models.form.modelName")}</span><span>{t("models.form.imageInput")}</span><span>{t("i18n.test")}</span><span>{t("models.ui.actions")}</span></div>
             {providerModels.map((model, index) => {
-              const isDefault = modelScope?.effectiveDefault?.provider === model.provider
-                && modelScope.effectiveDefault.modelId === model.id;
               const customIndex = config.providers?.[providerId]?.models?.findIndex(entry => entry.id === model.id) ?? -1;
               const testKey = `${model.provider}/${model.id}`;
               const testState = managedModelTests[testKey] ?? { phase: "idle" };
@@ -3007,23 +3005,6 @@ export function ModelsConfig({
                       : testState.phase === "idle"
                         ? t("i18n.test")
                         : t("models.testAgain")}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={scopeMutationBusy || isDefault}
-                    onClick={() => { void updateModelScope("set-default", model); }}
-                    title={isDefault ? t("models.currentDefaultModel") : t("models.setDefaultModel")}
-                    aria-label={isDefault ? t("models.currentDefaultModel") : t("models.setDefaultModel")}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      minWidth: 70, flexShrink: 0, height: 28, padding: "0 7px", border: "1px solid var(--border)",
-                      borderRadius: "var(--radius-control)", background: isDefault ? "var(--bg-selected)" : "transparent",
-                      color: isDefault ? "var(--accent)" : "var(--text-muted)",
-                      cursor: scopeMutationBusy || isDefault ? "default" : "pointer",
-                      opacity: scopeMutationBusy ? 0.55 : 1, fontSize: "var(--text-xs)", whiteSpace: "nowrap",
-                    }}
-                  >
-                    {isDefault ? t("models.defaultBadge") : t("models.setDefault")}
                   </button>
                   <button
                     type="button"
