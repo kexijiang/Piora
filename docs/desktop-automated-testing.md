@@ -134,6 +134,10 @@ node --test lib/desktop-e2e.test.mjs
 
 原始组件重放在精确标题内要求唯一可编辑控件，避免把同名失败预览当成已发布结果；不使用首个匹配规避歧义。小程序重放允许为文字输出提供正则断言，独立计算的保存状态仍精确核对，超时和语义问题分别保留。
 
+预演 version 2 的绑定使用 `actionChanges`：按事件 ID 和 JSON Pointer 指定独立的 before/after 值。运行器核对真实请求中的变化；只有变化完整时，才允许用“没有该条变化”验证值不变。数组路径按位置解释，不推断稳定行身份。五份原始量杯/棋盘/排序的差异验证及语义问题见[差异复测报告](verification/intelligent-ui-phase3-action-changes-2026-11-03.md)。旧 `actionPreviews` 保留用于完整快照格式的历史验证，版本间不能直接混用断言。
+
+局部预演验证可在绑定中提供 `actionPreviews`，按事件 ID 指定独立预期路径和值。运行器检查真实模型请求里的来源、状态版本及每个结果，并在追问后重新读取检查点和版本，确认没有写入预演结果。2026-11-03 三份量杯的证据传输与状态保持通过，但两份回答仍有明确错误，另一份建议有歧义；机械链路通过不能改写为语义通过。详见[只读预演报告](verification/intelligent-ui-phase3-action-preview-2026-11-03.md)。
+
 显式绑定入口 `node scripts/verify-recorded-mini-app-tasks.mjs --bindings <json>` 还支持原生键盘 `key`、选项 `select` 和指针 `drag`。拖动使用绑定声明的 SVG/Canvas 坐标空间，转换为实际鼠标位置；不直接写程序状态或派发合成 DOM 事件。独立预期同时核对画面文字和保存状态，原始生成记录的摘要前后保持一致。回放用例与真实模型回答分别审阅，不能把机械步骤的 passed 当成语义验收通过。
 
 2026-11-02 空间与棋盘重放发现并修复 SVG 留白下的坐标偏移、原生按钮空格默认激活被拦截两个产品问题；同时修正量杯文字匹配空白和面积浮点显示两个测试问题，保留初次失败。独立 Electron 诊断在未加载 Piora、未连接 CDP、无 iframe 等对照下仍出现窗口与页面可见性不同步；这是定位证据，不是原生窗口场景通过。详见[本批报告](verification/intelligent-ui-phase3-spatial-2026-11-02.md)。

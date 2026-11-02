@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "recordedAt": "2026-11-02T15:12:38.359Z",
+  "recordedAt": "2026-11-02T16:34:36.575Z",
   "entries": [
     {
       "id": "document",
@@ -27,6 +27,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -66,7 +67,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -96,16 +97,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -171,7 +174,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -199,6 +202,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -238,7 +242,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -268,16 +272,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -343,7 +349,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -371,6 +377,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -410,7 +417,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -440,16 +447,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -515,7 +524,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -543,6 +552,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -582,7 +592,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -612,16 +622,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -687,7 +699,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -715,6 +727,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -754,7 +767,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -784,16 +797,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -859,7 +874,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -887,6 +902,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -926,7 +942,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -956,16 +972,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -1031,7 +1049,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -1059,6 +1077,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -1098,7 +1117,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -1128,16 +1147,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -1203,7 +1224,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -1231,6 +1252,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -1270,7 +1292,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -1300,16 +1322,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -1375,7 +1399,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -1403,6 +1427,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -1442,7 +1467,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -1472,16 +1497,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -1547,7 +1574,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -1575,6 +1602,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -1614,7 +1642,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -1644,16 +1672,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -1719,7 +1749,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -1747,6 +1777,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -1786,7 +1817,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -1816,16 +1847,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -1891,7 +1924,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -1919,6 +1952,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -1958,7 +1992,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -1988,16 +2022,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -2063,7 +2099,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -2091,6 +2127,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -2130,7 +2167,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -2160,16 +2197,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -2235,7 +2274,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     },
     {
@@ -2263,6 +2302,7 @@
         "lib/mini-app-state.test.mjs",
         "lib/mini-app-scene.test.mjs",
         "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
         "lib/mini-app-groups.test.mjs",
         "lib/mini-app-groups-browser.test.mjs",
         "lib/mini-app-presets.test.mjs",
@@ -2302,7 +2342,7 @@
         "lib/intelligent-ui/rich-plan.test.mjs"
       ],
       "sources": {
-        "lib/mini-app/capability-manifest.ts": "3435c687f338fa3f1e94b38d8f1b1d5e15897f4d2b25069d41e544b0f82647a5",
+        "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
         "lib/mini-app/capabilities.ts": "79af3d60be9b3034df7950ae872885aabff26c6113c63d718f291ba8293aa69c",
         "lib/mini-app/capability-host.ts": "5591419b2b8a72a6e0c86320874882a6f7b941e57f1e320a5bc79018976f214d",
         "lib/answer-output-conversion-types.ts": "778f5a291626790eabbd7caaa73b356a886f711fd3190e7c7594f5a61a5eae81",
@@ -2332,16 +2372,18 @@
         "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
         "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
         ".mini-app-runtime/renderer.js": "4188641d00eae560de3cb8d5644505fadf4d670e7693bd5d3668728fab192889",
-        ".mini-app-runtime/server-worker.cjs": "f38001b86911c1d85d7b8b743c3f5224dc4b1e2c6f37515e7373a1c95f3066b4",
+        ".mini-app-runtime/server-worker.cjs": "480da376527c66f6cd663d9fb7f9751affffc047072850f12b69ed5ace4ea8d3",
         ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
         "lib/mini-app/plan.ts": "41b095d435ec4ba100d8ff52832b66709ec132cc3715c3b137970b38a8457dc0",
         "lib/mini-app/plan-schema.ts": "e003060bb0c518096b1c9452b683361a5efc8fe56ceefdaaf42903ceeeb80ada",
         "lib/mini-app/limits.ts": "c19ee5f306a0a927c51fd2fc656464e910485c83c2e199a70f287922a9be8ce8",
         "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
         "lib/mini-app/authoring-contract.ts": "3379ce62fbe5e60a95315bdb4536d979a07b499485ea53bb63ab9ece04bb66b2",
-        "lib/mini-app/server-worker.ts": "803e16f8b60fdeceb0dfabedc134a40d7a87a1c28dde872cb20b417bf299fd5f",
+        "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
         "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
-        "lib/mini-app/server-trial.ts": "583f6400ae7a0e381628495f829c5c2da262f45a6c2263e90e3244dcbd42e80a",
+        "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+        "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+        "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
         "lib/mini-app/journal.ts": "57b076fdfd19bda3dfb4d2cfae5944823102166fb8fb56720634d161925c3a8e",
         "lib/mini-app/state-store.ts": "92c098300371359a805b223d7f7fc4a86c7ab37fd0a07d8a8ebb44ca97bc1545",
         "lib/mini-app/state-service.ts": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2",
@@ -2407,7 +2449,7 @@
         "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
         "lib/mini-app/decision-policy.ts": "33aca8606d3ebc8132fd7c7784ff87b8cf38e8c441ecb3932f1cce0499e63df9",
         "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
-        "lib/mini-app/generation-runtime.ts": "ffae7669e2969e18861cc9bc40dddc6fb46c4a23ec3db1b4fa3fb3059ddec839"
+        "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5"
       }
     }
   ]

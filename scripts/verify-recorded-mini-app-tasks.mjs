@@ -153,6 +153,30 @@ const scenario={
         const taskRequests=requests.filter(r=>r.caseId===spec.id&&r.purpose==='follow-up');
         const contexts=taskRequests.flatMap(r=>r.savedContext).map(text=>JSON.parse(text.slice(text.indexOf('\n')+1)));
         assert.ok(contexts.some(c=>c.apps?.some(app=>app.id===record.plan.id&&app.tick===saved.result.snapshot.tick&&app.summary===saved.result.frame.summary.slice(0,2000))),'Real request includes the exact current saved summary and tick');
+        if(spec.actionPreviews||spec.actionChanges){
+          const evidence=contexts.flatMap(c=>c.apps??[]).find(app=>app.id===record.plan.id)?.localActionPreviews;
+          assert.ok(evidence&&!evidence.unavailable,'Real request includes local VM action evidence');
+          assert.equal(evidence.source.planDigest,saved.publication.planDigest);assert.equal(evidence.source.stateRevision,saved.stateRevision);
+          for(const [id,expected] of Object.entries(spec.actionPreviews??{})){
+            const action=evidence.actions.find(action=>action.id===id);assert.ok(action,`Preview ${id} is present`);assert.equal(action.status,'ok');
+            for(const [path,value] of Object.entries(expected))assert.deepEqual(at(action,path),value,`Independent preview oracle ${id}: ${path}`);
+          }
+          for(const [id,expected] of Object.entries(spec.actionChanges??{})){
+            assert.equal(evidence.version,2);
+            const action=evidence.actions.find(action=>action.id===id);assert.ok(action,`Preview ${id} is present`);assert.equal(action.status,'ok');
+            for(const [path,values] of Object.entries(expected)){
+              const parts=path.slice(1).split('/').map(key=>key.replaceAll('~1','/').replaceAll('~0','~'));
+              assert.deepEqual(parts.reduce((value,key)=>value?.[key],saved.result.snapshot),values.before,`Independent preview baseline ${id}: ${path}`);
+              const change=action.changes.items.find(item=>item.path===path);
+              if(change){assert.equal(change.kind,'replace');assert.deepEqual(change.before,values.before);assert.deepEqual(change.after,values.after,`Independent transition ${id}: ${path}`);}
+              else {assert.equal(action.changes.complete,true,'Only exhaustive differences prove an unlisted field unchanged');assert.deepEqual(values.before,values.after,`Expected changed field is missing: ${id} ${path}`);}
+            }
+          }
+          row.actionPreviews=evidence;
+        }
+        const afterFollowup=await api(`/api/sessions/${original.sessionId}/mini-app?toolCallId=${encodeURIComponent(record.toolCallId)}`);
+        assert.deepEqual(afterFollowup.result.snapshot,saved.result.snapshot,'Explanation and read-only preview preserve saved progress');
+        assert.equal(afterFollowup.stateRevision,saved.stateRevision,'Explanation does not write a new state revision');
         row.followup={prompt:spec.followup,answer:followups().map(r=>r.text??'').join('\n'),requestIds:taskRequests.map(r=>r.id),semanticReview:'pending-independent-human-review'};
         await screenshot(`${spec.id}-followup.png`);row.interaction='completed';row.status=row.semanticFindings.length?'semantic-failed':'completed';await persist();
       });}catch(error){row.status='failed';row.error=error.message;await screenshot(`${spec.id}-failure.png`).catch(()=>{});}

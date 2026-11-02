@@ -8,6 +8,7 @@ import { miniAppStepRequest } from "./playback";
 import { miniAppPresetTrials, miniAppScenePickTrials } from "./interaction-trial";
 import { miniAppEventRequest } from "./events";
 import { answerDataDigest } from "../answer-output-receipts";
+import { MINI_APP_ACTION_PREVIEW_LIMITS, miniAppPreviewChoices, miniAppPreviewOutcome, type MiniAppActionEvidence } from "./action-preview";
 
 void (async () => {
   let vm: MiniAppVm | undefined;
@@ -32,6 +33,22 @@ void (async () => {
       if (compiled.plan.migration.clock === "preserve") { snapshot.tick = previous.tick; snapshot.rng = previous.rng; }
     }
     let initial = validateMiniAppResult(compiled, vm.run(request));
+    if (data.preview === true) {
+      if (!restoring || data.parameterInputs !== undefined) throw new MiniAppError("SCHEMA", "Local previews require an unchanged saved checkpoint");
+      const choices = miniAppPreviewChoices(compiled, initial.frame);
+      const preview: MiniAppActionEvidence = { version: 2, sourceCheckpointDigest: answerDataDigest(initial.snapshot),
+        eligibleActions: choices.length, omittedActions: Math.max(0, choices.length - MINI_APP_ACTION_PREVIEW_LIMITS.actions), actions: [] };
+      for (const choice of choices.slice(0, MINI_APP_ACTION_PREVIEW_LIMITS.actions)) {
+        if (choice.disabled) { preview.actions.push({ ...choice, status: "disabled" }); continue; }
+        // Every VM invocation recreates the program closure and decodes a fresh
+        // snapshot. No result feeds the next alternative, including tick/RNG.
+        const result = validateMiniAppResult(compiled, vm.run(miniAppEventRequest(compiled, initial.snapshot, { type: "click", id: choice.id }, initial.frame)));
+        preview.actions.push(miniAppPreviewOutcome(choice, initial.snapshot, result));
+      }
+      boundedJson(preview, MINI_APP_ACTION_PREVIEW_LIMITS.bytes);
+      parentPort!.postMessage({ result: boundedJson(initial, MINI_APP_LIMITS.replyBytes), preview });
+      return;
+    }
     if (data.parameterInputs !== undefined) {
       const inputs = validateMiniAppInputs(compiled.plan, data.parameterInputs);
       const released = validateMiniAppResult(compiled, vm.run({ command: "event", snapshot: initial.snapshot, event: { type: "blur" } }));
