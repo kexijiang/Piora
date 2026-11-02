@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.5.9-beta.2] - 2026-11-02
+
 - 补齐不带 Flash 后缀的 DeepSeek V4.1 与自部署 dsv4.1 别名（含 dsv4.1-1017-zwei）的默认思考档位兼容，将 minimal/medium 分别归到 low/high，避免聊天模板发送不支持的 reasoning_effort；新增真实 SDK 请求回归验证。
 
 ## [0.5.9-beta.1] - 2026-11-02
