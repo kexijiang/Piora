@@ -5,7 +5,7 @@ import { NestedToolCallsStore } from "@/lib/nested-tool-calls";
 import type { ToolReviewRecord } from "@/lib/tool-review-types";
 
 import { createAgentEventDecoder } from "@/lib/agent-event-transport";
-import { flushPendingAnswerState } from "@/lib/answer-output-client";
+import { flushPendingAnswerState, refreshAnswerState } from "@/lib/answer-output-client";
 import { AnswerOutputPreviewStore } from "@/lib/answer-output-preview-client";
 import { savePendingPrompt, dismissPendingPrompt, readPendingPrompts, mergePendingPrompts, replaceFailedPromptMessage, confirmPendingPrompts, type PendingPrompt } from "@/lib/prompt-recovery";
 
@@ -1250,6 +1250,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       // must not overwrite the messages of the run currently streaming.
       if (promptRunIdRef.current !== runId) return;
       if (sid) await loadSession(sid, false, true);
+      if (sid && sessionIdRef.current === sid && promptRunIdRef.current === runId) await refreshAnswerState(sid);
     })().finally(() => { if (promptRunIdRef.current === runId) setReplyHistorySettling(false); });
     promptSettlementByRunRef.current.set(runId, settlement);
     return settlement;

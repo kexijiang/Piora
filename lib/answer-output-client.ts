@@ -1,5 +1,5 @@
 /** Optional answer modules register durable writes without coupling chat to their runtime. */
-const writers = new Map<string, { sessionId: string; flush: () => Promise<void> }>();
+const writers = new Map<string, { sessionId: string; flush: () => Promise<void>; refresh?: () => Promise<void> }>();
 let enabled = true;
 const environmentStops = new Set<() => void>();
 
@@ -13,10 +13,19 @@ export function registerAnswerEnvironmentStop(stop: () => void): () => void {
 }
 export function isAnswerStateEnabled(): boolean { return enabled; }
 
-export function registerAnswerStateWriter(key: string, sessionId: string, flush: () => Promise<void>): () => void {
-  const writer = { sessionId, flush };
+export function registerAnswerStateWriter(key: string, sessionId: string, flush: () => Promise<void>, refresh?: () => Promise<void>): () => void {
+  const writer = { sessionId, flush, refresh };
   writers.set(key, writer);
   return () => { if (writers.get(key) === writer) writers.delete(key); };
+}
+
+/** A settled conversation may advance the publication's branch boundary.
+ * Optional modules refresh their own clean views; failures stay in those views
+ * and cannot turn a completed ordinary chat into a failed prompt. */
+export async function refreshAnswerState(sessionId: string): Promise<void> {
+  if (!enabled) return;
+  await Promise.allSettled([...writers.values()].filter(writer => writer.sessionId === sessionId && writer.refresh)
+    .map(writer => Promise.resolve().then(() => writer.refresh!())));
 }
 
 /** A failed save blocks dependent sends so the model never receives a stale state silently. */

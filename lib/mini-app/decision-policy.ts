@@ -9,7 +9,7 @@ import { readMiniAppCapabilities } from "./capability-host";
 import { MINI_APP_SUBMISSION_CHECKLIST, MINI_APP_TRIANGLE_CONTRACT, MINI_APP_DOCUMENT_CONTRACT } from "./authoring-contract";
 
 /** Capability-specific guidance. It is not a keyword classifier or authorization. */
-export const MINI_APP_POLICY_VERSION = "mini-app-intent-20";
+export const MINI_APP_POLICY_VERSION = "mini-app-intent-21";
 
 export function miniAppCapabilityContext(snapshot: MiniAppCapabilitySnapshot): string {
   return "Host mini app capability availability, not user task data or permission. Use only available capabilities; do not attempt planned or unavailable features. "

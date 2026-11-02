@@ -43,7 +43,7 @@
       "id": "jugs", "family": "bounded-state-puzzle", "acceptedForms": ["mini-app"],
       "prompt": "只有 3 升和 5 升两个杯子，怎么量出 4 升水？让我点着装水、倒水试试。",
       "expectedBehavior": "An interactive state puzzle exposes filling, emptying and transfer operations with visible volumes.",
-      "checks": ["Volumes stay within [0,3] and [0,5]; pouring transfers min(source volume, target free capacity).", "Path for (3L,5L): (0,0)->(0,5)->(3,2)->(0,2)->(2,0)->(2,5)->(3,4).", "A solved state is explained from actual volumes, not a fixed heading.", "Save, refresh and explain the acknowledged volumes."]
+      "checks": ["Volumes stay within [0,3] and [0,5]; pouring transfers min(source volume, target free capacity).", "Path for (3L,5L): (0,0)->(0,5)->(3,2)->(0,2)->(2,0)->(2,5)->(3,4).", "A solved state is explained from actual volumes, not a fixed heading.", "After (3,4), emptying the small vessel gives (0,4) and preserves the current goal; filling the large vessel gives (0,5) and emptying it gives (0,0), neither currently meets the goal. Success text and highlights must agree after save/reload; a historical achievement must be labelled as history.", "Exploration remains available after reaching the goal; reset clears quantities and starts a new attempt.", "Save, refresh and explain the acknowledged volumes."]
     },
     {
       "id": "board", "family": "turn-based-board", "acceptedForms": ["mini-app"],

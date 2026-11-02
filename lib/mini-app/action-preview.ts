@@ -6,6 +6,7 @@ import { MiniAppError } from "./limits";
 import { validateMiniAppCheckpoint, type CompiledMiniApp, type MiniAppResult } from "./plan";
 import type { MiniAppCheckpoint } from "./vm";
 import { miniAppCheckpointChanges, validateMiniAppCheckpointChanges, type MiniAppCheckpointChanges } from "./checkpoint-changes";
+import { miniAppActionFieldEffects, type MiniAppActionFieldEffects } from "./action-field-effects";
 
 // Host-owned observation budgets, independent of the saved plan/runtime version.
 export const MINI_APP_ACTION_PREVIEW_LIMITS = Object.freeze({ actions: 12, bytes: 48_000, snapshotCharacters: 1200, summaryCharacters: 384, contextCharacters: 4500 });
@@ -21,7 +22,9 @@ export interface MiniAppActionEvidence {
 type ContextAction = MiniAppPreviewChoice & ({ status: "disabled" } | {
   status: "ok"; checkpointUnchanged: boolean; changes: MiniAppCheckpointChanges;
 });
-export interface MiniAppActionContextEvidence extends Omit<MiniAppActionEvidence, "actions"> { actions: ContextAction[] }
+export interface MiniAppActionContextEvidence extends Omit<MiniAppActionEvidence, "actions"> {
+  actions: ContextAction[]; fieldEffects?: MiniAppActionFieldEffects;
+}
 
 /** Only declared local click targets. No host actions, row events, input edits or inferred labels. */
 export function miniAppPreviewChoices(compiled: CompiledMiniApp, frame: MiniAppFrame): MiniAppPreviewChoice[] {
@@ -78,13 +81,25 @@ export function validateMiniAppActionEvidence(compiled: CompiledMiniApp, initial
 }
 
 /** Keep whole outcomes; never truncate JSON into apparent partial state. */
-export function compactMiniAppActionEvidence(evidence: MiniAppActionContextEvidence, maximum = MINI_APP_ACTION_PREVIEW_LIMITS.contextCharacters): MiniAppActionContextEvidence {
+export function compactMiniAppActionEvidence(evidence: MiniAppActionContextEvidence, maximum = MINI_APP_ACTION_PREVIEW_LIMITS.contextCharacters, source?: MiniAppCheckpoint): MiniAppActionContextEvidence {
   // Do not repeat generated goal prose or duplicate full snapshots in every
   // alternative. Host-computed before/after facts are the evidence for a claim.
   const actions: ContextAction[] = evidence.actions.map(action => ({ id: action.id, label: action.label, disabled: action.disabled,
     ...(action.status === "disabled" ? { status: "disabled" as const } : { status: "ok" as const,
       checkpointUnchanged: action.checkpointUnchanged, changes: action.changes }) }));
-  const compact = { ...evidence, actions };
-  while (JSON.stringify(compact).length > maximum && compact.actions.length) { compact.actions.pop(); compact.omittedActions++; }
+  const compact: MiniAppActionContextEvidence = { ...evidence, actions };
+  if (source) {
+    if (answerDataDigest(source) !== evidence.sourceCheckpointDigest) throw new MiniAppError("PROTOCOL", "Field effects require the observed source checkpoint");
+    compact.fieldEffects = miniAppActionFieldEffects(source, evidence);
+  } else if (evidence.fieldEffects) compact.fieldEffects = JSON.parse(JSON.stringify(evidence.fieldEffects));
+  while (JSON.stringify(compact).length > maximum && dropMiniAppActionContextItem(compact)) { /* Preserve complete entries. */ }
   return compact;
+}
+
+/** Supplemental field facts never displace primary action evidence or retain removed action IDs. */
+export function dropMiniAppActionContextItem(evidence: MiniAppActionContextEvidence): boolean {
+  if (evidence.fieldEffects?.fields.length) { evidence.fieldEffects.fields.pop(); evidence.fieldEffects.omittedFields++; return true; }
+  if (evidence.fieldEffects) { delete evidence.fieldEffects; return true; }
+  if (evidence.actions.length) { evidence.actions.pop(); evidence.omittedActions++; return true; }
+  return false;
 }

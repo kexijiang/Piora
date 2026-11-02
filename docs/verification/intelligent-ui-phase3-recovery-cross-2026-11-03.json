@@ -1,0 +1,379 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "recordedAt": "2026-11-02T17:40:04.637Z",
+  "codeBase": "49c608acd9a5487fb9770dcef5757effbf3f608a",
+  "modifiedSourceSha256": {
+    "hooks/useAgentSession.ts": "21cb8650523d2983381507c57bc0764c07b39a84a946b134e58b3bc30c7b036e",
+    "hooks/useAgentSession.test.mjs": "df8dcbd2d68aa681292b5749dcb16bf2286af0700f8bc42054fa5f0291b1e6a5",
+    "lib/answer-output-client.ts": "7bb6443d2325e4c102db94ecf48f428117244f83a234d5cfc6848a1d2e8bd884",
+    "lib/answer-output-client.test.mjs": "215c47e007fd6d14bbafe0e9ddf43b8b0bc6068db4bfeb4a9bf91b9ebe69e50b",
+    "lib/mini-app/client-state.ts": "3b1d87d88b9509da08dfb6f8ff80cb4766493f08837e6ce2191d0c83b09be8fb",
+    "lib/mini-app-client-browser.test.mjs": "b5530501e75f72de33ad854573c32235ba62d87c3ea9305035ba031b353999dd",
+    "lib/mini-app-migration-browser.test.mjs": "e105bf2f0d53acf2b529c06e386ac62d7844e6e2dee8de83b5c7c46c5ba53f4f",
+    "scripts/desktop-e2e/scenarios/intelligent-ui-recovery.mjs": "80a27d150729e335649b9859e8846d527bc8611aef97577ad6e83e037e92dea2",
+    "scripts/run-desktop-e2e.mjs": "cf5cc5efb71fb105d93fae7a594d74d3fb9ba96b8f82b3674cfd00b371262480",
+    "scripts/verify-mini-app-capabilities.mjs": "2805f0bec59f62ccc85578e0673f995e4e5df325b040aee9debeb04fa98ddbc3",
+    "lib/mini-app/capability-evidence.json": "02557aed455676e2b8de6a1bb87c70b303c5471f5c77a1c2a96079e94980c54c"
+  },
+  "scope": "Generic settled-conversation state refresh; real browser/production-route conflict matrix and Windows development Electron lifecycle. Deterministic local model, not model quality, native-window recovery or sealed acceptance.",
+  "implementation": {
+    "problem": "A clean old mini app retained the preceding conversation leaf after a follow-up or candidate generation and subsequent saves received a branch conflict.",
+    "fix": "Refresh registered optional output modules after current-run history settlement. The mini app freezes inputs and refreshes only clean clients; pending drafts retain the original branch.",
+    "unchanged": [
+      "server branch and revision checks",
+      "checkpoint and migration formats",
+      "no additional model call"
+    ]
+  },
+  "model": {
+    "provider": "desktop-recovery-fixture",
+    "id": "recovery-fixture",
+    "kind": "deterministic loopback fixture",
+    "userCredentials": false
+  },
+  "verification": {
+    "browserMatrix": {
+      "path": ".verification/mini-app-migration-browser-lnobGg/result.json",
+      "tests": 7,
+      "passed": 7,
+      "sha256": "44a25d7157416786dc69b7b7271c8cc7d92138e9eaa27287615a03c62c047b45"
+    },
+    "refreshBoundary": {
+      "path": ".verification/phase3-recovery-cross-refresh-boundary.log",
+      "tests": 18,
+      "passed": 18,
+      "sha256": "78163e22c3bea56e956c36dd905280c760cc9a140677677425736153f30895a9"
+    },
+    "settlement": {
+      "path": ".verification/phase3-recovery-cross-settlement.log",
+      "tests": 6,
+      "passed": 6,
+      "scope": "selected lifecycle tests only; remaining historical hook suite not rerun",
+      "sha256": "b13dc22057d14ea796c5dff4739c54b83192ce8f31fcf9c00b75534bc61cf8b4"
+    },
+    "services": {
+      "path": ".verification/phase3-recovery-cross-service.log",
+      "tests": 21,
+      "passed": 21,
+      "sha256": "ae8b8b0fc6218ab28f1bcd15cb048c7a18d7a604ca3eb4461901d625992d7e5f"
+    },
+    "harness": {
+      "path": ".verification/phase3-recovery-cross-harness.log",
+      "tests": 19,
+      "passed": 19,
+      "sha256": "70e89b9407a2daf02101649052ad0c3290ebcafc752ac1dc605e73159d3d25e5"
+    },
+    "capabilities": {
+      "path": ".verification/mini-app-capabilities-n5L9ks/result.json",
+      "tests": 509,
+      "passed": 509,
+      "files": 57,
+      "capabilities": 14,
+      "sha256": "ad592526d99c1c5c06d5f3cc804e0cee929c292a3b3fcff9833a88d810c0f89d"
+    },
+    "webTypecheck": "passed via repository .bin/tsc; initial nonexistent bin path did not execute a check",
+    "targetedLint": "passed",
+    "fullCI": "deferred",
+    "nativeWindow": "not retested; unresolved",
+    "realModel": "not run"
+  },
+  "desktop": {
+    "path": ".verification/desktop-e2e-Nxg8Vk/result.json",
+    "sha256": "8e85a40061e9637f724693556b7231957129dc9b200624afcc42a27ef561589c",
+    "status": "passed",
+    "platform": "win32",
+    "node": "v24.5.0",
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed",
+        "durationMs": 24210
+      },
+      {
+        "name": "install-response-fixture",
+        "status": "passed",
+        "durationMs": 2
+      },
+      {
+        "name": "enable-and-create",
+        "status": "passed",
+        "durationMs": 15904
+      },
+      {
+        "name": "lost-save-response-retains-checkpoint",
+        "status": "passed",
+        "durationMs": 1934
+      },
+      {
+        "name": "reload-recovers-receipt-without-second-write",
+        "status": "passed",
+        "durationMs": 5794
+      },
+      {
+        "name": "cancel-candidate-preserves-progress",
+        "status": "passed",
+        "durationMs": 11227
+      },
+      {
+        "name": "source-edit-invalidates-an-open-review",
+        "status": "passed",
+        "durationMs": 6484
+      },
+      {
+        "name": "refresh-review-and-migrate-current-progress",
+        "status": "passed",
+        "durationMs": 1732
+      },
+      {
+        "name": "reload-edit-and-follow-up",
+        "status": "passed",
+        "durationMs": 8385
+      },
+      {
+        "name": "continue-editing-after-follow-up",
+        "status": "passed",
+        "durationMs": 2416
+      }
+    ],
+    "cleanupErrors": [],
+    "checkpointPath": ".verification/desktop-e2e-Nxg8Vk/recovery-checkpoints.json",
+    "checkpointSha256": "57bc3b6591be530096211c9d2b2636076a6f0ab3b7e6ef7afd400e4938da448b",
+    "snapshots": [
+      {
+        "label": "saved-with-lost-response",
+        "publicationStatus": "committed",
+        "stateRevision": 1,
+        "checkpointDigest": "ea980b8e8eefc8137258f85223504a998405135a9200a1f794d0106b2fb11351",
+        "snapshot": {
+          "inputs": {
+            "start": 9
+          },
+          "state": {
+            "count": 9
+          },
+          "tick": 0,
+          "rng": 1346981714
+        }
+      },
+      {
+        "label": "receipt-recovered",
+        "publicationStatus": "committed",
+        "stateRevision": 1,
+        "checkpointDigest": "ea980b8e8eefc8137258f85223504a998405135a9200a1f794d0106b2fb11351",
+        "snapshot": {
+          "inputs": {
+            "start": 9
+          },
+          "state": {
+            "count": 9
+          },
+          "tick": 0,
+          "rng": 1346981714
+        }
+      },
+      {
+        "label": "cancelled-then-edited",
+        "publicationStatus": "committed",
+        "stateRevision": 3,
+        "checkpointDigest": "29cbbda0ab82f3a519bbe9fe8fc8f15f27952b13f3fe8922cb7c611d61f2ee88",
+        "snapshot": {
+          "inputs": {
+            "start": 9
+          },
+          "state": {
+            "count": 11
+          },
+          "tick": 0,
+          "rng": 1346981714
+        }
+      },
+      {
+        "label": "confirmed-migration",
+        "publicationStatus": "committed",
+        "stateRevision": 0,
+        "checkpointDigest": "fd80a0999c2ca6123a7629fc4e410ab2617c2ac6488da3f55af36291fdbd4338",
+        "snapshot": {
+          "inputs": {
+            "start": 12
+          },
+          "state": {
+            "count": 15
+          },
+          "tick": 0,
+          "rng": 1346981714
+        }
+      },
+      {
+        "label": "edited-after-reload",
+        "publicationStatus": "committed",
+        "stateRevision": 5,
+        "checkpointDigest": "7ed3bda2bf6b9a5fb77f46155039ab038f4c3094d45f33835c10145ad43cd331",
+        "snapshot": {
+          "inputs": {
+            "start": 12
+          },
+          "state": {
+            "count": 16
+          },
+          "tick": 0,
+          "rng": 1346981714
+        }
+      },
+      {
+        "label": "after-follow-up",
+        "publicationStatus": "committed",
+        "stateRevision": 5,
+        "checkpointDigest": "7ed3bda2bf6b9a5fb77f46155039ab038f4c3094d45f33835c10145ad43cd331",
+        "snapshot": {
+          "inputs": {
+            "start": 12
+          },
+          "state": {
+            "count": 16
+          },
+          "tick": 0,
+          "rng": 1346981714
+        }
+      },
+      {
+        "label": "edited-after-follow-up",
+        "publicationStatus": "committed",
+        "stateRevision": 6,
+        "checkpointDigest": "1d39a0218baafd5473420ba73a8a9f5c1fe88098165c0e9b56f4bbb30847de1b",
+        "snapshot": {
+          "inputs": {
+            "start": 12
+          },
+          "state": {
+            "count": 17
+          },
+          "tick": 0,
+          "rng": 1346981714
+        }
+      }
+    ],
+    "writes": [
+      {
+        "toolCallId": "recovery-create",
+        "status": 200
+      },
+      {
+        "toolCallId": "recovery-create",
+        "status": 200
+      },
+      {
+        "toolCallId": "recovery-create",
+        "status": 200
+      },
+      {
+        "toolCallId": "recovery-create",
+        "status": 200
+      },
+      {
+        "toolCallId": "recovery-migrate",
+        "status": 200
+      },
+      {
+        "toolCallId": "recovery-migrate",
+        "status": 200
+      }
+    ],
+    "decisions": [
+      {
+        "decision": "cancel",
+        "progress": "reset",
+        "status": 200
+      },
+      {
+        "decision": "confirm",
+        "progress": "reset",
+        "status": 409
+      },
+      {
+        "decision": "confirm",
+        "progress": "migrate",
+        "status": 200
+      }
+    ],
+    "transport": "Native authenticated fetch completes before one response body is replaced with malformed JSON. Network response metadata is observed without replaying requests."
+  },
+  "previousDesktopRuns": [
+    {
+      "path": ".verification/desktop-e2e-QY4tpC/result.json",
+      "sha256": "19f14513582245bf457fef087a42ed2338cb028ffc581a155a1bd31f6014bfff",
+      "status": "failed",
+      "failedStep": "lost-save-response-retains-checkpoint",
+      "error": {
+        "name": "AssertionError",
+        "message": "Expected values to be strictly equal:\n\n2 !== 9\n"
+      },
+      "cleanupErrors": []
+    },
+    {
+      "path": ".verification/desktop-e2e-9V6JBY/result.json",
+      "sha256": "74691715d4be280d5b8064439db3c0b00cfe5393d131676f0a8839e9a8fd25a3",
+      "status": "failed",
+      "failedStep": "launch",
+      "error": {
+        "name": "Error",
+        "message": "Desktop scenario exceeded 600000 ms"
+      },
+      "cleanupErrors": []
+    },
+    {
+      "path": ".verification/desktop-e2e-gsEOsY/result.json",
+      "sha256": "f983f11d2b59e8e26b2ee87a37e93f9b3ad0642d1568bede8045dce111a187c7",
+      "status": "failed",
+      "failedStep": "lost-save-response-retains-checkpoint",
+      "error": {
+        "name": "Error",
+        "message": "Timed out waiting for real successful save observed"
+      },
+      "cleanupErrors": []
+    },
+    {
+      "path": ".verification/desktop-e2e-7EXvGT/result.json",
+      "sha256": "3f28f21793554414ed4ff7fdb4057f474311b32083f55749155a62d214623d7f",
+      "status": "failed",
+      "failedStep": "source-edit-invalidates-an-open-review",
+      "error": {
+        "name": "TimeoutError",
+        "message": "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-mini-app-surface]').filter({ has: getByRole('heading', { name: 'Recovery counter', exact: true }) }).getByText(/^(Saved · ready for your next message|已保存 · 后续追问可读取当前状态)$/) to be visible\u001b[22m\n"
+      },
+      "cleanupErrors": []
+    },
+    {
+      "path": ".verification/desktop-e2e-izrPeF/result.json",
+      "sha256": "2da91903fa5a7f148ccd1a6ebeaa024a68ed23268e14b8aaa2c41dc076019376",
+      "status": "passed",
+      "failedStep": null,
+      "error": null,
+      "cleanupErrors": []
+    }
+  ],
+  "browserFailures": [
+    {
+      "path": ".verification/mini-app-migration-browser-Ry1bIx/result.json",
+      "sha256": "bfd6aba5374750acc0234442be5ef5f11b1654f013a7a489f443fdf9547c2e44",
+      "status": "failed",
+      "failedCases": [
+        "stale review is recomputed before progress migration and superseded edits remain exportable"
+      ]
+    },
+    {
+      "path": ".verification/mini-app-migration-browser-DW1jnE/result.json",
+      "sha256": "da7a87cf1d3496fbc4957c68f0463e0d4472a5a6b86fc43ab9b5c311a180d8db",
+      "status": "failed",
+      "failedCases": [
+        "stale review is recomputed before progress migration and superseded edits remain exportable"
+      ]
+    }
+  ],
+  "remaining": [
+    "3B semantic and multi-turn task failures",
+    "3C native-window and full fork/duplicate/export/trash combinations",
+    "3D complex lists, simulations and spatial tasks",
+    "3E full CI, sealed set and two-human acceptance"
+  ]
+}

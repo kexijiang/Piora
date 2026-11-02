@@ -326,6 +326,7 @@ function promptSettlementHarness() {
   const calls = [], delays = [];
   let now = 0;
   const env = {
+    answerPreviewStore: { stop() {} }, refreshAnswerState: async () => {},
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 },
     editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [],
     useCallback: callback => callback, AbortController, AbortSignal, Date: { now: () => now },
@@ -351,6 +352,20 @@ function promptSettlementHarness() {
     await new Promise(resolve => setImmediate(resolve));
   } };
 }
+
+test("settled outputs refresh once after history and ignore superseded runs or sessions", async t => {
+  for (const change of ["none", "run", "session"]) await t.test(change, async () => {
+    const h = promptSettlementHarness(), refreshed = [];
+    let release; h.env.loadSession = () => new Promise(resolve => { release = resolve; });
+    h.env.refreshAnswerState = async sid => refreshed.push(sid);
+    const first = h.finishPromptWithoutStream("session-a", 1), second = h.finishPromptWithoutStream("session-a", 1);
+    assert.equal(first, second); assert.deepEqual(refreshed, []);
+    if (change === "run") h.env.promptRunIdRef.current = 2;
+    if (change === "session") h.env.sessionIdRef.current = "session-b";
+    release(); await first;
+    assert.deepEqual(refreshed, change === "none" ? ["session-a"] : []);
+  });
+});
 
 test("reconciliation keeps SSE open while server runtime is running after the model ends, then closes once at idle", async () => {
   const h = promptSettlementHarness();
@@ -924,6 +939,7 @@ test("visible termination precedes a stalled history reload and is idempotent", 
     suppressCompletionNotificationRef: { current: true }, promptSettlementByRunRef: { current: new Map() },
   };
   const deps = {
+    answerPreviewStore: { stop() {} }, refreshAnswerState: async () => {},
     nestedCallsStore: new NestedToolCallsStore(),
     ...refs, useCallback: (callback) => callback,
     closeEvents: () => calls.push("close"),

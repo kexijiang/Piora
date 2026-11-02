@@ -6,8 +6,9 @@ import { settingsTheme } from './desktop-e2e/scenarios/settings-theme.mjs';
 import { desktopExtensions } from './desktop-e2e/scenarios/desktop-extensions.mjs';
 import { intelligentUiMiniApp } from './desktop-e2e/scenarios/intelligent-ui-mini-app.mjs';
 import { intelligentUiWindow } from './desktop-e2e/scenarios/intelligent-ui-window.mjs';
+import { intelligentUiRecovery } from './desktop-e2e/scenarios/intelligent-ui-recovery.mjs';
 
-const scenarios = [settingsTheme, stopShell, stopBash, desktopExtensions, intelligentUiMiniApp, intelligentUiWindow];
+const scenarios = [settingsTheme, stopShell, stopBash, desktopExtensions, intelligentUiMiniApp, intelligentUiWindow, intelligentUiRecovery];
 
 export function parseOptions(args) {
   const options = { scenario: 'settings-theme' };
@@ -32,7 +33,7 @@ export function parseOptions(args) {
 async function main() {
   const options = parseOptions(process.argv.slice(2));
   if (options.help || options.list) {
-    console.log('Usage: npm run test:desktop:e2e -- [--scenario settings-theme|desktop-extensions|stop-shell|stop-bash|intelligent-ui-mini-app|intelligent-ui-window] [--timeout-ms 600000] [--step-timeout-ms 30000] [--port N] [--debug-port N] [--fail-at STEP]\nScenarios: settings-theme (no model), desktop-extensions (no model or download), stop-shell (local model fixture, real PowerShell), stop-bash (local model fixture, real Git Bash), intelligent-ui-mini-app (local model fixture, real mini app runtime and state), intelligent-ui-window (Windows native minimize/hide/restore, local model fixture; recovery scenario under development)');
+    console.log('Usage: npm run test:desktop:e2e -- [--scenario settings-theme|desktop-extensions|stop-shell|stop-bash|intelligent-ui-mini-app|intelligent-ui-window|intelligent-ui-recovery] [--timeout-ms 600000] [--step-timeout-ms 30000] [--port N] [--debug-port N] [--fail-at STEP]\nScenarios: settings-theme (no model), desktop-extensions (no model or download), stop-shell (local model fixture, real PowerShell), stop-bash (local model fixture, real Git Bash), intelligent-ui-mini-app (local model fixture, real mini app runtime and state), intelligent-ui-window (Windows native minimize/hide/restore, local model fixture; recovery scenario under development), intelligent-ui-recovery (lost response, stale review, cancellation and progress migration; local model fixture)');
     return;
   }
   const controller = new AbortController();

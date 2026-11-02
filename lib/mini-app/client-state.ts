@@ -152,12 +152,23 @@ export class MiniAppStateClient {
       this.publish({ output, current: output.result, status: "saved", error: undefined,
         restoreRevision: (this.view.restoreRevision ?? 0) + (changed ? 1 : 0) });
       if (output.writable && output.publication.status === "committed") {
-        this.unregister ??= registerAnswerStateWriter(`mini-app:${this.scope}:${crypto.randomUUID()}`, this.sessionId, () => this.flush());
+        this.unregister ??= registerAnswerStateWriter(`mini-app:${this.scope}:${crypto.randomUUID()}`, this.sessionId, () => this.flush(), () => this.refresh());
       } else if (!this.pending && !this.flight) { this.unregister?.(); this.unregister = undefined; }
     } catch (error) { this.block(error); throw error; } })();
     this.loading = task;
     void task.then(() => { if (this.loading === task) this.loading = undefined; }, () => { if (this.loading === task) this.loading = undefined; });
     return task;
+  }
+  /** Only clean views may adopt the current conversation boundary. Freeze the
+   * runtime while reading so a user event cannot be overwritten by a late GET.
+   * Pending writes and recovery copies keep their original branch identity. */
+  refresh(): Promise<void> {
+    const work = async () => {
+      this.active();
+      if (this.pending || this.flight || this.operation || this.flushing || this.resolving || this.view.needsRecovery) return;
+      await this.load();
+    };
+    return this.checkpointGate ? this.checkpointGate(work) : work();
   }
   update(value: MiniAppResult): void {
     try {

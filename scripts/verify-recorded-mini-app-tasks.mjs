@@ -173,6 +173,22 @@ const scenario={
             }
           }
           row.actionPreviews=evidence;
+          for(const path of spec.fieldEffectPaths??[]){
+            const field=evidence.fieldEffects?.fields.find(field=>field.path===path);
+            assert.ok(field,`Field effects include ${path}`);
+            for(const [actionId,changes] of Object.entries(spec.actionChanges??{})){
+              const expected=changes[path];if(!expected)continue;
+              assert.deepEqual(field.current,expected.before,`Field baseline ${actionId}: ${path}`);
+              assert.ok(!field.unknown.includes(actionId),`Field result is known: ${actionId} ${path}`);
+              if(expected.before===expected.after)assert.ok(field.unchanged.includes(actionId),`Preserved field: ${actionId} ${path}`);
+              else {
+                assert.ok(!field.unchanged.includes(actionId));
+                const outcome=field.outcomes.find(outcome=>outcome.actions.includes(actionId));
+                assert.ok(outcome?.present,`Present field: ${actionId} ${path}`);
+                assert.deepEqual(outcome.value,expected.after,`Field result ${actionId}: ${path}`);
+              }
+            }
+          }
         }
         const afterFollowup=await api(`/api/sessions/${original.sessionId}/mini-app?toolCallId=${encodeURIComponent(record.toolCallId)}`);
         assert.deepEqual(afterFollowup.result.snapshot,saved.result.snapshot,'Explanation and read-only preview preserve saved progress');

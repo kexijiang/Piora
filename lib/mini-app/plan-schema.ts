@@ -1,6 +1,6 @@
 import { Type } from "@earendil-works/pi-ai";
 import { answerConversionSchema } from "../answer-output-conversion-schema";
-import { MINI_APP_CSS_MEDIA_CONTRACT, MINI_APP_DOCUMENT_CONTRACT, MINI_APP_PROGRAM_SCOPE_CONTRACT } from "./authoring-contract";
+import { MINI_APP_CSS_MEDIA_CONTRACT, MINI_APP_DOCUMENT_CONTRACT, MINI_APP_PROGRAM_SCOPE_CONTRACT, MINI_APP_STATE_MEANING_CONTRACT } from "./authoring-contract";
 
 const strict = { additionalProperties: false };
 const id = Type.String({ pattern: "^[A-Za-z][A-Za-z0-9_-]{0,63}$" });
@@ -39,7 +39,7 @@ export const miniAppPlanSchema = Type.Object({
   viewports: Type.Array(Type.Object({ id, kind: Type.Union([Type.Literal("canvas2d"), Type.Literal("scene3d")]),
     picking: Type.Optional(Type.Literal(true)), cameraControls: Type.Optional(Type.Literal(true)), groups: Type.Optional(Type.Literal(true, { description: "Enable bounded parent transform groups on this scene3d viewport; requires the sceneGroups capability." })),
     label: Type.String({ minLength: 1, maxLength: 160 }), width: Type.Number({ multipleOf: 1, minimum: 32, maximum: 1024 }), height: Type.Number({ multipleOf: 1, minimum: 32, maximum: 1024 }) }, strict), { maxItems: 3 }),
-  program: Type.String({ minLength: 1, maxLength: 64_000, description: "Declare init(inputs,ctx), reduce(state,event,ctx), advance(state,dt,ctx) and project(state,inputs,ctx). " + MINI_APP_PROGRAM_SCOPE_CONTRACT }), initialSnapshot: Type.String({ minLength: 1, maxLength: 4000 }),
+  program: Type.String({ minLength: 1, maxLength: 64_000, description: "Declare init(inputs,ctx), reduce(state,event,ctx), advance(state,dt,ctx) and project(state,inputs,ctx). " + MINI_APP_PROGRAM_SCOPE_CONTRACT + " " + MINI_APP_STATE_MEANING_CONTRACT }), initialSnapshot: Type.String({ minLength: 1, maxLength: 4000 }),
   actions: Type.Optional(Type.Object({ version: Type.Literal(1), actions: Type.Array(Type.Union([
     Type.Object({ id, label, kind: Type.Literal("read_json_parameters"), path: Type.String({ minLength: 1, maxLength: 240 }) }, strict),
     Type.Object({ id, label, kind: Type.Literal("save_snapshot"), path: Type.String({ minLength: 1, maxLength: 240 }), format: Type.Union([Type.Literal("json"), Type.Literal("markdown")]) }, strict),
