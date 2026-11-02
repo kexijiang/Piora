@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复公司 CA 已安装到系统证书库时 DSH Pet 仍报 `UNABLE_TO_VERIFY_LEAF_SIGNATURE` 的问题：安装和启动时合并系统、Node 默认及用户指定的 CA，归档下载、npm 依赖安装与 Electron 下载使用同一份证书包；保留 TLS 验证，不继承任意 Node 启动参数。
+
 ## [0.5.9-beta.2] - 2026-11-02
 
 - 补齐不带 Flash 后缀的 DeepSeek V4.1 与自部署 dsv4.1 别名（含 dsv4.1-1017-zwei）的默认思考档位兼容，将 minimal/medium 分别归到 low/high，避免聊天模板发送不支持的 reasoning_effort；新增真实 SDK 请求回归验证。
