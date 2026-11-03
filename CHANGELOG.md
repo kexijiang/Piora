@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 浏览器等待登录、验证码或确认时，在聊天界面显示“等待用户操作”及打开浏览器入口；完成、取消与超时分别显示状态，不插入用户消息或触发额外模型回复。
+
 - 统一运行状态文案设置与运行策略页的卡片样式，扩大输入区域并增加实时效果预览，提升可读性和编辑体验。
 
 ## [0.5.9-beta.5] - 2026-11-03

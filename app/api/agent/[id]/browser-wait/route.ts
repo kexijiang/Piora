@@ -1,4 +1,4 @@
-import { readBrowserUserWait, resolveBrowserUserWait } from "@/lib/browser-user-wait";
+import { readBrowserUserWait, readBrowserUserWaitOutcome, resolveBrowserUserWait } from "@/lib/browser-user-wait";
 import { getRpcSession } from "@/lib/rpc-manager";
 import { isValidSessionId } from "@/lib/session-file-references-core";
 import { resolveSessionPath } from "@/lib/session-reader";
@@ -17,7 +17,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const invalid = await requireSession(id);
   if (invalid) return invalid;
-  return Response.json({ wait: readBrowserUserWait(id) }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ wait: readBrowserUserWait(id), outcome: readBrowserUserWaitOutcome(id) }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
