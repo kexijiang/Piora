@@ -10,6 +10,7 @@ const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
   alias: {
+    "./MemePicker.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ChatCommandCard.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ToolPermissionControl.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ReplySuggestionBar.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),

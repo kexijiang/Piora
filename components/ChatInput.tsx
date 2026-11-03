@@ -1,4 +1,5 @@
 "use client";
+import { MemePicker } from "./MemePicker";
 import { ToolPermissionControl } from "./ToolPermissionControl";
 import type { PermissionMode, ToolPermissionState } from "@/lib/tool-permission-policy";
 
@@ -2337,6 +2338,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                 <AliIcon name="plus" size={15} />
               </button>
             </div>
+            <MemePicker disabled={isStreaming || isCommandInput} onSelect={markdown => { setValue(`${valueRef.current}${valueRef.current ? "\n" : ""}${markdown}`); textareaRef.current?.focus(); }} />
             {onToolPermissionChange && <ToolPermissionControl state={toolPermission ?? null} saving={permissionSaving} onChange={onToolPermissionChange} />}
             {voiceInputSupported && (
               <>
