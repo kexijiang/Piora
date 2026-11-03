@@ -199,7 +199,7 @@ npm run perf:check
 npm run verify:backgrounds
 ```
 
-`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows / Linux 上分组执行测试，Windows 高资源 Shell 测试单独运行。发布构建校验源码、更新说明、包完整性及隔离运行；真实手机、外部模型和窗口渲染等效果需另行验收，不能由软件测试替代。
+`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows 上以六分片执行测试，Ubuntu 负责通用质量与官网检查，Windows 高资源 Shell 测试单独运行。发布构建校验源码、更新说明、包完整性及隔离运行；真实手机、外部模型和窗口渲染等效果需另行验收，不能由软件测试替代。
 
 TypeScript 按[微软官方并行安装方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)配置：`@typescript/native` 是 TypeScript 7 的 npm 别名，提供 `tsc`，用于类型检查、桌面及 Harmony worker 编译；`typescript` 是最新版 `@typescript/typescript6` 兼容包的别名，为代码补全、ESLint 和测试脚本提供编译器 API。需要调用编译器时使用 `npm run typecheck` 或 `node_modules/.bin/tsc`。
 

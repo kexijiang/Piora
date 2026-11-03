@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- CI 测试收敛为 Windows 六分片，Ubuntu 负责通用质量与官网检查；同步 beta 测试复用，保留 Windows 安装包发布方案，减少重复检查。
+
 - 修复内置浏览器在 Agent 跟随切换与面板布局变化交错时可能回写旧尺寸的问题，并补充面板纯位移后的原生视图位置校准。
 - beta 与正式版统一只构建、验证和发布 Windows x64 安装包，停止生成便携 EXE、ZIP 和 Linux AppImage；保留应用内自动更新所需的元数据、差分文件和校验和，并同步安装与发布说明。
 
