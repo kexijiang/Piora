@@ -98,3 +98,25 @@ node scripts/verify-recorded-mini-app-revisions.mjs --bindings .verification/rev
 修订确认现在先执行宿主的“预演所选变化”：核对来源摘要和实际数据变化，证明预演不修改旧版。过期场景先保留一次成功预演，再从另一视图编辑来源；刷新核对后再次预演并确认。运行器记录两次预演的结果与截图，确认仍必须满足原来的 409/200、保留最新进度和完整刷新断言。不能用重新生成预演来跳过过期确认测试。
 
 输出位于 `.verification/desktop-e2e-*/revision-replay.json` 和公共 `result.json`，含本地合成会话内容，发布前应提取脱敏摘要；不要提交模型配置、认证、完整请求或私人会话。本轮成功、三次夹具失败及复测边界见[真实修订报告](verification/intelligent-ui-phase3-real-revision-2026-11-03.md)。
+
+## 三维任务的独立几何核对
+
+```powershell
+# 新生成一个自然表达的飞机姿态任务，并验证其预设按钮。
+node scripts/verify-spatial-ui-desktop.mjs --presets
+
+# 原样重放指定记录，按审阅过的独立预期核对几何和点选。
+node scripts/verify-spatial-ui-desktop.mjs --recording .verification/desktop-e2e-ORIGINAL --presets --bindings .verification/spatial-bindings.json
+```
+
+`--prompt-file` 可替换新生成时的自然任务文字，但运行器的交互和追问仍以三维姿态为范围，不是任意任务的语义评分器。`--recording` 要求源目录只有一个已提交的小程序，复制到隔离 profile 后保持原始记录摘要不变，并按原会话条目定位画布。长聊天通过真实滚动寻找原条目。
+
+`--bindings` 必须与重放配合使用，包含 `version: 1`、准确的 `planDigest`、场景 `viewport` 和有序 `steps`。每步声明 `name`、数值 `inputs`，以及至少一项 `points` 或 `directions`；每项指定对象 `object`、局部采样点 `local`、独立预期 `expected`，可选显式 `tolerance`。例如，只有在已确认关节绕原点的 Z 轴转动、无其他变换时，局部端点 `(2,0,0)` 在 +90° 的世界坐标才应为 `(0,2,0)`；不能照抄为其他程序的预期。
+
+`spatial-oracle.mjs` 独立计算缩放、XYZ 内禀旋转、父组变换与透视投影，不调用 Three.js 或产品变换函数。位置比较默认容差为 `1e-7`，显式容差不得大于 `0.01`；方向归一化后仍比较正负。可选 `pick: {object, local, selected?}` 通过独立投影位置实际点击，并核对被选对象；不自动寻找其他点来规避遮挡或错误几何。可选 `cameraKeys` 通过原生按键改变镜头，同时检查输入、状态及选择未改变。
+
+每个姿态通过原生数值框或滑块键盘输入，再点击保存、读取快照核对。滑块从当前值、Home 或 End 选择较短序列，每字段最多 1000 次按键，保存值仍必须精确相等。改变姿态须保留用户镜头，最后刷新恢复完整快照并发送真实追问。接口与存储读取只用于准备和核对。
+
+任务固定 DeepSeek V4.1 Flash 配置、`deepseek/deepseek-flash`、开启思考，无 Pro 或回退。后台标题请求单独记录：生产协议可能保留工具定义、追加宿主上下文或合并消息，因此测试使用完整默认标题指令识别，不靠有无 tools、thinking 或最后一条消息分类。这只是隔离运行器的请求分类，不是产品的 UI 触发规则或权限边界。
+
+运行前后核对来源文件、运行器和独立核对函数摘要；运行期间不得修改该 checkout。输出含原始模型与合成会话资料，发布时提取脱敏记录。机械步骤通过不代表模型解释正确，后台中继失败、语义错误、原始失败和复测必须分别记录。本轮 7 组姿态、56 项断言以及追问错误见[三维核对报告](verification/intelligent-ui-phase3-spatial-audit-2026-11-03.md)。

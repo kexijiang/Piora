@@ -145,7 +145,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build preview installer and portable application
+      - name: Build preview Windows installer
         run: npm run dist:win:preview
         env:
           PIORA_PREVIEW_PARALLEL_TYPECHECK: "1"
@@ -164,7 +164,6 @@ jobs:
           $version = $env:GITHUB_REF_NAME -replace '^v', ''
           $releaseRoot = (Resolve-Path -LiteralPath desktop/release).Path
           $expectedNames = @(
-            "$env:BRAND_PREFIX-$version-win-x64-portable.exe",
             "$env:BRAND_PREFIX-$version-win-x64-setup.exe",
             "$env:BRAND_PREFIX-$version-win-x64-setup.exe.blockmap",
             "$env:BRAND_CHANNEL.yml"
@@ -187,11 +186,10 @@ jobs:
         run: node scripts/create-release-notes.mjs $env:GITHUB_REF_NAME desktop/release/release-notes.md
 
       - name: Upload verified preview payload
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.brand }}-windows-${{ github.ref_name }}
           path: |
-            desktop/release/*-portable.exe
             desktop/release/*-setup.exe
             desktop/release/*-setup.exe.blockmap
             desktop/release/${{ matrix.channel }}.yml
@@ -203,7 +201,7 @@ jobs:
 
       - name: Upload release assembly tooling
         if: matrix.brand == 'piora'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: brand-release-tooling-${{ github.ref_name }}
           path: scripts/assemble-brand-release.mjs

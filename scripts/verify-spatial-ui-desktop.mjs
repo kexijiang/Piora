@@ -3,38 +3,48 @@ import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { getAgentDir, ModelRuntime } from '@earendil-works/pi-coding-agent';
+import { createJiti } from 'jiti';
 import { runDesktopScenario } from './desktop-e2e/harness.mjs';
 import { startRealModelProxy } from './desktop-e2e/real-model-proxy.mjs';
+import { evaluationSources } from './mini-app-evaluation-data.mjs';
+import { worldPoint, projectPoint, checkSpatialExpectations } from './desktop-e2e/spatial-oracle.mjs';
+import { spatialRequestPhase } from './desktop-e2e/spatial-request.mjs';
 
 const root = process.cwd(), cancellation = new AbortController();
+const { SESSION_TITLE_PROMPT } = await createJiti(import.meta.url).import('../lib/session-title-prompt.ts');
 const args = process.argv.slice(2), recordingRoot = args.includes('--recording') ? resolve(args[args.indexOf('--recording') + 1]) : undefined;
+const bindingPath = args.includes('--bindings') ? resolve(args[args.indexOf('--bindings') + 1]) : undefined;
+const bindings = bindingPath ? JSON.parse(await readFile(bindingPath, 'utf8')) : undefined;
+if (bindings) { assert.equal(bindings.version, 1); assert.ok(recordingRoot, 'Audits bind an unchanged recorded program'); assert.ok(bindings.steps?.length); }
 let recording;
 if (recordingRoot) {
   const files = (await readdir(join(recordingRoot, 'agent/piora/mini-app'))).filter(file => /^[a-f0-9]{64}\.json$/.test(file));
   assert.equal(files.length, 1, 'Replay requires exactly one recorded mini-app journal');
   const path = join(recordingRoot, 'agent/piora/mini-app', files[0]), bytes = await readFile(path), journal = JSON.parse(bytes);
   const committed = journal.records.filter(record => record.status === 'committed'); assert.equal(committed.length, 1, 'Replay requires one committed original program');
-  recording = { root: recordingRoot, path, sha256: createHash('sha256').update(bytes).digest('hex'), sessionId: journal.sessionId, toolCallId: committed[0].toolCallId };
+  recording = { root: recordingRoot, path, sha256: createHash('sha256').update(bytes).digest('hex'), sessionId: journal.sessionId, toolCallId: committed[0].toolCallId, entryId: committed[0].call.id };
 }
 for (const event of ['SIGINT', 'SIGTERM']) process.once(event, () => cancellation.abort(new Error(`Interrupted by ${event}`)));
 const agent = getAgentDir(), runtime = await ModelRuntime.create({ authPath: join(agent, 'auth.json'), modelsPath: join(agent, 'models.json'), allowModelNetwork: false });
 const model = runtime.getModel('deepseek', 'deepseek-flash');
 assert.ok(model && /V4\.1/.test(model.name) && runtime.hasConfiguredAuth('deepseek'), 'Configured DeepSeek V4.1 Flash is required; no fallback');
-const prompt = '飞机的俯仰、偏航和横滚我总分不清。让我转一转飞机看看区别，也想点选飞机或坐标轴，换个视角观察。' + (args.includes('--presets') ? '也让我能一键把角度归零。' : '');
+const promptFile = args.includes('--prompt-file') ? args[args.indexOf('--prompt-file') + 1] : undefined;
+const prompt = promptFile ? (await readFile(resolve(promptFile), 'utf8')).trim() : '飞机的俯仰、偏航和横滚我总分不清。让我转一转飞机看看区别，也想点选飞机或坐标轴，换个视角观察。' + (args.includes('--presets') ? '也让我能一键把角度归零。' : '');
+assert.ok(prompt, 'A nonempty development task is required');
 const followup = '先别生成新界面，解释一下我现在选中的对象、改过的角度，以及换视角和改变飞机姿态有什么区别。';
-const requests = [], responses = [], environments = [], checkpoints = [], runtimeFindings = [];
-let directory, phase = 'generation';
+const requests = [], responses = [], environments = [], checkpoints = [], runtimeFindings = [], audits = [];
+let directory, phase = 'generation', sources;
 const textParts = message => typeof message.content === 'string' ? [message.content] : (message.content ?? []).filter(block => block.type === 'text').map(block => block.text);
 const escapeRegExp = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const persist = () => writeFile(join(directory, 'spatial-task.json'), JSON.stringify({ prompt, followup, configuredModel: { provider: model.provider, id: model.id, name: model.name },
   scope: 'One natural-language development sample on the actual Windows development desktop; operations and reload through UI, APIs only inspect results. No sealed-set or independent human semantic acceptance.',
-  recording, requests, responses, environments, checkpoints, runtimeFindings }, null, 2) + '\n');
+  recording, sources, bindings, requests, responses, environments, checkpoints, runtimeFindings, audits }, null, 2) + '\n');
 
 const scenario = {
   id: 'spatial-ui-live-model', mode: recording ? 'recorded-generation-with-live-model-followup' : 'real-model',
   scope: recording ? 'Original committed spatial program copied to an isolated real desktop, with UI operations and real-model follow-up; not fresh generation' : 'Real Electron/Next/SDK generation with an origin-bound WebGL probe, production scene runtime, saved state and real-model follow-up',
   coverage: ['natural request', 'window preflight and model capability context', 'scene selection and camera controls', 'parameter edit', 'save and reload', 'confirmed spatial state in follow-up'],
-  limits: ['all spatial tasks and generation stability', 'independent geometry and explanation correctness', 'other GPUs and platforms', 'native hide/recovery matrix', 'release packages', 'two-human acceptance'],
+  limits: ['all spatial tasks and generation stability', bindings ? 'geometry outside the explicitly bound poses and independent explanation acceptance' : 'independent geometry and explanation correctness', 'other GPUs and platforms', 'native hide/recovery matrix', 'release packages', 'two-human acceptance'],
   async prepare(context) {
     directory = context.directory;
     context.report.credentials = 'in-memory relay from configured DeepSeek authentication; retained profile contains only a disposable local relay token';
@@ -47,18 +57,25 @@ const scenario = {
     const relay = await startRealModelProxy({ runtime, model, signal: context.signal, registerCleanup: context.registerCleanup,
       onRequest: async ({ id, body }) => {
         const texts = (body.messages ?? []).flatMap(textParts);
-        const purpose = texts.includes(phase === 'followup' ? followup : prompt) ? phase : 'background';
+        const purpose = spatialRequestPhase(body, { phase, prompt, followup, titleInstruction: SESSION_TITLE_PROMPT });
         requests.push({ id, phase: purpose, model: body.model, thinking: body.thinking, maxTokens: body.max_tokens ?? body.max_completion_tokens, context: texts.filter(text => /mini app|Mini app|scene3d|current window/i.test(text)),
+          titleInstructionPresent: texts.some(text => text.includes(SESSION_TITLE_PROMPT)),
           requestDigest: createHash('sha256').update(JSON.stringify(body)).digest('hex') }); await persist();
+        assert.equal(body.model, 'deepseek-flash');
+        if (purpose !== 'background') assert.equal(body.thinking?.type, 'enabled', 'Spatial tasks use the pinned reasoning configuration');
       },
-      onResponse: async response => { responses.push({ ...response, receivedAt: Date.now(), phase: requests.find(request => request.id === response.id)?.phase }); await persist(); },
+      onResponse: async response => { assert.ok(!(response.modelIds ?? []).some(id => /pro/i.test(id)), 'No Pro response'); responses.push({ ...response, receivedAt: Date.now(), phase: requests.find(request => request.id === response.id)?.phase }); await persist(); },
     });
     await mkdir(join(context.paths.agent, 'piora'), { recursive: true });
     await writeFile(join(context.paths.agent, 'piora', 'beta-features.json'), JSON.stringify({ version: 1, intelligentUi: true }));
     await writeFile(join(context.paths.agent, 'models.json'), JSON.stringify({ providers: { deepseek: { api: model.api, ...relay,
       models: [{ id: model.id, name: model.name, reasoning: model.reasoning, compat: model.compat, input: ['text'], contextWindow: model.contextWindow, maxTokens: Math.min(model.maxTokens, 32768), cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }] } } }));
     await writeFile(join(context.paths.agent, 'settings.json'), JSON.stringify({ packages: [], extensions: [], skills: [], retry: { enabled: false },
-      defaultProvider: model.provider, defaultModel: model.id, enabledModels: [`${model.provider}/${model.id}`], defaultThinkingLevel: 'off' }));
+      defaultProvider: model.provider, defaultModel: model.id, enabledModels: [`${model.provider}/${model.id}`], defaultThinkingLevel: 'medium' }));
+    sources = await evaluationSources(root);
+    sources.runnerSha256 = createHash('sha256').update(await readFile(new URL(import.meta.url))).digest('hex');
+    sources.oracleSha256 = createHash('sha256').update(await readFile(new URL('./desktop-e2e/spatial-oracle.mjs', import.meta.url))).digest('hex');
+    sources.requestClassifierSha256 = createHash('sha256').update(await readFile(new URL('./desktop-e2e/spatial-request.mjs', import.meta.url))).digest('hex');
     await persist();
   },
   async run({ page, origin, step, waitUntil, reload, screenshot }) {
@@ -70,11 +87,32 @@ const scenario = {
       if (/\/api\/mini-app\/environment$/.test(response.url()) && response.request().method() === 'POST') {
         environments.push({ status: response.status(), ...response.request().postDataJSON() }); await persist();
       }
-      if (/\/api\/sessions\/[^/]+\/mini-app\?/.test(response.url()) && response.request().method() === 'GET' && response.status() === 200) outputUrl = response.url();
+      if (/\/api\/sessions\/[^/]+\/mini-app\?/.test(response.url()) && response.request().method() === 'GET' && response.status() === 200
+        && (!recording || new URL(response.url()).searchParams.get('toolCallId') === recording.toolCallId)) outputUrl = response.url();
     });
-    const surface = page.locator('[data-mini-app-surface]').first(), frame = surface.frameLocator('iframe[title="Interactive answer"]');
+    const surface = recording ? page.locator(`[data-chat-entry-id="${recording.entryId}"] [data-mini-app-surface]`) : page.locator('[data-mini-app-surface]').first();
+    const frame = surface.frameLocator('iframe[title="Interactive answer"]');
+    async function revealOriginal() {
+      if (!recording) return;
+      const scroll = page.locator('#chat-scroll-container');
+      for (let attempt = 0; attempt < 60; attempt++) {
+        if (await surface.count() && await frame.locator('canvas').count()) return;
+        await scroll.hover({ position: { x: 8, y: 8 } }); await page.mouse.wheel(0, -550); await page.waitForTimeout(80);
+      }
+      assert.fail('Original spatial entry did not mount after bounded UI scrolling');
+    }
     async function captureScene(name) {
-      const canvas = frame.locator('canvas'); await canvas.scrollIntoViewIfNeeded(); await screenshot(name);
+      await revealOriginal();
+      const canvas = frame.locator('canvas'), scroll = page.locator('#chat-scroll-container');
+      // Scroll the real chat instead of fighting its virtual-list anchor with
+      // an iframe scrollIntoView while the restored transcript settles.
+      for (let attempt = 0; attempt < 12; attempt++) {
+        const box = await canvas.boundingBox(), area = await scroll.boundingBox(); assert.ok(box && area);
+        const offset = box.y + box.height / 2 - area.y - area.height / 2;
+        if (Math.abs(offset) < 25) break;
+        await scroll.hover({ position: { x: 8, y: 8 } }); await page.mouse.wheel(0, Math.max(-450, Math.min(450, offset))); await page.waitForTimeout(100);
+      }
+      await screenshot(name);
       await canvas.screenshot({ path: join(directory, name.replace(/\.png$/, '-canvas.png')) });
     }
     async function healthy() {
@@ -126,6 +164,7 @@ const scenario = {
       if (recording) {
         await page.goto(`${origin}/?session=${encodeURIComponent(recording.sessionId)}`, { waitUntil: 'domcontentloaded' });
         outputUrl = `${origin}/api/sessions/${encodeURIComponent(recording.sessionId)}/mini-app?toolCallId=${encodeURIComponent(recording.toolCallId)}`;
+        await revealOriginal();
         await waitUntil(async () => { if (!await surface.count()) return false; await healthy(); return frame.locator('canvas').isVisible(); }, 'original spatial program');
         const output = await readOutput(); checkpoints.push({ label: 'recorded-original', output }); await persist();
         assert.equal(createHash('sha256').update(await readFile(recording.path)).digest('hex'), recording.sha256, 'Original journal remains unchanged');
@@ -201,8 +240,57 @@ const scenario = {
       }
       await captureScene('spatial-presets.png');
     });
+    if (bindings) {
+      assert.equal(edited.publication.planDigest, bindings.planDigest, 'Audit binds the exact original plan');
+      const view = edited.plan.viewports.find(view => view.id === bindings.viewport);
+      assert.ok(view?.kind === 'scene3d');
+      for (const pose of bindings.steps) await guardedStep(`geometry:${pose.name}`, async () => {
+        const before = edited.result.snapshot;
+        for (const [id, value] of Object.entries(pose.inputs ?? {})) {
+          const input = edited.plan.inputs.find(input => input.id === id); assert.ok(input && ['number', 'range'].includes(input.type));
+          const control = frame.locator(`[data-input="${id}"]`);
+          if (await control.getAttribute('type') === 'range') {
+            const choices = [{ from: Number(await control.inputValue()) }, { from: input.min, start: 'Home' }, { from: input.max, start: 'End' }]
+              .map(choice => ({ ...choice, presses: Math.abs(value - choice.from) / input.step })).sort((a,b) => a.presses - b.presses);
+            const choice = choices[0];
+            assert.ok(Number.isInteger(choice.presses) && choice.presses <= 1000 && value >= input.min && value <= input.max, 'Bounded native slider sequence');
+            await control.focus(); if (choice.start) await control.press(choice.start);
+            for (let i = 0; i < choice.presses; i++) await control.press(value > choice.from ? 'ArrowRight' : 'ArrowLeft');
+          } else { await control.fill(String(value)); await control.press('Tab'); }
+        }
+        edited = await save(`pose:${pose.name}`);
+        for (const [id, value] of Object.entries(pose.inputs ?? {})) assert.equal(edited.result.snapshot.inputs[id], value);
+        assert.deepEqual(edited.result.snapshot.view, before.view, 'Editing posture preserves the user camera');
+        const scene = edited.result.frame.scenes[view.id], checks = checkSpatialExpectations(scene, pose);
+        const audit = { name: pose.name, checks, meshCount: scene.meshes.length, groupCount: scene.groups?.length ?? 0 };
+        audits.push(audit); await persist();
+        assert.ok(checks.every(check => check.passed), JSON.stringify(checks.filter(check => !check.passed)));
+        if (pose.pick) {
+          const world = worldPoint(scene, pose.pick.object, pose.pick.local);
+          const camera = edited.result.snapshot.view?.cameras[view.id]?.camera ?? scene.camera;
+          const pixel = projectPoint(camera, world, view.width, view.height);
+          const canvas = frame.getByRole('img', { name: view.label, exact: true });
+          await canvas.scrollIntoViewIfNeeded(); const box = await canvas.boundingBox(); assert.ok(box);
+          await canvas.click({ position: { x: pixel.x * box.width / view.width, y: pixel.y * box.height / view.height } });
+          edited = await save(`pick:${pose.name}`);
+          audit.pick = { world, pixel, expected: pose.pick.selected ?? pose.pick.object, actual: edited.result.frame.scenes[view.id].selected };
+          await persist(); assert.equal(audit.pick.actual, audit.pick.expected, 'Independent projection hits the intended object');
+        }
+        if (pose.cameraKeys) {
+          const previous = edited.result.snapshot;
+          const canvas = frame.getByRole('img', { name: view.label, exact: true }); await canvas.focus();
+          for (const key of pose.cameraKeys) { assert.ok(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','+','-','Home'].includes(key)); await canvas.press(key); }
+          edited = await save(`camera:${pose.name}`);
+          assert.deepEqual(edited.result.snapshot.inputs, previous.inputs, 'Camera controls preserve task parameters');
+          assert.deepEqual(edited.result.snapshot.state, previous.state, 'Camera controls preserve task state and selection');
+          assert.notDeepEqual(edited.result.snapshot.view, previous.view, 'Camera keys actually change the view');
+          audit.cameraIndependent = true; await persist();
+        }
+        await captureScene(`spatial-audit-${audits.length}.png`);
+      });
+    }
     await guardedStep('reload-and-explain', async () => {
-      await reload(); await waitUntil(() => frame.locator('canvas').isVisible(), 'restored scene'); await healthy();
+      await reload(); await revealOriginal(); await waitUntil(() => frame.locator('canvas').isVisible(), 'restored scene'); await healthy();
       const restored = await readOutput(); assert.deepEqual(restored.result.snapshot, edited.result.snapshot);
       const view = restored.plan.viewports.find(view => view.kind === 'scene3d');
       assert.equal(await frame.getByRole('combobox', { name: new RegExp(`^${escapeRegExp(view.label)} · (Select object|选择对象)$`) }).inputValue(), restored.result.frame.scenes[view.id].selected);
@@ -213,10 +301,15 @@ const scenario = {
       assert.ok(replies.every(response => response.status === 200 && !response.tools?.length), 'Follow-up answers directly');
       const saved = requests.filter(request => request.phase === 'followup').flatMap(request => request.context).filter(text => text.startsWith('Saved mini app parameters and host publication results')).map(text => JSON.parse(text.slice(text.indexOf('\n') + 1)));
       assert.ok(saved.some(context => context.apps.some(app => app.id === restored.plan.id && app.scenes?.some(scene => scene.selected?.id === restored.result.frame.scenes[view.id].selected && scene.cameraSource === 'saved-user-view'))), 'Real follow-up receives confirmed object selection and user camera');
+      assert.ok(responses.every(response => response.status === 200 || response.cancelled), 'Non-cancelled model relay failures must not be hidden by successful UI steps');
       await screenshot('spatial-followup.png'); await persist();
     });
   },
 };
 const result = await runDesktopScenario({ root, scenario, signal: cancellation.signal, timeoutMs: 1_200_000, stepTimeoutMs: 480_000 });
+assert.equal((await evaluationSources(root)).sha256, sources.sha256, 'Task sources must stay frozen during the run');
+assert.equal(createHash('sha256').update(await readFile(new URL(import.meta.url))).digest('hex'), sources.runnerSha256, 'Runner must stay frozen during the run');
+assert.equal(createHash('sha256').update(await readFile(new URL('./desktop-e2e/spatial-oracle.mjs', import.meta.url))).digest('hex'), sources.oracleSha256, 'Oracle must stay frozen during the run');
+assert.equal(createHash('sha256').update(await readFile(new URL('./desktop-e2e/spatial-request.mjs', import.meta.url))).digest('hex'), sources.requestClassifierSha256, 'Request classifier must stay frozen during the run');
 console.log(JSON.stringify({ directory: result.directory, status: result.report.status, error: result.report.error, cleanupErrors: result.report.cleanupErrors }));
 if (result.report.status !== 'passed') process.exitCode = 1;

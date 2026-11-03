@@ -117,20 +117,16 @@ exact package-copy manifest, CycloneDX SBOM, and content-addressed license texts
 `resources/licenses/third-party/`. The package verifier recomputes and compares this bundle;
 do not hand-edit it or replace it with the broader source lockfile inventory.
 
-Stable tags publish an assisted Windows x64 NSIS installer, update metadata,
-ZIP/portable EXE artifacts, and a Linux x64 AppImage. The installer allows a
-custom destination and is the recommended edition: installed builds check the
-appropriate GitHub Release channel after startup, expose progress and restart/install
-actions in Help, and never install an update while a task is running. Portable
-builds link to the installer instead of modifying themselves. The Linux package
-intentionally omits the Windows-only pinned local Whisper runtime, so local
-speech transcription reports unavailable there.
+Stable and beta tags publish only a Windows x64 NSIS installer, its blockmap,
+update channel metadata and checksums. Portable EXE, ZIP and Linux AppImage
+packages are no longer built. The installer allows a custom destination;
+installed builds check the appropriate release channel after startup and defer
+installation while tasks or unsaved edits remain.
 
-Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` to build and upload a Windows
-installer, portable EXE, blockmap, `beta.yml`, checksums, and release notes without
-publishing them. After those exact bytes pass installed Piora acceptance,
-`publish-preview.yml` publishes them as a prerelease. The beta path does not run the
-stable Linux/ZIP pipeline. Installed beta builds use the beta update channel.
+Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` to build and verify the
+Windows installer. Once the entire run succeeds, `publish-preview.yml` publishes
+those exact artifacts automatically without human approval. Installed beta builds
+use the beta update channel.
 Settings > General also provides an opt-in scheduled silent update: installation
 waits for tasks to finish, edits to be saved, and the computer to be idle. This is
 unavailable in portable/development builds. See [release procedure](../docs/release.md)
@@ -151,7 +147,7 @@ for exact metadata, checks, and tag commands.
   Browser tool uses a separate sandboxed `WebContentsView` and persistent
   partition; untrusted pages never receive the application preload bridge.
 - Child stdout/stderr and lifecycle events are written to
-  `<userData>/logs/piora.log` with one rotated backup.
+  `<userData>/logs/piora.log` with one rotated backup by default. Settings > Data > Runtime logs allows changing the directory, minimum level (error/warn/info/debug), size (1–100 MiB), and backup count (1–20, excluding the current file). Changes apply immediately and persist in `<userData>/runtime-log-settings.json`. Existing logs stay in their original directory; excess backups are removed at the next rotation. The panel reports the actual path, including startup fallback paths. Levels filter both desktop console and file output; service stdout is collected as info and stderr as warn, without changing service-internal levels.
 
 ## Startup diagnostics
 

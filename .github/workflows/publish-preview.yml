@@ -1,6 +1,9 @@
-name: Publish accepted preview artifacts
+name: Publish verified preview artifacts
 
 on:
+  workflow_run:
+    workflows: [Preview Windows desktop packages]
+    types: [completed]
   workflow_dispatch:
     inputs:
       tag:
@@ -8,31 +11,41 @@ on:
         type: string
         required: true
       build_run_id:
-        description: Successful preview build run whose exact artifacts passed installed-app acceptance
+        description: Successful preview build run to publish without rebuilding
         type: string
         required: true
 
 permissions:
   contents: read
 
+concurrency:
+  group: publish-preview-${{ inputs.tag || github.event.workflow_run.head_branch }}
+  cancel-in-progress: false
+
 jobs:
   publish-preview:
-    name: Publish locally accepted preview
+    name: Publish verified preview
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository &&
+       startsWith(github.event.workflow_run.head_branch, 'v') &&
+       contains(github.event.workflow_run.head_branch, '-beta.'))
     runs-on: windows-latest
-    environment: preview-publish
     timeout-minutes: 15
     permissions:
       actions: read
       contents: write
     env:
-      PREVIEW_TAG: ${{ inputs.tag }}
-      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      PREVIEW_TAG: ${{ inputs.tag || github.event.workflow_run.head_branch }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id || github.event.workflow_run.id }}
 
     steps:
-      - name: Check out the accepted tag
+      - name: Check out the verified tag
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ env.PREVIEW_TAG }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -50,6 +63,7 @@ jobs:
           if ($env:BUILD_RUN_ID -notmatch '^[1-9]\d*$') { throw 'build_run_id must be a GitHub Actions run id' }
           git fetch --no-tags --force origin +refs/heads/main:refs/remotes/origin/main
           node scripts/verify-release-metadata.mjs $env:PREVIEW_TAG --prerelease --require-origin-main
+          if ($LASTEXITCODE -ne 0) { throw 'Release metadata verification failed' }
           $tagCommit = (git rev-list -n 1 $env:PREVIEW_TAG).Trim()
           $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:BUILD_RUN_ID" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Unable to read the requested workflow run' }
@@ -60,14 +74,14 @@ jobs:
           }
 
       - name: Download the exact verified preview payload
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: '*-${{ inputs.tag }}'
+          pattern: '*-${{ env.PREVIEW_TAG }}'
           path: downloaded-brands
           merge-multiple: false
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
-          run-id: ${{ inputs.build_run_id }}
+          run-id: ${{ env.BUILD_RUN_ID }}
 
       - name: Verify and assemble Piora artifacts
         shell: pwsh
@@ -78,7 +92,7 @@ jobs:
           node "downloaded-brands/brand-release-tooling-$env:PREVIEW_TAG/assemble-brand-release.mjs" downloaded-brands desktop/release $env:PREVIEW_TAG accepted-release-notes.md
           if ($LASTEXITCODE -ne 0) { throw 'Brand release assembly failed' }
 
-      - name: Create GitHub prerelease from the accepted bytes
+      - name: Create GitHub prerelease from the verified bytes
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -88,7 +102,6 @@ jobs:
           $assets = @(
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-setup.exe")).Path,
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-setup.exe.blockmap")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-portable.exe")).Path,
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "beta.yml")).Path,
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "SHA256SUMS.txt")).Path
           )

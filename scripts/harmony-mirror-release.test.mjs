@@ -219,8 +219,9 @@ test('tag workflows package the bundled mirror HAP on hosted runners without a p
   assert.doesNotMatch(preview, /needs: harmony-mirror/);
   assert.doesNotMatch(release, /harmony-mirror/);
   assert.match(publish, /workflow_dispatch:/);
-  assert.match(publish, /environment: preview-publish/);
-  assert.match(publish, /run-id: \$\{\{ inputs\.build_run_id \}\}/);
+  assert.match(publish, /workflow_run:/);
+  assert.doesNotMatch(publish, /environment:/);
+  assert.match(publish, /run-id: \$\{\{ env\.BUILD_RUN_ID \}\}/);
   assert.match(publish, /run\.path -ne '\.github\/workflows\/harmony-preview\.yml'/);
   assert.match(publish, /run\.head_branch -ne \$env:PREVIEW_TAG/);
   assert.match(publish, /gh release create/);

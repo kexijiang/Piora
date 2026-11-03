@@ -36,8 +36,8 @@ Piora 为这台手机生成并官方验签私有缓存副本，确认 bundle、�
 
 ## beta 发布边界
 
-`harmony-preview.yml` 只构建并上传已验证的 installer/portable，不创建 GitHub Release。下载这次 run 的桌面 artifact，用真正的 Piora 安装包和手机完成最终验收后，才可手动运行 `publish-preview.yml`，输入原 beta tag 和构建 run ID。发布 job 绑定 `preview-publish` environment；仓库必须为这个 environment 配置 required reviewers 后，才能依赖它提供人工批准门禁。job 还会核对 run 是该 tag 提交上成功完成的 `harmony-preview.yml`，并且只下载和发布那次 run 的字节。
+`harmony-preview.yml` 构建并上传已验证的 installer/portable，全部自动检查成功后由 `workflow_run` 自动触发 `publish-preview.yml` 创建 GitHub Release，无需人工审批。发布 job 不再绑定 `preview-publish` environment，远端该环境的 required reviewers 规则也已移除。job 核对 run 是该 tag 提交上成功完成的 `harmony-preview.yml`，并且只下载和发布那次 run 的字节；保留输入 beta tag 和构建 run ID 的手动补发入口。
 
-这一拆分允许一次代码/tag 推送完成候选构建，同时避免 tag 一推送就公开尚未经过安装包实机验收的 beta。当前 beta.19 包含多来源技能管理、Windows 目录构建完整性修复及此前的生产依赖安全升级，打包随包分发仓库内审阅过的固定 HAP；如生成新组件，必须重新完成同次 run 的构建和验收链，不能沿用旧候选 HAP 或安装包。本地审计和回归通过不能代替 tagged CI 与最终 Piora 桌面端和真实手机完整验收；没有对应记录时，不得写成 beta.19 已通过或已发布。完整更新说明和审计剩余项见 `CHANGELOG.md` 的同版本章节。
+这一拆分保留构建与发布的独立状态，发布仍要求原构建的测试、安装包检查、校验和及更新说明全部通过。手机实机验收不作为发布门禁，是否执行必须如实记录；自动化通过不能写成真机已验收。生成新投屏组件时仍须遵守本文的来源与完整性要求。完整更新说明见 `CHANGELOG.md` 的对应版本章节。
 
 本地只能运行来源、receipt、运行时签名和 workflow 的单元测试；不得本地生成可发布的 HAP 或桌面包。进入 staging 的 public unsigned HAP 必须来自 tagged CI run，并由同一输入生成的私有 device-signed 副本完成上述真机门禁。

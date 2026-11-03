@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.5.9-beta.3",
+  "version": "0.5.9-beta.4",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -100,8 +100,6 @@
     "pack:win": "npm run build:app && npm run pack --workspace @piora/desktop",
     "dist:win": "npm run build:app && npm run dist --workspace @piora/desktop",
     "dist:win:preview": "npm run build:app && npm run dist:preview --workspace @piora/desktop",
-    "pack:linux": "npm run build:app && npm run pack:linux --workspace @piora/desktop",
-    "dist:linux": "npm run build:app && npm run dist:linux --workspace @piora/desktop",
     "verify:package": "node scripts/verify-packaged-web.mjs",
     "verify:portable": "node scripts/verify-portable-artifact.mjs",
     "verify:updater": "node scripts/verify-windows-update-artifacts.mjs desktop/release",

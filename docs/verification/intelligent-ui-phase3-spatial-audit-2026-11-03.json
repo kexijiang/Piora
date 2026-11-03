@@ -1,0 +1,3986 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "phase": "3D spatial task audit increment",
+  "phaseComplete": false,
+  "committed": false,
+  "model": {
+    "configuration": "DeepSeek V4.1 Flash",
+    "request": "deepseek/deepseek-flash",
+    "taskThinking": "enabled",
+    "fallback": false,
+    "versionLimit": "Provider alias does not independently attest an internal model revision."
+  },
+  "verification": {
+    "capabilities": {
+      "id": "jqvK9v",
+      "tests": 528,
+      "passed": 528,
+      "files": 58
+    },
+    "targeted": {
+      "tests": 11,
+      "passed": 11,
+      "overlap": "5 authoring tests are included in capability checks; 4 oracle and 2 request classification tests are additional."
+    },
+    "typecheck": "passed",
+    "targetedLint": "passed",
+    "desktopSources": {
+      "files": 516,
+      "status": "matched",
+      "scope": "Matched before upstream synchronization; see deliveryVerification for subsequent changes."
+    },
+    "capabilitySources": {
+      "files": 172,
+      "status": "matched"
+    },
+    "runnerOracleClassifier": "matched"
+  },
+  "original": {
+    "path": ".verification/desktop-e2e-d15Mfx/agent/piora/mini-app/5b117e79d92257824a55416ca58fe9fe9f3927b6edef954321866c02d4bbe873.json",
+    "sha256": "35c784e38ed2b2cf97d1565d51bc7e4ea027bdf2eec9fe9f75c385d8c0c77306",
+    "planDigest": "87fcd02cb91047a7e1881e9c99b2b91042aef177bb93fe0cc7e06d06c2685dc3"
+  },
+  "runs": [
+    {
+      "id": "uWtRmh",
+      "rawStatus": "failed",
+      "error": {
+        "name": "AssertionError",
+        "message": "Model completed without publishing the requested 3D interface"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 28940
+        },
+        {
+          "name": "natural-language-generation",
+          "status": "failed",
+          "durationMs": 197782
+        }
+      ],
+      "relayFailures": [],
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "replies": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": ""
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": ""
+        },
+        {
+          "id": 3,
+          "phase": "generation",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": ""
+        },
+        {
+          "id": 4,
+          "phase": "generation",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "这次没能在校验次数内把 3D 交互版本发布出来，所以当前没有可操作的飞机场景。先用一个简单对照帮你区分：\n\n| 动作 | 绕哪根轴 | 看什么 | 记忆法 |\n|---|---|---|---|\n| **俯仰 Pitch** | 左右翼连线（横轴 X） | 机头抬起或压低 | 像**点头** |\n| **偏航 Yaw** | 垂直轴（竖轴 Y） | 机头向左或向右 | 像**摇头** |\n| **横滚 Roll** | 机头到机尾的纵轴（Z） | 左右机翼一高一低 | 像**歪头/侧身** |\n\n正方向可以记成：**抬头、机头右转、右翼下沉**。  \n“一键归零”就是三个角度都回到 0°，飞机恢复平飞基准姿态。\n\n如果你愿意，我可以再做一个更简化的 3D 版本，只保留飞机、三条轴、三个滑杆和归零按钮。"
+        }
+      ],
+      "checkpoints": 0,
+      "geometricChecks": 0,
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "reviewedStatus": "failed"
+    },
+    {
+      "id": "d15Mfx",
+      "rawStatus": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 26741
+        },
+        {
+          "name": "natural-language-generation",
+          "status": "passed",
+          "durationMs": 100730
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed",
+          "durationMs": 7181
+        },
+        {
+          "name": "declared-input-presets",
+          "status": "passed",
+          "durationMs": 8532
+        },
+        {
+          "name": "reload-and-explain",
+          "status": "passed",
+          "durationMs": 20330
+        }
+      ],
+      "relayFailures": [
+        {
+          "id": 3,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 4,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 6,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 7,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        }
+      ],
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 5,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "replies": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": ""
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "已生成并发布「飞机的俯仰、偏航与横滚」三维小应用。\n\n**坐标约定**：红色 X 轴指向机头（纵轴），绿色 Y 轴向上（垂直轴），蓝色 Z 轴指向右翼（横向轴）。\n\n**你可以这样用**\n- 三个滑块分别控制俯仰（绕 Z 轴，机头上下）、偏航（绕 Y 轴，机头左右）、横滚（绕 X 轴，机翼一高一低），拖动即时看到变化。\n- 点选机身、机头、座舱盖、机翼、垂直尾翼、水平尾翼，或直接点三条彩色坐标轴——被选中的部件会变成橙色高亮，下方给出它对应哪种运动的说明。\n- 场景内拖动旋转视角、滚轮缩放、方向键微调；「恢复默认视角」回到初始机位。\n- 按钮区四个快捷姿态：「三轴归零」把所有角度一次回 0°；另外三个「只看俯仰 25°／只看偏航 30°／只看横滚 35°」帮你单轴对比。\n\n**一点说明**：这是示意模型，欧拉角按固定顺序组合，单轴转动与真实机体轴一致，三轴同时大角度时会有顺序耦合，不代表真实飞行动力学。当前三轴均为 0°，处于水平基准姿态。"
+        },
+        {
+          "id": 5,
+          "phase": "followup",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "## 你现在选中的对象\n\n**机身（fuselage）**，在场景里显示为橙色高亮。它的说明指向横滚：机身沿红色 X 轴（纵轴）前后延伸，绕这条轴转动就是横滚——两翼一高一低，机头指向基本不变。\n\n## 你改过的角度\n\n快照里三个角度是：俯仰 **0°**、偏航 **0°**、横滚 **35°**。\n\n也就是相对初始状态，你只动了**横滚**这一个轴，俯仰和偏航仍停在 0°。所以现在这架飞机是：机头依然精确指向 +X（只绕 X 轴转动不会改变机头方向），两侧机翼整体倾斜 35°，右翼下沉。当前不是\"三轴归零\"状态。\n\n## 换视角 ≠ 改姿态\n\n| | 换视角（相机） | 改姿态（角度） |\n|---|---|---|\n| 改的是什么 | 你在哪里看这架飞机 | 飞机自己朝哪指、怎么倾斜 |\n| 存在哪 | 独立的保存视角状态（当前来源为 saved-user-view），不进入三个角度值 | 俯仰/偏航/横滚三个输入值，直接驱动机身组的旋转 |\n| 现在的值 | 相机约在 `[8.0, 5, 6.66]`；与默认 `[6, 5, 8.5]` 相比，**距离和高度都没变**（半径 10.4、y=5），只是水平方向绕了约 15° | 0° / 0° / 35° |\n| 是否会互相影响 | 不会。你转了视角，三个角度的读数一个都没变 | 不会。拖滑块不会把你刚调好的观察角度弄丢 |\n| 归零方式 | 用「恢复默认视角」回到初始机位 | 用「三轴归零」把三个角度一起回 0° |\n| 程序状态里的痕迹 | `cameraRevision` 仍是 0，说明没有触发过程序级的视角重置 | 角度以输入值保存，是任务状态的一部分 |\n\n一句话区分：**视角决定\"观察点\"，姿态决定\"飞机本身\"**。同一架横滚 35° 的飞机，你从机头方向看是两翼倾斜，从正上方看则几乎看不出倾斜——看到的样子会变，但横滚这个角度始终是 35°。"
+        }
+      ],
+      "checkpoints": 6,
+      "geometricChecks": 0,
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "reviewedStatus": "relay-failed"
+    },
+    {
+      "id": "KOhZSY",
+      "rawStatus": "failed",
+      "error": {
+        "name": "TimeoutError",
+        "message": "locator.scrollIntoViewIfNeeded: Timeout 29762.991ms exceeded.\nCall log:\n\u001b[2m  - attempting scroll into view action\u001b[22m\n\u001b[2m    - waiting for element to be stable\u001b[22m\n"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 26427
+        },
+        {
+          "name": "load-original-program",
+          "status": "failed",
+          "durationMs": 46376
+        }
+      ],
+      "relayFailures": [
+        {
+          "id": 1,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 2,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        }
+      ],
+      "requests": [],
+      "replies": [],
+      "checkpoints": 1,
+      "geometricChecks": 0,
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "reviewedStatus": "failed"
+    },
+    {
+      "id": "znc3xL",
+      "rawStatus": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 25994
+        },
+        {
+          "name": "load-original-program",
+          "status": "passed",
+          "durationMs": 17534
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed",
+          "durationMs": 3534
+        },
+        {
+          "name": "declared-input-presets",
+          "status": "passed",
+          "durationMs": 8820
+        },
+        {
+          "name": "geometry:neutral",
+          "status": "passed",
+          "durationMs": 97795
+        },
+        {
+          "name": "geometry:pitch-up-30",
+          "status": "passed",
+          "durationMs": 101068
+        },
+        {
+          "name": "geometry:pitch-down-30",
+          "status": "passed",
+          "durationMs": 89158
+        },
+        {
+          "name": "geometry:yaw-90",
+          "status": "passed",
+          "durationMs": 113474
+        },
+        {
+          "name": "geometry:roll-90",
+          "status": "passed",
+          "durationMs": 112473
+        },
+        {
+          "name": "geometry:compound-90",
+          "status": "passed",
+          "durationMs": 152892
+        },
+        {
+          "name": "geometry:return-zero",
+          "status": "passed",
+          "durationMs": 96362
+        },
+        {
+          "name": "reload-and-explain",
+          "status": "passed",
+          "durationMs": 17906
+        }
+      ],
+      "relayFailures": [
+        {
+          "id": 1,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 2,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 3,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 4,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 5,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 6,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 7,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 8,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 9,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 10,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 11,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 12,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 13,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 14,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 15,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 16,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 18,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 19,
+          "status": "failed",
+          "stage": "request",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        }
+      ],
+      "requests": [
+        {
+          "id": 17,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "replies": [
+        {
+          "id": 17,
+          "phase": "followup",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "## 你现在选中的对象\n\n**机翼（wing）**，场景里显示为橙色高亮。它的说明是：横滚时两翼一高一低，偏航时两翼一起向一侧扫动，俯仰时两翼基本保持水平——所以机翼是区分\"倾斜\"和\"扫动\"最直观的部件。\n\n## 你改过的角度\n\n当前快照里三个角都是 **0°**：俯仰 0°、偏航 0°、横滚 0°。\n\n也就是说，相对基准姿态，目前没有任何角度被改过，飞机正处在**三轴归零**状态：机翼水平、机头指向 +X。你此刻看到的画面之所以和默认视角不同，全部来自相机，而不是来自姿态。\n\n## 换视角 ≠ 改姿态\n\n| | 换视角（相机） | 改姿态（角度） |\n|---|---|---|\n| 改的是什么 | 你从哪里看这架飞机 | 飞机自己朝哪指、怎么倾斜 |\n| 现在的值 | 相机在 `[7.95, 7.52, 3.67]`，来源是已保存的用户视角 | 0° / 0° / 0° |\n| 与默认 `[6, 5, 8.5]` 相比 | 水平方向多绕了约 30°、抬高约 12°、距离从 10.4 变为 11.5（略远一点） | 与初始一致，没有偏差 |\n| 存在哪里 | 独立的、带版本的视角状态，不进入三个角度 | 三个输入值，直接驱动机身整体旋转 |\n| 是否互相影响 | 不会。转视角时角度读数一个都不变 | 不会。拖滑块不会重置你调好的观察位置 |\n| 怎么回位 | 「恢复默认视角」 | 「三轴归零」 |\n\n一句话：**视角决定\"观察点\"，姿态决定\"飞机本身\"**。现在这架飞机三个角都是 0°、完全水平，但因为你站得更高、绕到了侧前方约 65° 的方向，看到的轮廓和默认视角明显不同——画面变了，姿态数值却一动没动。反过来，如果只拖俯仰或横滚滑块而手不动鼠标，机位不变，看到的则是同一个观察点上飞机自己抬头、压头或倾斜。"
+        }
+      ],
+      "checkpoints": 17,
+      "geometricChecks": 56,
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "reviewedStatus": "relay-failed"
+    },
+    {
+      "id": "MTyNOT",
+      "rawStatus": "failed",
+      "error": {
+        "name": "AssertionError",
+        "message": "Follow-up answers directly"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 26959
+        },
+        {
+          "name": "load-original-program",
+          "status": "passed",
+          "durationMs": 17311
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed",
+          "durationMs": 3707
+        },
+        {
+          "name": "declared-input-presets",
+          "status": "passed",
+          "durationMs": 8808
+        },
+        {
+          "name": "geometry:neutral",
+          "status": "passed",
+          "durationMs": 12263
+        },
+        {
+          "name": "geometry:pitch-up-30",
+          "status": "passed",
+          "durationMs": 9094
+        },
+        {
+          "name": "geometry:pitch-down-30",
+          "status": "passed",
+          "durationMs": 15259
+        },
+        {
+          "name": "geometry:yaw-90",
+          "status": "passed",
+          "durationMs": 27284
+        },
+        {
+          "name": "geometry:roll-90",
+          "status": "passed",
+          "durationMs": 39844
+        },
+        {
+          "name": "geometry:compound-90",
+          "status": "passed",
+          "durationMs": 25035
+        },
+        {
+          "name": "geometry:return-zero",
+          "status": "passed",
+          "durationMs": 59575
+        },
+        {
+          "name": "reload-and-explain",
+          "status": "failed",
+          "durationMs": 16663
+        }
+      ],
+      "relayFailures": [
+        {
+          "id": 1,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 2,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 3,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 4,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 5,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 6,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 8,
+          "status": "failed",
+          "stage": "request",
+          "phase": "followup",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        }
+      ],
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 5,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 6,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 7,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 8,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        }
+      ],
+      "replies": [
+        {
+          "id": 7,
+          "phase": "followup",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "## 当前选中的对象\n\n**机翼（wing）**，场景里显示为橙色高亮。它的说明是：横滚时两翼一高一低，偏航时两翼一起向一侧扫动，俯仰时两翼基本保持水平——也正好是三种运动最容易对比的部件。\n\n## 当前角度（快照值）\n\n| 轴 | 值 | 变化 |\n|---|---|---|\n| 俯仰 pitch（绕 Z） | **0°** | 未偏离基准 |\n| 偏航 yaw（绕 Y） | **0°** | 未偏离基准 |\n| 横滚 roll（绕 X） | **0°** | 未偏离基准 |\n\n也就是说，和上一次（横滚 35°）相比，三个角度现在都回到了 0°，飞机处于水平基准姿态：机头指向 +X，两翼水平。注意**角度归零并没有把视角一起复位**——见下。\n\n## 换视角 ≠ 改姿态\n\n| | 换视角（相机） | 改姿态（角度） |\n|---|---|---|\n| 改的是什么 | 你站在哪里看这架飞机 | 飞机自己朝哪指、怎么倾斜 |\n| 存在哪 | 独立的相机视图，来源 saved-user-view，不进入角度值 | 俯仰/偏航/横滚三个输入，直接驱动机身组的旋转 |\n| 现在的状态 | 位置约 `[7.95, 7.52, 3.67]`，目标点为原点；与默认 `[6, 5, 8.5]` 相比，距离从 10.4 拉到约 **11.5**，相机更高（仰角约 **41°**，默认约 29°），方位更偏前方右侧（约 65°，默认约 35°） | 0° / 0° / 0° |\n| 会不会互相覆盖 | 不会。角度回零后，你现在这个\"更高、更靠前右\"的视角仍然保留 | 不会。改角度不会把你调好的观察角度弄丢 |\n| 程序状态里的痕迹 | `cameraRevision` 仍为 0，说明没有触发过程序级的视角重置 | 角度以输入值保存，属于任务状态 |\n\n一句话区分：**视角只改变\"观察点\"，姿态才改变\"飞机本身\"**。刚才这次操作就是最好的例子——三个角度已经归零，但照片里你看到的仍是从右前上方俯视的角度，而飞机本身是完全水平的。同一架 0° 的飞机，从正上方看只剩一个十字形，从侧面看机翼是一条线；看起来不同，姿态却始终是 0°。"
+        }
+      ],
+      "checkpoints": 17,
+      "geometricChecks": 56,
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "reviewedStatus": "failed"
+    },
+    {
+      "id": "Gw0q8a",
+      "rawStatus": "failed",
+      "error": {
+        "name": "AssertionError",
+        "message": "Follow-up answers directly"
+      },
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 65553
+        },
+        {
+          "name": "load-original-program",
+          "status": "passed",
+          "durationMs": 27718
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed",
+          "durationMs": 3691
+        },
+        {
+          "name": "declared-input-presets",
+          "status": "passed",
+          "durationMs": 9150
+        },
+        {
+          "name": "geometry:neutral",
+          "status": "passed",
+          "durationMs": 12721
+        },
+        {
+          "name": "geometry:pitch-up-30",
+          "status": "passed",
+          "durationMs": 9652
+        },
+        {
+          "name": "geometry:pitch-down-30",
+          "status": "passed",
+          "durationMs": 15579
+        },
+        {
+          "name": "geometry:yaw-90",
+          "status": "passed",
+          "durationMs": 28921
+        },
+        {
+          "name": "geometry:roll-90",
+          "status": "passed",
+          "durationMs": 41562
+        },
+        {
+          "name": "geometry:compound-90",
+          "status": "passed",
+          "durationMs": 26044
+        },
+        {
+          "name": "geometry:return-zero",
+          "status": "passed",
+          "durationMs": 62372
+        },
+        {
+          "name": "reload-and-explain",
+          "status": "failed",
+          "durationMs": 16012
+        }
+      ],
+      "relayFailures": [
+        {
+          "id": 1,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 2,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 3,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 4,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 5,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 6,
+          "status": "failed",
+          "stage": "request",
+          "phase": "generation",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 8,
+          "status": "failed",
+          "stage": "request",
+          "phase": "followup",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        },
+        {
+          "id": 9,
+          "status": "failed",
+          "stage": "request",
+          "phase": "followup",
+          "error": "Real model relay failed or was cancelled",
+          "cancelled": false
+        }
+      ],
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 5,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 6,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 7,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 8,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 9,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        }
+      ],
+      "replies": [
+        {
+          "id": 7,
+          "phase": "followup",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "## 你现在选中的对象\n\n**机翼（wing）**，在场景里高亮显示。它对应的说明是：机翼是横滚最敏感的部位——横滚时两翼一高一低，偏航时两翼一起向一侧扫动，俯仰时两翼基本保持水平。同样一架飞机，盯机翼比盯机身更容易看出\"倾斜\"这种运动。\n\n## 你改过的角度\n\n快照里的实际数值是：俯仰 **0°**、偏航 **0°**、横滚 **0°**——三个轴目前都停在零位，飞机处于水平基准姿态，机头指向 +X。\n\n需要说明一点：这份快照只保存**当前值**，不保存角度的历史轨迹（虽然状态版本号说明期间确实发生过操作，但历史角度值没有被记录）。所以我无法从快照里还原你之前各走了多少度，只能确认\"现在三轴归零\"。\n\n## 换视角 ≠ 改姿态\n\n现在的相机位姿是 `[7.95, 7.52, 3.67]`，默认是 `[6, 5, 8.5]`。对比一下：距原点从 10.4 变成约 11.5（略微拉远），水平方位从 ~35° 转到 ~65°（绕了约 30°），俯角也从 ~26° 抬到 ~41°——**这些都是你自己转出来的观察位置，三个角度值一个都没动**。\n\n| | 换视角（相机） | 改姿态（角度） |\n|---|---|---|\n| 改的是什么 | 你在哪里、从多高看这架飞机 | 飞机自己机头朝哪、机身怎么倾斜 |\n| 存于何处 | 独立的保存视角状态（当前 `saved-user-view`），与角度值互不写入 | 三个输入值，直接驱动整架飞机的旋转 |\n| 现在状态 | 拉远约 11%、方位 +30°、抬高约 15° | 0° / 0° / 0° |\n| 是否互相影响 | 不会改变角度读数 | 不会覆盖你调好的相机 |\n| 程序痕迹 | `cameraRevision` 仍为 0，说明没有触发过程序级视角重置 | 角度是任务状态的一部分，随快照保存 |\n\n一句话：**视角决定\"观察点在哪\"，姿态决定\"飞机本身怎么摆\"**。同一架横滚 35° 的飞机，从正上方看几乎看不出倾斜，从机头前方看则两翼一高一低非常明显——你看到的图会变，但横滚仍是 35°。这也是为什么\"换个角度看\"永远代替不了\"把角度改对\"。"
+        }
+      ],
+      "checkpoints": 17,
+      "geometricChecks": 56,
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "reviewedStatus": "failed"
+    },
+    {
+      "id": "JzCyrg",
+      "rawStatus": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed",
+          "durationMs": 27575
+        },
+        {
+          "name": "load-original-program",
+          "status": "passed",
+          "durationMs": 16543
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed",
+          "durationMs": 3560
+        },
+        {
+          "name": "declared-input-presets",
+          "status": "passed",
+          "durationMs": 8765
+        },
+        {
+          "name": "geometry:neutral",
+          "status": "passed",
+          "durationMs": 12792
+        },
+        {
+          "name": "geometry:pitch-up-30",
+          "status": "passed",
+          "durationMs": 9282
+        },
+        {
+          "name": "geometry:pitch-down-30",
+          "status": "passed",
+          "durationMs": 15944
+        },
+        {
+          "name": "geometry:yaw-90",
+          "status": "passed",
+          "durationMs": 27964
+        },
+        {
+          "name": "geometry:roll-90",
+          "status": "passed",
+          "durationMs": 40072
+        },
+        {
+          "name": "geometry:compound-90",
+          "status": "passed",
+          "durationMs": 25272
+        },
+        {
+          "name": "geometry:return-zero",
+          "status": "passed",
+          "durationMs": 59824
+        },
+        {
+          "name": "reload-and-explain",
+          "status": "passed",
+          "durationMs": 16899
+        }
+      ],
+      "relayFailures": [],
+      "requests": [
+        {
+          "id": 1,
+          "phase": "background",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          },
+          "titleInstructionPresent": true
+        },
+        {
+          "id": 2,
+          "phase": "followup",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          },
+          "titleInstructionPresent": false
+        }
+      ],
+      "replies": [
+        {
+          "id": 1,
+          "phase": "background",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "飞机俯仰偏航横滚姿态演示"
+        },
+        {
+          "id": 2,
+          "phase": "followup",
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "text": "## 你现在选中的对象\n\n**机翼（wing）**，场景里显示为橙色高亮。它的说明是：横滚时两翼一高一低，偏航时两翼一起向一侧扫动，俯仰时两翼基本保持水平——也就是\"从机翼看动作差异\"的这个视角。\n\n（上一轮的机身选择已被这次点选替换，选中状态只保留最后一次点选的那个对象。）\n\n## 你改过的角度\n\n俯仰 **0°**、偏航 **0°**、横滚 **0°** —— 三个角度都还在初始值上，**这一轮你没有改动任何姿态角度**。\n\n顺带说一句：上一轮那 35° 的横滚已经不在了，现在是真正的三轴归零状态，机翼水平、机头指向 +X。所以此刻场景里那架飞机看起来是平的，全部差异只来自你的观察位置。\n\n## 换视角 ≠ 改姿态\n\n| | 换视角（相机） | 改姿态（角度） |\n|---|---|---|\n| 改的是什么 | 你从哪个方向看这架飞机 | 飞机自己朝哪指、怎么倾斜 |\n| 存在哪 | 独立的保存视角（当前来源 saved-user-view），不进入三个角度值 | 俯仰/偏航/横滚三个输入值，驱动机身组的旋转 |\n| 现在的值 | 约在 `[7.95, 7.52, 3.67]`。与默认 `[6, 5, 8.5]` 相比：高度 5→7.52，仰角约从 26° 升到 41°；方位绕了约 30°；距离 10.40→11.10（略微拉远） | 0° / 0° / 0° |\n| 会互相影响吗 | 不会。视角变了，角度读数一个都没变 | 不会。拖角度不会覆盖你调好的观察位置 |\n| 归零方式 | 「恢复默认视角」回到基准机位 | 「三轴归零」把三个角一起回 0° |\n| 程序状态里 | `cameraRevision` 仍为 0，说明没触发过程序级视角重置 | 角度以输入值保存，属于任务状态 |\n\n一句话：**视角决定\"你在哪看\"，姿态决定\"飞机本身怎么摆\"**。现在正是个好对照——姿态全为 0，但你从更高的斜上方看，机翼、机身、尾翼的空间关系比默认机位清楚得多；换成上一轮的 35° 横滚，从这个俯视角度看到的倾斜量会比从机头方向看更直观。"
+        }
+      ],
+      "checkpoints": 17,
+      "geometricChecks": 56,
+      "cleanupErrors": [],
+      "pageErrors": [],
+      "reviewedStatus": "passed"
+    }
+  ],
+  "final": {
+    "id": "JzCyrg",
+    "mechanicalStatus": "passed",
+    "semanticStatus": "failed",
+    "checkpointCount": 17,
+    "uiSaveCount": 16,
+    "reloads": 1,
+    "presets": 4,
+    "geometricChecks": 56,
+    "maxError": 4.965068306494546e-16,
+    "audits": [
+      {
+        "name": "neutral",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.45,
+              0,
+              0
+            ],
+            "expected": [
+              2.45,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              2,
+              -2.7554552980815448e-17,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 2.7554552980815448e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              2,
+              1.2246467991473532e-16,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.05,
+              0.24,
+              0
+            ],
+            "expected": [
+              1.05,
+              0.24,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.3,
+              0,
+              2
+            ],
+            "expected": [
+              0.3,
+              0,
+              2
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1,
+        "pick": {
+          "world": [
+            1.05,
+            0.24,
+            0
+          ],
+          "pixel": {
+            "x": 343.8415215811209,
+            "y": 230.64980773733495
+          },
+          "expected": "cockpit",
+          "actual": "cockpit"
+        }
+      },
+      {
+        "name": "pitch-up-30",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.121762239271875,
+              1.2249999999999999,
+              0
+            ],
+            "expected": [
+              2.1217622392718747,
+              1.225,
+              0
+            ],
+            "error": 4.965068306494546e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              0.9999999999999999,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              1,
+              0
+            ],
+            "error": 2.482534153247273e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              1,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              1,
+              0
+            ],
+            "error": 2.220446049250313e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0.7893266739736606,
+              0.7328460969082652,
+              0
+            ],
+            "expected": [
+              0.7893266739736605,
+              0.7328460969082653,
+              0
+            ],
+            "error": 1.5700924586837752e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.2598076211353316,
+              0.14999999999999997,
+              2
+            ],
+            "expected": [
+              0.25980762113533157,
+              0.15,
+              2
+            ],
+            "error": 6.206335383118183e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "pitch-down-30",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.121762239271875,
+              -1.2249999999999999,
+              0
+            ],
+            "expected": [
+              2.1217622392718747,
+              -1.225,
+              0
+            ],
+            "error": 4.965068306494546e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              -0.9999999999999999,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              -1,
+              0
+            ],
+            "error": 2.482534153247273e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              -0.9999999999999998,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              -1,
+              0
+            ],
+            "error": 3.1401849173675503e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.0293266739736606,
+              -0.31715390309173463,
+              0
+            ],
+            "expected": [
+              1.0293266739736606,
+              -0.31715390309173475,
+              0
+            ],
+            "error": 1.1102230246251565e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.2598076211353316,
+              -0.14999999999999997,
+              2
+            ],
+            "expected": [
+              0.25980762113533157,
+              -0.15,
+              2
+            ],
+            "error": 6.206335383118183e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "yaw-90",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.5001923289555077e-16,
+              0,
+              -2.45
+            ],
+            "expected": [
+              0,
+              0,
+              -2.45
+            ],
+            "error": 1.5001923289555077e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              1.2246467991473532e-16,
+              -2.7554552980815448e-17,
+              -2
+            ],
+            "expected": [
+              0,
+              0,
+              -2
+            ],
+            "error": 1.2552629691260368e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              1.2246467991473532e-16,
+              1.2246467991473532e-16,
+              -2
+            ],
+            "expected": [
+              0,
+              0,
+              -2
+            ],
+            "error": 1.7319121124709868e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              6.429395695523605e-17,
+              0.24,
+              -1.05
+            ],
+            "expected": [
+              0,
+              0.24,
+              -1.05
+            ],
+            "error": 6.429395695523605e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              2,
+              0,
+              -0.2999999999999999
+            ],
+            "expected": [
+              2,
+              0,
+              -0.3
+            ],
+            "error": 1.1102230246251565e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "roll-90",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.45,
+              0,
+              0
+            ],
+            "expected": [
+              2.45,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              2,
+              -1.6872297554945898e-33,
+              -2.7554552980815448e-17
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 2.7554552980815448e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              2,
+              7.498798913309288e-33,
+              1.2246467991473532e-16
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.05,
+              1.4695761589768237e-17,
+              0.24
+            ],
+            "expected": [
+              1.05,
+              0,
+              0.24
+            ],
+            "error": 1.4695761589768237e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.3,
+              -2,
+              1.2246467991473532e-16
+            ],
+            "expected": [
+              0.3,
+              -2,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "compound-90",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              9.186028668803878e-33,
+              3.0003846579110154e-16,
+              2.45
+            ],
+            "expected": [
+              0,
+              0,
+              2.45
+            ],
+            "error": 3.0003846579110154e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              9.186028668803878e-33,
+              2.724839128102861e-16,
+              2
+            ],
+            "expected": [
+              0,
+              0,
+              2
+            ],
+            "error": 2.724839128102861e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              0,
+              1.2246467991473532e-16,
+              2
+            ],
+            "expected": [
+              0,
+              0,
+              2
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              -1.4695761589768234e-17,
+              -0.23999999999999988,
+              1.05
+            ],
+            "expected": [
+              0,
+              -0.24,
+              1.05
+            ],
+            "error": 1.1199070074243493e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              2,
+              -8.572527594031473e-17,
+              0.3
+            ],
+            "expected": [
+              2,
+              0,
+              0.3
+            ],
+            "error": 8.572527594031473e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1,
+        "pick": {
+          "world": [
+            1.6,
+            -0.040000000000000056,
+            0.3
+          ],
+          "pixel": {
+            "x": 342.5167707597103,
+            "y": 260.68762080119154
+          },
+          "expected": "wing",
+          "actual": "wing"
+        },
+        "cameraIndependent": true
+      },
+      {
+        "name": "return-zero",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.45,
+              0,
+              0
+            ],
+            "expected": [
+              2.45,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              2,
+              -2.7554552980815448e-17,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 2.7554552980815448e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              2,
+              1.2246467991473532e-16,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.05,
+              0.24,
+              0
+            ],
+            "expected": [
+              1.05,
+              0.24,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.3,
+              0,
+              2
+            ],
+            "expected": [
+              0.3,
+              0,
+              2
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1,
+        "cameraIndependent": true
+      }
+    ],
+    "bindings": {
+      "version": 1,
+      "planDigest": "87fcd02cb91047a7e1881e9c99b2b91042aef177bb93fe0cc7e06d06c2685dc3",
+      "viewport": "airframe",
+      "rationale": "Expected X-forward/Y-up/Z-right rigid poses derived independently from declared XYZ and fixed dimensions, not from generated rotations. Includes nose/body junction and signed pitch.",
+      "steps": [
+        {
+          "name": "neutral",
+          "inputs": {
+            "pitch": 0,
+            "yaw": 0,
+            "roll": 0
+          },
+          "points": [
+            {
+              "object": "nose",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                2.45,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "nose",
+              "local": [
+                0,
+                -0.45,
+                0
+              ],
+              "expected": [
+                2,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "fuselage",
+              "local": [
+                0,
+                2,
+                0
+              ],
+              "expected": [
+                2,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "cockpit",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.05,
+                0.24,
+                0
+              ]
+            },
+            {
+              "object": "wing",
+              "local": [
+                0,
+                0,
+                2
+              ],
+              "expected": [
+                0.3,
+                0,
+                2
+              ]
+            }
+          ],
+          "pick": {
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ]
+          },
+          "directions": [
+            {
+              "object": "axisX",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "axisY",
+              "local": [
+                0,
+                1,
+                0
+              ],
+              "expected": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "axisZ",
+              "local": [
+                0,
+                0,
+                1
+              ],
+              "expected": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pitch-up-30",
+          "inputs": {
+            "pitch": 30,
+            "yaw": 0,
+            "roll": 0
+          },
+          "points": [
+            {
+              "object": "nose",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                2.1217622392718747,
+                1.225,
+                0
+              ]
+            },
+            {
+              "object": "nose",
+              "local": [
+                0,
+                -0.45,
+                0
+              ],
+              "expected": [
+                1.7320508075688772,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "fuselage",
+              "local": [
+                0,
+                2,
+                0
+              ],
+              "expected": [
+                1.7320508075688772,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "cockpit",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0.7893266739736605,
+                0.7328460969082653,
+                0
+              ]
+            },
+            {
+              "object": "wing",
+              "local": [
+                0,
+                0,
+                2
+              ],
+              "expected": [
+                0.25980762113533157,
+                0.15,
+                2
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "axisX",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "axisY",
+              "local": [
+                0,
+                1,
+                0
+              ],
+              "expected": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "axisZ",
+              "local": [
+                0,
+                0,
+                1
+              ],
+              "expected": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "pitch-down-30",
+          "inputs": {
+            "pitch": -30,
+            "yaw": 0,
+            "roll": 0
+          },
+          "points": [
+            {
+              "object": "nose",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                2.1217622392718747,
+                -1.225,
+                0
+              ]
+            },
+            {
+              "object": "nose",
+              "local": [
+                0,
+                -0.45,
+                0
+              ],
+              "expected": [
+                1.7320508075688772,
+                -1,
+                0
+              ]
+            },
+            {
+              "object": "fuselage",
+              "local": [
+                0,
+                2,
+                0
+              ],
+              "expected": [
+                1.7320508075688772,
+                -1,
+                0
+              ]
+            },
+            {
+              "object": "cockpit",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.0293266739736606,
+                -0.31715390309173475,
+                0
+              ]
+            },
+            {
+              "object": "wing",
+              "local": [
+                0,
+                0,
+                2
+              ],
+              "expected": [
+                0.25980762113533157,
+                -0.15,
+                2
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "axisX",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "axisY",
+              "local": [
+                0,
+                1,
+                0
+              ],
+              "expected": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "axisZ",
+              "local": [
+                0,
+                0,
+                1
+              ],
+              "expected": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "yaw-90",
+          "inputs": {
+            "pitch": 0,
+            "yaw": 90,
+            "roll": 0
+          },
+          "points": [
+            {
+              "object": "nose",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0,
+                -2.45
+              ]
+            },
+            {
+              "object": "nose",
+              "local": [
+                0,
+                -0.45,
+                0
+              ],
+              "expected": [
+                0,
+                0,
+                -2
+              ]
+            },
+            {
+              "object": "fuselage",
+              "local": [
+                0,
+                2,
+                0
+              ],
+              "expected": [
+                0,
+                0,
+                -2
+              ]
+            },
+            {
+              "object": "cockpit",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.24,
+                -1.05
+              ]
+            },
+            {
+              "object": "wing",
+              "local": [
+                0,
+                0,
+                2
+              ],
+              "expected": [
+                2,
+                0,
+                -0.3
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "axisX",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "axisY",
+              "local": [
+                0,
+                1,
+                0
+              ],
+              "expected": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "axisZ",
+              "local": [
+                0,
+                0,
+                1
+              ],
+              "expected": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "roll-90",
+          "inputs": {
+            "pitch": 0,
+            "yaw": 0,
+            "roll": 90
+          },
+          "points": [
+            {
+              "object": "nose",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                2.45,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "nose",
+              "local": [
+                0,
+                -0.45,
+                0
+              ],
+              "expected": [
+                2,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "fuselage",
+              "local": [
+                0,
+                2,
+                0
+              ],
+              "expected": [
+                2,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "cockpit",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.05,
+                0,
+                0.24
+              ]
+            },
+            {
+              "object": "wing",
+              "local": [
+                0,
+                0,
+                2
+              ],
+              "expected": [
+                0.3,
+                -2,
+                0
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "axisX",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "axisY",
+              "local": [
+                0,
+                1,
+                0
+              ],
+              "expected": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "axisZ",
+              "local": [
+                0,
+                0,
+                1
+              ],
+              "expected": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "compound-90",
+          "inputs": {
+            "pitch": 90,
+            "yaw": 90,
+            "roll": 90
+          },
+          "points": [
+            {
+              "object": "nose",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0,
+                2.45
+              ]
+            },
+            {
+              "object": "nose",
+              "local": [
+                0,
+                -0.45,
+                0
+              ],
+              "expected": [
+                0,
+                0,
+                2
+              ]
+            },
+            {
+              "object": "fuselage",
+              "local": [
+                0,
+                2,
+                0
+              ],
+              "expected": [
+                0,
+                0,
+                2
+              ]
+            },
+            {
+              "object": "cockpit",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                -0.24,
+                1.05
+              ]
+            },
+            {
+              "object": "wing",
+              "local": [
+                0,
+                0,
+                2
+              ],
+              "expected": [
+                2,
+                0,
+                0.3
+              ]
+            }
+          ],
+          "pick": {
+            "object": "wing",
+            "local": [
+              0,
+              0.04,
+              1.6
+            ]
+          },
+          "cameraKeys": [
+            "ArrowLeft",
+            "ArrowUp",
+            "+"
+          ],
+          "directions": [
+            {
+              "object": "axisX",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "axisY",
+              "local": [
+                0,
+                1,
+                0
+              ],
+              "expected": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "axisZ",
+              "local": [
+                0,
+                0,
+                1
+              ],
+              "expected": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "return-zero",
+          "inputs": {
+            "pitch": 0,
+            "yaw": 0,
+            "roll": 0
+          },
+          "points": [
+            {
+              "object": "nose",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                2.45,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "nose",
+              "local": [
+                0,
+                -0.45,
+                0
+              ],
+              "expected": [
+                2,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "fuselage",
+              "local": [
+                0,
+                2,
+                0
+              ],
+              "expected": [
+                2,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "cockpit",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.05,
+                0.24,
+                0
+              ]
+            },
+            {
+              "object": "wing",
+              "local": [
+                0,
+                0,
+                2
+              ],
+              "expected": [
+                0.3,
+                0,
+                2
+              ]
+            }
+          ],
+          "cameraKeys": [
+            "ArrowRight",
+            "-"
+          ],
+          "directions": [
+            {
+              "object": "axisX",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "axisY",
+              "local": [
+                0,
+                1,
+                0
+              ],
+              "expected": [
+                0,
+                1,
+                0
+              ]
+            },
+            {
+              "object": "axisZ",
+              "local": [
+                0,
+                0,
+                1
+              ],
+              "expected": [
+                0,
+                0,
+                1
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "cameras": {
+      "initial": {
+        "position": [
+          6,
+          5,
+          8.5
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "current": {
+        "position": [
+          7.94936546580831,
+          7.522466857742129,
+          3.6701609045361323
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      }
+    },
+    "distances": {
+      "initial": 11.543396380615196,
+      "current": 11.543396380615196
+    },
+    "checkpoints": [
+      {
+        "label": "recorded-original",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 35
+        },
+        "state": {
+          "selected": "fuselage",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            7.995516841105836,
+            5,
+            6.657455252841956
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "edited",
+        "inputs": {
+          "pitch": -87,
+          "yaw": 0,
+          "roll": 35
+        },
+        "state": {
+          "selected": "nose",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "preset:level",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "nose",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "preset:pitchOnly",
+        "inputs": {
+          "pitch": 25,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "nose",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "preset:yawOnly",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 30,
+          "roll": 0
+        },
+        "state": {
+          "selected": "nose",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "preset:rollOnly",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 35
+        },
+        "state": {
+          "selected": "nose",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pose:neutral",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "nose",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pick:neutral",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "cockpit",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pose:pitch-up-30",
+        "inputs": {
+          "pitch": 30,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "cockpit",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pose:pitch-down-30",
+        "inputs": {
+          "pitch": -30,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "cockpit",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pose:yaw-90",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 90,
+          "roll": 0
+        },
+        "state": {
+          "selected": "cockpit",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pose:roll-90",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 90
+        },
+        "state": {
+          "selected": "cockpit",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pose:compound-90",
+        "inputs": {
+          "pitch": 90,
+          "yaw": 90,
+          "roll": 90
+        },
+        "state": {
+          "selected": "cockpit",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pick:compound-90",
+        "inputs": {
+          "pitch": 90,
+          "yaw": 90,
+          "roll": 90
+        },
+        "state": {
+          "selected": "wing",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            9.446152422706632,
+            5,
+            4.361215932167729
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "camera:compound-90",
+        "inputs": {
+          "pitch": 90,
+          "yaw": 90,
+          "roll": 90
+        },
+        "state": {
+          "selected": "wing",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            5.382871892280025,
+            6.0179734861937035,
+            4.482040306687487
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "pose:return-zero",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "wing",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            5.382871892280025,
+            6.0179734861937035,
+            4.482040306687487
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      },
+      {
+        "label": "camera:return-zero",
+        "inputs": {
+          "pitch": 0,
+          "yaw": 0,
+          "roll": 0
+        },
+        "state": {
+          "selected": "wing",
+          "cameraRevision": 0
+        },
+        "tick": 0,
+        "camera": {
+          "position": [
+            7.94936546580831,
+            7.522466857742129,
+            3.6701609045361323
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "fov": 42
+        }
+      }
+    ],
+    "resourceObservations": {
+      "meshCount": 9,
+      "groupCount": 1,
+      "maxFrameBytes": 2486,
+      "maxSnapshotBytes": 276,
+      "scope": "Only this bounded trajectory; not memory-leak, long-duration, hardware or other-platform proof."
+    }
+  },
+  "semanticReview": {
+    "kind": "developer review",
+    "currentInputsAndSelection": "matched",
+    "historyClaim": "failed: says no angles were changed despite the recorded seven poses",
+    "cameraDistanceClaim": "failed: reply gives 10.40 -> 11.10; actual spatial distances both about 11.543",
+    "olderSample": {
+      "id": "SgQpdj",
+      "planDigest": "7d3899e53e17c01850b971a4c9e9715b83496bd813dbb93898d504c1cb7a6de4",
+      "pitch30Nose": [
+        0,
+        -1.8,
+        3.1176914536239795
+      ],
+      "roll30RightWing": [
+        2.035159698893431,
+        1.175,
+        0.25
+      ],
+      "scope": "Original plan evaluated through production QuickJS trial plus independent world-point math, not UI operation",
+      "failure": "Positive pitch and roll move opposite to labels",
+      "actualTrialEvidence": {
+        "source": ".verification/desktop-e2e-SgQpdj/agent/piora/mini-app/e8f0b7a91f7e8fe963f75f953dd4b2af5148f7feaecd3d685f6f391e4dee3874.json",
+        "planDigest": "7d3899e53e17c01850b971a4c9e9715b83496bd813dbb93898d504c1cb7a6de4",
+        "evidence": [
+          {
+            "inputs": {
+              "pitch": 30,
+              "yaw": 0,
+              "roll": 0,
+              "ghost": true
+            },
+            "nose": [
+              0,
+              -1.7999999999999998,
+              3.1176914536239795
+            ],
+            "rightWing": [
+              2.35,
+              -0.12499999999999999,
+              0.21650635094610968
+            ],
+            "summary": "俯仰 30°，偏航 0°，横滚 0°；当前选中：未选择"
+          },
+          {
+            "inputs": {
+              "pitch": 0,
+              "yaw": 0,
+              "roll": 30,
+              "ghost": true
+            },
+            "nose": [
+              0,
+              0,
+              3.6
+            ],
+            "rightWing": [
+              2.035159698893431,
+              1.1749999999999998,
+              0.25
+            ],
+            "summary": "俯仰 0°，偏航 0°，横滚 30°；当前选中：未选择"
+          }
+        ],
+        "scope": "Unmodified historical plan in production QuickJS trial; independent analytic world coordinates, not UI clicks",
+        "sourceSha256": "09ea3567086d28d7647c66bc8258d8a414cbbbf2e6a15136bbb12aef097a7f1c"
+      }
+    },
+    "twoHumanAcceptance": "deferred by user"
+  },
+  "visual": {
+    "status": "selected light desktop images reviewed",
+    "scope": "Generated surface, restored canvas and final compound-rotation canvas",
+    "missing": [
+      "dark/narrow/reduced-motion matrix",
+      "other objects and devices"
+    ]
+  },
+  "remaining": [
+    "Follow-up history and geometric explanation reliability",
+    "3D other-object generalization and full visual/keyboard/resource matrix",
+    "3B original task failures and generic generation quality",
+    "3C complete recovery/action/conversion combinations",
+    "3E CI, sealed set and two-human acceptance deferred"
+  ],
+  "notRun": [
+    "next build",
+    "local release packaging",
+    "other platforms and hardware",
+    "new CI",
+    "two-human acceptance"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/desktop-e2e-uWtRmh/spatial-task.json",
+      "sha256": "a94bbacb32a8dbc5d01f36e4eb28cb878fab114c27b2eba809a06943411dc12f"
+    },
+    {
+      "path": ".verification/desktop-e2e-uWtRmh/result.json",
+      "sha256": "afc121e6d6cdc73b4aa7d8451a601ff7a0cde912395ce47cbeec7a4347b2d2cd"
+    },
+    {
+      "path": ".verification/desktop-e2e-d15Mfx/spatial-task.json",
+      "sha256": "f8d44f96e789d58418a614de8914c525520490b17f05cf08a1fb939eb2fdda47"
+    },
+    {
+      "path": ".verification/desktop-e2e-d15Mfx/result.json",
+      "sha256": "8cd8e4f0dfbff541034b8f66a5a10f7961207ced2abd1338bf6eb3a2e7ab838e"
+    },
+    {
+      "path": ".verification/desktop-e2e-KOhZSY/spatial-task.json",
+      "sha256": "82d7022fdaad9b2b1d2554ce81747ecfa0bbc60b05c6b59661996608c75ed16e"
+    },
+    {
+      "path": ".verification/desktop-e2e-KOhZSY/result.json",
+      "sha256": "bdac082614020929f5825a5cf7d07b08730b9865e792b1adba9b62c48e344c74"
+    },
+    {
+      "path": ".verification/desktop-e2e-znc3xL/spatial-task.json",
+      "sha256": "7493b2880073926ab3b7b3b2c29bbf0b2c9d3d420e3c68ce9dbdfa6cc1046d8e"
+    },
+    {
+      "path": ".verification/desktop-e2e-znc3xL/result.json",
+      "sha256": "524dbe296c5913a5fc0f7f06d2e9b325bdfb4ef1c1f30426a122deb121672413"
+    },
+    {
+      "path": ".verification/desktop-e2e-MTyNOT/spatial-task.json",
+      "sha256": "99dadc613eece9c4089ade7d59761fc76a5be62fddd6fcdbeec84df37640112a"
+    },
+    {
+      "path": ".verification/desktop-e2e-MTyNOT/result.json",
+      "sha256": "0a0c8f1ccb0d6e6985bf0e9f360a8a2655cf62c394ca52aac7e7c0b262acec33"
+    },
+    {
+      "path": ".verification/desktop-e2e-Gw0q8a/spatial-task.json",
+      "sha256": "f3211cd4bdc9135ff44d00f1f24db6bca5615a2a6c05429756e77a15afe2af41"
+    },
+    {
+      "path": ".verification/desktop-e2e-Gw0q8a/result.json",
+      "sha256": "4a3194a1e82f88b0deaf4899d4fd4a7500813ce387e230c3d7b8247692f65312"
+    },
+    {
+      "path": ".verification/desktop-e2e-JzCyrg/spatial-task.json",
+      "sha256": "fc4bb50810e186c92a9c09d223737d73d1e0530f887617a6f52fb2f93787a220"
+    },
+    {
+      "path": ".verification/desktop-e2e-JzCyrg/result.json",
+      "sha256": "35cda0eb047de547f2f3e2948534fd9fc54b6330afe9c49b06a18ba86fc3a9f6"
+    },
+    {
+      "path": ".verification/desktop-e2e-JzCyrg/spatial-task.json",
+      "sha256": "fc4bb50810e186c92a9c09d223737d73d1e0530f887617a6f52fb2f93787a220"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-jqvK9v/result.json",
+      "sha256": "03496ccb3c1c98b423d02a09af614e1d7b178b323d3f6ff13616ff6324104c6e"
+    },
+    {
+      "path": ".verification/phase3-spatial-authoring-test.log",
+      "sha256": "53aa19b856f1524cfe4302c269410f2c3e3394e488cc925611675896d65b44c3"
+    },
+    {
+      "path": ".verification/phase3-spatial-authoring-retest.log",
+      "sha256": "76d88dc2b37c346b4d5d214054b4d674bf2a0cef04cbae96d33dbf3463d12f00"
+    },
+    {
+      "path": ".verification/phase3-spatial-harness-final-tests.log",
+      "sha256": "edc3f94738c149089ba7ae291fa56a095c33ca55b1886a14f1026004bd52038b"
+    },
+    {
+      "path": ".verification/phase3-spatial-harness-protocol-tests.log",
+      "sha256": "2a4bb593daea165d48593d63d659fe133cde3178a6976ba13da7cf3c1f0073a2"
+    },
+    {
+      "path": ".verification/phase3-spatial-harness-context-tests.log",
+      "sha256": "decd7848c3eee1b8e6fd0209cd70be0cc2f908a3b5385e83ac16dfd813b8b255"
+    },
+    {
+      "path": ".verification/phase3-spatial-capabilities.log",
+      "sha256": "589b59ab9cb4d2100ae41432566aa5f14a72ef3f328db87abe9dfc0ca17e6dbc"
+    },
+    {
+      "path": ".verification/phase3-spatial-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-spatial-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-spatial-final-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/desktop-e2e-JzCyrg/spatial-audit-6-canvas.png",
+      "sha256": "bcd7191a7cca6be8bebfe7eec3a36aa8f85e82340642e594e69bc5fd2c1acd6d"
+    },
+    {
+      "path": ".verification/phase3-spatial-old-semantic.json",
+      "sha256": "f9be332cd9e76aa5d2b6bc2585c94db60a5ad78ce49004d375cb8aeebf4be4d9"
+    },
+    {
+      "path": ".verification/desktop-e2e-SgQpdj/agent/piora/mini-app/e8f0b7a91f7e8fe963f75f953dd4b2af5148f7feaecd3d685f6f391e4dee3874.json",
+      "sha256": "09ea3567086d28d7647c66bc8258d8a414cbbbf2e6a15136bbb12aef097a7f1c"
+    },
+    {
+      "path": ".verification/phase3-spatial-merge-targeted-tests.log",
+      "sha256": "9210f4c8ccc25d86606480f55c6b3ac651ea48df7cd7e8a224a17db6da9afdba"
+    },
+    {
+      "path": ".verification/phase3-spatial-merge-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-spatial-merge-desktop-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-spatial-merge-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "deliveryVerification": {
+    "upstream": "3c74ff18b07354fed3dd5419ae8ef71579bbcf54",
+    "upstreamCommitsMerged": 9,
+    "commitStatus": "prepared for upstream Draft PR 238",
+    "capabilitySources": {
+      "files": 172,
+      "status": "matched"
+    },
+    "desktopSources": {
+      "matched": 515,
+      "total": 516,
+      "drift": [
+        {
+          "path": "package-lock.json",
+          "verifiedSha256": "bd5dac4a01953b7f3f785fa77fe28fe4b1978d2bbddbfce80b688a0623d2286f",
+          "currentSha256": "aac28546f75f0f56d2227dcad155b224e5b43d6f3fd68f281c1b5f5f2d2d3e74"
+        }
+      ],
+      "reason": "Root, root-package and desktop-package version changed to 0.5.9-beta.4; lockfile otherwise identical"
+    },
+    "targetedTests": {
+      "tests": 72,
+      "passed": 72,
+      "overlap": "Includes the 11 focused authoring/oracle/classifier tests; do not add counts to earlier runs."
+    },
+    "webTypecheck": "passed",
+    "desktopTypecheck": "passed",
+    "targetedLint": "passed",
+    "licenseInventory": "regenerated and checked",
+    "limits": "Real desktop and full capabilities were not rerun after merging upstream native desktop/browser changes. Recorded desktop source manifest is not a complete inventory of all upstream changes.",
+    "previousCi": {
+      "run": 41547833566,
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    "newCi": "Query after push; no success claim"
+  },
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-spatial-audit-2026-11-03.md",
+    "sourceSha256": "d2ba11c01e9bb64d4db79649129ad0694d75420065d278a31fbe7820046fd6f0",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-spatial-audit-2026-11-03.pdf",
+    "pdfSha256": "4a449dfc3e30a4424ebd53e20b2a5b003229a5b8f6e0f51663546b214a2ddac2",
+    "pages": 3,
+    "pageTextLengths": [
+      970,
+      694,
+      1249
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: all three rendered pages inspected; tables, image, text and page furniture are legible without clipping"
+  }
+}
