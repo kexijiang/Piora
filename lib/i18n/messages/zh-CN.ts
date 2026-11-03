@@ -1336,6 +1336,7 @@ export const zhCNLocale: LocalePlugin = {
     "browser.agentPagePreview": "Agent 浏览器页面的只读画面",
     "browser.agentReadOnlyNotice": "实时跟随 Agent 浏览器 · 仅供查看 · 关闭开关返回独立浏览器",
     "browser.newTab": "新建标签页",
+    "browser.closeOtherTabs": "关闭其他标签页",
     "browser.closeTab": "关闭标签页",
     "browser.back": "后退",
     "browser.forward": "前进",

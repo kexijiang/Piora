@@ -1336,6 +1336,7 @@ export const enLocale: LocalePlugin = {
     "browser.agentPagePreview": "Read-only view of the Agent's browser page",
     "browser.agentReadOnlyNotice": "Live Agent browser view · Read-only · Switching off returns to your independent browser",
     "browser.newTab": "New tab",
+    "browser.closeOtherTabs": "Close other tabs",
     "browser.closeTab": "Close tab",
     "browser.back": "Back",
     "browser.forward": "Forward",

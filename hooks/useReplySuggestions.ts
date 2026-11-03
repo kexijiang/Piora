@@ -52,7 +52,8 @@ export function useReplySuggestions(source: ReplySource | null, locale: string) 
           if (!res.ok) { setState({ key, error: data.code ?? "provider_error" }); return; }
           if (!Array.isArray(data.groups)) { setState({ key, error: "invalid_output" }); return; }
           setState({ key, result: data });
-          if (cacheKey) void cacheReply(cacheKey, data).catch(() => {});
+          if (cacheKey) await cacheReply(cacheKey, data).catch(() => {});
+          if (alive) retry({ key, count: 0 });
           return;
         }
       } catch { if (alive && !controller.signal.aborted) setState({ key, error: "network_error" }); }
