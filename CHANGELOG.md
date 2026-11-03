@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 统一运行状态文案设置与运行策略页的卡片样式，扩大输入区域并增加实时效果预览，提升可读性和编辑体验。
+
 ## [0.5.9-beta.5] - 2026-11-03
 
 - 表情包选图入口沿用全局字号并保持紧凑按钮尺寸，修复窄聊天输入框中工具状态提示框造成的横向溢出；补齐独立管理窗口与退出清理回归验证，并移除验证文档中的开发机绝对路径。

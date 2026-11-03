@@ -1,5 +1,5 @@
 "use client";
-import { useRunningStatusLabel } from "@/hooks/useRunningStatusLabel";
+import { RunningStatusSettings } from "./RunningStatusSettings";
 import { useRunningSendMode } from "@/hooks/useRunningSendMode";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -105,7 +105,6 @@ export function SettingsDialog({
   desktop,
 }: Props) {
   const { t } = useI18n();
-  const { label: runningStatusLabel, setLabel: setRunningStatusLabel } = useRunningStatusLabel();
   const { mode: runningSendMode, setMode: setRunningSendMode } = useRunningSendMode();
   const {
     enabled: liveOutputAutoScrollEnabled,
@@ -556,14 +555,12 @@ export function SettingsDialog({
               ) : activeKey === "modelRuntime" ? (
               <>
                 <div className={styles.contentHeading}><h2>{t("settings.tab.modelRuntime")}</h2><p>{t("settings.page.modelRuntimeDescription")}</p></div>
+                <div className={styles.runtimeCards}>
                 <ModelFallbackSetting />
-                  <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
-                <label className={styles.agentDataField} data-settings-id="general.runningStatusLabel">
-                  <span>{t("settings.runningStatusLabel")}</span>
-                  <input value={runningStatusLabel} maxLength={80} placeholder={t("chat.taskDuration.running")} onChange={(event) => setRunningStatusLabel(event.target.value)} />
-                  <span>{t("settings.runningStatusLabelHint")}</span>
-                </label>
+                <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
+                <div data-settings-id="general.runningStatusLabel"><RunningStatusSettings /></div>
                 <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
+                </div>
               </>
               ) : activeKey === "conversation" ? (
               <>
