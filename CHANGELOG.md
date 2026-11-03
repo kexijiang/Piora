@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.5.9-beta.4] - 2026-11-03
+
 - 修复运行日志配置区字号未跟随用户缩放的问题，补齐日志 IPC 新配置返回值、保存权限与启动 debug 的回归验证。
 
 - 运行日志支持自定义目录、最低记录级别、单文件大小和备份份数，保存后即时生效并持久保留；展示实际写入路径及生效参数，路径不可写时保留原配置。
