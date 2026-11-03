@@ -6,6 +6,7 @@ import {getAgentDir,ModelRuntime} from '@earendil-works/pi-coding-agent';
 import {createJiti} from 'jiti';
 import {runDesktopScenario} from './desktop-e2e/harness.mjs';
 import {startRealModelProxy} from './desktop-e2e/real-model-proxy.mjs';
+import {evaluationSources} from './mini-app-evaluation-data.mjs';
 
 // Bindings describe how to address an untouched generated artifact. Expected
 // results are independent task oracles, never computed from its program.
@@ -21,6 +22,7 @@ const thinking=bindings.thinking??'disabled';assert.ok(['enabled','disabled'].in
 const onDemand=bindings.actionEvidenceMode==='on-demand';
 assert.ok(bindings.actionEvidenceMode===undefined||onDemand,'Unknown action evidence contract');
 const sha=value=>createHash('sha256').update(value).digest('hex');
+const implementation=await evaluationSources(root),runnerSha256=sha(await readFile(new URL(import.meta.url)));
 const samples=await Promise.all(bindings.cases.map(async spec=>{
   const path=resolve(spec.source),bytes=await readFile(path),original=JSON.parse(bytes);
   assert.equal(sha(bytes),spec.sha256,'Binding must identify the exact original report');
@@ -36,7 +38,7 @@ let directory,currentCase,currentPrompt;
 const rows=[],requests=[],responses=[];
 const persist=()=>writeFile(join(directory,'task-replay.json'),JSON.stringify({
   version:1,bindings:bindingsPath,scope:'Untouched generated programs replayed on the current isolated Windows development desktop. UI operations with independent expected task states, disk verification and real-model follow-up. Not new generation or human semantic acceptance.',
-  configuredModel:{provider:model.provider,id:model.id,name:model.name,thinking,fallback:false},rows,requests,responses,
+  configuredModel:{provider:model.provider,id:model.id,name:model.name,thinking,fallback:false},implementation,runnerSha256,rows,requests,responses,
 },null,2)+'\n');
 const parts=m=>typeof m.content==='string'?[m.content]:(m.content??[]).filter(b=>b.type==='text').map(b=>b.text);
 const at=(value,path)=>path.split('.').reduce((v,key)=>v?.[key],value);
@@ -147,9 +149,9 @@ const scenario={
           await waitUntil(async()=>{await healthy();return surface.getByText(/^(Saved · ready for your next message|已保存 · 后续追问可读取当前状态)$/).isVisible()&&await button.isEnabled();},'saved checkpoint acknowledged');
           return api(`/api/sessions/${original.sessionId}/mini-app?toolCallId=${encodeURIComponent(record.toolCallId)}`);
         };
-        await ready();await screenshot(`${spec.id}-initial.png`);
-        for(const [index,operation] of spec.operations.entries()){
-          row.activeOperation={index,kind:operation.kind};
+        // A continuous gesture must finish before the save gate releases held inputs.
+        // Each group remains real UI operations; canvas reads only observe pixels.
+        const perform=async operation=>{
           if(operation.kind==='click')await frame.locator(operation.selector).click();
           else if(operation.kind==='key')await frame.locator(operation.selector).press(operation.key);
           else if(operation.kind==='select')await frame.locator(operation.selector).selectOption(operation.value);
@@ -160,7 +162,46 @@ const scenario={
           }
           else if(operation.kind==='host')await surface.getByRole('button',{name:new RegExp(operation.name)}).click();
           else if(operation.kind==='reload')await reload();
+          else if(operation.kind==='wait-ui')await assertUi(operation.ui,operation.uiPatterns);
+          else if(operation.kind==='wait'){
+            assert.ok(Number.isInteger(operation.milliseconds)&&operation.milliseconds>0&&operation.milliseconds<=2000);
+            await page.waitForTimeout(operation.milliseconds);
+          }
+          else if(operation.kind==='hold-key'){
+            const {canvas,scan}=operation;
+            assert.ok(typeof operation.key==='string'&&operation.key.length<=32);
+            assert.ok(scan&&Number.isInteger(scan.y)&&scan.y>=0&&/^#[0-9a-f]{6}$/i.test(scan.color));
+            assert.ok(Number.isInteger(scan.minimum)&&Number.isInteger(scan.maximum)&&scan.minimum>=0&&scan.maximum>=scan.minimum);
+            await frame.locator(operation.selector).focus();await page.keyboard.down(operation.key);
+            try{
+              await waitUntil(async()=>{
+                await healthy();
+                const observed=await frame.locator(canvas).evaluate((node,scan)=>{
+                  if(!(node instanceof HTMLCanvasElement)||scan.y>=node.height||scan.maximum>=node.width)throw new Error('Invalid canvas scan');
+                  const pixels=node.getContext('2d').getImageData(0,scan.y,node.width,1).data;
+                  const rgb=[1,3,5].map(offset=>parseInt(scan.color.slice(offset,offset+2),16));
+                  for(let x=0;x<node.width;x++)if(rgb.every((v,i)=>pixels[x*4+i]===v)&&pixels[x*4+3]===255)return x;
+                  return null;
+                },scan);
+                if(observed===null||observed<scan.minimum||observed>scan.maximum)return false;
+                row.canvasObservations??=[];row.canvasObservations.push({operation:row.activeOperation,scan,observed});
+                return true;
+              },'held key reaches independently declared canvas position');
+            }finally{await page.keyboard.up(operation.key);}
+          }
           else throw new Error(`Unknown fixture operation ${operation.kind}`);
+        };
+        await ready();await screenshot(`${spec.id}-initial.png`);
+        for(const [index,operation] of spec.operations.entries()){
+          row.activeOperation={index,kind:operation.kind};
+          if(operation.kind==='group'){
+            assert.ok(Array.isArray(operation.actions)&&operation.actions.length>0&&operation.actions.length<=100);
+            for(const [action,child] of operation.actions.entries()){
+              row.activeOperation={index,kind:operation.kind,action,childKind:child.kind};
+              await perform(child);
+            }
+          }
+          else await perform(operation);
           await ready();await assertUi(operation.ui,operation.uiPatterns);
           const saved=await save();
           const checkpoint={index,operation:operation.kind,saved,uiText:await frame.locator('body').innerText()};
@@ -179,7 +220,10 @@ const scenario={
             if(!new RegExp(check.pattern).test(actual))row.semanticFindings.push({index,path:check.path,expected:check.explanation,actual});
           }
           if(operation.sameAs!==undefined)assert.deepEqual(saved.result.snapshot,row.checkpoints[operation.sameAs].saved.result.snapshot,`Checkpoint preserved at ${index}`);
+          for(const [path,sourceIndex] of Object.entries(operation.sameFieldsAs??{}))assert.deepEqual(at(saved.result,path),at(row.checkpoints[sourceIndex].saved.result,path),`Field preserved at ${index}: ${path}`);
+          for(const name of operation.hostDisabled??[])assert.equal(await surface.getByRole('button',{name:new RegExp(name)}).isDisabled(),true,`Terminal host control ${name}`);
           checkpoint.status='passed';await persist();
+          if(operation.screenshot)await screenshot(`${spec.id}-checkpoint-${index}.png`);
         }
         delete row.activeOperation;
         await screenshot(`${spec.id}-operated.png`);
@@ -258,6 +302,8 @@ const scenario={
       await persist();
     }
     for(const {path,spec} of samples)assert.equal(sha(await readFile(path)),spec.sha256,'Original evidence must remain unchanged');
+    assert.equal((await evaluationSources(root)).sha256,implementation.sha256,'Implementation remains frozen during desktop replay');
+    assert.equal(sha(await readFile(new URL(import.meta.url))),runnerSha256,'Runner remains frozen during desktop replay');
     assert.ok(rows.every(r=>r.status==='completed'),'Recorded task failed; inspect task-replay.json');
   },
 };

@@ -1,5 +1,7 @@
 # Piora Intelligent UI 阶段成果报告与交付计划
 
+2026-11-03 当前安排：按用户确认调整为四个阶段。第三阶段交付复杂功能可用的 Beta，第四阶段集中处理生成可靠性、泛化、复杂组合、完整 CI、封存集和人工验收。当前方案为 [v3.9](intelligent-ui-phase3-design-v3.9.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-design-v3.9.pdf)，第三阶段已按该范围完成，见[完成报告](verification/intelligent-ui-phase3-usable-2026-11-03.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-usable-2026-11-03.pdf)、[试用说明](intelligent-ui-phase3-testing.md)和[第四阶段计划](intelligent-ui-phase4-plan.md)。下文保留旧划分下的历史记录，历史“未通过”不因迁移而变成通过。
+
 2026-11-02 三维交互增量：已实现对象拾取、键盘选择、轨道镜头与独立视图状态，保存刷新可恢复；软件 WebGL 浏览器流程、生产文件保存及相关能力检查 83/83 通过，类型与本批 lint 通过。普通新生成仍等待按提交窗口绑定的环境协商，真实模型/原生桌面三维任务尚未验证。见 [协议](intelligent-ui-spatial-interaction.md) / [成果报告](verification/intelligent-ui-phase3-scene-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-scene-2026-11-02.pdf)。第三阶段尚未完成；下文保留历史批次记录。
 
 2026-11-02 最新进展：第三阶段复杂交互新增动态列表，包含编辑、增删重排、稳定行身份、焦点和排队输入保留、保存恢复及真实追问所需的列表上下文。75/75 相关能力检查通过；模型首试与桌面复测结论单独记录。见 [报告](verification/intelligent-ui-phase3-repeat-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-repeat-2026-11-02.pdf)。第三阶段未完成，以下为历史批次。
@@ -10,7 +12,7 @@
 
 2026-11-02：恢复列表分页与输入生命周期通过相关 30/30 项、类型检查及 lint；第 45 条检查点的实际 UI 恢复与保留其余记录已验证。隐藏分支为事件夹具，原生桌面及完整恢复矩阵仍待完成。详见 [成果报告](verification/intelligent-ui-phase3-recovery-2026-11-02.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-recovery-2026-11-02.pdf)。
 
-当前实施方案：[第三阶段 v3.8](intelligent-ui-phase3-design-v3.8.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-design-v3.8.pdf)。阶段总数仍为三个，3A 至 3E 是第三阶段内部交付顺序。能力清单已有实现，后续补窗口环境协商、复杂交互协议、恢复修订及登记动作；先完成逐样本操作、保存、刷新和真实追问。2026-11-02 本次仅修订文档与检查 PDF，历史报告不作为新增能力已完成的证据。
+历史实施方案（已由 v3.9 接替）：[第三阶段 v3.8](intelligent-ui-phase3-design-v3.8.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-design-v3.8.pdf)。当时阶段总数为三个，3A 至 3E 是第三阶段内部交付顺序。2026-11-02 本次仅修订文档与检查 PDF，历史报告不作为新增能力已完成的证据。
 
 2026-10-31 最新进展：完整工具示例、顶层只读常量、多问题诊断与生成前输入边界检查已实现。相同 24 次真实模型复测中，UI 首试发布由 7/18 增至 13/18，最终发布由 14/18 增至 18/18；6 次文字/澄清请求均未调用 UI。六份组件匹配指定数值轨迹，一份真实排序程序通过六步浏览器核对；完整逐样本操作、保存和追问仍待完成。相关回归、类型检查及 lint 通过，详见 [本批报告](verification/intelligent-ui-phase3-contract-2026-10-31.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-contract-2026-10-31.pdf)。第三阶段尚未完成。
 
