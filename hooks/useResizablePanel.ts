@@ -31,6 +31,7 @@ interface UseResizablePanelOptions {
   growthDirection: "left" | "right";
   dragScale?: number;
   followDefaultWidth?: boolean;
+  proportional?: boolean;
   maxWidth: number;
   minWidth: number;
   panelRef?: MutableRefObject<HTMLDivElement | null>;
@@ -89,6 +90,7 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     growthDirection,
     dragScale = 1,
     followDefaultWidth = false,
+    proportional = false,
     maxWidth,
     minWidth,
     panelRef: providedPanelRef,
@@ -100,6 +102,7 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
   const dragRef = useRef<DragState | null>(null);
   const restoredRef = useRef(false);
   const preferredWidthRef = useRef<number | null>(null);
+  const ratioRef = useRef<number | null>(null);
   const [width, setWidth] = useState(defaultWidth);
   const [isResizing, setIsResizing] = useState(false);
   const [hasMounted, setHasMounted] = useState(false);
@@ -131,12 +134,18 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     const { forcePersist = false, persist = true } = commitOptions;
     const nextWidth = clampWidth(candidate);
     const changed = nextWidth !== widthRef.current;
-    if (persist) preferredWidthRef.current = nextWidth;
+    if (persist) {
+      preferredWidthRef.current = nextWidth;
+      if (proportional) {
+        ratioRef.current = nextWidth / effectiveMaxWidth();
+        try { localStorage.setItem(`${storageKey}:ratio`, String(ratioRef.current)); } catch {}
+      }
+    }
     applyLiveWidth(nextWidth);
     setWidth(nextWidth);
     if (persist && (changed || forcePersist)) writeStoredWidth(storageKey, nextWidth);
     return nextWidth;
-  }, [applyLiveWidth, clampWidth, storageKey, widthRef]);
+  }, [applyLiveWidth, clampWidth, storageKey, widthRef, proportional, effectiveMaxWidth]);
 
   const restoreBodyState = useCallback((drag: DragState) => {
     document.body.style.cursor = drag.previousCursor;
@@ -220,6 +229,8 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
     const nextDefault = getDefaultWidth?.() ?? defaultWidth;
     if (followDefaultWidth) {
       clearStoredWidth(storageKey);
+      clearStoredWidth(`${storageKey}:ratio`);
+      ratioRef.current = null;
       preferredWidthRef.current = null;
       applyResponsiveDefault();
       return;
@@ -238,8 +249,8 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
       applyResponsiveDefault();
       return;
     }
-    commitWidth(dragRef.current ? widthRef.current : preferredWidth ?? widthRef.current, { persist: false });
-  }, [applyResponsiveDefault, commitWidth, followDefaultWidth, panelRef, storageKey, widthRef]);
+    commitWidth(dragRef.current ? widthRef.current : (proportional && ratioRef.current !== null ? ratioRef.current * effectiveMaxWidth() : preferredWidth ?? widthRef.current), { persist: false });
+  }, [applyResponsiveDefault, commitWidth, followDefaultWidth, panelRef, storageKey, widthRef, proportional, effectiveMaxWidth]);
 
   const onKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
     const step = event.shiftKey ? 32 : 12;
@@ -276,13 +287,16 @@ export function useResizablePanel(options: UseResizablePanelOptions) {
 
     const storedWidth = readStoredWidth(storageKey);
     preferredWidthRef.current = storedWidth;
+    if (proportional) {
+      try { const ratio = Number(localStorage.getItem(`${storageKey}:ratio`)); if (ratio > 0 && ratio <= 1) ratioRef.current = ratio; } catch {}
+    }
     if (storedWidth === null && followDefaultWidth) {
       applyResponsiveDefault();
       return;
     }
-    const candidate = storedWidth ?? getDefaultWidth?.() ?? defaultWidth;
+    const candidate = proportional && ratioRef.current !== null ? ratioRef.current * effectiveMaxWidth() : storedWidth ?? getDefaultWidth?.() ?? defaultWidth;
     commitWidth(candidate, { persist: false });
-  }, [applyResponsiveDefault, commitWidth, defaultWidth, followDefaultWidth, getDefaultWidth, storageKey]);
+  }, [applyResponsiveDefault, commitWidth, defaultWidth, followDefaultWidth, getDefaultWidth, storageKey, proportional, effectiveMaxWidth]);
 
   useEffect(() => {
     if (!restoredRef.current) return;

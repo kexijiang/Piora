@@ -187,8 +187,9 @@ export function RoomComposer({ room, actorSessionId, submissions, onSubmit, hand
     if (event.key === "Enter") event.preventDefault();
   };
 
+  const recoverable = pending.filter(record => !submissions.some(item => item.clientPromptId === record.id && item.status === "accepted"));
   return <div className={`${styles.composerWrap} room-workspace-composer`}>
-    {pending.length ? <div className={styles.recoveryList}>{pending.map((record) => <div key={record.id} className={styles.recoveryRow}>
+    {recoverable.length ? <div className={styles.recoveryList}>{recoverable.map((record) => <div key={record.id} className={styles.recoveryRow}>
       <span><strong>{t("roomUx.recover")}</strong><small>{record.draft.value.slice(0, 140)}</small></span><button type="button" disabled={busy} onClick={() => void send(record)}>{t("roomUx.retry")}</button>
     </div>)}</div> : null}
     {error ? <div className={styles.error} role="alert">{error}</div> : null}
@@ -203,6 +204,7 @@ export function RoomComposer({ room, actorSessionId, submissions, onSubmit, hand
       {query && candidates.length ? <div className={styles.mentionMenu} role="listbox" aria-label={t("roomUx.selectMember")}>{candidates.map((candidate, index) => <button key={candidate.id} type="button" role="option" aria-selected={index === mentionIndex} onMouseDown={(event) => event.preventDefault()} onClick={() => insertMention(candidate.id)}><RoomAvatar member={candidate.member} name={candidate.name} small /><span><strong>{candidate.name}</strong><small>{candidate.detail}</small></span></button>)}</div> : null}
       <div className={styles.composerFooter}>
         <button type="button" className={styles.iconButton} aria-label={t("roomUx.attach")} disabled={uploading} onClick={() => fileInput.current?.click()}><AliIcon name="plus" size={19} /></button>
+        <button type="button" className={styles.iconButton} aria-label={t("roomUx.selectMember")} onClick={() => { const caret = textarea.current?.selectionStart ?? draft.value.length; setQuery({ start: caret, end: caret, text: "" }); setMentionIndex(0); focus(); }}>@</button>
         {room.coordination.mode === "team" ? <button type="button" className={styles.newTaskButton} aria-pressed={roomInput.intent === "new_task"} title={t("roomUx.newTaskHint")} onClick={() => { commit({ ...draft, roomInput: { intent: "new_task", mentions: roomInput.mentions } }); focus(); }}>{t("roomUx.newTask")}</button> : null}
         <span className={styles.sendHint}>{receipt ? <span role="status"><AliIcon name="check" size={13} />{receipt}</span> : [shortcut && t("settings.sendShortcutHint", { shortcut: formatShortcutBinding(shortcut) }), newlineShortcut && t("settings.newlineShortcutHint", { shortcut: formatShortcutBinding(newlineShortcut) })].filter(Boolean).join(" · ")}</span>
         <button type="button" className={styles.sendButton} aria-label={t("roomUx.send")} disabled={busy || uploading || (!draft.value.trim() && !draft.files.length)} onClick={() => void send()}><AliIcon name="send" size={18} /></button>

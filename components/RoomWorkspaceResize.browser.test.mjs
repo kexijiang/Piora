@@ -94,6 +94,18 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
     await page.setViewportSize({ width: 1440, height: 1000 }); await separator.waitFor(); await waitWidth(560);
     await separator.focus(); await page.keyboard.press("Enter"); await waitWidth(324);
+    await page.getByRole("button", { name: "选择群成员", exact: true }).click();
+    await page.getByRole("option").filter({hasText:"执行者"}).click();
+    assert.match(await page.locator("textarea").inputValue(), /@执行者/);
+    await page.getByRole("button", { name: "成果", exact: true }).click();
+    await page.setViewportSize({ width: 3840, height: 1600 });
+    await page.evaluate(() => window.setFixtureWidth(3600));
+    const column = page.getByRole("separator", {name: "调整群聊正文宽度", exact:true});
+    await column.focus(); await page.keyboard.press("End");
+    assert.ok(Number(await column.getAttribute("aria-valuenow")) > 3200);
+    await page.evaluate(() => window.setFixtureWidth(2000));
+    await page.waitForFunction(() => Number(document.querySelector('[aria-label="调整群聊正文宽度"]').getAttribute("aria-valuenow")) < 2000);
+    assert.equal(await page.evaluate(() => localStorage.getItem("pi-room-column-width:ratio")), "1");
     assert.deepEqual(errors, []);
   } finally {
     await browser?.close();

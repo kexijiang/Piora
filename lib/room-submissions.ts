@@ -221,7 +221,7 @@ async function processSubmission(roomId: string, id: string, services?: RoomSele
   try { return await flight; } finally { if (flights.get(key) === flight) flights.delete(key); }
 }
 
-export async function submitRoomMessage(roomId: string, input: RoomSubmissionInput, services?: RoomSelectionServices) {
+export async function submitRoomMessage(roomId: string, input: RoomSubmissionInput, services?: RoomSelectionServices, background = false) {
   if (!input || typeof input !== "object" || Array.isArray(input)
     || (input.mentions !== undefined && (!Array.isArray(input.mentions) || input.mentions.some((item) => !item || typeof item.memberId !== "string")))
     || (input.attachments !== undefined && (!Array.isArray(input.attachments) || input.attachments.some((item) => !item)))
@@ -261,10 +261,16 @@ export async function submitRoomMessage(roomId: string, input: RoomSubmissionInp
     });
     const record: SavedSubmission = saved ?? { clientPromptId: input.clientPromptId, roomId, messageId: message.id, status: "accepted",
       intent: input.intent ?? "auto", targetMemberIds, commandIds: [], createdAt: message.createdAt, updatedAt: Date.now(), input, requestHash };
-    if (!saved) writeRecord(record);
+    if (!saved || record.status === "error") {
+      record.status = "accepted"; delete record.error; writeRecord(record);
+    }
     return { message, submission: record };
   });
   if (prepared.submission.status === "delivered" || prepared.submission.status === "queued") return prepared;
+  if (background) {
+    void processSubmission(roomId, input.clientPromptId, services).catch(() => {});
+    return prepared;
+  }
   return { message: prepared.message, submission: await processSubmission(roomId, input.clientPromptId, services) };
 }
 
