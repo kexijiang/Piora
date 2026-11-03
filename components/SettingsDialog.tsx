@@ -1,4 +1,5 @@
 "use client";
+import { CredentialVaultSettings } from "./CredentialVaultSettings";
 import { RunningStatusSettings } from "./RunningStatusSettings";
 import { useRunningSendMode } from "@/hooks/useRunningSendMode";
 
@@ -485,6 +486,7 @@ export function SettingsDialog({
               <>
                 <div className={styles.contentHeading}><h2>{t("settings.page.data")}</h2><p>{t("settings.page.dataDescription")}</p></div>
                 <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>
+                <CredentialVaultSettings />
                 {desktop.available && window.piDesktop?.getAgentDataDirectory ? <section className={styles.conversationSection}>
                   <div className={styles.agentDataHeader}>
                     <div className={styles.conversationCopy}>

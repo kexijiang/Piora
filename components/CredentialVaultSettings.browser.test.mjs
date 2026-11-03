@@ -1,0 +1,78 @@
+import assert from "node:assert/strict";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { createRequire } from "node:module";
+import test from "node:test";
+const repo = path.resolve(import.meta.dirname, "..");
+const dependencies = process.env.PIORA_TEST_NODE_MODULES || path.join(repo, "node_modules");
+const require = createRequire(path.join(dependencies, ".vault-test.cjs"));
+const { webpack } = require("next/dist/compiled/webpack/webpack.js");
+const { chromium } = require("playwright-core");
+
+test("vault settings manages masked entries, opt-in filling, password verification and locking through UI", { timeout: 180000 }, async t => {
+  const root = await mkdtemp(path.join(tmpdir(), "piora-vault-ui-"));
+  let browser;
+  t.after(async () => { await browser?.close(); await rm(root, { recursive: true, force: true }); });
+  await writeFile(path.join(root, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText;`);
+  await writeFile(path.join(root, "css.cjs"), `module.exports=s=>'export default '+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))`);
+  await writeFile(path.join(root, "entry.tsx"), `import {createRoot} from 'react-dom/client';import {I18nProvider} from '@/hooks/useI18n';import {CredentialVaultSettings} from '@/components/CredentialVaultSettings';createRoot(document.getElementById('root')).render(<I18nProvider><CredentialVaultSettings/></I18nProvider>);`);
+  const compiler = webpack({ mode: "development", target: "web", devtool: false, entry: path.join(root, "entry.tsx"), output: { path: root, filename: "bundle.js", publicPath: "/" }, resolve: { extensions: [".tsx", ".ts", ".js"], modules: [dependencies], alias: { "@": repo } }, module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(root, "loader.cjs") }, { test: /\.css$/, use: path.join(root, "css.cjs") }] } });
+  await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
+  browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
+  const page = await browser.newPage();
+  const errors = []; page.on("pageerror", error => errors.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem("pi-locale", "zh-CN");
+    const state = { available: true, initialized: false, unlocked: false, autofill: false, entries: [], audit: [] };
+    window.calls = [];
+    window.piDesktop = { vault: { request: async input => {
+      window.calls.push(input);
+      if (["initialize", "unlock"].includes(input.action)) { if (input.password !== "master-password-123") throw Error("fixture rejected"); state.initialized = true; state.unlocked = true; }
+      if (input.action === "lock") state.unlocked = false;
+      if (input.action === "configure") state.autofill = input.enabled;
+      if (input.action === "save") { const {password, ...metadata} = input.entry; state.entries = [{ ...metadata, id: "account-1" }]; }
+      if (input.action === "remove") state.entries = [];
+      return structuredClone({ ...state, entries: state.unlocked ? state.entries : [] });
+    } } };
+  });
+  const bundle = await readFile(path.join(root, "bundle.js"), "utf8");
+  const css = await readFile(path.join(repo, "components/CredentialVaultSettings.module.css"), "utf8");
+  await page.route("http://vault.test/**", route => route.fulfill({ contentType: "text/html", body: `<meta charset="utf-8"><style>${css}</style><div id="root"></div><script>${bundle.replaceAll("</script", "<\\/script")}</script>` }));
+  await page.goto("http://vault.test/");
+  await page.waitForFunction(() => document.querySelector("input"), null, { timeout: 5000 }).catch(() => { throw new Error(JSON.stringify(errors)); });
+  await page.getByLabel("主密码（导入时填写备份密码）").fill("master-password-123");
+  await page.getByRole("button", { name: "创建凭据库", exact: true }).click();
+  await page.getByRole("button", { name: "添加凭据", exact: true }).waitFor();
+  await page.evaluate(() => document.documentElement.style.setProperty("--text-sm", ".8125rem"));
+  const fontSize = () => page.getByLabel("用户名", { exact: true }).evaluate(input => parseFloat(getComputedStyle(input).fontSize));
+  const initialFont = await fontSize();
+  await page.evaluate(() => { document.documentElement.style.fontSize = "24px"; });
+  assert.ok(await fontSize() > initialFont, "credential inputs follow the user font scale");
+  assert.equal(await page.getByRole("checkbox").isChecked(), false);
+  await page.getByLabel("名称", { exact: true }).fill("Work account");
+  await page.getByLabel("完整登录页 URL").fill("https://example.com/login");
+  await page.getByLabel("用户名", { exact: true }).fill("private-user");
+  await page.getByLabel("密码", { exact: true }).fill("private-password");
+  await page.getByRole("button", { name: "添加凭据", exact: true }).click();
+  await page.getByText("Work account", { exact: true }).waitFor();
+  assert.equal((await page.locator("body").innerText()).includes("private-user"), false);
+  assert.equal((await page.locator("body").innerText()).includes("private-password"), false);
+  assert.equal(await page.getByLabel("密码", { exact: true }).inputValue(), "");
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "编辑", exact: true }).click();
+  assert.equal(await page.getByLabel("密码（留空保留）").inputValue(), "");
+  assert.equal(await page.getByLabel("用户名", { exact: true }).getAttribute("type"), "password");
+  await page.getByRole("button", { name: "填入当前浏览器" }).click();
+  assert.ok(await page.evaluate(() => window.calls.some(call => call.action === "fill" && call.id === "account-1")));
+  assert.equal(await page.getByRole("button", { name: "验证并导出加密备份" }).isDisabled(), true);
+  await page.getByLabel("主密码（导入时填写备份密码）").fill("master-password-123");
+  await page.getByRole("button", { name: "验证并导出加密备份" }).click();
+  assert.equal(await page.getByLabel("主密码（导入时填写备份密码）").inputValue(), "");
+  await page.getByRole("button", { name: "锁定", exact: true }).click();
+  await page.getByRole("button", { name: "解锁", exact: true }).waitFor();
+  assert.equal(await page.getByText("Work account", { exact: true }).count(), 0);
+  await page.getByLabel("主密码（导入时填写备份密码）").fill("wrong-password-123");
+  await page.getByRole("button", { name: "解锁", exact: true }).click();
+  await page.getByRole("alert").waitFor();
+});
