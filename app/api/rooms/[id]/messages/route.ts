@@ -26,7 +26,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const body = await parseJsonWithinLimit(request, 512 * 1024) as RoomSubmissionInput;
     if (!body || typeof body !== "object" || Array.isArray(body)) throw new TeamError("TEAM_INVALID_INPUT", "消息格式无效。");
     requireRoomMemberBySession(id, body.sessionId);
-    const { message, submission } = await submitRoomMessage(id, body);
+    const { message, submission } = await submitRoomMessage(id, body, undefined, true);
     const { input: _input, requestHash: _hash, ...receipt } = submission as typeof submission & { input?: unknown; requestHash?: string };
     void _input; void _hash;
     return Response.json({ message, submission: receipt }, { status: 201 });

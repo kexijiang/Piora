@@ -42,7 +42,7 @@ export function RoomArtifactRows({ artifacts, room, actorSessionId, onSource }: 
   return <div className={styles.artifactList}>{artifacts.map((artifact) => <div key={artifact.id} className={styles.artifactRow}>
     <AliIcon name="file" size={19} />
     <a href={`/api/rooms/${encodeURIComponent(room.id)}/artifacts/${encodeURIComponent(artifact.id)}?sessionId=${encodeURIComponent(actorSessionId)}`}
-      target="_blank" rel="noreferrer" title={t("roomUx.openResult")}><strong>{artifact.name}</strong><small>{artifact.summary.slice(0, 100)}</small></a>
+      download title={t("roomUx.openResult")}><strong>{artifact.name}</strong><small>{artifact.summary.slice(0, 100)}</small></a>
     {onSource ? <button type="button" className={styles.iconButton} onClick={() => onSource(artifact)} aria-label={t("roomUx.viewSource")} title={t("roomUx.viewSource")}><AliIcon name="arrowright" size={16} /></button> : null}
   </div>)}</div>;
 }

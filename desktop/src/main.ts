@@ -2070,7 +2070,8 @@ function revealCompanionPanel(window: BrowserWindow): void {
   if (window.isDestroyed() || quitRequested || shutdownComplete) return;
   if (window.isMinimized()) window.restore();
   companionPanelKeepVisibleUntilClose = true;
-  window.setFullScreen(true);
+  if (window.isFullScreen()) window.setFullScreen(false);
+  window.maximize();
   window.show();
   window.focus();
 }

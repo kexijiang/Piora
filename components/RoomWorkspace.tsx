@@ -24,6 +24,11 @@ import styles from "./RoomWorkspace.module.css";
 
 export interface RoomWorkspaceHandle { guideMember: (sessionId: string | null, prompt?: string) => void }
 type Panel = "members" | "tasks" | "artifacts" | "thread";
+function memberModelLabel(member: CollaborationRoom["members"][number] | undefined, locale: string) {
+  if (!member) return "";
+  const policy = member.profile.modelPolicy;
+  return policy.mode === "pinned" ? `${policy.provider}/${policy.modelId}` : locale === "zh-CN" ? "跟随成员会话模型" : "Member session model";
+}
 const terminal = new Set(["completed", "failed", "cancelled"]);
 
 export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpenBrowser, handleRef }: {
@@ -57,7 +62,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
   const getDefaultWidth = useCallback(() => Math.min(840, getMaxWidth()), [getMaxWidth]);
   const resizer = useResizablePanel({ ariaLabel: "调整群聊正文宽度", cssVariable: "--room-column-width", defaultWidth: 840,
     getDefaultWidth, getMaxWidth, growthDirection: "left", dragScale: 2, followDefaultWidth: true,
-    maxWidth: 3200, minWidth: 260, panelRef: conversationRef, storageKey: "pi-room-column-width", widthRef: columnWidth });
+    proportional: true, maxWidth: Number.MAX_SAFE_INTEGER, minWidth: 260, panelRef: conversationRef, storageKey: "pi-room-column-width", widthRef: columnWidth });
   const detailsWidth = useRef(324);
   const getDetailsMaxWidth = useCallback(() => (contentRef.current?.clientWidth ?? 1000) - 400, []);
   const detailsResizer = useResizablePanel({ ariaLabel: t("roomUx.resizeDetails"), cssVariable: "--room-details-width", defaultWidth: 324,
@@ -225,7 +230,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
       tabIndex={-1} className={styles.message} data-room-message={message.id} data-room-author={isUser ? "user" : "assistant"}>
       <RoomAvatar member={member} name={name} user={isUser} />
       <div className={styles.messageColumn}>
-        <div className={styles.messageMeta}><strong>{name}</strong>{member && room.coordination.mode === "team" ? <span className={styles.roleBadge}>{t(`roomUx.${member.profile.role === "coordinator" ? "lead" : member.profile.role}`)}</span> : null}<time dateTime={new Date(message.createdAt).toISOString()}>{new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(message.createdAt)}</time></div>
+        <div className={styles.messageMeta}><strong>{name}</strong><small>{memberModelLabel(member, locale)}</small>{member && room.coordination.mode === "team" ? <span className={styles.roleBadge}>{t(`roomUx.${member.profile.role === "coordinator" ? "lead" : member.profile.role}`)}</span> : null}<time dateTime={new Date(message.createdAt).toISOString()}>{new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(message.createdAt)}</time></div>
         {parent && (isUser || insideThread) ? <button type="button" className={styles.quote} onClick={() => jumpToMessage(parent.id)}><AliIcon name="messages" size={13} /><span>{parent.author.name ?? t("roomUx.participant")}：{parent.content.slice(0, 130)}</span></button> : null}
         {renderMessageBody(message, member, name, run)}
         {message.attachments?.length ? <div className={styles.messageAttachments}>{message.attachments.map((file, index) => <a key={`${file.path}:${index}`} href={`/api/rooms/${room.id}/messages/${message.id}/attachments/${index}?sessionId=${encodeURIComponent(actor)}`} target="_blank" rel="noreferrer"><AliIcon name="file" size={16} />{file.name}</a>)}</div> : null}
