@@ -43,8 +43,8 @@ function sourceValue(source: MiniAppCheckpoint, path: string): { present: boolea
   return { present: true, value };
 }
 
-/** Full results are validated in the worker; recheck paths and before-values at the host boundary. */
-export function validateMiniAppCheckpointChanges(source: MiniAppCheckpoint, value: unknown): MiniAppCheckpointChanges {
+/** Bounded structural evidence, without claiming to prove a prior checkpoint. */
+export function validateMiniAppChangeSummary(value: unknown): MiniAppCheckpointChanges {
   boundedJson(value, 5000);
   const changes = jsonRecord(value, "preview/changes");
   exactKeys(changes, ["complete", "total", "omitted", "items"], "preview/changes");
@@ -58,14 +58,26 @@ export function validateMiniAppCheckpointChanges(source: MiniAppCheckpoint, valu
     const item = jsonRecord(value, "preview/change");
     if (typeof item.path !== "string" || !/^\/(?:state|inputs|tick|rng|view)(?:\/.*)?$/.test(item.path)
       || /~(?![01])/.test(item.path) || !["add", "remove", "replace"].includes(String(item.kind))) fail();
-    const path = item.path as string, current = sourceValue(source, path);
+    const path = item.path as string;
     if (seen.some(other => other === path || other.startsWith(path + "/") || path.startsWith(other + "/"))) fail();
     seen.push(path);
     exactKeys(item, ["path", "kind", ...(item.kind === "add" ? [] : ["before"]), ...(item.kind === "remove" ? [] : ["after"])], "preview/change");
-    if (item.kind === "add" ? current.present : !current.present || !Object.hasOwn(item, "before") || answerDataDigest(current.value) !== answerDataDigest(item.before)) fail();
+    if (item.kind !== "add" && !Object.hasOwn(item, "before")) fail();
     if (item.kind !== "remove" && !Object.hasOwn(item, "after")) fail();
     if (item.kind === "replace" && answerDataDigest(item.before) === answerDataDigest(item.after)) fail();
     if (["before", "after"].some(key => Object.hasOwn(item, key) && JSON.stringify(item[key]).length > LIMITS.valueCharacters)) fail();
   }
   return value as MiniAppCheckpointChanges;
+}
+
+/** Full results are validated in the worker; recheck paths and before-values at the host boundary. */
+export function validateMiniAppCheckpointChanges(source: MiniAppCheckpoint, value: unknown): MiniAppCheckpointChanges {
+  const changes = validateMiniAppChangeSummary(value);
+  for (const item of changes.items) {
+    const current = sourceValue(source, item.path);
+    if (item.kind === "add" ? current.present : !current.present || answerDataDigest(current.value) !== answerDataDigest(item.before)) {
+      throw new MiniAppError("PROTOCOL", "Invalid checkpoint change evidence");
+    }
+  }
+  return changes;
 }

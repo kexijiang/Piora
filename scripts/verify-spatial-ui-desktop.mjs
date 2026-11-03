@@ -301,6 +301,13 @@ const scenario = {
       assert.ok(replies.every(response => response.status === 200 && !response.tools?.length), 'Follow-up answers directly');
       const saved = requests.filter(request => request.phase === 'followup').flatMap(request => request.context).filter(text => text.startsWith('Saved mini app parameters and host publication results')).map(text => JSON.parse(text.slice(text.indexOf('\n') + 1)));
       assert.ok(saved.some(context => context.apps.some(app => app.id === restored.plan.id && app.scenes?.some(scene => scene.selected?.id === restored.result.frame.scenes[view.id].selected && scene.cameraSource === 'saved-user-view'))), 'Real follow-up receives confirmed object selection and user camera');
+      const app = saved.flatMap(context => context.apps).find(app => app.id === restored.plan.id);
+      assert.ok(app?.saveHistory?.transitions.length, 'Real follow-up receives host-confirmed saved comparisons');
+      assert.equal(app.saveHistory.eventHistory, 'unavailable', 'Saved comparisons cannot claim to be click history');
+      assert.equal(app.saveHistory.transitions.at(-1).toRevision, restored.stateRevision, 'Evidence ends at the confirmed current checkpoint');
+      assert.ok(app.saveHistory.transitions.some(transition => transition.changes.items.some(change => change.path.startsWith('/inputs/'))), 'Retained comparisons include actual parameter edits');
+      const contextScene = app.scenes.find(scene => scene.id === view.id), camera = restored.result.snapshot.view.cameras[view.id].camera;
+      assert.ok(Math.abs(contextScene.cameraMetrics.distanceToTarget - Math.hypot(...camera.position.map((n,i) => n - camera.target[i]))) < 1e-9, 'Distance refers to the camera target, not horizontal radius');
       assert.ok(responses.every(response => response.status === 200 || response.cancelled), 'Non-cancelled model relay failures must not be hidden by successful UI steps');
       await screenshot('spatial-followup.png'); await persist();
     });

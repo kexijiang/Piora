@@ -50,9 +50,12 @@ export function reconcileMiniAppView(view: MiniAppViewState | undefined, frame: 
 
 /** Saved selection and observation angle, never a substitute for task geometry. */
 export function miniAppSceneContext(frame: MiniAppFrame, view: MiniAppViewState | undefined) {
+  const distance = (camera: MiniAppCamera) => Math.hypot(...camera.position.map((value, index) => value - camera.target[index]));
   const scenes = Object.entries(frame.scenes ?? {}).map(([id, scene]) => ({
     id, selected: scene.selected ? { id: scene.selected, label: scene.meshes.find(mesh => mesh.id === scene.selected)?.label ?? scene.selected } : null,
     camera: view?.cameras[id]?.camera ?? scene.camera, cameraSource: view?.cameras[id] ? "saved-user-view" : "program-default",
+    cameraMetrics: { units: "scene-units", distanceToTarget: distance(view?.cameras[id]?.camera ?? scene.camera),
+      programDefaultDistanceToTarget: distance(scene.camera), scope: "current-view-versus-current-program-default-not-history" },
   }));
   return scenes.length ? scenes : undefined;
 }

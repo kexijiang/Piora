@@ -7,17 +7,20 @@ import { compileMiniAppPlan, validateMiniAppResult, type MiniAppResult } from ".
 import { MiniAppError } from "./limits";
 import type { MiniAppRecord } from "./journal";
 import type { MiniAppVmReply } from "./vm";
+import { appendMiniAppSaveHistory, validateMiniAppSaveHistory, type MiniAppSaveHistory } from "./save-history";
 
 export interface MiniAppSavedState {
   stateRevision: number;
   checkpointDigest: string;
   result: MiniAppResult;
   savedAt: number | null;
+  saveHistory?: MiniAppSaveHistory;
 }
 interface StateEntry extends MiniAppSavedState {
   publicationId: string; planDigest: string; runtimeVersion: string;
   anchor: { id: string; hash: string };
   resultDigest: string;
+  saveHistoryDigest?: string;
 }
 export interface MiniAppSaveReceipt {
   requestId: string; requestDigest: string; publicationId: string; leafId: string;
@@ -57,6 +60,10 @@ function readStore(sessionId: string, root: string): StateStore {
       && hash(entry.checkpointDigest) && hash(entry.resultDigest) && (entry.savedAt === null || revision(entry.savedAt)), "Invalid mini app state entry");
     const key = `${entry.publicationId}:${entry.anchor.id}`;
     valid(!entries.has(key), "Duplicate mini app state anchor"); entries.add(key);
+    if (entry.saveHistory !== undefined || entry.saveHistoryDigest !== undefined) {
+      valid(entry.saveHistory !== undefined && hash(entry.saveHistoryDigest) && answerDataDigest(entry.saveHistory) === entry.saveHistoryDigest, "Mini app saved transition evidence changed");
+      validateMiniAppSaveHistory(entry.saveHistory, { revision: entry.stateRevision, digest: entry.checkpointDigest });
+    }
   }
   for (const receipt of store.receipts) {
     valid(receipt && id(receipt.requestId) && hash(receipt.requestDigest) && id(receipt.publicationId) && id(receipt.leafId)
@@ -84,7 +91,8 @@ function selected(store: StateStore, record: MiniAppRecord, disk: AnswerDisk, le
   }
   const result = validateMiniAppResult(compileMiniAppPlan(record.plan), entry.result as unknown as MiniAppVmReply);
   valid(answerDataDigest(result) === entry.resultDigest && answerDataDigest(result.snapshot) === entry.checkpointDigest, "Mini app saved checkpoint changed");
-  return { stateRevision: entry.stateRevision, checkpointDigest: entry.checkpointDigest, result: clone(result), savedAt: entry.savedAt };
+  return { stateRevision: entry.stateRevision, checkpointDigest: entry.checkpointDigest, result: clone(result), savedAt: entry.savedAt,
+    ...(entry.saveHistory ? { saveHistory: clone(entry.saveHistory) } : {}) };
 }
 export function readMiniAppSavedState(sessionId: string, root: string, record: MiniAppRecord, disk: AnswerDisk, leafId: string): MiniAppSavedState {
   return selected(readStore(sessionId, root), record, disk, leafId);
@@ -120,7 +128,8 @@ export function copyMiniAppState(options: {
     // Multiple removed labels can map to one following entry. The latest source
     // anchor wins in the same order in which source branch selection saw it.
     entries.set(`${record.operationId}:${id}`, { ...clone(saved), publicationId: record.operationId, planDigest: record.planDigest,
-      runtimeVersion: record.runtimeVersion, anchor: { id, hash: answerDataDigest(targetAnchor) }, resultDigest: answerDataDigest(saved.result) });
+      runtimeVersion: record.runtimeVersion, anchor: { id, hash: answerDataDigest(targetAnchor) }, resultDigest: answerDataDigest(saved.result),
+      ...(saved.saveHistory ? { saveHistoryDigest: answerDataDigest(saved.saveHistory) } : {}) });
   }
   if (!entries.size) return;
   const inherited: StateStore = { version: 1, sessionId: options.target,
@@ -158,14 +167,17 @@ export function commitMiniAppState(input: {
     for (const child of disk.entries.filter(entry => entry.parentId === leafId)) {
       if (!store.entries.some(entry => entry.publicationId === record.operationId && entry.anchor.id === child.id)) {
         store.entries.push({ ...clone(current), publicationId: record.operationId, planDigest: record.planDigest, runtimeVersion: record.runtimeVersion,
-          anchor: { id: child.id, hash: answerDataDigest(child) }, resultDigest: answerDataDigest(current.result) });
+          anchor: { id: child.id, hash: answerDataDigest(child) }, resultDigest: answerDataDigest(current.result),
+          ...(current.saveHistory ? { saveHistoryDigest: answerDataDigest(current.saveHistory) } : {}) });
       }
     }
     if (!Number.isSafeInteger(store.revision + 1)) throw new MiniAppError("LIMIT", "Mini app state revision capacity reached");
     stateRevision = ++store.revision;
+    const saveHistory = appendMiniAppSaveHistory(current.saveHistory, current.result.snapshot, current.stateRevision, result.snapshot, stateRevision);
     store.entries = store.entries.filter(entry => entry.publicationId !== record.operationId || entry.anchor.id !== leafId);
     store.entries.push({ publicationId: record.operationId, planDigest: record.planDigest, runtimeVersion: record.runtimeVersion,
-      anchor: { id: leafId, hash: answerDataDigest(disk.byId.get(leafId)) }, stateRevision, checkpointDigest, result: clone(result), resultDigest: answerDataDigest(result), savedAt: now });
+      anchor: { id: leafId, hash: answerDataDigest(disk.byId.get(leafId)) }, stateRevision, checkpointDigest, result: clone(result), resultDigest: answerDataDigest(result), savedAt: now,
+      saveHistory, saveHistoryDigest: answerDataDigest(saveHistory) });
   }
   const receipt: MiniAppSaveReceipt = { requestId: input.requestId, requestDigest: input.requestDigest, publicationId: record.operationId,
     leafId, stateRevision, checkpointDigest, savedAt: now };
