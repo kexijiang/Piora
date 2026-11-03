@@ -17,7 +17,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-最新正式版为 `0.5.8`，当前源码与 beta 版本为 [`0.5.9-beta.4`](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.4)。本次 beta 支持运行日志目录、级别与轮转配置，修复供应商重名编辑和内置浏览器布局竞态，并统一发布 Windows x64 安装包。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
+最新正式版为 `0.5.8`，当前源码与 beta 版本为 [`0.5.9-beta.5`](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.5)。本次 beta 新增固定版 DSH Meme 独立桌面扩展，支持聊天选图、AI 学图和图库管理，复用 DSH Pet 的内网镜像、代理及 CA 策略，并修复选图入口字号与窄屏提示框溢出。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
 
 后续正式版与 beta 均由 GitHub Actions 只构建和校验 Windows x64 安装包；beta 构建全部检查通过后由独立工作流自动发布，下载见[所有发布](https://github.com/kexijiang/Piora/releases)。Windows 原生投屏使用随包 Hypium 采集库，兼容设备无需在电脑安装 DevEco Studio。需要手机端 HAP 的兼容路径仍要求用户明确初始化并准备对应签名工具。华为系统录屏、原生投屏画质与延迟、平板兼容性和浏览器窗口外渲染仍待硬件验收，见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)。
 
@@ -203,7 +203,7 @@ npm run verify:backgrounds
 
 TypeScript 按[微软官方并行安装方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)配置：`@typescript/native` 是 TypeScript 7 的 npm 别名，提供 `tsc`，用于类型检查、桌面及 Harmony worker 编译；`typescript` 是最新版 `@typescript/typescript6` 兼容包的别名，为代码补全、ESLint 和测试脚本提供编译器 API。需要调用编译器时使用 `npm run typecheck` 或 `node_modules/.bin/tsc`。
 
-发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；验收同批 Piora 安装包后，再由独立工作流发布这些原始字节；鸿蒙手机实机验收按需进行，不作为发布门禁。`vX.Y.Z` 正式版标签触发 Windows 与 Linux 构建，全部测试、验包及更新说明校验通过后自动发布为最新正式版。不要移动已发布标签或本地制作发布包。
+发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 构建并验证 Windows x64 安装包，全部自动检查通过后由独立工作流自动发布同一批产物；鸿蒙手机实机验收按需进行，不作为发布门禁。`vX.Y.Z` 正式版标签同样只构建 Windows x64 安装包，全部测试、验包及更新说明校验通过后自动发布为最新正式版。不要移动已发布标签或本地制作发布包。
 
 **CHANGELOG 是唯一更新说明来源**，Release 正文和 `beta.yml` / `latest.yml` 的更新说明由同一版本记录生成，并在发布前校验。具体步骤见[发布流程](docs/release.md)。
 
