@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复识别模型后供应商重名却无法修改的问题：识别弹窗显示并允许编辑供应商名称，改名时保留模型选择与参数；恢复新建供应商默认名称的自增后缀，自动避开已有名称。
+
 - beta 发布取消人工审批：标签构建及全部自动检查通过后自动发布同一次构建的产物，保留版本、校验和与更新说明核对；手动触发仅作为补发入口。
 
 ## [0.5.9-beta.3] - 2026-11-02
