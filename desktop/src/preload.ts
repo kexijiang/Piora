@@ -166,6 +166,9 @@ const runtime = Object.freeze({
   getAgentDataDirectory() {
     return ipcRenderer.invoke("pi:agent-data-directory-get");
   },
+  setRuntimeLog(input: import("./logger.js").LogSettings) {
+    return ipcRenderer.invoke("pi:runtime-log-set", input);
+  },
   getRuntimeLog() {
     return ipcRenderer.invoke("pi:runtime-log-get");
   },

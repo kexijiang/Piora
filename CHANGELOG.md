@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 运行日志支持自定义目录、最低记录级别、单文件大小和备份份数，保存后即时生效并持久保留；展示实际写入路径及生效参数，路径不可写时保留原配置。
+
 - beta 发布取消人工审批：标签构建及全部自动检查通过后自动发布同一次构建的产物，保留版本、校验和与更新说明核对；手动触发仅作为补发入口。
 
 ## [0.5.9-beta.3] - 2026-11-02

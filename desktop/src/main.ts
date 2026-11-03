@@ -2260,10 +2260,16 @@ function registerGlobalShortcutHandler(): void {
 }
 
 function registerRuntimeLogHandler(): void {
+  ipcMain.removeHandler("pi:runtime-log-set");
+  ipcMain.handle("pi:runtime-log-set", (event, input: unknown) => {
+    if (!isTrustedMainWindowSender(event) || !logger) return { ok: false, error: "Unavailable" };
+    try { return { ok: true, info: logger.configure(input) }; }
+    catch (error) { return { ok: false, error: error instanceof Error ? error.message : String(error) }; }
+  });
   ipcMain.removeHandler("pi:runtime-log-get");
   ipcMain.handle("pi:runtime-log-get", (event) => {
     if (!isTrustedMainWindowSender(event) || !logger) return null;
-    return { filePath: logger.filePath, fileLoggingAvailable: logger.fileLoggingAvailable };
+    return logger.getState();
   });
 }
 
@@ -2832,6 +2838,7 @@ async function startApplication(): Promise<void> {
   app.setAppUserModelId(desktopDevelopmentRuntime ? "io.github.kexijiang.piora.dev" : "io.github.kexijiang.piora");
 
   logger ??= new FileLogger(app.getPath("userData"));
+  logger.debug("Desktop runtime diagnostics", { versions: process.versions, platform: process.platform, arch: process.arch, packaged: app.isPackaged });
   logger.info("Starting Piora", {
     appVersion: app.getVersion(),
     electronVersion: process.versions.electron,

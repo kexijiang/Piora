@@ -151,7 +151,7 @@ for exact metadata, checks, and tag commands.
   Browser tool uses a separate sandboxed `WebContentsView` and persistent
   partition; untrusted pages never receive the application preload bridge.
 - Child stdout/stderr and lifecycle events are written to
-  `<userData>/logs/piora.log` with one rotated backup.
+  `<userData>/logs/piora.log` with one rotated backup by default. Settings > Data > Runtime logs allows changing the directory, minimum level (error/warn/info/debug), size (1–100 MiB), and backup count (1–20, excluding the current file). Changes apply immediately and persist in `<userData>/runtime-log-settings.json`. Existing logs stay in their original directory; excess backups are removed at the next rotation. The panel reports the actual path, including startup fallback paths. Levels filter both desktop console and file output; service stdout is collected as info and stderr as warn, without changing service-internal levels.
 
 ## Startup diagnostics
 
