@@ -95,13 +95,15 @@ For stable releases, wait for main-branch CI before creating `vX.Y.Z`, omit `--p
 
 Beta CI runs the reusable Ubuntu/Windows test suite alongside the Windows package job. The package job checks source hygiene, licenses, lint, types, backgrounds and performance budgets, builds Windows packages using the repository-provided Harmony capture HAP, and checks updater metadata, package isolation, licenses, the Electron runtime and installed application before uploading the candidate. Publication requires an overall successful original run. Phone hardware acceptance is optional and its result must be reported accurately.
 
-Download the candidate from that exact successful run and test the installed or portable Piora bytes. Record the tag, run ID, package hash and acceptance result. Test with a Harmony phone when appropriate, but do not make device availability a publication gate; record whether hardware was tested. Before publication, configure required-reviewer protection for the repository's `preview-publish` environment; naming an environment in workflow YAML does not create an approval rule. Only after acceptance succeeds, dispatch the publication workflow with the same tag and build run ID:
+When `harmony-preview.yml` completes successfully, `publish-preview.yml` automatically publishes its verified artifacts through `workflow_run`. No environment approval or manual acceptance is required. Keep this publication workflow on the default branch so GitHub can trigger it. Failed or cancelled builds do not publish. The former `preview-publish` environment no longer has required reviewers and is not referenced by the publication job.
+
+Manual dispatch remains available to publish an existing successful build that has not yet been released (for example, a build completed before automatic publication was enabled):
 
 ```powershell
 gh workflow run publish-preview.yml --repo kexijiang/Piora -f tag=v0.4.41-beta.8 -f build_run_id=<successful-preview-run-id>
 ```
 
-The publication workflow binds the requested run to the tag commit, rechecks release metadata, verifies the grouped package checksums and CHANGELOG-derived notes, and publishes the already accepted bytes. It does not rebuild the desktop package.
+The publication workflow binds the requested run to the tag commit, rechecks release metadata, verifies the grouped package checksums and CHANGELOG-derived notes, and publishes the already verified bytes. It does not rebuild the desktop package. Optional installed-app or phone testing must report the exact tag, run ID, package hash and result accurately; unperformed hardware tests must not be reported as passed.
 
 Stable CI first runs the Ubuntu source gate, builds Windows and Linux, verifies their runtimes and artifacts, combines checksums, and publishes only after both platforms succeed. Do not bypass a failed gate by manually uploading unverified binaries.
 

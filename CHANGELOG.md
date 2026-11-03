@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- beta 发布取消人工审批：标签构建及全部自动检查通过后自动发布同一次构建的产物，保留版本、校验和与更新说明核对；手动触发仅作为补发入口。
+
 ## [0.5.9-beta.3] - 2026-11-02
 
 - 修复自定义模型开启图片输入后已有会话仍使用旧能力的问题；下一次发送前刷新模型目录，无需新建会话。
