@@ -4,6 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复内置浏览器在 Agent 跟随切换与面板布局变化交错时可能回写旧尺寸的问题，并补充面板纯位移后的原生视图位置校准。
 - beta 与正式版统一只构建、验证和发布 Windows x64 安装包，停止生成便携 EXE、ZIP 和 Linux AppImage；保留应用内自动更新所需的元数据、差分文件和校验和，并同步安装与发布说明。
 
 - beta 发布取消人工审批：标签构建及全部自动检查通过后自动发布同一次构建的产物，保留版本、校验和与更新说明核对；手动触发仅作为补发入口。
