@@ -12,14 +12,9 @@ export function createBrandBuilderConfig(base, brand, preview = false) {
   config.executableName = "Piora";
   config.extraMetadata = { ...config.extraMetadata, productName: brand.displayName, desktopName: brand.displayName };
   config.win.icon = "../.branding/resources/icon.ico";
-  config.linux.icon = "../.branding/resources/icon.png";
-  config.linux.artifactName = `${brand.artifactPrefix}-\${version}-linux-x64-portable.\${ext}`;
   config.nsis.shortcutName = brand.displayName;
   config.nsis.uninstallDisplayName = brand.displayName;
   config.nsis.artifactName = `${brand.artifactPrefix}-\${version}-win-x64-setup.\${ext}`;
-  config.portable.artifactName = `${brand.artifactPrefix}-\${version}-win-x64-portable.\${ext}`;
-  if (brand.assets.portableSplash) config.portable.splashImage = "../.branding/resources/portable-splash.bmp";
-  else delete config.portable.splashImage;
   config.extraResources = config.extraResources.map(entry => {
     if (entry.to === "startup") return { from: "../.branding/resources/startup", to: "startup" };
     if (entry.to === "tray-icon.ico") return { from: "../.branding/resources/tray.ico", to: entry.to };

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { access, mkdtemp, readdir, rm } from "node:fs/promises";
+import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -47,10 +47,6 @@ async function main() {
         await access(installed);
         await script("scripts/smoke-test-portable.mjs", installed, "--expected-version", tag, "--packaged-runtime", "--expected-brand", brand);
         await script("scripts/verify-portable-runtime.mjs", join(releaseRoot, "win-unpacked"), tag);
-        await script("scripts/verify-portable-artifact.mjs", "--expected-version", tag);
-        const portable = (await readdir(releaseRoot)).filter(name => name.endsWith("-portable.exe"));
-        if (portable.length !== 1) throw new Error("Expected exactly one portable executable");
-        await run("7z", ["t", join(releaseRoot, portable[0])]);
       },
     ]);
   } finally {

@@ -14,10 +14,8 @@ export function brandReleaseGroups(tag) {
     const groups = [{
       directory: `${id}-windows-${tag}`,
       checksum: "SHA256SUMS.txt",
-      files: [`${prefix}-${version}-win-x64-setup.exe`, `${prefix}-${version}-win-x64-setup.exe.blockmap`, `${prefix}-${version}-win-x64-portable.exe`, channel,
-        ...(!preview ? [`${prefix}-${version}-win-x64.zip`] : [])],
+      files: [`${prefix}-${version}-win-x64-setup.exe`, `${prefix}-${version}-win-x64-setup.exe.blockmap`, channel],
     }];
-    if (!preview) groups.push({ directory: `${id}-linux-${tag}`, checksum: "SHA256SUMS-linux.txt", files: [`${prefix}-${version}-linux-x64-portable.AppImage`] });
     return groups;
   });
 }
