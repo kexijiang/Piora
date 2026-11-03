@@ -17,7 +17,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
 
-最新正式版为 `0.5.8`，当前源码与 beta 版本为 [`0.5.9-beta.5`](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.5)。本次 beta 新增固定版 DSH Meme 独立桌面扩展，支持聊天选图、AI 学图和图库管理，复用 DSH Pet 的内网镜像、代理及 CA 策略，并修复选图入口字号与窄屏提示框溢出。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
+最新正式版为 `0.5.8`，当前源码与 beta 版本为 [`0.5.9-beta.6`](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.6)。本次 beta 新增自适应图片预览、浏览器接管提示、可选的下一轮输入预测及本地加密凭据库，并修复群聊发送状态与成果下载、随身舱最大化和大屏聊天宽度。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
 
 后续正式版与 beta 均由 GitHub Actions 只构建和校验 Windows x64 安装包；beta 构建全部检查通过后由独立工作流自动发布，下载见[所有发布](https://github.com/kexijiang/Piora/releases)。Windows 原生投屏使用随包 Hypium 采集库，兼容设备无需在电脑安装 DevEco Studio。需要手机端 HAP 的兼容路径仍要求用户明确初始化并准备对应签名工具。华为系统录屏、原生投屏画质与延迟、平板兼容性和浏览器窗口外渲染仍待硬件验收，见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)。
 
