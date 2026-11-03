@@ -10,8 +10,8 @@ export default function miniAppExtension(api: ExtensionAPI): void {
   if (!readBetaFeatures().intelligentUi) return;
   api.registerTool(defineTool({
     name: MINI_APP_INSPECT_TOOL, label: "Inspect saved mini app", executionMode: "sequential",
-    description: "Inspect selected local button effects from the current confirmed mini app checkpoint without changing it. Use only when the question needs future action effects; current-state explanations already have saved values. No file actions, arbitrary code, sequence simulation or UI regeneration.",
-    promptSnippet: "Inspect selected local action effects only when needed to explain an existing mini app",
+    description: "Inspect selected local button effects or independent single-input cases from the current confirmed mini app checkpoint without changing it. Choose exactly one of actionIds or inputCases. Current-state explanations already have saved values. No file actions, arbitrary code, sequence simulation or UI regeneration.",
+    promptSnippet: "Inspect local action or parameter effects when needed to explain an existing mini app",
     promptGuidelines: [MINI_APP_INSPECTION_GUIDANCE], parameters: miniAppInspectionSchema,
     async execute(_toolCallId, params, signal, _onUpdate, ctx) {
       const runtime = getMiniAppGenerationRuntime(ctx.sessionManager);

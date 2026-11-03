@@ -12,6 +12,7 @@ const tests=['lib/mini-app-capabilities.test.mjs','lib/mini-app-contract.test.mj
 tests.push('lib/mini-app-scene.test.mjs','lib/mini-app-scene-browser.test.mjs');
 tests.push('lib/mini-app-action-preview.test.mjs');
 tests.push('lib/mini-app-save-history.test.mjs');
+tests.push('lib/mini-app-text-context.test.mjs','lib/mini-app-input-inspection.test.mjs');
 tests.push('lib/answer-output-client.test.mjs');
 tests.push('lib/mini-app-groups.test.mjs','lib/mini-app-groups-browser.test.mjs');
 tests.push('lib/mini-app-presets.test.mjs');

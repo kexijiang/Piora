@@ -31,7 +31,9 @@ assert.ok(model && /V4\.1/.test(model.name) && runtime.hasConfiguredAuth('deepse
 const promptFile = args.includes('--prompt-file') ? args[args.indexOf('--prompt-file') + 1] : undefined;
 const prompt = promptFile ? (await readFile(resolve(promptFile), 'utf8')).trim() : '飞机的俯仰、偏航和横滚我总分不清。让我转一转飞机看看区别，也想点选飞机或坐标轴，换个视角观察。' + (args.includes('--presets') ? '也让我能一键把角度归零。' : '');
 assert.ok(prompt, 'A nonempty development task is required');
-const followup = '先别生成新界面，解释一下我现在选中的对象、改过的角度，以及换视角和改变飞机姿态有什么区别。';
+const followupFile = args.includes('--followup-file') ? args[args.indexOf('--followup-file') + 1] : undefined;
+const followup = followupFile ? (await readFile(resolve(followupFile), 'utf8')).trim() : '先别生成新界面，解释一下我现在选中的对象、改过的角度，以及换视角和改变飞机姿态有什么区别。';
+assert.ok(followup, 'A nonempty follow-up is required');
 const requests = [], responses = [], environments = [], checkpoints = [], runtimeFindings = [], audits = [];
 let directory, phase = 'generation', sources;
 const textParts = message => typeof message.content === 'string' ? [message.content] : (message.content ?? []).filter(block => block.type === 'text').map(block => block.text);
@@ -206,7 +208,8 @@ const scenario = {
       const selector = frame.getByRole('combobox', { name: new RegExp(`^${escapeRegExp(view.label)} · (Select object|选择对象)$`) });
       const oldSelection = output.result.frame.scenes[view.id].selected;
       const options = await selector.locator('option').evaluateAll(options => options.map(option => option.value));
-      const optionIndex = options.findIndex(value => value && value !== oldSelection); assert.ok(optionIndex >= 0);
+      const optionIndex = bindings?.selection ? options.indexOf(bindings.selection) : options.findIndex(value => value && value !== oldSelection);
+      assert.ok(optionIndex > 0, 'Select an explicit bound task object when another object intentionally clears selection');
       const option = options[optionIndex];
       await selector.focus(); await page.keyboard.press('Home');
       for (let i = 0; i < optionIndex; i++) await page.keyboard.press('ArrowDown');
@@ -298,10 +301,35 @@ const scenario = {
       await waitUntil(() => responses.some(response => response.phase === 'followup' && response.text), 'real spatial follow-up');
       await waitUntil(() => page.getByRole('button', { name: /^(Send|发送)$/ }).isVisible(), 'follow-up settled');
       const replies = responses.filter(response => response.phase === 'followup');
-      assert.ok(replies.every(response => response.status === 200 && !response.tools?.length), 'Follow-up answers directly');
+      if (args.includes('--inspect-inputs')) {
+        const names = replies.flatMap(response => (response.tools ?? []).map(tool => tool.function?.name).filter(Boolean));
+        assert.ok(names.length && names.every(name => name === 'piora_inspect_mini_app'), 'Parameter questions use only the declared read-only inspection tool');
+        assert.ok(replies.every(response => response.status === 200));
+        const observations = requests.filter(request => request.phase === 'followup').flatMap(request => request.context)
+          .filter(text => text.startsWith('Read-only mini app input observations'))
+          .map(text => JSON.parse(text.slice(text.indexOf('\n') + 1)));
+        assert.ok(observations.length, 'Real model receives input inspection evidence');
+        for (const observation of observations) {
+          assert.equal(observation.appId, restored.plan.id);
+          assert.equal(observation.source.stateRevision, restored.stateRevision);
+          assert.equal(observation.sourceCheckpointDigest, restored.checkpointDigest);
+          assert.equal(observation.scope, 'independent-single-input-events');
+        }
+        assert.ok(bindings?.inspectionCases?.length, 'Requested numerical comparisons need independent expectations');
+        for (const expected of bindings.inspectionCases) {
+          const actual = observations.flatMap(item => item.cases).find(item => item.inputId === expected.inputId && item.value === expected.value);
+          assert.ok(actual, 'The requested parameter value was actually inspected');
+          for (const [id, text] of Object.entries(expected.projectionText)) assert.equal(actual.projectionText.values.find(item => item.id === id)?.text, text);
+        }
+        const after = await readOutput();
+        assert.deepEqual(after.result.snapshot, restored.result.snapshot, 'Inspection cannot apply hypothetical inputs or state');
+        assert.equal(after.stateRevision, restored.stateRevision, 'Inspection cannot create a saved revision');
+      } else assert.ok(replies.every(response => response.status === 200 && !response.tools?.length), 'Follow-up answers directly');
       const saved = requests.filter(request => request.phase === 'followup').flatMap(request => request.context).filter(text => text.startsWith('Saved mini app parameters and host publication results')).map(text => JSON.parse(text.slice(text.indexOf('\n') + 1)));
       assert.ok(saved.some(context => context.apps.some(app => app.id === restored.plan.id && app.scenes?.some(scene => scene.selected?.id === restored.result.frame.scenes[view.id].selected && scene.cameraSource === 'saved-user-view'))), 'Real follow-up receives confirmed object selection and user camera');
       const app = saved.flatMap(context => context.apps).find(app => app.id === restored.plan.id);
+      assert.ok(app?.projectionText?.values.length, 'Real follow-up receives current projected text values');
+      for (const value of app.projectionText.values) assert.equal(value.text, String(restored.result.frame.bindings[value.id]), 'Projection values match the confirmed frame');
       assert.ok(app?.saveHistory?.transitions.length, 'Real follow-up receives host-confirmed saved comparisons');
       assert.equal(app.saveHistory.eventHistory, 'unavailable', 'Saved comparisons cannot claim to be click history');
       assert.equal(app.saveHistory.transitions.at(-1).toRevision, restored.stateRevision, 'Evidence ends at the confirmed current checkpoint');

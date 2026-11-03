@@ -9,11 +9,12 @@ import { answerDataDigest } from "../answer-output-receipts";
 import type { MiniAppCheckpoint, MiniAppVmReply } from "./vm";
 import { firstPartyRuntimeRoot } from "../first-party-extensions";
 import { validateMiniAppActionEvidence, type MiniAppActionEvidence } from "./action-preview";
+import { validateMiniAppInputCases, miniAppInputObservation, type MiniAppInputCase, type MiniAppInputEvidence } from "./input-inspection";
 
 declare global { var __pioraMiniAppTrialCapacity: { active: number } | undefined }
 const capacity = () => globalThis.__pioraMiniAppTrialCapacity ??= { active: 0 };
 
-interface TrialOptions { snapshot?: MiniAppCheckpoint; inputs?: JsonRecord; parameterInputs?: JsonRecord;
+interface TrialOptions { snapshot?: MiniAppCheckpoint; inputs?: JsonRecord; parameterInputs?: JsonRecord; inputCase?: MiniAppInputCase;
   migration?: { sourcePlan: MiniAppPlan1; snapshot: MiniAppCheckpoint }; signal?: AbortSignal; assetDirectory?: string; actionIds?: readonly string[] }
 interface TrialReply { result: MiniAppResult; preview?: MiniAppActionEvidence }
 
@@ -25,20 +26,36 @@ export async function previewMiniAppActions(plan: unknown, snapshot: MiniAppChec
   return (await runTrial(plan, { ...options, snapshot }, true)).preview!;
 }
 
+/** Each case runs the real input-event contract in a fresh bounded worker from the same source. */
+export async function previewMiniAppInputs(plan: unknown, snapshot: MiniAppCheckpoint, inputCases: unknown,
+  options: Pick<TrialOptions, "signal" | "assetDirectory"> = {}): Promise<MiniAppInputEvidence> {
+  const compiled = compileMiniAppPlan(plan), cases = validateMiniAppInputCases(compiled, snapshot, inputCases);
+  const evidence: MiniAppInputEvidence = { sourceCheckpointDigest: answerDataDigest(snapshot), scope: "independent-single-input-events", requestedCases: cases.length, omittedCases: 0, cases: [] };
+  for (const item of cases) {
+    const result = await trialMiniApp(compiled.plan, { ...options, snapshot, inputCase: item });
+    evidence.cases.push(miniAppInputObservation(compiled, snapshot, item, result));
+  }
+  boundedJson(evidence, 48_000);
+  return evidence;
+}
+
 /** Expensive compilation and generated execution never run on the request thread. */
 async function runTrial(plan: unknown, options: TrialOptions, preview = false): Promise<TrialReply> {
   if (options.signal?.aborted) throw new MiniAppError("STOPPED", "Mini app generation was cancelled");
   if (capacity().active >= 2) throw new MiniAppError("BUSY", "Mini app trial capacity is in use");
   if (options.snapshot && (options.inputs || options.migration)) throw new MiniAppError("SCHEMA", "Initialization inputs or migration cannot accompany a restored checkpoint");
   if (options.parameterInputs && !options.snapshot) throw new MiniAppError("SCHEMA", "Parameter application requires saved progress");
+  if (options.inputCase && (!options.snapshot || options.parameterInputs || preview)) throw new MiniAppError("SCHEMA", "Input inspection requires an independent saved checkpoint");
   const request = boundedJson({ plan, ...(preview ? { preview: true, ...(options.actionIds ? { previewActionIds: options.actionIds } : {}) } : {}), ...(options.snapshot ? { snapshot: options.snapshot } : {}), ...(options.inputs ? { inputs: options.inputs } : {}),
     ...(options.parameterInputs ? { parameterInputs: options.parameterInputs } : {}),
+    ...(options.inputCase ? { inputCase: options.inputCase } : {}),
     ...(options.migration ? { migration: options.migration } : {}) }, MINI_APP_LIMITS.replyBytes);
   // Only the pure bounded compiler runs here. A second compile inside the worker
   // validates its own boundary; request callers cannot provide compiled trees.
   const compiled = compileMiniAppPlan(plan);
   if (options.inputs) validateMiniAppInputs(compiled.plan, options.inputs);
   if (options.parameterInputs) validateMiniAppInputs(compiled.plan, options.parameterInputs);
+  if (options.inputCase) validateMiniAppInputCases(compiled, options.snapshot!, [options.inputCase]);
   if (options.migration) {
     const source = compileMiniAppPlan(options.migration.sourcePlan);
     if (!compiled.plan.migration || source.plan.id !== compiled.plan.id || answerDataDigest(source.plan) !== compiled.plan.migration.fromPlanDigest) throw new MiniAppError("CONFLICT", "Progress migration does not match its source program");

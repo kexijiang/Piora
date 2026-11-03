@@ -8,6 +8,7 @@ import { miniAppStepRequest } from "./playback";
 import { miniAppPresetTrials, miniAppScenePickTrials } from "./interaction-trial";
 import { miniAppEventRequest } from "./events";
 import { answerDataDigest } from "../answer-output-receipts";
+import { validateMiniAppInputCases } from "./input-inspection";
 import { MINI_APP_ACTION_PREVIEW_LIMITS, miniAppPreviewChoices, selectMiniAppPreviewChoices, miniAppPreviewOutcome, type MiniAppActionEvidence } from "./action-preview";
 
 void (async () => {
@@ -33,6 +34,14 @@ void (async () => {
       if (compiled.plan.migration.clock === "preserve") { snapshot.tick = previous.tick; snapshot.rng = previous.rng; }
     }
     let initial = validateMiniAppResult(compiled, vm.run(request));
+    if (data.inputCase !== undefined) {
+      if (!restoring || data.preview || data.parameterInputs !== undefined) throw new MiniAppError("SCHEMA", "Input inspection requires an independent saved checkpoint");
+      const [item] = validateMiniAppInputCases(compiled, initial.snapshot, [data.inputCase]);
+      initial = validateMiniAppResult(compiled, vm.run(miniAppEventRequest(compiled, initial.snapshot,
+        { type: "input", id: item.inputId, value: item.value }, initial.frame)));
+      parentPort!.postMessage({ result: boundedJson(initial, MINI_APP_LIMITS.replyBytes) });
+      return;
+    }
     if (data.preview === true) {
       if (!restoring || data.parameterInputs !== undefined) throw new MiniAppError("SCHEMA", "Local previews require an unchanged saved checkpoint");
       const choices = miniAppPreviewChoices(compiled, initial.frame);

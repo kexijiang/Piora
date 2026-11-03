@@ -1,0 +1,4028 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "phase": "3D articulated-arm generalization and projection text context",
+  "phaseComplete": false,
+  "committed": false,
+  "baseline": "bf21241e05f86ebc17dea688ea8a7f42d4cd37c3",
+  "model": {
+    "configuration": "DeepSeek V4.1 Flash",
+    "request": "deepseek/deepseek-flash",
+    "taskThinking": "enabled",
+    "fallback": false
+  },
+  "sources": {
+    "desktop": {
+      "files": 518,
+      "status": "matched"
+    },
+    "capabilities": {
+      "files": 176,
+      "status": "matched"
+    },
+    "firstSourceChanges": [
+      "lib/mini-app/capability-manifest.ts",
+      "lib/mini-app/decision-policy.ts",
+      "lib/mini-app/generation-runtime.ts"
+    ],
+    "firstSourceState": "pre-change generation; not claimed to use the final context implementation"
+  },
+  "tests": [
+    {
+      "path": ".verification/phase3-arm-text-context.log",
+      "tests": 2,
+      "passed": 1,
+      "failed": 1
+    },
+    {
+      "path": ".verification/phase3-arm-context-targeted.log",
+      "tests": 19,
+      "passed": 19,
+      "failed": 0
+    },
+    {
+      "path": ".verification/phase3-arm-capabilities.log",
+      "tests": 535,
+      "passed": 535,
+      "failed": 0
+    },
+    {
+      "path": ".verification/mini-app-capabilities-1Ceb9F/tests.log",
+      "tests": 535,
+      "passed": 535,
+      "failed": 0
+    }
+  ],
+  "firstGeneration": {
+    "id": "Fc48Tc",
+    "prompt": "我想看看两节机械臂怎么动。底座左右转、肘部上下折，点一下看看是哪个部件，也让我绕着它看。两个关节能分别调，也能一起回到起点。",
+    "status": "failed",
+    "error": {
+      "name": "AssertionError",
+      "message": "Expected values to be strictly equal:\n\nnull !== 'floor'\n"
+    },
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:48:52.928Z",
+        "durationMs": 29809
+      },
+      {
+        "name": "natural-language-generation",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:49:22.739Z",
+        "durationMs": 74254
+      },
+      {
+        "name": "operate-and-save",
+        "status": "failed",
+        "startedAt": "2026-11-03T05:50:36.994Z",
+        "durationMs": 6020
+      }
+    ],
+    "cleanupErrors": [],
+    "pageErrors": [],
+    "toolCalls": [
+      {
+        "id": "call_00_Al1Ca58ESkHGJFUuMsVl2836",
+        "name": "piora_render_mini_app"
+      }
+    ],
+    "originalPlan": {
+      "planVersion": 1,
+      "id": "twoJointArm",
+      "title": "两节机械臂",
+      "purpose": "用左右滑块控制底座绕竖直轴转动、用另一个滑块控制肘部绕水平轴上下折，点击场景中的任意部件查看它是哪一节，并可用鼠标或键盘绕着机械臂观察。",
+      "assumptions": [
+        "示意模型，1 个场景单位 = 1 米",
+        "右手坐标系，Y 轴向上：底座绕 Y 轴转动（-180°~180°），肘部绕与手臂垂直的 Z 轴俯仰（-30°~120°）",
+        "网格旋转按 XYZ 欧拉角、以弧度存储；分组变换相对父级生效",
+        "肘部下限 -30° 是为了让末端不穿到地面以下",
+        "起点姿态为两个关节都是 0°：手臂水平前伸"
+      ],
+      "inputs": [
+        {
+          "id": "baseYaw",
+          "label": "底座左右转（绕竖直轴）",
+          "meaning": "底座转台绕竖直 Y 轴的转角，正值向一侧转，0 为起点",
+          "type": "range",
+          "min": -180,
+          "max": 180,
+          "step": 5,
+          "value": 0
+        },
+        {
+          "id": "elbowAngle",
+          "label": "肘部上下折（绕水平轴）",
+          "meaning": "第二节臂相对第一节臂的俯仰角，正值向上折，0 为水平前伸",
+          "type": "range",
+          "min": -30,
+          "max": 120,
+          "step": 5,
+          "value": 0
+        }
+      ],
+      "stateSchema": {
+        "type": "object",
+        "properties": {
+          "selected": {
+            "type": "string",
+            "maxLength": 12,
+            "enum": [
+              "",
+              "basePlate",
+              "turret",
+              "upperArm",
+              "elbowJoint",
+              "foreArm",
+              "wrist",
+              "gripper",
+              "floor"
+            ]
+          }
+        },
+        "required": [
+          "selected"
+        ],
+        "additionalProperties": false
+      },
+      "document": {
+        "html": "<main><header><h2>两节机械臂</h2><p class=\"hint\">拖动画面可绕着机械臂旋转观察，滚轮缩放；点击任意部件可查看它是哪一节。</p></header><section class=\"panel\"><label>底座左右转（绕竖直轴）<input data-input=\"baseYaw\"></label><label>肘部上下折（绕水平轴）<input data-input=\"elbowAngle\"></label><button data-preset=\"home\"></button></section><section class=\"stage\"><div class=\"view\" data-viewport=\"arm\"></div><div class=\"readout\"><p class=\"pose\" data-text=\"pose\"></p><p class=\"tip\" data-text=\"tip\"></p><p class=\"sel\" data-text=\"selection\"></p><p class=\"info\" data-text=\"partInfo\"></p></div></section><footer><small>底座绕竖直 Y 轴转动，肘部绕垂直于手臂的水平 Z 轴转动；两个关节完全独立，也可以一起回到 0° 起点。</small></footer></main>",
+        "css": "main{display:grid;gap:14px;padding:16px;color:var(--text)}header{display:grid;gap:4px}h2{font-size:1.05rem;margin:0}.hint{margin:0;color:var(--text-muted);font-size:0.86rem;line-height:1.5}.panel{display:grid;gap:10px;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-panel)}label{display:grid;gap:6px;color:var(--text-muted);font-size:0.86rem}button{justify-self:start;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.86rem;cursor:pointer}button:hover{background:var(--bg-hover)}.stage{display:grid;gap:12px;grid-template-columns:2fr 1fr}.view{min-height:320px;overflow:hidden;border:1px solid var(--border);border-radius:10px;background:var(--bg-panel)}.readout{display:grid;gap:8px;align-content:start;padding:12px;border:1px solid var(--border);border-radius:10px;background:var(--bg-panel)}.readout p{margin:0;font-size:0.86rem;line-height:1.55}.pose{font-weight:600;color:var(--text)}.tip,.sel{color:var(--text-muted)}.info{color:var(--text)}footer small{color:var(--text-muted);font-size:0.78rem}@media (max-width:640px){.stage{grid-template-columns:1fr}.view{min-height:260px}}"
+      },
+      "viewports": [
+        {
+          "id": "arm",
+          "kind": "scene3d",
+          "label": "两节机械臂场景",
+          "width": 640,
+          "height": 440,
+          "picking": true,
+          "cameraControls": true,
+          "groups": true
+        }
+      ],
+      "program": "function meshLabel(id){\n  if(id===\"basePlate\")return \"底座基座\";\n  if(id===\"turret\")return \"底座转台\";\n  if(id===\"upperArm\")return \"第一节臂\";\n  if(id===\"elbowJoint\")return \"肘部关节\";\n  if(id===\"foreArm\")return \"第二节臂\";\n  if(id===\"wrist\")return \"手腕\";\n  if(id===\"gripper\")return \"末端夹爪\";\n  if(id===\"floor\")return \"工作面\";\n  return \"\";\n}\nfunction partInfo(id){\n  if(id===\"basePlate\")return \"底座基座：固定在地面上不动，底座转台在它上面左右转。\";\n  if(id===\"turret\")return \"底座转台：绕竖直轴左右转，整条手臂跟着它一起转。\";\n  if(id===\"upperArm\")return \"第一节臂：随底座转台左右转，本身没有独立关节。\";\n  if(id===\"elbowJoint\")return \"肘部关节：绕水平轴上下折，弯曲点就在两节臂之间。\";\n  if(id===\"foreArm\")return \"第二节臂：跟着肘部关节上下折，末端会因此抬高或降低。\";\n  if(id===\"wrist\")return \"手腕：第二节臂末端的连接件，随第二节臂一起运动。\";\n  if(id===\"gripper\")return \"末端夹爪：装在手腕上，跟着第二节臂一起运动。\";\n  if(id===\"floor\")return \"工作面：点击地面空白处会取消选中。\";\n  return \"点击场景里的任意部件，就能看到它属于哪一节。\";\n}\nfunction init(inputs,ctx){return {selected:\"\"};}\nfunction reduce(state,event,ctx){\n  if(event.type===\"scene-pick\"){\n    const id=event.object;\n    if(id&&id!==\"floor\")state.selected=id;else state.selected=\"\";\n  }\n  return state;\n}\nfunction advance(state,dt,ctx){return state;}\nfunction project(state,inputs,ctx){\n  const yaw=inputs.baseYaw*Math.PI/180;\n  const elbow=inputs.elbowAngle*Math.PI/180;\n  const sel=state.selected||\"\";\n  const HL=\"#f2b134\";\n  const jointY=0.88;\n  const tipY=jointY+1.65*Math.sin(elbow);\n  const pose=\"底座 \"+inputs.baseYaw+\"° · 肘部 \"+inputs.elbowAngle+\"°\";\n  const tip=\"末端离地约 \"+tipY.toFixed(2)+\" 米\";\n  const selection=sel?(\"选中：\"+meshLabel(sel)):\"未选中任何部件\";\n  const info=partInfo(sel);\n  const summary=pose+\"；\"+selection;\n  const groups=[\n    {id:\"pedestal\",position:[0,0,0],rotation:[0,0,0],scale:[1,1,1]},\n    {id:\"root\",position:[0,0,0],rotation:[0,yaw,0],scale:[1,1,1]},\n    {id:\"elbow\",parent:\"root\",position:[1.6,jointY,0],rotation:[0,0,elbow],scale:[1,1,1]}\n  ];\n  const meshes=[\n    {id:\"floor\",label:\"工作面\",geometry:{kind:\"plane\",width:9,height:9},position:[0,-0.01,0],rotation:[-1.5707963267948966,0,0],scale:[1,1,1],color:sel===\"floor\"?HL:\"#4b5462\"},\n    {id:\"basePlate\",label:\"底座基座\",parent:\"pedestal\",geometry:{kind:\"cylinder\",radiusTop:0.78,radiusBottom:0.9,height:0.2,segments:24},position:[0,0.1,0],rotation:[0,0,0],scale:[1,1,1],color:sel===\"basePlate\"?HL:\"#5b6472\"},\n    {id:\"turret\",label:\"底座转台\",parent:\"root\",geometry:{kind:\"cylinder\",radiusTop:0.5,radiusBottom:0.5,height:0.55,segments:24},position:[0,0.475,0],rotation:[0,0,0],scale:[1,1,1],color:sel===\"turret\"?HL:\"#7b8698\"},\n    {id:\"upperArm\",label:\"第一节臂\",parent:\"root\",geometry:{kind:\"box\",size:[1.3,0.28,0.28]},position:[0.95,jointY,0],rotation:[0,0,0],scale:[1,1,1],color:sel===\"upperArm\"?HL:\"#2f7fa8\"},\n    {id:\"elbowJoint\",label:\"肘部关节\",parent:\"elbow\",geometry:{kind:\"cylinder\",radiusTop:0.22,radiusBottom:0.22,height:0.46,segments:16},position:[0,0,0],rotation:[1.5707963267948966,0,0],scale:[1,1,1],color:sel===\"elbowJoint\"?HL:\"#d0803a\"},\n    {id:\"foreArm\",label:\"第二节臂\",parent:\"elbow\",geometry:{kind:\"box\",size:[1.28,0.24,0.24]},position:[0.64,0,0],rotation:[0,0,0],scale:[1,1,1],color:sel===\"foreArm\"?HL:\"#3f9c6d\"},\n    {id:\"wrist\",label:\"手腕\",parent:\"elbow\",geometry:{kind:\"cylinder\",radiusTop:0.13,radiusBottom:0.13,height:0.16,segments:16},position:[1.34,0,0],rotation:[0,0,1.5707963267948966],scale:[1,1,1],color:sel===\"wrist\"?HL:\"#9aa3b2\"},\n    {id:\"gripper\",label:\"末端夹爪\",parent:\"elbow\",geometry:{kind:\"box\",size:[0.3,0.3,0.22]},position:[1.5,0,0],rotation:[0,0,0],scale:[1,1,1],color:sel===\"gripper\"?HL:\"#c85a5a\"}\n  ];\n  return {summary:summary,bindings:{pose:pose,tip:tip,selection:selection,partInfo:info},\n    scenes:{arm:{camera:{position:[3.0,3.4,5.6],target:[0.9,0.9,0],fov:45},selected:sel||null,groups:groups,meshes:meshes}}};\n}",
+      "initialSnapshot": "两个关节都在 0°，手臂水平前伸：底座基座固定，底座转台带动第一节臂左右转，肘部关节让第二节臂上下折，末端夹爪在最外侧。点击任一部件会高亮并显示名称与作用。",
+      "playback": {
+        "mode": "none"
+      },
+      "inputPresets": [
+        {
+          "id": "home",
+          "label": "两个关节一起回到起点（0°）",
+          "values": {
+            "baseYaw": 0,
+            "elbowAngle": 0
+          }
+        }
+      ]
+    },
+    "initialBindings": {
+      "pose": "底座 0° · 肘部 0°",
+      "tip": "末端离地约 0.88 米",
+      "selection": "未选中任何部件",
+      "partInfo": "点击场景里的任意部件，就能看到它属于哪一节。"
+    },
+    "finalText": [
+      "已经生成并保存了「两节机械臂」：\n\n- **两个关节各自调整**：用两条滑块分别控制「底座左右转」，绕竖直 Y 轴，范围 ±180°；以及「肘部上下折」，绕水平 Z 轴，范围 −30°~120°。这样就能看清底座转动时整条手臂跟着转，而肘部只在两节臂之间弯折。\n- **点一下识别部件**：点击场景里的任一部件，它会高亮成琥珀色，右侧还会说明它是哪一节、由哪个关节带动。可点击的部件包括底座基座、底座转台、第一节臂、肘部关节、第二节臂、手腕和末端夹爪；点击地面空白处即可取消选中。\n- **绕着它观察**：可以直接拖拽旋转、用滚轮缩放，也可以用方向键与 Home 键；这些由宿主原生视角通道提供，不会覆盖你正在调整的关节角。\n- **一起回到起点**：点击「两个关节一起回到起点（0°）」即可把两个关节同时归零。此时手臂水平前伸，末端离地约 1.53 m。\n\n右侧还会实时显示当前姿态，以及末端离地高度，方便对照肘部角度变化的影响。如果你想改成竖直升降、加第三个腕关节，或者换一个起始姿态，告诉我具体范围即可。"
+    ],
+    "failureClassification": "fixture selected floor, whose declared reducer intentionally clears selection; original failure preserved"
+  },
+  "desktop": {
+    "id": "LKVV1e",
+    "status": "passed",
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:59:47.945Z",
+        "durationMs": 27950
+      },
+      {
+        "name": "load-original-program",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:00:15.898Z",
+        "durationMs": 15313
+      },
+      {
+        "name": "operate-and-save",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:00:31.212Z",
+        "durationMs": 3929
+      },
+      {
+        "name": "declared-input-presets",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:00:35.142Z",
+        "durationMs": 3127
+      },
+      {
+        "name": "geometry:home",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:00:38.269Z",
+        "durationMs": 5799
+      },
+      {
+        "name": "geometry:base-quarter",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:00:44.069Z",
+        "durationMs": 7025
+      },
+      {
+        "name": "geometry:elbow-up",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:00:51.095Z",
+        "durationMs": 8638
+      },
+      {
+        "name": "geometry:compound",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:00:59.734Z",
+        "durationMs": 8557
+      },
+      {
+        "name": "geometry:lower-bound",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:01:08.293Z",
+        "durationMs": 7381
+      },
+      {
+        "name": "geometry:oblique",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:01:15.675Z",
+        "durationMs": 11452
+      },
+      {
+        "name": "geometry:return-home",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:01:27.128Z",
+        "durationMs": 7783
+      },
+      {
+        "name": "reload-and-explain",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:01:34.912Z",
+        "durationMs": 26006
+      }
+    ],
+    "cleanupErrors": [],
+    "pageErrors": [],
+    "runtimeFindings": [],
+    "prompt": "我想看看两节机械臂怎么动。底座左右转、肘部上下折，点一下看看是哪个部件，也让我绕着它看。两个关节能分别调，也能一起回到起点。",
+    "followup": "先别生成新界面。说说我现在选中了哪里、两个关节是什么角度、末端离地多高、刚才改过哪些角度；转动底座、弯曲肘部和换个角度看，分别会改变什么？",
+    "checkpointCount": 14,
+    "explicitUiSaves": 13,
+    "poses": 7,
+    "geometricChecks": 70,
+    "geometricPassed": 70,
+    "maxError": 4.965068306494546e-16,
+    "audits": [
+      {
+        "name": "home",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "basePlate",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.1,
+              0
+            ],
+            "expected": [
+              0,
+              0.1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "turret",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.475,
+              0
+            ],
+            "expected": [
+              0,
+              0.475,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "upperArm",
+            "local": [
+              0.65,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "elbowJoint",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              -0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              0.64,
+              0,
+              0
+            ],
+            "actual": [
+              2.88,
+              0.88,
+              0
+            ],
+            "expected": [
+              2.88,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              0,
+              0
+            ],
+            "actual": [
+              3.25,
+              0.88,
+              0
+            ],
+            "expected": [
+              3.25,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              -0.15,
+              0
+            ],
+            "actual": [
+              3.25,
+              0.73,
+              0
+            ],
+            "expected": [
+              3.25,
+              0.73,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "upperArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "foreArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 8,
+        "groupCount": 3,
+        "pick": {
+          "world": [
+            2.24,
+            0.88,
+            0
+          ],
+          "pixel": {
+            "x": 401.68856457259943,
+            "y": 260.0649415339164
+          },
+          "expected": "foreArm",
+          "actual": "foreArm"
+        },
+        "cameraIndependent": true
+      },
+      {
+        "name": "base-quarter",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "basePlate",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.1,
+              0
+            ],
+            "expected": [
+              0,
+              0.1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "turret",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.475,
+              0
+            ],
+            "expected": [
+              0,
+              0.475,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "upperArm",
+            "local": [
+              0.65,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "elbowJoint",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              -0.64,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.7634913907721887e-16,
+              0.88,
+              -2.88
+            ],
+            "expected": [
+              1.7634913907721887e-16,
+              0.88,
+              -2.88
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              0,
+              0
+            ],
+            "actual": [
+              1.9900510486144489e-16,
+              0.88,
+              -3.25
+            ],
+            "expected": [
+              1.990051048614449e-16,
+              0.88,
+              -3.25
+            ],
+            "error": 2.465190328815662e-32,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              -0.15,
+              0
+            ],
+            "actual": [
+              1.9900510486144489e-16,
+              0.73,
+              -3.25
+            ],
+            "expected": [
+              1.990051048614449e-16,
+              0.73,
+              -3.25
+            ],
+            "error": 2.465190328815662e-32,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "upperArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              6.123233995736766e-17,
+              0,
+              -1
+            ],
+            "expected": [
+              6.123233995736766e-17,
+              0,
+              -1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "foreArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              6.123233995736765e-17,
+              0,
+              -1
+            ],
+            "expected": [
+              6.123233995736766e-17,
+              0,
+              -1
+            ],
+            "error": 1.232595164407831e-32,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 8,
+        "groupCount": 3
+      },
+      {
+        "name": "elbow-up",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "basePlate",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.1,
+              0
+            ],
+            "expected": [
+              0,
+              0.1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "turret",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.475,
+              0
+            ],
+            "expected": [
+              0,
+              0.475,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "upperArm",
+            "local": [
+              0.65,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "elbowJoint",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              -0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              2.16,
+              0
+            ],
+            "expected": [
+              1.6,
+              2.16,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              2.53,
+              0
+            ],
+            "expected": [
+              1.6,
+              2.53,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              -0.15,
+              0
+            ],
+            "actual": [
+              1.7500000000000002,
+              2.53,
+              0
+            ],
+            "expected": [
+              1.75,
+              2.53,
+              0
+            ],
+            "error": 2.220446049250313e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "upperArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "foreArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              6.123233995736766e-17,
+              1,
+              0
+            ],
+            "error": 6.123233995736766e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 8,
+        "groupCount": 3
+      },
+      {
+        "name": "compound",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "basePlate",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.1,
+              0
+            ],
+            "expected": [
+              0,
+              0.1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "turret",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.475,
+              0
+            ],
+            "expected": [
+              0,
+              0.475,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "upperArm",
+            "local": [
+              0.65,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "elbowJoint",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              -0.64,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              -1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              0.64,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              2.16,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              2.16,
+              -1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              2.53,
+              -1.6
+            ],
+            "expected": [
+              9.797174393178827e-17,
+              2.53,
+              -1.6
+            ],
+            "error": 1.232595164407831e-32,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              -0.15,
+              0
+            ],
+            "actual": [
+              1.0715659492539341e-16,
+              2.53,
+              -1.7500000000000002
+            ],
+            "expected": [
+              1.0715659492539343e-16,
+              2.53,
+              -1.75
+            ],
+            "error": 2.220446049250313e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "upperArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              6.123233995736766e-17,
+              0,
+              -1
+            ],
+            "expected": [
+              6.123233995736766e-17,
+              0,
+              -1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "foreArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              3.749399456654644e-33,
+              1,
+              -6.123233995736766e-17
+            ],
+            "error": 6.123233995736766e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 8,
+        "groupCount": 3,
+        "pick": {
+          "world": [
+            9.797174393178826e-17,
+            2.38,
+            -1.6
+          ],
+          "pixel": {
+            "x": 334.9922082807973,
+            "y": 47.01829017506573
+          },
+          "expected": "gripper",
+          "actual": "gripper"
+        }
+      },
+      {
+        "name": "lower-bound",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "basePlate",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.1,
+              0
+            ],
+            "expected": [
+              0,
+              0.1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "turret",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.475,
+              0
+            ],
+            "expected": [
+              0,
+              0.475,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "upperArm",
+            "local": [
+              0.65,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "elbowJoint",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              -0.64,
+              0,
+              0
+            ],
+            "actual": [
+              9.797174393178826e-17,
+              0.88,
+              1.6
+            ],
+            "expected": [
+              9.797174393178826e-17,
+              0.88,
+              1.6
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.6584855921018232e-16,
+              0.2400000000000001,
+              2.7085125168440816
+            ],
+            "expected": [
+              1.658485592101823e-16,
+              0.2400000000000001,
+              2.7085125168440816
+            ],
+            "error": 2.465190328815662e-32,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              0,
+              0
+            ],
+            "actual": [
+              1.8546920112659307e-16,
+              0.05500000000000016,
+              3.0289419162443236
+            ],
+            "expected": [
+              1.854692011265931e-16,
+              0.05500000000000016,
+              3.0289419162443236
+            ],
+            "error": 2.465190328815662e-32,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              -0.15,
+              0
+            ],
+            "actual": [
+              1.808767756297905e-16,
+              -0.07490381056766571,
+              2.953941916244324
+            ],
+            "expected": [
+              1.808767756297905e-16,
+              -0.07490381056766565,
+              2.9539419162443235
+            ],
+            "error": 4.47545209131181e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "upperArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              6.123233995736766e-17,
+              0,
+              1
+            ],
+            "expected": [
+              6.123233995736766e-17,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "foreArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              5.3028761936245346e-17,
+              -0.4999999999999999,
+              0.8660254037844386
+            ],
+            "expected": [
+              5.3028761936245346e-17,
+              -0.49999999999999994,
+              0.8660254037844387
+            ],
+            "error": 1.2412670766236366e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 8,
+        "groupCount": 3
+      },
+      {
+        "name": "oblique",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "basePlate",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.1,
+              0
+            ],
+            "expected": [
+              0,
+              0.1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "turret",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.475,
+              0
+            ],
+            "expected": [
+              0,
+              0.475,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "upperArm",
+            "local": [
+              0.65,
+              0,
+              0
+            ],
+            "actual": [
+              1.1313708498984762,
+              0.88,
+              -1.131370849898476
+            ],
+            "expected": [
+              1.1313708498984762,
+              0.88,
+              -1.131370849898476
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "elbowJoint",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.1313708498984762,
+              0.88,
+              -1.131370849898476
+            ],
+            "expected": [
+              1.1313708498984762,
+              0.88,
+              -1.131370849898476
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              -0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.1313708498984762,
+              0.88,
+              -1.131370849898476
+            ],
+            "expected": [
+              1.1313708498984762,
+              0.88,
+              -1.131370849898476
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.5839191898578666,
+              1.9885125168440814,
+              -1.5839191898578664
+            ],
+            "expected": [
+              1.5839191898578668,
+              1.9885125168440814,
+              -1.5839191898578666
+            ],
+            "error": 3.1401849173675503e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              0,
+              0
+            ],
+            "actual": [
+              1.7147339443773781,
+              2.3089419162443234,
+              -1.7147339443773777
+            ],
+            "expected": [
+              1.714733944377378,
+              2.3089419162443234,
+              -1.7147339443773777
+            ],
+            "error": 2.220446049250313e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              -0.15,
+              0
+            ],
+            "actual": [
+              1.806589809731747,
+              2.2339419162443237,
+              -1.8065898097317468
+            ],
+            "expected": [
+              1.8065898097317472,
+              2.2339419162443233,
+              -1.8065898097317468
+            ],
+            "error": 4.965068306494546e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "upperArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              0.7071067811865476,
+              0,
+              -0.7071067811865475
+            ],
+            "expected": [
+              0.7071067811865476,
+              0,
+              -0.7071067811865475
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "foreArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              0.3535533905932739,
+              0.8660254037844386,
+              -0.3535533905932737
+            ],
+            "expected": [
+              0.35355339059327384,
+              0.8660254037844386,
+              -0.3535533905932738
+            ],
+            "error": 1.2412670766236366e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 8,
+        "groupCount": 3
+      },
+      {
+        "name": "return-home",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "basePlate",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.1,
+              0
+            ],
+            "expected": [
+              0,
+              0.1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "turret",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0,
+              0.475,
+              0
+            ],
+            "expected": [
+              0,
+              0.475,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "upperArm",
+            "local": [
+              0.65,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "elbowJoint",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              -0.64,
+              0,
+              0
+            ],
+            "actual": [
+              1.6,
+              0.88,
+              0
+            ],
+            "expected": [
+              1.6,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "foreArm",
+            "local": [
+              0.64,
+              0,
+              0
+            ],
+            "actual": [
+              2.88,
+              0.88,
+              0
+            ],
+            "expected": [
+              2.88,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              0,
+              0
+            ],
+            "actual": [
+              3.25,
+              0.88,
+              0
+            ],
+            "expected": [
+              3.25,
+              0.88,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "gripper",
+            "local": [
+              0.15,
+              -0.15,
+              0
+            ],
+            "actual": [
+              3.25,
+              0.73,
+              0
+            ],
+            "expected": [
+              3.25,
+              0.73,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "upperArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "foreArm",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 8,
+        "groupCount": 3,
+        "cameraIndependent": true
+      }
+    ],
+    "requests": [
+      {
+        "id": 1,
+        "phase": "followup",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "id": 1,
+        "status": 200,
+        "phase": "followup",
+        "modelIds": [
+          "deepseek-flash"
+        ],
+        "text": "当前状态（来自已保存的投影，不是重新生成的界面）：\n\n| 项目 | 当前值 |\n|---|---|\n| 选中部件 | 末端夹爪（id `gripper`） |\n| 底座左右转 | 0° |\n| 肘部上下折 | 0° |\n| 末端离地 | 约 0.88 米 |\n| 相机到目标的距离 | 6.48 场景单位，与程序默认值相同 |\n\n顺手更正一条：我上一条说“末端离地约 1.53 m”是算错了。公式是 `0.88 + 1.65·sin(肘部角)`，关节 0° 时就是 0.88 m，界面显示的也是这个值。\n\n**刚才改过的角度**\n\n已保存的检查点里，底座和肘部都被来回扫过好几遍（按保存点记录的顺序）：\n\n- 底座：90 → −160 → −125 → −90 → −60 → −25 → 5 → 40 → 45 → 15 → 0\n- 肘部：90 → −30 → 110 → 80 → 60 → −30 → 0\n\n最后一个有内容的变化让两个关节同时回到 0°，效果和“两个关节一起回到起点”一致；此后那次保存只改了相机坐标，两个关节保持 0°。需要说明两点：更早还有 17 次保存差异没有保留，那些中间值属于未知；另外“又回到 0°”说明不了之前没动过。\n\n另外，根据保存的坐标，最近一次视角变化把镜头绕目标在同一高度、同一半径上水平转了约 15°（默认方位约 69°，现在约 54°），没有拉近或推远。\n\n**三种操作各自会改变什么**\n\n- **转动底座**：只转“底座转台”那一个组（绕竖直 Y 轴）。第一节臂、肘部关节、第二节臂、手腕、夹爪像刚体一样在水平面内一起改变朝向，范围 ±180°；末端离地高度**不变**（肘部 0° 时仍是 0.88 m），底座基座和地面不动，选中状态也不变。\n- **弯曲肘部**：只转肘部关节（位置 [1.6, 0.88, 0]，绕水平 Z 轴）。第二节臂、手腕、夹爪相对第一节臂折叠，范围 −30°~120°，末端高度从约 0.06 m 一直变到约 2.31 m；第一节臂和转台保持原位，选中状态不变。\n- **换个角度看**：只改保存的相机位姿（位置、目标点、视场角），关节角度、末端高度、选中部件全都不变；它属于独立的视角状态。\n\n这些说明是按应用的几何与旋转约定推出来的。应用里没有登记可逐个模拟的按钮动作（localActions 为空），所以这次没有对任何操作做实际执行或单步模拟。"
+      }
+    ],
+    "finalStateRevision": 33,
+    "inputs": {
+      "baseYaw": 0,
+      "elbowAngle": 0
+    },
+    "saveHistory": {
+      "version": 1,
+      "omitted": 17,
+      "transitions": [
+        {
+          "from": {
+            "revision": 17,
+            "digest": "34a0943dd311dfbb9d21e01cd2bbff2943961eecc812b2e34c47915ee7a4d804"
+          },
+          "to": {
+            "revision": 18,
+            "digest": "94da6d96d537dc2803e6b75d1419f1be32ab833f30f14c2459597d2cf528ec1a"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/state/selected",
+                "kind": "replace",
+                "before": "foreArm",
+                "after": "gripper"
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 18,
+            "digest": "94da6d96d537dc2803e6b75d1419f1be32ab833f30f14c2459597d2cf528ec1a"
+          },
+          "to": {
+            "revision": 19,
+            "digest": "47c3b66e8bd1249fe4c69b76335cf80e26f475b1c74666cbe70963b358f31b5c"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": 90,
+                "after": -160
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 19,
+            "digest": "47c3b66e8bd1249fe4c69b76335cf80e26f475b1c74666cbe70963b358f31b5c"
+          },
+          "to": {
+            "revision": 20,
+            "digest": "88fee6eebe2c78297314e2fd01ab6dda6da50ab38d4c4cf589bc6e18eba36cd3"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": -160,
+                "after": -125
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 20,
+            "digest": "88fee6eebe2c78297314e2fd01ab6dda6da50ab38d4c4cf589bc6e18eba36cd3"
+          },
+          "to": {
+            "revision": 21,
+            "digest": "75e3ad34716ac03bf6e0a275b64624884dac3d729cfb2a4becb5d47009caa3ac"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": -125,
+                "after": -90
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 21,
+            "digest": "75e3ad34716ac03bf6e0a275b64624884dac3d729cfb2a4becb5d47009caa3ac"
+          },
+          "to": {
+            "revision": 22,
+            "digest": "cee4b7eb4229fece0b60cddd85dc5dc3161a7981fca75fbf1c5ff4f1e83a10e2"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/elbowAngle",
+                "kind": "replace",
+                "before": 90,
+                "after": -30
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 22,
+            "digest": "cee4b7eb4229fece0b60cddd85dc5dc3161a7981fca75fbf1c5ff4f1e83a10e2"
+          },
+          "to": {
+            "revision": 23,
+            "digest": "2916ab0273e53f295c3389ac3e1713308255b0a3e56bd8aa21b59549f3550fd2"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": -90,
+                "after": -60
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 23,
+            "digest": "2916ab0273e53f295c3389ac3e1713308255b0a3e56bd8aa21b59549f3550fd2"
+          },
+          "to": {
+            "revision": 24,
+            "digest": "c509b3c9e4db52cb23ed970269344f220d6c6fdd427db4295883ecb293a5cc7e"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": -60,
+                "after": -25
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 24,
+            "digest": "c509b3c9e4db52cb23ed970269344f220d6c6fdd427db4295883ecb293a5cc7e"
+          },
+          "to": {
+            "revision": 25,
+            "digest": "93bd925b7dcb45afcd2e736163d2cbb2365af24fed1519daac73cdeaa9f6bacf"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": -25,
+                "after": 5
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 25,
+            "digest": "93bd925b7dcb45afcd2e736163d2cbb2365af24fed1519daac73cdeaa9f6bacf"
+          },
+          "to": {
+            "revision": 26,
+            "digest": "798bce19c094f9d967cfc5b0f9b67656e261dae00f4edc9794cf0627220f0bd3"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": 5,
+                "after": 40
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 26,
+            "digest": "798bce19c094f9d967cfc5b0f9b67656e261dae00f4edc9794cf0627220f0bd3"
+          },
+          "to": {
+            "revision": 27,
+            "digest": "78b91909ae288d6c22c3d1b5b21b5e3172d00ca5920aadaf5632b61a39c20a39"
+          },
+          "changes": {
+            "complete": true,
+            "total": 2,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": 40,
+                "after": 45
+              },
+              {
+                "path": "/inputs/elbowAngle",
+                "kind": "replace",
+                "before": -30,
+                "after": 110
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 27,
+            "digest": "78b91909ae288d6c22c3d1b5b21b5e3172d00ca5920aadaf5632b61a39c20a39"
+          },
+          "to": {
+            "revision": 28,
+            "digest": "696b67c53e10a4a2e6c6900f50f69c0e523fbed551d53f422beeb9779802de5c"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/elbowAngle",
+                "kind": "replace",
+                "before": 110,
+                "after": 80
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 28,
+            "digest": "696b67c53e10a4a2e6c6900f50f69c0e523fbed551d53f422beeb9779802de5c"
+          },
+          "to": {
+            "revision": 29,
+            "digest": "e14e4be6ae67d7a62fc77363f98f8f035d0d10a1bfd9cb70d0af278fbba1cbcb"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/elbowAngle",
+                "kind": "replace",
+                "before": 80,
+                "after": 60
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 29,
+            "digest": "e14e4be6ae67d7a62fc77363f98f8f035d0d10a1bfd9cb70d0af278fbba1cbcb"
+          },
+          "to": {
+            "revision": 30,
+            "digest": "9a68573c2039181a75c2b22658401fe019ba7b864fb83e3c50321575cf8a248d"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": 45,
+                "after": 15
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 30,
+            "digest": "9a68573c2039181a75c2b22658401fe019ba7b864fb83e3c50321575cf8a248d"
+          },
+          "to": {
+            "revision": 31,
+            "digest": "5109f5cb21ec3b048f638e1c69f4a437b571f319cb96157fc3b828467759ab17"
+          },
+          "changes": {
+            "complete": true,
+            "total": 2,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/baseYaw",
+                "kind": "replace",
+                "before": 15,
+                "after": 0
+              },
+              {
+                "path": "/inputs/elbowAngle",
+                "kind": "replace",
+                "before": 60,
+                "after": -30
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 31,
+            "digest": "5109f5cb21ec3b048f638e1c69f4a437b571f319cb96157fc3b828467759ab17"
+          },
+          "to": {
+            "revision": 32,
+            "digest": "5a703a2943e4bad4aaae9d68c03134ead82fdbeda33f5736ebf88718ef86c5d2"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/elbowAngle",
+                "kind": "replace",
+                "before": -30,
+                "after": 0
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 32,
+            "digest": "5a703a2943e4bad4aaae9d68c03134ead82fdbeda33f5736ebf88718ef86c5d2"
+          },
+          "to": {
+            "revision": 33,
+            "digest": "688eb1ecebe3ea01f62b481543d1f544e6496e2f4965d89da9c99f5a3388c6dd"
+          },
+          "changes": {
+            "complete": true,
+            "total": 3,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/view/cameras/arm/camera/position/0",
+                "kind": "replace",
+                "before": 3.8830691186188417,
+                "after": 4.377830887781161
+              },
+              {
+                "path": "/view/cameras/arm/camera/position/1",
+                "kind": "replace",
+                "before": 4.862760189223484,
+                "after": 3.4000000000000004
+              },
+              {
+                "path": "/view/cameras/arm/camera/position/2",
+                "kind": "replace",
+                "before": 4.173467421251555,
+                "after": 4.8656646325034885
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "projection": {
+      "pose": "底座 0° · 肘部 0°",
+      "tip": "末端离地约 0.88 米",
+      "selection": "选中：末端夹爪",
+      "partInfo": "末端夹爪：装在手腕上，跟着第二节臂一起运动。"
+    },
+    "modelContext": {
+      "apps": [
+        {
+          "id": "twoJointArm",
+          "title": "两节机械臂",
+          "revision": 1,
+          "stateRevision": 33,
+          "inputs": [
+            {
+              "id": "baseYaw",
+              "label": "底座左右转（绕竖直轴）",
+              "meaning": "底座转台绕竖直 Y 轴的转角，正值向一侧转，0 为起点",
+              "value": 0
+            },
+            {
+              "id": "elbowAngle",
+              "label": "肘部上下折（绕水平轴）",
+              "meaning": "第二节臂相对第一节臂的俯仰角，正值向上折，0 为水平前伸",
+              "value": 0
+            }
+          ],
+          "summary": "底座 0° · 肘部 0°；选中：末端夹爪",
+          "runtimeMetadata": {
+            "tick": 0,
+            "playbackMode": "none"
+          },
+          "projectionText": {
+            "scope": "current-projection-text-bindings",
+            "values": [
+              {
+                "id": "pose",
+                "text": "底座 0° · 肘部 0°"
+              },
+              {
+                "id": "tip",
+                "text": "末端离地约 0.88 米"
+              },
+              {
+                "id": "selection",
+                "text": "选中：末端夹爪"
+              },
+              {
+                "id": "partInfo",
+                "text": "末端夹爪：装在手腕上，跟着第二节臂一起运动。"
+              }
+            ],
+            "omitted": 0
+          },
+          "saveHistory": {
+            "scope": "confirmed-save-comparisons",
+            "eventHistory": "unavailable",
+            "arrayIdentity": "positions-not-stable-keys",
+            "status": "available",
+            "omittedTransitions": 17,
+            "transitions": [
+              {
+                "fromRevision": 17,
+                "toRevision": 18,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/state/selected",
+                      "kind": "replace",
+                      "before": "foreArm",
+                      "after": "gripper"
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 18,
+                "toRevision": 19,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": 90,
+                      "after": -160
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 19,
+                "toRevision": 20,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": -160,
+                      "after": -125
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 20,
+                "toRevision": 21,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": -125,
+                      "after": -90
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 21,
+                "toRevision": 22,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/elbowAngle",
+                      "kind": "replace",
+                      "before": 90,
+                      "after": -30
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 22,
+                "toRevision": 23,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": -90,
+                      "after": -60
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 23,
+                "toRevision": 24,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": -60,
+                      "after": -25
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 24,
+                "toRevision": 25,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": -25,
+                      "after": 5
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 25,
+                "toRevision": 26,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": 5,
+                      "after": 40
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 26,
+                "toRevision": 27,
+                "changes": {
+                  "complete": true,
+                  "total": 2,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": 40,
+                      "after": 45
+                    },
+                    {
+                      "path": "/inputs/elbowAngle",
+                      "kind": "replace",
+                      "before": -30,
+                      "after": 110
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 27,
+                "toRevision": 28,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/elbowAngle",
+                      "kind": "replace",
+                      "before": 110,
+                      "after": 80
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 28,
+                "toRevision": 29,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/elbowAngle",
+                      "kind": "replace",
+                      "before": 80,
+                      "after": 60
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 29,
+                "toRevision": 30,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": 45,
+                      "after": 15
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 30,
+                "toRevision": 31,
+                "changes": {
+                  "complete": true,
+                  "total": 2,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/baseYaw",
+                      "kind": "replace",
+                      "before": 15,
+                      "after": 0
+                    },
+                    {
+                      "path": "/inputs/elbowAngle",
+                      "kind": "replace",
+                      "before": 60,
+                      "after": -30
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 31,
+                "toRevision": 32,
+                "changes": {
+                  "complete": true,
+                  "total": 1,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/inputs/elbowAngle",
+                      "kind": "replace",
+                      "before": -30,
+                      "after": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "fromRevision": 32,
+                "toRevision": 33,
+                "changes": {
+                  "complete": true,
+                  "total": 3,
+                  "omitted": 0,
+                  "items": [
+                    {
+                      "path": "/view/cameras/arm/camera/position/0",
+                      "kind": "replace",
+                      "before": 3.8830691186188417,
+                      "after": 4.377830887781161
+                    },
+                    {
+                      "path": "/view/cameras/arm/camera/position/1",
+                      "kind": "replace",
+                      "before": 4.862760189223484,
+                      "after": 3.4000000000000004
+                    },
+                    {
+                      "path": "/view/cameras/arm/camera/position/2",
+                      "kind": "replace",
+                      "before": 4.173467421251555,
+                      "after": 4.8656646325034885
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "scenes": [
+            {
+              "id": "arm",
+              "selected": {
+                "id": "gripper",
+                "label": "末端夹爪"
+              },
+              "camera": {
+                "position": [
+                  4.377830887781161,
+                  3.4000000000000004,
+                  4.8656646325034885
+                ],
+                "target": [
+                  0.9,
+                  0.9,
+                  0
+                ],
+                "fov": 45
+              },
+              "cameraSource": "saved-user-view",
+              "cameraMetrics": {
+                "units": "scene-units",
+                "distanceToTarget": 6.482283548256741,
+                "programDefaultDistanceToTarget": 6.48228354825674,
+                "scope": "current-view-versus-current-program-default-not-history"
+              }
+            }
+          ],
+          "conversionSource": {
+            "kind": "mini-app",
+            "appId": "twoJointArm",
+            "toolCallId": "call_00_Al1Ca58ESkHGJFUuMsVl2836",
+            "digest": "120cfd7cc86f9c9c4afdfff64c9155612e09d8a961392b0ae8615f2cd86446d6"
+          },
+          "progressSource": {
+            "planDigest": "a9e89f9a68fd35ca9f3b646badf4e3288ddbdf8f26385900b45e08e3ee1824a1",
+            "complete": true,
+            "stateSchema": {
+              "type": "object",
+              "properties": {
+                "selected": {
+                  "type": "string",
+                  "maxLength": 12,
+                  "enum": [
+                    "",
+                    "basePlate",
+                    "turret",
+                    "upperArm",
+                    "elbowJoint",
+                    "foreArm",
+                    "wrist",
+                    "gripper",
+                    "floor"
+                  ]
+                }
+              },
+              "required": [
+                "selected"
+              ],
+              "additionalProperties": false
+            },
+            "snapshot": {
+              "inputs": {
+                "baseYaw": 0,
+                "elbowAngle": 0
+              },
+              "state": {
+                "selected": "gripper"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          "localActions": {
+            "tool": "piora_inspect_mini_app",
+            "choices": [],
+            "omitted": 0
+          }
+        }
+      ],
+      "publications": [],
+      "omittedApps": 0
+    },
+    "contextCharacters": 5020,
+    "bindings": {
+      "version": 1,
+      "planDigest": "a9e89f9a68fd35ca9f3b646badf4e3288ddbdf8f26385900b45e08e3ee1824a1",
+      "viewport": "arm",
+      "selection": "foreArm",
+      "oracleBasis": "Independent articulated-chain equations: right-handed +Y base yaw, local +Z elbow pitch, pivot radius 1.6 and height 0.88; distal axial length 1.65 and gripper half-height 0.15. Dimensions read from the original published plan, expectations do not use its project() or product transforms.",
+      "steps": [
+        {
+          "name": "home",
+          "inputs": {
+            "baseYaw": 0,
+            "elbowAngle": 0
+          },
+          "points": [
+            {
+              "object": "basePlate",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.1,
+                0
+              ]
+            },
+            {
+              "object": "turret",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.475,
+                0
+              ]
+            },
+            {
+              "object": "upperArm",
+              "local": [
+                0.65,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "elbowJoint",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                -0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                0.64,
+                0,
+                0
+              ],
+              "expected": [
+                2.88,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                0,
+                0
+              ],
+              "expected": [
+                3.25,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                -0.15,
+                0
+              ],
+              "expected": [
+                3.25,
+                0.73,
+                0
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "upperArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            }
+          ],
+          "pick": {
+            "object": "foreArm",
+            "local": [
+              0,
+              0,
+              0
+            ]
+          },
+          "cameraKeys": [
+            "ArrowLeft",
+            "ArrowUp"
+          ]
+        },
+        {
+          "name": "base-quarter",
+          "inputs": {
+            "baseYaw": 90,
+            "elbowAngle": 0
+          },
+          "points": [
+            {
+              "object": "basePlate",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.1,
+                0
+              ]
+            },
+            {
+              "object": "turret",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.475,
+                0
+              ]
+            },
+            {
+              "object": "upperArm",
+              "local": [
+                0.65,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                -1.6
+              ]
+            },
+            {
+              "object": "elbowJoint",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                -1.6
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                -0.64,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                -1.6
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.7634913907721887e-16,
+                0.88,
+                -2.88
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                0,
+                0
+              ],
+              "expected": [
+                1.990051048614449e-16,
+                0.88,
+                -3.25
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                -0.15,
+                0
+              ],
+              "expected": [
+                1.990051048614449e-16,
+                0.73,
+                -3.25
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "upperArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                6.123233995736766e-17,
+                0,
+                -1
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                6.123233995736766e-17,
+                0,
+                -1
+              ]
+            }
+          ]
+        },
+        {
+          "name": "elbow-up",
+          "inputs": {
+            "baseYaw": 0,
+            "elbowAngle": 90
+          },
+          "points": [
+            {
+              "object": "basePlate",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.1,
+                0
+              ]
+            },
+            {
+              "object": "turret",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.475,
+                0
+              ]
+            },
+            {
+              "object": "upperArm",
+              "local": [
+                0.65,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "elbowJoint",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                -0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                2.16,
+                0
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                2.53,
+                0
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                -0.15,
+                0
+              ],
+              "expected": [
+                1.75,
+                2.53,
+                0
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "upperArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                6.123233995736766e-17,
+                1,
+                0
+              ]
+            }
+          ]
+        },
+        {
+          "name": "compound",
+          "inputs": {
+            "baseYaw": 90,
+            "elbowAngle": 90
+          },
+          "points": [
+            {
+              "object": "basePlate",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.1,
+                0
+              ]
+            },
+            {
+              "object": "turret",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.475,
+                0
+              ]
+            },
+            {
+              "object": "upperArm",
+              "local": [
+                0.65,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                -1.6
+              ]
+            },
+            {
+              "object": "elbowJoint",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                -1.6
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                -0.64,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                -1.6
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                0.64,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                2.16,
+                -1.6
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178827e-17,
+                2.53,
+                -1.6
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                -0.15,
+                0
+              ],
+              "expected": [
+                1.0715659492539343e-16,
+                2.53,
+                -1.75
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "upperArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                6.123233995736766e-17,
+                0,
+                -1
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                3.749399456654644e-33,
+                1,
+                -6.123233995736766e-17
+              ]
+            }
+          ],
+          "pick": {
+            "object": "gripper",
+            "local": [
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "name": "lower-bound",
+          "inputs": {
+            "baseYaw": -90,
+            "elbowAngle": -30
+          },
+          "points": [
+            {
+              "object": "basePlate",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.1,
+                0
+              ]
+            },
+            {
+              "object": "turret",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.475,
+                0
+              ]
+            },
+            {
+              "object": "upperArm",
+              "local": [
+                0.65,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                1.6
+              ]
+            },
+            {
+              "object": "elbowJoint",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                1.6
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                -0.64,
+                0,
+                0
+              ],
+              "expected": [
+                9.797174393178826e-17,
+                0.88,
+                1.6
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.658485592101823e-16,
+                0.2400000000000001,
+                2.7085125168440816
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                0,
+                0
+              ],
+              "expected": [
+                1.854692011265931e-16,
+                0.05500000000000016,
+                3.0289419162443236
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                -0.15,
+                0
+              ],
+              "expected": [
+                1.808767756297905e-16,
+                -0.07490381056766565,
+                2.9539419162443235
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "upperArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                6.123233995736766e-17,
+                0,
+                1
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                5.3028761936245346e-17,
+                -0.49999999999999994,
+                0.8660254037844387
+              ]
+            }
+          ]
+        },
+        {
+          "name": "oblique",
+          "inputs": {
+            "baseYaw": 45,
+            "elbowAngle": 60
+          },
+          "points": [
+            {
+              "object": "basePlate",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.1,
+                0
+              ]
+            },
+            {
+              "object": "turret",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.475,
+                0
+              ]
+            },
+            {
+              "object": "upperArm",
+              "local": [
+                0.65,
+                0,
+                0
+              ],
+              "expected": [
+                1.1313708498984762,
+                0.88,
+                -1.131370849898476
+              ]
+            },
+            {
+              "object": "elbowJoint",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.1313708498984762,
+                0.88,
+                -1.131370849898476
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                -0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.1313708498984762,
+                0.88,
+                -1.131370849898476
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.5839191898578668,
+                1.9885125168440814,
+                -1.5839191898578666
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                0,
+                0
+              ],
+              "expected": [
+                1.714733944377378,
+                2.3089419162443234,
+                -1.7147339443773777
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                -0.15,
+                0
+              ],
+              "expected": [
+                1.8065898097317472,
+                2.2339419162443233,
+                -1.8065898097317468
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "upperArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                0.7071067811865476,
+                0,
+                -0.7071067811865475
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                0.35355339059327384,
+                0.8660254037844386,
+                -0.3535533905932738
+              ]
+            }
+          ]
+        },
+        {
+          "name": "return-home",
+          "inputs": {
+            "baseYaw": 0,
+            "elbowAngle": 0
+          },
+          "points": [
+            {
+              "object": "basePlate",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.1,
+                0
+              ]
+            },
+            {
+              "object": "turret",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                0,
+                0.475,
+                0
+              ]
+            },
+            {
+              "object": "upperArm",
+              "local": [
+                0.65,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "elbowJoint",
+              "local": [
+                0,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                -0.64,
+                0,
+                0
+              ],
+              "expected": [
+                1.6,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                0.64,
+                0,
+                0
+              ],
+              "expected": [
+                2.88,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                0,
+                0
+              ],
+              "expected": [
+                3.25,
+                0.88,
+                0
+              ]
+            },
+            {
+              "object": "gripper",
+              "local": [
+                0.15,
+                -0.15,
+                0
+              ],
+              "expected": [
+                3.25,
+                0.73,
+                0
+              ]
+            }
+          ],
+          "directions": [
+            {
+              "object": "upperArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            },
+            {
+              "object": "foreArm",
+              "local": [
+                1,
+                0,
+                0
+              ],
+              "expected": [
+                1,
+                0,
+                0
+              ]
+            }
+          ],
+          "cameraKeys": [
+            "Home",
+            "ArrowRight"
+          ]
+        }
+      ]
+    },
+    "original": {
+      "sha256": "c2632e1b63cdc087057741e3ec4290c39cf08b457d8dc003ba8e05f94dc00edb",
+      "planDigest": "a9e89f9a68fd35ca9f3b646badf4e3288ddbdf8f26385900b45e08e3ee1824a1"
+    },
+    "maximumHistoryBytes": 5999
+  },
+  "semanticReview": {
+    "status": "not-passed",
+    "twoHumanAcceptance": "deferred",
+    "currentReadout": {
+      "status": "passed for this sample",
+      "height": 0.88,
+      "selected": "gripper",
+      "angles": [
+        0,
+        0
+      ],
+      "note": "Model explicitly corrects its previous 1.53 m claim after receiving exact current projection text; one replay does not establish general accuracy"
+    },
+    "floorClearance": {
+      "status": "failed generated assumption",
+      "floorY": -0.01,
+      "sampledLowerCorner": {
+        "kind": "point",
+        "object": "gripper",
+        "local": [
+          0.15,
+          -0.15,
+          0
+        ],
+        "actual": [
+          1.808767756297905e-16,
+          -0.07490381056766571,
+          2.953941916244324
+        ],
+        "expected": [
+          1.808767756297905e-16,
+          -0.07490381056766565,
+          2.9539419162443235
+        ],
+        "error": 4.47545209131181e-16,
+        "tolerance": 1e-7,
+        "passed": true
+      },
+      "note": "At elbow -30°, the lower distal gripper corner is below the declared working plane",
+      "penetrationDepth": 0.06490381056766571
+    },
+    "heightRange": {
+      "status": "failed follow-up claim",
+      "claimedUpper": 2.31,
+      "counterexample": {
+        "kind": "point",
+        "object": "gripper",
+        "local": [
+          0.15,
+          0,
+          0
+        ],
+        "actual": [
+          1.6,
+          2.53,
+          0
+        ],
+        "expected": [
+          1.6,
+          2.53,
+          0
+        ],
+        "error": 0,
+        "tolerance": 1e-7,
+        "passed": true
+      },
+      "correctMaximum": 2.53,
+      "maximumAtElbow": 90,
+      "note": "120° endpoint is not the maximum of sine on [-30°,120°]"
+    },
+    "latestCameraChange": {
+      "status": "failed follow-up attribution",
+      "before": {
+        "position": [
+          3.8830691186188417,
+          4.862760189223484,
+          4.173467421251555
+        ],
+        "target": [
+          0.9,
+          0.9,
+          0
+        ],
+        "fov": 45
+      },
+      "after": {
+        "position": [
+          4.377830887781161,
+          3.4000000000000004,
+          4.8656646325034885
+        ],
+        "target": [
+          0.9,
+          0.9,
+          0
+        ],
+        "fov": 45
+      },
+      "beforeMetrics": {
+        "azimuthDegrees": 54.44395478041651,
+        "elevationDegrees": 37.68512738352722,
+        "distance": 6.482283548256744
+      },
+      "afterMetrics": {
+        "azimuthDegrees": 54.44395478041653,
+        "elevationDegrees": 22.685127383527206,
+        "distance": 6.482283548256741
+      },
+      "azimuthConvention": "atan2(z,x), relative to camera target",
+      "note": "Last retained save lowers elevation by 15° with unchanged azimuth; answer instead described default-to-current azimuth change as the last change at equal height"
+    },
+    "latestAngleChange": {
+      "status": "failed simultaneous-zero claim",
+      "transition": {
+        "from": {
+          "revision": 31,
+          "digest": "5109f5cb21ec3b048f638e1c69f4a437b571f319cb96157fc3b828467759ab17"
+        },
+        "to": {
+          "revision": 32,
+          "digest": "5a703a2943e4bad4aaae9d68c03134ead82fdbeda33f5736ebf88718ef86c5d2"
+        },
+        "changes": {
+          "complete": true,
+          "total": 1,
+          "omitted": 0,
+          "items": [
+            {
+              "path": "/inputs/elbowAngle",
+              "kind": "replace",
+              "before": -30,
+              "after": 0
+            }
+          ]
+        }
+      },
+      "note": "Only elbow changes -30 to 0; base was already 0. Listed retained per-parameter angle sequences otherwise agree with recorded differences"
+    },
+    "visual": {
+      "status": "reviewed light desktop canvas and controls only",
+      "limits": [
+        "dark theme",
+        "narrow widths",
+        "reduced motion",
+        "long-duration memory/GPU",
+        "other platforms"
+      ]
+    }
+  },
+  "remaining": [
+    "Original 3B task failures and general generation quality",
+    "3C complete recovery/revision/action/conversion combinations",
+    "3D continuous simulation/game and complete visual/keyboard/resource matrices",
+    "Correct generated geometry assumptions and unsupported follow-up extrema/history explanations",
+    "Full CI, sealed set and two-human acceptance deferred"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/desktop-e2e-Fc48Tc/spatial-task.json",
+      "sha256": "deac5cda3170bd7b3635c9fbdaaa3ee0b1b6bb87e1fe0f28a36ad92cfc35cc40"
+    },
+    {
+      "path": ".verification/desktop-e2e-Fc48Tc/result.json",
+      "sha256": "24dc49d2ff0a82f957487bcc36df1b708e735a27f7cd9ff44acb0b1e95af8aa4"
+    },
+    {
+      "path": ".verification/desktop-e2e-LKVV1e/spatial-task.json",
+      "sha256": "ec496df6bb62a7d1dc9f583568a41044b2063d9ccc1ea92e8bacc73b335ebe8e"
+    },
+    {
+      "path": ".verification/desktop-e2e-LKVV1e/result.json",
+      "sha256": "969083acabaa9940ba2311429786f75f351fe16e4b4134369eeecd844c79b122"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-1Ceb9F/result.json",
+      "sha256": "9a69f0d043857cef11c986eaad3b1ee8e880a768beed25d6f05871852d17e423"
+    },
+    {
+      "path": ".verification/phase3-arm-text-context.log",
+      "sha256": "2c8b4c77228c57175514b4ff677001b3e14a387e963d6f9976a63898258007a0"
+    },
+    {
+      "path": ".verification/phase3-arm-context-targeted.log",
+      "sha256": "841b524a41958d48a1296329d5e722c0f46572fe4357c162baec8da40de5c5f2"
+    },
+    {
+      "path": ".verification/phase3-arm-typecheck.log",
+      "sha256": "7131d9debbd819efbcbbb5ae4eda9516d6d49a91287866819da140cb421153ec"
+    },
+    {
+      "path": ".verification/phase3-arm-typecheck-retest.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-arm-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-arm-capabilities.log",
+      "sha256": "9b78bc2ae867b7305f9d155341ce110af272f98158292f22cc260f80ec0a272f"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-1Ceb9F/tests.log",
+      "sha256": "c69729dccab9a84f0a19b3ad475d662b427733c8d10969c47bd83377ff33f3c5"
+    },
+    {
+      "path": ".verification/desktop-e2e-Fc48Tc/spatial-generated-canvas.png",
+      "sha256": "ec37b7bfae9fcc004aae23b5cc337e2b55cac14cc74352a23f6fc4f6397071e5"
+    },
+    {
+      "path": ".verification/desktop-e2e-LKVV1e/spatial-audit-5-canvas.png",
+      "sha256": "ebabbe02d62e464d5c9909a6a5fd2bc18dafb170a9684a1c7d00393477544637"
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-arm-2026-11-03.md",
+    "sourceSha256": "46bf8d26649620b5013bc111e8ae2b3eda2033e357781662fb6cb7f29402ca29",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-arm-2026-11-03.pdf",
+    "pdfSha256": "0e966dc15c4572a2df0e65b49c5125aa649d55c8d6b9b6912e29db63c32e04a3",
+    "pages": 3,
+    "pageTextLengths": [
+      1040,
+      570,
+      1013
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: all three rendered pages inspected; text, tables, screenshot, margins and pagination are legible without clipping"
+  },
+  "finalSourceVerification": {
+    "status": "matched",
+    "evidenceFiles": 14,
+    "desktopSources": 518,
+    "capabilitySources": 176
+  }
+}

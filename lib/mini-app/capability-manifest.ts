@@ -16,7 +16,7 @@ const common = ["lib/mini-app/capability-manifest.ts", "lib/mini-app/capabilitie
   "lib/mini-app/plan.ts", "lib/mini-app/plan-schema.ts", "lib/mini-app/limits.ts", "lib/mini-app/json.ts",
   "lib/mini-app/authoring-contract.ts",
   "lib/mini-app/server-worker.ts", "lib/mini-app/interaction-trial.ts", "lib/mini-app/action-preview.ts", "lib/mini-app/action-inspection.ts", "lib/mini-app/checkpoint-changes.ts", "lib/mini-app/action-field-effects.ts",
-  "lib/mini-app/server-trial.ts", "lib/mini-app/journal.ts", "lib/mini-app/state-store.ts", "lib/mini-app/state-service.ts", "lib/mini-app/save-history.ts",
+  "lib/mini-app/server-trial.ts", "lib/mini-app/journal.ts", "lib/mini-app/state-store.ts", "lib/mini-app/state-service.ts", "lib/mini-app/save-history.ts", "lib/mini-app/text-context.ts", "lib/mini-app/input-inspection.ts",
   "lib/mini-app/migration-types.ts", "lib/mini-app/migration-service.ts", "lib/mini-app/client-cache.ts", "lib/mini-app/client-state.ts",
   "components/mini-app/MiniAppSurface.tsx", "components/mini-app/MiniAppMigration.tsx", "components/mini-app/MiniAppSurface.module.css",
   "app/api/sessions/[id]/mini-app/migration/route.ts", "app/api/sessions/[id]/mini-app/migration/preview/route.ts",
