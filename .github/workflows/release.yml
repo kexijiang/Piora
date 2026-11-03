@@ -1,4 +1,4 @@
-name: Release Windows and Linux desktop packages
+name: Release Windows desktop packages
 
 on:
   push:
@@ -255,94 +255,9 @@ jobs:
           retention-days: 14
           compression-level: 0
 
-  linux-build:
-    name: Build and verify linux (${{ matrix.brand }})
-    needs: source-gate
-    runs-on: ubuntu-latest
-    timeout-minutes: 75
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - brand: piora
-            prefix: Piora
-            channel: latest
-    env:
-      PIORA_BRAND: ${{ matrix.brand }}
-      BRAND_PREFIX: ${{ matrix.prefix }}
-      BRAND_CHANNEL: ${{ matrix.channel }}
-    permissions:
-      contents: read
-
-    steps:
-      - name: Check out tagged source
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up Node.js
-        id: node-setup
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 22.19.0
-          cache: npm
-
-      - name: Restore npm downloads from an earlier lockfile
-        if: steps.node-setup.outputs.cache-hit != 'true'
-        uses: ./.github/actions/restore-npm-cache
-
-      - name: Verify release tag and metadata
-        shell: bash
-        run: |
-          git fetch --no-tags --force origin +refs/heads/main:refs/remotes/origin/main
-          node scripts/verify-release-metadata.mjs "$GITHUB_REF_NAME" --require-origin-main
-
-      - name: Install Linux native image patch tools
-        if: runner.os == 'Linux'
-        uses: ./.github/actions/setup-linux-native-image-tools
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build Linux AppImage
-        run: npm run dist:linux
-
-      - name: Verify packaged standalone service
-        run: node scripts/verify-packaged-web.mjs desktop/release/linux-unpacked/resources/web --require-electron-shell
-
-      - name: Extract and smoke-test AppImage
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          artifact="desktop/release/${BRAND_PREFIX}-$version-linux-x64-portable.AppImage"
-          test -f "$artifact"
-          chmod +x "$artifact"
-          (cd desktop/release && "./$(basename "$artifact")" --appimage-extract >/dev/null)
-          xvfb-run -a node scripts/smoke-test-portable.mjs desktop/release/squashfs-root/AppRun --expected-version "$GITHUB_REF_NAME" --packaged-runtime --expected-brand "$PIORA_BRAND"
-
-      - name: Generate Linux checksum
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          artifact="desktop/release/${BRAND_PREFIX}-$version-linux-x64-portable.AppImage"
-          hash="$(sha256sum "$artifact" | cut -d' ' -f1)"
-          printf '%s  %s\n' "$hash" "$(basename "$artifact")" > desktop/release/SHA256SUMS-linux.txt
-
-      - name: Upload verified Linux payload
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: ${{ matrix.brand }}-linux-${{ github.ref_name }}
-          path: |
-            desktop/release/*-linux-x64-portable.AppImage
-            desktop/release/SHA256SUMS-linux.txt
-          if-no-files-found: error
-          retention-days: 14
-          compression-level: 0
-
   publish-release:
     name: Publish stable release
-    needs: [tests, windows-build, linux-build]
+    needs: [tests, windows-build]
     runs-on: windows-latest
     timeout-minutes: 10
     permissions:
@@ -380,8 +295,7 @@ jobs:
             (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64-setup.exe.blockmap")).Path,
             (Resolve-Path -LiteralPath (Join-Path $root "latest.yml")).Path,
             (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64-portable.exe")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64.zip")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-linux-x64-portable.AppImage")).Path
+            (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64.zip")).Path
           )
           $assets += (Resolve-Path -LiteralPath (Join-Path $root 'SHA256SUMS.txt')).Path
           # Stable desktop release notes were generated from the tagged CHANGELOG

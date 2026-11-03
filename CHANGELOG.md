@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 后续桌面正式版仅发布 Windows 包；CI 测试收敛为 Windows 六分片，Ubuntu 保留通用质量与官网检查，避免双平台重复执行。同步更新 beta 测试复用与发布产物校验。
+
 - beta 发布取消人工审批：标签构建及全部自动检查通过后自动发布同一次构建的产物，保留版本、校验和与更新说明核对；手动触发仅作为补发入口。
 
 ## [0.5.9-beta.3] - 2026-11-02

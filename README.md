@@ -10,7 +10,7 @@
   <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.8"><img alt="稳定版 0.5.8" src="https://img.shields.io/badge/release-0.5.8-2563eb.svg"></a>
   <a href="https://github.com/kexijiang/Piora/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kexijiang/Piora/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
-  <a href="#下载与安装"><img alt="Windows / Linux x64" src="https://img.shields.io/badge/Desktop-Windows%20%7C%20Linux%20x64-555.svg"></a>
+  <a href="#下载与安装"><img alt="Windows x64" src="https://img.shields.io/badge/Desktop-Windows%20x64-555.svg"></a>
 </p>
 
 Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览器和设备操作放进同一个窗口。你可以让 Agent 修改项目，也可以随时打开文件检查改动、运行命令、查看结果，继续手动完成工作。
@@ -19,7 +19,7 @@ Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览
 
 最新正式版为 `0.5.8`，当前源码与 beta 版本为 [`0.5.9-beta.3`](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.3)。本次 beta 修复已有会话图片能力刷新与 DSH Pet 系统证书兼容，支持自定义运行状态文案，并移除单轮 20 张图片硬限制。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
 
-正式版由 GitHub Actions 构建和校验 Windows 与 Linux 包；beta 候选构建完成后由独立工作流发布，下载见[所有发布](https://github.com/kexijiang/Piora/releases)。Windows 原生投屏使用随包 Hypium 采集库，兼容设备无需在电脑安装 DevEco Studio。需要手机端 HAP 的兼容路径仍要求用户明确初始化并准备对应签名工具。华为系统录屏、原生投屏画质与延迟、平板兼容性和浏览器窗口外渲染仍待硬件验收，见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)。
+后续正式版由 GitHub Actions 构建和校验 Windows 包；beta 候选构建完成后由独立工作流发布，下载见[所有发布](https://github.com/kexijiang/Piora/releases)。Windows 原生投屏使用随包 Hypium 采集库，兼容设备无需在电脑安装 DevEco Studio。需要手机端 HAP 的兼容路径仍要求用户明确初始化并准备对应签名工具。华为系统录屏、原生投屏画质与延迟、平板兼容性和浏览器窗口外渲染仍待硬件验收，见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)。
 
 [下载与安装](#下载与安装) · [开始使用](#开始使用) · [完整用户手册](docs/user-manual.zh-CN.md) · [主要功能](#主要功能) · [鸿蒙设备工作台](#鸿蒙设备工作台) · [开发与贡献](#开发与贡献) · [文档索引](docs/README.md)
 
@@ -44,7 +44,7 @@ chmod +x Piora-0.5.8-linux-x64-portable.AppImage
 ./Piora-0.5.8-linux-x64-portable.AppImage
 ```
 
-其他版本和 Beta 预览版见 [所有发布](https://github.com/kexijiang/Piora/releases)。目前正式版提供 Windows 和 Linux x64，Beta 提供 Windows x64；没有 macOS 安装包。Windows 安装包尚未启用代码签名，首次启动可能出现系统信誉提示。
+其他版本和 Beta 预览版见 [所有发布](https://github.com/kexijiang/Piora/releases)。后续正式版和 Beta 仅提供 Windows x64；上表 Linux 下载为历史 v0.5.8 版本，不再更新；没有 macOS 安装包。Windows 安装包尚未启用代码签名，首次启动可能出现系统信誉提示。
 
 ## 开始使用
 
@@ -209,11 +209,11 @@ npm run perf:check
 npm run verify:backgrounds
 ```
 
-`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows / Linux 上分组执行测试，Windows 高资源 Shell 测试单独运行。发布构建校验源码、更新说明、包完整性及隔离运行；真实手机、外部模型和窗口渲染等效果需另行验收，不能由软件测试替代。
+`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows 上分组执行测试，Ubuntu 负责通用质量与官网检查，Windows 高资源 Shell 测试单独运行。发布构建校验源码、更新说明、包完整性及隔离运行；真实手机、外部模型和窗口渲染等效果需另行验收，不能由软件测试替代。
 
 TypeScript 按[微软官方并行安装方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)配置：`@typescript/native` 是 TypeScript 7 的 npm 别名，提供 `tsc`，用于类型检查、桌面及 Harmony worker 编译；`typescript` 是最新版 `@typescript/typescript6` 兼容包的别名，为代码补全、ESLint 和测试脚本提供编译器 API。需要调用编译器时使用 `npm run typecheck` 或 `node_modules/.bin/tsc`。
 
-发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；验收同批 Piora 安装包后，再由独立工作流发布这些原始字节；鸿蒙手机实机验收按需进行，不作为发布门禁。`vX.Y.Z` 正式版标签触发 Windows 与 Linux 构建，全部测试、验包及更新说明校验通过后自动发布为最新正式版。不要移动已发布标签或本地制作发布包。
+发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；验收同批 Piora 安装包后，再由独立工作流发布这些原始字节；鸿蒙手机实机验收按需进行，不作为发布门禁。`vX.Y.Z` 正式版标签触发 Windows 构建，全部测试、验包及更新说明校验通过后自动发布为最新正式版。不要移动已发布标签或本地制作发布包。
 
 **CHANGELOG 是唯一更新说明来源**，Release 正文和 `beta.yml` / `latest.yml` 的更新说明由同一版本记录生成，并在发布前校验。具体步骤见[发布流程](docs/release.md)。
 

@@ -43,7 +43,7 @@ Piora 是本地优先的 AI 桌面工作台。你可以在同一窗口里与 AI 
 | Windows x64 安装版 `setup.exe` | 日常使用，需要安装目录选择和应用内更新 | 安装后打开 Piora |
 | Windows x64 单文件便携版 `portable.exe` | 希望直接运行程序 | 双击 EXE；升级时手动替换 |
 | Windows x64 目录 ZIP | 希望解压后运行 | 完整解压后打开其中的 `Piora.exe` |
-| Linux x64 AppImage | Linux 桌面使用 | 在文件属性中允许执行，再运行 |
+| Linux x64 AppImage（历史版本，不再更新） | 历史 Linux 桌面包 | 在文件属性中允许执行，再运行 |
 
 Windows 桌面版支持 Windows 10/11 x64。安装包包含应用运行时，普通使用无需安装 Node.js。需要操作 Git 仓库、编译工程或运行第三方工具时，仍需安装对应的 Git、编译器或依赖。目前仓库说明不提供 macOS 安装包；各版本具体支持的平台以发布附件为准。
 

@@ -94,18 +94,23 @@ jobs:
         run: npm run audit:runtime
 
       - name: Verify Harmony schemas and documentation
+        if: runner.os == 'Linux'
         run: npm run harmony:docs:check
 
       - name: Verify release-tree hygiene
+        if: runner.os == 'Linux'
         run: npm run verify:hygiene
 
       - name: Verify license inventory freshness
+        if: runner.os == 'Linux'
         run: npm run licenses:check
 
       - name: Lint
+        if: runner.os == 'Linux'
         run: npm run lint
 
       - name: Typecheck
+        if: runner.os == 'Linux'
         run: npm run typecheck
 
       - name: Check performance budgets
@@ -113,6 +118,7 @@ jobs:
         run: npm run perf:check
 
       - name: Verify bundled backgrounds
+        if: runner.os == 'Linux'
         run: npm run verify:backgrounds
 
       - name: Build unpacked Windows application

@@ -7,11 +7,11 @@ Piora publishes desktop packages from [`kexijiang/Piora`](https://github.com/kex
 | Channel | Tag | Workflow | Packages |
 | --- | --- | --- | --- |
 | Beta | `vX.Y.Z-beta.N` | `.github/workflows/harmony-preview.yml`, then `.github/workflows/publish-preview.yml` | Windows x64 NSIS installer, portable EXE, installer blockmap, `beta.yml`, `SHA256SUMS.txt` |
-| Stable | `vX.Y.Z` | `.github/workflows/release.yml` | Windows installer, portable EXE, extract-and-run ZIP, installer blockmap, `latest.yml`, Linux x64 AppImage, combined `SHA256SUMS.txt` |
+| Stable | `vX.Y.Z` | `.github/workflows/release.yml` | Windows installer, portable EXE, extract-and-run ZIP, installer blockmap, `latest.yml`, combined `SHA256SUMS.txt` |
 
 Beta tag CI builds and uploads a candidate without creating a GitHub Release. After the exact downloaded installer or portable package passes installed Piora acceptance, the separately dispatched publish workflow publishes those same bytes as a GitHub prerelease. Stable publication is marked latest. The stable workflow ignores prerelease tags even though its tag trigger matches `v*`. A push to `main` runs CI; it does not itself publish a package.
 
-Windows installers support application updates; beta installers consume beta update metadata. Portable builds are replaced manually. The optional scheduled silent-update setting is disabled by default and defers installation while tasks or unsaved edits remain. Desktop installers and executables are not Authenticode signed; the bundled Harmony HAP has its own mandatory OpenHarmony signing and verification gate. Linux does not bundle the Windows local Whisper runtime.
+Windows installers support application updates; beta installers consume beta update metadata. Portable builds are replaced manually. The optional scheduled silent-update setting is disabled by default and defers installation while tasks or unsaved edits remain. Desktop installers and executables are not Authenticode signed; the bundled Harmony HAP has its own mandatory OpenHarmony signing and verification gate. Historical Linux downloads remain available, but future releases publish Windows packages only.
 
 ## Prepare the source
 
@@ -63,7 +63,6 @@ Never build release packages locally, including in a separate worktree. Push the
 npm ci
 npm run dist:win:preview  # beta
 # npm run dist:win       # stable Windows
-# npm run dist:linux     # stable Linux, on a Linux build machine
 npm run verify:package
 node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked v0.4.41-beta.8
 npm run licenses:package:check
@@ -93,7 +92,7 @@ gh run list --repo kexijiang/Piora --workflow harmony-preview.yml --limit 5
 
 For stable releases, wait for main-branch CI before creating `vX.Y.Z`, omit `--prerelease` from metadata verification, and follow `release.yml`. Always pass `--repo kexijiang/Piora` to `gh`: a fork checkout with an `upstream` remote may otherwise select the upstream project.
 
-Beta CI runs the reusable Ubuntu/Windows test suite alongside the Windows package job. The package job checks source hygiene, licenses, lint, types, backgrounds and performance budgets, builds Windows packages using the repository-provided Harmony capture HAP, and checks updater metadata, package isolation, licenses, the Electron runtime and installed application before uploading the candidate. Publication requires an overall successful original run. Phone hardware acceptance is optional and its result must be reported accurately.
+Beta CI runs the reusable Windows test suite alongside the Windows package job. The package job checks source hygiene, licenses, lint, types, backgrounds and performance budgets, builds Windows packages using the repository-provided Harmony capture HAP, and checks updater metadata, package isolation, licenses, the Electron runtime and installed application before uploading the candidate. Publication requires an overall successful original run. Phone hardware acceptance is optional and its result must be reported accurately.
 
 When `harmony-preview.yml` completes successfully, `publish-preview.yml` automatically publishes its verified artifacts through `workflow_run`. No environment approval or manual acceptance is required. Keep this publication workflow on the default branch so GitHub can trigger it. Failed or cancelled builds do not publish. The former `preview-publish` environment no longer has required reviewers and is not referenced by the publication job.
 
@@ -105,7 +104,7 @@ gh workflow run publish-preview.yml --repo kexijiang/Piora -f tag=v0.4.41-beta.8
 
 The publication workflow binds the requested run to the tag commit, rechecks release metadata, verifies the grouped package checksums and CHANGELOG-derived notes, and publishes the already verified bytes. It does not rebuild the desktop package. Optional installed-app or phone testing must report the exact tag, run ID, package hash and result accurately; unperformed hardware tests must not be reported as passed.
 
-Stable CI first runs the Ubuntu source gate, builds Windows and Linux, verifies their runtimes and artifacts, combines checksums, and publishes only after both platforms succeed. Do not bypass a failed gate by manually uploading unverified binaries.
+Stable CI first runs the Ubuntu source gate, builds Windows, verifies its runtime and artifacts, assembles checksums, and publishes only after tests and Windows verification succeed. Do not bypass a failed gate by manually uploading unverified binaries.
 
 ## Verify and report
 
