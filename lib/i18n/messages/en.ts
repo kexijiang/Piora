@@ -2315,6 +2315,8 @@ export const enLocale: LocalePlugin = {
     "gitTools.create": "Create and open",
     "gitTools.mainCheckout": "Main checkout",
     "gitTools.currentCheckout": "Current checkout",
+    "settings.runningStatusText": "Display text",
+    "settings.runningStatusPreview": "Preview",
     "settings.runningStatusLabel": "Running status text",
     "settings.runningStatusLabelHint": "Applies immediately and is saved on this device. Up to 80 characters; leave blank to use the default.",
     "chat.taskDuration.running": "Working through it",

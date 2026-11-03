@@ -2315,6 +2315,8 @@ export const zhCNLocale: LocalePlugin = {
     "gitTools.create": "创建并打开",
     "gitTools.mainCheckout": "主工作区",
     "gitTools.currentCheckout": "当前工作目录",
+    "settings.runningStatusText": "显示文案",
+    "settings.runningStatusPreview": "效果预览",
     "settings.runningStatusLabel": "运行状态文案",
     "settings.runningStatusLabelHint": "立即生效并保存在当前设备；最多 80 个字符，留空恢复默认文案。",
     "chat.taskDuration.running": "凝思求解中",
