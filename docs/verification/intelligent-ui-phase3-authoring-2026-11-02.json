@@ -1,0 +1,363 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "status": "partial-phase-progress",
+  "phaseComplete": false,
+  "branch": "codex/intelligent-ui",
+  "baseCommit": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "committed": false,
+  "feature": "Field-local authoring contracts, precise triangle diagnostics, single restoration operation, bounded selection preflight, and current-snapshot evidence scope",
+  "sourceHashes": {
+    ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
+    ".mini-app-runtime/renderer.js": "34841462c30adb52e5b7aa84acd44e94ccc7191f5783b8d5166540c2dc5baaaa",
+    ".mini-app-runtime/server-worker.cjs": "f34ceb1be6bd0baec8c8f03c8b38c99f5c7285cba0df07dccb470e78b65c77b2",
+    "app/api/mini-app/environment/route.ts": "4bb20319df118cec4a26b685f8e71a7d0d6d80f135c77b2383bc914688b628d4",
+    "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
+    "lib/agent-client.ts": "e0574392c90b87c1bc7c9e6a4930a52caf2f9caecf363608efa676f44434fa0a",
+    "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
+    "lib/answer-output-client.ts": "9bc2409ae4a5211316b2fa4dbc6b2f1705b0f263707a9e8f6eb890f1e7f2cf53",
+    "lib/mini-app/appearance.ts": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919",
+    "lib/mini-app/authoring-contract.ts": "20dcffaed990e5cfff0bc79b7c8327960580922ad8d361de96f5403030e4a76c",
+    "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
+    "lib/mini-app/capabilities.ts": "8f1b2143cd7ea2ae580bb86e127a75132962f6c56f7e721928549bac17dcd4be",
+    "lib/mini-app/capability-host.ts": "f3318018a37480e8cb231a2c9433a692be950bfc4d88ffa8815d6e25869d2b85",
+    "lib/mini-app/capability-manifest.ts": "4b27e9aea182e8b1568b05d796590cf36c2f9dbc310afb4afe9fc9f791d129a3",
+    "lib/mini-app/controller.ts": "b99c592a0bd17e276a5977e22342a66f654f327f13c1450c7c31bc9c3ff0812b",
+    "lib/mini-app/decision-policy.ts": "c375ed42e01cf0f36a5afdc2080d5bfe237596d1992e4e68862b8e2529c29a02",
+    "lib/mini-app/document-capabilities.ts": "3a1f78e18de9b3d152f57c779d8fd13b9ac35eb453457b17f66ffa2d7e362179",
+    "lib/mini-app/document.ts": "9b81bb485d124e797f047580e637df4d32fbb481aac283cdb0acffd7a7d8ab36",
+    "lib/mini-app/environment-client.ts": "3781c170d415ad15a733ebf4ae7818a95ccc110d81b8afc42bb15f5fec95ad79",
+    "lib/mini-app/environment-protocol.ts": "7ce9aea94eb3ddefab98c11b276e93ab5cd5ceae83e02f52549e2fa65b10478e",
+    "lib/mini-app/environment-store.ts": "18f169395b5b0942ef7e065036b94c628f3275a5f1327f54b2566547dbc5861f",
+    "lib/mini-app/events.ts": "0a07781d4f779f83aa8c0e2c59d4403961552103edbf088e73b0733b544cdd1b",
+    "lib/mini-app/frame-host.ts": "0c2bc72063a9fa4be667d5367f123ef485975b247a46d54f88e488e3ff6da187",
+    "lib/mini-app/frame.ts": "02e3b556a9779dd2a43519c6f6106ef76cb3d94bcd8604b628aa126dc2a3e7b1",
+    "lib/mini-app/generation-runtime.ts": "51ef759ee4aaf97dea85005bed821a0e243b2f614206105e318769335c879411",
+    "lib/mini-app/guest-runtime.ts": "c91ebc218acf74846fcc8101014985a8a97b57fc563acf8d09bbf3d63a06486c",
+    "lib/mini-app/interaction-trial.ts": "06e02726733cb1a1c66862ee4fe0e737283d3a3f9899acedd8675872fbe33190",
+    "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
+    "lib/mini-app/limits.ts": "6d76731736990533023d6d29203f8325ce89204d5ba934239fcac8263ec56cda",
+    "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
+    "lib/mini-app/plan-schema.ts": "90be607727e47e58359031615b4da4cf5195f0e79ad4619737af18fb131ee9f3",
+    "lib/mini-app/plan.ts": "951c085d9bd9abf29bdce2333728b77dd2d868b51fa0be4070deceab4d6790a2",
+    "lib/mini-app/playback.ts": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78",
+    "lib/mini-app/program.ts": "ececcfdd6cf7704182c8dfdc309d9b25bbc73409ce533501a4098a48423b95c3",
+    "lib/mini-app/renderer-runtime.ts": "e4aa47bc56c59bc743d8443f94baa165cfb0cb0d7ebe92aee811e4dde840c54f",
+    "lib/mini-app/repeat-example.ts": "d219da4b93ed144e9d35f469d36a1e5c627362ca4d05791d8d301b98ae4cfb13",
+    "lib/mini-app/repeat-renderer.ts": "1adb95d34d30204c6114a4bdf5742d032f9d24c2ae5ccca1253af3b9dd91fe19",
+    "lib/mini-app/repeat.ts": "a63ad7c7b6a0dd1b6e8c659097eb753cc6a28c7a348cbaf843ac3c2fdd7d7281",
+    "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+    "lib/mini-app/runtime-worker.ts": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8",
+    "lib/mini-app/scene-example.ts": "01bb0b80af2163bdb44584ada2a32d69074219b7f527f91e550fdc65bc8c88cd",
+    "lib/mini-app/scene-renderer.ts": "52219fb26188eb94d226a88d2f4ec9104ca8fa748766f2207450e4f4021bcf20",
+    "lib/mini-app/scene-state.ts": "b70c4c07f78164a27ef42ff6f92718b1838f34d5d94c80f2c876f2558559b747",
+    "lib/mini-app/server-worker.ts": "e944b2ec20413aa409ed9be185c05b9323bc500455b8bd35f34a22a3ff884ac2",
+    "lib/mini-app/state-schema.ts": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b",
+    "lib/mini-app/vm.ts": "78f8f2de97239750a8c0415740026016dd1d6c702e6af06a34ce4af0f7d64249",
+    "lib/mini-app/wasm-memory.ts": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e",
+    "lib/mini-app/worker-client.ts": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb",
+    "lib/prompt-run-registry.ts": "cf0e7e950377d2ed7f8095951916a128b115fd528edcb884801d0bb93f55bd14",
+    "lib/rpc-manager.ts": "7bb45219137b554b781ff4829ac9ec97266fb7bc3cd72763d13fc8a859ce511e",
+    "lib/mini-app-capabilities.test.mjs": "c58442e23717c225ec700bf5416ea4595591fe598552795b83a0bd2b5558040b",
+    "lib/mini-app-contract.test.mjs": "3e1dac4e0cfa4ec9fc0540c2d33e83ad89ce3d675d0529aa4eeacdc0635efd68",
+    "lib/mini-app-generation.test.mjs": "e851c99aae68d48b6668c9952a8c3572e09fff7067bf36692e3e5c94e3979a48",
+    "lib/mini-app-generation-runtime.test.mjs": "eeab5dd7e11eacd2e03583c8e9efd630b837b60a7a249d85dee267bbea11bfac",
+    "lib/mini-app-admission.test.mjs": "3c59f2d8169b0fcc606de38df55ac6c1f4ece4b3632bf65d8c9a1da941f18e50",
+    "lib/mini-app-controller-browser.test.mjs": "1c58c4f5676e8d3b9350406c3ac04897e5b2580f46b024ad045b12bcb97723fd",
+    "lib/mini-app-renderer-browser.test.mjs": "22ebe7eef363b2e43cd33fdb44923ee7598858cfb43fe8c9a54a7241c9dbfa36",
+    "lib/mini-app-worker-browser.test.mjs": "d9fff6b6c2a89124e26fd503fa831d5e9a65073b713304036f9917ff47f5cda3",
+    "lib/mini-app-runtime.test.mjs": "7a31e87ab50ae6525a8a3ef986d630493ebc1c4e16d749c59e42fad4595605d6",
+    "lib/mini-app-restore-budget.test.mjs": "0b09c907c22667858cd289d644ea69144129ae305aa88d3dfbfcb02d07c62be9",
+    "lib/mini-app-document.test.mjs": "b9d83e1e0d2dab4751e9ef0cb83e2b744f2d305246bf8f0e95c414df52c2791e",
+    "lib/mini-app-frame.test.mjs": "a4b1607db4f68c9e4018a6822cd756e1be0f1f01635956d2f6bc755360c6925b",
+    "lib/mini-app-server-trial.test.mjs": "48f634a924b35b639ef4291f94cb517370a32bff63e8b65b112318bdfb9ffee9",
+    "lib/mini-app-repeat.test.mjs": "9e272d477f3f9b22498d04d4d1c3af08968dd60fb51724ec038acb698b4d2c34",
+    "lib/mini-app-repeat-browser.test.mjs": "d293bbab51305cf0fa06b657969f0d9ad65ea9046c7abc8b65a2b12c4493554f",
+    "lib/mini-app-state.test.mjs": "85c2b118c11c28c421b900bd0b73051f6abac105af4b89ce69627e68ff7f1b31",
+    "lib/mini-app-scene.test.mjs": "b1bc1618fbd2900de0812afa51108140d509d7acd861b4261117629af975e817",
+    "lib/mini-app-scene-browser.test.mjs": "6104531dcabf79fd5cd59e063727e5c5589a88b9bf04413bb4cb516837234f30",
+    "lib/mini-app-environment.test.mjs": "c3198e0bf9faebc1de44c404ca54971be8046fc8131a12cc752618fb8f3ceea7",
+    "lib/mini-app-environment-route.test.mjs": "6cf93ec261cc14a4e7eb67161aa76b28c19037fb9ef0f4767be3786866e57ec4",
+    "lib/mini-app-environment-browser.test.mjs": "eb461f8a698bc6cbf005f0689638253c14e596a3735b7ec5477a38f0017fad87",
+    "lib/prompt-run-registry.test.mjs": "5f5ca7317991d81cf6fef060d23f077a43e958647cb0464c99be8c12755141c7",
+    "lib/agent-client.test.mjs": "238afed4e6a58c6adeba9377e04e58b64b6710b546961af475e5d504b34d6e51",
+    "lib/rpc-manager-behavior.test.mjs": "1b10173f7db43a417ab0b8da4bbcb29e99fab78c359ad01c9d23baca5b53ce0d",
+    "scripts/verify-spatial-ui-desktop.mjs": "89ecd1ac4753c4951fbc75f76dcf340897004846495c602302b5cada18682965",
+    "lib/mini-app/capability-evidence.json": "d4d04d7970a134eadf672ff0486305b4bce86b5bc9f9e39b93011e5e4056cc8a"
+  },
+  "verification": {
+    "capabilities": {
+      "status": "passed",
+      "path": ".verification/mini-app-capabilities-Lh2b8c/result.json",
+      "tests": 165,
+      "files": 24,
+      "scope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+    },
+    "typecheck": {
+      "status": "passed",
+      "log": ".verification/phase3-authoring-typecheck-geometry.log",
+      "boundary": "Before the final context prose-only change"
+    },
+    "lint": {
+      "status": "passed",
+      "logs": [
+        ".verification/phase3-authoring-lint-selection.log",
+        ".verification/phase3-authoring-lint-geometry.log",
+        ".verification/phase3-authoring-lint-final.log"
+      ]
+    },
+    "failedDirectTest": {
+      "log": ".verification/phase3-authoring-geometry-tests.log",
+      "reason": "Capability evidence was stale after source changes; final isolated verifier rebuilt and passed all checks"
+    },
+    "replayStartupFailure": {
+      "log": ".verification/phase3-authoring-desktop-final-replay.log",
+      "reason": "State file counted as program journal; fixed exact journal filename filter"
+    },
+    "notRun": [
+      "Full CI",
+      "Two-person independent semantic acceptance",
+      "Release builds",
+      "Other operating systems/devices",
+      "Full sealed evaluation set"
+    ]
+  },
+  "configuredModel": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "thinking": "disabled",
+    "proUsed": false,
+    "fallback": false,
+    "supplierExactVersionIndependentlyVerified": false
+  },
+  "runs": [
+    {
+      "directory": ".verification/desktop-e2e-7IpPDW",
+      "status": "failed",
+      "failedStep": "natural-language-generation",
+      "error": {
+        "name": "AssertionError",
+        "message": "Mini app runtime failed"
+      },
+      "startedAt": "2026-11-02T05:55:10.173Z",
+      "finishedAt": "2026-11-02T05:56:01.623Z",
+      "cleanupErrors": [],
+      "resultSha256": "2155e521b5d329de8b8bb7308b4ecd1a896a9fb742813b1624e2b037c4bf6c5f",
+      "mode": "fresh-generation",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-dDlywB",
+      "status": "failed",
+      "failedStep": "operate-and-save",
+      "error": {
+        "name": "AssertionError",
+        "message": "An editable angle is present"
+      },
+      "startedAt": "2026-11-02T05:59:40.336Z",
+      "finishedAt": "2026-11-02T06:00:20.108Z",
+      "cleanupErrors": [],
+      "resultSha256": "f7dc3f01c5d8c435c7ed187db9323992b42cc558be5b241d0c808a82dd2368ff",
+      "mode": "original-recording-replay",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-pp9DMi",
+      "status": "failed",
+      "failedStep": "load-original-program",
+      "error": {
+        "name": "AssertionError",
+        "message": "Mini app runtime failed: TIME_LIMIT"
+      },
+      "startedAt": "2026-11-02T06:01:30.807Z",
+      "finishedAt": "2026-11-02T06:02:12.665Z",
+      "cleanupErrors": [],
+      "resultSha256": "2ab6fd5002f77a26340abc8c7d1ee668894df02f0c1c21d365ce66c1834c632d",
+      "mode": "original-recording-replay",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-p3Y3M6",
+      "status": "failed",
+      "failedStep": "operate-and-save",
+      "error": {
+        "name": "TimeoutError",
+        "message": "locator.click: Timeout 480000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-mini-app-surface]').first().locator('iframe[title=\"Interactive answer\"]').contentFrame().getByRole('button', { name: /^(Rotate right|向右旋转)$/ })\u001b[22m\n"
+      },
+      "startedAt": "2026-11-02T06:09:11.593Z",
+      "finishedAt": "2026-11-02T06:17:48.126Z",
+      "cleanupErrors": [],
+      "resultSha256": "74897a205443149ac14941c10ab086567d917693768ec22e1ef37c1c35535d97",
+      "mode": "original-recording-replay",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-9UtWTt",
+      "status": "failed",
+      "failedStep": "operate-and-save",
+      "error": {
+        "name": "Error",
+        "message": "keyboard.press: Target page, context or browser has been closed"
+      },
+      "startedAt": "2026-11-02T06:18:25.615Z",
+      "finishedAt": "2026-11-02T06:24:23.712Z",
+      "cleanupErrors": [],
+      "resultSha256": "77c514545d21d31b8067a43fca9446ee17ee4c9dcb9023af4b5adc8881d078ec",
+      "mode": "original-recording-replay",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-9ssen7",
+      "status": "failed",
+      "failedStep": "natural-language-generation",
+      "error": {
+        "name": "AssertionError",
+        "message": "Model completed without publishing the requested 3D interface"
+      },
+      "startedAt": "2026-11-02T06:43:24.589Z",
+      "finishedAt": "2026-11-02T06:44:53.085Z",
+      "cleanupErrors": [],
+      "resultSha256": "8f03cafe5f6690d7e85833b19617d295696e546fedf47753cb8e944055038656",
+      "mode": "fresh-generation",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-z5O1Y0",
+      "status": "failed",
+      "failedStep": "reload-and-explain",
+      "error": {
+        "name": "Error",
+        "message": "locator.evaluateAll: Execution context was destroyed, most likely because of a navigation"
+      },
+      "startedAt": "2026-11-02T06:53:45.444Z",
+      "finishedAt": "2026-11-02T06:55:02.767Z",
+      "cleanupErrors": [],
+      "resultSha256": "09b83e3d244ddf9243ecebae11d642f0d8b70879b2dca1155019c8b852cb150c",
+      "mode": "fresh-generation",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-f1c49P",
+      "status": "passed",
+      "startedAt": "2026-11-02T06:57:52.390Z",
+      "finishedAt": "2026-11-02T06:58:51.522Z",
+      "cleanupErrors": [],
+      "resultSha256": "0f8e05c38190971cb7bfd6077ed92663fd135b9b03ff4c9b6b2be38d04e93ae8",
+      "mode": "original-recording-replay",
+      "semanticAcceptance": "not-passed"
+    },
+    {
+      "directory": ".verification/desktop-e2e-2nxlR8",
+      "status": "passed",
+      "startedAt": "2026-11-02T07:02:00.745Z",
+      "finishedAt": "2026-11-02T07:02:59.290Z",
+      "cleanupErrors": [],
+      "resultSha256": "e49872c958e2705f1a3317c2a502fa4cd837acdb1798ac565187b630c644ff44",
+      "mode": "original-recording-replay",
+      "semanticAcceptance": "not-passed"
+    }
+  ],
+  "evidence": {
+    ".verification/phase3-authoring-original-admission.json": {
+      "sha256": "8fdeda6648cdb6cf5526a90db325934f75fa42b80c338c41f65ca561cd3b93a7",
+      "data": {
+        "source": ".verification/desktop-e2e-7IpPDW/agent/piora/mini-app/0f7dc7876a41a3748ab5e16ea2eac435ff2488403a7f40a94dd9cb463e3b7d4b.json",
+        "sourceSha256": "e3ce4ad5f3cf119fd37eae9c0e43078782c9c58f28ec0f911f0185d9a8033690",
+        "failure": {
+          "code": "STATE",
+          "path": "state/selected",
+          "message": "Trial scene selection airspace/fuselage: State does not match its declared schema. Selection state must accept the emitted object IDs or deliberately map them.",
+          "repairable": true
+        },
+        "historicalRead": "passed",
+        "originalUnchanged": true
+      }
+    },
+    ".verification/phase3-authoring-spatial-semantics.json": {
+      "sha256": "77cef16eb4b9522c1191b1599d58e2ebf8e338eb3273a4fe740dce4dc8f12494",
+      "data": {
+        "source": ".verification/desktop-e2e-7IpPDW/agent/piora/mini-app/0f7dc7876a41a3748ab5e16ea2eac435ff2488403a7f40a94dd9cb463e3b7d4b.json",
+        "sourceSha256": "e3ce4ad5f3cf119fd37eae9c0e43078782c9c58f28ec0f911f0185d9a8033690",
+        "scope": "Original unmodified generated program; server projection and QuickJS semantic probe, not UI acceptance or independent human review",
+        "checks": [
+          {
+            "id": "composite-rigid-rotation",
+            "status": "failed",
+            "input": {
+              "pitch": 45
+            },
+            "expectedCockpitPosition": [
+              0,
+              1.26572113832392,
+              -0.9263098833543774
+            ],
+            "actualCockpitPosition": [
+              0,
+              0.24,
+              -1.55
+            ],
+            "error": 1.2004554199161035,
+            "reason": "The fuselage rotates about the origin but the cockpit offset does not rotate with it"
+          },
+          {
+            "id": "reset-angles-button",
+            "status": "failed",
+            "event": {
+              "type": "click",
+              "id": "resetAngles"
+            },
+            "expectedPitch": 0,
+            "actualPitch": 45,
+            "reason": "The generated button has no reducer branch and cannot reset host-owned inputs"
+          }
+        ]
+      }
+    },
+    ".verification/phase3-authoring-geometry-semantics.json": {
+      "sha256": "ace4ea68c93660cddeefaf3b24251d78f8b5b14a97dc04928a4bada4db34655c",
+      "data": {
+        "source": ".verification/desktop-e2e-z5O1Y0/spatial-task.json",
+        "sourceSha256": "74d10a3f4e4ec2aad5e52963ff86383fd91687a4905a72bdaa65565aa007bf48",
+        "scope": "Independent arithmetic on recorded production frames; no generated code edits; not two-person acceptance",
+        "checks": [
+          {
+            "id": "initial-connected-aircraft",
+            "status": "failed",
+            "bodyFront": -1.3,
+            "noseBack": -2.28,
+            "gap": 0.9799999999999998
+          },
+          {
+            "id": "rigid-wing-center",
+            "status": "failed",
+            "input": {
+              "pitch": 45,
+              "yaw": 0,
+              "roll": 0
+            },
+            "expected": [
+              -1.62,
+              -0.26870057685088805,
+              0.24041630560342614
+            ],
+            "actual": [
+              -1.62,
+              -0.02,
+              0.36
+            ],
+            "error": 0.2759569475325773
+          }
+        ],
+        "originalUnchanged": true
+      }
+    }
+  },
+  "limits": [
+    "Latest replay success covers plumbing, not task semantics",
+    "Original geometry has disconnected or non-rigid parts",
+    "A prior follow-up inferred an unsupported action history; latest no longer explicitly says never changed but remaining wording was not independently accepted",
+    "No generated program was manually repaired",
+    "Selection preflight samples only the initial scene and at most 32 events"
+  ]
+}

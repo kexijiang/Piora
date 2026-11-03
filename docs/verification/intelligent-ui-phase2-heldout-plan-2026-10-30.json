@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "status": "frozen-before-model-calls",
+  "createdAt": "2026-10-30T01:40:12.424Z",
+  "suitePath": "tests/fixtures/intelligent-ui/heldout-cases-2026-10-30.json",
+  "suiteSha256": "1bad8997b615debcaa75a46219afda0ebc02bca45c7e3769b00cb7c41ff59ccb",
+  "oraclePath": "tests/fixtures/intelligent-ui/heldout-calculation-oracles-2026-10-30.json",
+  "oracleSha256": "956c961af14494f706a1d9004b6efca0629b14e349565ffd02ffd4ccd2ceff43",
+  "models": [
+    "deepseek/deepseek-flash",
+    "deepseek/deepseek-v4-pro"
+  ],
+  "policies": [
+    "phase1",
+    "plan-2"
+  ],
+  "candidate": {
+    "decision": "intent-4",
+    "compiler": "2.4.0"
+  },
+  "repetitions": 3,
+  "families": {
+    "ui": 10,
+    "text": 6,
+    "clarify": 5,
+    "unsupported": 5
+  },
+  "runCount": 312,
+  "settings": {
+    "reasoning": "low",
+    "maxTokens": 6000,
+    "maxRequestsPerTurn": 4,
+    "maxToolAttemptsPerTurn": 3,
+    "timeoutMs": 120000,
+    "maxRetries": 0
+  },
+  "technicalTargets": {
+    "completedWithFirstStructurallyValidAttempt": {
+      "minimum": 0.8,
+      "denominator": "all capability-in-scope UI tasks"
+    },
+    "completedWithStructurallyValidAttemptWithinBudget": {
+      "minimum": 0.9,
+      "denominator": "all capability-in-scope UI tasks"
+    },
+    "noUiAttempt": {
+      "maximum": 0.05,
+      "denominator": "all capability-in-scope UI tasks"
+    },
+    "unnecessaryUiAttempt": {
+      "maximum": 0.025,
+      "denominator": "all explicitly text-labeled turns including followups"
+    },
+    "moreThanOneUiAttempt": {
+      "maximum": 0.2,
+      "denominator": "all capability-in-scope UI tasks"
+    },
+    "uiTaskDurationP95Ms": {
+      "maximum": 90000,
+      "includeFailures": true,
+      "method": "nearest-rank; failed tasks are charged at least the 120000ms task budget"
+    }
+  },
+  "comparison": "Each model separately, interleaved phase1 then plan-2 within each task repetition, same production admission binding. Baseline uses frozen phase1 tool/prompt with current host admission and validation, not the historical release end-to-end. No category regressions must be reported rather than hidden by a total mean.",
+  "productAcceptance": "Pending actual persisted browser workflows and two independent human semantic judgments; no-UI alone is not useful clarification. Report each family and every failed task, with zero UI generation after cancellation verified separately.",
+  "limitations": [
+    "Domain/family holdout shares supported arithmetic primitives; it does not prove unrestricted generalization.",
+    "New six tasks were authored after candidate freeze; original 20 task texts and checks are unchanged.",
+    "Provider revisions are not controlled; dependency/prompt hashes and settings are frozen by the runner.",
+    "Numeric oracle cannot assess zero-divisor messages, static labels, all input boundaries or semantic quality.",
+    "CI is deferred until all three feature phases are developed."
+  ]
+}

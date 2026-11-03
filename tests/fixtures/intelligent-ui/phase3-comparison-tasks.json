@@ -1,0 +1,22 @@
+{
+  "version": "phase3-comparison-tasks-1",
+  "split": "development",
+  "scope": "Focused regression and two additional threshold families. These are development samples, not sealed acceptance.",
+  "tasks": [
+    {
+      "id": "discount", "family": "conditional-price", "acceptedForms": ["intelligent-ui"],
+      "prompt": "奶茶每杯 18 元，满 100 减 20，每单只能减一次。先按 6 杯算，我想改改杯数，看实付多少钱、平均每杯多少钱。",
+      "checks": ["Five cups: 90 total, 18 per cup; six: 88 total, 88/6 per cup; eight: 124 total, 15.5 per cup.", "Zero quantity must not cause an unhandled division error or silently alter the requested rule."]
+    },
+    {
+      "id": "shipping", "family": "inclusive-free-shipping", "acceptedForms": ["intelligent-ui"],
+      "prompt": "买东西满 200 包邮，不到就加 12 块运费。先按 180 块算，我想改改商品金额，看运费和总共要付多少。",
+      "checks": ["At 199: shipping 12, total 211; at 200: shipping 0, total 200; at 201: shipping 0, total 201.", "The explanatory text must change with the same threshold and not contradict the totals."]
+    },
+    {
+      "id": "temperature", "family": "two-sided-open-threshold", "acceptedForms": ["intelligent-ui"],
+      "prompt": "室温低于 18 度我觉得冷，超过 26 度觉得热，中间刚好。先按 20 度，给我个能调温度、马上看到提示的小面板。",
+      "checks": ["17.5: cold; 18 and 26: comfortable; 26.5: hot.", "Thresholds are personal supplied rules, not invented safety or medical advice; changing the temperature updates the displayed conclusion."]
+    }
+  ]
+}

@@ -53,7 +53,8 @@ export async function GET(
         cleanup();
         return;
       }
-      transport.push({ type: "connected", sessionId: id, runtimeProfile });
+      transport.push({ type: "connected", sessionId: id, runtimeProfile,
+        answerOutputPreviews: resolved.getAnswerOutputPreviewSnapshot() });
       unsubscribe = resolved.onEvent((event) => transport.push(event));
       // Seed content and its server-owned rate immediately on session switch
       // or reconnect, including when the model is currently silent.

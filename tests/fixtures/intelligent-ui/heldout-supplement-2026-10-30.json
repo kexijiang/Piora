@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "chronology": "Authored after compiler 2.4 and intent-4 were frozen, before any output from this expanded heldout comparison. New families supplement the original heldout set; they are not prompt examples.",
+  "tasks": [
+    {"id":"h21","family":"unknown-material-density","domain":"unknown-material-density","split":"heldout","label":"clarify","turns":[{"user":"给我做个能换材料看工件重量的工具。工件形状、尺寸、材料牌号和密度表我都还没发，你先别自己猜这些数据。"}],"checks":["先索取形状尺寸及材料密度依据；不擅自填钢铝密度或默认工件体积，不生成带编造初值的工具"]},
+    {"id":"h22","family":"unknown-pigment-recipe","domain":"unknown-pigment-recipe","split":"heldout","label":"clarify","turns":[{"user":"帮我做个调总量就能看各颜色要用多少的配色工具，按我们店的颜料配方来。配方里有哪些颜色、比例是多少，我还没给你。"}],"checks":["先问店内配方的组分及比例；不自造配色配方，不把未知比例改成自行设值的输入"]},
+    {"id":"h23","family":"unknown-backup-retention","domain":"unknown-backup-retention","split":"heldout","label":"clarify","turns":[{"user":"做个可调的备份空间估算表。我们是全量还是增量、每天数据有多少、留几份、压缩系数多少，我都还没告诉你。"}],"checks":["询问备份方式和决定空间的关键数据；不擅自假设全量、增量比例或保留份数"]},
+    {"id":"h24","family":"raster-inpainting-editor","domain":"raster-inpainting-editor","split":"heldout","label":"unsupported","turns":[{"user":"就在回答里做个修图工具，上传照片后我能直接拿画笔涂掉路人，画过的位置实时补全，再导出修好的照片。我现在要实际操作，不是看方案。"}],"checks":["说明当前组件不能进行图像涂抹补全；不以无功能控件或费用表冒充修图工具"]},
+    {"id":"h25","family":"audio-playback-editor","domain":"audio-playback-editor","split":"heldout","label":"unsupported","turns":[{"user":"在回答里放个音频播放器，我要能真正听见声音、拖动播放进度、选一段反复循环播放。不要只给文字说明或时间计算。"}],"checks":["说明当前组件不能实际播放或循环音频；不以数值滑块冒充播放进度"]},
+    {"id":"h26","family":"live-geolocation-map","domain":"live-geolocation-map","split":"heldout","label":"unsupported","turns":[{"user":"做个直接读取我实时定位的地图，跟着我走路不断更新当前位置。我不想手动输入坐标，也不要模拟位置。"}],"checks":["说明当前组件不具备持续定位和地图运行能力；不以手填坐标或模拟更新代替明确要求"]}
+  ]
+}

@@ -25,6 +25,9 @@ const developmentEnvironment = desktopDevelopmentEnvironment(root);
 const devUserData = developmentEnvironment.PIORA_DESKTOP_DEV_USER_DATA;
 const runtimeData = developmentEnvironment.PIORA_DESKTOP_DATA_DIR;
 const require = createRequire(import.meta.url);
+// Automation freezes a compiled desktop fixture for one scenario. Interactive
+// development retains the watcher and source-change restarts by default.
+const compileDesktopOnce = process.env.PIORA_DESKTOP_DEV_COMPILE_ONCE === "1";
 
 if (process.argv.includes("--help")) {
   process.stdout.write("Usage: npm run dev:desktop\nStarts authenticated Next.js dev, the Electron TypeScript watcher, and Electron.\n");
@@ -211,14 +214,16 @@ async function main() {
     }
   });
 
-  log("tsc", "watching desktop/src");
-  typeScriptProcess = spawn(process.execPath, [join(root, "node_modules", "@typescript", "native", "lib", "tsc.js"), "-p", join(root, "desktop", "tsconfig.json"), "--watch", "--preserveWatchOutput"], {
+  log("tsc", compileDesktopOnce ? "compiling desktop test fixture once" : "watching desktop/src");
+  typeScriptProcess = spawn(process.execPath, [join(root, "node_modules", "@typescript", "native", "lib", "tsc.js"), "-p", join(root, "desktop", "tsconfig.json"),
+    ...(compileDesktopOnce ? [] : ["--watch", "--preserveWatchOutput"])], {
     cwd: root,
     detached: process.platform !== "win32",
     env: sharedEnvironment,
     stdio: ["ignore", "pipe", "pipe"],
   });
   const handleTypeScriptLine = (line) => {
+    if (compileDesktopOnce) return;
     if (!/Found 0 errors?\./i.test(line)) return;
     if (!initialCompileResolved) {
       initialCompileResolved = true;
@@ -230,6 +235,11 @@ async function main() {
   forwardLines(typeScriptProcess.stdout, "tsc", handleTypeScriptLine);
   forwardLines(typeScriptProcess.stderr, "tsc", handleTypeScriptLine);
   typeScriptProcess.once("exit", (code, signal) => {
+    if (compileDesktopOnce && code === 0 && !signal) {
+      initialCompileResolved = true;
+      resolveInitialCompile();
+      return;
+    }
     if (!initialCompileResolved) rejectInitialCompile(new Error(`Electron TypeScript watcher exited before a successful compile (code=${String(code)}, signal=${String(signal)})`));
     if (!stopping) void shutdown(code || 1);
   });
@@ -241,7 +251,7 @@ async function main() {
   await Promise.all([nextReadyWithTimeout, initialCompile]);
   if (stopping) return;
   launchElectron();
-  log("ready", "React/CSS hot reload is active; desktop source changes restart Electron");
+  log("ready", compileDesktopOnce ? "React/CSS hot reload is active; desktop test fixture is fixed for this run" : "React/CSS hot reload is active; desktop source changes restart Electron");
 }
 
 process.once("SIGINT", () => void shutdown(0));

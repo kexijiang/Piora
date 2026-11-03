@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "scope": "Calculation trajectories from the existing development task checks. These are not semantic, browser, persistence or human acceptance. Never send this file to a model.",
+  "cases": [
+    {"taskId":"d01","controls":{"people":{"type":"number","initial":6}},"steps":[{}, {"people":8}],"expected":[[80,60]]},
+    {"taskId":"d02","controls":{"batches":{"type":"number","initial":3}},"steps":[{}, {"batches":5}],"expected":[[600,1000],[240,400]]},
+    {"taskId":"d03","controls":{"count":{"type":"number","initial":2},"speed":{"type":"select"}},"steps":[{}, {"count":3,"speed":{"option":"加急"}}],"expected":[[24,75]]},
+    {"taskId":"d04","controls":{"area":{"type":"number","initial":20},"protect":{"type":"checkbox"}},"steps":[{}, {"area":10,"protect":false}],"expected":[[800,350]]},
+    {"taskId":"d05","controls":{"usage":{"type":"number","initial":10}},"steps":[{}, {"usage":20}],"expected":[[50,80],[60,70]]},
+    {"taskId":"d06","controls":{"people":{"type":"number","initial":30},"pack":{"type":"checkbox"}},"steps":[{"pack":false}, {"people":40,"pack":true}],"expected":[[540,800]]},
+    {"taskId":"d07","controls":{"miles":{"type":"number","initial":10}},"steps":[{}, {"miles":5}],"expected":[[16.09344,8.04672]]},
+    {"taskId":"d08","controls":{"months":{"type":"number","initial":3},"edition":{"type":"select"}},"steps":[{}, {"months":2,"edition":{"option":"高级"}}],"expected":[[57,78]]},
+    {"taskId":"d09","controls":{"people":{"type":"number","initial":10},"fridge":{"type":"checkbox"}},"steps":[{}, {"people":15,"fridge":true}],"expected":[[20,30],[80,170]]},
+    {"taskId":"d10","controls":{"count":{"type":"number","initial":250}},"steps":[{}, {"count":500}],"expected":[[3000,6000],[3,6]]},
+    {"taskId":"d11","controls":{"distance":{"type":"number","initial":5},"minutes":{"type":"number","initial":30}},"steps":[{}, {"distance":10,"minutes":50}],"expected":[[6,5]]},
+    {"taskId":"d12","controls":{"students":{"type":"number","initial":20},"teachers":{"type":"number","initial":2}},"steps":[{}, {"students":30,"teachers":3}],"expected":[[1720,2180]]},
+    {"taskId":"d13","controls":{"pages":{"type":"number","initial":10},"color":{"type":"select"},"binding":{"type":"checkbox"}},"steps":[{}, {"pages":20,"color":{"option":"彩色"},"binding":true}],"expected":[[2,25]]},
+    {"taskId":"d14","controls":{"utilities":{"type":"number","initial":300}},"steps":[{}, {"utilities":500}],"expected":[[2900,3100]]},
+    {"taskId":"d15","controls":{"people":{"type":"number","initial":4}},"steps":[{}, {"people":3}],"expected":[[320,240],[400,300]]},
+    {"taskId":"d16","controls":{"tickets":{"type":"number","initial":2},"audio":{"type":"checkbox"}},"steps":[{}, {"tickets":3,"audio":true}],"expected":[[160,285]]},
+    {"taskId":"d17","controls":{"ordinary":{"type":"number","initial":8},"overtime":{"type":"number","initial":2}},"steps":[{}, {"ordinary":6,"overtime":4}],"expected":[[550,600]]},
+    {"taskId":"d18","controls":{"tables":{"type":"number","initial":10},"seats":{"type":"number","initial":8}},"steps":[{}, {"tables":12,"seats":6}],"expected":[[80,72]]},
+    {"taskId":"d19","controls":{"price":{"type":"number","initial":200},"discount":{"type":"number","initial":[8,0.8,80]},"coupon":{"type":"checkbox"}},"steps":[{}, {"price":100,"discount":{"byInitial":{"8":9,"0.8":0.9,"80":90}},"coupon":false},{"price":1,"coupon":true}],"expected":[[150,90,0]]},
+    {"taskId":"d20","controls":{"celsius":{"type":"number","initial":20}},"steps":[{}, {"celsius":0}, {"celsius":-40}],"expected":[[68,32,-40]]}
+  ]
+}

@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-02T14:48:16.379Z",
+  "scope": "Checkpoint evidence; Phase 3 incomplete. Counts overlap and are not an acceptance rate.",
+  "baseCommit": "af6dbbbd2507d707e7447e00d76df37a12713b74",
+  "upstreamMain": "357bc252723dcef737afc771745509316cecb72b",
+  "checks": {
+    "targeted": {
+      "passed": 40,
+      "failed": 0
+    },
+    "capabilities": {
+      "passed": 492,
+      "failed": 0,
+      "files": 55,
+      "source": ".verification/mini-app-capabilities-gfs8Mr/result.json"
+    },
+    "webTypecheck": "passed",
+    "targetedLint": "passed",
+    "powershellSyntax": "passed",
+    "fullCi": "deferred",
+    "humanSemanticAcceptance": "deferred"
+  },
+  "batches": [
+    {
+      "kind": "components",
+      "source": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+      "sha256": "ef3413646e8ad0aca193ee5cf8f948a2c8aa7d377d89f5f9ccad03af611113d6",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "rows": [
+        {
+          "id": "outing-1",
+          "status": "semantic-failed",
+          "originalSourceSha256": "5fd0dae5b6cea44f7e6aba93541b13f0b111b8216783e7200b06dae4c1db09f5",
+          "completedCheckpoints": 3,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": true,
+          "followupRecorded": true,
+          "semanticFindings": [
+            {
+              "kind": "generated-domain",
+              "message": "The user supplied no upper bound, but generated max=60."
+            }
+          ],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "discount-1",
+          "status": "completed",
+          "originalSourceSha256": "825c49fe5367d2967e2ce8e86adcc4da9e8546655734a2b4ed20802c32111a48",
+          "completedCheckpoints": 3,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": true,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "outing-2",
+          "status": "completed",
+          "originalSourceSha256": "7bde2046842d0f6b5f17b98646381f8231ed9e6f2785671ec05a53b4795c35a7",
+          "completedCheckpoints": 3,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": true,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "discount-2",
+          "status": "completed",
+          "originalSourceSha256": "bb432f5c5f6fbad741107efefe384b094c20a11b366c48fca83fc858c8a9c169",
+          "completedCheckpoints": 3,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": true,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "outing-3",
+          "status": "failed",
+          "originalSourceSha256": "dc5ddc02300861bb063917a6ae2e47c6b8d0e413730e7e45624845867e90238b",
+          "completedCheckpoints": 0,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": false,
+          "followupRecorded": false,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review",
+          "failure": "Duplicate title matched failed preview; retried after writable-surface selector correction."
+        },
+        {
+          "id": "discount-3",
+          "status": "completed",
+          "originalSourceSha256": "8e882991142af494bd2100fda43a87f3015fd237323bd95abd77e1cdb6d42595",
+          "completedCheckpoints": 3,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": true,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        }
+      ]
+    },
+    {
+      "kind": "component-retry",
+      "source": ".verification/desktop-e2e-fz5CjN/component-replay.json",
+      "sha256": "c90d60445183a805ebbfe76e6908ccc20ccb1c3f254cd29fae8d5feb0891b9f6",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "rows": [
+        {
+          "id": "outing-3",
+          "status": "completed",
+          "originalSourceSha256": "dc5ddc02300861bb063917a6ae2e47c6b8d0e413730e7e45624845867e90238b",
+          "completedCheckpoints": 3,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": true,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        }
+      ]
+    },
+    {
+      "kind": "discrete",
+      "source": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+      "sha256": "79c8667e8b5d94fca6fce6c2ae286d899148d5e2f4cd2a613388745e0f9bec14",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "rows": [
+        {
+          "id": "sorting-1",
+          "status": "completed",
+          "originalSourceSha256": "df6b3b5955c4393485027327711a9bdcab1944de973463b7e6bf1084982d571d",
+          "completedCheckpoints": 12,
+          "reloadCheckpoints": 3,
+          "componentReloadRecorded": false,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "sorting-2",
+          "status": "completed",
+          "originalSourceSha256": "fc1fef776bf54f401456f655dcce552272ced2aed22e6527a226c1463f0008f1",
+          "completedCheckpoints": 12,
+          "reloadCheckpoints": 3,
+          "componentReloadRecorded": false,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "sorting-3",
+          "status": "semantic-failed",
+          "originalSourceSha256": "cd7885b37ba0581d858f04963e2e224dd0c0626fac9288e676b9133611c77392",
+          "completedCheckpoints": 12,
+          "reloadCheckpoints": 3,
+          "componentReloadRecorded": false,
+          "followupRecorded": true,
+          "semanticFindings": [
+            {
+              "kind": "generated-initial-summary",
+              "message": "Original initial summary predicts four swaps for [6,2,5,1], but its inversion count is five."
+            }
+          ],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "jugs-1",
+          "status": "completed",
+          "originalSourceSha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+          "completedCheckpoints": 8,
+          "reloadCheckpoints": 2,
+          "componentReloadRecorded": false,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        },
+        {
+          "id": "jugs-2",
+          "status": "failed",
+          "originalSourceSha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+          "completedCheckpoints": 0,
+          "reloadCheckpoints": 0,
+          "componentReloadRecorded": false,
+          "followupRecorded": false,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review",
+          "failure": "UI text assertion timed out before first checkpoint; cause unresolved."
+        },
+        {
+          "id": "jugs-3",
+          "status": "completed",
+          "originalSourceSha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+          "completedCheckpoints": 8,
+          "reloadCheckpoints": 2,
+          "componentReloadRecorded": false,
+          "followupRecorded": true,
+          "semanticFindings": [],
+          "semanticReview": "pending-independent-human-review"
+        }
+      ]
+    }
+  ],
+  "nativeWindow": {
+    "status": "failed",
+    "source": ".verification/desktop-e2e-T0AtUB/result.json",
+    "scope": "Diagnostic code before visibility assertions were reinstated; final full scenario not rerun.",
+    "interruptions": [
+      {
+        "kind": "minimize",
+        "state": {
+          "x": 54,
+          "held": false,
+          "drag": false
+        },
+        "native": {
+          "visible": true,
+          "minimized": true
+        },
+        "document": {
+          "hidden": false,
+          "focused": false
+        },
+        "syntheticKeyupSent": false
+      }
+    ],
+    "secondaryActivationCount": 1,
+    "failure": "Save button stability timeout after native restore; page visibility differed from native state.",
+    "cleanupErrors": []
+  }
+}

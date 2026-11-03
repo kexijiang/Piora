@@ -1,0 +1,441 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "phase": "3D read-only parameter inspection",
+  "phaseComplete": false,
+  "baseline": "bf21241e05f86ebc17dea688ea8a7f42d4cd37c3",
+  "delivery": "Prepared for the existing upstream Draft PR #238; commit identity and live CI status are recorded on the PR.",
+  "model": {
+    "configuration": "DeepSeek V4.1 Flash",
+    "request": "deepseek/deepseek-flash",
+    "taskThinking": "enabled",
+    "fallback": false
+  },
+  "sources": {
+    "desktop": {
+      "files": 519,
+      "status": "matched"
+    },
+    "capabilities": {
+      "files": 178,
+      "status": "matched"
+    }
+  },
+  "tests": [
+    {
+      "path": ".verification/phase3-input-inspection-targeted.log",
+      "tests": 34,
+      "passed": 34,
+      "failed": 0
+    },
+    {
+      "path": ".verification/mini-app-capabilities-tojLhp/tests.log",
+      "tests": 538,
+      "passed": 538,
+      "failed": 0
+    }
+  ],
+  "staticChecks": {
+    "typecheck": {
+      "status": "passed",
+      "exitCode": 0,
+      "command": "node_modules/.bin/tsc --noEmit --incremental false"
+    },
+    "targetedLint": {
+      "status": "passed",
+      "exitCode": 0
+    }
+  },
+  "capabilities": {
+    "id": "tojLhp",
+    "testFiles": 61,
+    "count": 14
+  },
+  "desktop": {
+    "id": "JVNyaH",
+    "status": "passed",
+    "scope": "Original committed spatial program copied to an isolated real desktop, with UI operations and real-model follow-up; not fresh generation",
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:26:37.245Z",
+        "durationMs": 64313
+      },
+      {
+        "name": "load-original-program",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:27:41.560Z",
+        "durationMs": 21083
+      },
+      {
+        "name": "operate-and-save",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:02.644Z",
+        "durationMs": 3850
+      },
+      {
+        "name": "declared-input-presets",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:06.495Z",
+        "durationMs": 2847
+      },
+      {
+        "name": "geometry:home",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:09.344Z",
+        "durationMs": 5282
+      },
+      {
+        "name": "geometry:base-quarter",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:14.626Z",
+        "durationMs": 6521
+      },
+      {
+        "name": "geometry:elbow-up",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:21.147Z",
+        "durationMs": 8272
+      },
+      {
+        "name": "geometry:compound",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:29.420Z",
+        "durationMs": 8322
+      },
+      {
+        "name": "geometry:lower-bound",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:37.745Z",
+        "durationMs": 7177
+      },
+      {
+        "name": "geometry:oblique",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:44.922Z",
+        "durationMs": 11117
+      },
+      {
+        "name": "geometry:return-home",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:28:56.040Z",
+        "durationMs": 7802
+      },
+      {
+        "name": "reload-and-explain",
+        "status": "passed",
+        "startedAt": "2026-11-03T06:29:03.843Z",
+        "durationMs": 20574
+      }
+    ],
+    "cleanupErrors": [],
+    "pageErrors": [],
+    "runtimeFindings": [],
+    "prompt": "我想看看两节机械臂怎么动。底座左右转、肘部上下折，点一下看看是哪个部件，也让我绕着它看。两个关节能分别调，也能一起回到起点。",
+    "followup": "别改我现在的姿态，帮我看看肘部在 0、90 和 120 度时，末端分别有多高？是不是越往上折就越高？",
+    "checkpointCount": 14,
+    "explicitUiSaves": 13,
+    "poses": 7,
+    "geometricChecks": 70,
+    "geometricPassed": 70,
+    "maxError": 4.965068306494546e-16,
+    "picks": 2,
+    "cameraGroups": 2,
+    "presets": 1,
+    "reloads": 1,
+    "requests": [
+      {
+        "phase": "followup",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      },
+      {
+        "phase": "followup",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "status": 200,
+        "phase": "followup",
+        "modelIds": [
+          "deepseek-flash"
+        ],
+        "text": ""
+      },
+      {
+        "status": 200,
+        "phase": "followup",
+        "modelIds": [
+          "deepseek-flash"
+        ],
+        "text": "我没有改动你的姿态，现在仍然是底座 0°、肘部 0°、选中末端夹爪；刚才的查值用的是只读方式，三个角度分别单独试算，试算结果都没有写回应用。\n\n| 肘部角度 | 末端离地高度 |\n|---|---|\n| 0° | 0.88 米 |\n| 90° | 2.53 米 |\n| 120° | 2.31 米 |\n\n所以“越往上折就越高”只对前一半成立：从 0° 到 90° 时，末端确实升高约 1.65 米，但再折到 120° 时反而降到 2.31 米，比 90° 低了约 0.22 米。原因是末端高度按 0.88 + 1.65·sin(肘部角) 变化：肘部角超过 90° 以后，正弦值开始变小，末端因此越折越低，90° 附近才是最高点。"
+      }
+    ],
+    "tools": [
+      {
+        "name": "piora_inspect_mini_app",
+        "arguments": {
+          "appId": "twoJointArm",
+          "inputCases": [
+            {
+              "inputId": "elbowAngle",
+              "value": 0
+            },
+            {
+              "inputId": "elbowAngle",
+              "value": 90
+            },
+            {
+              "inputId": "elbowAngle",
+              "value": 120
+            }
+          ]
+        }
+      }
+    ],
+    "observations": [
+      {
+        "appId": "twoJointArm",
+        "source": {
+          "planDigest": "a9e89f9a68fd35ca9f3b646badf4e3288ddbdf8f26385900b45e08e3ee1824a1",
+          "stateRevision": 33,
+          "checkpointDigest": "688eb1ecebe3ea01f62b481543d1f544e6496e2f4965d89da9c99f5a3388c6dd"
+        },
+        "sourceCheckpointDigest": "688eb1ecebe3ea01f62b481543d1f544e6496e2f4965d89da9c99f5a3388c6dd",
+        "scope": "independent-single-input-events",
+        "requestedCases": 3,
+        "omittedCases": 0,
+        "cases": [
+          {
+            "inputId": "elbowAngle",
+            "value": 0,
+            "checkpointUnchanged": true,
+            "changes": {
+              "complete": true,
+              "total": 0,
+              "omitted": 0,
+              "items": []
+            },
+            "projectionText": {
+              "scope": "current-projection-text-bindings",
+              "values": [
+                {
+                  "id": "pose",
+                  "text": "底座 0° · 肘部 0°"
+                },
+                {
+                  "id": "tip",
+                  "text": "末端离地约 0.88 米"
+                },
+                {
+                  "id": "selection",
+                  "text": "选中：末端夹爪"
+                },
+                {
+                  "id": "partInfo",
+                  "text": "末端夹爪：装在手腕上，跟着第二节臂一起运动。"
+                }
+              ],
+              "omitted": 0
+            }
+          },
+          {
+            "inputId": "elbowAngle",
+            "value": 90,
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/elbowAngle",
+                  "kind": "replace",
+                  "before": 0,
+                  "after": 90
+                }
+              ]
+            },
+            "projectionText": {
+              "scope": "current-projection-text-bindings",
+              "values": [
+                {
+                  "id": "pose",
+                  "text": "底座 0° · 肘部 90°"
+                },
+                {
+                  "id": "tip",
+                  "text": "末端离地约 2.53 米"
+                },
+                {
+                  "id": "selection",
+                  "text": "选中：末端夹爪"
+                },
+                {
+                  "id": "partInfo",
+                  "text": "末端夹爪：装在手腕上，跟着第二节臂一起运动。"
+                }
+              ],
+              "omitted": 0
+            }
+          },
+          {
+            "inputId": "elbowAngle",
+            "value": 120,
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/elbowAngle",
+                  "kind": "replace",
+                  "before": 0,
+                  "after": 120
+                }
+              ]
+            },
+            "projectionText": {
+              "scope": "current-projection-text-bindings",
+              "values": [
+                {
+                  "id": "pose",
+                  "text": "底座 0° · 肘部 120°"
+                },
+                {
+                  "id": "tip",
+                  "text": "末端离地约 2.31 米"
+                },
+                {
+                  "id": "selection",
+                  "text": "选中：末端夹爪"
+                },
+                {
+                  "id": "partInfo",
+                  "text": "末端夹爪：装在手腕上，跟着第二节臂一起运动。"
+                }
+              ],
+              "omitted": 0
+            }
+          }
+        ]
+      }
+    ],
+    "finalStateRevision": 33,
+    "checkpointDigest": "688eb1ecebe3ea01f62b481543d1f544e6496e2f4965d89da9c99f5a3388c6dd",
+    "inputs": {
+      "baseYaw": 0,
+      "elbowAngle": 0
+    },
+    "selected": "gripper",
+    "unchangedAfterInspection": {
+      "status": "passed",
+      "evidence": "Desktop runner asserts exact snapshot equality and unchanged stateRevision after the real follow-up; no separate after-snapshot artifact was retained."
+    },
+    "original": {
+      "recording": "Fc48Tc",
+      "journalSha256": "c2632e1b63cdc087057741e3ec4290c39cf08b457d8dc003ba8e05f94dc00edb",
+      "planDigest": "a9e89f9a68fd35ca9f3b646badf4e3288ddbdf8f26385900b45e08e3ee1824a1"
+    }
+  },
+  "semanticReview": {
+    "status": "sample values and non-monotonic counterexample passed; not general acceptance",
+    "samples": [
+      {
+        "angleDegrees": 0,
+        "expectedHeightMeters": 0.88,
+        "actualText": "末端离地约 0.88 米"
+      },
+      {
+        "angleDegrees": 90,
+        "expectedHeightMeters": 2.53,
+        "actualText": "末端离地约 2.53 米"
+      },
+      {
+        "angleDegrees": 120,
+        "expectedHeightMeters": 2.31,
+        "actualText": "末端离地约 2.31 米"
+      }
+    ],
+    "formula": {
+      "expression": "0.88 + 1.65 * sin(elbowAngle * pi / 180)",
+      "basis": "Declared original program and independent arm dimensions from the prior geometry audit; not established by three samples alone",
+      "answerMatches": true
+    },
+    "limits": [
+      "The tool only executes the requested independent single-input events, not full UI gestures or sequences.",
+      "Three samples alone cannot establish a global maximum or whole-interval monotonicity.",
+      "This replay does not establish fresh generation accuracy; prior ground penetration and history-attribution issues remain.",
+      "Two-human acceptance is deferred."
+    ]
+  },
+  "remaining": [
+    "3B original task failures and general generation quality",
+    "3C complete recovery/revision/action/conversion matrix",
+    "3D other complex tasks and visual/keyboard/resource coverage",
+    "Full CI, sealed set and two-human acceptance deferred"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/desktop-e2e-JVNyaH/spatial-task.json",
+      "sha256": "aa5361dc0a702f0072d4400f7949ed94133df757c9ee6563411250b3f36adf67"
+    },
+    {
+      "path": ".verification/desktop-e2e-JVNyaH/result.json",
+      "sha256": "08bc0a668d881d77acb395cd2a1b15f05a8168dccb4c6d1c253771130dd55016"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-tojLhp/result.json",
+      "sha256": "ab60c6a737bd0f5f2f83a07394c752eda4d2daf8809b5f3f33ede698c2482abb"
+    },
+    {
+      "path": "scripts/verify-spatial-ui-desktop.mjs",
+      "sha256": "7b45c57f64b845fe8b0544a7ebe5193b71c6f82a73c21334e5fbc1e042c6a24c"
+    },
+    {
+      "path": "scripts/desktop-e2e/spatial-oracle.mjs",
+      "sha256": "1b6d4ef6dc8928880a2ac042b94b62710bc8835fa5ec15b6b4ef302dc2271130"
+    },
+    {
+      "path": "scripts/desktop-e2e/spatial-request.mjs",
+      "sha256": "a0c2793ccda6d1904e4322b1dc181aa0b595b2bc68695d2decd22165d79385a9"
+    },
+    {
+      "path": ".verification/phase3-input-inspection-targeted.log",
+      "sha256": "0baa3965d7f850c53a8c4cb77c4551fe8ee6cfeec1ba29ca4ab0ffa294b135fa"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-tojLhp/tests.log",
+      "sha256": "7575a851289a9d80d67ef1d9df37ed74439a15125a258307ef582b6f22548154"
+    },
+    {
+      "path": ".verification/phase3-input-inspection-commit-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-input-inspection-commit-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "pdf": {
+    "source": "docs/verification/intelligent-ui-phase3-input-inspection-2026-11-03.md",
+    "sourceSha256": "179f908c2bf1d46850daaf842f313351180f43570576152d41a93f68e89658f6",
+    "output": "output/pdf/piora-intelligent-ui-phase3-input-inspection-2026-11-03.pdf",
+    "pdfSha256": "5c27124aef5910ff1eb1736e4843ce189ae242073ec1546f9c96924ef1e0fe7b",
+    "pages": 2,
+    "pageTextLengths": [
+      1042,
+      936
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: both pages inspected; no clipping, overlap or missing Chinese text"
+  }
+}

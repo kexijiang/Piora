@@ -51,7 +51,7 @@ function App(){
     <section id="launcher"><NewSessionProjectPicker activeCwd="/workspace/a-very-long-project-name-for-layout-checks" onLaunch={request=>{window.launched=true;window.launchRequest=request}}/></section>
     <section id="conversation"><ChatInput ref={value=>{window.composer=value}} onSend={(text,...args)=>{window.sent=true;window.submission={text,args};return true}} onAbort={()=>{window.stopped=true;setBusy(false)}}
       queueContent={<ChatCommandQueue records={queued} pendingMessages={runtimeQueue} onPendingAction={async(id,action)=>{window.pendingAction={id,action};if(window.failPendingAction)throw new Error("Pending action failed");setRuntimeQueue(current=>{const pendingInputs=current.pendingInputs.filter(item=>item.id!==id);return {pendingInputs,steering:pendingInputs.filter(item=>item.kind==="steer").map(item=>item.text),followUp:pendingInputs.filter(item=>item.kind==="followUp").map(item=>item.text)}})}} actions={{cancel:async record=>{window.cancelled=record.commandId;if(window.failQueueCancel)throw new Error("Queue cancellation failed");setQueued(current=>current.filter(item=>item.commandId!==record.commandId))},steer:async record=>{window.steered=record.commandId;setQueued(current=>current.filter(item=>item.commandId!==record.commandId))},edit:async record=>{window.editing=record.commandId;return record.preview},save:async(record,text)=>{if(window.failQueueEdit)throw new Error("Queue edit failed");window.edited={id:record.commandId,text};setQueued(current=>current.map(item=>item.commandId===record.commandId?{...item,preview:text}:item))},resume:async record=>{window.resumed=record.commandId;setQueued(current=>current.map(item=>item.commandId===record.commandId?{...item,queuePaused:false}:item))}}}/>}
-      commandCatalog={catalog} onLoadSlashCommands={()=>{}} onQueueInput={async(text,images,files,onDurable,options)=>{(window.queuedInputs??=[]).push({text,delivery:options?.delivery});return true}}
+      commandCatalog={catalog} onLoadSlashCommands={()=>{}} onQueueInput={async(text,images,files,onDurable,options)=>{if(window.queueGate && !await window.queueGate)return false;(window.queuedInputs??=[]).push({text,delivery:options?.delivery});return true}}
       onSteer={()=>true} onFollowUp={()=>true} isStreaming={busy} onModelChange={async()=>true} onThinkingLevelChange={()=>{}}
       model={{provider:"deepseek",modelId:"deepseek-v4.1-flash"}} modelList={[{provider:"deepseek",id:"deepseek-v4.1-flash",name:"DeepSeek V4.1 Flash Very Long Model Name"}]}
       toolPermission={permission} onToolPermissionChange={mode=>{setPermission({mode,revision:permission.revision+1});window.permission=mode}}
@@ -367,6 +367,20 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         await page.waitForTimeout(230);
         assert.equal(await conversation.locator('.streaming-mode-menu').isVisible(), false, 'Escape stays dismissed while the pointer remains over the arrow');
         assert.equal(await page.evaluate(() => localStorage.getItem('piora-running-send-mode:v1')), behavior);
+      }
+      // Saving an interactive answer can hold admission. Cancellation must not
+      // lose the original draft or overwrite text entered while that save waits.
+      for (const newer of [false, true]) {
+        await page.evaluate(() => { window.queueGate = new Promise(resolve => { window.finishQueueGate = resolve; }); });
+        await editor.fill('Wait for answer parameters');
+        await primary.click();
+        await page.waitForFunction(() => document.querySelector('#conversation textarea').value === '');
+        assert.equal(await page.evaluate(() => window.queuedInputs.length), queuedCount);
+        if (newer) await editor.fill('Newer draft while saving');
+        await page.evaluate(() => window.finishQueueGate(false));
+        await page.waitForFunction(expected => document.querySelector('#conversation textarea').value === expected, newer ? 'Newer draft while saving' : 'Wait for answer parameters');
+        assert.equal(await page.evaluate(() => window.queuedInputs.length), queuedCount, 'cancelled save gate must not admit a queued message');
+        await page.evaluate(() => { window.queueGate = undefined; });
       }
       await editor.fill('No default guidance binding');
       await editor.press('Control+Enter');

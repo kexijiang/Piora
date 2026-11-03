@@ -1,0 +1,2409 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "phase": "3D saved-transition evidence and follow-up",
+  "phaseComplete": false,
+  "committed": false,
+  "baseline": "643bb2b8945709f7ea4980fc8c5998f05c5125a8",
+  "model": {
+    "configuration": "DeepSeek V4.1 Flash",
+    "request": "deepseek/deepseek-flash",
+    "taskThinking": "enabled",
+    "fallback": false
+  },
+  "sources": {
+    "desktop": {
+      "files": 517,
+      "status": "matched"
+    },
+    "capabilities": {
+      "files": 174,
+      "status": "matched"
+    }
+  },
+  "tests": [
+    {
+      "path": ".verification/phase3-save-history-targeted.log",
+      "tests": 57,
+      "passed": 48,
+      "failed": 9
+    },
+    {
+      "path": ".verification/phase3-save-history-targeted-retest.log",
+      "tests": 57,
+      "passed": 57,
+      "failed": 0
+    },
+    {
+      "path": ".verification/phase3-save-history-bounds.log",
+      "tests": 4,
+      "passed": 4,
+      "failed": 0
+    },
+    {
+      "path": ".verification/phase3-save-history-list-retest.log",
+      "tests": 12,
+      "passed": 5,
+      "failed": 7
+    },
+    {
+      "path": ".verification/phase3-save-history-list-isolated-retest.log",
+      "tests": 12,
+      "passed": 12,
+      "failed": 0
+    },
+    {
+      "path": ".verification/mini-app-capabilities-vmibzv/tests.log",
+      "tests": 533,
+      "passed": 532,
+      "failed": 1
+    },
+    {
+      "path": ".verification/mini-app-capabilities-S4juTo/tests.log",
+      "tests": 533,
+      "passed": 533,
+      "failed": 0
+    }
+  ],
+  "desktop": {
+    "id": "G7PPy7",
+    "status": "passed",
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:27:03.167Z",
+        "durationMs": 28353
+      },
+      {
+        "name": "load-original-program",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:27:31.523Z",
+        "durationMs": 16640
+      },
+      {
+        "name": "operate-and-save",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:27:48.165Z",
+        "durationMs": 3605
+      },
+      {
+        "name": "declared-input-presets",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:27:51.771Z",
+        "durationMs": 8906
+      },
+      {
+        "name": "geometry:neutral",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:28:00.677Z",
+        "durationMs": 12826
+      },
+      {
+        "name": "geometry:pitch-up-30",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:28:13.505Z",
+        "durationMs": 9255
+      },
+      {
+        "name": "geometry:pitch-down-30",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:28:22.760Z",
+        "durationMs": 16052
+      },
+      {
+        "name": "geometry:yaw-90",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:28:38.813Z",
+        "durationMs": 27536
+      },
+      {
+        "name": "geometry:roll-90",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:29:06.350Z",
+        "durationMs": 40639
+      },
+      {
+        "name": "geometry:compound-90",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:29:46.990Z",
+        "durationMs": 25102
+      },
+      {
+        "name": "geometry:return-zero",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:30:12.093Z",
+        "durationMs": 60013
+      },
+      {
+        "name": "reload-and-explain",
+        "status": "passed",
+        "startedAt": "2026-11-03T05:31:12.107Z",
+        "durationMs": 21216
+      }
+    ],
+    "checkpointCount": 17,
+    "uiSaveCount": 16,
+    "geometricChecks": 56,
+    "geometricPassed": 56,
+    "maxError": 4.965068306494546e-16,
+    "pageErrors": [],
+    "cleanupErrors": [],
+    "runtimeFindings": [],
+    "requests": [
+      {
+        "id": 1,
+        "phase": "background",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "disabled"
+        },
+        "titleInstructionPresent": true
+      },
+      {
+        "id": 2,
+        "phase": "followup",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        },
+        "titleInstructionPresent": false
+      }
+    ],
+    "responses": [
+      {
+        "id": 1,
+        "status": 200,
+        "phase": "background",
+        "modelIds": [
+          "deepseek-flash"
+        ],
+        "text": "飞机俯仰偏航横滚姿态演示"
+      },
+      {
+        "id": 2,
+        "status": 200,
+        "phase": "followup",
+        "modelIds": [
+          "deepseek-flash"
+        ],
+        "text": "## 你现在选中的对象\n\n**机翼（wing）**，场景里的机翼显示为橙色高亮（上一轮你选的是机身，现在已换成机翼）。它的说明是：横滚时两侧机翼一高一低；偏航时两翼一起向一侧扫动；俯仰时两翼基本保持水平。机翼是三个动作里最容易一眼认出\"横滚\"的部位。\n\n## 你改过的角度\n\n快照里三个角度都是 **0°**：俯仰 0°、偏航 0°、横滚 0°。\n\n所以飞机此刻处于基准姿态——三轴归零，机身水平、机头指向 +X。最近的保存记录显示，横滚曾从 90° 一路递减（90→84→77→…→2→0）被调回 0，说明你转动过它并已归零；这里只保留最近若干条记录，更早的变动未显示，因此不能说\"从未改过\"。\n\n## 换视角 ≠ 改姿态\n\n| | 换视角（相机） | 改姿态（角度） |\n|---|---|---|\n| 改的是什么 | 你从哪里看这架飞机 | 飞机自己朝哪指、怎么倾斜 |\n| 当前值 | 相机在 `[7.95, 7.52, 3.67]`，来源为\"用户保存的视角\" | 0° / 0° / 0° |\n| 与默认机位的差别 | 包围目标的**距离完全没变**（11.54，等于默认 11.54），只是水平方向绕了约 30°、抬高约 15°——是纯环绕，没有缩放 | 三个角度都回到 0° |\n| 存在哪 | 独立的版本化视角状态，不进入角度值 | 三个输入值，直接驱动机身组的旋转 |\n| 怎么归零 | 「恢复默认视角」回到初始机位（当前 `cameraRevision` 仍是 0，说明没触发过程序级重置） | 「三轴归零」把三个角度一起回 0° |\n| 是否互相影响 | 不会：你刚转了视角，三个角度的读数一个都没变 | 不会：拖动滑块不会把你调好的观察角度弄丢 |\n\n这里正好是个现成的例子：**最近一次被保存的变动只改了相机位置，角度前后都是 0**——飞机一动没动，变的是你的观察点。反过来，把横滚拉到 35° 时，无论你从机头方向看还是从正上方看，那个 35° 都不会变，只是\"看起来\"的倾斜程度不同。\n\n一句话：**视角决定观察点，姿态决定飞机本身。**"
+      }
+    ],
+    "savedStateRevision": 137,
+    "inputs": {
+      "pitch": 0,
+      "yaw": 0,
+      "roll": 0
+    },
+    "saveHistory": {
+      "version": 1,
+      "omitted": 115,
+      "transitions": [
+        {
+          "from": {
+            "revision": 121,
+            "digest": "a59be86be974802c25b01c9b8aebc7e80d163cb62f46aec7b71bdff65c9393b0"
+          },
+          "to": {
+            "revision": 122,
+            "digest": "9e866398763a4b6748b91e66c0a04684d54115bc90a1b7d4ebf3a6b6b0d8f492"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/yaw",
+                "kind": "replace",
+                "before": 7,
+                "after": 0
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 122,
+            "digest": "9e866398763a4b6748b91e66c0a04684d54115bc90a1b7d4ebf3a6b6b0d8f492"
+          },
+          "to": {
+            "revision": 123,
+            "digest": "84f5e7ec6b621417811666acb6e6f835848e3a64a4fc1143589384f64ccdce3c"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 90,
+                "after": 84
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 123,
+            "digest": "84f5e7ec6b621417811666acb6e6f835848e3a64a4fc1143589384f64ccdce3c"
+          },
+          "to": {
+            "revision": 124,
+            "digest": "d2986383b2ac280cf848845c0012ce01b1fe3467ba4f727c760fbed5e16c7051"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 84,
+                "after": 77
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 124,
+            "digest": "d2986383b2ac280cf848845c0012ce01b1fe3467ba4f727c760fbed5e16c7051"
+          },
+          "to": {
+            "revision": 125,
+            "digest": "79ed5bd2525fa9e96641a015810b3ceac4766041e58d5e2a4cb55f10264a08f2"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 77,
+                "after": 70
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 125,
+            "digest": "79ed5bd2525fa9e96641a015810b3ceac4766041e58d5e2a4cb55f10264a08f2"
+          },
+          "to": {
+            "revision": 126,
+            "digest": "01b96c501ce1f0d7921d88f426d36cfc609ad1ef1b8cce56a9c5739ffd288159"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 70,
+                "after": 63
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 126,
+            "digest": "01b96c501ce1f0d7921d88f426d36cfc609ad1ef1b8cce56a9c5739ffd288159"
+          },
+          "to": {
+            "revision": 127,
+            "digest": "d715e6cdf11013e8e963c4a837e859c969214b4b61a7805818525076f3ff0f9e"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 63,
+                "after": 56
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 127,
+            "digest": "d715e6cdf11013e8e963c4a837e859c969214b4b61a7805818525076f3ff0f9e"
+          },
+          "to": {
+            "revision": 128,
+            "digest": "8c2415ca6031713ad2cd3e8641e4f8d704ae849b93650c7716feb0034879193b"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 56,
+                "after": 50
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 128,
+            "digest": "8c2415ca6031713ad2cd3e8641e4f8d704ae849b93650c7716feb0034879193b"
+          },
+          "to": {
+            "revision": 129,
+            "digest": "c572faee16ddd98b8b050570644802014ccb32bc4f2de8670e49d8acf35b55ed"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 50,
+                "after": 43
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 129,
+            "digest": "c572faee16ddd98b8b050570644802014ccb32bc4f2de8670e49d8acf35b55ed"
+          },
+          "to": {
+            "revision": 130,
+            "digest": "f5b930d574c89bb1bab9e3f9bc4a63f89a854014444984ff1eb3e234eff7a14e"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 43,
+                "after": 36
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 130,
+            "digest": "f5b930d574c89bb1bab9e3f9bc4a63f89a854014444984ff1eb3e234eff7a14e"
+          },
+          "to": {
+            "revision": 131,
+            "digest": "b2c97e35af7cb3201cac711aa2c889177b4411f9d981133e2fde18a48fa91474"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 36,
+                "after": 29
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 131,
+            "digest": "b2c97e35af7cb3201cac711aa2c889177b4411f9d981133e2fde18a48fa91474"
+          },
+          "to": {
+            "revision": 132,
+            "digest": "efd8b33776b3f47d929195933079657fc3fd653c2bee94859ddcbf8a4d10751d"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 29,
+                "after": 22
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 132,
+            "digest": "efd8b33776b3f47d929195933079657fc3fd653c2bee94859ddcbf8a4d10751d"
+          },
+          "to": {
+            "revision": 133,
+            "digest": "483f86c9960f5a1c4d6b3b64ad021b24a278f23e13a369755c2349784b085242"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 22,
+                "after": 15
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 133,
+            "digest": "483f86c9960f5a1c4d6b3b64ad021b24a278f23e13a369755c2349784b085242"
+          },
+          "to": {
+            "revision": 134,
+            "digest": "66673f574dc9a5bdf36b0de74f8206b1b85b6d7961b483c93a238326f471f928"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 15,
+                "after": 9
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 134,
+            "digest": "66673f574dc9a5bdf36b0de74f8206b1b85b6d7961b483c93a238326f471f928"
+          },
+          "to": {
+            "revision": 135,
+            "digest": "30d5c2c488b5e2a31cf18e1789abc1e2865428084fb1d1df171306c16058b3cf"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 9,
+                "after": 2
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 135,
+            "digest": "30d5c2c488b5e2a31cf18e1789abc1e2865428084fb1d1df171306c16058b3cf"
+          },
+          "to": {
+            "revision": 136,
+            "digest": "5f1c6558538b4a76343eafdd71862e42cbeece40c19bee5f0ca794fcaaaa1a28"
+          },
+          "changes": {
+            "complete": true,
+            "total": 1,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/inputs/roll",
+                "kind": "replace",
+                "before": 2,
+                "after": 0
+              }
+            ]
+          }
+        },
+        {
+          "from": {
+            "revision": 136,
+            "digest": "5f1c6558538b4a76343eafdd71862e42cbeece40c19bee5f0ca794fcaaaa1a28"
+          },
+          "to": {
+            "revision": 137,
+            "digest": "dde9a573a00b9e183811d5501970a3e36478f6402e07c013713dcf3855c12f40"
+          },
+          "changes": {
+            "complete": true,
+            "total": 3,
+            "omitted": 0,
+            "items": [
+              {
+                "path": "/view/cameras/airframe/camera/position/0",
+                "kind": "replace",
+                "before": 5.382871892280025,
+                "after": 7.94936546580831
+              },
+              {
+                "path": "/view/cameras/airframe/camera/position/1",
+                "kind": "replace",
+                "before": 6.0179734861937035,
+                "after": 7.522466857742129
+              },
+              {
+                "path": "/view/cameras/airframe/camera/position/2",
+                "kind": "replace",
+                "before": 4.482040306687487,
+                "after": 3.6701609045361323
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "modelContext": {
+      "stateRevision": 137,
+      "inputs": [
+        {
+          "id": "pitch",
+          "label": "俯仰 pitch（绕 Z 轴）",
+          "meaning": "机头向上抬起或向下压下的角度，负值压低、正值抬起",
+          "value": 0
+        },
+        {
+          "id": "yaw",
+          "label": "偏航 yaw（绕 Y 轴）",
+          "meaning": "机头在水平面内左右摆动的角度",
+          "value": 0
+        },
+        {
+          "id": "roll",
+          "label": "横滚 roll（绕 X 轴）",
+          "meaning": "机身绕纵轴倾斜、两侧机翼一高一低的角度",
+          "value": 0
+        }
+      ],
+      "saveHistory": {
+        "scope": "confirmed-save-comparisons",
+        "eventHistory": "unavailable",
+        "arrayIdentity": "positions-not-stable-keys",
+        "status": "available",
+        "omittedTransitions": 115,
+        "transitions": [
+          {
+            "fromRevision": 121,
+            "toRevision": 122,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/yaw",
+                  "kind": "replace",
+                  "before": 7,
+                  "after": 0
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 122,
+            "toRevision": 123,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 90,
+                  "after": 84
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 123,
+            "toRevision": 124,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 84,
+                  "after": 77
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 124,
+            "toRevision": 125,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 77,
+                  "after": 70
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 125,
+            "toRevision": 126,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 70,
+                  "after": 63
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 126,
+            "toRevision": 127,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 63,
+                  "after": 56
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 127,
+            "toRevision": 128,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 56,
+                  "after": 50
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 128,
+            "toRevision": 129,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 50,
+                  "after": 43
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 129,
+            "toRevision": 130,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 43,
+                  "after": 36
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 130,
+            "toRevision": 131,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 36,
+                  "after": 29
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 131,
+            "toRevision": 132,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 29,
+                  "after": 22
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 132,
+            "toRevision": 133,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 22,
+                  "after": 15
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 133,
+            "toRevision": 134,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 15,
+                  "after": 9
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 134,
+            "toRevision": 135,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 9,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 135,
+            "toRevision": 136,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/inputs/roll",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 0
+                }
+              ]
+            }
+          },
+          {
+            "fromRevision": 136,
+            "toRevision": 137,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/view/cameras/airframe/camera/position/0",
+                  "kind": "replace",
+                  "before": 5.382871892280025,
+                  "after": 7.94936546580831
+                },
+                {
+                  "path": "/view/cameras/airframe/camera/position/1",
+                  "kind": "replace",
+                  "before": 6.0179734861937035,
+                  "after": 7.522466857742129
+                },
+                {
+                  "path": "/view/cameras/airframe/camera/position/2",
+                  "kind": "replace",
+                  "before": 4.482040306687487,
+                  "after": 3.6701609045361323
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "scenes": [
+        {
+          "id": "airframe",
+          "selected": {
+            "id": "wing",
+            "label": "机翼"
+          },
+          "camera": {
+            "position": [
+              7.94936546580831,
+              7.522466857742129,
+              3.6701609045361323
+            ],
+            "target": [
+              0,
+              0,
+              0
+            ],
+            "fov": 42
+          },
+          "cameraSource": "saved-user-view",
+          "cameraMetrics": {
+            "units": "scene-units",
+            "distanceToTarget": 11.543396380615196,
+            "programDefaultDistanceToTarget": 11.543396380615196,
+            "scope": "current-view-versus-current-program-default-not-history"
+          }
+        }
+      ]
+    },
+    "audits": [
+      {
+        "name": "neutral",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.45,
+              0,
+              0
+            ],
+            "expected": [
+              2.45,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              2,
+              -2.7554552980815448e-17,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 2.7554552980815448e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              2,
+              1.2246467991473532e-16,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.05,
+              0.24,
+              0
+            ],
+            "expected": [
+              1.05,
+              0.24,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.3,
+              0,
+              2
+            ],
+            "expected": [
+              0.3,
+              0,
+              2
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1,
+        "pick": {
+          "world": [
+            1.05,
+            0.24,
+            0
+          ],
+          "pixel": {
+            "x": 343.8415215811209,
+            "y": 230.64980773733495
+          },
+          "expected": "cockpit",
+          "actual": "cockpit"
+        }
+      },
+      {
+        "name": "pitch-up-30",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.121762239271875,
+              1.2249999999999999,
+              0
+            ],
+            "expected": [
+              2.1217622392718747,
+              1.225,
+              0
+            ],
+            "error": 4.965068306494546e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              0.9999999999999999,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              1,
+              0
+            ],
+            "error": 2.482534153247273e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              1,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              1,
+              0
+            ],
+            "error": 2.220446049250313e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              0.7893266739736606,
+              0.7328460969082652,
+              0
+            ],
+            "expected": [
+              0.7893266739736605,
+              0.7328460969082653,
+              0
+            ],
+            "error": 1.5700924586837752e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.2598076211353316,
+              0.14999999999999997,
+              2
+            ],
+            "expected": [
+              0.25980762113533157,
+              0.15,
+              2
+            ],
+            "error": 6.206335383118183e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "pitch-down-30",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.121762239271875,
+              -1.2249999999999999,
+              0
+            ],
+            "expected": [
+              2.1217622392718747,
+              -1.225,
+              0
+            ],
+            "error": 4.965068306494546e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              -0.9999999999999999,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              -1,
+              0
+            ],
+            "error": 2.482534153247273e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              1.7320508075688774,
+              -0.9999999999999998,
+              0
+            ],
+            "expected": [
+              1.7320508075688772,
+              -1,
+              0
+            ],
+            "error": 3.1401849173675503e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.0293266739736606,
+              -0.31715390309173463,
+              0
+            ],
+            "expected": [
+              1.0293266739736606,
+              -0.31715390309173475,
+              0
+            ],
+            "error": 1.1102230246251565e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.2598076211353316,
+              -0.14999999999999997,
+              2
+            ],
+            "expected": [
+              0.25980762113533157,
+              -0.15,
+              2
+            ],
+            "error": 6.206335383118183e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "yaw-90",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.5001923289555077e-16,
+              0,
+              -2.45
+            ],
+            "expected": [
+              0,
+              0,
+              -2.45
+            ],
+            "error": 1.5001923289555077e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              1.2246467991473532e-16,
+              -2.7554552980815448e-17,
+              -2
+            ],
+            "expected": [
+              0,
+              0,
+              -2
+            ],
+            "error": 1.2552629691260368e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              1.2246467991473532e-16,
+              1.2246467991473532e-16,
+              -2
+            ],
+            "expected": [
+              0,
+              0,
+              -2
+            ],
+            "error": 1.7319121124709868e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              6.429395695523605e-17,
+              0.24,
+              -1.05
+            ],
+            "expected": [
+              0,
+              0.24,
+              -1.05
+            ],
+            "error": 6.429395695523605e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              2,
+              0,
+              -0.2999999999999999
+            ],
+            "expected": [
+              2,
+              0,
+              -0.3
+            ],
+            "error": 1.1102230246251565e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "roll-90",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.45,
+              0,
+              0
+            ],
+            "expected": [
+              2.45,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              2,
+              -1.6872297554945898e-33,
+              -2.7554552980815448e-17
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 2.7554552980815448e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              2,
+              7.498798913309288e-33,
+              1.2246467991473532e-16
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.05,
+              1.4695761589768237e-17,
+              0.24
+            ],
+            "expected": [
+              1.05,
+              0,
+              0.24
+            ],
+            "error": 1.4695761589768237e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.3,
+              -2,
+              1.2246467991473532e-16
+            ],
+            "expected": [
+              0.3,
+              -2,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1
+      },
+      {
+        "name": "compound-90",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              9.186028668803878e-33,
+              3.0003846579110154e-16,
+              2.45
+            ],
+            "expected": [
+              0,
+              0,
+              2.45
+            ],
+            "error": 3.0003846579110154e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              9.186028668803878e-33,
+              2.724839128102861e-16,
+              2
+            ],
+            "expected": [
+              0,
+              0,
+              2
+            ],
+            "error": 2.724839128102861e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              0,
+              1.2246467991473532e-16,
+              2
+            ],
+            "expected": [
+              0,
+              0,
+              2
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              -1.4695761589768234e-17,
+              -0.23999999999999988,
+              1.05
+            ],
+            "expected": [
+              0,
+              -0.24,
+              1.05
+            ],
+            "error": 1.1199070074243493e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              2,
+              -8.572527594031473e-17,
+              0.3
+            ],
+            "expected": [
+              2,
+              0,
+              0.3
+            ],
+            "error": 8.572527594031473e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1,
+        "pick": {
+          "world": [
+            1.6,
+            -0.040000000000000056,
+            0.3
+          ],
+          "pixel": {
+            "x": 342.5167707597103,
+            "y": 260.68762080119154
+          },
+          "expected": "wing",
+          "actual": "wing"
+        },
+        "cameraIndependent": true
+      },
+      {
+        "name": "return-zero",
+        "checks": [
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              2.45,
+              0,
+              0
+            ],
+            "expected": [
+              2.45,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "nose",
+            "local": [
+              0,
+              -0.45,
+              0
+            ],
+            "actual": [
+              2,
+              -2.7554552980815448e-17,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 2.7554552980815448e-17,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "fuselage",
+            "local": [
+              0,
+              2,
+              0
+            ],
+            "actual": [
+              2,
+              1.2246467991473532e-16,
+              0
+            ],
+            "expected": [
+              2,
+              0,
+              0
+            ],
+            "error": 1.2246467991473532e-16,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "cockpit",
+            "local": [
+              0,
+              0,
+              0
+            ],
+            "actual": [
+              1.05,
+              0.24,
+              0
+            ],
+            "expected": [
+              1.05,
+              0.24,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "point",
+            "object": "wing",
+            "local": [
+              0,
+              0,
+              2
+            ],
+            "actual": [
+              0.3,
+              0,
+              2
+            ],
+            "expected": [
+              0.3,
+              0,
+              2
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisX",
+            "local": [
+              1,
+              0,
+              0
+            ],
+            "actual": [
+              1,
+              0,
+              0
+            ],
+            "expected": [
+              1,
+              0,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisY",
+            "local": [
+              0,
+              1,
+              0
+            ],
+            "actual": [
+              0,
+              1,
+              0
+            ],
+            "expected": [
+              0,
+              1,
+              0
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          },
+          {
+            "kind": "direction",
+            "object": "axisZ",
+            "local": [
+              0,
+              0,
+              1
+            ],
+            "actual": [
+              0,
+              0,
+              1
+            ],
+            "expected": [
+              0,
+              0,
+              1
+            ],
+            "error": 0,
+            "tolerance": 1e-7,
+            "passed": true
+          }
+        ],
+        "meshCount": 9,
+        "groupCount": 1,
+        "cameraIndependent": true
+      }
+    ],
+    "original": {
+      "sha256": "35c784e38ed2b2cf97d1565d51bc7e4ea027bdf2eec9fe9f75c385d8c0c77306",
+      "planDigest": "87fcd02cb91047a7e1881e9c99b2b91042aef177bb93fe0cc7e06d06c2685dc3"
+    },
+    "resources": {
+      "maximumHistoryBytes": 5540,
+      "scope": "bounded recorded trajectory only; not long-duration memory or GPU evidence"
+    },
+    "explicitUiSaveCount": 16,
+    "recordedChangedSaveCount": 131
+  },
+  "semanticReview": {
+    "status": "not-passed",
+    "kind": "developer review",
+    "verified": [
+      "Current zero angles and selected wing",
+      "Recorded roll values decreased to zero, with explicit missing earlier history",
+      "Host camera distances and relative azimuth/elevation match",
+      "The final recorded save changes only camera position"
+    ],
+    "unsupported": "cameraRevision=0 does not independently prove no prior program reset",
+    "counterexample": {
+      "scope": "Constructed schema-valid counterexample using the unchanged original program and production QuickJS VM; not an observed UI action or claim about actual earlier user actions",
+      "planDigest": "87fcd02cb91047a7e1881e9c99b2b91042aef177bb93fe0cc7e06d06c2685dc3",
+      "beforeRevision": 1000000,
+      "event": {
+        "type": "click",
+        "id": "cameraReset"
+      },
+      "afterRevision": 0
+    },
+    "reviewCorrection": "Initial developer review confused the last angle edit with the final saved transition; durable revision 137 confirms the latter changes only camera position.",
+    "cameraCalculation": {
+      "programDefault": {
+        "position": [
+          6,
+          5,
+          8.5
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "current": {
+        "position": [
+          7.94936546580831,
+          7.522466857742129,
+          3.6701609045361323
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "fov": 42
+      },
+      "defaultAngles": [
+        35.21759296819272,
+        25.6675118683617
+      ],
+      "currentAngles": [
+        65.2175929681927,
+        40.66751186836169
+      ]
+    },
+    "otherExplanations": "Not independently accepted as a whole",
+    "twoHumanAcceptance": "deferred"
+  },
+  "limits": [
+    "Saved checkpoint comparisons do not prove clicks or intermediate unsaved states",
+    "Old data and omitted changes remain unknown",
+    "Array positions do not prove entity identity",
+    "One original aircraft sample, not broad generation or semantic accuracy",
+    "Full CI, sealed set and two-human acceptance deferred"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/desktop-e2e-G7PPy7/spatial-task.json",
+      "sha256": "c37135bf0f1d261f33b8afbe0160494ffc4d01771dd5b10adbe2f9543ad55425"
+    },
+    {
+      "path": ".verification/desktop-e2e-G7PPy7/result.json",
+      "sha256": "a33c8c131f0651cdeef0e5b1fa93a110d05e844c4d7e262ebb07690cba51719c"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-S4juTo/result.json",
+      "sha256": "6367c6f9cac4eea000d151281b55557cd23104b8c74fe7343316d983566088ec"
+    },
+    {
+      "path": ".verification/phase3-save-history-targeted.log",
+      "sha256": "d91cf49c7ce9305be433c0639f88a533796d3d1aae281ddb442424dbb848a0a7"
+    },
+    {
+      "path": ".verification/phase3-save-history-targeted-retest.log",
+      "sha256": "090972cadd72e403deed8f29fcf33a89a32541f06270afe6804bac27c2cb8ea8"
+    },
+    {
+      "path": ".verification/phase3-save-history-bounds.log",
+      "sha256": "d2cf69d8e078ed86ab89f54c098dc2633b63cc7b46b3651242f649f0c12ca148"
+    },
+    {
+      "path": ".verification/phase3-save-history-list-retest.log",
+      "sha256": "d2c160c09ae2fffd9e1e77f463d412e2e2502776038d712d1c4d9d6b0a95bf4d"
+    },
+    {
+      "path": ".verification/phase3-save-history-list-isolated-retest.log",
+      "sha256": "d8c9852fb6efcc8df26f907d5d750d6c12c4755f3cb279822de012f84bc88ff5"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-vmibzv/tests.log",
+      "sha256": "8734ba88f1744cb91593c88893b132f615e86e7a00ee2c60ab3ec5ef13e0a5d9"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-S4juTo/tests.log",
+      "sha256": "523d3d578e67bb06935e01d7829f77639f2d27b17c6f55a246162b2eba2800b5"
+    },
+    {
+      "path": ".verification/phase3-save-history-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-save-history-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-save-history-final-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-save-history-final-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-save-history-context-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-save-history-context-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-save-history-reset-counterexample.json",
+      "sha256": "d7be967e696f4147f53e1ad68ee638fd11e4e285bf0dc302d0a3e2d03ed96892"
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-save-history-2026-11-03.md",
+    "sourceSha256": "76841b574cac3128d33bc69d1927e127d555f61cb5177415fa96d3ae655e4b4b",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-save-history-2026-11-03.pdf",
+    "pdfSha256": "e3421cc574917205af4bca8e7cda143808ef4fc5adbe5416e998f4a7e1f5bfcb",
+    "pages": 2,
+    "pageTextLengths": [
+      1073,
+      1169
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: both rendered pages inspected; text, tables, pagination and margins are legible without clipping"
+  },
+  "finalVerification": {
+    "evidenceFiles": 17,
+    "desktopSources": 517,
+    "capabilitySources": 174,
+    "status": "matched",
+    "pdfPages": 2
+  }
+}

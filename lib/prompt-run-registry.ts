@@ -11,6 +11,8 @@ export interface PromptRunIdentity {
   sessionId: string;
   runId: string;
   source?: SessionMessageSourceKind;
+  /** Originating UI submission, distinct from the active run and queue command. */
+  submissionId?: string;
   roomContext?: SessionRoomContext;
 }
 
@@ -47,7 +49,7 @@ function getRuns(): Map<string, PromptRunRecord> {
 
 export function beginPromptRun(
   sessionId: string,
-  context: { source?: SessionMessageSourceKind; roomContext?: SessionRoomContext } = {},
+  context: { source?: SessionMessageSourceKind; roomContext?: SessionRoomContext; submissionId?: string } = {},
 ): PromptRunIdentity {
   if (existsSync(join(`${getRuntimeAgentDataDirectory()}.piora-transfer`, "pending.json"))) throw new Error(`${APP_DISPLAY_NAME} data import is ready. Restart the application before starting another task.`);
   if ((globalThis.__pioraDesktopUpdateLease?.expiresAt ?? 0) > Date.now()) {
@@ -62,6 +64,7 @@ export function beginPromptRun(
     sessionId,
     runId: randomUUID(),
     ...(context.source ? { source: context.source } : {}),
+    ...(context.source === "ui" && typeof context.submissionId === "string" && context.submissionId.length <= 512 ? { submissionId: context.submissionId } : {}),
     ...(context.roomContext ? { roomContext: context.roomContext } : {}),
     startedAt: Date.now(),
     cleanups: new Set(),
@@ -71,6 +74,7 @@ export function beginPromptRun(
     sessionId,
     runId: record.runId,
     ...(record.source ? { source: record.source } : {}),
+    ...(record.submissionId ? { submissionId: record.submissionId } : {}),
     ...(record.roomContext ? { roomContext: record.roomContext } : {}),
   };
 }
@@ -81,6 +85,7 @@ export function getActivePromptRun(sessionId: string): PromptRunIdentity | undef
     sessionId: record.sessionId,
     runId: record.runId,
     ...(record.source ? { source: record.source } : {}),
+    ...(record.submissionId ? { submissionId: record.submissionId } : {}),
     ...(record.roomContext ? { roomContext: record.roomContext } : {}),
   } : undefined;
 }

@@ -1,0 +1,891 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "phase": "3B/3C incremental checkpoint",
+  "phaseComplete": false,
+  "scope": "One copied synthetic original task; real model repair trajectories, not new-task generation or two-human acceptance.",
+  "source": {
+    "path": ".verification/mini-app-live-64Wr8L/result.json",
+    "sha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53",
+    "originalDefect": "Both cups empty incorrectly reports target full; original failure remains."
+  },
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "thinking": "enabled",
+    "fallback": false
+  },
+  "runs": [
+    {
+      "id": "9Hbf4y",
+      "status": "passed",
+      "taskStatus": "completed",
+      "checkpoints": 23,
+      "refreshesCompleted": 2,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "reproduce-original-defect-and-save-progress",
+          "status": "passed"
+        },
+        {
+          "name": "real-model-proposes-a-source-bound-repair",
+          "status": "passed"
+        },
+        {
+          "name": "explicitly-confirm-and-preserve-current-progress",
+          "status": "passed"
+        },
+        {
+          "name": "check-no-op-reasons-and-unchanged-game-rules",
+          "status": "passed"
+        },
+        {
+          "name": "real-follow-up-keeps-repaired-state",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": [],
+      "modelRequests": [
+        {
+          "id": 1,
+          "phase": "prepare",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "follow-up",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "renderCalls": 1,
+      "decisions": [
+        {
+          "status": 200,
+          "decision": "confirm",
+          "progress": "migrate"
+        }
+      ],
+      "limitations": "Basic repair only, before preview wording change; no cancellation or stale-review coverage."
+    },
+    {
+      "id": "nhb3II",
+      "status": "failed",
+      "taskStatus": "failed",
+      "checkpoints": 7,
+      "refreshesCompleted": 1,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "reproduce-original-defect-and-save-progress",
+          "status": "passed"
+        },
+        {
+          "name": "real-model-proposes-a-source-bound-repair",
+          "status": "passed"
+        },
+        {
+          "name": "cancel-then-request-another-real-revision",
+          "status": "passed"
+        },
+        {
+          "name": "explicitly-confirm-and-preserve-current-progress",
+          "status": "failed"
+        }
+      ],
+      "cleanupErrors": [],
+      "modelRequests": [
+        {
+          "id": 1,
+          "phase": "prepare",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "repair-after-cancel",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 5,
+          "phase": "repair-after-cancel",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "renderCalls": 2,
+      "decisions": [
+        {
+          "status": 200,
+          "decision": "cancel"
+        }
+      ],
+      "limitations": "Virtualized original row was absent; first() targeted cancelled card. Source edit and later steps did not run."
+    },
+    {
+      "id": "sKnMjw",
+      "status": "failed",
+      "taskStatus": "failed",
+      "checkpoints": 7,
+      "refreshesCompleted": 0,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "reproduce-original-defect-and-save-progress",
+          "status": "passed"
+        },
+        {
+          "name": "real-model-proposes-a-source-bound-repair",
+          "status": "failed"
+        }
+      ],
+      "cleanupErrors": [],
+      "modelRequests": [
+        {
+          "id": 1,
+          "phase": "prepare",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "renderCalls": 2,
+      "decisions": [],
+      "limitations": "Fixture guessed a session-id sidecar filename; actual path hashes session identity. Replaced with product path helper and preflight. Candidate required two render calls."
+    },
+    {
+      "id": "20T9lS",
+      "status": "failed",
+      "taskStatus": "failed",
+      "checkpoints": 8,
+      "refreshesCompleted": 1,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "reproduce-original-defect-and-save-progress",
+          "status": "passed"
+        },
+        {
+          "name": "real-model-proposes-a-source-bound-repair",
+          "status": "passed"
+        },
+        {
+          "name": "cancel-then-request-another-real-revision",
+          "status": "passed"
+        },
+        {
+          "name": "explicitly-confirm-and-preserve-current-progress",
+          "status": "failed"
+        }
+      ],
+      "cleanupErrors": [],
+      "modelRequests": [
+        {
+          "id": 1,
+          "phase": "prepare",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "repair-after-cancel",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 5,
+          "phase": "repair-after-cancel",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "renderCalls": 2,
+      "decisions": [
+        {
+          "status": 200,
+          "decision": "cancel"
+        }
+      ],
+      "limitations": "Scrolling unmounted candidate review. Source edit succeeded but stale confirmation did not execute. Replaced fixture with simultaneously mounted app views."
+    },
+    {
+      "id": "hHAybn",
+      "status": "passed",
+      "taskStatus": "completed",
+      "checkpoints": 24,
+      "refreshesCompleted": 3,
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "reproduce-original-defect-and-save-progress",
+          "status": "passed"
+        },
+        {
+          "name": "real-model-proposes-a-source-bound-repair",
+          "status": "passed"
+        },
+        {
+          "name": "cancel-then-request-another-real-revision",
+          "status": "passed"
+        },
+        {
+          "name": "explicitly-confirm-and-preserve-current-progress",
+          "status": "passed"
+        },
+        {
+          "name": "check-no-op-reasons-and-unchanged-game-rules",
+          "status": "passed"
+        },
+        {
+          "name": "real-follow-up-keeps-repaired-state",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": [],
+      "modelRequests": [
+        {
+          "id": 1,
+          "phase": "prepare",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          }
+        },
+        {
+          "id": 2,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 3,
+          "phase": "repair",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 4,
+          "phase": "repair-after-cancel",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 5,
+          "phase": "repair-after-cancel",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        },
+        {
+          "id": 6,
+          "phase": "follow-up",
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "enabled"
+          }
+        }
+      ],
+      "renderCalls": 2,
+      "decisions": [
+        {
+          "status": 200,
+          "decision": "cancel"
+        },
+        {
+          "status": 409,
+          "decision": "confirm",
+          "progress": "migrate"
+        },
+        {
+          "status": 200,
+          "decision": "confirm",
+          "progress": "migrate"
+        }
+      ],
+      "limitations": "Test-mounted same-origin application iframe in the same Electron profile; not native multi-window acceptance"
+    }
+  ],
+  "finalChecks": [
+    {
+      "label": "original-empty-no-op",
+      "state": {
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      "tick": 0
+    },
+    {
+      "label": "original-fill5-1",
+      "state": {
+        "j3": 0,
+        "j5": 5,
+        "steps": 1,
+        "historyCount": 1
+      },
+      "tick": 0
+    },
+    {
+      "label": "original-pour5to3-2",
+      "state": {
+        "j3": 3,
+        "j5": 2,
+        "steps": 2,
+        "historyCount": 2
+      },
+      "tick": 0
+    },
+    {
+      "label": "original-empty3-3",
+      "state": {
+        "j3": 0,
+        "j5": 2,
+        "steps": 3,
+        "historyCount": 3
+      },
+      "tick": 0
+    },
+    {
+      "label": "original-pour5to3-4",
+      "state": {
+        "j3": 2,
+        "j5": 0,
+        "steps": 4,
+        "historyCount": 4
+      },
+      "tick": 0
+    },
+    {
+      "label": "original-fill5-5",
+      "state": {
+        "j3": 2,
+        "j5": 5,
+        "steps": 5,
+        "historyCount": 5
+      },
+      "tick": 0
+    },
+    {
+      "label": "original-pour5to3-6",
+      "state": {
+        "j3": 3,
+        "j5": 4,
+        "steps": 6,
+        "historyCount": 6
+      },
+      "tick": 0
+    },
+    {
+      "label": "edit-source-during-review",
+      "state": {
+        "j3": 3,
+        "j5": 5,
+        "steps": 7,
+        "historyCount": 7
+      },
+      "tick": 0
+    },
+    {
+      "label": "migrated",
+      "state": {
+        "j3": 3,
+        "j5": 5,
+        "steps": 7,
+        "historyCount": 7
+      },
+      "tick": 0
+    },
+    {
+      "label": "reset",
+      "state": {
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      "tick": 0
+    },
+    {
+      "label": "empty-source-5",
+      "state": {
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      "tick": 0
+    },
+    {
+      "label": "empty-source-3",
+      "state": {
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      "tick": 0
+    },
+    {
+      "label": "fill3",
+      "state": {
+        "j3": 3,
+        "j5": 0,
+        "steps": 1,
+        "historyCount": 1
+      },
+      "tick": 0
+    },
+    {
+      "label": "fill5",
+      "state": {
+        "j3": 3,
+        "j5": 5,
+        "steps": 2,
+        "historyCount": 2
+      },
+      "tick": 0
+    },
+    {
+      "label": "full-target-3",
+      "state": {
+        "j3": 3,
+        "j5": 5,
+        "steps": 2,
+        "historyCount": 2
+      },
+      "tick": 0
+    },
+    {
+      "label": "full-target-5",
+      "state": {
+        "j3": 3,
+        "j5": 5,
+        "steps": 2,
+        "historyCount": 2
+      },
+      "tick": 0
+    },
+    {
+      "label": "reset-again",
+      "state": {
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      "tick": 0
+    },
+    {
+      "label": "repaired-fill5-1",
+      "state": {
+        "j3": 0,
+        "j5": 5,
+        "steps": 1,
+        "historyCount": 1
+      },
+      "tick": 0
+    },
+    {
+      "label": "repaired-pour5to3-2",
+      "state": {
+        "j3": 3,
+        "j5": 2,
+        "steps": 2,
+        "historyCount": 2
+      },
+      "tick": 0
+    },
+    {
+      "label": "repaired-empty3-3",
+      "state": {
+        "j3": 0,
+        "j5": 2,
+        "steps": 3,
+        "historyCount": 3
+      },
+      "tick": 0
+    },
+    {
+      "label": "repaired-pour5to3-4",
+      "state": {
+        "j3": 2,
+        "j5": 0,
+        "steps": 4,
+        "historyCount": 4
+      },
+      "tick": 0
+    },
+    {
+      "label": "repaired-fill5-5",
+      "state": {
+        "j3": 2,
+        "j5": 5,
+        "steps": 5,
+        "historyCount": 5
+      },
+      "tick": 0
+    },
+    {
+      "label": "repaired-pour5to3-6",
+      "state": {
+        "j3": 3,
+        "j5": 4,
+        "steps": 6,
+        "historyCount": 6
+      },
+      "tick": 0
+    },
+    {
+      "label": "repaired-fill5-7",
+      "state": {
+        "j3": 3,
+        "j5": 5,
+        "steps": 7,
+        "historyCount": 7
+      },
+      "tick": 0
+    }
+  ],
+  "candidates": [
+    {
+      "digest": "cf8bd8b71893d97265b1eb1c0c4db9337b7ab7a86fed2d28808032d1ecdfdbb7",
+      "migration": {
+        "fromPlanDigest": "d6624917dc164ab53cc1b3d06509277e1f4101de59d82ed637dc5539db0b1b3e",
+        "description": "只修改无效操作的提示文案：互倒时先判断源杯是否为空，再判断目标杯是否已满。水位、步数、操作记录和成功状态原样保留。",
+        "clock": "preserve"
+      },
+      "changedPlanKeys": [
+        "program",
+        "migration"
+      ]
+    },
+    {
+      "digest": "7dd05af57ac7c256ce7406cf11116c5078a3ec2b0865fcae38346a2b3fa2a152",
+      "migration": {
+        "fromPlanDigest": "d6624917dc164ab53cc1b3d06509277e1f4101de59d82ed637dc5539db0b1b3e",
+        "description": "只修改互倒无效时的提示：先判断源杯是否为空，再判断目标杯是否已满。水位、步数、操作记录与成功状态原样保留。",
+        "clock": "preserve"
+      },
+      "changedPlanKeys": [
+        "program",
+        "migration"
+      ]
+    }
+  ],
+  "noOpReasons": {
+    "empty5": "5 升杯是空的，没有水可以倒进 3 升杯。",
+    "empty3": "3 升杯是空的，没有水可以倒进 5 升杯。",
+    "full3": "3 升杯已经满了，5 升杯的水倒不进去。",
+    "full5": "5 升杯已经满了，3 升杯的水倒不进去。"
+  },
+  "repairAnswers": [
+    {
+      "phase": "repair",
+      "answer": "\n已修好并提交为同一个应用的修订版，等你确认后生效（当前界面仍是旧版）。\n\n**修好的地方**\n- 两个按钮现在先区分「源杯空」还是「目标杯满」，不再一律说目标杯满了：\n  - 5 升杯 → 3 升杯，5 升杯为空时提示「5 升杯是空的，没有水可以倒进 3 升杯。」\n  - 5 升杯 → 3 升杯，3 升杯已满时提示「3 升杯已经满了，5 升杯的水倒不进去。」\n  - 3 升杯 → 5 升杯同理：先判空杯，再判满杯。\n- 无效操作依然不记入操作记录、不增加步数。\n\n**保留的内容**：水位（3 升杯 3 升、5 升杯 4 升）、6 步操作记录、成功状态都会原样迁移过来；界面和按钮布局没有变化。\n\n确认这条修订时如果选择「全新开始」，水和记录会清空重置。顺带一提，你现在的状态已经量出 4 升了。"
+    },
+    {
+      "phase": "repair-after-cancel",
+      "answer": "\n修订版已再次提交，正在等待你确认生效（当前界面仍是未修复的旧版本）。\n\n**这次只改了无效操作的提示**，互倒时先看源杯、再看目标杯：\n\n| 操作 | 判断 | 提示 |\n|---|---|---|\n| 5 → 3 | 5 升杯为空 | 5 升杯是空的，没有水可以倒进 3 升杯。 |\n| 5 → 3 | 3 升杯已满 | 3 升杯已经满了，5 升杯的水倒不进去。 |\n| 3 → 5 | 3 升杯为空 | 3 升杯是空的，没有水可以倒进 5 升杯。 |\n| 3 → 5 | 5 升杯已满 | 5 升杯已经满了，3 升杯的水倒不进去。 |\n\n有效步骤、水量计算、记录方式和界面布局都没变。\n\n**确认时会带过来的进度**：3 升杯 3 升、5 升杯 4 升、已用 6 步、6 条操作记录（从「装满 5 升杯」到最后「5 升杯往 3 升杯倒 1 升」）。确认框里如果选「全新开始」，这些会清空并回到 0/0。"
+    }
+  ],
+  "followupAnswer": "3 升杯里有 **3 升**，5 升杯里有 **5 升**，已用 7 步。\n\n**还没有量出 4 升**：当前 5 升杯是满的 5 升，不是 4 升。操作记录的第 6 步曾到过「3 升杯 3 升、5 升杯 4 升」，但第 7 步又把 5 升杯装满了，所以现在不满足条件。",
+  "review": {
+    "kind": "developer evidence review",
+    "originalRawSemanticStatus": "pending",
+    "result": "Final repair explanations, no-op reasons, exact values, goal changes and follow-up match the observed trajectory. Does not certify general generation quality.",
+    "remaining": [
+      "Static model repair text mentions generation-time progress and does not update after another view edits the source.",
+      "Some earlier generated migration descriptions embed state values; dynamic review information needs further work.",
+      "Final follow-up adds historical explanation beyond current-state request.",
+      "Screenshots clipped by chat scroll; no complete visual or native multi-window acceptance."
+    ],
+    "independentHumanReview": "deferred by user until all stages developed"
+  },
+  "verification": {
+    "capability": {
+      "status": "passed",
+      "files": 57,
+      "tests": 520,
+      "passed": 520,
+      "failed": 0,
+      "capabilities": [
+        "document",
+        "events",
+        "playback",
+        "svg",
+        "canvas2d",
+        "scene3d",
+        "repeat",
+        "scenePicking",
+        "cameraControls",
+        "sceneGroups",
+        "inputPresets",
+        "registeredActions",
+        "stateMigration",
+        "outputConversion"
+      ]
+    },
+    "desktopSources": {
+      "files": 518,
+      "status": "matched",
+      "mismatches": []
+    },
+    "capabilitySources": {
+      "files": 169,
+      "status": "matched",
+      "mismatches": []
+    },
+    "typecheck": {
+      "correctedCommand": "node_modules/.bin/tsc.cmd --noEmit",
+      "status": "passed",
+      "initialInvocation": "node node_modules/typescript/bin/tsc --noEmit failed MODULE_NOT_FOUND; repo aliases TypeScript to typescript6"
+    },
+    "targetedLint": "passed",
+    "scriptSyntax": "passed",
+    "diffCheck": "passed",
+    "rerunForCommit": "Only syntax, targeted lint, diff and source evidence checks; prior capability and desktop runs reused."
+  },
+  "previousCi": {
+    "head": "86aac11ff0a41ba5443d4844e89fc6b1f9459bf3",
+    "run": 41538993131,
+    "status": "completed",
+    "conclusion": "failure",
+    "failures": [
+      "Linux/Windows release-tree hygiene",
+      "Linux/Windows test shards"
+    ],
+    "fullRemediation": "deferred by user"
+  },
+  "notRun": [
+    "next build",
+    "local release packages",
+    "other platforms or hardware",
+    "sealed evaluation",
+    "two-human acceptance",
+    "complete phase-three combinations"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/phase3-real-revision-two-view-sources.json",
+      "sha256": "9a9df7ba0dc11bb070345a958d31454dea8849bfa873da56183dc52d475860e7"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-bN8JoC/result.json",
+      "sha256": "989e067489ce26da00e504fbaf5d068d14de00160893f23d7f9431d4a20a2127"
+    },
+    {
+      "path": ".verification/desktop-e2e-9Hbf4y/revision-replay.json",
+      "sha256": "92f383e2431b9b92fb6078aaa2594d556f7cc670b4d71e4e1d5faf9933ceff3e"
+    },
+    {
+      "path": ".verification/desktop-e2e-9Hbf4y/result.json",
+      "sha256": "30eba7d6cfd9b3c650748d6250f20d904a1a4d0e6651c2023534857095555451"
+    },
+    {
+      "path": ".verification/desktop-e2e-nhb3II/revision-replay.json",
+      "sha256": "146e59961da45c4643ba07d323185c37fb09666c46b71199b314a0ee0548c908"
+    },
+    {
+      "path": ".verification/desktop-e2e-nhb3II/result.json",
+      "sha256": "3b1661b614b97ba48e4aba5bbf26c8b101c636756ba13ff41a3a873c7c8eca05"
+    },
+    {
+      "path": ".verification/desktop-e2e-sKnMjw/revision-replay.json",
+      "sha256": "1734394ca641c9edea926ce5a753923ffc559333dbd0db39a75b888a7e1f75ec"
+    },
+    {
+      "path": ".verification/desktop-e2e-sKnMjw/result.json",
+      "sha256": "03d1faf203a0c9729eb615478af73cbce3b619f719538b3ec66838495c182702"
+    },
+    {
+      "path": ".verification/desktop-e2e-20T9lS/revision-replay.json",
+      "sha256": "be0b62adf2ead069ad0c2f13d5a4e4e4cbb985e95f1f1de308f90a82ad7c3c22"
+    },
+    {
+      "path": ".verification/desktop-e2e-20T9lS/result.json",
+      "sha256": "8e668232f24340f37a8b8840d4679afa0fa01bc5866f359efe52e73a5e5debdd"
+    },
+    {
+      "path": ".verification/desktop-e2e-hHAybn/revision-replay.json",
+      "sha256": "cebe4ee3693f681c2471b03a9652980e7aa7b20daa326dfeedded1b50ae5031c"
+    },
+    {
+      "path": ".verification/desktop-e2e-hHAybn/result.json",
+      "sha256": "56371f29cf32e9e8b8942c3b270b25aa68e47537035a5029bef7050239966729"
+    },
+    {
+      "path": ".verification/mini-app-live-64Wr8L/result.json",
+      "sha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53"
+    },
+    {
+      "path": "components/mini-app/MiniAppSurface.tsx",
+      "sha256": "de7ea25410c87b0de2108b36b65b1b0dd49abddb5e38b7cd9c4bdf23010b9891"
+    },
+    {
+      "path": "lib/mini-app-migration-browser.test.mjs",
+      "sha256": "e73073149c634358665919988d85aebb65cf9657b0fff3baea18346b260be990"
+    },
+    {
+      "path": "lib/mini-app/capability-evidence.json",
+      "sha256": "6df7749282b596d4bebc41181883f551c0f5d6ee7ca81cb1b9c4e0877b692f0e"
+    },
+    {
+      "path": "scripts/verify-recorded-mini-app-revisions.mjs",
+      "sha256": "95070298f22f34145956058a8f587a650f2c7689536dfaec8d5cd3d624b1c953"
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-real-revision-2026-11-03.md",
+    "sourceSha256": "f2b2a2f929f73878254d1223241e884aa268c9ceda7b2acff4627937affbc855",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-real-revision-2026-11-03.pdf",
+    "pdfSha256": "3d16049bd0b684f397c03230884640cba43febb92bb3600c04ee611dfcaf0f36",
+    "pages": 3,
+    "pageTextLengths": [
+      908,
+      969,
+      902
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: all three rendered pages inspected; no clipping, overlap or broken glyphs"
+  }
+}

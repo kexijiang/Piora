@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-31",
+  "head": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "branch": "codex/intelligent-ui",
+  "scope": "Shared admission and durable mini app inheritance; chat tool not registered",
+  "checks": [
+    {
+      "command": "node --test lib/intelligent-ui-admission.test.mjs lib/mini-app-admission.test.mjs lib/mini-app-inheritance.test.mjs lib/mini-app-journal.test.mjs lib/mini-app-state.test.mjs lib/mini-app-generation.test.mjs lib/answer-output-admission-runtime.test.mjs lib/answer-output-route.test.mjs lib/session-fork-publication.test.mjs lib/intelligent-ui-generation-copy.test.mjs lib/session-trash.test.mjs",
+      "exitCode": 0,
+      "tests": 90,
+      "passed": 90,
+      "failed": 0,
+      "log": ".verification/phase3-integration-current.log"
+    },
+    {
+      "command": "node_modules/.bin/tsc.cmd --noEmit --pretty false",
+      "exitCode": 0,
+      "log": ".verification/phase3-integration-typecheck.log"
+    },
+    {
+      "command": "node_modules/.bin/eslint.cmd lib/answer-output-admission.ts lib/answer-output-inheritance.ts lib/answer-output-server.ts lib/intelligent-ui/admission.ts lib/mini-app/diagnostic.ts lib/mini-app/plan-admission.ts lib/mini-app/generation-runtime.ts lib/mini-app/journal.ts lib/mini-app/state-store.ts lib/mini-app/answer-output-adapter.ts",
+      "exitCode": 0,
+      "log": ".verification/phase3-integration-lint.log"
+    }
+  ],
+  "initialFailures": [
+    {
+      "log": ".verification/phase3-inheritance-tests.log",
+      "reason": "Fixture called appendLabel instead of appendLabelChange",
+      "resolution": "Use actual SDK method and register cleanup before setup awaits"
+    },
+    {
+      "log": ".verification/phase3-inheritance-endpoint.log",
+      "reason": "Fixture session stored without project subdirectory; production duplicate returned 404",
+      "resolution": "Use sessions/project layout; retain all assertions"
+    }
+  ],
+  "notRun": [
+    "Real DeepSeek V4.1 requests",
+    "Next HTTP server and actual desktop window",
+    "Full CI",
+    "Human semantic acceptance",
+    "Native GPU and other platforms",
+    "Release package build"
+  ],
+  "sourceSha256": {
+    "lib/answer-output-admission.ts": "3b37a18738894a0ab87b2ebeca53b1b64eb7f1f078a90b26143bbe46b93875d3",
+    "lib/answer-output-inheritance.ts": "4eb1fbf472dd6eeb361438dce29f60f2f22f208475d183e40b4d0a458bcf3097",
+    "lib/answer-output-server.ts": "b8ce4c230bdca89cd8bfc17accf5c7aee1faaddc9fc771fa8ddb48afa35e4393",
+    "lib/intelligent-ui/admission.ts": "5b0cf0510c8bab747292d058ee06e6415b795531d40d85e7b2759a2eaba332ac",
+    "lib/mini-app/diagnostic.ts": "5f6f31e3562318a20345d9503376ea46d55f3fa0fc90d92a566f6178e6292acc",
+    "lib/mini-app/plan-admission.ts": "13cf1b80dede49139b9052a27702814d40401afc1a81e708a1abb3be9ed92942",
+    "lib/mini-app/generation-runtime.ts": "02770dbee6304fb63db1453194fdc2990e4147351e424b9035e66257f64a480c",
+    "lib/mini-app/journal.ts": "b806d5d3b9f3a168fc0785d459d424b5eeb8d5670fea69e8ae1a7e8e2508e3a1",
+    "lib/mini-app/state-store.ts": "660cc4d99d3d202c52d3bfff59d83fe4ab2aae53e0fb3efcf4b5ff206259d74b",
+    "lib/mini-app/answer-output-adapter.ts": "ac3a2900ea890a00da86e5f445fd04e5a43d535e518e7c797fd60a6461152399",
+    "lib/intelligent-ui-admission.test.mjs": "b71c3320ca1c1b8d6df658b86fd49be492214867fc6e02e4eb16a2633cfeb1a8",
+    "lib/mini-app-admission.test.mjs": "754092bf8bc84f758b00baafbd9dca59e3026dfb622e60ea368a7ed1ce314912",
+    "lib/mini-app-inheritance.test.mjs": "0a7d6123f0704c46883112ebc9c231bc1b5f5291017d0d709f5f19533f96488a"
+  },
+  "logSha256": {
+    ".verification/phase3-integration-current.log": "815e3fce34fb61a52425021881e014d23bc35cb0ec3770918d27ee5e158e81df",
+    ".verification/phase3-integration-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/phase3-integration-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

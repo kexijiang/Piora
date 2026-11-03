@@ -1,0 +1,13 @@
+{
+  "id": "workflow-procurement-development",
+  "split": "development",
+  "prompt": "聚会要买12箱饮料，每箱24瓶、每瓶3元；零食每包8元，先买20包。我想自己改饮料箱数和零食包数，马上看到各项费用和总价。",
+  "changes": [{ "label": "饮料.*箱|箱数", "value": 8 }, { "label": "零食.*包|包数", "value": 30 }],
+  "followup": "我调完了。按现在的数量说一下买多少饮料和零食、各多少钱、总价多少，不用再做一个界面。",
+  "expected": {
+    "initial": { "bottles": 288, "drinks": 864, "snacks": 160, "total": 1024 },
+    "afterDrinks": { "bottles": 192, "drinks": 576, "snacks": 160, "total": 736 },
+    "afterSnacks": { "bottles": 192, "drinks": 576, "snacks": 240, "total": 816 },
+    "followup": "Uses 8 boxes, 192 bottles and 30 snack packs; explains 576 plus 240 equals 816 without regenerating the UI. Fixed per-box and unit-price rules remain distinct from current totals."
+  }
+}

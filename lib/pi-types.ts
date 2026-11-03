@@ -10,6 +10,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { UserInputQuestion, UserInputResult } from "./user-input";
 import type { Agent } from "@earendil-works/pi-agent-core";
+import type { AnswerOutputAdmissionAgent } from "./answer-output-admission";
 
 export interface ContextUsage {
   percent: number | null;
@@ -166,7 +167,7 @@ export interface AgentSessionLike {
   readonly modelRuntime: ModelRuntime;
   readonly sessionManager: SessionManager;
   readonly settingsManager: SettingsManager;
-  readonly agent: {
+  readonly agent: AnswerOutputAdmissionAgent & {
     prompt?: Agent["prompt"];
     steer?: Agent["steer"];
     followUp?: Agent["followUp"];

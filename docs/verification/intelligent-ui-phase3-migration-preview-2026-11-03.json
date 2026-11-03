@@ -1,0 +1,640 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "phase": "3C revision preview increment",
+  "phaseComplete": false,
+  "committed": false,
+  "scope": "Same-app revision preview bound to the actual confirmed source and trial outcome. One original synthetic task replay; not general generation or independent human acceptance.",
+  "changes": [
+    "Read-only explicit POST preview; ordinary GET never executes generated code",
+    "Source/result summaries and bounded structural differences",
+    "UI requires preview for exact inputs/mode before confirmation; confirmation re-trials and checks previewDigest",
+    "Legacy clients and existing confirmation receipts remain compatible",
+    "Runtime clock is distinguished from task steps",
+    "Dark-table color/font inheritance fixed"
+  ],
+  "verification": {
+    "capability": {
+      "id": "mC21Ov",
+      "status": "passed",
+      "files": 58,
+      "tests": 527,
+      "passed": 527,
+      "failed": 0,
+      "capabilities": [
+        "document",
+        "events",
+        "playback",
+        "svg",
+        "canvas2d",
+        "scene3d",
+        "repeat",
+        "scenePicking",
+        "cameraControls",
+        "sceneGroups",
+        "inputPresets",
+        "registeredActions",
+        "stateMigration",
+        "outputConversion"
+      ]
+    },
+    "desktopSources": {
+      "files": 595,
+      "mismatches": [],
+      "status": "matched"
+    },
+    "capabilitySources": {
+      "files": 172,
+      "mismatches": [],
+      "status": "matched"
+    },
+    "targetedServer": {
+      "tests": 26,
+      "passed": 26,
+      "scope": "Initial server, migration and progress cases; before added removal/null/omission case"
+    },
+    "previewBoundaries": {
+      "tests": 7,
+      "passed": 7
+    },
+    "browsers": [
+      {
+        "id": "HLnMfr",
+        "status": "failed",
+        "scope": "Headless Edge, actual React surfaces and production API, real SDK files and QuickJS; deterministic plans, no model or native desktop window",
+        "pageErrors": [],
+        "failures": [
+          {
+            "name": "trusted review click, editable choices, one confirmation, old version retained and reload",
+            "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n'999' !== '7'\n"
+          }
+        ]
+      },
+      {
+        "id": "S8RJwi",
+        "status": "passed",
+        "scope": "Headless Edge, actual React surfaces and production API, real SDK files and QuickJS; deterministic plans, no model or native desktop window",
+        "pageErrors": [],
+        "failures": []
+      },
+      {
+        "id": "nyj715",
+        "status": "passed",
+        "scope": "Headless Edge, actual React surfaces and production API, real SDK files and QuickJS; deterministic plans, no model or native desktop window",
+        "pageErrors": [],
+        "failures": []
+      }
+    ],
+    "typecheck": "passed",
+    "targetedLint": "passed",
+    "scriptSyntax": "passed",
+    "diffCheck": "passed",
+    "overlap": "Targeted checks are included in the capability run and must not be added together."
+  },
+  "failures": [
+    {
+      "id": "HLnMfr",
+      "status": "failed",
+      "reason": "Fixture read input before refresh settled; actual 999 vs expected 7. Added wait for exact refreshed value and retained assertion.",
+      "counts": {
+        "tests": 7,
+        "passed": 5,
+        "failed": 2
+      },
+      "countNote": "One failing child plus failing parent; five other scenarios passed."
+    },
+    {
+      "id": "S8RJwi/38OFFR",
+      "status": "visual-failed",
+      "automatedStatus": "passed",
+      "reason": "Rendered dark table used default black text/font despite behavioral checks passing. Fixed inheritance and added computed-style assertions; final nyj715 images inspected."
+    }
+  ],
+  "desktop": {
+    "id": "sBRwSc",
+    "status": "passed",
+    "taskStatus": "completed",
+    "model": {
+      "provider": "deepseek",
+      "id": "deepseek-flash",
+      "name": "DeepSeek V4.1 Flash",
+      "thinking": "enabled",
+      "fallback": false
+    },
+    "checkpoints": 24,
+    "reloads": 3,
+    "previews": [
+      {
+        "text": "按这些选择应用后\n\n已量出 4 升：5 升杯里正好有 4 升水。（3 升杯 3 升，5 升杯 4 升，已用 6 步）\n\n仅作预演，当前版本和进度尚未改变。\n\n查看数据变化明细",
+        "evidence": {
+          "digest": "3e0e6f967531f844eea3d75b20a801747650911726d3dd385feb41a08cda6174",
+          "sourceSummary": "已量出 4 升：5 升杯里正好有 4 升水。（3 升杯 3 升，5 升杯 4 升，已用 6 步）",
+          "resultSummary": "已量出 4 升：5 升杯里正好有 4 升水。（3 升杯 3 升，5 升杯 4 升，已用 6 步）",
+          "changes": {
+            "complete": true,
+            "total": 0,
+            "omitted": 0,
+            "items": []
+          }
+        },
+        "source": {
+          "j3": 3,
+          "j5": 4,
+          "steps": 6,
+          "historyCount": 6,
+          "tick": 0
+        }
+      },
+      {
+        "text": "按这些选择应用后\n\n还没有量出 4 升，继续试试。（3 升杯 3 升，5 升杯 5 升，已用 7 步）\n\n仅作预演，当前版本和进度尚未改变。\n\n查看数据变化明细",
+        "evidence": {
+          "digest": "5394bbfc3a7c4b55caac696b8105b3fcf095ff7f684123266c2735c848bd54db",
+          "sourceSummary": "还没有量出 4 升，继续试试。（3 升杯 3 升，5 升杯 5 升，已用 7 步）",
+          "resultSummary": "还没有量出 4 升，继续试试。（3 升杯 3 升，5 升杯 5 升，已用 7 步）",
+          "changes": {
+            "complete": true,
+            "total": 0,
+            "omitted": 0,
+            "items": []
+          }
+        },
+        "source": {
+          "j3": 3,
+          "j5": 5,
+          "steps": 7,
+          "historyCount": 7,
+          "tick": 0
+        }
+      }
+    ],
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed"
+      },
+      {
+        "name": "reproduce-original-defect-and-save-progress",
+        "status": "passed"
+      },
+      {
+        "name": "real-model-proposes-a-source-bound-repair",
+        "status": "passed"
+      },
+      {
+        "name": "cancel-then-request-another-real-revision",
+        "status": "passed"
+      },
+      {
+        "name": "explicitly-confirm-and-preserve-current-progress",
+        "status": "passed"
+      },
+      {
+        "name": "check-no-op-reasons-and-unchanged-game-rules",
+        "status": "passed"
+      },
+      {
+        "name": "real-follow-up-keeps-repaired-state",
+        "status": "passed"
+      }
+    ],
+    "cleanupErrors": [],
+    "pageErrors": [],
+    "requests": [
+      {
+        "id": 1,
+        "phase": "prepare",
+        "purpose": "background",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      {
+        "id": 2,
+        "phase": "prepare",
+        "purpose": "background",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      {
+        "id": 3,
+        "phase": "repair",
+        "purpose": "task",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      },
+      {
+        "id": 4,
+        "phase": "repair",
+        "purpose": "task",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      },
+      {
+        "id": 5,
+        "phase": "repair-after-cancel",
+        "purpose": "task",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      },
+      {
+        "id": 6,
+        "phase": "repair-after-cancel",
+        "purpose": "task",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      },
+      {
+        "id": 7,
+        "phase": "follow-up",
+        "purpose": "task",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      }
+    ],
+    "decisions": [
+      {
+        "status": 200,
+        "decision": "cancel"
+      },
+      {
+        "status": 409,
+        "decision": "confirm",
+        "progress": "migrate",
+        "previewDigest": "3e0e6f967531f844eea3d75b20a801747650911726d3dd385feb41a08cda6174"
+      },
+      {
+        "status": 200,
+        "decision": "confirm",
+        "progress": "migrate",
+        "previewDigest": "5394bbfc3a7c4b55caac696b8105b3fcf095ff7f684123266c2735c848bd54db"
+      }
+    ],
+    "source": {
+      "path": ".verification/mini-app-live-64Wr8L/result.json",
+      "sha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53"
+    },
+    "secondaryView": "Test-mounted same-origin application iframe in the same Electron profile; not native multi-window acceptance",
+    "checkpointsSummary": [
+      {
+        "label": "original-empty-no-op",
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      {
+        "label": "original-fill5-1",
+        "j3": 0,
+        "j5": 5,
+        "steps": 1,
+        "historyCount": 1
+      },
+      {
+        "label": "original-pour5to3-2",
+        "j3": 3,
+        "j5": 2,
+        "steps": 2,
+        "historyCount": 2
+      },
+      {
+        "label": "original-empty3-3",
+        "j3": 0,
+        "j5": 2,
+        "steps": 3,
+        "historyCount": 3
+      },
+      {
+        "label": "original-pour5to3-4",
+        "j3": 2,
+        "j5": 0,
+        "steps": 4,
+        "historyCount": 4
+      },
+      {
+        "label": "original-fill5-5",
+        "j3": 2,
+        "j5": 5,
+        "steps": 5,
+        "historyCount": 5
+      },
+      {
+        "label": "original-pour5to3-6",
+        "j3": 3,
+        "j5": 4,
+        "steps": 6,
+        "historyCount": 6
+      },
+      {
+        "label": "edit-source-during-review",
+        "j3": 3,
+        "j5": 5,
+        "steps": 7,
+        "historyCount": 7
+      },
+      {
+        "label": "migrated",
+        "j3": 3,
+        "j5": 5,
+        "steps": 7,
+        "historyCount": 7
+      },
+      {
+        "label": "reset",
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      {
+        "label": "empty-source-5",
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      {
+        "label": "empty-source-3",
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      {
+        "label": "fill3",
+        "j3": 3,
+        "j5": 0,
+        "steps": 1,
+        "historyCount": 1
+      },
+      {
+        "label": "fill5",
+        "j3": 3,
+        "j5": 5,
+        "steps": 2,
+        "historyCount": 2
+      },
+      {
+        "label": "full-target-3",
+        "j3": 3,
+        "j5": 5,
+        "steps": 2,
+        "historyCount": 2
+      },
+      {
+        "label": "full-target-5",
+        "j3": 3,
+        "j5": 5,
+        "steps": 2,
+        "historyCount": 2
+      },
+      {
+        "label": "reset-again",
+        "j3": 0,
+        "j5": 0,
+        "steps": 0,
+        "historyCount": 0
+      },
+      {
+        "label": "repaired-fill5-1",
+        "j3": 0,
+        "j5": 5,
+        "steps": 1,
+        "historyCount": 1
+      },
+      {
+        "label": "repaired-pour5to3-2",
+        "j3": 3,
+        "j5": 2,
+        "steps": 2,
+        "historyCount": 2
+      },
+      {
+        "label": "repaired-empty3-3",
+        "j3": 0,
+        "j5": 2,
+        "steps": 3,
+        "historyCount": 3
+      },
+      {
+        "label": "repaired-pour5to3-4",
+        "j3": 2,
+        "j5": 0,
+        "steps": 4,
+        "historyCount": 4
+      },
+      {
+        "label": "repaired-fill5-5",
+        "j3": 2,
+        "j5": 5,
+        "steps": 5,
+        "historyCount": 5
+      },
+      {
+        "label": "repaired-pour5to3-6",
+        "j3": 3,
+        "j5": 4,
+        "steps": 6,
+        "historyCount": 6
+      },
+      {
+        "label": "repaired-fill5-7",
+        "j3": 3,
+        "j5": 5,
+        "steps": 7,
+        "historyCount": 7
+      }
+    ],
+    "candidates": [
+      {
+        "digest": "17c1d11d73a354d85a2bbf947bc14afa68ca143af1efcd59e36c217197242069",
+        "migration": {
+          "fromPlanDigest": "d6624917dc164ab53cc1b3d06509277e1f4101de59d82ed637dc5539db0b1b3e",
+          "description": "保留两个杯子当前的水量、已用步数和已有的操作记录；只修正无效倒水时的提示文字（源杯为空、目标杯已满会分别说明），量水规则、按钮和界面保持不变。",
+          "clock": "preserve"
+        },
+        "changedPlanKeys": [
+          "purpose",
+          "program",
+          "migration"
+        ]
+      },
+      {
+        "digest": "043710c3395a061773b6d66a014c9669dcf72b54111a09c8a9253063b3b4e446",
+        "migration": {
+          "fromPlanDigest": "d6624917dc164ab53cc1b3d06509277e1f4101de59d82ed637dc5539db0b1b3e",
+          "description": "保留两个杯子现有的水量、已用步数和已有的 6 条操作记录；只修正无效倒水时的提示文字，源杯为空和目标杯已满会分别说明，量水规则、按钮和界面保持不变。",
+          "clock": "preserve"
+        },
+        "changedPlanKeys": [
+          "purpose",
+          "program",
+          "migration"
+        ]
+      }
+    ],
+    "noOpReasons": {
+      "empty5": "5 升杯是空的，没有水可以倒进 3 升杯。",
+      "empty3": "3 升杯是空的，没有水可以倒进 5 升杯。",
+      "full3": "3 升杯已经满了，5 升杯的水倒不进去。",
+      "full5": "5 升杯已经满了，3 升杯的水倒不进去。"
+    },
+    "repairAnswers": [
+      {
+        "phase": "repair",
+        "answer": "\n修订已经生成，但还在等待你确认之后才会生效。当前仍在用的是原版本：3 升杯 3 升、5 升杯 4 升，已用 6 步，记录也还在。\n\n这次改动只涉及无效倒水的提示文案，规则和界面都没有变化：\n\n- **5 升杯 → 3 升杯**，源杯为空时改为「5 升杯是空的，没有水可以倒进 3 升杯。」\n- **3 升杯 → 5 升杯**，同样会先判断源杯是否为空，不再一律说「5 升杯已经满了」。\n- 两个条件同时成立时（源杯空、目标杯满），会说明两边的情况，比如「3 升杯是空的，5 升杯也满了，没有水可以倒。」\n- 只有目标杯确实已满时，才会提示「已经满了」。\n\n确认这次修订后，迁移会保留现有的水量、步数和 6 条操作记录。你也可以拒绝，继续使用原来的界面。"
+      },
+      {
+        "phase": "repair-after-cancel",
+        "answer": "\n新的修订已经生成，正在等待你确认。确认之后才会替换当前版本；当前生效的仍是原版本：3 升杯 3 升、5 升杯 4 升，已用 6 步，6 条记录也都在。\n\n这次只调整无效倒水的提示，规则和界面都不变：\n\n- **5 升杯 → 3 升杯**：源杯是空的时，提示「5 升杯是空的，没有水可以倒进 3 升杯。」\n- **3 升杯 → 5 升杯**：同样先判断源杯，不再一律说「5 升杯已经满了」\n- 源杯空且目标杯满时，提示会同时说明两边，比如「3 升杯是空的，5 升杯也满了，没有水可以倒。」\n- 只有目标杯确实已满，才会说「已经满了」\n\n确认时选择保留进度，3 升、4 升的水量和 6 步记录会原样带过来。如果你拒绝，就继续用现在的版本。"
+      }
+    ],
+    "followupAnswer": "当前两杯水量：\n\n- 3 升杯：**3 升**（满）\n- 5 升杯：**5 升**（满）\n- 已用 7 步\n\n**现在还没有量出 4 升**，因为判断标准是 5 升杯里正好有 4 升，而它现在是满的 5 升。\n\n第 6 步时它确实到过 4 升（3 升杯 3 升、5 升杯 4 升），但那已经过去了；第 7 步「装满 5 升杯」把 5 升杯从 4 升加满成 5 升，所以那个状态不再成立。"
+  },
+  "semanticReview": {
+    "kind": "developer review",
+    "rawStatus": "pending",
+    "result": "Observed values, four no-op reasons, goal transitions and follow-up match the recorded trajectory. Both-empty/full simultaneous explanations have matching code branches but were not separately clicked in this run.",
+    "remaining": [
+      "Model migration description still embeds six history records while latest actual state has seven; host preview shows and migrates the latest state.",
+      "Projection summaries remain generated-program output, not independent business validation.",
+      "Structural differences are bounded and arrays use positions.",
+      "Final follow-up includes extra historical explanation."
+    ],
+    "twoHumanAcceptance": "deferred by user"
+  },
+  "visual": {
+    "status": "reviewed for indicated panels",
+    "scope": "Light wide and 420px dark deterministic revision panels; real desktop previews 1 and 2",
+    "limits": [
+      "Offscreen old iframe may not paint in full-page browser captures",
+      "Chat scrolling clips desktop content",
+      "No whole-task visual acceptance"
+    ]
+  },
+  "remaining": [
+    "3B generic semantic quality and original known failures",
+    "3C complete recovery/action/conversion combinations",
+    "3D complete complex interaction, visual and keyboard matrix",
+    "3E full CI, sealed set and independent human acceptance deferred"
+  ],
+  "notRun": [
+    "next build",
+    "local release packages",
+    "other platforms/hardware",
+    "new CI run",
+    "independent human acceptance"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/phase3-migration-preview-sources.json",
+      "sha256": "45a5ffa042f70af0979fd0ee9a8fe0b997d72db254eab0149f0318ff366d3f0c"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-mC21Ov/result.json",
+      "sha256": "90f89f9fafac8a4be37c3db3cd08dfc5e13dfbea172d16876a1bebe95c62916e"
+    },
+    {
+      "path": ".verification/desktop-e2e-sBRwSc/revision-replay.json",
+      "sha256": "bf5f5c9aeb46f05891a9a755913b60c6bd018100da60775302db41fb0a98a596"
+    },
+    {
+      "path": ".verification/desktop-e2e-sBRwSc/result.json",
+      "sha256": "28a9ae1e4da4b8f0cf630325efe037efa733c719ab0f53c89a46b5c952a6ce52"
+    },
+    {
+      "path": ".verification/mini-app-live-64Wr8L/result.json",
+      "sha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53"
+    },
+    {
+      "path": ".verification/mini-app-migration-browser-HLnMfr/result.json",
+      "sha256": "b3e2a8e25f69d0c2fd87c6e544e3cfaa6f2dee33593961697ebc29b4141a44ff"
+    },
+    {
+      "path": ".verification/mini-app-migration-browser-S8RJwi/result.json",
+      "sha256": "44a25d7157416786dc69b7b7271c8cc7d92138e9eaa27287615a03c62c047b45"
+    },
+    {
+      "path": ".verification/mini-app-migration-browser-nyj715/result.json",
+      "sha256": "44a25d7157416786dc69b7b7271c8cc7d92138e9eaa27287615a03c62c047b45"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-server.log",
+      "sha256": "b995e2142e9e6506795cc648ede23576139db83ef7786b4d95607c1d7f356715"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-boundaries.log",
+      "sha256": "6adb01f48e8ca64dea0b07506ccc82636f2609890a1ddfe541776aee027b8d60"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-browser.log",
+      "sha256": "2b17996c1ca38c74f4d885081706041464d0d1f5c86dd1d6651801ec14835168"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-browser-retest.log",
+      "sha256": "df496fde934eb3ff94c86222c8b6b0d6d21947d044a362ff74174c07633f3420"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-capabilities.log",
+      "sha256": "cf154f5c5af2383e200f900e8a5e5706e03648f301a48abd618c4b757ced8a8b"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-capabilities-final.log",
+      "sha256": "f1fdcc54ade75fa2597e8d93e49b154c5efae81fa4113551594b3ec330feabd4"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-typecheck-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-lint-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-migration-preview-lint-complete.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/desktop-e2e-sBRwSc/repair-preview-1.png",
+      "sha256": "37dd109473cda86df73fd44c8239c1c67c4d56e091d5aecada29c86fb6d68b42"
+    },
+    {
+      "path": ".verification/desktop-e2e-sBRwSc/repair-preview-2.png",
+      "sha256": "6ec5afa8738dfb6c2aa2c6ba5ecc77a9668756992e3017f4e6854065d05be626"
+    },
+    {
+      "path": ".verification/mini-app-migration-browser-nyj715/progress-review.png",
+      "sha256": "bee39804c3ce225b53e6b1560923d1b4f93e1406a6613c3297db206ac84baa90"
+    },
+    {
+      "path": ".verification/mini-app-migration-browser-nyj715/progress-review-narrow-dark.png",
+      "sha256": "4e11ec08dde2b5bba4612ceeb12225be7daf91566eddebaca3d54a167d6bf2cc"
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-migration-preview-2026-11-03.md",
+    "sourceSha256": "ef9932d31825c825825e41f8a8f3c61c5f55c4236015cb7ec42e651364a53bfc",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-migration-preview-2026-11-03.pdf",
+    "pdfSha256": "9985a2bcd45638caf5c5347375d72c7ced8253820289fe4f45605f1b8ed9eaaa",
+    "pages": 3,
+    "pageTextLengths": [
+      911,
+      862,
+      925
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: all three rendered pages inspected; no clipping, overlap or broken glyphs"
+  }
+}

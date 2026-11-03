@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "date": "2026-10-30",
+  "scope": "action-feedback-localization-and-ambiguous-response-recovery",
+  "localChecks": {
+    "serverAndFile": {
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0
+    },
+    "edgeBrowser": {
+      "passed": 12,
+      "scenarios": 11,
+      "includesParentTest": true,
+      "failed": 0,
+      "skipped": 0
+    },
+    "typecheck": "passed",
+    "targetedEslint": "passed"
+  },
+  "behavior": [
+    "Specific localized reasons for existing files, missing files and invalid parameters",
+    "Invalid reads leave current state untouched and expose no proposed values",
+    "Legacy operation errors retain diagnostics with a conservative localized summary",
+    "Only definite 4xx rejection plus a successful missing-operation read clears request uncertainty",
+    "Server 5xx and transport failures retain the original request ID; explicit retries use that ID; querying never writes"
+  ],
+  "hashes": {
+    "lib/intelligent-ui/action-feedback.ts": "e7fcbd611100bf47b520b86c0c40f9cc0fa79218f29837c7c621bfdc24e67d22",
+    "lib/intelligent-ui/action-contract.ts": "8e05a9f4cdcf99f5bbc47c376fb93212bb1579a507c92c9464cd0e842f5116ab",
+    "lib/intelligent-ui/action-files.ts": "87e1980e2b58b29551a95babd6c77f12365d3d427f690eb2120f9e48bc8c387b",
+    "lib/intelligent-ui/action-operation.ts": "faca4cab3c723a305f6bcdc9612e0061000550e294509abc072c036b5c4b7af5",
+    "lib/intelligent-ui/action-runtime.ts": "ca81f1ca82ffefb74fc28f448d9a15916f5b4479e95c7879bd1db66a8f37513c",
+    "components/intelligent-ui/SurfaceActions.tsx": "e9ae51199c1404306f5e41446a1748fc03ed6e9a12e9b3ae0c36df2684ad0ad7",
+    "components/intelligent-ui/IntelligentUiSurface.module.css": "b41684909dd1bd177bb56ea1166e0e7f547fe727ba224c2291f996b4babb066b",
+    "app/api/sessions/[id]/intelligent-ui/actions/route.ts": "adddd2c83c2c2c7c5d28b58e668164fb14348f705b5238f066fdd422df02504e",
+    "lib/intelligent-ui/action-route.test.mjs": "dec6c664197091f627d3caf36a5af2e809688b5087e10659efa5000980bebd83",
+    "lib/intelligent-ui/action-runtime.test.mjs": "ff0c587a61e33655acf2063c4eee54844ffc0fce841a4f9bbb081d0c8ecedd45",
+    "lib/intelligent-ui/action-files.test.mjs": "3d9d4899959163a943763e63e093493cd4380f6336868d40fb230ad555565be9",
+    "lib/intelligent-ui/action-source.test.mjs": "9c7c90ad937d5aaca412d51a4af722d85a67721e5614e1c545be051b0855164f",
+    "components/intelligent-ui-actions-browser.test.mjs": "761064f6d2cbfe635876eca15b676ab3e270ba7546b9077d68e601f521f09fff",
+    ".verification/intelligent-ui-action-feedback-tests.log": "7ac50c1668b6bf0f21d8fd2c0e69b9a3fd794f7c0b51d1690dafdeda44019c0d",
+    ".verification/intelligent-ui-action-feedback-browser-final.log": "5f9959350b8a39d7df23a2e2cfb41586a7b19472540b634327229d7e2f97bf0a",
+    ".verification/intelligent-ui-action-feedback-typecheck.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/intelligent-ui-action-feedback-lint.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    ".verification/intelligent-ui-action-feedback-browser-final/file-exists-zh.png": "2ab5e361b10ef1949e49d9c9ed0dab2e35519445cd2c03c8fc5908e0abcb2b6a",
+    ".verification/intelligent-ui-action-feedback-browser-final/file-exists-en.png": "622c3a7cf4d3f1e732e54967b17b169a6036576d9afcee4dd73331a7b28406db",
+    ".verification/intelligent-ui-action-feedback-browser-final/invalid-parameters.png": "5d1410a65b9af1734dcf49e4a1eebe4b3d261580dd777574535d3f51ecfba39e"
+  },
+  "screenshotsInspected": true,
+  "independentHumanReviews": [],
+  "providerCalls": 0,
+  "limitations": [
+    "Browser uses controlled HTTP fixtures; route and actual filesystem tests are separate",
+    "One Windows Edge environment; no new full Electron workflow in this increment",
+    "No CI, full test suite, release build, push or publication",
+    "Phase2 semantic and full product acceptance remain pending"
+  ],
+  "currentScope": "docs/intelligent-ui-phase2-status.md"
+}

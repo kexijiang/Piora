@@ -59,6 +59,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": [
       "./.harmony-worker/**/*",
+      "./.mini-app-runtime/**/*",
+      "./node_modules/quickjs-wasi/quickjs.wasm",
       "./lib/harmony/runtime/deveco-password.mjs",
     ],
   },

@@ -1,0 +1,31 @@
+import { resolveSessionPath } from "@/lib/session-reader";
+import { readBetaFeatures } from "@/lib/beta-features";
+import { InvalidJsonBodyError, JsonBodyTooLargeError, parseJsonWithinLimit } from "@/lib/bounded-json";
+import { hasJsonContentType, isApiRequestAllowed } from "@/lib/request-security";
+import { isAnswerReceiptError } from "@/lib/answer-output-receipts";
+import { isSessionOwnershipError } from "@/lib/session-file-ownership";
+import { previewMiniAppMigration } from "@/lib/mini-app/migration-service";
+import { MINI_APP_LIMITS, MiniAppError, isMiniAppError } from "@/lib/mini-app/limits";
+
+export const dynamic = "force-dynamic";
+const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  if (!isApiRequestAllowed(request)) return json({ error: "Forbidden" }, 403);
+  if (!hasJsonContentType(request)) return json({ error: "Content-Type must be application/json" }, 415);
+  try {
+    if (!readBetaFeatures().intelligentUi) throw new MiniAppError("DISABLED", "Intelligent UI is disabled");
+    const input = await parseJsonWithinLimit(request, MINI_APP_LIMITS.replyBytes);
+    const { id } = await context.params, file = await resolveSessionPath(id);
+    if (!file) throw new MiniAppError("NOT_FOUND", "Session not found");
+    return json({ preview: await previewMiniAppMigration({ sessionId: id, sessionFile: file, input,
+      enabled: () => readBetaFeatures().intelligentUi, signal: request.signal }) });
+  } catch (error) {
+    if (error instanceof JsonBodyTooLargeError) return json({ code: "LIMIT", error: "Preview request exceeds its limit" }, 413);
+    if (error instanceof InvalidJsonBodyError) return json({ code: "SCHEMA", error: "Expected complete JSON" }, 400);
+    if (isAnswerReceiptError(error) || isSessionOwnershipError(error)) return json({ code: "CONFLICT", error: error.message }, 409);
+    if (isMiniAppError(error)) return json({ code: error.code, error: error.message }, error.code === "NOT_FOUND" ? 404 : error.code === "DISABLED" ? 403
+      : ["CONFLICT", "IDENTITY", "STOPPED", "CORRUPT"].includes(error.code) ? 409 : error.code === "BUSY" ? 503 : 400);
+    return json({ code: "UNAVAILABLE", error: "Preview could not finish; the current version is unchanged" }, 500);
+  }
+}

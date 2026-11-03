@@ -10,6 +10,7 @@ const child = spawn(process.execPath, [
   "hooks/*.test.mjs",
   "lib/*.test.mjs",
   "lib/i18n/*.test.mjs",
+  "lib/intelligent-ui/*.test.mjs",
   "services/git-oauth/*.test.mjs",
   // Native lifecycle/transport helpers execute with the real host compiler;
   // keep these explicit so new device-source regressions are covered by CI.

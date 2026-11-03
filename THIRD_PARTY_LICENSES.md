@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `68a6319580a1808309a9dd741561d9b18da291ad8c0bf03b9bfe1ade773d9bac`
+Lockfile SHA-256: `aac28546f75f0f56d2227dcad155b224e5b43d6f3fd68f281c1b5f5f2d2d3e74`
 
-Unique locked packages: **1267**. Runtime packages: **767**. Build/development-only packages: **500**.
+Unique locked packages: **1268**. Runtime packages: **768**. Build/development-only packages: **500**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -634,6 +634,7 @@ Every locked package declares a license.
 | `polished` | `4.3.1` | MIT | No |
 | `portfinder` | `1.0.38` | MIT | No |
 | `postcss` | `8.5.31` | MIT | No |
+| `postcss-value-parser` | `4.2.0` | MIT | No |
 | `prismjs` | `1.30.0` | MIT | No |
 | `process` | `0.11.10` | MIT | No |
 | `process-nextick-args` | `2.0.1` | MIT | No |

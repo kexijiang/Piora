@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "status": "partial-phase-progress",
+  "phaseComplete": false,
+  "branch": "codex/intelligent-ui",
+  "baseCommit": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "committed": false,
+  "feature": "Atomic declared input presets and bounded serialization without duplicate frame traversal",
+  "runtimeVersion": "mini-app-1.6",
+  "policyVersion": "mini-app-intent-16",
+  "sourceHashes": {
+    ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
+    ".mini-app-runtime/renderer.js": "8e995c8d6bfc7a5d4d0086cda1f37cd6f4595a3e0ab8e84bd03cee06ba9fda52",
+    ".mini-app-runtime/server-worker.cjs": "ee2e67c73fe8743476f7a68a9fcf25e83d9a53204aabf809506f4bb085e35f04",
+    "app/api/mini-app/environment/route.ts": "4bb20319df118cec4a26b685f8e71a7d0d6d80f135c77b2383bc914688b628d4",
+    "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
+    "lib/agent-client.ts": "e0574392c90b87c1bc7c9e6a4930a52caf2f9caecf363608efa676f44434fa0a",
+    "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
+    "lib/answer-output-client.ts": "9bc2409ae4a5211316b2fa4dbc6b2f1705b0f263707a9e8f6eb890f1e7f2cf53",
+    "lib/mini-app/appearance.ts": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919",
+    "lib/mini-app/authoring-contract.ts": "cf5e1dd7b581a536dd220739a757f0059e28a65ca67f0c377e298b6afcc0b8df",
+    "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
+    "lib/mini-app/capabilities.ts": "17fb0a1c86d4654edbad7d4ded85300880427b69e2908994fc425bfec5a00b83",
+    "lib/mini-app/capability-host.ts": "f3318018a37480e8cb231a2c9433a692be950bfc4d88ffa8815d6e25869d2b85",
+    "lib/mini-app/capability-manifest.ts": "d18d1d65b2a0c5ea14f7319c76f97596aae2357a8c8e7ab0a737e511dc9f0567",
+    "lib/mini-app/controller.ts": "bf5722db48bd9ee9ca2b54dcfe91533b01c61df7d14c46cfaea4b47342dfb419",
+    "lib/mini-app/decision-policy.ts": "4d0a3543fe14c1822353ac01e91ce6e4052704cd63ebc7276927bbdb8c5f3ef1",
+    "lib/mini-app/document-capabilities.ts": "3a1f78e18de9b3d152f57c779d8fd13b9ac35eb453457b17f66ffa2d7e362179",
+    "lib/mini-app/document.ts": "b630358316d233d2f74077f9cd38f2ac1ac26c39b2abe7e613f271da435fdc2a",
+    "lib/mini-app/environment-client.ts": "3781c170d415ad15a733ebf4ae7818a95ccc110d81b8afc42bb15f5fec95ad79",
+    "lib/mini-app/environment-protocol.ts": "7ce9aea94eb3ddefab98c11b276e93ab5cd5ceae83e02f52549e2fa65b10478e",
+    "lib/mini-app/environment-store.ts": "18f169395b5b0942ef7e065036b94c628f3275a5f1327f54b2566547dbc5861f",
+    "lib/mini-app/events.ts": "955f2752a2ef87f1ab69e810a4e9c6714f2a2dcee68cda0c4cf507a62d718125",
+    "lib/mini-app/frame-host.ts": "0c2bc72063a9fa4be667d5367f123ef485975b247a46d54f88e488e3ff6da187",
+    "lib/mini-app/frame.ts": "c3b565311c29607b99f4a4b44c5960fa1eaa1a8edcb11d947a1d065061376754",
+    "lib/mini-app/generation-runtime.ts": "51ef759ee4aaf97dea85005bed821a0e243b2f614206105e318769335c879411",
+    "lib/mini-app/guest-runtime.ts": "96ce1cd3039ab6bb253e6cefa1554a1c7097470f11931d987913ca0e1e37507d",
+    "lib/mini-app/interaction-trial.ts": "0eaa66896a5a045f52f9a8c40f50624606fdd9d090fcafc1fb380003259c3556",
+    "lib/mini-app/json.ts": "4520ab4700b449281cbc0aa8a6f983406c31ce8d624147e453eec0687f532138",
+    "lib/mini-app/limits.ts": "1aa06d15c3addcd2a6b2b899fe9d16a9edef3e567acd30a527495c14c7a2c6e2",
+    "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
+    "lib/mini-app/plan-schema.ts": "f2efdfbc69fac8d125ddac5b91125c603b1bb036e963a2ee006c7f57f8d6215e",
+    "lib/mini-app/plan.ts": "b008d2a470a7ff711a33ca845d61d429a663b028eaadff21c2fbceb6552ef516",
+    "lib/mini-app/playback.ts": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78",
+    "lib/mini-app/program.ts": "ececcfdd6cf7704182c8dfdc309d9b25bbc73409ce533501a4098a48423b95c3",
+    "lib/mini-app/renderer-runtime.ts": "0489cb608f312de4dd07cf8ce107b9fae21ac4c58cd1d766c7496cad67fb2e69",
+    "lib/mini-app/repeat-example.ts": "d219da4b93ed144e9d35f469d36a1e5c627362ca4d05791d8d301b98ae4cfb13",
+    "lib/mini-app/repeat-renderer.ts": "1adb95d34d30204c6114a4bdf5742d032f9d24c2ae5ccca1253af3b9dd91fe19",
+    "lib/mini-app/repeat.ts": "a63ad7c7b6a0dd1b6e8c659097eb753cc6a28c7a348cbaf843ac3c2fdd7d7281",
+    "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+    "lib/mini-app/runtime-worker.ts": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8",
+    "lib/mini-app/scene-example.ts": "01bb0b80af2163bdb44584ada2a32d69074219b7f527f91e550fdc65bc8c88cd",
+    "lib/mini-app/scene-groups-example.ts": "cb958b2f89f966f0d0496ec3d3a92751cc7ecb7b4644fb4b3b9230a1f46975d9",
+    "lib/mini-app/scene-renderer.ts": "3cd18be35126f6658b518fed4b68de28c221ec9eb23ddb6e401208541bc8ed39",
+    "lib/mini-app/scene-state.ts": "b70c4c07f78164a27ef42ff6f92718b1838f34d5d94c80f2c876f2558559b747",
+    "lib/mini-app/server-worker.ts": "43ad8d9d0c075dae5a23b95081642efb0bf896f6bfcaf0e8fce2c827999aa468",
+    "lib/mini-app/state-schema.ts": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b",
+    "lib/mini-app/vm.ts": "74c002e32cf1182cc2125fd152a9dcae11e7e938a0f8c1d474fd7c48bf74994f",
+    "lib/mini-app/wasm-memory.ts": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e",
+    "lib/mini-app/worker-client.ts": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb",
+    "lib/prompt-run-registry.ts": "cf0e7e950377d2ed7f8095951916a128b115fd528edcb884801d0bb93f55bd14",
+    "lib/rpc-manager.ts": "7bb45219137b554b781ff4829ac9ec97266fb7bc3cd72763d13fc8a859ce511e",
+    "lib/mini-app-capabilities.test.mjs": "c58442e23717c225ec700bf5416ea4595591fe598552795b83a0bd2b5558040b",
+    "lib/mini-app-contract.test.mjs": "446fe021c1feed515edf344fd2b535c0d4215d370364da6785a0743a9c60ba59",
+    "lib/mini-app-generation.test.mjs": "e851c99aae68d48b6668c9952a8c3572e09fff7067bf36692e3e5c94e3979a48",
+    "lib/mini-app-generation-runtime.test.mjs": "eeab5dd7e11eacd2e03583c8e9efd630b837b60a7a249d85dee267bbea11bfac",
+    "lib/mini-app-admission.test.mjs": "3c59f2d8169b0fcc606de38df55ac6c1f4ece4b3632bf65d8c9a1da941f18e50",
+    "lib/mini-app-controller-browser.test.mjs": "7e8376b160f1b58d4cfd203bb90ab8fb0cb2b9d81da333801cbf305d00d71c2b",
+    "lib/mini-app-renderer-browser.test.mjs": "22ebe7eef363b2e43cd33fdb44923ee7598858cfb43fe8c9a54a7241c9dbfa36",
+    "lib/mini-app-worker-browser.test.mjs": "d9fff6b6c2a89124e26fd503fa831d5e9a65073b713304036f9917ff47f5cda3",
+    "lib/mini-app-runtime.test.mjs": "ae1128dcc1b62c795301ed8319367a21a75532f809c3589e6c0d9f07ab740551",
+    "lib/mini-app-restore-budget.test.mjs": "0b09c907c22667858cd289d644ea69144129ae305aa88d3dfbfcb02d07c62be9",
+    "lib/mini-app-document.test.mjs": "7927f23e947cd8196b87d584610884e46b0c202eaed6fca8c45839956ab0f1cf",
+    "lib/mini-app-frame.test.mjs": "a4b1607db4f68c9e4018a6822cd756e1be0f1f01635956d2f6bc755360c6925b",
+    "lib/mini-app-server-trial.test.mjs": "fed1758eee92130f6fe1575e530228a8539e9775ef2d86e00a905c0f43121e32",
+    "lib/mini-app-repeat.test.mjs": "9e272d477f3f9b22498d04d4d1c3af08968dd60fb51724ec038acb698b4d2c34",
+    "lib/mini-app-repeat-browser.test.mjs": "d293bbab51305cf0fa06b657969f0d9ad65ea9046c7abc8b65a2b12c4493554f",
+    "lib/mini-app-state.test.mjs": "85c2b118c11c28c421b900bd0b73051f6abac105af4b89ce69627e68ff7f1b31",
+    "lib/mini-app-scene.test.mjs": "b1bc1618fbd2900de0812afa51108140d509d7acd861b4261117629af975e817",
+    "lib/mini-app-scene-browser.test.mjs": "6104531dcabf79fd5cd59e063727e5c5589a88b9bf04413bb4cb516837234f30",
+    "lib/mini-app-groups.test.mjs": "c7272086334f1706b78db24097bef376c6219461da7e98c57239a1fc321801ad",
+    "lib/mini-app-groups-browser.test.mjs": "536c2209664b32add4b8902554bceaad30e035edad53f11e104752447695d4a6",
+    "lib/mini-app-presets.test.mjs": "52b56510904ff745ce243099d869b32caf4d23c59078cf7a26d015b99d55030c",
+    "lib/mini-app-environment.test.mjs": "c3198e0bf9faebc1de44c404ca54971be8046fc8131a12cc752618fb8f3ceea7",
+    "lib/mini-app-environment-route.test.mjs": "6cf93ec261cc14a4e7eb67161aa76b28c19037fb9ef0f4767be3786866e57ec4",
+    "lib/mini-app-environment-browser.test.mjs": "eb461f8a698bc6cbf005f0689638253c14e596a3735b7ec5477a38f0017fad87",
+    "lib/prompt-run-registry.test.mjs": "5f5ca7317991d81cf6fef060d23f077a43e958647cb0464c99be8c12755141c7",
+    "lib/agent-client.test.mjs": "238afed4e6a58c6adeba9377e04e58b64b6710b546961af475e5d504b34d6e51",
+    "lib/rpc-manager-behavior.test.mjs": "1b10173f7db43a417ab0b8da4bbcb29e99fab78c359ad01c9d23baca5b53ce0d",
+    "scripts/verify-spatial-ui-desktop.mjs": "ae77cfa31239ff209e1633a8ce56cc2106b3a909faf67cbd9ad8a49627270415",
+    "docs/intelligent-ui-input-presets.md": "b323f12cce15e2a16da753e1408a7ce0ea6c5d754b24df7fd6bf9c3c82cdecc4",
+    "docs/verification/intelligent-ui-phase3-presets-2026-11-02.md": "3839ffd0c6ebd33fe646a4c5b7226b8a6f47d3ce993fde760c55e0c2421ba30f"
+  },
+  "verification": {
+    "capabilities": {
+      "path": ".verification/mini-app-capabilities-5Rrc6N/result.json",
+      "sha256": "e59182ced6935204e94ba97ff3f6b3fb1916809790ac59ce37c189637b94eeab",
+      "status": "passed",
+      "tests": 182,
+      "files": 27
+    },
+    "typecheck": {
+      "status": "passed",
+      "log": ".verification/phase3-presets-typecheck-final.log"
+    },
+    "lint": {
+      "status": "passed",
+      "logs": [
+        ".verification/phase3-presets-lint.log",
+        ".verification/phase3-presets-lint-final.log",
+        ".verification/phase3-presets-lint-serialization.log"
+      ]
+    },
+    "nativeRuns": [
+      {
+        "directory": ".verification/desktop-e2e-SgQpdj",
+        "status": "failed",
+        "steps": [
+          {
+            "name": "launch",
+            "status": "passed",
+            "startedAt": "2026-11-02T08:02:20.618Z",
+            "durationMs": 26901
+          },
+          {
+            "name": "natural-language-generation",
+            "status": "passed",
+            "startedAt": "2026-11-02T08:02:47.521Z",
+            "durationMs": 46419
+          },
+          {
+            "name": "operate-and-save",
+            "status": "failed",
+            "startedAt": "2026-11-02T08:03:33.940Z",
+            "durationMs": 531
+          }
+        ],
+        "cleanupErrors": [],
+        "resultSha256": "5836e782e6f4fbfa84f2cfc107f1b7b388be8764c5ae904e30d11d726d20a6e0",
+        "taskSha256": "3f3c0dfb804d71438e7d51ebc70d812b6142ae2b3bce930f1c18d1be8439bbe4"
+      },
+      {
+        "directory": ".verification/desktop-e2e-HmdUOO",
+        "status": "passed",
+        "steps": [
+          {
+            "name": "launch",
+            "status": "passed",
+            "startedAt": "2026-11-02T08:17:31.469Z",
+            "durationMs": 22870
+          },
+          {
+            "name": "load-original-program",
+            "status": "passed",
+            "startedAt": "2026-11-02T08:17:54.340Z",
+            "durationMs": 15337
+          },
+          {
+            "name": "operate-and-save",
+            "status": "passed",
+            "startedAt": "2026-11-02T08:18:09.679Z",
+            "durationMs": 3117
+          },
+          {
+            "name": "declared-input-presets",
+            "status": "passed",
+            "startedAt": "2026-11-02T08:18:12.797Z",
+            "durationMs": 7984
+          },
+          {
+            "name": "reload-and-explain",
+            "status": "passed",
+            "startedAt": "2026-11-02T08:18:20.781Z",
+            "durationMs": 14418
+          }
+        ],
+        "cleanupErrors": [],
+        "resultSha256": "a37e242c60c18978adab21a3550fd64b63dbaddf87ca60b654dd6df7c50cf48e",
+        "taskSha256": "1bf496c2342dc27e74580e90abc80b048a1f13174f31ee2c515f747b70fe29db"
+      }
+    ],
+    "recordingOriginalSha256": "09ea3567086d28d7647c66bc8258d8a414cbbbf2e6a15136bbb12aef097a7f1c",
+    "offlineTiming": {
+      "before": ".verification/phase3-presets-original-timing-before.json",
+      "after": ".verification/phase3-presets-original-timing-after.json",
+      "scope": "Six fresh VM samples each; includes host validation, no benchmark or native timing claim"
+    },
+    "failedThenFixed": [
+      ".verification/phase3-presets-controller.log"
+    ],
+    "serializationBoundaryClock": "Only aggregate-data-boundary fixture freezes VM clock; CPU and infinite-loop tests retain real clock and worker watchdog"
+  },
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "configuredName": "DeepSeek V4.1 Flash",
+    "thinking": "disabled",
+    "pro": false,
+    "fallback": false,
+    "exactSupplierVersionVerified": false
+  },
+  "notCovered": [
+    "independent semantic acceptance",
+    "full phase 3",
+    "full CI",
+    "release packages",
+    "other platforms",
+    "native GPU matrix",
+    "fresh-generation reliability statistics"
+  ]
+}

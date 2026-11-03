@@ -1,0 +1,892 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "recordedAt": "2026-11-02T16:17:17.992Z",
+  "codeBase": "fd17e68ada440ab168bda2cfde5fb9bcab2893a7",
+  "modifiedSourceSha256": {
+    "lib/mini-app/action-preview.ts": "784ee694fe23b2adf554e29bc72906f12995a81d184a70d0f5fe3cf8fd917d4b",
+    "lib/mini-app/generation-runtime.ts": "8cf06d71bedc64fa3099396bc4a36fc58f3526b57ee32e371adb193758253aee",
+    "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
+    "lib/mini-app/server-worker.ts": "8464fa7fe069cbfca744711750deac6b5653933c1e7b0ec3e9ac39c88825a8c6",
+    "lib/mini-app/capability-manifest.ts": "791b7905e5dff3e3714fe977e9a0b630f8a8dad6c097135ea626e64865a5c240",
+    "lib/mini-app-action-preview.test.mjs": "abe384b4fe21d55152c829e70efb5c144e451ce94ba6e054b83cbabd0716b4e6",
+    "lib/mini-app-generation-runtime.test.mjs": "43f7fd6e834b5eab9167b0b519820889642bcfce927c453768cada61ef764154",
+    "scripts/verify-recorded-mini-app-tasks.mjs": "42bc8cf75f4eabf471a7720d81e5980cf7432dd5ad80b684393c028d81f956e8"
+  },
+  "scope": "Read-only independent local click alternatives from confirmed snapshots. Original generated task replay, not new generation, sequence search, sealed evaluation or independent human acceptance.",
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "thinking": "enabled",
+    "fallback": false
+  },
+  "run": {
+    "path": ".verification/desktop-e2e-vbgCqL/task-replay.json",
+    "sha256": "05feaef569437b42f4aaa5a15302f02970f203b6e1f7b5980abccc820dc28e8a",
+    "mechanicalStatus": "passed",
+    "cleanupErrors": []
+  },
+  "verification": {
+    "capabilities": {
+      "path": ".verification/mini-app-capabilities-BQrhW1/result.json",
+      "sha256": "192e40da295b91c4015c5a9d5684d6d3ecaf08a8a06b9fe6ccc17c6685f44799",
+      "tests": 501,
+      "passed": 501,
+      "files": 56
+    },
+    "focusedNewTests": "7/7 passed; included in capability run",
+    "webTypecheck": "passed",
+    "targetedLint": "passed",
+    "fullCi": "deferred",
+    "nativeWindow": "not retested, unresolved"
+  },
+  "failuresPreserved": [
+    {
+      "path": ".verification/phase3-action-preview-focused.log",
+      "passed": 12,
+      "failed": 9,
+      "reason": "Capabilities became stale after source changes; initial command omitted the isolated development capability override."
+    },
+    {
+      "path": ".verification/phase3-action-preview-context.log",
+      "passed": 5,
+      "failed": 2,
+      "reason": "New mocked journal fixture lacked the constructor-required session file path."
+    }
+  ],
+  "counts": {
+    "tasks": 3,
+    "operations": 24,
+    "reloads": 6,
+    "modelFollowups": 3,
+    "previewedActions": 22,
+    "definiteSemanticFailures": 2,
+    "needsReview": 1
+  },
+  "samples": [
+    {
+      "id": "jugs-1",
+      "source": ".verification\\mini-app-live-vph3zd\\result.json",
+      "sourceSha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+      "originalFinalTextSha256": "1f9d86903755648886eb6e026dce62e41d12e800c3a650a5c90e82635f09a205",
+      "mechanical": "completed",
+      "operations": 8,
+      "reloads": 2,
+      "saved": {
+        "stateRevision": 6,
+        "snapshot": {
+          "inputs": {
+            "showMark": true
+          },
+          "state": {
+            "small": 3,
+            "big": 4,
+            "moves": 6,
+            "showHint": false,
+            "notice": "成功！5 升杯里正好 4 升水，一共用了 6 步。"
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "成功：5 升杯里正好 4 升水，已用 6 步。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "a48dc74951e9c353bfb21ed12a42722d70a463dd7b7e8e68aa450557539eaad1",
+          "stateRevision": 6,
+          "checkpointDigest": "740c7ded46ff23385ae1c0ce1b1563efe717ff3b0fb4297e8ec2db33bef8ad57"
+        },
+        "version": 1,
+        "sourceCheckpointDigest": "740c7ded46ff23385ae1c0ce1b1563efe717ff3b0fb4297e8ec2db33bef8ad57",
+        "eligibleActions": 8,
+        "omittedActions": 0,
+        "actions": [
+          {
+            "id": "fill3",
+            "label": "装满 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯里正好 4 升水，已用 6 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 3,
+                "big": 4,
+                "moves": 6,
+                "showHint": false,
+                "notice": "3 升杯已经满了，装不进更多水。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "fill5",
+            "label": "装满 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯：3 升　｜　5 升杯：5 升，已用 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 3,
+                "big": 5,
+                "moves": 7,
+                "showHint": false,
+                "notice": "把 5 升杯装满了。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "empty3",
+            "label": "倒空 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯里正好 4 升水，已用 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 0,
+                "big": 4,
+                "moves": 7,
+                "showHint": false,
+                "notice": "成功！5 升杯里正好 4 升水，一共用了 7 步。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "empty5",
+            "label": "倒空 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯：3 升　｜　5 升杯：0 升，已用 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 3,
+                "big": 0,
+                "moves": 7,
+                "showHint": false,
+                "notice": "把 5 升杯倒空了。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "pour3to5",
+            "label": "3 升杯 → 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯：2 升　｜　5 升杯：5 升，已用 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 2,
+                "big": 5,
+                "moves": 7,
+                "showHint": false,
+                "notice": "从 3 升杯往 5 升杯倒了 1 升。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "pour5to3",
+            "label": "5 升杯 → 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯里正好 4 升水，已用 6 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 3,
+                "big": 4,
+                "moves": 6,
+                "showHint": false,
+                "notice": "3 升杯是满的，倒不进去了。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "hint",
+            "label": "显示 / 隐藏提示",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯里正好 4 升水，已用 6 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 3,
+                "big": 4,
+                "moves": 6,
+                "showHint": true,
+                "notice": "成功！5 升杯里正好 4 升水，一共用了 6 步。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "reset",
+            "label": "重新开始",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯：0 升　｜　5 升杯：0 升，已用 0 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {
+                "showMark": true
+              },
+              "state": {
+                "small": 0,
+                "big": 0,
+                "moves": 0,
+                "showHint": false,
+                "notice": "杯子全部倒空，重新开始。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+        "answerSha256": "7c960ada85476720d4626b504e05081d90e7496b693739e7a53da58061b3fd39",
+        "requests": 1
+      },
+      "agentReview": {
+        "classification": "semantic-failed",
+        "currentValues": "correct",
+        "issues": [
+          "Incorrectly says both pour directions transfer no water; 3-to-5 actually transfers 1L and ends at 2/5.",
+          "Claims optimality without sequence/optimality evidence in this preview."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    },
+    {
+      "id": "jugs-2",
+      "source": ".verification\\mini-app-live-005vkb\\result.json",
+      "sourceSha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+      "originalFinalTextSha256": "125093d496528c7d4f75d511274290bc23d25ea51f916b6d7ccd980bfbfe26fa",
+      "mechanical": "completed",
+      "operations": 8,
+      "reloads": 2,
+      "saved": {
+        "stateRevision": 6,
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "a": 3,
+            "b": 4,
+            "moves": 6,
+            "hint": ""
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "成功：5 升杯中正好有 4 升水。 3 升杯 3 升，5 升杯 4 升，已操作 6 步。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "f350805c8ae15683fa038f2e1bb93f9c8e7b10e45c4b8a4583d31ba5330db2cf",
+          "stateRevision": 6,
+          "checkpointDigest": "a6ec232bcf7897c5284ccb932d813ccb1f19f9905cf3ce6a11b48aa58f98c301"
+        },
+        "version": 1,
+        "sourceCheckpointDigest": "a6ec232bcf7897c5284ccb932d813ccb1f19f9905cf3ce6a11b48aa58f98c301",
+        "eligibleActions": 8,
+        "omittedActions": 0,
+        "actions": [
+          {
+            "id": "fill3",
+            "label": "倒满 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯中正好有 4 升水。 3 升杯 3 升，5 升杯 4 升，已操作 6 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 3,
+                "b": 4,
+                "moves": 6,
+                "hint": "这一步没有改变水量，换一个动作试试。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "fill5",
+            "label": "倒满 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "目标：让 5 升杯中正好有 4 升水（3 升杯装不下 4 升）。 3 升杯 3 升，5 升杯 5 升，已操作 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 3,
+                "b": 5,
+                "moves": 7,
+                "hint": ""
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "empty3",
+            "label": "倒空 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯中正好有 4 升水。 3 升杯 0 升，5 升杯 4 升，已操作 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 0,
+                "b": 4,
+                "moves": 7,
+                "hint": ""
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "empty5",
+            "label": "倒空 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "目标：让 5 升杯中正好有 4 升水（3 升杯装不下 4 升）。 3 升杯 3 升，5 升杯 0 升，已操作 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 3,
+                "b": 0,
+                "moves": 7,
+                "hint": ""
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "pour35",
+            "label": "3 升倒入 5 升",
+            "disabled": false,
+            "status": "ok",
+            "summary": "目标：让 5 升杯中正好有 4 升水（3 升杯装不下 4 升）。 3 升杯 2 升，5 升杯 5 升，已操作 7 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 2,
+                "b": 5,
+                "moves": 7,
+                "hint": ""
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "pour53",
+            "label": "5 升倒入 3 升",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯中正好有 4 升水。 3 升杯 3 升，5 升杯 4 升，已操作 6 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 3,
+                "b": 4,
+                "moves": 6,
+                "hint": "这一步没有改变水量，换一个动作试试。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "hint",
+            "label": "提示下一步",
+            "disabled": false,
+            "status": "ok",
+            "summary": "成功：5 升杯中正好有 4 升水。 3 升杯 3 升，5 升杯 4 升，已操作 6 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 3,
+                "b": 4,
+                "moves": 6,
+                "hint": "已经成功了，5 升杯里正好 4 升水。"
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "reset",
+            "label": "全部倒空重来",
+            "disabled": false,
+            "status": "ok",
+            "summary": "目标：让 5 升杯中正好有 4 升水（3 升杯装不下 4 升）。 3 升杯 0 升，5 升杯 0 升，已操作 0 步。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "a": 0,
+                "b": 0,
+                "moves": 0,
+                "hint": ""
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+        "answerSha256": "8aaa1b8399086f8c49f8844f5b9ec4151de914326687b1c3a987397a78a743fe",
+        "requests": 1
+      },
+      "agentReview": {
+        "classification": "semantic-failed",
+        "currentValues": "correct",
+        "issues": [
+          "Incorrectly says emptying the 5L cup leaves its water unchanged, contradicting the observed 3/0 result."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    },
+    {
+      "id": "jugs-3",
+      "source": ".verification\\mini-app-live-DzQKbZ\\result.json",
+      "sourceSha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+      "originalFinalTextSha256": "8ee3f1b6ffbe7d86c6158f703c98dff929b70b56126a08472681f489c982ccaa",
+      "mechanical": "completed",
+      "operations": 8,
+      "reloads": 2,
+      "saved": {
+        "stateRevision": 6,
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "cup3": 3,
+            "cup5": 4,
+            "moves": 6,
+            "solved": true,
+            "showHint": false,
+            "log": [
+              {
+                "key": "s1",
+                "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+              },
+              {
+                "key": "s2",
+                "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+              },
+              {
+                "key": "s3",
+                "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+              },
+              {
+                "key": "s4",
+                "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+              },
+              {
+                "key": "s5",
+                "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+              },
+              {
+                "key": "s6",
+                "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+              }
+            ]
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "3 升杯 3 升，5 升杯 4 升，已操作 6 步。已量出 4 升。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "3bd42b984de7489cdbda75b67b747e89ef5d246bc30149731966380c1610a300",
+          "stateRevision": 6,
+          "checkpointDigest": "af50e72bbe9854ce46f6573ad7c005782f0c451a19db4c506ff313c6e0322e14"
+        },
+        "version": 1,
+        "sourceCheckpointDigest": "af50e72bbe9854ce46f6573ad7c005782f0c451a19db4c506ff313c6e0322e14",
+        "eligibleActions": 8,
+        "omittedActions": 2,
+        "actions": [
+          {
+            "id": "fill3",
+            "label": "装满 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯 3 升，5 升杯 4 升，已操作 6 步。已量出 4 升。",
+            "summaryComplete": true,
+            "checkpointUnchanged": true,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "cup3": 3,
+                "cup5": 4,
+                "moves": 6,
+                "solved": true,
+                "showHint": false,
+                "log": [
+                  {
+                    "key": "s1",
+                    "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s2",
+                    "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s3",
+                    "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s4",
+                    "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+                  },
+                  {
+                    "key": "s5",
+                    "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s6",
+                    "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+                  }
+                ]
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "empty3",
+            "label": "倒空 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯 0 升，5 升杯 4 升，已操作 7 步。已量出 4 升。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "cup3": 0,
+                "cup5": 4,
+                "moves": 7,
+                "solved": true,
+                "showHint": false,
+                "log": [
+                  {
+                    "key": "s1",
+                    "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s2",
+                    "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s3",
+                    "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s4",
+                    "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+                  },
+                  {
+                    "key": "s5",
+                    "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s6",
+                    "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+                  },
+                  {
+                    "key": "s7",
+                    "text": "第 7 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 4 升"
+                  }
+                ]
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "fill5",
+            "label": "装满 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯 3 升，5 升杯 5 升，已操作 7 步。已量出 4 升。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "cup3": 3,
+                "cup5": 5,
+                "moves": 7,
+                "solved": true,
+                "showHint": false,
+                "log": [
+                  {
+                    "key": "s1",
+                    "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s2",
+                    "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s3",
+                    "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s4",
+                    "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+                  },
+                  {
+                    "key": "s5",
+                    "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s6",
+                    "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+                  },
+                  {
+                    "key": "s7",
+                    "text": "第 7 步：装满 5 升杯，现在 3 升杯 3 升、5 升杯 5 升"
+                  }
+                ]
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "empty5",
+            "label": "倒空 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯 3 升，5 升杯 0 升，已操作 7 步。已量出 4 升。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "cup3": 3,
+                "cup5": 0,
+                "moves": 7,
+                "solved": true,
+                "showHint": false,
+                "log": [
+                  {
+                    "key": "s1",
+                    "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s2",
+                    "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s3",
+                    "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s4",
+                    "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+                  },
+                  {
+                    "key": "s5",
+                    "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s6",
+                    "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+                  },
+                  {
+                    "key": "s7",
+                    "text": "第 7 步：倒空 5 升杯，现在 3 升杯 3 升、5 升杯 0 升"
+                  }
+                ]
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "pour3to5",
+            "label": "3 升杯 → 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯 2 升，5 升杯 5 升，已操作 7 步。已量出 4 升。",
+            "summaryComplete": true,
+            "checkpointUnchanged": false,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "cup3": 2,
+                "cup5": 5,
+                "moves": 7,
+                "solved": true,
+                "showHint": false,
+                "log": [
+                  {
+                    "key": "s1",
+                    "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s2",
+                    "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s3",
+                    "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s4",
+                    "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+                  },
+                  {
+                    "key": "s5",
+                    "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s6",
+                    "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+                  },
+                  {
+                    "key": "s7",
+                    "text": "第 7 步：3 升杯倒入 5 升杯 1 升，现在 3 升杯 2 升、5 升杯 5 升"
+                  }
+                ]
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          },
+          {
+            "id": "pour5to3",
+            "label": "5 升杯 → 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "summary": "3 升杯 3 升，5 升杯 4 升，已操作 6 步。已量出 4 升。",
+            "summaryComplete": true,
+            "checkpointUnchanged": true,
+            "snapshot": {
+              "inputs": {},
+              "state": {
+                "cup3": 3,
+                "cup5": 4,
+                "moves": 6,
+                "solved": true,
+                "showHint": false,
+                "log": [
+                  {
+                    "key": "s1",
+                    "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s2",
+                    "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s3",
+                    "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+                  },
+                  {
+                    "key": "s4",
+                    "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+                  },
+                  {
+                    "key": "s5",
+                    "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+                  },
+                  {
+                    "key": "s6",
+                    "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+                  }
+                ]
+              },
+              "tick": 0,
+              "rng": 1346981714
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+        "answerSha256": "9fd78e4b1894bd93afdb355761462191124547cc8acf618b34758e5ca0b8d722",
+        "requests": 1
+      },
+      "agentReview": {
+        "classification": "needs-semantic-review",
+        "currentValues": "correct",
+        "issues": [
+          "Offers reset as a parallel option after a suggestion to preserve 4L; this can misleadingly imply reset preserves the result. Reset was among the omitted previews."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    }
+  ]
+}
