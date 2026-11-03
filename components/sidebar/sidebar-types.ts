@@ -5,6 +5,7 @@ import type { SettingsKey } from "@/lib/settings-search";
 declare global {
   interface Window {
     piDesktop?: {
+      vault?: import("@/desktop/src/credential-vault-types").VaultBridge;
       dshPet?: import("@/desktop/src/dsh-pet-types").DshPetBridge;
       harmonyMirror?: import("@/desktop/src/harmony-window-types").HarmonyWindowBridge;
       messages?: import("@/desktop/src/harmony-window-types").PioraMessageBridge;
@@ -129,6 +130,8 @@ export interface DesktopUpdateState {
 }
 
 export interface DesktopBrowserState {
+  vaultProtected?: boolean;
+  vaultMatches?: number;
   sessionId: string;
   activeTabId: string;
   canGoBack: boolean;

@@ -7,6 +7,7 @@ import { DshPetManager } from "./dsh-pet-manager.js";
 import { createSmokeSessionProbe } from "./smoke-session-probe.js";
 import { SystemLauncher } from "./system-launcher";
 import { registerQuickAccessHandlers } from "./quick-access-ipc.js";
+import { registerVaultHandlers } from "./credential-vault-ipc.js";
 import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
 import { copyHarmonyMedia } from "./harmony-media-clipboard.js";
 import { HarmonyWindows } from "./harmony-windows.js";
@@ -1205,6 +1206,12 @@ function resolveExistingRendererPath(value: unknown): string | null {
 }
 
 function registerFileShellHandlers(): void {
+  registerVaultHandlers({
+    owner: event => isTrustedMainWindowSender(event) ? mainWindow : null,
+    fill: async id => { if (!desktopBrowserManager) throw new Error("Browser unavailable"); await desktopBrowserManager.fillCredential(id); },
+    release: async () => { await desktopBrowserManager?.releaseCredentials(); },
+    changed: () => desktopBrowserManager?.refreshCredentialState(),
+  });
   registerQuickAccessHandlers({
     owner: event => isTrustedMainWindowSender(event) ? mainWindow
       : isTrustedCompanionSurfaceSender(event) && event.sender === companionPanelWindow?.webContents ? companionPanelWindow : null,

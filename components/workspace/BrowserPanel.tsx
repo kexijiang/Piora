@@ -534,7 +534,14 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
     }
   };
   return <div className={styles.browserRoot} data-native-browser="true">
-    {linkAgent && (agentOperating || agentPaused || agentWaiting) ? <div className={styles.browserAgentOperating} role="status">
+    {state?.vaultProtected ? <div className={styles.browserAgentOperating} role="status">
+      <span>{t("browser.vaultProtected")}</span>
+      <button type="button" onClick={() => { void window.piDesktop?.vault?.request({ action: "release" }).catch(() => setError(t("browser.actionFailed"))); }}>{t("browser.vaultRelease")}</button>
+    </div> : state?.vaultMatches ? <div className={styles.browserAgentOperating} role="status">
+      <span>{t("browser.vaultMatches")}</span>
+      <button type="button" onClick={() => void act({ action: "configure_login" })}>{t("browser.vaultChoose")}</button>
+    </div> : null}
+    {linkAgent && !state?.vaultProtected && (agentOperating || agentPaused || agentWaiting) ? <div className={styles.browserAgentOperating} role="status">
       {agentWaiting ? <>
         <span>{agentWaitReason || t("browser.waitTitle")}</span>
         <span className={styles.browserAgentActions}>
