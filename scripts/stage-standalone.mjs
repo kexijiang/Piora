@@ -70,6 +70,7 @@ const assets = [
     ["Piora scheduled-task extension", "extensions/piora-automations.ts"],
     ["Piora user-input extension", "extensions/piora-user-input.ts"],
     ["Piora collaboration-room extension", "extensions/piora-room.ts"],
+    ["Piora meme extension", "extensions/piora-meme.ts"],
     // First-party extensions execute from source at runtime and resolve their
     // relative imports through this tree. Stage the complete Piora library so
     // adding a transitive helper cannot silently break only packaged builds.

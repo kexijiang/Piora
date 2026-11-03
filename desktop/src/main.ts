@@ -1,3 +1,5 @@
+import { DshMemeManager } from "./dsh-meme-manager.js";
+import { memeNetwork } from "./dsh-meme-install.js";
 import { randomBytes } from "node:crypto";
 import { preparePetRoot } from "./dsh-pet-paths.js";
 import { petNetwork, type PetProxySettings } from "./dsh-pet-network.js";
@@ -180,6 +182,8 @@ if (desktopDevelopmentRuntime) {
 let mainWindow: BrowserWindow | null = null;
 let dshPetProxy: PetProxySettings | undefined;
 let dshPet: DshPetManager | undefined;
+let dshMeme: DshMemeManager | undefined;
+let dshMemePanel: BrowserWindow | undefined;
 let dshPetSettings: BrowserWindow | undefined;
 let harmonyWindows: HarmonyWindows | undefined;
 let companionWindow: BrowserWindow | null = null;
@@ -266,6 +270,19 @@ async function handleStandaloneMessage(message: unknown): Promise<unknown> {
     action?: unknown;
     value?: unknown;
   };
+  if (candidate.type === "pi-desktop:meme-request" && typeof candidate.requestId === "string") {
+    try {
+      if (!dshMeme) throw new Error("DSH Meme desktop host unavailable");
+      const input = candidate.value as { action?: string; path?: string; method?: string; body?: string; autoStart?: boolean };
+      let value: unknown;
+      if (candidate.action === "status") value = dshMeme.status();
+      else if (candidate.action === "action" && typeof input?.action === "string") value = dshMeme.action(input.action);
+      else if (candidate.action === "preferences" && typeof input?.autoStart === "boolean") value = dshMeme.setAutoStart(input.autoStart);
+      else if (candidate.action === "http" && typeof input?.path === "string" && (!input.method || ["GET", "POST"].includes(input.method))) value = await dshMeme.http(input.path, input.method, input.body);
+      else throw new Error("Invalid meme bridge request");
+      return { type: "pi-desktop:meme-response", requestId: candidate.requestId, ok: true, value };
+    } catch (error) { return { type: "pi-desktop:meme-response", requestId: candidate.requestId, ok: false, error: error instanceof Error ? error.message : "Meme bridge failed" }; }
+  }
   if (candidate.type === "pi-desktop:network-request" && typeof candidate.requestId === "string" && /^[a-f0-9-]{36}$/.test(candidate.requestId)) {
     const requestId = candidate.requestId;
     try {
@@ -1074,6 +1091,41 @@ function isTrustedMainWindowSender(event: IpcMainInvokeEvent): boolean {
   );
 }
 
+function initializeDshMeme(): void {
+  if (!piAgentDirectoryPath) throw new Error("Pi data directory is unavailable");
+  const closePanel = () => { dshMemePanel?.destroy(); dshMemePanel = undefined; };
+  dshMeme = new DshMemeManager({
+    root: join(piAgentDirectoryPath, "piora", "desktop-extensions", "dsh-meme"),
+    host: join(__dirname, "dsh-meme-host.js"),
+    network: () => memeNetwork(process.env, dshPetProxy),
+    closePanel,
+    model: async input => {
+      if (!serverUrl || !applicationToken) throw new Error("Piora is restarting");
+      const response = await fetch(new URL("/api/desktop/dsh-meme/model", serverUrl), { method: "POST", headers: { [DESKTOP_TOKEN_HEADER]: applicationToken, "Content-Type": "application/json" }, body: JSON.stringify(input), signal: AbortSignal.timeout(120000) });
+      const data = await response.json() as { value?: unknown; error?: string };
+      if (!response.ok) throw new Error(data.error || "Meme model request failed"); return data.value;
+    },
+    openPanel: async (url, token) => {
+      if (dshMemePanel && !dshMemePanel.isDestroyed()) { dshMemePanel.focus(); return; }
+      const window = new BrowserWindow({ width: 1000, height: 800, title: "DSH Meme 0.1.76", show: false,
+        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: "dsh-meme-panel" } });
+      dshMemePanel = window;
+      const origin = new URL(url).origin;
+      window.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+        const headers = { ...details.requestHeaders };
+        if (new URL(details.url).origin === origin) headers.Authorization = `Bearer ${token}`;
+        else delete headers.Authorization;
+        callback({ requestHeaders: headers });
+      });
+      window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+      window.webContents.on("will-navigate", (event, target) => { if (new URL(target).origin !== origin) event.preventDefault(); });
+      window.on("closed", () => { if (dshMemePanel === window) dshMemePanel = undefined; });
+      try { await window.loadURL(url); window.show(); } catch (error) { window.destroy(); throw error; }
+    },
+  });
+  dshMeme.restore();
+}
+
 function initializeDshPet(): void {
   if (!piAgentDirectoryPath) throw new Error("Pi data directory is unavailable");
   dshPet = new DshPetManager({
@@ -1329,6 +1381,7 @@ function currentAgentDataDirectoryInfo(): AgentDataDirectoryInfo {
 }
 
 async function suspendAgentRuntimeForDataMigration(): Promise<void> {
+  await dshMeme?.dispose();
   await dshPet?.dispose();
   await requestHarmonyEmergencyStop("agent_data_directory_migration");
   const activeServer = server;
@@ -1349,6 +1402,7 @@ async function restoreAgentRuntimeAfterDataMigrationFailure(
     serverUrl = restoredUrl;
     activateStandaloneProfile("normal", restoredRuntime.dataDirectory, restoredUrl);
     initializeDshPet();
+    initializeDshMeme();
     if (mainWindow && !mainWindow.isDestroyed()) {
       let rendererOrigin: string | undefined;
       try {
@@ -3006,10 +3060,12 @@ async function startApplication(): Promise<void> {
   logger.info("Application window is ready", { elapsedMs: Date.now() - startupStartedAt });
   recordStartupStage("ready");
   try { initializeDshPet(); } catch (error) { logger.warn("DSH Pet initialization failed", error); }
+  try { initializeDshMeme(); } catch (error) { logger.warn("DSH Meme initialization failed", error); }
 }
 
 async function stopApplication(): Promise<void> {
   await clipboardController?.stop().catch(error => { if (error instanceof ClipboardDraftFlushError) throw error; logger?.warn("Clipboard shutdown failed", error); });
+  await dshMeme?.dispose().catch(error => logger?.warn("DSH Meme shutdown failed", error));
   await dshPet?.dispose().catch(error => logger?.warn("DSH Pet shutdown failed", error));
   if (scheduledUpdateTimer) clearInterval(scheduledUpdateTimer);
   scheduledUpdateTimer = undefined;

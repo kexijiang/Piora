@@ -1,3 +1,4 @@
+import { memesEn } from "./memes";
 import { characterThemesEn } from "./character-themes";
 import { desktopExtensionsEn } from "./desktop-extensions";
 import { brandText } from "../../branding";
@@ -19,6 +20,7 @@ export const enLocale: LocalePlugin = {
   messages: {
     ...characterThemesEn,
     ...desktopExtensionsEn,
+    ...memesEn,
     "permission.label": "Tool permissions",
     "permission.loading": "Loading permissions…",
     "permission.ask": "Ask before actions",

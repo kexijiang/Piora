@@ -5930,3 +5930,6 @@ button.file-tool-path:hover { color: var(--accent); }
   .compact-process-toggle .chat-disclosure-meta { grid-column: 4; }
   .compact-process-toggle .chat-disclosure-description { white-space: normal; }
 }
+
+/* Stable library URLs keep meme sizing consistent in streamed and restored chats. */
+img[src^="/api/memes/"] { max-width: min(200px, 100%); max-height: 200px; object-fit: contain; }

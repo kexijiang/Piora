@@ -1,3 +1,4 @@
+import { memesZh } from "./memes";
 import { characterThemesZh } from "./character-themes";
 import { desktopExtensionsZh } from "./desktop-extensions";
 import { brandText } from "../../branding";
@@ -19,6 +20,7 @@ export const zhCNLocale: LocalePlugin = {
   messages: {
     ...characterThemesZh,
     ...desktopExtensionsZh,
+    ...memesZh,
     "permission.label": "工具操作权限",
     "permission.loading": "正在读取权限…",
     "permission.ask": "操作前询问",
