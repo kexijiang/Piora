@@ -32,8 +32,8 @@
     "dist:preview": "node ../scripts/run-electron-builder.mjs --preview --win --x64"
   },
   "devDependencies": {
-    "@types/node": "26.6.5",
-    "electron": "45.0.0",
+    "@types/node": "26.6.6",
+    "electron": "45.2.1",
     "electron-builder": "26.18.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "@typescript/native": "npm:typescript@7.0.2"
@@ -42,6 +42,6 @@
     "tar": "7.5.22",
     "undici": "8.12.3",
     "electron-updater": "6.8.11",
-    "koffi": "3.3.3"
+    "koffi": "3.3.6"
   }
 }
