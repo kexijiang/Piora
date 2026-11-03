@@ -2338,6 +2338,7 @@ export const zhCNLocale: LocalePlugin = {
     "chat.sendCancelled": "已取消，未发送",
     "chat.generationStopped": "已停止生成",
     "chat.providerError": "错误：{reason}",
+    "chat.browserWaiting": "等待用户操作浏览器",
     "chat.runningCommand": "正在运行命令...",
     "i18n.responseTime": "响应耗时 {duration}",
     "chat.thinking": "正在思考...",
