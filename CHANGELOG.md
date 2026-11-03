@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 消息图片改为按原图尺寸自适应的可调整大小弹窗，支持滚轮缩放、拖动平移、1:1、适应窗口与还原；小图不再默认拉伸全屏。
+
 - 统一运行状态文案设置与运行策略页的卡片样式，扩大输入区域并增加实时效果预览，提升可读性和编辑体验。
 
 ## [0.5.9-beta.5] - 2026-11-03
