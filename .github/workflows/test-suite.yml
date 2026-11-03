@@ -6,7 +6,7 @@ on:
       matrix:
         description: Exact platform/shard matrix (omitted on main to run the full suite)
         type: string
-        default: '{"os":["ubuntu-latest","windows-latest"],"shard":[1,2,3,4,5,6]}'
+        default: '{"os":["windows-latest"],"shard":[1,2,3,4,5,6]}'
 
 permissions:
   contents: read

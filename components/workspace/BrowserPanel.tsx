@@ -377,7 +377,18 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
     window.addEventListener("scroll", scheduleSync, true);
     panel?.addEventListener("transitionend", scheduleSync);
     scheduleSync();
+    // ResizeObserver does not report position-only layout changes.
+    let previousRect = "";
+    const positionCheck = window.setInterval(() => {
+      if (!panelActiveRef.current || document.hidden) return;
+      const rect = element.getBoundingClientRect();
+      const key = [rect.left, rect.top, rect.width, rect.height].map(Math.round).join(",");
+      if (key === previousRect) return;
+      previousRect = key;
+      scheduleSync();
+    }, 250);
     return () => {
+      window.clearInterval(positionCheck);
       window.cancelAnimationFrame(frame);
       observer.disconnect();
       window.removeEventListener("resize", scheduleSync);
