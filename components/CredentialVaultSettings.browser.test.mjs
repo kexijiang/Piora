@@ -44,6 +44,11 @@ test("vault settings manages masked entries, opt-in filling, password verificati
   await page.getByLabel("主密码（导入时填写备份密码）").fill("master-password-123");
   await page.getByRole("button", { name: "创建凭据库", exact: true }).click();
   await page.getByRole("button", { name: "添加凭据", exact: true }).waitFor();
+  await page.evaluate(() => document.documentElement.style.setProperty("--text-sm", ".8125rem"));
+  const fontSize = () => page.getByLabel("用户名", { exact: true }).evaluate(input => parseFloat(getComputedStyle(input).fontSize));
+  const initialFont = await fontSize();
+  await page.evaluate(() => { document.documentElement.style.fontSize = "24px"; });
+  assert.ok(await fontSize() > initialFont, "credential inputs follow the user font scale");
   assert.equal(await page.getByRole("checkbox").isChecked(), false);
   await page.getByLabel("名称", { exact: true }).fill("Work account");
   await page.getByLabel("完整登录页 URL").fill("https://example.com/login");

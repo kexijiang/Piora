@@ -17,6 +17,7 @@ import { NetworkProxySettings } from "./NetworkProxySettings";
 import { ModelRetrySettings } from "./ModelRetrySettings";
 import { ModelCompactionSettings } from "./ModelCompactionSettings";
 import { ModelFallbackSetting } from "./ModelFallbackSetting";
+import { InputPredictionSettings } from "./InputPredictionSettings";
 import { ReplySuggestionsSettings } from "./ReplySuggestionsSettings";
 import { SystemPromptEditor } from "./SystemPromptEditor";
 import { PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH, PROMPT_OPTIMIZER_SYSTEM_PROMPT } from "@/lib/prompt-optimizer";
@@ -628,6 +629,7 @@ export function SettingsDialog({
                   </div>
                 </section>
                 <ReplySuggestionsSettings cwd={modelCwd} />
+                <InputPredictionSettings cwd={modelCwd} />
               </>
               ) : activeKey === "prompts" ? (
               <>

@@ -31,6 +31,7 @@ interface WaitEntry extends BrowserUserWaitSnapshot {
 
 interface WaitState {
   waits: Map<string, WaitEntry>;
+  outcomes?: Map<string, { toolCallId: string; status: BrowserUserWaitStatus; endedAt: number }>;
 }
 
 const root = globalThis as typeof globalThis & { __pioraBrowserUserWait?: WaitState };
@@ -44,9 +45,17 @@ function settle(entry: WaitEntry, status: BrowserUserWaitStatus): void {
   const current = state().waits.get(entry.sessionId);
   if (current !== entry) return;
   state().waits.delete(entry.sessionId);
+  const outcomes = state().outcomes ??= new Map();
+  outcomes.delete(entry.sessionId);
+  outcomes.set(entry.sessionId, { toolCallId: entry.toolCallId, status, endedAt: Date.now() });
+  while (outcomes.size > 500) outcomes.delete(outcomes.keys().next().value!);
   clearTimeout(entry.timer);
   entry.signal?.removeEventListener("abort", entry.onAbort);
   entry.resolve(status);
+}
+
+export function readBrowserUserWaitOutcome(sessionId: string) {
+  return state().outcomes?.get(sessionId) ?? null;
 }
 
 export function readBrowserUserWait(sessionId: string): BrowserUserWaitSnapshot | null {
