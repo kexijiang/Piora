@@ -5,9 +5,7 @@ asar: true
 asarUnpack:
   - node_modules/koffi/**/*
   - node_modules/@koromix/koffi-*/**/*
-# The portable launcher prepares its runtime cache only once. Normal zlib
-# compression keeps that first-time download/extraction small, while cached
-# launches below no longer pay any decompression cost.
+# Compress the Windows installer payload with normal zlib compression.
 compression: normal
 afterPack: ../scripts/electron-after-pack-licenses.cjs
 beforeBuild: ../scripts/electron-before-build.cjs
@@ -161,21 +159,6 @@ win:
     - target: nsis
       arch:
         - x64
-    - target: portable
-      arch:
-        - x64
-
-linux:
-  icon: icon.png
-  category: Development
-  synopsis: Piora coding agent desktop application
-  executableName: Piora
-  syncDesktopName: true
-  artifactName: ${productName}-${version}-linux-x64-portable.${ext}
-  target:
-    - target: AppImage
-      arch:
-        - x64
 
 # The build machine may not reach github.com (the electron download source).
 # The Electron zip is already cached locally; skip the online SHASUMS256.txt
@@ -190,8 +173,7 @@ publish:
   releaseType: release
 
 nsis:
-  # NSIS and portable share AppPackageHelper's archive. Every payload file
-  # must be in that archive for the portable manifest to describe exact bytes.
+  # Include every payload file in the archive for exact integrity verification.
   preCompressedFileExtensions: []
   oneClick: false
   allowToChangeInstallationDirectory: true
@@ -204,9 +186,3 @@ nsis:
   deleteAppDataOnUninstall: false
   runAfterFinish: true
   artifactName: ${productName}-${version}-win-x64-setup.${ext}
-
-portable:
-  artifactName: ${productName}-${version}-win-x64-portable.${ext}
-  splashImage: build/portable-splash.bmp
-  # The build hook installs a fail-closed portable template that reuses
-  # electron-builder's random, artifact-specific UNPACK_DIR_NAME as a cache.

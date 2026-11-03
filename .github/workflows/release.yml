@@ -1,4 +1,4 @@
-name: Release Windows desktop packages
+name: Release Windows installer
 
 on:
   push:
@@ -157,17 +157,12 @@ jobs:
           $env:PIORA_TEST_7ZA = (Resolve-Path -LiteralPath 'desktop/build/portable-extractor/7za.exe').Path
           node --test lib/portable-payload.test.mjs
 
-      - name: Verify physical portable payload with packaged Electron
+      - name: Verify installer payload with packaged Electron
         shell: pwsh
         run: node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked $env:GITHUB_REF_NAME
 
-      - name: Smoke-test portable executable
+      - name: Smoke-test unpacked installer runtime
         shell: pwsh
-        # Hosted Windows runners apply aggressive scanning to self-extracting
-        # unsigned executables and can stall the NSIS bootstrap indefinitely.
-        # The same payload has already passed package isolation checks; exercise
-        # the packaged Electron runtime directly here and keep the portable
-        # wrapper's cached-launch gate for developer/release-machine validation.
         run: node scripts/smoke-test-portable.mjs desktop/release/win-unpacked/Piora.exe --expected-version "$env:GITHUB_REF_NAME" --packaged-runtime --expected-brand $env:PIORA_BRAND
 
       - name: Install and smoke-test NSIS application
@@ -186,43 +181,15 @@ jobs:
           }
           node scripts/smoke-test-portable.mjs $installedExecutable --expected-version "$env:GITHUB_REF_NAME" --packaged-runtime --expected-brand $env:PIORA_BRAND
 
-      - name: Create and verify extract-and-run archive
-        shell: pwsh
-        run: |
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
-          $source = (Resolve-Path -LiteralPath desktop/release/win-unpacked).Path
-          $archive = Join-Path (Resolve-Path -LiteralPath desktop/release).Path "$env:BRAND_PREFIX-$version-win-x64.zip"
-          Compress-Archive -Path (Join-Path $source '*') -DestinationPath $archive -CompressionLevel Optimal
-
-          & 7z t $archive
-          if ($LASTEXITCODE -ne 0) {
-            throw "7z archive verification failed with exit code $LASTEXITCODE"
-          }
-
-          $verificationRoot = Join-Path (Resolve-Path -LiteralPath desktop/release).Path 'zip-verification'
-          Expand-Archive -LiteralPath $archive -DestinationPath $verificationRoot
-          foreach ($requiredPath in @(
-            'Piora.exe',
-            'resources/app.asar',
-            'resources/web/server.js'
-          )) {
-            if (-not (Test-Path -LiteralPath (Join-Path $verificationRoot $requiredPath) -PathType Leaf)) {
-              throw "Extract-and-run archive is missing $requiredPath"
-            }
-          }
-          Remove-Item -LiteralPath $verificationRoot -Recurse -Force
-
       - name: Generate checksums
         shell: pwsh
         run: |
           $version = $env:GITHUB_REF_NAME -replace '^v', ''
           $releaseRoot = (Resolve-Path -LiteralPath desktop/release).Path
           $expectedNames = @(
-            "$env:BRAND_PREFIX-$version-win-x64-portable.exe",
             "$env:BRAND_PREFIX-$version-win-x64-setup.exe",
             "$env:BRAND_PREFIX-$version-win-x64-setup.exe.blockmap",
-            "$env:BRAND_CHANNEL.yml",
-            "$env:BRAND_PREFIX-$version-win-x64.zip"
+            "$env:BRAND_CHANNEL.yml"
           )
           $artifacts = @($expectedNames | ForEach-Object {
             $path = Join-Path $releaseRoot $_
@@ -245,10 +212,8 @@ jobs:
         with:
           name: ${{ matrix.brand }}-windows-${{ github.ref_name }}
           path: |
-            desktop/release/*-portable.exe
             desktop/release/*-setup.exe
             desktop/release/*-setup.exe.blockmap
-            desktop/release/*-win-x64.zip
             desktop/release/${{ matrix.channel }}.yml
             desktop/release/SHA256SUMS.txt
           if-no-files-found: error
@@ -293,9 +258,7 @@ jobs:
           $assets = @(
             (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64-setup.exe")).Path,
             (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64-setup.exe.blockmap")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "latest.yml")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64-portable.exe")).Path,
-            (Resolve-Path -LiteralPath (Join-Path $root "Piora-$version-win-x64.zip")).Path
+            (Resolve-Path -LiteralPath (Join-Path $root "latest.yml")).Path
           )
           $assets += (Resolve-Path -LiteralPath (Join-Path $root 'SHA256SUMS.txt')).Path
           # Stable desktop release notes were generated from the tagged CHANGELOG
