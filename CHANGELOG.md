@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 表情包选图入口沿用全局字号并保持紧凑按钮尺寸，修复窄聊天输入框中工具状态提示框造成的横向溢出；补齐独立管理窗口与退出清理回归验证。
+
 - 新增 DSH Meme 桌面扩展：固定安装原版 0.1.76，独立进程运行图库和模型工具，支持选图、AI 学图、发送频率及 ZIP 导入导出；复用 DSH Pet 的内网镜像、代理认证和系统 CA 信任逻辑，卸载保留图库数据与历史聊天图片。
 
 ## [0.5.9-beta.4] - 2026-11-03

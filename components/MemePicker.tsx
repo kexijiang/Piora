@@ -33,7 +33,7 @@ export function MemePicker({ onSelect, disabled }: { onSelect?: (markdown: strin
   }
   const working = busy || ["installing", "starting", "stopping"].includes(state?.status.phase || "");
   return <>
-    <button type="button" className={styles.trigger} disabled={disabled} onClick={() => setOpen(true)} title={t("memes.title")} aria-label={t("memes.title")}>{onSelect ? "☺" : t("memes.manage")}</button>
+    <button type="button" className={`${styles.trigger}${onSelect ? ` ${styles.iconTrigger}` : ""}`} disabled={disabled} onClick={() => setOpen(true)} title={t("memes.title")} aria-label={t("memes.title")}>{onSelect ? "☺" : t("memes.manage")}</button>
     {open && createPortal(<dialog ref={node => { dialog.current = node; if (node && !node.open) node.showModal(); }} className={styles.dialog} onClose={() => setOpen(false)}>
       <header><strong>DSH Meme · {state?.status.version || "0.1.76"}</strong><button type="button" onClick={() => dialog.current?.close()}>{t("memes.close")}</button></header>
       <p>{t("memes.notice")}</p>
