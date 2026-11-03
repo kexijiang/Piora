@@ -1,6 +1,7 @@
 /** Bounded, display-only projection of a member's current room turn. */
 export interface RoomActivity {
   sessionId: string;
+  model?: string;
   runId: string;
   status: "working" | "ended" | "error";
   phase: string;
@@ -12,7 +13,7 @@ export interface RoomActivity {
   updatedAt: number;
 }
 
-type RuntimeMessage = { role?: string; content?: unknown; toolCallId?: string; isError?: boolean; timestamp?: number };
+type RuntimeMessage = { model?: string; provider?: string; role?: string; content?: unknown; toolCallId?: string; isError?: boolean; timestamp?: number };
 const tail = (value: unknown, limit = 12_000) => typeof value === "string" ? value.slice(-limit) : "";
 const blocks = (message?: RuntimeMessage): Array<Record<string, unknown>> => Array.isArray(message?.content) ? message.content : [];
 const runtimeMessage = (value: unknown): RuntimeMessage => value && typeof value === "object" ? value as RuntimeMessage : {};
@@ -31,8 +32,10 @@ export function projectRoomActivity(input: {
   const results = new Map(recent.filter((message) => message.role === "toolResult").map((message) => [message.toolCallId, message]));
   const tools: RoomActivity["tools"] = [];
   let text = "", thinking = "";
+  let model: string | undefined;
   for (const message of recent) {
     if (message.role !== "assistant") continue;
+    if (typeof message.model === "string") model = [message.provider, message.model].filter(Boolean).join("/").slice(0, 512);
     for (const block of blocks(message)) {
       if (block.type === "text") text = tail(text + tail(block.text));
       if (block.type === "thinking") thinking = tail(thinking + tail(block.thinking));
@@ -50,6 +53,6 @@ export function projectRoomActivity(input: {
   const active = tools.filter((tool) => input.pendingToolCalls.has(tool.id));
   return { sessionId: input.sessionId, runId: input.runId, status: "working",
     phase: input.compacting ? "正在整理上下文" : active.length ? `正在使用 ${active.map((tool) => tool.name).join("、")}` : input.streamingMessage ? blocks(runtimeMessage(input.streamingMessage)).at(-1)?.type === "thinking" ? "正在思考" : "正在回复" : "正在处理",
-    text, thinking, tools: tools.slice(-12), browser: tools.some((tool) => /browser/i.test(tool.name)),
+    model, text, thinking, tools: tools.slice(-12), browser: tools.some((tool) => /browser/i.test(tool.name)),
     startedAt: input.startedAt ?? runtimeMessage(input.messages[start - 1]).timestamp, updatedAt: Date.now() };
 }
