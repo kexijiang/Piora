@@ -24,7 +24,8 @@ declare global {
         copyHarmonyMedia?: (media: { kind: "screenshot" | "recording"; path: string }) => Promise<void>;
       };
       selectDirectory: () => Promise<string | null>;
-      getRuntimeLog?: () => Promise<{ filePath: string; fileLoggingAvailable: boolean } | null>;
+      getRuntimeLog?: () => Promise<import("@/desktop/src/logger").RuntimeLogInfo | null>;
+      setRuntimeLog?: (input: import("@/desktop/src/logger").LogSettings) => Promise<{ ok: boolean; info?: import("@/desktop/src/logger").RuntimeLogInfo; error?: string }>;
       selectSpeechPackDirectory?: (defaultPath?: string) => Promise<string | null>;
       getAgentDataDirectory?: () => Promise<{
         currentDirectory: string;
