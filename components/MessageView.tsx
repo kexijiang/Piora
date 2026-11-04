@@ -1,5 +1,6 @@
 "use client";
 
+import { summarizeProviderError } from "@/lib/provider-payload";
 import { taskElapsedMs, type TaskTiming } from "@/lib/task-timing";
 import { formatStatusDuration } from "@/lib/status-duration";
 import { thinkingPreview } from "@/lib/thinking-preview";
@@ -626,6 +627,7 @@ function AssistantMessageView({
   }
   const hideFooter = intermediate || isStreaming || blocks.some((block) => block.type === "toolCall");
   const providerError = getAssistantErrorMessage(message, { isStreaming });
+  const providerErrorDetail = providerError ? summarizeProviderError(providerError) : null;
   const stopped = isAssistantAborted(message, { isStreaming });
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -754,7 +756,11 @@ function AssistantMessageView({
             overflowWrap: "anywhere",
           }}
         >
-          {stopped ? t("chat.generationStopped") : t("chat.providerError", { reason: providerError ?? "" })}
+          {stopped ? t("chat.generationStopped") : t("chat.providerError", { reason: providerErrorDetail?.summary ?? "" })}
+          {!stopped && providerErrorDetail?.structured && <details>
+            <summary>{t("chat.providerErrorDetails")}{providerErrorDetail.code ? ` · ${providerErrorDetail.code}` : ""}</summary>
+            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: "8px 0 0" }}>{providerError}</pre>
+          </details>}
         </div>
       )}
 

@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 改善模型请求错误诊断：OpenAI 兼容请求转换完成后检查缺失的消息角色，阻止无效请求发送且不记录正文；结构化服务端错误显示摘要与错误码，并可展开原始详情。华为云技能调用报错的原始原因仍待复现。
+
 - 修复群成员编辑被后台刷新还原的问题：保留未保存草稿，支持取消编辑与关闭提醒；成员资料和换绑一次保存，版本冲突或保存失败保留输入。
 
 ### 持续集成

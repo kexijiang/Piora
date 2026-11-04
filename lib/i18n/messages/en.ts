@@ -2341,6 +2341,7 @@ export const enLocale: LocalePlugin = {
     "chat.stopFailed": "Stop was not confirmed. You can retry Stop. {reason}",
     "chat.sendCancelled": "Cancelled before sending",
     "chat.generationStopped": "Generation stopped",
+    "chat.providerErrorDetails": "Original error details",
     "chat.providerError": "Error: {reason}",
     "chat.browserWaiting": "Waiting for browser input",
     "chat.runningCommand": "Running command...",
