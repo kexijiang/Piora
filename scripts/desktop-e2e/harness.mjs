@@ -55,50 +55,76 @@ async function launchDesktop({ root, directory, signal, registerCleanup, report,
   };
   // start() registers termination after this check, so reverse cleanup stops first.
   registerCleanup(checkPorts);
-  const desktop = start('scripts/dev-desktop.mjs');
+  let desktop = start('scripts/dev-desktop.mjs');
   report.launchPid = desktop.child.pid;
   const checkAlive = () => {
     signal.throwIfAborted();
     if (desktop.outcome()) throw new Error(`Desktop exited: ${JSON.stringify(desktop.outcome())}; see desktop.log`);
     if (logError) throw logError;
   };
-  await waitUntil(async () => {
-    checkAlive();
-    try { return (await fetch(`${debugging}/json/version`, { signal: AbortSignal.any([signal, AbortSignal.timeout(1_000)]) })).ok; }
-    catch (error) { if (signal.aborted) throw error; return false; }
-  }, { signal, timeoutMs: 600_000, label: 'Electron CDP endpoint' });
-  const browser = await chromium.connectOverCDP(debugging, { timeout: 10_000 });
-  registerCleanup(() => browser.close());
-  checkAlive();
-  const page = await waitUntil(() => {
-    checkAlive();
-    return browser.contexts().flatMap(context => context.pages()).find(candidate => candidate.url().startsWith(origin + '/'));
-  }, { signal, timeoutMs: 600_000, label: 'Piora application window' });
-  page.setDefaultTimeout(stepTimeoutMs);
-  page.setDefaultNavigationTimeout(stepTimeoutMs);
+  let browser, page, ready;
   const pageErrors = [];
-  page.on('pageerror', error => pageErrors.push(error.message));
-  const ready = async () => {
-    checkAlive();
-    await abortable(() => page.locator('.app-shell').waitFor({ state: 'visible', timeout: 600_000 }), signal);
-    // Either state is valid: the test supports a fresh or an already initialized profile.
+  const connectOnce = async () => {
     await waitUntil(async () => {
       checkAlive();
-      const skip = page.getByRole('button', { name: /^(Skip guide|跳过引导)$/ });
-      if (await skip.isVisible()) { await skip.click(); return false; }
-      // The onboarding panel loads asynchronously after the shell/settings button.
-      // Wait for its persisted decision so a late modal cannot cover the scenario.
-      const onboarded = await page.evaluate(() => {
-        const value = localStorage.getItem('piora-first-run-onboarding:v1');
-        return value && ['dismissed', 'completed'].includes(JSON.parse(value).status);
-      });
-      if (!onboarded) return false;
-      return await page.getByRole('button', { name: /^(Settings|设置)$/ }).isVisible();
-    }, { signal, timeoutMs: stepTimeoutMs, label: 'settings entry after onboarding' });
+      try { return (await fetch(`${debugging}/json/version`, { signal: AbortSignal.any([signal, AbortSignal.timeout(1_000)]) })).ok; }
+      catch (error) { if (signal.aborted) throw error; return false; }
+    }, { signal, timeoutMs: 600_000, label: 'Electron CDP endpoint' });
+    browser = await chromium.connectOverCDP(debugging, { timeout: 10_000 });
+    const acquiredBrowser = browser;
+    registerCleanup(() => acquiredBrowser.close());
+    checkAlive();
+    page = await waitUntil(() => {
+      checkAlive();
+      return browser.contexts().flatMap(context => context.pages()).find(candidate => candidate.url().startsWith(origin + '/'));
+    }, { signal, timeoutMs: 600_000, label: 'Piora application window' });
+    page.setDefaultTimeout(stepTimeoutMs);
+    page.setDefaultNavigationTimeout(stepTimeoutMs);
+    page.on('pageerror', error => pageErrors.push(error.message));
+    ready = async () => {
+      checkAlive();
+      await abortable(() => page.locator('.app-shell').waitFor({ state: 'visible', timeout: 600_000 }), signal);
+      // Either state is valid: the test supports a fresh or an already initialized profile.
+      await waitUntil(async () => {
+        checkAlive();
+        const skip = page.getByRole('button', { name: /^(Skip guide|跳过引导)$/ });
+        if (await skip.isVisible()) { await skip.click(); return false; }
+        // The onboarding panel loads asynchronously after the shell/settings button.
+        // Wait for its persisted decision so a late modal cannot cover the scenario.
+        const onboarded = await page.evaluate(() => {
+          const value = localStorage.getItem('piora-first-run-onboarding:v1');
+          return value && ['dismissed', 'completed'].includes(JSON.parse(value).status);
+        });
+        if (!onboarded) return false;
+        return await page.getByRole('button', { name: /^(Settings|设置)$/ }).isVisible();
+      }, { signal, timeoutMs: stepTimeoutMs, label: 'settings entry after onboarding' });
+    };
+    await ready();
   };
-  await ready();
+  const connect = async () => {
+    for (;;) {
+      try { await connectOnce(); return; }
+      catch (error) {
+        // Dev compilation may replace Electron while the startup page is loading.
+        // Only recover disconnected startup targets; scenario failures still propagate.
+        if (signal.aborted || desktop.outcome() || (!page?.isClosed() && browser?.isConnected())) throw error;
+        report.startupReconnects = (report.startupReconnects ?? 0) + 1;
+        await browser?.close().catch(() => {});
+      }
+    }
+  };
+  await connect();
   return {
     page, origin, pageErrors,
+    getBrowser: () => browser,
+    // Restart only this run's owned process tree, retaining its isolated profile.
+    restart: async () => {
+      await browser.close(); await stopProcess(desktop); await checkPorts();
+      desktop = start('scripts/dev-desktop.mjs');
+      (report.restartPids ??= []).push(desktop.child.pid);
+      await connect();
+      return page;
+    },
     reload: async () => { await page.reload({ waitUntil: 'domcontentloaded' }); await ready(); },
     screenshot: name => page.screenshot({ path: join(directory, name), timeout: 5_000 }),
   };
