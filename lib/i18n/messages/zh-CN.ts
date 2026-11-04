@@ -2882,6 +2882,8 @@ export const zhCNLocale: LocalePlugin = {
     "i18n.copyMessage": "复制消息",
     "i18n.editFromHere": "从此处编辑",
     "i18n.editFromHereTitle": "从此处编辑，此会话内创建分支",
+    "i18n.branchFromHere": "从此处新建分支",
+    "i18n.branchFromHereTitle": "新建会话并继承截至此消息的上下文，原会话保持完整",
     "i18n.newSession": "新会话",
     "i18n.newSessionTitle": "新会话，从此处创建独立副本",
     "i18n.estimatedTokens": "流式输出期间的估算令牌数",

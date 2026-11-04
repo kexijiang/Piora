@@ -14,6 +14,7 @@ import { useResizablePanel } from "@/hooks/useResizablePanel";
 import { AliIcon } from "./AliIcon";
 import { LazyMarkdownBody as MarkdownBody } from "./LazyMarkdownBody";
 import { CollapsibleUserContent } from "./CollapsibleUserContent";
+import { RoomRequests } from "./RoomRequests";
 import { RoomSettingsDialog } from "./RoomSettingsDialog";
 import { RoomMessageNavigator } from "./RoomMessageNavigator";
 import { RoomActivityMessage } from "./RoomActivityMessage";
@@ -278,6 +279,7 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
     className={`${styles.detailsResizeHandle}${detailsResizer.isResizing ? ` ${styles.resizing}` : ""}`}
     data-resize-handle="room-details" title={t("layout.resizeHint")} />;
   const renderWorkspace = () => <section className={`${styles.workspace} room-workspace`} aria-label={`${t("roomUx.groups")}：${room.name}`}>
+    <RoomRequests key={room.id} requests={data.uiRequests} />
     {renderHeader()}
     {renderPinnedGoal()}
     <div className={styles.content} ref={contentRef}>

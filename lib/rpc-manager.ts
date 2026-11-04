@@ -1,3 +1,4 @@
+import { createConversationFork } from "./session-fork";
 import { recordAgentTerminalEvent } from "./agent-terminal-registry";
 import { ToolReviewController } from "./tool-permission-gate";
 import { collectReviewEvidence } from "./tool-review-evidence";
@@ -1176,6 +1177,10 @@ export class AgentSessionWrapper {
     }
   }
 
+  getPendingUiRequests(): ExtensionUiRequest[] {
+    return this._alive ? [...this.pendingUiRequests.values()] as ExtensionUiRequest[] : [];
+  }
+
   onEvent(listener: EventListener): () => void {
     this.listeners.push(listener);
     for (const review of this.reviews().list()) listener({ type: "tool_review", review });
@@ -1661,24 +1666,8 @@ export class AgentSessionWrapper {
         if (!sessionManager.isPersisted()) return { cancelled: true };
         if (!currentSessionFile) throw new Error("Persisted session is missing a session file");
 
-        const entry = sessionManager.getEntry(entryId);
-        if (!entry) throw new Error("Invalid entry ID for forking");
-
         const sessionDir = sessionManager.getSessionDir();
-        let newSessionFile: string;
-
-        if (!entry.parentId) {
-          // Fork before the first message: create an empty session linked to this one
-          const newManager = SessionManager.create(sessionManager.getCwd(), sessionDir);
-          newManager.newSession({ parentSession: currentSessionFile });
-          newSessionFile = newManager.getSessionFile() as string;
-        } else {
-          // Fork after some history: copy path up to (but not including) the fork point
-          const sourceManager = SessionManager.open(currentSessionFile, sessionDir);
-          const forkedPath = sourceManager.createBranchedSession(entry.parentId);
-          if (!forkedPath) throw new Error("Failed to create forked session");
-          newSessionFile = forkedPath;
-        }
+        const newSessionFile = createConversationFork(currentSessionFile, sessionDir, entryId, command.includeEntry === true);
 
         const newSessionId = SessionManager.open(newSessionFile, sessionDir).getSessionId();
         writeToolPermission(newSessionId, readDefaultToolPermission(getAgentDir()), getAgentDir());

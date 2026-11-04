@@ -2057,7 +2057,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally { messageMutationRef.current = false; setDeletingMessage(false); }
   }, [activeLeafId, entryIds, isCompacting, loadContext, loadSession, messages, t]);
 
-  const handleFork = useCallback(async (entryId: string) => {
+  const handleFork = useCallback(async (entryId: string, includeEntry = false) => {
     if (bashRunningRef.current) return;
     const sid = sessionIdRef.current;
     if (!sid) return;
@@ -2066,17 +2066,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(sid, {
         type: "fork",
         entryId,
+        includeEntry,
       });
       const { cancelled, newSessionId } = result ?? {};
       if (!cancelled && newSessionId) {
         onSessionForked?.(newSessionId);
       }
     } catch (e) {
-      console.error("Fork failed:", e);
+      addNotice({ type: "error", message: e instanceof Error ? e.message : String(e) });
     } finally {
       setForkingEntryId(null);
     }
-  }, [onSessionForked]);
+  }, [onSessionForked, addNotice]);
+
+  const handleBranch = useCallback((entryId: string) => handleFork(entryId, true), [handleFork]);
 
   const handleNavigate = useCallback(async (entryId: string): Promise<boolean> => {
     const sid = sessionIdRef.current;
@@ -2258,6 +2261,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const nextModelList = d.modelList ?? [];
     setModelList(nextModelList);
     if (isNew && !sessionIdRef.current) {
+      const selected = newSessionModelOverrideRef.current;
+      if (!d.modelError && selected && !nextModelList.some(item => item.provider === selected.provider && item.id === selected.modelId)) {
+        newSessionModelOverrideRef.current = null;
+        setNewSessionModel(null);
+      }
       const match = d.defaultModel
         ? nextModelList.find((m) => m.id === d.defaultModel?.modelId && m.provider === d.defaultModel?.provider)
         : undefined;
@@ -2882,7 +2890,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef, activityClockRef, statusClock,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
-    handleSend, handleAbort, handleFork, handleNavigate, handleRewindRecovery, handleModelChange, handleDeleteMessage, deletingMessage,
+    handleSend, handleAbort, handleFork, handleBranch, handleNavigate, handleRewindRecovery, handleModelChange, handleDeleteMessage, deletingMessage,
     handleScrollToBottom, pauseHistoryFollow,
     switchHistoryBranch, forkHistoryQuestion,
     handleCompact, handleDismissCompactError, handleDismissCompactResult, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
