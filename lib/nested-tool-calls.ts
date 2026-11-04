@@ -1,3 +1,4 @@
+import { isCommandToolName } from "./command-execution";
 export interface NestedCall {
   id: string;
   name: string;
@@ -5,6 +6,10 @@ export interface NestedCall {
   durationMs?: number;
   error?: string;
   argumentsBytes?: number;
+  /** Bounded live preview, not part of SDK saved call summaries. */
+  command?: string;
+  output?: string;
+  outputTruncated?: boolean;
 }
 export interface NestedCallsSnapshot { calls: NestedCall[]; complete: boolean }
 
@@ -27,9 +32,9 @@ export class NestedToolCallsStore {
   }
   getSnapshot(id: string): NestedCallsSnapshot | undefined { return this.snapshots.get(id); }
   beginRun(id: number): void { if (this.runId !== id) { this.reset(); this.runId = id; } }
-  record(event: { type: string; toolCallId?: unknown; parentToolCallId?: unknown; toolName?: unknown; isError?: unknown; result?: unknown }, now = Date.now()): void {
+  record(event: { type: string; toolCallId?: unknown; parentToolCallId?: unknown; toolName?: unknown; isError?: unknown; result?: unknown; partialResult?: unknown; args?: unknown }, now = Date.now()): void {
     if (typeof event.toolCallId !== "string" || typeof event.parentToolCallId !== "string") return;
-    if (event.type !== "tool_execution_start" && event.type !== "tool_execution_end") return;
+    if (event.type !== "tool_execution_start" && event.type !== "tool_execution_end" && event.type !== "tool_execution_update") return;
     const id = event.toolCallId, root = this.roots.get(event.parentToolCallId) ?? event.parentToolCallId;
     if (this.finished.has(root)) return;
     const previous = this.snapshots.get(root) ?? { calls: [], complete: true };
@@ -40,15 +45,25 @@ export class NestedToolCallsStore {
     }
     this.roots.set(id, root);
     const old = previous.calls[index];
+    if (event.type === "tool_execution_update" && (!old || old.status !== "running" || !isCommandToolName(old.name))) return;
+
     if (event.type === "tool_execution_end" && old && old.status !== "running") return;
     if (event.type === "tool_execution_start" && old) return; // duplicate/reordered start
     if (event.type === "tool_execution_start") this.started.set(id, now);
-    const result = event.result as { content?: Array<{ type?: string; text?: string }> } | undefined;
+    const result = (event.type === "tool_execution_update" ? event.partialResult : event.result) as { content?: Array<{ type?: string; text?: string }> } | undefined;
     const error = event.isError === true && Array.isArray(result?.content)
       ? result.content.filter(block => block.type === "text" && typeof block.text === "string").map(block => block.text).join("\n").slice(0, 500) : undefined;
+    const shell = isCommandToolName(old?.name ?? event.toolName);
+    const text = shell && Array.isArray(result?.content)
+      ? result.content.filter(block => block?.type === "text" && typeof block.text === "string").map(block => block.text).join("\n") : undefined;
+    const args = event.args as { command?: unknown } | undefined;
+    const command = old?.command ?? (shell && typeof args?.command === "string" ? args.command.slice(0, 8192) : undefined);
     const call: NestedCall = {
+      ...(command !== undefined ? { command } : {}),
+      ...(text !== undefined ? { output: text.slice(-64_000), outputTruncated: text.length > 64_000 } : old?.output !== undefined ? { output: old.output, outputTruncated: old.outputTruncated } : {}),
+
       id, name: typeof event.toolName === "string" ? event.toolName : old?.name ?? id,
-      status: event.type === "tool_execution_start" ? "running" : event.isError === true ? "error" : "ok",
+      status: event.type !== "tool_execution_end" ? "running" : event.isError === true ? "error" : "ok",
       ...(this.started.has(id) && event.type === "tool_execution_end" ? { durationMs: Math.max(0, now - this.started.get(id)!) } : {}),
       ...(error ? { error } : {}),
     };

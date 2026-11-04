@@ -79,7 +79,7 @@ test("nested tool history restores bounded summaries without inventing child out
   assert.match(html, /调用记录不完整/);
   assert.match(html, /未确认完成/);
   assert.match(html, /参数因大小限制已省略/);
-  assert.match(html, /不含子调用的完整输出/);
+  assert.match(html, /历史记录仅保存调用摘要，不含完整输出/);
   assert.match(html, /safe fixture failure/);
   assert.doesNotMatch(html, /is-running/);
 });

@@ -1272,7 +1272,7 @@ export const zhCNLocale: LocalePlugin = {
     "session.costUnknown": "未上报",
     "session.costPartial": "已上报部分",
     "nestedCalls.title": "子工具调用",
-    "nestedCalls.summaryOnly": "这里只保存调用摘要，不含子调用的完整输出。",
+    "nestedCalls.summaryOnly": "子命令支持实时输出预览；历史记录仅保存调用摘要，不含完整输出。",
     "nestedCalls.incomplete": "调用记录不完整，部分调用或参数可能已省略。",
     "nestedCalls.unfinished": "未确认完成",
     "nestedCalls.omittedArguments": "参数因大小限制已省略",

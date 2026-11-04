@@ -5,6 +5,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 ## [Unreleased]
 
 - 修复恢复或引导排队消息时，读取原消息期间点击停止仍会迟到发送的问题；从读取草稿起统一跟踪取消状态，停止或切换会话后阻止旧操作发送，原任务正常结束后仍可恢复并显示实时回复；补充相关自动回归测试（#309）。
+- 补齐 Codemode 嵌套 Bash/PowerShell 命令的实时输出预览，复用展开、复制、搜索和错误定位；日志错误行高亮，PowerShell 纳入命令记录。嵌套预览有大小限制，历史仍仅保存 SDK 调用摘要，未验证真实 DevEco 编译（#310）。
 
 - 新增 alpha 手动测试包：复用 GitHub Actions 预发布构建与安装验证，仅发布 Windows x64 安装包、blockmap 和校验和，不发布自动更新元数据；alpha 客户端关闭更新，beta/stable 不接收 alpha 更新。
 - 浏览器新建标签达到全局上限时自动释放一个安全闲置的智能体标签，优先已卸载页面、再按最近使用时间回收；保留手动、可见、活跃、请求执行中、等待用户及凭据保护页面，无安全候选时仍提示容量不足（#326）。
