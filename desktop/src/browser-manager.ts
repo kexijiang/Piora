@@ -47,6 +47,9 @@ const MAX_TABS = 20;
 const MANUAL_BROWSER_SESSION_ID = "__piora_browser_manual__";
 
 export interface DesktopBrowserState {
+  tabCount?: number;
+  tabLimit?: number;
+  idleTabCount?: number;
   vaultProtected?: boolean;
   vaultMatches?: number;
   sessionId: string;
@@ -92,7 +95,7 @@ export interface ChromeBookmarkImportResult {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
+  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;
@@ -111,6 +114,8 @@ interface BrowserAgentBinding {
   agentTabId(sessionId: string): string | null;
   status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string };
   noteUsed(tabId: string): void;
+  idleTabIds(): string[];
+  closeIdleTabs(): void;
 }
 
 export interface DesktopBrowserDownload {
@@ -476,8 +481,6 @@ export class DesktopBrowserManager {
 
   private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }, deferLoad = false): BrowserTab {
     if (this.tabs.length >= MAX_TABS) {
-      const existing = this.activeTab(sessionId);
-      if (existing) return existing;
       throw new Error(`The browser tab limit of ${MAX_TABS} has been reached.`);
     }
     const id = `tab-${this.nextTabId++}`;
@@ -629,7 +632,10 @@ export class DesktopBrowserManager {
     contents.on("context-menu", (_event, params) => {
       const template: Electron.MenuItemConstructorOptions[] = [];
       if (params.linkURL && isBrowserUrl(params.linkURL)) {
-        template.push({ label: "在新标签页中打开链接", click: () => this.createTab(params.linkURL, true, tab.sessionId) });
+        template.push({ label: "在新标签页中打开链接", enabled: this.tabs.length < MAX_TABS, click: () => {
+          // A menu can stay open while another session consumes the final slot.
+          if (this.tabs.length < MAX_TABS) this.createTab(params.linkURL, true, tab.sessionId);
+        } });
         template.push({ type: "separator" });
       }
       if (params.selectionText) template.push({ role: "copy", label: "复制" });
@@ -662,22 +668,25 @@ export class DesktopBrowserManager {
   }
 
   private getState(sessionId = this.displayedSessionId): DesktopBrowserState {
-    const active = this.ensureSession(sessionId);
-    const contents = this.liveContents(active);
-    const url = this.tabUrl(active);
+    const active = this.activeTab(sessionId);
+    const contents = active ? this.liveContents(active) : undefined;
+    const url = active ? this.tabUrl(active) : "about:blank";
     const agent = this.agentControl?.status(sessionId);
     return {
       sessionId,
-      activeTabId: active.id,
+      tabCount: this.tabs.length,
+      tabLimit: MAX_TABS,
+      idleTabCount: this.agentControl?.idleTabIds().length ?? 0,
+      activeTabId: active?.id ?? "",
       canGoBack: contents ? contents.navigationHistory.canGoBack() : false,
       canGoForward: contents ? contents.navigationHistory.canGoForward() : false,
-      loading: active.loading,
+      loading: active?.loading ?? false,
       tabs: this.tabs.filter((tab) => tab.sessionId === sessionId).map((tab) => ({
         id: tab.id,
         title: this.tabTitle(tab),
         url: this.tabUrl(tab),
       })),
-      title: this.tabTitle(active),
+      title: active ? this.tabTitle(active) : "",
       url,
       ...(agent ? {
         agentTabId: agent.tabId,
@@ -686,7 +695,7 @@ export class DesktopBrowserManager {
         agentWaiting: agent.waiting,
         ...(agent.waiting && agent.reason ? { agentWaitReason: agent.reason } : {}),
       } : {}),
-      vaultProtected: Boolean(active.vaultProtected),
+      vaultProtected: Boolean(active?.vaultProtected),
       vaultMatches: this.credentialVault().candidates(url, false).length,
     };
   }
@@ -767,7 +776,7 @@ export class DesktopBrowserManager {
     const input = value as DesktopBrowserAction;
     if (input.action === "set_session") {
       this.displayedSessionId = normalizeBrowserSessionId(input.sessionId);
-      this.ensureSession(this.displayedSessionId);
+      if (this.tabs.length < MAX_TABS) this.ensureSession(this.displayedSessionId);
       this.updateVisibility();
       this.sendState();
       return;
@@ -794,11 +803,32 @@ export class DesktopBrowserManager {
       this.sendState();
       return;
     }
-    const active = this.activeTab(this.displayedSessionId);
-    if (!active || active.unloaded) {
-      if (input.action === "new_tab") this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
+    if (input.action === "close_idle_tabs") {
+      this.agentControl?.closeIdleTabs();
+      this.updateVisibility();
+      this.sendState();
       return;
     }
+    if (input.action === "close_tab" && typeof input.tabId === "string") {
+      this.closeTab(input.tabId, this.displayedSessionId, true);
+      return;
+    }
+    if (input.action === "switch_tab" && typeof input.tabId === "string") {
+      const tab = this.tabs.find(tab => tab.id === input.tabId && tab.sessionId === this.displayedSessionId);
+      if (!tab) return;
+      await this.restoreTab(tab.id);
+      this.activeTabIds.set(this.displayedSessionId, tab.id);
+      this.noteTabUsed(tab);
+      this.updateVisibility();
+      this.sendState();
+      return;
+    }
+    const active = this.activeTab(this.displayedSessionId);
+    if (!active) {
+      if (input.action === "new_tab" || input.action === "navigate") this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
+      return;
+    }
+    if (active.unloaded) await this.restoreTab(active.id);
     if (input.action === "configure_login") { this.showLoginMenu(active); return; }
     if (input.action === "navigate" && typeof input.url === "string") {
       await this.storageReady;
@@ -815,13 +845,6 @@ export class DesktopBrowserManager {
       this.noteTabUsed(active);
     } else if (input.action === "new_tab") {
       this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
-    } else if (input.action === "switch_tab" && typeof input.tabId === "string" && this.tabs.some((tab) => tab.id === input.tabId && tab.sessionId === this.displayedSessionId)) {
-      this.activeTabIds.set(this.displayedSessionId, input.tabId);
-      this.noteTabUsed(this.tabs.find((tab) => tab.id === input.tabId));
-      this.updateVisibility();
-      this.sendState();
-    } else if (input.action === "close_tab" && typeof input.tabId === "string") {
-      this.closeTab(input.tabId, this.displayedSessionId);
     }
   }
 
@@ -1044,6 +1067,7 @@ export class DesktopBrowserManager {
       url: tab.vaultProtected ? "about:blank" : this.tabUrl(tab),
       title: tab.vaultProtected ? "Private credential entry" : this.tabTitle(tab),
       unloaded: Boolean(tab.unloaded),
+      vaultProtected: Boolean(tab.vaultProtected),
     };
   }
 
