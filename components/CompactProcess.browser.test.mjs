@@ -422,6 +422,9 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     await mixed.getByText("先说明计划", {exact:true}).waitFor();
     for (const width of [1200, 390]) {
       await mixed.setViewportSize({ width, height: 900 });
+      // Resize changes the virtualized layout; measure after its animation-frame commit.
+      await mixed.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      await mixed.getByText("先说明计划", {exact:true}).waitFor({state:"visible"});
       const textBounds = await mixed.getByText("先说明计划", {exact:true}).boundingBox();
       assert.ok(textBounds);
       const alignment = await mixed.evaluate(edge => {
