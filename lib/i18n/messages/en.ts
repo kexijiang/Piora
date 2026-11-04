@@ -1341,6 +1341,8 @@ export const enLocale: LocalePlugin = {
     "browser.agentReadOnlyNotice": "Live Agent browser view · Read-only · Switching off returns to your independent browser",
     "browser.newTab": "New tab",
     "browser.closeOtherTabs": "Close other tabs",
+    "browser.closeIdleTabs": "Close idle agent tabs",
+    "browser.tabLimitReached": "The shared limit of {limit} tabs has been reached. Close tabs in other chats or clean up idle agent tabs before opening another.",
     "browser.closeTab": "Close tab",
     "browser.back": "Back",
     "browser.forward": "Forward",

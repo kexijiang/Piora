@@ -130,6 +130,9 @@ export interface DesktopUpdateState {
 }
 
 export interface DesktopBrowserState {
+  tabCount?: number;
+  tabLimit?: number;
+  idleTabCount?: number;
   vaultProtected?: boolean;
   vaultMatches?: number;
   sessionId: string;
@@ -159,7 +162,7 @@ export interface DesktopBrowserAgentActivity {
 export type DesktopBrowserAgentBackend = "desktop" | "playwright";
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
+  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;
