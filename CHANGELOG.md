@@ -5,6 +5,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 ## [Unreleased]
 
 - 用户消息与已完成回复新增“从此处新建分支”，复制包含所点消息的历史到独立会话，保留原会话及分支关系；原有编辑与新会话操作保持原语义。
+- 修复群成员编辑被后台刷新还原的问题：保留未保存草稿，支持取消编辑与关闭提醒；成员资料和换绑一次保存，版本冲突或保存失败保留输入。
 
 ### 持续集成
 
