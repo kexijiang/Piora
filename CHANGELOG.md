@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 用户消息与已完成回复新增“从此处新建分支”，复制包含所点消息的历史到独立会话，保留原会话及分支关系；原有编辑与新会话操作保持原语义。
+
 ### 持续集成
 
 - 升级固定版本的 Node.js 环境配置动作，并同步当前主线工作流；项目测试版本仍为 Node.js 22.19.0，保留现有缓存与验证门禁。

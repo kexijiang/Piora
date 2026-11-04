@@ -2881,6 +2881,8 @@ export const enLocale: LocalePlugin = {
     "i18n.copyMessage": "Copy message",
     "i18n.editFromHere": "Edit from here",
     "i18n.editFromHereTitle": "Edit from here — branches within this session",
+    "i18n.branchFromHere": "Branch from here",
+    "i18n.branchFromHereTitle": "Create a new chat including this message; keep the original conversation",
     "i18n.newSession": "New session",
     "i18n.newSessionTitle": "New session — creates an independent copy from here",
     "i18n.estimatedTokens": "Estimated token count while streaming",
