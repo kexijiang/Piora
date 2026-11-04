@@ -4,7 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
-- 移除聊天输入栏的表情包按钮，减少容易误解的发送入口；设置中的图库管理、AI 表情工具和历史图片继续可用。
+- 移除聊天输入栏的表情包按钮，减少容易误解的发送入口；设置中的图库管理、AI 表情工具和历史图片继续可用。同步修正输入预测刷新测试的持久化等待，避免草稿尚未落盘便刷新造成偶发失败。
 
 ### 持续集成
 
