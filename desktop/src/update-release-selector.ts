@@ -1,3 +1,4 @@
+import type { UpdateSourceFeed } from "./update-source.js";
 import type { AppUpdater } from "electron-updater";
 import type { Logger } from "./logger.js";
 import type { DesktopReleaseAudience } from "./release-audience.js";
@@ -96,18 +97,19 @@ export async function preparePreviewUpdateFeed(
   currentVersion: string,
   fetchResource: (url: string) => Promise<{ ok: boolean; status: number; text(): Promise<string> }>,
   logger: Logger,
-  options?: { audience: DesktopReleaseAudience; brand: UpdateBrand },
+  options?: { audience: DesktopReleaseAudience; brand: UpdateBrand; feed?: UpdateSourceFeed; onLatestVersion?: (version: string | undefined) => void },
 ): Promise<boolean> {
-  const response = await fetchResource(RELEASES_ATOM_URL);
-  if (!response.ok) throw new Error(`GitHub release feed returned HTTP ${response.status}`);
+  const response = await fetchResource(options?.feed?.releasesAtomUrl ?? RELEASES_ATOM_URL);
+  if (!response.ok) throw new Error(`Release feed returned HTTP ${response.status}`);
   let tags = releaseTagsFromAtom(await response.text());
+  options?.onLatestVersion?.(undefined);
   while (tags.length > 0) {
-    const candidate = selectDesktopReleaseCandidate(tags, currentVersion, options?.audience ?? "preview");
+    const candidate = selectDesktopReleaseCandidate(tags, options?.onLatestVersion ? "0.0.0" : currentVersion, options?.audience ?? "preview");
     if (!candidate) break;
     const channel = options
       ? options.brand.updateChannels[candidate.channel === "beta" ? "preview" : "stable"]
       : candidate.channel;
-    const releaseUrl = `${RELEASE_DOWNLOAD_ROOT}/${encodeURIComponent(candidate.tag)}`;
+    const releaseUrl = `${options?.feed?.releaseDownloadRoot ?? RELEASE_DOWNLOAD_ROOT}/${encodeURIComponent(candidate.tag)}`;
     // GitHub's Atom feed also includes tags without a published release. Only
     // hand a candidate to electron-updater once its channel metadata exists.
     const metadataUrl = `${releaseUrl}/${channel}.yml`;
@@ -118,10 +120,13 @@ export async function preparePreviewUpdateFeed(
       continue;
     }
     if (!metadata.ok) {
-      throw new Error(`GitHub update metadata for ${candidate.tag} returned HTTP ${metadata.status}`);
+      throw new Error(`Update metadata for ${candidate.tag} returned HTTP ${metadata.status}`);
     }
     const metadataText = await metadata.text();
     if (options) validateBrandUpdateInfo(parseUpdateInfo(metadataText, `${channel}.yml`, new URL(metadataUrl)), options.brand, candidate.version);
+
+    options?.onLatestVersion?.(candidate.version);
+    if (!selectDesktopReleaseCandidate([candidate.tag], currentVersion, options?.audience ?? "preview")) return false;
 
     updater.allowPrerelease = (options?.audience ?? "preview") === "preview";
     updater.channel = channel;

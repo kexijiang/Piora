@@ -69,6 +69,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "shell.agentTimeout", section: "shell", labelKey: "shell.agentTimeoutTitle", descriptionKey: "shell.agentTimeoutDescription", keywords: ["bash", "powershell", "timeout", "duration", "命令", "超时", "时长"] },
   { id: "shortcuts.voice", section: "shortcuts", labelKey: "commands.voiceInput", descriptionKey: "shortcuts.voiceInputDescription", keywords: ["voice", "dictation", "microphone", "shortcut", "语音", "听写", "麦克风", "快捷键"] },
   { id: "shortcuts.deviceScreenshot", section: "shortcuts", labelKey: "shortcuts.deviceScreenshot", descriptionKey: "shortcuts.deviceScreenshotDescription", keywords: ["harmony", "device", "screenshot", "alt shift s", "鸿蒙", "设备", "手机", "截图", "快捷键"] },
+  { id: "general.updateSource", section: "general", requiresDesktop: true, labelKey: "settings.updateSource", descriptionKey: "settings.updateSourceDescription", keywords: ["update", "source", "github", "internal", "更新", "来源", "内源", "渠道"] },
   { id: "general.updateSchedule", section: "general", requiresDesktop: true, labelKey: "settings.updateSchedule", descriptionKey: "settings.updateScheduleDescription", keywords: ["update", "schedule", "silent", "更新", "静默", "安装", "定时"] },
   { id: "general", section: "general", labelKey: "settings.general", descriptionKey: "settings.generalDescription", keywords: ["preferences", "偏好"] },
   { id: "data", section: "data", labelKey: "settings.page.data", descriptionKey: "settings.page.dataDescription", keywords: ["backup", "storage", "data", "备份", "存储", "数据"] },

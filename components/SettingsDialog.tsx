@@ -11,6 +11,7 @@ import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScro
 import { AliIcon, type AliIconName } from "./AliIcon";
 import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
 import { RuntimeLogSettings } from "./RuntimeLogSettings";
+import { DesktopUpdateSourceSetting } from "./DesktopUpdateSourceSetting";
 import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
 import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
@@ -475,6 +476,7 @@ export function SettingsDialog({
                 </section> : null}
                 {desktop.available ? <section className={styles.conversationSection}>
                   <div data-settings-id="general.autoLaunch"><DesktopAutoLaunchSetting /></div>
+                  <DesktopUpdateSourceSetting />
                   <DesktopUpdateScheduleSetting />
                 </section> : null}
                 <div className={styles.localNote}>

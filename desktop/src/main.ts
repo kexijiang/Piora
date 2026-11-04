@@ -86,6 +86,8 @@ import {
   type DesktopUpdateState,
 } from "./app-updater.js";
 import { readOrCreateDesktopReleaseAudience } from "./release-audience.js";
+import { configuredUpdateFeed, readUpdateSource, writeUpdateSource } from "./update-source.js";
+import { validateBrandUpdateInfo } from "./update-brand-validation.js";
 import { preparePreviewUpdateFeed } from "./update-release-selector.js";
 import { APP_BRAND, APP_DISPLAY_NAME, brandText } from "./branding.js";
 import {
@@ -687,6 +689,12 @@ function publishDesktopUpdateState(state: Readonly<DesktopUpdateState>): void {
 }
 
 function registerDesktopUpdateStateHandler(): void {
+  ipcMain.removeHandler("pi:update-source-set");
+  ipcMain.handle("pi:update-source-set", (event, source: unknown) => {
+    if (!isTrustedMainWindowSender(event) || !desktopUpdateController) return null;
+    desktopUpdateController.selectSource(source, value => writeUpdateSource(app.getPath("userData"), value));
+    return desktopUpdateController.getState();
+  });
   ipcMain.removeHandler("pi:update-schedule-get");
   ipcMain.handle("pi:update-schedule-get", (event) => {
     if (!isTrustedMainWindowSender(event)) return null;
@@ -847,19 +855,19 @@ function initializeDesktopUpdater(log: Logger): void {
     log,
     {
       audience,
-      ...(supported && audience === "preview"
-        ? {
-            prepareCheck: () => preparePreviewUpdateFeed(
-              autoUpdater,
-              currentVersion,
-              (url) => net.fetch(url, {
-                cache: "no-store",
-                headers: { Accept: "application/atom+xml, application/xml;q=0.9, */*;q=0.8" },
-              }),
-              log,
-            ),
-          }
-        : {}),
+      source: readUpdateSource(app.getPath("userData")),
+      validateUpdateInfo: info => validateBrandUpdateInfo(info, APP_BRAND),
+      prepareCheck: async () => {
+        const source = desktopUpdateController?.getState().source ?? "github";
+        try {
+          return await preparePreviewUpdateFeed(autoUpdater, currentVersion,
+            url => net.fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30_000) }), log,
+            { audience, brand: APP_BRAND, feed: configuredUpdateFeed(source),
+              onLatestVersion: version => desktopUpdateController?.setLatestVersion(version) });
+        } catch (error) {
+          throw new Error(source + ": " + (error instanceof Error ? error.message : String(error)));
+        }
+      },
     },
   );
   desktopUpdateController.subscribe(publishDesktopUpdateState);
