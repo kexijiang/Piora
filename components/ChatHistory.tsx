@@ -19,6 +19,7 @@ import type { ChatCommandView } from "@/lib/chat-command-types";
 export interface ChatHistoryHandle { revealEntry(id: string): void; cancelNavigation(): void }
 type MessageProps = ComponentProps<typeof MessageView>;
 interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "onEditFailed" | "onRetry" | "retryDisabled" | "sessionId" | "onOpenAutomation" | "onOpenCommandExecution"> {
+  onBranch?: (entryId: string) => Promise<void>;
   messages: AgentMessage[];
   modelChanges?: ModelChange[];
   compactProcess?: boolean;
@@ -56,7 +57,7 @@ function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message
 }
 
 /** One turn projection for saved history and the live tail in both display modes. */
-export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, modelChanges = [], compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, responseTimings, ...messageProps }: Props) {
+export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, modelChanges = [], compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onBranch, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, responseTimings, ...messageProps }: Props) {
   const { t } = useI18n();
   const messages = useMemo(() => streamingMessage ? [...savedMessages, streamingMessage] : savedMessages, [savedMessages, streamingMessage]);
   const streamingIndex = streamingMessage ? messages.length - 1 : -1;
@@ -137,7 +138,11 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
       ref={index === metadata.lastUser ? (element) => { lastUserMsgRef.current = element; if (element && pendingScrollToUserRef.current) list.current?.cancelNavigation(); } : undefined}>
       <RenderErrorBoundary resetKey={messageFingerprint(message, entryIds[index])} fallbackLabel={t("chat.messageRenderFailed")} errorTitle={t("chat.messageRenderError")}>
         <MessageView {...messageProps} message={message} intermediate={row.intermediate} isStreaming={row.isStreaming} toolResults={metadata.toolResults} entryId={entryIds[index]}
-          messageActions={row.attachRef !== false && onDeleteMessage && (entryIds[index] || message.role === "user" && message.clientPromptId) ? <DeleteMessageAction message={messages[index]} entryId={entryIds[index]} onDelete={onDeleteMessage} disabled={deleteDisabled || busy || streaming} /> : null}
+          messageActions={<>
+            {onBranch && row.attachRef !== false && entryIds[index] && (message.role === "user" || message.role === "assistant" && !row.intermediate && !message.content.some(block => block.type === "toolCall")) ?
+              <button type="button" className="message-delete-button" disabled={busy || streaming || isNew || Boolean(forkingEntryId)} title={t("i18n.branchFromHereTitle")} onClick={() => { void onBranch(entryIds[index]); }}><AliIcon name="fork" size={11} />{t("i18n.branchFromHere")}</button> : null}
+            {row.attachRef !== false && onDeleteMessage && (entryIds[index] || message.role === "user" && message.clientPromptId) ? <DeleteMessageAction message={messages[index]} entryId={entryIds[index]} onDelete={onDeleteMessage} disabled={deleteDisabled || busy || streaming} /> : null}
+          </>}
           onFork={busy || isNew || index === 0 && message.role === "user" ? undefined : messageProps.onFork}
           onNavigate={busy ? undefined : messageProps.onNavigate}
           forking={forkingEntryId === entryIds[index]}
