@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 新增 alpha 手动测试包：复用 GitHub Actions 预发布构建与安装验证，仅发布 Windows x64 安装包、blockmap 和校验和，不发布自动更新元数据；alpha 客户端关闭更新，beta/stable 不接收 alpha 更新。
+
 - 修复重启后空项目的模型选择器无法加载：打开时重新校验用户选中的项目目录并刷新模型列表；区分目录访问失败、模型加载错误与暂无模型，提供刷新入口，新增模型无需重建项目即可选择。
 
 - 修复旧群聊复用同一会话造成的上下文串扰：按群成员生成并持久化独立空会话，保留角色配置和原会话历史；已运行的成员等待空闲后迁移，发送前阻止未完成隔离的绑定继续混用上下文。迁移前已接受的消息仍可按原标识重试，保留成员选定结果与历史回复归属。

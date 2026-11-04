@@ -84,6 +84,11 @@ export class DesktopUpdateController {
     private readonly logger: Logger,
     private readonly options: DesktopUpdateControllerOptions = {},
   ) {
+    // Alpha builds never initialize an updater, including over existing beta installs.
+    if (/^(?:v)?\d+\.\d+\.\d+-alpha\.\d+$/.test(currentVersion.trim())) {
+      this.updater = null;
+      updater = null;
+    }
     const audience = options.audience ?? "stable";
     this.state = {
       status: updater ? "idle" : "unsupported",
