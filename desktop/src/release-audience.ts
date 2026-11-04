@@ -84,6 +84,9 @@ export function readOrCreateDesktopReleaseAudience(
   if (persisted) return persisted;
 
   const audience = inferDesktopBuildAudience(currentVersion);
-  persistAudience(userDataDirectory, audience, currentVersion, logger);
+  // A manual alpha install must not enroll a fresh profile into stable updates.
+  if (!/^(?:v)?\d+\.\d+\.\d+-alpha\.\d+$/.test(currentVersion.trim())) {
+    persistAudience(userDataDirectory, audience, currentVersion, logger);
+  }
   return audience;
 }

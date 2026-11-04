@@ -221,3 +221,7 @@ TypeScript 按[微软官方并行安装方案](https://devblogs.microsoft.com/ty
 ## 许可证与致谢
 
 Piora 使用 [MIT License](LICENSE)。感谢 Pi、pi-web 及各上游项目；第三方组件和素材保留各自许可证，详见 [NOTICE](NOTICE)、[第三方许可证清单](THIRD_PARTY_LICENSES.md)与[第三方声明](THIRD_PARTY_NOTICES.md)。
+
+### Alpha 手动测试包
+
+`vX.Y.Z-alpha.N` 标签复用 preview 构建与发布工作流，发布 GitHub Pre-release。只提供 Windows x64 NSIS 安装包、blockmap 和 SHA256SUMS.txt；不发布 beta.yml/latest.yml，alpha 客户端禁用更新。验证通过后使用新的 beta 标签正常发布。发布前仍需同步根/桌面包与锁文件版本、许可证清单，并在 CHANGELOG.md 添加对应版本说明。更新元数据仅在 CI 内用于验证，上传前移除。

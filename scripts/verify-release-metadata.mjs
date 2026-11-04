@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const defaultProjectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const STRICT_RELEASE_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-const STRICT_PREVIEW_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-beta\.(0|[1-9]\d*)$/;
+const STRICT_PREVIEW_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-(?:alpha|beta)\.(0|[1-9]\d*)$/;
 
 function escapeRegularExpression(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -41,7 +41,7 @@ export async function verifyReleaseMetadata({
   const match = (prerelease ? STRICT_PREVIEW_TAG : STRICT_RELEASE_TAG).exec(tagName ?? "");
   if (!match) {
     throw new Error(prerelease
-      ? `Preview tag must exactly match vX.Y.Z-beta.N: ${tagName ?? ""}`
+      ? `Preview tag must exactly match vX.Y.Z-alpha.N or vX.Y.Z-beta.N: ${tagName ?? ""}`
       : `Release tag must exactly match vX.Y.Z with no prerelease suffix: ${tagName ?? ""}`);
   }
   const version = tagName.slice(1);

@@ -4,8 +4,8 @@ import { pathToFileURL } from "node:url";
 
 export function extractVersionNotes(changelog, requestedTag) {
   const version = requestedTag.trim().replace(/^v/i, "");
-  const isPreview = /-beta\.\d+$/.test(version);
-  if (!/^\d+\.\d+\.\d+(?:-beta\.\d+)?$/.test(version)) {
+  const isPreview = /-(?:alpha|beta)\.\d+$/.test(version);
+  if (!/^\d+\.\d+\.\d+(?:-(?:alpha|beta)\.\d+)?$/.test(version)) {
     throw new Error(`Invalid release tag: ${requestedTag}`);
   }
   const escapedVersion = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -15,7 +15,9 @@ export function extractVersionNotes(changelog, requestedTag) {
   const nextHeadingIndex = remainder.search(/^## \[/m);
   const notes = (nextHeadingIndex >= 0 ? remainder.slice(0, nextHeadingIndex) : remainder).trim();
   if (!notes) throw new Error(`CHANGELOG.md does not contain release notes for ${version}`);
-  const downloads = isPreview
+  const downloads = version.includes("-alpha.")
+    ? "- Windows x64 alpha 安装版：仅供手动下载安装，不提供自动更新。"
+    : isPreview
     ? "- Windows x64 安装版：可选择安装位置，并支持后续 beta 更新。"
     : "- Windows x64 安装版：可选择安装位置，并支持后续应用内更新。";
   return `${notes}\n\n### 下载说明\n\n${downloads}\n\nWindows 桌面安装包尚未进行 Authenticode 代码签名；运行前请使用 SHA256SUMS.txt 校验所下载的文件。\n`;

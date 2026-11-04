@@ -4,6 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 新增 alpha 手动测试包：复用 GitHub Actions 预发布构建与安装验证，仅发布 Windows x64 安装包、blockmap 和校验和，不发布自动更新元数据；alpha 客户端关闭更新，beta/stable 不接收 alpha 更新。
 - 浏览器新建标签达到全局上限时自动释放一个安全闲置的智能体标签，优先已卸载页面、再按最近使用时间回收；保留手动、可见、活跃、请求执行中、等待用户及凭据保护页面，无安全候选时仍提示容量不足（#326）。
 
 - 修复重启后空项目的模型选择器无法加载：打开时重新校验用户选中的项目目录并刷新模型列表；区分目录访问失败、模型加载错误与暂无模型，提供刷新入口，新增模型无需重建项目即可选择。

@@ -189,3 +189,7 @@ Windows 安装版和便携版内置完整 PowerShell 7，终端默认直接启�
 继续发现本机 Shell；用户明确配置的自定义 Shell 仍可使用。内置版本由
 `third_party/powershell/manifest.json` 锁定，GitHub Actions 打包时校验 SHA-256，
 保留全部上游许可文件，并在隔离目录验证内置终端。不要在本机构建发布包。
+
+### Alpha 手动测试包
+
+`vX.Y.Z-alpha.N` 标签复用 preview 构建与发布工作流，发布 GitHub Pre-release。只提供 Windows x64 NSIS 安装包、blockmap 和 SHA256SUMS.txt；不发布 beta.yml/latest.yml，alpha 客户端禁用更新。验证通过后使用新的 beta 标签正常发布。发布前仍需同步根/桌面包与锁文件版本、许可证清单，并在 CHANGELOG.md 添加对应版本说明。更新元数据仅在 CI 内用于验证，上传前移除。
