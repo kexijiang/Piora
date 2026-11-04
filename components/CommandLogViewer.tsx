@@ -3,8 +3,32 @@
 import { defaultKeymap } from "@codemirror/commands";
 import { search, searchKeymap, openSearchPanel, setSearchQuery, SearchQuery, findNext } from "@codemirror/search";
 import { Compartment, EditorState } from "@codemirror/state";
-import { EditorView, drawSelection, highlightSpecialChars, keymap, lineNumbers } from "@codemirror/view";
+import { Decoration, EditorView, ViewPlugin, drawSelection, highlightSpecialChars, keymap, lineNumbers } from "@codemirror/view";
+import { isCommandErrorLine } from "@/lib/command-execution";
 import { useEffect, useRef, useState } from "react";
+
+// Decorate only visible lines so large, streaming logs remain inexpensive.
+function errorLines(view: EditorView) {
+  const ranges = [];
+  let last = -1;
+  for (const { from, to } of view.visibleRanges) {
+    for (let pos = from; pos <= to;) {
+      const line = view.state.doc.lineAt(pos);
+      if (line.from !== last && isCommandErrorLine(line.text)) ranges.push(Decoration.line({ class: "command-log-error-line" }).range(line.from));
+      last = line.from;
+      if (line.to >= to) break;
+      pos = line.to + 1;
+    }
+  }
+  return Decoration.set(ranges);
+}
+const commandErrors = ViewPlugin.fromClass(class {
+  decorations;
+  constructor(view: EditorView) { this.decorations = errorLines(view); }
+  update(update: import("@codemirror/view").ViewUpdate) {
+    if (update.docChanged || update.viewportChanged) this.decorations = errorLines(update.view);
+  }
+}, { decorations: plugin => plugin.decorations });
 
 interface Props {
   output: string;
@@ -43,6 +67,7 @@ export function CommandLogViewer({ output, wrap, streaming = false, searchText =
           EditorView.editable.of(false),
           EditorView.contentAttributes.of({ "aria-label": ariaLabel, "aria-multiline": "true", spellcheck: "false" }),
           lineNumbers(),
+          commandErrors,
           highlightSpecialChars(),
           drawSelection(),
           search({ top: true }),

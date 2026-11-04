@@ -1272,7 +1272,7 @@ export const enLocale: LocalePlugin = {
     "session.costUnknown": "Not reported",
     "session.costPartial": "reported portion",
     "nestedCalls.title": "Nested tool calls",
-    "nestedCalls.summaryOnly": "Call summaries only; child output is not saved here.",
+    "nestedCalls.summaryOnly": "Child commands show live output previews; history saves call summaries, not full output.",
     "nestedCalls.incomplete": "Incomplete call record; some calls or arguments may be omitted.",
     "nestedCalls.unfinished": "Not confirmed complete",
     "nestedCalls.omittedArguments": "Arguments omitted due to size limits",

@@ -1,4 +1,5 @@
 "use client";
+import { CommandExecutionCard } from "./CommandExecutionView";
 import { createContext, useCallback, useContext, useSyncExternalStore } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { NestedCallsSnapshot, NestedToolCallsStore } from "@/lib/nested-tool-calls";
@@ -10,7 +11,11 @@ export function useNestedToolCalls(id: string, saved?: NestedCallsSnapshot): Nes
   const subscribe = useCallback((listener: () => void) => store?.subscribe(id, listener) ?? (() => {}), [store, id]);
   const snapshot = useCallback(() => store?.getSnapshot(id), [store, id]);
   const live = useSyncExternalStore(subscribe, snapshot, empty);
-  return saved ?? live;
+  if (!saved || !live) return saved ?? live;
+  return { ...saved, calls: saved.calls.map(call => {
+    const preview = live.calls.find(item => item.id === call.id);
+    return preview ? { ...preview, ...call } : call;
+  }) };
 }
 
 export function NestedToolCalls({ snapshot }: { snapshot: NestedCallsSnapshot }) {
@@ -27,7 +32,13 @@ export function NestedToolCalls({ snapshot }: { snapshot: NestedCallsSnapshot })
           <div><code>{call.name}</code> <span className={`chat-disclosure-status is-${call.status === "ok" ? "success" : call.status}`}>
             {t(call.status === "running" ? "command.status.running" : call.status === "ok" ? "command.status.success" : call.status === "error" ? "command.status.failed" : "nestedCalls.unfinished")}
           </span>{call.durationMs !== undefined ? <span> · {(call.durationMs / 1000).toFixed(1)}s</span> : null}</div>
-          {call.error ? <pre>{call.error}</pre> : null}
+          {call.command !== undefined ? <CommandExecutionCard data={{
+            id: call.id, toolName: call.name, command: call.command,
+            output: call.output ?? "", truncated: call.outputTruncated === true,
+            status: call.status === "running" ? "running" : call.status === "ok" ? "success" : call.status === "unfinished" ? "cancelled" : "failed",
+            isStreaming: call.status === "running",
+            duration: call.durationMs !== undefined ? call.durationMs / 1000 : undefined,
+          }} /> : call.error ? <pre>{call.error}</pre> : null}
           {call.argumentsBytes !== undefined ? <small>{t("nestedCalls.omittedArguments")}</small> : null}
         </li>;
       })}
