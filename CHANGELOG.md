@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复 AI 表情返回值不稳定的问题：按图库原始路径匹配图片，直接返回完整可展示的图片 Markdown；匹配或保存失败明确说明原因，不再静默留下表情文字标记。
+
 ### 持续集成
 
 - 升级固定版本的 Node.js 环境配置动作，并同步当前主线工作流；项目测试版本仍为 Node.js 22.19.0，保留现有缓存与验证门禁。
