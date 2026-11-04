@@ -1341,6 +1341,8 @@ export const zhCNLocale: LocalePlugin = {
     "browser.agentReadOnlyNotice": "实时跟随 Agent 浏览器 · 仅供查看 · 关闭开关返回独立浏览器",
     "browser.newTab": "新建标签页",
     "browser.closeOtherTabs": "关闭其他标签页",
+    "browser.closeIdleTabs": "清理闲置智能体标签",
+    "browser.tabLimitReached": "所有会话共用的 {limit} 个标签页已满，请关闭其他会话中的标签页，或清理闲置智能体标签后再打开。",
     "browser.closeTab": "关闭标签页",
     "browser.back": "后退",
     "browser.forward": "前进",
