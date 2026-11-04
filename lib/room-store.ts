@@ -713,6 +713,7 @@ export function updateRoomAgentProfile(
   memberId: string,
   expectedRevision: number,
   patch: Partial<Omit<TeamAgentProfile, "schemaVersion" | "revision">>,
+  binding?: Pick<TeamAgentBinding, "sessionId" | "cwd" | "projectRoot" | "worktreeBranch">,
 ): CollaborationRoom {
   let room!: CollaborationRoom;
   withRoomLockSync(roomId, () => {
@@ -729,12 +730,21 @@ export function updateRoomAgentProfile(
     if (member.memberId === room.coordination.coordinatorMemberId && patch.role && patch.role !== "coordinator") {
       throw new Error("Transfer coordination before changing the coordinator role.");
     }
+    const nextSessionId = binding?.sessionId ?? member.binding.sessionId;
+    const rebinding = nextSessionId !== member.binding.sessionId;
+    if (rebinding) {
+      if (room.members.some(candidate => candidate.memberId !== memberId && candidate.binding.sessionId === nextSessionId)) throw new Error("该会话已绑定到其他智能体。");
+      if (binding?.projectRoot && room.projectRoot && resolve(binding.projectRoot) !== resolve(room.projectRoot)) throw new Error("该会话属于其他项目。");
+      // Pending tasks must retain their original assignee. Rebind only an idle member.
+      if (listRoomTasks(roomId).some(task => task.assignedTo === member.binding.sessionId && ["pending", "leased", "running"].includes(task.status))) throw new Error("更换会话前，请先完成或释放该智能体的任务。");
+    }
     member.profile = validateTeamAgentProfile({
       ...member.profile,
       ...structuredClone(patch),
       schemaVersion: 1,
       revision: member.profile.revision + 1,
     });
+    if (rebinding && binding) member.binding = { ...member.binding, ...binding, managedByPiora: false, boundAt: Date.now(), status: "ready" };
     if (member.binding.managedByPiora) member.binding.status = "needs_restart";
     attachMemberAliases(member);
     if (member.profile.role === "coordinator") {
