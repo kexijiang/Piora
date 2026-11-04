@@ -35,6 +35,7 @@ export function ensureRoomSessionIsolation(roomId: string) {
       invalidateSessionListCache();
       // Ownership of an imported private worktree stays with its original chat.
       const binding: TeamAgentBinding = { sessionId: manager.getSessionId(), cwd,
+        previousSessionIds: [...new Set([...(member.binding.previousSessionIds ?? []), member.sessionId])],
         projectRoot: member.binding.projectRoot ?? room.projectRoot, managedByPiora: true,
         boundAt: Date.now(), status: "ready" };
       const temporary = `${receiptPath}.${randomUUID()}.tmp`;
