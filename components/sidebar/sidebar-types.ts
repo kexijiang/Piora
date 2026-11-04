@@ -50,6 +50,7 @@ declare global {
       onNotificationSession?: (listener: (sessionId: string) => void) => () => void;
       openMenu?: (menu: "file" | "edit" | "view" | "help", x: number, y: number) => Promise<boolean>;
       setMenuLocale?: (locale: "en" | "zh-CN") => Promise<boolean>;
+      setUpdateSource?: (source: "github" | "internal") => Promise<DesktopUpdateState | null>;
       getUpdateState?: () => Promise<DesktopUpdateState | null>;
       getUpdateSchedule?: () => Promise<{ enabled: boolean; time: string; supported: boolean } | null>;
       setUpdateSchedule?: (input: { enabled: boolean; time: string }) => Promise<{ enabled: boolean; time: string; supported: boolean } | null>;
@@ -120,6 +121,8 @@ export interface DesktopUpdateState {
   status: "unsupported" | "idle" | "checking" | "up-to-date" | "available" | "downloading" | "downloaded" | "error";
   currentVersion: string;
   audience: "stable" | "preview";
+  source?: "github" | "internal";
+  latestVersion?: string;
   availableVersion?: string;
   releaseNotes?: string;
   progressPercent?: number;

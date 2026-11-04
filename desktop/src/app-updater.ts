@@ -1,3 +1,4 @@
+import { parseUpdateSource, type DesktopUpdateSource } from "./update-source.js";
 import type { AppUpdater } from "electron-updater";
 import type { Logger } from "./logger.js";
 import type { DesktopReleaseAudience } from "./release-audience.js";
@@ -16,6 +17,8 @@ export interface DesktopUpdateState {
   status: DesktopUpdateStatus;
   currentVersion: string;
   audience: DesktopReleaseAudience;
+  source?: DesktopUpdateSource;
+  latestVersion?: string;
   availableVersion?: string;
   releaseNotes?: string;
   progressPercent?: number;
@@ -29,6 +32,7 @@ export type DesktopUpdateListener = (state: Readonly<DesktopUpdateState>) => voi
 
 export interface DesktopUpdateControllerOptions {
   audience?: DesktopReleaseAudience;
+  source?: DesktopUpdateSource;
   prepareCheck?: () => Promise<boolean>;
   validateUpdateInfo?: (info: unknown) => void;
 }
@@ -94,6 +98,7 @@ export class DesktopUpdateController {
       status: updater ? "idle" : "unsupported",
       currentVersion: normalizedVersion(currentVersion) ?? currentVersion,
       audience,
+      source: options.source ?? "github",
     };
 
     if (!updater) return;
@@ -164,6 +169,21 @@ export class DesktopUpdateController {
     return () => this.listeners.delete(listener);
   }
 
+  selectSource(source: unknown, persist: (source: DesktopUpdateSource) => void): void {
+    const next = parseUpdateSource(source);
+    if (!this.updater) throw new Error("Updates are unsupported");
+    if (this.checkPromise || this.downloadPromise) throw new Error("Wait for the current update operation to finish");
+    if (next === this.state.source) return;
+    persist(next);
+    this.state = { status: "idle", currentVersion: this.state.currentVersion, audience: this.state.audience, source: next };
+    this.publish({ status: "idle" });
+  }
+
+  setLatestVersion(version: string | undefined): void {
+    if (version) this.state.latestVersion = version;
+    else delete this.state.latestVersion;
+  }
+
   async checkForUpdates(): Promise<void> {
     if (!this.updater || this.downloadPromise) return;
     return this.checkLatestVersion();
@@ -172,6 +192,7 @@ export class DesktopUpdateController {
   private async checkLatestVersion(): Promise<void> {
     if (this.checkPromise) return this.checkPromise;
 
+    delete this.state.latestVersion;
     this.publish({ status: "checking" });
     this.checkPromise = Promise.resolve()
       .then(async () => {
@@ -240,6 +261,8 @@ export class DesktopUpdateController {
       status: next.status,
       currentVersion: this.state.currentVersion,
       audience: this.state.audience,
+      ...(this.state.source ? { source: this.state.source } : {}),
+      ...(this.state.latestVersion ? { latestVersion: this.state.latestVersion } : {}),
       ...(availableVersion ? { availableVersion } : {}),
       ...(releaseNotes ? { releaseNotes } : {}),
       ...(next.progressPercent === undefined ? {} : { progressPercent: next.progressPercent }),

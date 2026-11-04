@@ -1,0 +1,21 @@
+# 桌面更新来源
+
+设置中的「更新来源」独立于稳定版/测试版受众。默认 GitHub；内网维护者可在 desktop/src/update-source.ts 修改 DEFAULT_UPDATE_SOURCE 及 UPDATE_SOURCE_FEEDS.internal。已有用户保存的选择优先。
+
+内源目前为 example.invalid 占位，检查前直接报「内源更新地址未配置」，不会访问占位地址。该配置仅在源码中维护，不接受聊天或 renderer 传入任意更新 URL。
+
+## 内源镜像契约
+
+- releasesAtomUrl：HTTPS Atom/XML 发布列表，包含 /releases/tag/<版本标签> 链接，标签如 v0.5.9-beta.40 或 v0.5.9。
+- releaseDownloadRoot：HTTPS 发布文件根目录。每个标签目录提供品牌对应 beta.yml/latest.yml（使用 APP_BRAND.updateChannels）、Windows x64 NSIS 安装包和 blockmap。
+- YAML 必须保留该品牌的准确版本、单个相对安装包文件名、SHA-512、大小和完整发布说明；不能指向另一品牌、外部地址或 web-installer packages。
+- 镜像保留上游安装包原始字节及签名。下载继续交给 electron-updater 执行校验，来源切换不关闭签名或 SHA-512 校验。
+- 当前实现面向无需额外应用认证的内网 HTTPS 镜像。CodeHub 若不提供此目录/Atom 格式，应由内网维护者增加适配层；不要将凭据写入 URL 或源码。
+
+两种来源共享候选版本选择及元数据校验，稳定用户只选稳定版本，测试用户可选更高的 beta/稳定版本，alpha 不参与自动更新。目标版本更低或相等时显示不会降级。
+
+检查/下载期间禁止切换，避免旧事件污染新来源；切换成功清除旧来源可安装状态，下次下载必须重新检查。持久化失败保留原选择。网络失败标明来源并提供手动切换重试，不静默访问另一个来源。
+
+## 验证边界
+
+占位配置无法验证内网可达性。测试使用合成发布列表、元数据和 updater 验证来源、持久化、并发、禁止降级与一致校验；不代表真实 CodeHub、签名安装或自动更新实机验收通过。

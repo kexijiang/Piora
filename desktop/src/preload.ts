@@ -109,6 +109,7 @@ const runtime = Object.freeze({
     return ipcRenderer.invoke("pi:update-state-get");
   },
   getUpdateSchedule() { return ipcRenderer.invoke("pi:update-schedule-get"); },
+  setUpdateSource(source: "github" | "internal") { return ipcRenderer.invoke("pi:update-source-set", source); },
   setUpdateSchedule(input: { enabled: boolean; time: string }) { return ipcRenderer.invoke("pi:update-schedule-set", input); },
   setUpdateBlocker(key: string, blocked: boolean) { return ipcRenderer.invoke("pi:update-blocker", key, blocked); },
   checkForUpdates() {

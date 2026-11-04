@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 新增 GitHub / 内源更新来源切换并持久保存，显示渠道最新版本、来源失败和切换重试入口；切换清除旧更新状态，保持 beta/stable 偏好并禁止降级，两种来源共用安装包校验。内源地址集中保留源码占位配置，未配置时明确提示，不会请求占位站点（#315）。
+
 - 修复恢复或引导排队消息时，读取原消息期间点击停止仍会迟到发送的问题；从读取草稿起统一跟踪取消状态，停止或切换会话后阻止旧操作发送，原任务正常结束后仍可恢复并显示实时回复；补充相关自动回归测试（#309）。
 
 - 新增 alpha 手动测试包：复用 GitHub Actions 预发布构建与安装验证，仅发布 Windows x64 安装包、blockmap 和校验和，不发布自动更新元数据；alpha 客户端关闭更新，beta/stable 不接收 alpha 更新。
