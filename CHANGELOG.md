@@ -4,6 +4,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复 AI 表情返回值不稳定的问题：按图库原始路径匹配图片，直接返回完整可展示的图片 Markdown；匹配或保存失败明确说明原因，不再静默留下表情文字标记。
 - 修复群成员编辑被后台刷新还原的问题：保留未保存草稿，支持取消编辑与关闭提醒；成员资料和换绑一次保存，版本冲突或保存失败保留输入。
 
 ### 持续集成
