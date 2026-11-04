@@ -10,13 +10,34 @@ export function ProjectModelDialog({ projectRoot, name, onClose }: { projectRoot
   const [models, setModels] = useState<Array<{ provider: string; id: string; name: string }>>([]);
   const [selected, setSelected] = useState(""); const [loading, setLoading] = useState(true); const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ updated: number; running: number } | null>(null); const [error, setError] = useState("");
+  const [directoryError, setDirectoryError] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
   const dialog = useRef<HTMLElement>(null);
   useFocusTrap(dialog, true, { onEscape: () => { if (!busy) onClose(); } });
   useEffect(() => {
     const abort = new AbortController();
-    void fetch(`/api/models?cwd=${encodeURIComponent(projectRoot)}`, { signal: abort.signal }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error); setModels(data.modelList ?? []); }).catch((error) => { if (!abort.signal.aborted) setError(String(error)); }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
+    setLoading(true); setError(""); setDirectoryError(""); setModels([]); setSelected(""); setResult(null);
+    void (async () => {
+      // Opening this dialog explicitly selects a remembered project. Revalidate
+      // it through the workspace picker boundary after a server restart; model
+      // discovery itself must never grant access to arbitrary cwd parameters.
+      const validation = await fetch("/api/cwd/validate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ cwd: projectRoot }), signal: abort.signal });
+      const validated = await validation.json();
+      if (abort.signal.aborted) return;
+      if (!validation.ok) { setDirectoryError(validated.error || (zh ? "无法访问项目目录，请重新选择项目。" : "Cannot access the project folder. Select the project again.")); return; }
+      const response = await fetch(`/api/models?cwd=${encodeURIComponent(validated.cwd ?? projectRoot)}&refresh=1`, { signal: abort.signal });
+      const data = await response.json();
+      if (abort.signal.aborted) return;
+      if (!response.ok) {
+        if (data.code === "invalid_cwd" || data.code === "access_denied") setDirectoryError(zh ? "项目目录不存在或尚未授权，请重新选择项目。" : "Project folder is missing or not authorized. Select it again.");
+        else setError(data.error || `HTTP ${response.status}`);
+        return;
+      }
+      setModels(data.modelList ?? []);
+      setError(data.modelError || "");
+    })().catch((error) => { if (!abort.signal.aborted) setError(String(error)); }).finally(() => { if (!abort.signal.aborted) setLoading(false); });
     return () => abort.abort();
-  }, [projectRoot]);
+  }, [projectRoot, refreshKey, zh]);
   const apply = async () => {
     const model = models.find((model) => JSON.stringify([model.provider, model.id]) === selected); if (!model) return;
     setBusy(true); setError("");
@@ -29,7 +50,9 @@ export function ProjectModelDialog({ projectRoot, name, onClose }: { projectRoot
       <p style={{ fontSize: "var(--text-sm)", color: "var(--text-muted)", lineHeight: 1.7 }}>{zh ? "包含归档会话与工作树中的会话。正在运行的任务继续完成当前轮次，新模型从下一次发送开始使用。" : "Includes archived sessions and worktrees. Active tasks finish their current turn; the new model applies on the next send."}</p>
       <select autoFocus aria-label={zh ? "项目模型" : "Project model"} disabled={loading || busy} value={selected} onChange={(event) => { setSelected(event.target.value); setResult(null); }} style={{ width: "100%", padding: 10, color: "var(--text)", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6 }}><option value="">{loading ? zh ? "正在加载…" : "Loading…" : zh ? "选择已启用且可用的模型" : "Select an enabled, available model"}</option>{models.map((model) => <option key={JSON.stringify([model.provider, model.id])} value={JSON.stringify([model.provider, model.id])}>{model.name} · {model.provider}/{model.id}</option>)}</select>
       {error ? <p role="alert"><ModelErrorText value={error} /></p> : null}
+      {directoryError ? <p role="alert">{zh ? "项目目录：" : "Project folder: "}{directoryError}</p> : null}
+      {!loading && !error && !directoryError && models.length === 0 ? <p role="status">{zh ? "暂无可用模型，请在设置 → 模型中添加或启用模型，然后刷新列表。" : "No available models. Add or enable a model in Settings → Models, then refresh."}</p> : null}
       {result ? <p role="status">{zh ? `已更新 ${result.updated} 个会话，${result.running} 个运行中的任务将在下一轮使用新模型。` : `Updated ${result.updated} sessions. ${result.running} active tasks will use the model on their next turn.`}</p> : null}
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}><button disabled={busy} onClick={onClose}>{zh ? "关闭" : "Close"}</button><button disabled={!selected || busy || !!result} onClick={() => void apply()}>{busy ? zh ? "正在更新…" : "Updating…" : zh ? "应用到全部会话" : "Apply to all sessions"}</button></div>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 20 }}><button disabled={loading || busy} onClick={() => setRefreshKey(key => key + 1)}>{zh ? "刷新列表" : "Refresh list"}</button><button disabled={busy} onClick={onClose}>{zh ? "关闭" : "Close"}</button><button disabled={loading || !selected || busy || !!result} onClick={() => void apply()}>{busy ? zh ? "正在更新…" : "Updating…" : zh ? "应用到全部会话" : "Apply to all sessions"}</button></div>
     </section></div>, document.body);
 }
