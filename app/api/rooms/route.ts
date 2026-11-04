@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addRoomMember, createRoom, getRoom, listRooms } from "@/lib/room-store";
+import { addRoomMember, createRoom, listRooms } from "@/lib/room-store";
 import type { RoomMemberRole } from "@/lib/room-types";
 import { resolveProject } from "@/lib/worktree";
 import { createManagedRoom, type ManagedRoomInput } from "@/lib/room-creation";
@@ -7,13 +7,15 @@ import { listRoomMessages } from "@/lib/room-store";
 import { getTeamRunStore } from "@/lib/team-run-store";
 import { teamApiError } from "@/lib/team-api";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
+import { ensureRoomSessionIsolation } from "@/lib/room-session-isolation";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   try {
     const sessionId = new URL(request.url).searchParams.get("sessionId") ?? undefined;
-    const rooms = listRooms(sessionId).map((room) => {
+    const rooms = listRooms(sessionId).map((snapshot) => {
+      const room = ensureRoomSessionIsolation(snapshot.id);
       const lastMessage = listRoomMessages(room.id, { limit: 20 }).filter((message) => message.author.kind !== "system" || message.kind === "question").at(-1);
       const activeRun = getTeamRunStore().listTeamRuns(room.id, { includeTerminal: false, limit: 1 })[0];
       return { ...room, summary: { lastMessage: lastMessage ? { content: lastMessage.content.slice(0, 100), author: lastMessage.author.name ?? "成员", seq: lastMessage.seq } : undefined,
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
         instructions: member.instructions,
       });
     }
-    return NextResponse.json({ room: getRoom(room.id) }, { status: 201 });
+    return NextResponse.json({ room: ensureRoomSessionIsolation(room.id) }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
