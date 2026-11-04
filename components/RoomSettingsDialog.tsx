@@ -21,6 +21,17 @@ import styles from "./RoomSettingsDialog.module.css";
 type Section = "overview" | "agents" | "workspace" | "coordination";
 type MemberDraft = TeamAgentProfile & { sessionId: string; capabilitiesText: string; personalityText: string; constraintsText: string; toolNamesText: string; skillNamesText: string };
 
+function memberDraft(member: RoomMember): MemberDraft {
+  return {
+    ...structuredClone(member.profile), sessionId: member.binding.sessionId,
+    capabilitiesText: member.profile.capabilities.join(", "),
+    personalityText: member.profile.personality.join("\n"),
+    constraintsText: member.profile.constraints.join("\n"),
+    toolNamesText: member.profile.toolPolicy.mode === "allowlist" ? member.profile.toolPolicy.toolNames.join(", ") : "",
+    skillNamesText: member.profile.skillPolicy.mode === "allowlist" ? member.profile.skillPolicy.skillNames.join(", ") : "",
+  };
+}
+
 const roleOptions: Array<{ value: RoomMemberRole; label: string; detail: string }> = [
   { value: "coordinator", label: "协调者", detail: "负责拆解、分派和最终决策" },
   { value: "planner", label: "规划者", detail: "负责方案、依赖和风险识别" },
@@ -116,8 +127,15 @@ export function RoomSettingsDialog({
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   const dialogRef = useRef<HTMLElement>(null);
+  const draftRoomId = useRef(room.id);
+  const dirtyMembers = useRef(new Set<string>());
 
-  useFocusTrap(dialogRef, true, { onEscape: busy ? undefined : onClose });
+  const closeSettings = async () => {
+    if (busy) return;
+    if (dirtyMembers.current.size && !await requestConfirmation({ title: "放弃未保存的成员修改？", message: "关闭后未保存的成员资料将丢失。", confirmLabel: "放弃修改" })) return;
+    onClose();
+  };
+  useFocusTrap(dialogRef, true, { onEscape: busy ? undefined : () => { void closeSettings(); } });
 
   useEffect(() => {
     setName(room.name);
@@ -130,15 +148,18 @@ export function RoomSettingsDialog({
     setCoordinatorId(actorSessionId(room) ?? "");
     setMaxConcurrency(room.coordination.maxConcurrency);
     setLeaseMinutes(Math.round(room.coordination.leaseDurationMs / 60_000));
-    setMemberDrafts(Object.fromEntries(room.members.map((member) => [member.memberId, {
-      ...structuredClone(member.profile),
-      sessionId: member.binding.sessionId,
-      capabilitiesText: member.profile.capabilities.join(", "),
-      personalityText: member.profile.personality.join("\n"),
-      constraintsText: member.profile.constraints.join("\n"),
-      toolNamesText: member.profile.toolPolicy.mode === "allowlist" ? member.profile.toolPolicy.toolNames.join(", ") : "",
-      skillNamesText: member.profile.skillPolicy.mode === "allowlist" ? member.profile.skillPolicy.skillNames.join(", ") : "",
-    }])));
+  }, [room]);
+
+  useEffect(() => {
+    if (draftRoomId.current !== room.id) {
+      draftRoomId.current = room.id;
+      dirtyMembers.current.clear();
+    }
+    setMemberDrafts(current => Object.fromEntries(room.members.map(member => [
+      member.memberId,
+      dirtyMembers.current.has(member.memberId) && current[member.memberId]
+        ? current[member.memberId] : memberDraft(member),
+    ])));
   }, [room]);
 
   useEffect(() => {
@@ -241,28 +262,19 @@ export function RoomSettingsDialog({
     setWorkspacePath(selected);
   };
 
-  const saveMember = (member: RoomMember) => {
+  const saveMember = async (member: RoomMember) => {
     const draft = memberDrafts[member.memberId];
-    if (!draft) return;
-    const session = sessions.find((candidate) => candidate.id === draft.sessionId);
-    void postAction({
-      action: "update_member",
-      memberId: member.memberId,
-      targetSessionId: draft.sessionId,
-      sessionName: draft.name,
-      instructions: draft.roleDescription,
-      role: draft.role,
-      cwd: session?.cwd ?? member.binding.cwd,
-      projectRoot: session ? (session.projectRoot ?? session.cwd) : member.binding.projectRoot,
-    }, `${draft.name || "智能体"} 已更新`).then(async (updatedRoom) => {
-      const updated = updatedRoom.members.find((candidate) => candidate.memberId === member.memberId);
-      if (!updated) throw new Error("更新后的智能体不存在。");
+    if (!draft || busy) return;
+    const savingRoomId = room.id;
+    setBusy("save_member"); setError(null); setSaved(null);
+    try {
       const response = await fetch(`/api/rooms/${encodeURIComponent(room.id)}/agents/${encodeURIComponent(member.memberId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: actorSessionId(updatedRoom),
-          expectedRevision: updated.profile.revision,
+          sessionId: actorSessionId(room),
+          expectedRevision: draft.revision,
+          targetSessionId: draft.sessionId,
           patch: {
             name: draft.name,
             role: draft.role,
@@ -281,9 +293,17 @@ export function RoomSettingsDialog({
       });
       const data = await response.json() as { room?: CollaborationRoom; error?: { message?: string } | string };
       if (!response.ok || !data.room) throw new Error(typeof data.error === "string" ? data.error : data.error?.message ?? `HTTP ${response.status}`);
+      if (draftRoomId.current !== savingRoomId) return;
+      dirtyMembers.current.delete(member.memberId);
+      const savedMember = data.room.members.find(item => item.memberId === member.memberId);
+      if (savedMember) setMemberDrafts(current => ({ ...current, [member.memberId]: memberDraft(savedMember) }));
       onRoomChange(data.room);
       setSaved(`${draft.name || "智能体"} 的完整配置已保存`);
-    }).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+    } catch (reason) {
+      if (draftRoomId.current === savingRoomId) setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      if (draftRoomId.current === savingRoomId) setBusy(null);
+    }
   };
 
   const addAgent = () => {
@@ -370,15 +390,16 @@ export function RoomSettingsDialog({
   }, "编排策略已保存").catch(() => {});
 
   const updateDraft = (memberId: string, patch: Partial<MemberDraft>) => {
+    dirtyMembers.current.add(memberId);
     setMemberDrafts((current) => ({ ...current, [memberId]: { ...current[memberId], ...patch } }));
   };
 
   return (
-    <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}>
+    <div className={styles.backdrop} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) void closeSettings(); }}>
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="room-settings-title">
         <header className={styles.header}>
           <div><h2 id="room-settings-title">协作空间设置</h2><p>{room.name}</p></div>
-          <button type="button" onClick={onClose} aria-label="关闭协作空间设置" disabled={Boolean(busy)}><AliIcon name="close" size={16} /></button>
+          <button type="button" onClick={() => { void closeSettings(); }} aria-label="关闭协作空间设置" disabled={Boolean(busy)}><AliIcon name="close" size={16} /></button>
         </header>
         <div className={styles.body}>
           <nav className={styles.nav} aria-label="协作空间设置分类">
@@ -427,7 +448,7 @@ export function RoomSettingsDialog({
                     return (
                       <article key={member.memberId} className={styles.agentCard}>
                         <div className={styles.agentIdentity}><span>{(draft.name || "智").slice(0, 1).toLocaleUpperCase()}</span><div><strong>{draft.name || "未命名智能体"}</strong><small>{selected?.worktreeBranch ?? selected?.cwd ?? member.binding.cwd ?? draft.sessionId} · {member.binding.managedByPiora ? `托管/${bindingStatusLabel(member.binding.status)}` : "复用会话"}</small></div></div>
-                        <div className={styles.agentGrid}>
+                        <fieldset disabled={Boolean(busy)} className={styles.agentGrid} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
                           <label className={styles.field}><span>显示名称</span><input value={draft.name ?? ""} onChange={(event) => updateDraft(member.memberId, { name: event.target.value })} /></label>
                           <AITextAreaField className={styles.full} label="成员设定（可选）" help="自由定义擅长领域、性格、说话风格或工作方式；留空也能正常交流。" purpose={`${draft.name || "成员"}的自定义设定`} value={draft.roleDescription} onChange={(value) => updateDraft(member.memberId, { roleDescription: value })} cwd={room.projectRoot} rows={3} placeholder="例如：一位善于追问的写作搭档，回答简洁，有不同意见就直说" />
                           <div className={`${styles.cardActions} ${styles.full}`}><button type="button" onClick={() => setAdvancedMemberIds((current) => { const next = new Set(current); if (next.has(member.memberId)) next.delete(member.memberId); else next.add(member.memberId); return next; })}>{advancedMemberIds.has(member.memberId) ? "收起高级设置" : "显示高级设置"}</button></div>
@@ -446,8 +467,8 @@ export function RoomSettingsDialog({
                           {draft.toolPolicy.mode === "allowlist" ? <label className={`${styles.field} ${styles.full}`}><span>允许工具（逗号分隔）</span><input value={draft.toolNamesText} onChange={(event) => updateDraft(member.memberId, { toolNamesText: event.target.value })} /></label> : null}
                           {draft.skillPolicy.mode === "allowlist" ? <label className={`${styles.field} ${styles.full}`}><span>允许技能（逗号分隔）</span><input value={draft.skillNamesText} onChange={(event) => updateDraft(member.memberId, { skillNamesText: event.target.value })} /></label> : null}
                           </> : null}
-                        </div>
-                        <div className={styles.cardActions}><button type="button" disabled={Boolean(busy)} onClick={() => removeAgent(member)}>{removeConfirmId === member.memberId ? "再次点击确认移出" : "移出"}</button>{member.binding.managedByPiora && member.binding.status === "needs_restart" ? <button type="button" disabled={Boolean(busy)} onClick={() => { void reconfigureAgent(member); }}>应用配置</button> : null}<button type="button" className={styles.primary} disabled={Boolean(busy) || !draft.name?.trim()} onClick={() => saveMember(member)}>保存智能体</button></div>
+                        </fieldset>
+                        <div className={styles.cardActions}><button type="button" disabled={Boolean(busy)} onClick={() => { dirtyMembers.current.delete(member.memberId); setMemberDrafts(current => ({ ...current, [member.memberId]: memberDraft(member) })); setError(null); }}>取消编辑</button><button type="button" disabled={Boolean(busy)} onClick={() => removeAgent(member)}>{removeConfirmId === member.memberId ? "再次点击确认移出" : "移出"}</button>{member.binding.managedByPiora && member.binding.status === "needs_restart" ? <button type="button" disabled={Boolean(busy)} onClick={() => { void reconfigureAgent(member); }}>应用配置</button> : null}<button type="button" className={styles.primary} disabled={Boolean(busy) || !draft.name?.trim()} onClick={() => { void saveMember(member); }}>保存智能体</button></div>
                       </article>
                     );
                   })}
