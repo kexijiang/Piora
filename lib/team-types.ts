@@ -58,6 +58,8 @@ export interface TeamAgentProfile {
 
 export interface TeamAgentBinding {
   sessionId: string;
+  /** Historical reply attribution only; never authorizes new commands. */
+  previousSessionIds?: string[];
   cwd?: string;
   projectRoot?: string;
   worktreeBranch?: string;

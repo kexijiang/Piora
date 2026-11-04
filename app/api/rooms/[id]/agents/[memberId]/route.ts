@@ -1,4 +1,5 @@
 import { listAllSessions } from "@/lib/session-reader";
+import { ensureRoomSessionIsolation } from "@/lib/room-session-isolation";
 import { resolveProject } from "@/lib/worktree";
 import type { TeamAgentBinding } from "@/lib/team-types";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
@@ -26,7 +27,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       const project = await resolveProject(session.cwd);
       binding = { sessionId: session.id, cwd: session.cwd, projectRoot: project.projectRoot, worktreeBranch: project.isWorktree ? project.branch ?? undefined : undefined };
     }
-    const room = updateRoomAgentProfile(id, member.binding.sessionId, memberId, body.expectedRevision as number, body.patch as Partial<TeamAgentProfile>, binding);
+    updateRoomAgentProfile(id, member.binding.sessionId, memberId, body.expectedRevision as number, body.patch as Partial<TeamAgentProfile>, binding);
+    const room = ensureRoomSessionIsolation(id);
     return Response.json({ room, agent: room.members.find((candidate) => candidate.memberId === memberId) });
   } catch (error) { return teamApiError(error); }
 }
