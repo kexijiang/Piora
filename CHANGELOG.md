@@ -5,6 +5,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 ## [Unreleased]
 
 - 修复群成员编辑被后台刷新还原的问题：保留未保存草稿，支持取消编辑与关闭提醒；成员资料和换绑一次保存，版本冲突或保存失败保留输入。
+- 修复模型配置保存后新对话仍显示已移除模型的问题：目录刷新时清理失效选择并采用当前首个可用模型，空目录不填充默认模型；保留有效手动选择和已有会话模型。
 
 ### 持续集成
 
