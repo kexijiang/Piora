@@ -2261,6 +2261,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const nextModelList = d.modelList ?? [];
     setModelList(nextModelList);
     if (isNew && !sessionIdRef.current) {
+      const selected = newSessionModelOverrideRef.current;
+      if (!d.modelError && selected && !nextModelList.some(item => item.provider === selected.provider && item.id === selected.modelId)) {
+        newSessionModelOverrideRef.current = null;
+        setNewSessionModel(null);
+      }
       const match = d.defaultModel
         ? nextModelList.find((m) => m.id === d.defaultModel?.modelId && m.provider === d.defaultModel?.provider)
         : undefined;
