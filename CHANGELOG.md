@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 移除聊天输入栏的表情包按钮，减少容易误解的发送入口；设置中的图库管理、AI 表情工具和历史图片继续可用。
+
 ### 持续集成
 
 - 升级固定版本的 Node.js 环境配置动作，并同步当前主线工作流；项目测试版本仍为 Node.js 22.19.0，保留现有缓存与验证门禁。
