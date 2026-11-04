@@ -1176,6 +1176,10 @@ export class AgentSessionWrapper {
     }
   }
 
+  getPendingUiRequests(): ExtensionUiRequest[] {
+    return this._alive ? [...this.pendingUiRequests.values()] as ExtensionUiRequest[] : [];
+  }
+
   onEvent(listener: EventListener): () => void {
     this.listeners.push(listener);
     for (const review of this.reviews().list()) listener({ type: "tool_review", review });

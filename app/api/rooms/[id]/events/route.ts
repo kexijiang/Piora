@@ -52,7 +52,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
           audit: listRoomAudit(id),
         });
         if (closed) return;
-        stopActivity = subscribeRoomActivity(id, (activities) => send({ type: "activity", activities }));
+        stopActivity = subscribeRoomActivity(id, (activities) => send({ type: "activity", activities }), (requests) => send({ type: "ui_requests", requests }));
         if (closed) { stopActivity(); return; }
         heartbeat = setInterval(() => {
           if (!closed) {

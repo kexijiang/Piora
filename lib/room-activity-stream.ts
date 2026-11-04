@@ -1,3 +1,4 @@
+import type { RoomUiRequest } from "./room-ui";
 import { getRpcSession } from "./rpc-manager";
 import { getActivePromptRun, getActivePromptRunStartedAt } from "./prompt-run-registry";
 import { getActiveTeamPromptContext } from "./team-prompt-context";
@@ -5,10 +6,11 @@ import { getRoom } from "./room-store";
 import { projectRoomActivity, type RoomActivity } from "./room-activity";
 
 /** A room has one multiplexed feed. Observing never starts an AgentSession. */
-export function subscribeRoomActivity(roomId: string, send: (activities: RoomActivity[]) => void): () => void {
+export function subscribeRoomActivity(roomId: string, send: (activities: RoomActivity[]) => void, sendRequests?: (requests: RoomUiRequest[]) => void): () => void {
   const entries = new Map<string, RoomActivity>();
   const subscriptions = new Map<string, { session: NonNullable<ReturnType<typeof getRpcSession>>; off: () => void }>();
   let previous = "";
+  let previousRequests = "";
   let closed = false;
   let scheduled: ReturnType<typeof setTimeout> | undefined;
   const refresh = () => {
@@ -46,6 +48,11 @@ export function subscribeRoomActivity(roomId: string, send: (activities: RoomAct
         }
       }
     }
+    if (sendRequests) {
+      const requests = listRoomUiRequests(roomId);
+      const signature = JSON.stringify(requests);
+      if (signature !== previousRequests) { previousRequests = signature; sendRequests(requests); }
+    }
     const activities = [...entries.values()];
     const signature = JSON.stringify(activities.map(({ updatedAt, ...activity }) => { void updatedAt; return activity; }));
     if (signature !== previous) { previous = signature; send(activities); }
@@ -61,4 +68,16 @@ export function subscribeRoomActivity(roomId: string, send: (activities: RoomAct
   };
   tick();
   return cleanup;
+}
+
+/** Only requests belonging to a current room turn may enter its shared UI. */
+export function listRoomUiRequests(roomId: string): RoomUiRequest[] {
+  return getRoom(roomId).members.flatMap(member => {
+    const sessionId = member.binding.sessionId;
+    const prompt = getActivePromptRun(sessionId);
+    if (!prompt || (prompt.roomContext?.roomId !== roomId && getActiveTeamPromptContext(sessionId)?.roomId !== roomId)) return [];
+    const session = getRpcSession(sessionId);
+    if (!session?.isAlive()) return [];
+    return session.getPendingUiRequests().map(request => ({ sessionId, memberId: member.memberId, memberName: member.profile.name, request }));
+  });
 }
