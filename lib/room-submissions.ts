@@ -1,5 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { ensureRoomSessionIsolation } from "./room-session-isolation";
+import { localRoomUserAuthor } from "./room-local-user";
+import { roomMessageAttribution, ROOM_SENDER_AUTHORITY_NOTE } from "./room-sender";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import lockfile from "proper-lockfile";
@@ -117,7 +119,7 @@ async function deliver(record: SavedSubmission): Promise<SavedSubmission> {
       return record;
     }
     const run = await service.createRun({ roomId: room.id, objective: contentForAgent,
-      coordinatorMemberId: coordinator.memberId, createdBy: { kind: "user", id: record.input.sessionId }, correlationId: `room:${record.messageId}` });
+      coordinatorMemberId: coordinator.memberId, createdBy: { kind: "user", id: message.author.id }, correlationId: `room:${record.messageId}` });
     record.teamRunId = run.id;
   } else if (current && !message.replyTo) {
     // A supplementary instruction is not an answer and cannot silently resume waiting_user.
@@ -134,7 +136,7 @@ async function deliver(record: SavedSubmission): Promise<SavedSubmission> {
       const { getActivePromptRun } = await import("./prompt-run-registry");
       const prompt = getActivePromptRun(sessionId);
       if (prompt?.roomContext?.roomId !== room.id || !targets.some((dispatch) => dispatch.sessionId === sessionId && (dispatch.promptRunId === prompt.runId || dispatch.dispatchId === prompt.roomContext?.messageId))) continue;
-      const receipt = await router.dispatchSessionMessage({ targetSessionId: sessionId, content: `用户对当前任务的补充（保持原任务与审查约束）：\n${contentForAgent}`,
+      const receipt = await router.dispatchSessionMessage({ targetSessionId: sessionId, content: `Sender: ${JSON.stringify(roomMessageAttribution(room, message, id => findRoomMessage(room.id, id)))}\n${ROOM_SENDER_AUTHORITY_NOTE}\n用户对当前任务的补充（保持原任务与审查约束）：\n${contentForAgent}`,
         source: "room", roomContext: { roomId: room.id, messageId: message.id }, delivery: "steer", idempotencyKey: `room:${message.id}:${sessionId}:supplement` });
       record.commandIds.push(receipt.commandId);
     }
@@ -261,7 +263,7 @@ export async function submitRoomMessage(roomId: string, input: RoomSubmissionInp
     const targetMemberIds = resolveRoomMentions(room, input.content, input.mentions);
     const content = input.content || "请查看附件。";
     const message = saved ? findRoomMessage(roomId, saved.messageId)! : appendRoomMessage(roomId, {
-      authorKind: "user", authorId: input.sessionId, authorName: "你", content,
+      ...localRoomUserAuthor(), content,
       clientPromptId: input.clientPromptId, correlationId: `room-prompt:${input.clientPromptId}`,
       replyTo: input.replyTo, threadRootId: parent ? parent.threadRootId ?? parent.id : undefined,
       targetMemberIds, attachments: input.attachments,

@@ -887,6 +887,7 @@ export function appendRoomMessage(roomId: string, input: {
   authorKind: RoomMessageAuthorKind;
   authorId: string;
   authorName?: string;
+  authorIdentitySource?: "local_account";
   content: string;
   replyTo?: string;
   correlationId?: string;
@@ -934,7 +935,11 @@ export function appendRoomMessage(roomId: string, input: {
       id,
       roomId,
       seq: room.nextSeq,
-      author: { kind: input.authorKind, id: input.authorId, ...(input.authorName ? { name: input.authorName } : {}) },
+      author: input.authorKind === "session" ? {
+        kind: "session", id: input.authorId, memberId: requireMember(room, input.authorId).memberId,
+        name: requireMember(room, input.authorId).name, identitySource: "room_member",
+      } : { kind: input.authorKind, id: input.authorId, ...(input.authorName ? { name: input.authorName } : {}),
+        ...(input.authorIdentitySource ? { identitySource: input.authorIdentitySource } : input.authorKind === "system" ? { identitySource: "system" as const } : {}) },
       content: preview,
       payload: {
         byteLength,

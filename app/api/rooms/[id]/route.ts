@@ -1,5 +1,6 @@
 import { listRoomUiRequests } from "@/lib/room-activity-stream";
 import { ensureRoomSessionIsolation } from "@/lib/room-session-isolation";
+import { localRoomUserAuthor } from "@/lib/room-local-user";
 import { NextResponse } from "next/server";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -288,9 +289,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       } });
     }
     const message = appendRoomMessage(id, {
-      authorKind: body.authorKind ?? "user",
-      authorId: body.sessionId,
-      authorName: body.sessionName ?? member.name,
+      ...(body.authorKind === "session" ? { authorKind: "session" as const, authorId: member.sessionId } : localRoomUserAuthor()),
       content: body.content,
       replyTo: body.replyTo,
       correlationId: body.correlationId,
