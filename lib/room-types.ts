@@ -145,6 +145,8 @@ export interface RoomMessage {
     kind: RoomMessageAuthorKind;
     id: string;
     name?: string;
+    memberId?: string;
+    identitySource?: "local_account" | "room_member" | "system";
   };
   content: string;
   payload: RoomMessagePayloadMetadata;

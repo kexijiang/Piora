@@ -1,4 +1,5 @@
 import { APP_DISPLAY_NAME } from "../lib/branding.ts";
+import { roomMessageAttribution, roomMessageSender, ROOM_SENDER_AUTHORITY_NOTE } from "../lib/room-sender.ts";
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
@@ -84,7 +85,7 @@ function dynamicTeamContext(sessionId: string): { systemPrompt: string; message:
   let remaining = 24 * 1024;
   const transcript: string[] = [];
   for (const message of messages.slice().reverse()) {
-    const line = `[${message.seq}] ${message.author.name || message.author.id}: ${message.content}`;
+    const line = JSON.stringify({ seq: message.seq, sender: roomMessageSender(room, message), content: message.content });
     const bytes = Buffer.byteLength(line, "utf8");
     if (bytes > remaining) continue;
     remaining -= bytes;
@@ -123,10 +124,12 @@ function dynamicTeamContext(sessionId: string): { systemPrompt: string; message:
         `Purpose: ${context.purpose}`,
         "",
         `Top-level objective: ${run.objective}`,
+        `Requested by: ${JSON.stringify({ ...run.createdBy, identitySource: run.createdBy.kind === "user" ? run.createdBy.id.startsWith("local-user:") ? "local_account" : "legacy_unknown" : "room_member" })}`,
+        ROOM_SENDER_AUTHORITY_NOTE,
         "User guidance for this run:",
         ...(run.guidance ?? []).filter((item) => !item.memberIds?.length || item.memberIds.includes(member.memberId) || member.profile.role === "coordinator").flatMap((item) => {
           const message = findRoomMessage(room.id, item.messageId);
-          return message ? [readRoomMessageFullContent(room.id, message)] : [];
+          return message ? [JSON.stringify({ ...roomMessageAttribution(room, message, id => findRoomMessage(room.id, id)), content: readRoomMessageFullContent(room.id, message) })] : [];
         }),
         `Current task: ${task?.description ?? context.purpose}`,
         "Acceptance criteria:",

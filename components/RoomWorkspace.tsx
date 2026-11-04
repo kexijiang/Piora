@@ -1,4 +1,5 @@
 "use client";
+import { roomMessageMember } from "@/lib/room-sender";
 
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
 import type { CollaborationRoom, RoomArtifact, RoomMessage, RoomSubmission } from "@/lib/room-types";
@@ -219,9 +220,9 @@ export function RoomWorkspace({ initialRoom, onRoomChange, onRoomDeleted, onOpen
   };
 
   const renderMessage = (message: RoomMessage, insideThread = false) => {
-    const member = members.get(message.author.id);
+    const member = roomMessageMember(room, message);
     const isUser = message.author.kind === "user";
-    const name = isUser ? t("roomUx.you") : member?.profile.name ?? message.author.name ?? "Piora";
+    const name = message.author.name ?? (isUser ? t("roomUx.you") : member?.profile.name ?? "Piora");
     const run = runs.find((candidate) => candidate.id === message.teamRunId || message.correlationId?.startsWith(`team:${candidate.id}:`));
     const isQuestion = message.kind === "question" || message.correlationId?.includes(":question:");
     const replies = messages.filter((candidate) => candidate.threadRootId === message.id);

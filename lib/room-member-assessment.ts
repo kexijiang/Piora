@@ -1,5 +1,6 @@
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 import { listRoomMessages } from "./room-store";
+import { roomMessageSender } from "./room-sender";
 import { resolveOrStartRpcSession } from "./session-runtime-resolver";
 import type { CollaborationRoom, RoomMember } from "./room-types";
 
@@ -42,7 +43,7 @@ export async function assessRoomMember(room: CollaborationRoom, member: RoomMemb
         instructions: member.profile.systemPrompt, capabilities: member.profile.capabilities, constraints: member.profile.constraints,
         tools: session.inner.getActiveToolNames(), toolPolicy: member.profile.toolPolicy, workspace: member.profile.workspacePolicy.mode },
       conversation: listRoomMessages(room.id, { limit: 12 }).filter(message => !message.correlationId?.startsWith("room-selection:"))
-        .map(message => ({ author: message.author.name ?? message.author.kind, content: message.content.slice(0, 600) })),
+        .map(message => ({ author: roomMessageSender(room, message), content: message.content.slice(0, 600) })),
       request: content.slice(0, 24_000), requestTruncated: content.length > 24_000,
     }) }],
   }, { signal, maxTokens: 2048, maxRetries: 0, timeoutMs: 45_000, cacheRetention: "none", ...(reasoning ? { reasoning } : {}) });
