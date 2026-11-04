@@ -26,6 +26,7 @@ import { resolve } from "node:path";
 import { NativeMcpController, getNativeMcpController, setNativeMcpController, nativeMcpResourceCapabilityId } from "./native-mcp";
 import { validateAgentImages } from "./image-attachments";
 import { installImageContextPolicy } from "./image-context";
+import { installProviderPayloadValidation } from "./provider-payload";
 import { installModelStallGuard } from "./model-stall-guard";
 import { reloadModelRetrySettings } from "./retry-settings";
 import { invalidateModelsCache } from "./models-cache";
@@ -2946,6 +2947,7 @@ export async function startRpcSession(
     // instance and idempotent across cached reuse.
     // Also cover sessions that were being constructed when global settings changed.
     await services.settingsManager.reload();
+    installProviderPayloadValidation(services.modelRuntime);
     installModelStallGuard(services.modelRuntime, process.env, services.settingsManager);
     const scope = await resolveVisibleModels(
       services.modelRuntime,
