@@ -4,6 +4,10 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+### 持续集成
+
+- 升级固定版本的 Node.js 环境配置动作，并同步当前主线工作流；项目测试版本仍为 Node.js 22.19.0，保留现有缓存与验证门禁。
+
 ## [0.5.9-beta.6] - 2026-11-04
 
 - 新增桌面本地凭据库：使用系统加密保存账户，支持分组搜索、编辑及主密码验证后的加密备份；自动填写默认关闭，仅匹配可信 HTTPS 登录页，填写期间隔离浏览器智能体读取，并保留不含密码的填写记录。
