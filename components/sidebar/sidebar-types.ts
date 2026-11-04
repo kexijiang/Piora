@@ -5,6 +5,7 @@ import type { SettingsKey } from "@/lib/settings-search";
 declare global {
   interface Window {
     piDesktop?: {
+      vault?: import("@/desktop/src/credential-vault-types").VaultBridge;
       dshPet?: import("@/desktop/src/dsh-pet-types").DshPetBridge;
       harmonyMirror?: import("@/desktop/src/harmony-window-types").HarmonyWindowBridge;
       messages?: import("@/desktop/src/harmony-window-types").PioraMessageBridge;
@@ -24,7 +25,8 @@ declare global {
         copyHarmonyMedia?: (media: { kind: "screenshot" | "recording"; path: string }) => Promise<void>;
       };
       selectDirectory: () => Promise<string | null>;
-      getRuntimeLog?: () => Promise<{ filePath: string; fileLoggingAvailable: boolean } | null>;
+      getRuntimeLog?: () => Promise<import("@/desktop/src/logger").RuntimeLogInfo | null>;
+      setRuntimeLog?: (input: import("@/desktop/src/logger").LogSettings) => Promise<{ ok: boolean; info?: import("@/desktop/src/logger").RuntimeLogInfo; error?: string }>;
       selectSpeechPackDirectory?: (defaultPath?: string) => Promise<string | null>;
       getAgentDataDirectory?: () => Promise<{
         currentDirectory: string;
@@ -128,6 +130,8 @@ export interface DesktopUpdateState {
 }
 
 export interface DesktopBrowserState {
+  vaultProtected?: boolean;
+  vaultMatches?: number;
   sessionId: string;
   activeTabId: string;
   canGoBack: boolean;

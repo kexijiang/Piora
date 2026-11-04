@@ -1,0 +1,8 @@
+.field { grid-column: 1 / -1; min-width: 0; }
+.field .input { min-height: 44px; font-family: inherit; font-size: var(--text-base); }
+.preview { display: grid; gap: 10px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--bg); }
+.caption { color: var(--text-muted); font-size: var(--text-xs); }
+.status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; font-size: var(--text-sm); }
+.dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--accent); }
+.label { color: var(--text); overflow-wrap: anywhere; min-width: 0; }
+.elapsed { color: var(--text-muted); white-space: nowrap; }

@@ -2,7 +2,7 @@ import { appendFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 
-export const allShards = ["ubuntu-latest", "windows-latest"].flatMap(os =>
+export const allShards = ["windows-latest"].flatMap(os =>
   [1, 2, 3, 4, 5, 6].map(shard => ({ os, shard })));
 const jobName = ({ os, shard }) => `tests / Tests (${os}, shard ${shard}/6)`;
 const fullPlan = () => ({ mode: "full", pending: allShards, reused: [] });

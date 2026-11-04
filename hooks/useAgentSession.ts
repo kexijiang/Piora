@@ -2785,7 +2785,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => {
     const controller = new AbortController();
     loadModels(controller.signal, (modelsRefreshKey ?? 0) > 0).catch((e) => {
-      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (controller.signal.aborted) return;
+      setModelError(e instanceof Error ? e.message : String(e));
     });
     return () => controller.abort();
   }, [loadModels, modelsRefreshKey]);

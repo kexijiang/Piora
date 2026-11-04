@@ -1,4 +1,5 @@
 import type { AgentRuntimeProfile } from "./agent-runtime-profile";
+import { MEME_TOOL_NAMES } from "./meme-types";
 import { BUILTIN_AGENT_TOOLS, HARMONY_AGENT_TOOLS } from "./tool-presets";
 
 export const SESSION_CAPABILITY_ENTRY_TYPE = "piora-session-capabilities";
@@ -76,6 +77,10 @@ const HARMONY_TOOL_SET = new Set(HARMONY_AGENT_TOOLS);
 
 const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
   {
+    legacyId: "memes", kind: "interaction", profiles: ["normal"],
+    matches: (name) => (MEME_TOOL_NAMES as readonly string[]).includes(name),
+  },
+  {
     legacyId: "workspace",
     kind: "workspace",
     profiles: ["normal"],
@@ -128,7 +133,7 @@ const CAPABILITY_DEFINITIONS: readonly CapabilityDefinition[] = [
 const PRESET_TOOL_NAMES: Record<Exclude<SessionCapabilityPreset, "custom">, ReadonlySet<string>> = {
   chat: new Set(),
   // The optional computer extension is registered only after explicit opt-in.
-  coding: new Set([...BUILTIN_AGENT_TOOLS, "browser", "ssh", "harmony_control", "computer_control"]),
+  coding: new Set([...BUILTIN_AGENT_TOOLS, ...MEME_TOOL_NAMES, "browser", "ssh", "harmony_control", "computer_control"]),
   research: new Set(["browser"]),
   device: new Set(HARMONY_AGENT_TOOLS),
 };
@@ -276,6 +281,11 @@ export function restoreSessionCapabilityPolicy(
     if (profile === "normal" && restored.preset === "coding" && !restored.knownCapabilityIds.includes("tool:ssh")) {
       enabledIds.add("tool:ssh");
     }
+    if (profile === "normal" && restored.preset === "coding") {
+      for (const name of MEME_TOOL_NAMES) {
+        if (!restored.knownCapabilityIds.includes(`tool:${name}`)) enabledIds.add(`tool:${name}`);
+      }
+    }
     const catalogIds = new Set(catalog.map((item) => item.id));
     // Async MCP discovery can occur after session restoration. Preserve only
     // previously known/selected IDs; their absence grants no execution until a
@@ -376,6 +386,7 @@ export function createDefaultSessionCapabilitiesState(
     ? ["harmony_control"]
     : [
         ...BUILTIN_AGENT_TOOLS,
+        ...MEME_TOOL_NAMES,
         "browser",
         "ssh",
         "harmony_control",

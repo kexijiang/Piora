@@ -196,6 +196,7 @@ export class BrowserAgentControl {
   private readonly lastUsed = new Map<string, number>();
   private readonly lastRequestAt = new Map<string, number>();
   private readonly requestDepth = new Map<string, number>();
+  private readonly surfaceUpdates = new Map<string, Promise<void>>();
   private readonly metrics = new Set<string>();
   private readonly presented = new Set<string>();
   private readonly selfChecked = new Set<string>();
@@ -910,10 +911,23 @@ export class BrowserAgentControl {
     }
   }
 
-  private async prepareSurface(tabId: string): Promise<void> {
-    await this.runTabOp(tabId, () => this.host.ensureReady(tabId), this.navigationTimeoutMs, "Browser tab initialization timed out.");
-    if (this.host.isShowing(tabId)) await this.showNative(tabId);
-    else await this.placeOffscreen(tabId);
+  private prepareSurface(tabId: string): Promise<void> {
+    const pending = this.surfaceUpdates.get(tabId);
+    if (pending) return pending;
+    const update = (async () => {
+      await this.runTabOp(tabId, () => this.host.ensureReady(tabId), this.navigationTimeoutMs, "Browser tab initialization timed out.");
+      // CDP calls yield. Finish one transition before reconciling the latest mode.
+      let showing: boolean;
+      do {
+        showing = this.host.isShowing(tabId);
+        if (showing) await this.showNative(tabId);
+        else await this.placeOffscreen(tabId);
+      } while (showing !== this.host.isShowing(tabId));
+    })().finally(() => {
+      this.surfaceUpdates.delete(tabId);
+    });
+    this.surfaceUpdates.set(tabId, update);
+    return update;
   }
 
   private async showNative(tabId: string): Promise<void> {
@@ -925,9 +939,13 @@ export class BrowserAgentControl {
       await this.command(tabId, "Emulation.clearDeviceMetricsOverride", {});
       this.metrics.delete(tabId);
       const inner = await this.isolated(tabId, "innerWidth");
-      if (typeof inner === "number" && inner !== bounds.width) {
-        this.host.setBounds(tabId, { x: bounds.x, y: bounds.y, width: bounds.width + 1, height: bounds.height });
-        this.host.setBounds(tabId, bounds);
+      // Never restore the rectangle captured before the asynchronous CDP calls.
+      const current = this.host.panelBounds();
+      if (this.host.isShowing(tabId) && current) {
+        if (typeof inner === "number" && inner !== current.width) {
+          this.host.setBounds(tabId, { ...current, width: current.width + 1 });
+        }
+        this.host.setBounds(tabId, current);
       }
       this.presented.add(tabId);
     }

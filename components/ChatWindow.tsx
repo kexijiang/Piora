@@ -1,6 +1,7 @@
 "use client";
 import type { ChatCommandQueueActions } from "./ChatCommandCard";
 import { NestedToolCallsContext } from "./NestedToolCalls";
+import { BrowserHandoffNotice } from "./BrowserHandoffNotice";
 import { latestReplySource } from "@/lib/reply-suggestions";
 import { registerAbortHandler } from "@/hooks/useKeyboardShortcuts";
 import type { HistoryChatControls } from "@/lib/history-navigation";
@@ -191,7 +192,8 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     growthDirection: "right",
     dragScale: 2,
     followDefaultWidth: true,
-    maxWidth: CHAT_COLUMN_MAX_WIDTH,
+    proportional: true,
+    maxWidth: Number.MAX_SAFE_INTEGER,
     minWidth: CHAT_COLUMN_MIN_WIDTH,
     panelRef: chatSurfaceRef,
     storageKey: "pi-chat-column-width",
@@ -230,6 +232,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   });
   const sessionBusy = agentRunning || bashRunning;
+  const [browserWaiting, setBrowserWaiting] = useState(false);
   const responseTimings = useMemo(() => responseTaskTimings(messages, chatCommands.taskTimings), [messages, chatCommands.taskTimings]);
   const timingInReply = !sessionBusy && [...responseTimings.values()].some(timing =>
     timing.commandId === chatCommands.taskTiming?.commandId && timing.outcome && timing.finishedAt !== undefined);
@@ -774,6 +777,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
         </div>
       )}
 
+      <BrowserHandoffNotice sessionId={session?.id} busy={sessionBusy} onWaitingChange={setBrowserWaiting} />
       {extensionDialog?.method === "request_user_input" ? (
         <UserInputCard key={extensionDialog.id} request={extensionDialog} onRespond={respondToExtensionUi} />
       ) : extensionDialog ? (
@@ -852,7 +856,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               visionStatus && agentPhase?.kind !== "stopping" ? (
                 <VisionAgentStatus status={visionStatus} t={t} />
               ) : (
-                <StatusPulse compact={compactProcess} label={phaseLabel(agentPhase, t)} elapsedMs={statusElapsedMs} idleMs={statusIdleMs} retryInfo={retryInfo} t={t} />
+                <StatusPulse compact={compactProcess} label={browserWaiting ? t("chat.browserWaiting") : phaseLabel(agentPhase, t)} elapsedMs={statusElapsedMs} idleMs={browserWaiting ? 0 : statusIdleMs} retryInfo={retryInfo} t={t} />
               )
             )}
 

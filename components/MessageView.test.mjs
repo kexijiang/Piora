@@ -267,8 +267,8 @@ test("renders user images as keyboard-accessible zoom controls", () => {
   assert.match(html, /class="message-image-thumbnail"/);
   assert.match(html, /aria-label="打开第 1 张图片"/);
   assert.match(messageImageSource, /dialog\.showModal\(\)/);
-  assert.match(messageImageSource, /createPortal\(viewer, document\.body\)/);
-  assert.match(messageImageSource, /event\.key !== "Escape"/);
+  assert.match(messageImageSource, /createPortal\([\s\S]*document\.body\)/);
+  assert.match(messageImageSource, /onCancel=\{event => \{ event\.preventDefault\(\); onClose\(\); \}\}/);
 });
 
 test("renders deferred prompt material as a collapsed preview with its full line count", () => {
