@@ -118,7 +118,7 @@ export async function GET(req: Request) {
     cwd = await resolveModelRequestCwd(requestUrl.searchParams.get("cwd"));
   } catch (error) {
     if (error instanceof ModelRequestCwdError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return Response.json({ error: error.message, code: error.code }, { status: error.status });
     }
     throw error;
   }
