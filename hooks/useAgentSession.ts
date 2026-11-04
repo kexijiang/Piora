@@ -28,7 +28,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useExtensionDialog } from "@/hooks/useExtensionDialog";
 import { useChatCommandOperations } from "@/hooks/useChatCommandOperations";
 import { createChatCommandCatalog, persistentChatInputOptions } from "@/lib/chat-command-input";
-import type { ChatCommandCatalog, ChatInputOptions } from "@/lib/chat-command-types";
+import type { ChatCommandCatalog, ChatCommandView, ChatInputOptions } from "@/lib/chat-command-types";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import { estimateSessionContextUsage, mergeContextUsageWithEstimate } from "@/lib/context-usage";
 import { isPromptMaterialRuntimeMessage, type PromptMaterialReference } from "@/lib/prompt-material-format";
@@ -1587,6 +1587,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           const optimisticKey = optimisticUserMessageKeyRef.current;
           optimisticUserMessageKeyRef.current = null;
           setMessages((prev) => {
+            if (delivered.role === "user" && delivered.clientPromptId && prev.some(message => message.role === "user" && message.clientPromptId === delivered.clientPromptId)) return prev;
             const optimisticIndex = prev.findIndex(message => message.role === "user"
               && userMessageKey(message) === optimisticKey
               && (!promptSubmissionRef.current?.idempotencyKey || message.clientPromptId === promptSubmissionRef.current.idempotencyKey));
@@ -1712,6 +1713,63 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [addNotice, closeEvents, handleExtensionUiRequest, loadSession, nestedCallsStore, refreshContextUsage, setExtensionDialog, waitForPromptSettlement, acceptToolPermission, acceptToolReviews]);
   handleAgentEventRef.current = handleAgentEvent;
 
+  const resumeQueuedInput = useCallback(async (record: ChatCommandView, draft: ChatDraft, send: () => Promise<ChatCommandView>) => {
+    const sid = record.targetSessionId;
+    if (sid !== sessionIdRef.current) throw new Error("Session changed");
+    const startsRun = !agentRunningRef.current;
+    if (startsRun) {
+      sessionLoadAbortRef.current?.abort();
+      closeEvents();
+      promptRunIdRef.current += 1;
+      cancelledPromptRunIdRef.current = null;
+      promptSettlementByRunRef.current.clear();
+      promptSettlementPollByRunRef.current.clear();
+      promptSubmissionRef.current = null;
+      optimisticUserMessageKeyRef.current = null;
+      agentRunningRef.current = true;
+      setAgentRunning(true);
+      setAgentPhase({ kind: "waiting_model" });
+      setReplyHistorySettling(false);
+      setStatusClock(null);
+      activityClockRef.current = Date.now();
+      suppressCompletionNotificationRef.current = false;
+      dispatch({ type: "start" });
+    }
+    const runId = promptRunIdRef.current;
+    const submission = startsRun ? { runId, sid, idempotencyKey: record.idempotencyKey, pending: true, commandId: record.commandId } : null;
+    if (submission) {
+      preparingPromptRunIdRef.current = runId;
+      promptSubmissionRef.current = submission;
+    }
+    try {
+      await ensureEventsConnected(sid);
+      if (sid !== sessionIdRef.current || runId !== promptRunIdRef.current || cancelledPromptRunIdRef.current === runId) throw new Error("Queue resume cancelled");
+      // Reuse the original durable identity. Never resubmit or infer delivery by text.
+      if (!record.operation) {
+        const files = draft.files ?? [];
+        const text = [draft.value.trim(), ...files.map(file => file.kind === "paste" && file.text != null ? file.text.trim()
+          : `附件: ${file.name}（${file.size} 字节）${file.path ? `\n${file.path}` : ""}`)].filter(Boolean).join("\n\n");
+        const content = draft.images?.length ? [...(text ? [{ type: "text" as const, text }] : []),
+          ...draft.images.map(image => ({ type: "image" as const, source: { type: "base64" as const, media_type: image.mimeType, data: image.data } }))] : text;
+        setMessages(current => current.some(message => message.role === "user" && message.clientPromptId === record.idempotencyKey) ? current
+          : [...current, { role: "user", clientPromptId: record.idempotencyKey, content, recoveryDraft: draft, timestamp: record.acceptedAt }]);
+      }
+      if (startsRun) preparingPromptRunIdRef.current = null;
+      const updated = await send();
+      if (submission) submission.pending = false;
+      return updated;
+    } catch (error) {
+      if (startsRun && sid === sessionIdRef.current && runId === promptRunIdRef.current) {
+        if (promptSubmissionRef.current === submission) promptSubmissionRef.current = null;
+        void waitForPromptSettlement(sid, runId);
+      }
+      throw error;
+    } finally {
+      if (submission) submission.pending = false;
+      if (startsRun && preparingPromptRunIdRef.current === runId) preparingPromptRunIdRef.current = null;
+    }
+  }, [closeEvents, ensureEventsConnected, waitForPromptSettlement]);
+
   const chatCommands = useChatCommandOperations({
     conversationKey: commandConversationKey,
     sessionId: session?.id ?? null,
@@ -1724,6 +1782,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       return commandCatalogRef.current;
     },
     connectModelEvents: ensureEventsConnected,
+    resumeQueuedInput,
     uploadFiles: uploadPromptMaterialFiles,
     onAccepted: () => { if (isNew) promoteNewSession(); },
     onFinished: record => {

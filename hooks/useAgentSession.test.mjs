@@ -406,6 +406,7 @@ function promptSubmissionHarness(overrides = {}) {
   }
   const reviewCallback = source.slice(source.indexOf("  const acceptToolReviews = useCallback"), source.indexOf("  useEffect(() => {", source.indexOf("  const acceptToolReviews = useCallback")));
   const callbacks = reviewCallback + source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
+    + source.slice(source.indexOf("  const resumeQueuedInput = useCallback"), source.indexOf("  const chatCommands = useChatCommandOperations"))
     + source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"))
     + source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
   for (const name of new Set(callbacks.match(/\b\w+Ref\b/g))) if (!(name in h.env)) h.env[name] = { current: null };
@@ -418,14 +419,54 @@ function promptSubmissionHarness(overrides = {}) {
     reviews: [], setToolReviews: update => { h.env.reviews = typeof update === "function" ? update(h.env.reviews) : update; },
     reduceAgentPhase: (_phase, event) => ({ kind: event.type }), isRunProgressEvent: () => true,
     handleExtensionUiRequest() {}, refreshContextUsage() {},
+    userMessageHasPromptMaterialMarker: () => false,
     normalizeToolCalls,
     sendAgentCommand: async () => ({ accepted: true, sessionId: "session-a", commandId: "cmd-current", status: "queued" }),
     response: { running: true, state: { runtime: "idle", isStreaming: false, isPromptRunning: false, isCompacting: false }, promptCommand: { commandId: "cmd-current", status: "queued" } },
     ...overrides,
   });
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent }; }`)(h.env) };
+  return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent, resumeQueuedInput }; }`)(h.env) };
 }
+
+test("stop then resume reconnects before releasing the original queued input and renders live output", async () => {
+  const h = promptSubmissionHarness();
+  h.env.promptRunIdRef.current = 4;
+  h.env.cancelledPromptRunIdRef.current = 4;
+  const order = [];
+  let connect;
+  h.env.ensureEventsConnected = () => new Promise(resolve => { connect = () => { order.push("connected"); resolve(); }; });
+  const record = { commandId: "queued-cmd", targetSessionId: "session-a", idempotencyKey: "original-key", acceptedAt: 123 };
+  const draft = { value: "same text", files: [{ name: "note.txt", text: "kept", size: 4 }], images: [{ mimeType: "image/png", data: "YWJj" }] };
+  const resumed = h.resumeQueuedInput(record, draft, async () => { order.push("resume"); return { ...record, status: "queued" }; });
+  assert.equal(h.env.cancelledPromptRunIdRef.current, null);
+  assert.equal(h.env.promptRunIdRef.current, 5);
+  await h.reconcileAgentState("session-a");
+  assert.deepEqual(order, []);
+  connect(); await resumed;
+  assert.deepEqual(order, ["connected", "resume"]);
+  assert.equal(h.env.messages.at(-1).clientPromptId, "original-key");
+  assert.deepEqual(h.env.messages.at(-1).recoveryDraft, draft);
+  h.handleAgentEvent({ type: "message_end", message: { role: "user", content: "same text", clientPromptId: "original-key", timestamp: 123 } });
+  assert.equal(h.env.messages.filter(message => message.clientPromptId === "original-key").length, 1);
+  h.handleAgentEvent({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "live reply" }] } });
+  assert.equal(h.env.messages.at(-1).content[0].text, "live reply");
+  h.env.ensureEventsConnected = async () => {};
+  await h.resumeQueuedInput({ ...record, commandId: "second-cmd", idempotencyKey: "second-key" }, draft, async () => ({ status: "queued" }));
+  assert.equal(h.env.messages.filter(message => message.role === "user").length, 2, "identical text with distinct submission ids stays distinct");
+});
+
+test("stop while resume reconnects prevents a late queue mutation", async () => {
+  const h = promptSubmissionHarness();
+  let release;
+  h.env.ensureEventsConnected = () => new Promise(resolve => { release = resolve; });
+  let sent = false;
+  const resumed = h.resumeQueuedInput({ commandId: "queued", targetSessionId: "session-a", idempotencyKey: "key", acceptedAt: 1 }, { value: "resume", files: [], images: [] }, async () => { sent = true; return {}; });
+  await h.handleAbort();
+  release();
+  await assert.rejects(resumed, /Queue resume cancelled/);
+  assert.equal(sent, false);
+});
 
 test("review events settle after cancellation without reviving streaming and reject old or other-session snapshots", () => {
   const h = promptSubmissionHarness();
