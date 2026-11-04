@@ -14,6 +14,7 @@ const { replaceFailedPromptMessage } = await createJiti(import.meta.url).import(
 const { persistentChatInputOptions } = await createJiti(import.meta.url).import("../lib/chat-command-input.ts");
 
 const source = (await readFile(new URL("./useAgentSession.ts", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+const commandSource = (await readFile(new URL("./useChatCommandOperations.ts", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 function historyHarness(overrides = {}) {
   const callbacks = source.slice(source.indexOf("  const switchHistoryBranch = useCallback"), source.indexOf("  const handleModelChange = useCallback"));
@@ -429,6 +430,94 @@ function promptSubmissionHarness(overrides = {}) {
   return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent, resumeQueuedInput }; }`)(h.env) };
 }
 
+// Exercise both hooks together: draft restoration must belong to the same
+// cancellable operation as the later event connection and queue mutation.
+function queueResumeHarness() {
+  const h = promptSubmissionHarness();
+  const requests = [];
+  let releaseDraft;
+  const draftRequested = Promise.withResolvers();
+  const draft = { value: "original queued text", files: [], images: [] };
+  const record = { commandId: "queued-cmd", targetSessionId: "session-a", idempotencyKey: "original-key", acceptedAt: 123, status: "queued", queuePaused: true, revision: 2 };
+  h.env.sendAgentCommand = async (_sid, command) => { requests.push(command); return { ...record, queuePaused: false }; };
+  h.env.ensureEventsConnected = async () => { requests.push({ type: "connect" }); };
+  const env = {
+    useCallback: callback => callback, latest: { current: { resumeQueuedInput: h.resumeQueuedInput } },
+    sessionRef: h.env.sessionIdRef, generation: { current: 0 }, readPendingPrompts: async () => [],
+    fetch: () => new Promise(resolve => {
+      releaseDraft = () => resolve({ ok: true, json: async () => draft });
+      draftRequested.resolve();
+    }),
+    sendAgentCommand: (...args) => h.env.sendAgentCommand(...args),
+    refresh: async () => {}, t: key => key, AgentCommandError: class extends Error {},
+    setRecords() {}, mergeChatCommandViews: (_current, records) => records,
+  };
+  const callbacks = commandSource.slice(commandSource.indexOf("  const restore = useCallback"), commandSource.indexOf("  const edit = useCallback"));
+  const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const queueAction = new Function("env", `with(env) { ${js}; return queueAction; }`)(env);
+  return { ...h, requests, record, draft, queueAction, generation: env.generation, draftRequested: draftRequested.promise, releaseDraft: () => releaseDraft() };
+}
+
+for (const action of ["resume", "steer"]) {
+  for (const running of [false, true]) {
+    test(`stop during queued draft restoration cancels ${action} (${running ? "active" : "idle"} run)`, async () => {
+      const h = queueResumeHarness();
+      h.env.agentRunningRef.current = running;
+      const resumed = h.queueAction(h.record, action);
+      await h.draftRequested;
+      await h.handleAbort();
+      const stoppedRun = h.env.promptRunIdRef.current;
+      h.releaseDraft();
+      await assert.rejects(resumed, /Queue resume cancelled/);
+      assert.equal(h.env.promptRunIdRef.current, stoppedRun, "late restoration must not create a new run");
+      assert.equal(h.env.agentRunningRef.current, false);
+      assert.equal(h.env.messages.length, 0, "cancelled restoration must not insert a user bubble");
+      assert.deepEqual(h.requests.map(request => request.type), running ? ["abort"] : []);
+    });
+  }
+}
+
+test("queued draft restoration cannot outlive its conversation or overwrite a newer run", async () => {
+  for (const change of [h => { h.generation.current++; }, h => { h.env.sessionIdRef.current = "session-b"; }, h => { h.env.promptRunIdRef.current++; }]) {
+    const h = queueResumeHarness();
+    const resumed = h.queueAction(h.record, "resume");
+    await h.draftRequested;
+    change(h);
+    h.releaseDraft();
+    await assert.rejects(resumed, /Queue resume cancelled/);
+    assert.deepEqual(h.requests, []);
+    assert.equal(h.env.messages.length, 0);
+  }
+});
+
+test("queued restoration renews a naturally completed run and renders its live reply", async () => {
+  for (const finishDuring of ["restore", "connect"]) {
+    const h = queueResumeHarness();
+    h.env.agentRunningRef.current = true;
+    const previousRun = h.env.promptRunIdRef.current;
+    if (finishDuring === "connect") {
+      let first = true;
+      h.env.ensureEventsConnected = async () => {
+        h.requests.push({ type: "connect" });
+        if (first) { first = false; await h.finishPromptWithoutStream("session-a"); }
+      };
+    }
+    const resumed = h.queueAction(h.record, "resume");
+    await h.draftRequested;
+    if (finishDuring === "restore") await h.finishPromptWithoutStream("session-a");
+    h.releaseDraft();
+    await resumed;
+    assert.equal(h.env.promptRunIdRef.current, previousRun + 1);
+    assert.equal(h.env.agentRunningRef.current, true);
+    const mutations = h.requests.filter(request => request.type === "queued_input_action");
+    assert.equal(mutations.length, 1);
+    assert.equal(mutations[0].commandId, h.record.commandId);
+    assert.equal(h.env.messages[0].clientPromptId, h.record.idempotencyKey);
+    h.handleAgentEvent({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "live reply" }] } });
+    assert.equal(h.env.messages.at(-1).content[0].text, "live reply");
+  }
+});
+
 test("stop then resume reconnects before releasing the original queued input and renders live output", async () => {
   const h = promptSubmissionHarness();
   h.env.promptRunIdRef.current = 4;
@@ -438,7 +527,7 @@ test("stop then resume reconnects before releasing the original queued input and
   h.env.ensureEventsConnected = () => new Promise(resolve => { connect = () => { order.push("connected"); resolve(); }; });
   const record = { commandId: "queued-cmd", targetSessionId: "session-a", idempotencyKey: "original-key", acceptedAt: 123 };
   const draft = { value: "same text", files: [{ name: "note.txt", text: "kept", size: 4 }], images: [{ mimeType: "image/png", data: "YWJj" }] };
-  const resumed = h.resumeQueuedInput(record, draft, async () => { order.push("resume"); return { ...record, status: "queued" }; });
+  const resumed = h.resumeQueuedInput(record, async () => draft, async () => { order.push("resume"); return { ...record, status: "queued" }; });
   assert.equal(h.env.cancelledPromptRunIdRef.current, null);
   assert.equal(h.env.promptRunIdRef.current, 5);
   await h.reconcileAgentState("session-a");
@@ -452,7 +541,7 @@ test("stop then resume reconnects before releasing the original queued input and
   h.handleAgentEvent({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "live reply" }] } });
   assert.equal(h.env.messages.at(-1).content[0].text, "live reply");
   h.env.ensureEventsConnected = async () => {};
-  await h.resumeQueuedInput({ ...record, commandId: "second-cmd", idempotencyKey: "second-key" }, draft, async () => ({ status: "queued" }));
+  await h.resumeQueuedInput({ ...record, commandId: "second-cmd", idempotencyKey: "second-key" }, async () => draft, async () => ({ status: "queued" }));
   assert.equal(h.env.messages.filter(message => message.role === "user").length, 2, "identical text with distinct submission ids stays distinct");
 });
 
@@ -461,7 +550,8 @@ test("stop while resume reconnects prevents a late queue mutation", async () => 
   let release;
   h.env.ensureEventsConnected = () => new Promise(resolve => { release = resolve; });
   let sent = false;
-  const resumed = h.resumeQueuedInput({ commandId: "queued", targetSessionId: "session-a", idempotencyKey: "key", acceptedAt: 1 }, { value: "resume", files: [], images: [] }, async () => { sent = true; return {}; });
+  const resumed = h.resumeQueuedInput({ commandId: "queued", targetSessionId: "session-a", idempotencyKey: "key", acceptedAt: 1 }, async () => ({ value: "resume", files: [], images: [] }), async () => { sent = true; return {}; });
+  await new Promise(resolve => setImmediate(resolve));
   await h.handleAbort();
   release();
   await assert.rejects(resumed, /Queue resume cancelled/);

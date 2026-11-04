@@ -24,7 +24,7 @@ interface Options {
   ensureSession(): Promise<string | null>;
   loadCatalog(): Promise<ChatCommandCatalog>;
   connectModelEvents(sessionId: string): Promise<void>;
-  resumeQueuedInput?(record: ChatCommandView, draft: PendingPrompt["draft"], send: () => Promise<ChatCommandView>): Promise<ChatCommandView>;
+  resumeQueuedInput?(record: ChatCommandView, restore: () => Promise<PendingPrompt["draft"]>, send: () => Promise<ChatCommandView>): Promise<ChatCommandView>;
   uploadFiles(files: AttachedFile[]): Promise<PromptMaterialReference[]>;
   onAccepted(): void;
   onFinished(record: ChatCommandView): void;
@@ -215,11 +215,23 @@ export function useChatCommandOperations(options: Options) {
   }, [t]);
 
   const queueAction = useCallback(async (record: ChatCommandView, action: "pause" | "resume" | "edit" | "steer" | "cancel", text?: string) => {
+    const currentGeneration = generation.current;
+    const assertCurrentConversation = () => {
+      if (generation.current !== currentGeneration || sessionRef.current !== record.targetSessionId) throw new Error("Queue resume cancelled");
+    };
     try {
-      const send = () => sendAgentCommand<ChatCommandView>(record.targetSessionId, { type: "queued_input_action", commandId: record.commandId, expectedRevision: record.revision, action, ...(text !== undefined ? { text } : {}) });
+      const send = () => {
+        if (action === "resume" || action === "steer") assertCurrentConversation();
+        return sendAgentCommand<ChatCommandView>(record.targetSessionId, { type: "queued_input_action", commandId: record.commandId, expectedRevision: record.revision, action, ...(text !== undefined ? { text } : {}) });
+      };
       let updated: ChatCommandView;
       if (action === "resume" || action === "steer") {
-        if (latest.current.resumeQueuedInput) updated = await latest.current.resumeQueuedInput(record, await restore(record), send);
+        assertCurrentConversation();
+        if (latest.current.resumeQueuedInput) updated = await latest.current.resumeQueuedInput(record, async () => {
+          const draft = await restore(record);
+          assertCurrentConversation();
+          return draft;
+        }, send);
         else { await latest.current.connectModelEvents(record.targetSessionId); updated = await send(); }
       } else updated = await send();
       if (action === "cancel" && updated.status === "cancelled") await dismissPendingPrompt(record.idempotencyKey);

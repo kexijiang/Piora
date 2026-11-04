@@ -1713,14 +1713,18 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, [addNotice, closeEvents, handleExtensionUiRequest, loadSession, nestedCallsStore, refreshContextUsage, setExtensionDialog, waitForPromptSettlement, acceptToolPermission, acceptToolReviews]);
   handleAgentEventRef.current = handleAgentEvent;
 
-  const resumeQueuedInput = useCallback(async (record: ChatCommandView, draft: ChatDraft, send: () => Promise<ChatCommandView>) => {
+  const resumeQueuedInput = useCallback(async (record: ChatCommandView, restore: () => Promise<ChatDraft>, send: () => Promise<ChatCommandView>) => {
     const sid = record.targetSessionId;
     if (sid !== sessionIdRef.current) throw new Error("Session changed");
-    const startsRun = !agentRunningRef.current;
-    if (startsRun) {
+    let startsRun = false;
+    let runId = promptRunIdRef.current;
+    let submission: typeof promptSubmissionRef.current = null;
+    const startRunIfIdle = (): typeof promptSubmissionRef.current => {
+      if (agentRunningRef.current) return submission;
+      startsRun = true;
       sessionLoadAbortRef.current?.abort();
       closeEvents();
-      promptRunIdRef.current += 1;
+      runId = ++promptRunIdRef.current;
       cancelledPromptRunIdRef.current = null;
       promptSettlementByRunRef.current.clear();
       promptSettlementPollByRunRef.current.clear();
@@ -1734,16 +1738,27 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       activityClockRef.current = Date.now();
       suppressCompletionNotificationRef.current = false;
       dispatch({ type: "start" });
-    }
-    const runId = promptRunIdRef.current;
-    const submission = startsRun ? { runId, sid, idempotencyKey: record.idempotencyKey, pending: true, commandId: record.commandId } : null;
-    if (submission) {
+      const nextSubmission = { runId, sid, idempotencyKey: record.idempotencyKey, pending: true, commandId: record.commandId };
       preparingPromptRunIdRef.current = runId;
-      promptSubmissionRef.current = submission;
-    }
-    try {
-      await ensureEventsConnected(sid);
+      promptSubmissionRef.current = nextSubmission;
+      return nextSubmission;
+    };
+    const assertCurrentRun = () => {
       if (sid !== sessionIdRef.current || runId !== promptRunIdRef.current || cancelledPromptRunIdRef.current === runId) throw new Error("Queue resume cancelled");
+    };
+    submission = startRunIfIdle();
+    try {
+      // Establish the cancellable run before any draft storage/network work.
+      // A late restore must not clear Stop's marker or reopen the event stream.
+      const draft = await restore();
+      assertCurrentRun();
+      do {
+        // The previous run may finish naturally while restoring or connecting.
+        // Only renew it after checking that Stop or a newer run did not win.
+        submission = startRunIfIdle();
+        await ensureEventsConnected(sid);
+        assertCurrentRun();
+      } while (!agentRunningRef.current);
       // Reuse the original durable identity. Never resubmit or infer delivery by text.
       if (!record.operation) {
         const files = draft.files ?? [];
