@@ -1,5 +1,6 @@
 import { getRpcSession } from "./rpc-manager";
-import { appendRoomMessage, emitRoomPresence, findRoomMessage, getRoom, listRoomMessages } from "./room-store";
+import { appendRoomMessage, assertRoomSessionIsolated, emitRoomPresence, findRoomMessage, getRoom, listRoomMessages } from "./room-store";
+import { ensureRoomSessionIsolation } from "./room-session-isolation";
 import { resolveExplicitRoomChatTargets } from "./room-chat-routing";
 import {
   getSessionMessageRouter,
@@ -188,8 +189,13 @@ export async function dispatchRoomChat(
   roomId: string,
   input: { messageId: string; content: string; authorName?: string; authorSessionId?: string; targetSessionIds?: string[]; attempt?: number; replyTo?: string; correlationId?: string; forwardDepth?: number; autoRound?: number; maxAutoRounds?: number; router?: SessionMessageRouter; intake?: boolean; clarificationOnly?: boolean; delivery?: "next_turn" | "steer" },
 ): Promise<RoomChatDispatchResult> {
-  const room = getRoom(roomId);
-  const requested = new Set(input.targetSessionIds?.filter(Boolean));
+  const previousRoom = getRoom(roomId);
+  const room = ensureRoomSessionIsolation(roomId);
+  const remappedTargets = input.targetSessionIds?.map((sessionId) => {
+    const memberId = previousRoom.members.find((member) => member.sessionId === sessionId)?.memberId;
+    return room.members.find((member) => member.memberId === memberId)?.sessionId ?? sessionId;
+  });
+  const requested = new Set(remappedTargets?.filter(Boolean));
   const fallbackId = room.coordination.coordinatorSessionId ?? room.members[0]?.sessionId;
   if (requested.size === 0 && fallbackId) requested.add(fallbackId);
 
@@ -215,14 +221,17 @@ export async function dispatchRoomChat(
     batch.forEach(({ sessionId }) => {
       emitRoomPresence(room.id, { sessionId, messageId: input.messageId, status: "processing" });
     });
-    const settled = await Promise.allSettled(batch.map(({ sessionId, member }) => router.dispatchSessionMessage({
-      targetSessionId: sessionId,
-      content: groupChatPrompt(room, member, { ...input, forwardDepth, autoRound, maxAutoRounds }),
-      delivery: behavior,
-      source: "room",
-      roomContext: { roomId, messageId: input.messageId },
-      idempotencyKey: `${roomId}:${input.messageId}:${sessionId}:${input.attempt ?? 1}`,
-    })));
+    const settled = await Promise.allSettled(batch.map(async ({ sessionId, member }) => {
+      assertRoomSessionIsolated(roomId, sessionId);
+      return router.dispatchSessionMessage({
+        targetSessionId: sessionId,
+        content: groupChatPrompt(room, member, { ...input, forwardDepth, autoRound, maxAutoRounds }),
+        delivery: behavior,
+        source: "room",
+        roomContext: { roomId, messageId: input.messageId },
+        idempotencyKey: `${roomId}:${input.messageId}:${sessionId}:${input.attempt ?? 1}`,
+      });
+    }));
     settled.forEach((outcome, batchIndex) => {
       const target = batch[batchIndex];
       if (outcome.status === "fulfilled") {

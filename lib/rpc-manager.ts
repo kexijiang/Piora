@@ -71,7 +71,7 @@ import { bindTeamPromptContext, validateTeamExecutionContext } from "./team-prom
 import type { TeamExecutionContext } from "./team-types";
 import type { SessionMessageSourceKind, SessionRoomContext } from "./session-message-types";
 import { captureTeamRuntimeToolResult } from "./team-runtime-evidence";
-import { getRoom } from "./room-store";
+import { assertRoomSessionIsolated, getRoom } from "./room-store";
 import { TeamError } from "./team-errors";
 import {
   DEVICE_CONTROL_AGENT_TOOLS,
@@ -1271,6 +1271,11 @@ export class AgentSessionWrapper {
         }
         const teamExecution = command.teamExecution as TeamExecutionContext | undefined;
         const roomContext = command.roomContext as SessionRoomContext | undefined;
+        if (command.source === "room" || teamExecution || roomContext) {
+          const roomId = teamExecution?.roomId ?? roomContext?.roomId;
+          if (!roomId) throw new TeamError("TEAM_INVALID_CONTEXT", "Room context is required.");
+          assertRoomSessionIsolated(roomId, this.sessionId);
+        }
         if (teamExecution && streamingBehavior) throw new Error("Team execution context cannot be attached to a follow-up prompt.");
         if (!streamingBehavior && command.source === "room" && !this.inner.getActiveToolNames().includes("piora_room")) {
           if (teamExecution) validateTeamExecutionContext(teamExecution, this.sessionId);
