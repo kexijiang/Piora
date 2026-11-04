@@ -355,7 +355,7 @@ export class BrowserAgentControl {
     this.unsubscribers.clear();
   }
 
-  /** Explicit user cleanup only: never close borrowed, visible or live-run pages. */
+  /** Shared protection rules for manual cleanup and capacity reclamation. */
   idleTabIds(): string[] {
     return this.host.listTabs().filter(tab => !tab.closed && !tab.vaultProtected
       && tab.sessionId !== MANUAL_BROWSER_SESSION_ID && this.meta.get(tab.id)?.agentOpened
@@ -365,7 +365,19 @@ export class BrowserAgentControl {
   }
 
   closeIdleTabs(): void {
-    for (const id of this.idleTabIds()) {
+    this.closeIdleTabIds(this.idleTabIds());
+  }
+
+  /** Free only one slot, preferring unloaded pages, then least recently used. */
+  reclaimIdleTab(): void {
+    const candidates = this.idleTabIds();
+    candidates.sort((a, b) => Number(Boolean(this.tab(b)?.unloaded)) - Number(Boolean(this.tab(a)?.unloaded))
+      || (this.lastUsed.get(a) ?? Infinity) - (this.lastUsed.get(b) ?? Infinity));
+    this.closeIdleTabIds(candidates.slice(0, 1));
+  }
+
+  private closeIdleTabIds(ids: string[]): void {
+    for (const id of ids) {
       const tab = this.tab(id);
       if (!tab) continue;
       this.detachQuiet(id);

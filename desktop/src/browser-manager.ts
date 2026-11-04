@@ -116,6 +116,7 @@ interface BrowserAgentBinding {
   noteUsed(tabId: string): void;
   idleTabIds(): string[];
   closeIdleTabs(): void;
+  reclaimIdleTab(): void;
 }
 
 export interface DesktopBrowserDownload {
@@ -479,7 +480,12 @@ export class DesktopBrowserManager {
     ipcMain.removeHandler(BROWSER_AGENT_BACKEND_GET_CHANNEL);
   }
 
+  private canCreateTab(): boolean {
+    return this.tabs.length < MAX_TABS || (this.agentControl?.idleTabIds().length ?? 0) > 0;
+  }
+
   private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }, deferLoad = false): BrowserTab {
+    if (this.tabs.length >= MAX_TABS) this.agentControl?.reclaimIdleTab();
     if (this.tabs.length >= MAX_TABS) {
       throw new Error(`The browser tab limit of ${MAX_TABS} has been reached.`);
     }
@@ -566,7 +572,7 @@ export class DesktopBrowserManager {
       if (isMainFrame && !isInPlace) delete tab.authHost;
     });
     contents.setWindowOpenHandler(({ url }) => {
-      if (isBrowserUrl(url) && this.tabs.length < MAX_TABS) {
+      if (isBrowserUrl(url) && this.canCreateTab()) {
         return {
           action: "allow",
           createWindow: (options) => this.createTab((options as { webContents?: WebContents }).webContents ? "about:blank" : url, true, tab.sessionId, options).view.webContents,
@@ -632,9 +638,9 @@ export class DesktopBrowserManager {
     contents.on("context-menu", (_event, params) => {
       const template: Electron.MenuItemConstructorOptions[] = [];
       if (params.linkURL && isBrowserUrl(params.linkURL)) {
-        template.push({ label: "在新标签页中打开链接", enabled: this.tabs.length < MAX_TABS, click: () => {
+        template.push({ label: "在新标签页中打开链接", enabled: this.canCreateTab(), click: () => {
           // A menu can stay open while another session consumes the final slot.
-          if (this.tabs.length < MAX_TABS) this.createTab(params.linkURL, true, tab.sessionId);
+          if (this.canCreateTab()) this.createTab(params.linkURL, true, tab.sessionId);
         } });
         template.push({ type: "separator" });
       }
@@ -1123,6 +1129,7 @@ export class DesktopBrowserManager {
       listTabs: () => this.tabs.map((tab) => this.tabState(tab)),
       ensureReady: (tabId: string) => this.ensureTabReady(tabId),
       createTab: (sessionId: string, url: string) => {
+        if (this.tabs.length >= MAX_TABS) this.agentControl?.reclaimIdleTab();
         rejectAgentCreateAtCapacity(this.tabs.length, MAX_TABS);
         return this.tabState(this.createTab(url, false, sessionId, undefined, true));
       },
