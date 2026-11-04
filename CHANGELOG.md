@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 群聊现在展示成员的工具授权、选项、提问及扩展交互请求，按来源会话回传；重连恢复待处理请求，取消、超时和其他窗口已处理的请求会自动移除。
+
 - 修复群成员编辑被后台刷新还原的问题：保留未保存草稿，支持取消编辑与关闭提醒；成员资料和换绑一次保存，版本冲突或保存失败保留输入。
 
 ### 持续集成

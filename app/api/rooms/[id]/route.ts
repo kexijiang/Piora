@@ -1,3 +1,4 @@
+import { listRoomUiRequests } from "@/lib/room-activity-stream";
 import { NextResponse } from "next/server";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -94,6 +95,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       taskRuns: tasks.map((task) => projectRoomTaskRun(task, artifacts)),
       artifacts,
       audit: listRoomAudit(id),
+      uiRequests: listRoomUiRequests(id),
       ...(privateSessionId ? { privateNotes: listPrivateNotes(id, privateSessionId) } : {}),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
