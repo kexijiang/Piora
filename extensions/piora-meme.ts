@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Type } from "@earendil-works/pi-ai";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { memeJson, memeCatalog, memeDesktopAvailable, callMemeDesktop } from "../lib/dsh-meme-bridge.ts";
+import { prepareMemeDisplay } from "../lib/meme-display.ts";
 import { captureMeme } from "../lib/meme-store.ts";
 const optionalText = () => Type.Optional(Type.String({ maxLength: 2000 }));
 const schemas = {
@@ -28,19 +29,17 @@ export default function pioraMeme(api: ExtensionAPI) {
           for (const block of entry.message.content) if (block.type === "image" && block.data.length <= 12 * 1024 * 1024) images.push({ id: randomUUID(), mediaType: block.mimeType, data: block.data, name: "user-meme" });
         }
       }
-      const value = await memeJson<{ message?: string; hits?: { path?: string; caption: string }[] }>("/__piora", { action: "tool", name, args, images: images.slice(-1), selection: ctx.model ? { provider: ctx.model.provider, model: ctx.model.id, cwd: ctx.cwd } : undefined });
+      const value = await memeJson<{ message?: string; displayMarkdown?: string; hits?: { path?: string; caption: string }[] }>("/__piora", { action: "tool", name, args, images: images.slice(-1), selection: ctx.model ? { provider: ctx.model.provider, model: ctx.model.id, cwd: ctx.cwd } : undefined });
       signal?.throwIfAborted();
-      if (name === "send_meme" && value.hits?.some(hit => hit.path)) {
+      if (name === "send_meme" && value.hits?.length) {
         const catalog = await memeCatalog();
-        for (const hit of value.hits) {
-          const row = catalog.memes.find(row => hit.path?.replaceAll("\\", "/").endsWith(decodeURIComponent(row.url.slice("/dsh-memes/".length))));
-          if (!row) continue;
-          const markdown = await captureMeme(row.url, hit.caption);
-          value.message = (value.message || "").replaceAll(`[表情: ${hit.caption}]`, markdown);
-          Object.assign(hit, { markdown });
-        }
+        await prepareMemeDisplay(value, catalog.memes, async (url, caption) => {
+          signal?.throwIfAborted();
+          return captureMeme(url, caption);
+        });
+        signal?.throwIfAborted();
       }
-      return { content: [{ type: "text" as const, text: JSON.stringify(value) }], details: {} };
+      return { content: [{ type: "text" as const, text: value.displayMarkdown ? `${value.displayMarkdown}\n\n${JSON.stringify(value)}` : JSON.stringify(value) }], details: {} };
     },
   }));
   api.on("before_agent_start", async event => {
