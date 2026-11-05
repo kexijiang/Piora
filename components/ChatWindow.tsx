@@ -45,6 +45,7 @@ import type { CommandExecutionData } from "@/lib/command-execution";
 import { CommandExecutionDialog } from "./CommandExecutionView";
 
 interface Props {
+  visible?: boolean;
   historyVisible?: boolean;
   onHistoryControlsChange?: (controls: HistoryChatControls | null) => void;
   session: SessionInfo | null;
@@ -158,7 +159,7 @@ function getUserInputText(message: AgentMessage): string | null {
   return text.length > 0 ? text : null;
 }
 
-export function ChatWindow({ historyVisible = false, onHistoryControlsChange, session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
+export function ChatWindow({ visible = true, historyVisible = false, onHistoryControlsChange, session, focusEntryId, newSessionCwd, newSessionInitialModel, initialPrompt, claimInitialPrompt, onAgentEnd, onSessionCreated, onSessionForked, modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsChange, onSessionStatsPanelOpen, onContextUsageChange, onOpenFile, onCompanionActivityChange, onTaskControlsChange, onSlashCommandsChange, onOpenAutomation, onCapabilitiesChange, onOpenModels, onPromptSubmitted }: Props) {
   // A new-chat action remounts this window. Directory names cannot identify
   // drafts: two new chats in the same project must never restore each other.
   const [newChatDraftKey] = useState(() => `new:${crypto.randomUUID()}`);
@@ -224,6 +225,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     handlePendingInputAction,
     handleThinkingLevelChange, handleSystemPromptSelection, loadSlashCommands,
   } = useAgentSession({
+    viewVisible: visible,
     session, newSessionCwd, newSessionInitialModel,
     newSessionInitialSystemPromptSelection: initialPrompt?.systemPromptSelection ?? null,
     newSessionInitialPermissionMode: initialPrompt?.permissionMode,
@@ -261,11 +263,11 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     }
   }, [agentPhase?.kind, agentRunning, bashRunning, sessionBusy, statusClock]);
   useEffect(() => {
-    if (!sessionBusy) return;
+    if (!visible || !sessionBusy) return;
     setStatusTick(Date.now());
     const timer = window.setInterval(() => setStatusTick(Date.now()), 1_000);
     return () => window.clearInterval(timer);
-  }, [sessionBusy]);
+  }, [sessionBusy, visible]);
   const statusElapsedMs = statusPhaseSinceRef.current ? Math.max(0, statusTick - statusPhaseSinceRef.current) : 0;
   const statusIdleMs = sessionBusy
     ? Math.max(0, statusTick - Math.max(activityClockRef.current, busySinceRef.current ?? 0))
@@ -550,7 +552,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
   const isEmptyNew = isNew && messages.length === 0 && !streamState.isStreaming && !sessionBusy;
 
   useEffect(() => {
-    if (loading || isEmptyNew) return;
+    if (!visible || loading || isEmptyNew) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -584,7 +586,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
       resizeObserver.disconnect();
       if (frame !== 0) cancelAnimationFrame(frame);
     };
-  }, [isEmptyNew, liveOutputFollowPaused, loading, scrollContainerRef, session?.id]);
+  }, [visible, isEmptyNew, liveOutputFollowPaused, loading, scrollContainerRef, session?.id]);
 
   const messageCwd = session?.cwd ?? newSessionCwd ?? undefined;
   const isProjectlessChat = session?.projectless === true || isProjectlessChatCwd(messageCwd);
@@ -616,7 +618,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
   }, [session?.id, loading, error, sessionBusy, streamState.isStreaming, replyHistorySettling, isCompacting, extensionDialog, extensionCustomUi, messages, entryIds, activeLeafId]);
 
   useLayoutEffect(() => {
-    if (!replySource) return;
+    if (!visible || !replySource) return;
     const container = scrollContainerRef.current;
     if (!container) return;
     let height = container.clientHeight;
@@ -633,7 +635,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
     observer.observe(container);
     container.addEventListener("scroll", onScroll, { passive: true });
     return () => { observer.disconnect(); container.removeEventListener("scroll", onScroll); };
-  }, [replySource, scrollContainerRef]);
+  }, [visible, replySource, scrollContainerRef]);
 
   // Keep the composer independent of token/status-clock renders. Its own input,
   // model, queue and recovery state still update immediately.
@@ -837,6 +839,7 @@ export function ChatWindow({ historyVisible = false, onHistoryControlsChange, se
               <ExtensionWidgets widgets={aboveEditorWidgets} />
 
             <ChatHistory
+              visible={visible}
               key={session?.id ?? sessionIdRef.current ?? "new"}
               operations={chatCommands.records} commandActions={commandActions}
               responseTimings={responseTimings}

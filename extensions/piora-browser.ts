@@ -3,7 +3,7 @@ import { readToolPermission } from "../lib/tool-permission-store.ts";
 import { existsSync } from "node:fs";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { defineTool, getAgentDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { chromium, type BrowserContext, type Locator, type Page } from "playwright-core";
 import { selectBrowserBackend } from "../lib/browser-backend.ts";

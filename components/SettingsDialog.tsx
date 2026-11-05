@@ -200,16 +200,24 @@ export function SettingsDialog({
     setOptimizerPromptStatus("idle");
     const selectedModel = readPromptOptimizerModel(window.localStorage);
     setOptimizerModelValue(selectedModel ? JSON.stringify(selectedModel) : "");
-    void fetch("/api/models", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data: { modelList?: Array<{ provider: string; id: string; name: string }> } | null) => setOptimizerModels(data?.modelList ?? []))
-      .catch(() => setOptimizerModels([]));
     const savedTitlePrompt = readSessionTitlePrompt(window.localStorage);
     setTitlePromptDraft(savedTitlePrompt);
     setTitlePromptSaved(savedTitlePrompt);
     setTitlePromptStatus("idle");
     setTitleModel(readSessionTitleModel(window.localStorage));
   }, [open]);
+
+  useEffect(() => {
+    if (!open || activeKey !== "prompts") return;
+    const controller = new AbortController();
+    void fetch("/api/models", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { modelList?: Array<{ provider: string; id: string; name: string }> } | null) => {
+        if (!controller.signal.aborted) setOptimizerModels(data?.modelList ?? []);
+      })
+      .catch(() => { if (!controller.signal.aborted) setOptimizerModels([]); });
+    return () => controller.abort();
+  }, [open, activeKey]);
 
   useEffect(() => {
     if (!open || activeKey !== "prompts") return;

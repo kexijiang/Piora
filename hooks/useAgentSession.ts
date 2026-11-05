@@ -202,6 +202,7 @@ export type BuiltinSlashCommandResult =
   | { handled: true; message?: string; error?: string; action?: "openSessionStats" };
 
 export interface UseAgentSessionOptions {
+  viewVisible?: boolean;
   session: SessionInfo | null;
   newSessionCwd: string | null;
   newSessionInitialModel?: { provider: string; modelId: string } | null;
@@ -438,6 +439,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const translateRef = useRef(t);
   translateRef.current = t;
   const {
+    viewVisible = true,
     session, newSessionCwd, newSessionInitialModel, newSessionInitialSystemPromptSelection, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   } = opts;
@@ -612,6 +614,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const initialBottomPinCleanupRef = useRef<(() => void) | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastScrollUpdateRef = useRef<{ count: number; running: boolean; autoScroll: boolean } | null>(null);
   const ensuringNewSessionRef = useRef<Promise<string | null> | null>(null);
   const newSessionPromotedRef = useRef(false);
   const newSessionModelOverrideRef = useRef<SelectedModel | null>(newSessionInitialModel ?? null);
@@ -2566,7 +2569,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     ignoreProgrammaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS;
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container || container.clientHeight === 0) return;
     // The live-tail spacer is a scrolling aid, not message content, so jumping
     // to the container bottom would land on a blank viewport. Scroll to the
     // real content bottom instead: the last message sits at the viewport
@@ -2602,7 +2605,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const startInitialBottomPin = useCallback(() => {
     stopInitialBottomPin();
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container || container.clientHeight === 0) return;
 
     const stopFollowing = followChatBottom(container, () => scrollToBottom("instant"));
     const cleanup = () => {
@@ -2627,7 +2630,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     stopInitialBottomPin();
     const container = scrollContainerRef.current;
     const el = lastUserMsgRef.current;
-    if (!container || !el) return false;
+    if (!container || !el || container.clientHeight === 0) return false;
     const elAbsTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
     const targetScrollTop = Math.max(0, elAbsTop - 16);
     liveTailPinnedScrollTopRef.current = targetScrollTop;
@@ -2641,7 +2644,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const clampLiveTailScroll = useCallback((): boolean => {
     const container = scrollContainerRef.current;
-    if (!container) return false;
+    if (!container || container.clientHeight === 0) return false;
     const spacer = container.querySelector<HTMLElement>("[data-chat-tail-spacer]");
     if (!spacer) {
       liveTailPinnedScrollTopRef.current = null;
@@ -2661,6 +2664,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, []);
 
   const markUserScrollIntent = useCallback((event: Event) => {
+    if (!viewVisible) return;
     const target = event.target instanceof Element ? event.target : null;
     const isConversationViewport = Boolean(target?.closest("#chat-scroll-container, .chat-column-scroll-rail"));
     if (event instanceof KeyboardEvent) {
@@ -2683,9 +2687,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       liveOutputFollowRef.current = false;
       setLiveOutputFollowPaused(true);
     }
-  }, [liveOutputAutoScrollEnabled, stopInitialBottomPin]);
+  }, [viewVisible, liveOutputAutoScrollEnabled, stopInitialBottomPin]);
 
   const handleScrollPositionChange = useCallback(() => {
+    if (!viewVisible) return;
     if (clampLiveTailScroll()) return;
     if (!agentRunningRef.current && !bashRunningRef.current) return;
     if (Date.now() < ignoreProgrammaticScrollUntilRef.current) return;
@@ -2695,7 +2700,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       liveOutputFollowRef.current = false;
       setLiveOutputFollowPaused(true);
     }
-  }, [clampLiveTailScroll, liveOutputAutoScrollEnabled]);
+  }, [viewVisible, clampLiveTailScroll, liveOutputAutoScrollEnabled]);
 
   // Load session on mount
   useEffect(() => {
@@ -2812,7 +2817,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => stopInitialBottomPin, [stopInitialBottomPin]);
 
   useLayoutEffect(() => {
-    if (!liveOutputAutoScrollEnabled || (!agentRunning && !bashRunning) || loading) return;
+    if (!viewVisible || !liveOutputAutoScrollEnabled || (!agentRunning && !bashRunning) || loading) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -2841,14 +2846,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       container.removeEventListener("load", schedulePin, true);
       if (frame !== 0) cancelAnimationFrame(frame);
     };
-  }, [agentRunning, bashRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
+  }, [viewVisible, agentRunning, bashRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
 
   useLayoutEffect(() => {
     // Loading may publish the message array before the loading shell is
     // replaced by the scroll container. Do not consume the one-shot initial
     // scroll until that container is mounted, otherwise switching sessions
     // can leave the newly selected conversation at the top.
-    if (loading || messages.length === 0) return;
+    if (!viewVisible || loading || messages.length === 0) return;
+    // Revealing an unchanged idle chat is not a completion event. Keep the
+    // reader's position, but reconcile a run that finished while hidden.
+    const previous = lastScrollUpdateRef.current;
+    const changed = !previous || previous.count !== messages.length || previous.running !== agentRunning
+      || previous.autoScroll !== liveOutputAutoScrollEnabled;
+    lastScrollUpdateRef.current = { count: messages.length, running: agentRunning, autoScroll: liveOutputAutoScrollEnabled };
 
     if (pendingScrollToUserRef.current) {
       if (scrollUserMsgToTop()) {
@@ -2858,10 +2869,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } else if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
       startInitialBottomPin();
-    } else if (!agentRunningRef.current && !bashRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
+    } else if (changed && !agentRunningRef.current && !bashRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
       scrollToBottom("smooth");
     }
-  }, [messages.length, agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom, scrollUserMsgToTop, startInitialBottomPin]);
+  }, [viewVisible, messages.length, agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom, scrollUserMsgToTop, startInitialBottomPin]);
 
   // Load model list
   useEffect(() => {

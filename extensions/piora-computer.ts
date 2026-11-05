@@ -1,4 +1,4 @@
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getComputerControl } from "../lib/computer-control.ts";
 import { registerPromptRunCleanup, requirePromptToolIdentity } from "../lib/prompt-run-registry.ts";

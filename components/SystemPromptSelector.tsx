@@ -2,14 +2,14 @@
 
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { useI18n } from "@/hooks/useI18n";
 import type {
   SessionSystemPromptBinding,
-  SystemPromptCatalog,
   SystemPromptSelection,
 } from "@/lib/system-prompt-types";
+import { getSystemPromptCatalog, getServerSystemPromptCatalog, subscribeSystemPromptCatalog } from "@/lib/system-prompt-client";
 import { AliIcon } from "./AliIcon";
 import styles from "./SystemPromptSelector.module.css";
 
@@ -39,31 +39,10 @@ export function SystemPromptSelector({ selection, binding, disabled = false, onC
   const popupId = useId();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
-  const [catalog, setCatalog] = useState<SystemPromptCatalog | null>(null);
-  const [loading, setLoading] = useState(true);
+  const catalog = useSyncExternalStore(subscribeSystemPromptCatalog, getSystemPromptCatalog, getServerSystemPromptCatalog);
+  const loading = catalog === null;
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState<PopupPosition | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/system-prompt", { cache: "no-store" });
-      const data = await response.json() as SystemPromptCatalog & { error?: string };
-      if (!response.ok || data.error) throw new Error(data.error ?? `HTTP ${response.status}`);
-      setCatalog(data);
-    } catch {
-      setCatalog(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-    const reload = () => { void load(); };
-    window.addEventListener("piora:system-prompt-changed", reload);
-    return () => window.removeEventListener("piora:system-prompt-changed", reload);
-  }, [load]);
 
   useEffect(() => {
     if (catalog?.selectorVisible === false) setOpen(false);
@@ -151,7 +130,7 @@ export function SystemPromptSelector({ selection, binding, disabled = false, onC
     triggerRef.current?.focus();
   };
 
-  if (!loading && catalog?.selectorVisible === false) return null;
+  if (!catalog || !catalog.selectorVisible) return null;
 
   const popupStyle: CSSProperties | undefined = position ? {
     left: position.left,

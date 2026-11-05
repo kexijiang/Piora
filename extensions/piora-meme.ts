@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { memeJson, memeCatalog, memeDesktopAvailable, callMemeDesktop } from "../lib/dsh-meme-bridge.ts";
 import { prepareMemeDisplay } from "../lib/meme-display.ts";

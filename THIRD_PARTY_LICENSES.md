@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `42cf824a6c4a3f4219358bdade4691f89cc5e99c606bdbe2e5ed51c8602b20fb`
+Lockfile SHA-256: `93e32e86d3faaa879d1095d5bae1629eb8e95c8fe87554c5e777e79eeae03467`
 
-Unique locked packages: **1267**. Runtime packages: **767**. Build/development-only packages: **500**.
+Unique locked packages: **1269**. Runtime packages: **769**. Build/development-only packages: **500**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -74,13 +74,14 @@ Every locked package declares a license.
 | `@codemirror/state` | `6.7.6` | MIT | No |
 | `@codemirror/streamparser` | `6.0.0` | MIT | No |
 | `@codemirror/view` | `6.43.15` | MIT | No |
-| `@earendil-works/pi-agent-core` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-ai` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-codemode` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-coding-agent` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-mcp` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-telemetry` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-tui` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-agent-core` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-ai` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-codemode` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-coding-agent` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-mcp` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-schema` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-telemetry` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-tui` | `1.5.0` | MIT | No |
 | `@emnapi/runtime` | `1.11.3` | MIT | Yes |
 | `@google/genai` | `2.21.0` | Apache-2.0 | No |
 | `@grpc/grpc-js` | `1.14.6` | Apache-2.0 | No |
@@ -117,6 +118,7 @@ Every locked package declares a license.
 | `@img/sharp-win32-x64` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
 | `@isaacs/cliui` | `8.0.2` | ISC | No |
 | `@isaacs/fs-minipass` | `4.0.1` | ISC | No |
+| `@isaacs/nonrecursive-glob-match` | `1.0.3` | BlueOak-1.0.0 | No |
 | `@js-sdsl/ordered-map` | `4.4.2` | MIT | No |
 | `@koromix/koffi-android-arm64` | `3.3.3` | MIT | Yes |
 | `@koromix/koffi-android-x64` | `3.3.3` | MIT | Yes |
@@ -588,7 +590,7 @@ Every locked package declares a license.
 | `mime-db` | `1.54.0` | MIT | No |
 | `mime-types` | `2.1.35` | MIT | No |
 | `mime-types` | `3.0.2` | MIT | No |
-| `minimatch` | `10.2.6` | BlueOak-1.0.0 | No |
+| `minimatch` | `11.0.3` | BlueOak-1.0.0 | No |
 | `minimatch` | `5.1.9` | ISC | No |
 | `minimatch` | `9.0.9` | ISC | No |
 | `minipass` | `7.1.3` | BlueOak-1.0.0 | No |

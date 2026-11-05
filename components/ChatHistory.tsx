@@ -1,10 +1,10 @@
 "use client";
 import { memo, useCallback, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type Ref, type RefObject } from "react";
 import { CompactProcessSummary } from "./CompactProcessSummary";
-import { buildCompactChatHistoryRows } from "@/lib/compact-chat-history";
+import { prepareChatHistory, projectChatHistoryTail } from "@/lib/chat-history-projection";
 import { CompactProcessContext, RevealProcessCommandContext } from "./CompactProcessContext";
-import { insertCommandHistoryRows, layoutChatResponseRows, messageFingerprint } from "@/lib/chat-history";
-import type { AgentMessage, ToolResultMessage } from "@/lib/types";
+import { messageFingerprint } from "@/lib/chat-history";
+import type { AgentMessage } from "@/lib/types";
 import { useI18n } from "@/hooks/useI18n";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
@@ -12,13 +12,14 @@ import { AliIcon } from "./AliIcon";
 import { VirtualList, type VirtualListHandle } from "./VirtualList";
 import { ChatCommandCard, type ChatCommandCardActions } from "./ChatCommandCard";
 import { ModelChangeNotice } from "./ModelChangeNotice";
-import { insertModelChangeRows, type ModelChangeNotice as ModelChange } from "@/lib/model-change-notices";
+import { type ModelChangeNotice as ModelChange } from "@/lib/model-change-notices";
 import type { TaskTiming } from "@/lib/task-timing";
 import type { ChatCommandView } from "@/lib/chat-command-types";
 
 export interface ChatHistoryHandle { revealEntry(id: string): void; cancelNavigation(): void }
 type MessageProps = ComponentProps<typeof MessageView>;
 interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" | "onFork" | "onNavigate" | "onEditContent" | "onEditFailed" | "onRetry" | "retryDisabled" | "sessionId" | "onOpenAutomation" | "onOpenCommandExecution"> {
+  visible?: boolean;
   onBranch?: (entryId: string) => Promise<void>;
   messages: AgentMessage[];
   modelChanges?: ModelChange[];
@@ -42,6 +43,23 @@ interface Props extends Pick<MessageProps, "modelNames" | "cwd" | "onOpenFile" |
   commandActions?: ChatCommandCardActions;
 }
 
+const NO_MODEL_CHANGES: ModelChange[] = [];
+const NO_OPERATIONS: ChatCommandView[] = [];
+
+const HistoryMessage = memo(function HistoryMessage({ originalMessage, allowActions, onBranch, onDeleteMessage, actionsDisabled, deleteDisabled, ...props }: MessageProps & {
+  originalMessage: AgentMessage; allowActions: boolean; onBranch?: Props["onBranch"];
+  onDeleteMessage?: Props["onDeleteMessage"]; actionsDisabled: boolean; deleteDisabled: boolean;
+}) {
+  const { t } = useI18n();
+  const { entryId, message, intermediate } = props;
+  const actions = useMemo(() => <>
+    {onBranch && allowActions && entryId && (message.role === "user" || message.role === "assistant" && !intermediate && !message.content.some(block => block.type === "toolCall")) ?
+      <button type="button" className="message-delete-button" disabled={actionsDisabled} title={t("i18n.branchFromHereTitle")} onClick={() => { void onBranch(entryId); }}><AliIcon name="fork" size={11} />{t("i18n.branchFromHere")}</button> : null}
+    {allowActions && onDeleteMessage && (entryId || message.role === "user" && message.clientPromptId) ? <DeleteMessageAction message={originalMessage} entryId={entryId} onDelete={onDeleteMessage} disabled={deleteDisabled} /> : null}
+  </>, [onBranch, allowActions, entryId, message, intermediate, actionsDisabled, onDeleteMessage, originalMessage, deleteDisabled, t]);
+  return <MessageView {...props} messageActions={actions} />;
+});
+
 function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message: AgentMessage; entryId?: string; onDelete: NonNullable<Props["onDeleteMessage"]>; disabled: boolean }) {
   const { t } = useI18n();
   const [error, setError] = useState("");
@@ -57,19 +75,20 @@ function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message
 }
 
 /** One turn projection for saved history and the live tail in both display modes. */
-export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, modelChanges = [], compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onBranch, onDeleteMessage, deleteDisabled = false, operations = [], commandActions, responseTimings, ...messageProps }: Props) {
+function ChatHistoryContent({ visible: _visible, messages: savedMessages, modelChanges = NO_MODEL_CHANGES, compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onBranch, onDeleteMessage, deleteDisabled = false, operations = NO_OPERATIONS, commandActions, responseTimings, ...messageProps }: Props) {
   const { t } = useI18n();
-  const messages = useMemo(() => streamingMessage ? [...savedMessages, streamingMessage] : savedMessages, [savedMessages, streamingMessage]);
-  const streamingIndex = streamingMessage ? messages.length - 1 : -1;
   const [expanded, setExpanded] = useState<Map<string, boolean>>(() => new Map());
   const [inspectCommand, setInspectCommand] = useState<string | null>(null);
   const list = useRef<VirtualListHandle>(null);
-  const { rows, entryRows, entryGroups } = useMemo(() => {
-    const plan = buildCompactChatHistoryRows(messages, entryIds, busy || streaming, expanded, streamingIndex, compactProcess, directProcess);
-    return { ...plan, rows: insertModelChangeRows(layoutChatResponseRows(insertCommandHistoryRows(plan.rows, messages, entryIds, operations), messages, busy || streaming), entryIds, modelChanges) };
-  }, [messages, entryIds, busy, streaming, expanded, compactProcess, directProcess, streamingIndex, operations, modelChanges]);
+  const base = useMemo(() => prepareChatHistory(savedMessages, entryIds, expanded, compactProcess, directProcess, operations, modelChanges),
+    [savedMessages, entryIds, expanded, compactProcess, directProcess, operations, modelChanges]);
+  const { messages, rows, entryRows, entryGroups, toolResults, stableKeys } = useMemo(() => projectChatHistoryTail(base, streamingMessage, busy || streaming), [base, streamingMessage, busy, streaming]);
+  const metadata = base.metadata;
   const visibleRows = rows;
-  const keys = useMemo(() => visibleRows.map((row) => row.key), [visibleRows]);
+  // Text-only deltas retain the key array too: VirtualList need not rebuild
+  // every offset or prune its height/disclosure caches on every token.
+  const tailKeysJson = JSON.stringify(rows.slice(stableKeys.length).map(row => row.key));
+  const keys = useMemo(() => [...stableKeys, ...JSON.parse(tailKeysJson) as string[]], [stableKeys, tailKeysJson]);
   const pendingReveal = useRef<string | null>(null);
   useLayoutEffect(() => {
     const key = pendingReveal.current ? entryRows.get(pendingReveal.current) : undefined;
@@ -78,27 +97,6 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
       pendingReveal.current = null;
     }
   }, [keys, entryRows]);
-  const metadata = useMemo(() => {
-    const toolResults = new Map<string, ToolResultMessage>();
-    const userIndices = new Map<number, number>();
-    const showTimestamps = new Set<number>();
-    let lastUser = -1;
-    let lastAssistant = -1;
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-      if (message.role === "toolResult") toolResults.set(message.toolCallId, message);
-      if (message.role === "user") {
-        userIndices.set(i, userIndices.size);
-        if (lastAssistant >= 0) showTimestamps.add(lastAssistant);
-        lastUser = i; lastAssistant = -1;
-      }
-      if (message.role === "assistant") {
-        lastAssistant = i;
-      }
-    }
-    if (lastAssistant >= 0) showTimestamps.add(lastAssistant);
-    return { toolResults, userIndices, lastUser, showTimestamps };
-  }, [messages]);
   useImperativeHandle(handleRef, () => ({
     revealEntry(id) {
       const key = entryRows.get(id);
@@ -111,6 +109,10 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
     cancelNavigation() { pendingReveal.current = null; list.current?.cancelNavigation(); },
   }), [entryRows, entryGroups]);
   const toggle = useCallback((key: string, open: boolean) => setExpanded(previous => new Map(previous).set(key, open)), []);
+
+  // A session can first mount behind settings (e.g. after extension reload).
+  // Subsequent hides are handled by the memo boundary without unmounting rows.
+  if (_visible === false) return null;
 
   // Mount the newly sent prompt before the session hook's layout scroll runs.
   const pendingUserKey = pendingScrollToUserRef.current ? rows.find((row) => !row.process && row.index === metadata.lastUser)?.key : undefined;
@@ -137,12 +139,9 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
       }}
       ref={index === metadata.lastUser ? (element) => { lastUserMsgRef.current = element; if (element && pendingScrollToUserRef.current) list.current?.cancelNavigation(); } : undefined}>
       <RenderErrorBoundary resetKey={messageFingerprint(message, entryIds[index])} fallbackLabel={t("chat.messageRenderFailed")} errorTitle={t("chat.messageRenderError")}>
-        <MessageView {...messageProps} message={message} intermediate={row.intermediate} isStreaming={row.isStreaming} toolResults={metadata.toolResults} entryId={entryIds[index]}
-          messageActions={<>
-            {onBranch && row.attachRef !== false && entryIds[index] && (message.role === "user" || message.role === "assistant" && !row.intermediate && !message.content.some(block => block.type === "toolCall")) ?
-              <button type="button" className="message-delete-button" disabled={busy || streaming || isNew || Boolean(forkingEntryId)} title={t("i18n.branchFromHereTitle")} onClick={() => { void onBranch(entryIds[index]); }}><AliIcon name="fork" size={11} />{t("i18n.branchFromHere")}</button> : null}
-            {row.attachRef !== false && onDeleteMessage && (entryIds[index] || message.role === "user" && message.clientPromptId) ? <DeleteMessageAction message={messages[index]} entryId={entryIds[index]} onDelete={onDeleteMessage} disabled={deleteDisabled || busy || streaming} /> : null}
-          </>}
+        <HistoryMessage {...messageProps} message={message} intermediate={row.intermediate} isStreaming={row.isStreaming} toolResults={toolResults} entryId={entryIds[index]}
+          originalMessage={messages[index]} allowActions={row.attachRef !== false} onBranch={onBranch} onDeleteMessage={onDeleteMessage}
+          actionsDisabled={busy || streaming || isNew || Boolean(forkingEntryId)} deleteDisabled={deleteDisabled || busy || streaming}
           onFork={busy || isNew || index === 0 && message.role === "user" ? undefined : messageProps.onFork}
           onNavigate={busy ? undefined : messageProps.onNavigate}
           forking={forkingEntryId === entryIds[index]}
@@ -152,4 +151,11 @@ export const ChatHistory = memo(function ChatHistory({ messages: savedMessages, 
       </RenderErrorBoundary>
     </div></RevealProcessCommandContext.Provider></CompactProcessContext.Provider>;
   }} />;
-});
+}
+
+// Freeze only the presentation. The owning session hook keeps receiving SSE,
+// reconciling completion and persisting recovery receipts while settings is open.
+// Retaining this subtree also retains virtual heights and disclosure state.
+export const ChatHistory = memo(ChatHistoryContent, (previous, next) =>
+  next.visible === false || Object.keys(next).length === Object.keys(previous).length
+    && (Object.keys(next) as Array<keyof Props>).every(key => Object.is(previous[key], next[key])));

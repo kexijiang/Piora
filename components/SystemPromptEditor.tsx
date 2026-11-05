@@ -10,6 +10,7 @@ import {
   type PromptOptimizerModelPreference,
 } from "@/lib/prompt-optimizer-settings";
 import type { SystemPromptCatalog, SystemPromptTemplate } from "@/lib/system-prompt-types";
+import { publishSystemPromptCatalog } from "@/lib/system-prompt-client";
 import { AliIcon } from "./AliIcon";
 import { requestConfirmation } from "./ConfirmDialog";
 import styles from "./SystemPromptEditor.module.css";
@@ -150,7 +151,8 @@ export function SystemPromptEditor({ effectivePrompt, compact = false, onSaved }
 
   const publish = useCallback((next: SystemPromptCatalog, preferredId?: string | null) => {
     applyCatalog(next, preferredId);
-    window.dispatchEvent(new CustomEvent("piora:system-prompt-changed"));
+    publishSystemPromptCatalog(next);
+    window.dispatchEvent(new CustomEvent("piora:system-prompt-changed", { detail: next }));
     onSaved?.();
   }, [applyCatalog, onSaved]);
 
@@ -197,7 +199,8 @@ export function SystemPromptEditor({ effectivePrompt, compact = false, onSaved }
     try {
       const next = await requestCatalog("PATCH", { selectorVisible: visible });
       setCatalog(next);
-      window.dispatchEvent(new CustomEvent("piora:system-prompt-changed"));
+      publishSystemPromptCatalog(next);
+      window.dispatchEvent(new CustomEvent("piora:system-prompt-changed", { detail: next }));
       onSaved?.();
       setStatus(t("system.selectorVisibilitySaved"));
     } catch (visibilityError) {

@@ -1,6 +1,6 @@
 import { APP_DISPLAY_NAME } from "../lib/branding.ts";
 import { roomMessageAttribution, roomMessageSender, ROOM_SENDER_AUTHORITY_NOTE } from "../lib/room-sender.ts";
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { defineTool, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import {
   appendPrivateNote,

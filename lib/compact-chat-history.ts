@@ -44,16 +44,18 @@ function needsAttention(block: AssistantContentBlock, results: Map<string, ToolR
 export function buildCompactChatHistoryRows(
   messages: AgentMessage[], entryIds: string[], busy: boolean,
   choices: ReadonlyMap<string, boolean>, streamingIndex = -1, compact = false, direct = false,
+  range?: { start: number; end: number; results: Map<string, ToolResultMessage> },
 ) {
   const rows: ChatHistoryRow[] = [];
   const entryRows = new Map<string, string>();
   const entryGroups = new Map<string, string>();
-  const results = new Map<string, ToolResultMessage>();
-  for (const message of messages) if (message.role === "toolResult") results.set(message.toolCallId, message);
-  for (let start = 0; start < messages.length;) {
+  const results = range?.results ?? new Map<string, ToolResultMessage>();
+  if (!range) for (const message of messages) if (message.role === "toolResult") results.set(message.toolCallId, message);
+  const limit = range?.end ?? messages.length;
+  for (let start = range?.start ?? 0; start < limit;) {
     let end = start + 1;
     // Compaction and custom status cards can occur within one user turn.
-    while (end < messages.length && messages[end].role !== "user") end++;
+    while (end < limit && messages[end].role !== "user") end++;
     const active = busy && end === messages.length;
     const anchor = messages[start];
     const key = `compact-process:${entryIds[start] || (anchor.role === "user" ? anchor.clientPromptId : undefined) || start}`;

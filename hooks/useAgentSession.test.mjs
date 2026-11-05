@@ -1146,9 +1146,9 @@ test("waits for the session scroll container before consuming the initial bottom
     source.indexOf("// Load model list"),
   );
 
-  assert.match(scrollEffectSource, /if \(loading \|\| messages\.length === 0\) return/);
+  assert.match(scrollEffectSource, /if \(!viewVisible \|\| loading \|\| messages\.length === 0\) return/);
   assert.match(scrollEffectSource, /startInitialBottomPin\(\)/);
-  assert.match(scrollEffectSource, /\[messages\.length, agentRunning, liveOutputAutoScrollEnabled, loading,/);
+  assert.match(scrollEffectSource, /\[viewVisible, messages\.length, agentRunning, liveOutputAutoScrollEnabled, loading,/);
 });
 
 test("pins a newly selected session to the bottom while async content settles", () => {
@@ -1177,7 +1177,7 @@ test("keeps live session output pinned to the newest content", () => {
     source.indexOf("// Loading may publish the message array"),
   );
 
-  assert.match(livePinSource, /if \(!liveOutputAutoScrollEnabled \|\| \(!agentRunning && !bashRunning\) \|\| loading\) return/);
+  assert.match(livePinSource, /if \(!viewVisible \|\| !liveOutputAutoScrollEnabled \|\| \(!agentRunning && !bashRunning\) \|\| loading\) return/);
   assert.match(livePinSource, /scrollToBottom\("instant"\)/);
   assert.match(livePinSource, /if \(!liveOutputFollowRef\.current\) return/);
   assert.match(livePinSource, /new ResizeObserver\(schedulePin\)/);

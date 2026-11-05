@@ -2812,6 +2812,7 @@ export function AppShell() {
             ) : showChat ? (
               <ChatWindow
                 key={sessionKey}
+                visible={!settingsDialogOpen}
                 historyVisible={historyDialogOpen && !settingsDialogOpen}
                 onHistoryControlsChange={setHistoryControls}
                 session={selectedSession}

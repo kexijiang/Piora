@@ -1,4 +1,5 @@
-import { Type, validateToolArguments } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
+import { validateToolArguments } from "@earendil-works/pi-ai";
 import { HarmonyError } from "../errors";
 import { assertToolJsonObject } from "../../tool-json";
 
