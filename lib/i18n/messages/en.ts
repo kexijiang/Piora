@@ -160,7 +160,7 @@ export const enLocale: LocalePlugin = {
     "computer.desktopOnly": "Windows desktop edition only",
     "computer.connectionError": "Could not connect to computer control",
     "settings.updateSource": "Update source",
-    "settings.updateAlphaUnsupported": "Alpha builds require manual download and installation. Update sources and scheduled updates are disabled. Install a beta or stable build to use automatic updates.",
+    "settings.updateNonStableUnsupported": "Beta, legacy alpha and development builds require manual installation. Automatic updates are available only in stable Windows installer builds.",
     "settings.updateSourceDescription": "Choose GitHub or the internal release channel. Your stable/beta preference is retained; changes apply to the next check.",
     "settings.updateSourceGithub": "GitHub",
     "settings.updateSourceInternal": "Internal",

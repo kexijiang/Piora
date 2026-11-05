@@ -85,7 +85,6 @@ import {
   DesktopUpdateController,
   type DesktopUpdateState,
 } from "./app-updater.js";
-import { readOrCreateDesktopReleaseAudience } from "./release-audience.js";
 import { configuredUpdateFeed, readUpdateSource, writeUpdateSource } from "./update-source.js";
 import { validateBrandUpdateInfo } from "./update-brand-validation.js";
 import { preparePreviewUpdateFeed } from "./update-release-selector.js";
@@ -704,7 +703,7 @@ function registerDesktopUpdateStateHandler(): void {
   ipcMain.handle("pi:update-schedule-set", (event, input: unknown) => {
     if (!isTrustedMainWindowSender(event) || !logger) return null;
     const next = parseUpdateSchedule(input);
-    if (next.enabled && desktopUpdateState.status === "unsupported") throw new Error("Scheduled updates require the Windows installer edition");
+    if (next.enabled && desktopUpdateState.status === "unsupported") throw new Error("Scheduled updates require the stable Windows installer edition");
     // A renderer cannot forge the scheduler's completion marker.
     const saved: UpdateSchedule = { enabled: next.enabled, time: next.time,
       ...(updateSchedule.lastCompletedDay ? { lastCompletedDay: updateSchedule.lastCompletedDay } : {}) };
@@ -848,7 +847,8 @@ function initializeDesktopUpdater(log: Logger): void {
     && !PORTABLE_SMOKE_TEST
     && !process.env.PORTABLE_EXECUTABLE_FILE;
   const currentVersion = app.getVersion();
-  const audience = readOrCreateDesktopReleaseAudience(app.getPath("userData"), currentVersion, log);
+  // Current stable installs must ignore legacy preview enrollment.
+  const audience = "stable";
   desktopUpdateController = new DesktopUpdateController(
     supported ? autoUpdater : null,
     currentVersion,
@@ -872,7 +872,7 @@ function initializeDesktopUpdater(log: Logger): void {
   );
   desktopUpdateController.subscribe(publishDesktopUpdateState);
   registerDesktopUpdateStateHandler();
-  if (!supported) return;
+  if (desktopUpdateController.getState().status === "unsupported") return;
 
   const scheduler = new ScheduledDesktopUpdater({
     controller: desktopUpdateController,

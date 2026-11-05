@@ -41,7 +41,7 @@ export function DesktopUpdateScheduleSetting() {
         aria-describedby={`desktop-update-schedule-description${state && !state.supported ? " desktop-update-schedule-unavailable" : ""}`}
         disabled={!state?.supported || saving} onClick={() => void save(!state?.enabled, state?.time)}><span /></button>
     </div>
-    {state && !state.supported && <p id="desktop-update-schedule-unavailable" role="note" className={updateStyles.note}>{t(state.unsupportedReason === "alpha" ? "settings.updateAlphaUnsupported" : "settings.updateScheduleUnsupported")}</p>}
+    {state && !state.supported && <p id="desktop-update-schedule-unavailable" role="note" className={updateStyles.note}>{t(state.unsupportedReason === "non-stable" ? "settings.updateNonStableUnsupported" : "settings.updateScheduleUnsupported")}</p>}
     {state?.supported && <div className={updateStyles.field}>
       <label htmlFor="desktop-update-time" className={styles.rowTitle}>{t("settings.updateScheduleTime")}</label>
       <div className="ui-inline-actions">

@@ -1,7 +1,7 @@
 import { parseUpdateSource, type DesktopUpdateSource } from "./update-source.js";
 import type { AppUpdater } from "electron-updater";
 import type { Logger } from "./logger.js";
-import type { DesktopReleaseAudience } from "./release-audience.js";
+import { isStableDesktopVersion, type DesktopReleaseAudience } from "./release-audience.js";
 
 export type DesktopUpdateStatus =
   | "unsupported"
@@ -15,7 +15,7 @@ export type DesktopUpdateStatus =
 
 export interface DesktopUpdateState {
   status: DesktopUpdateStatus;
-  unsupportedReason?: "alpha" | "installer-required";
+  unsupportedReason?: "non-stable" | "installer-required";
   currentVersion: string;
   audience: DesktopReleaseAudience;
   source?: DesktopUpdateSource;
@@ -89,16 +89,16 @@ export class DesktopUpdateController {
     private readonly logger: Logger,
     private readonly options: DesktopUpdateControllerOptions = {},
   ) {
-    // Alpha builds never initialize an updater, including over existing beta installs.
-    const isAlpha = /^(?:v)?\d+\.\d+\.\d+-alpha\.\d+$/.test(currentVersion.trim());
-    if (isAlpha) {
+    // Gate every updater entry point by the running build, never a persisted audience.
+    const isStable = isStableDesktopVersion(currentVersion);
+    if (!isStable) {
       this.updater = null;
       updater = null;
     }
-    const audience = options.audience ?? "stable";
+    const audience = isStable ? "stable" : options.audience ?? "preview";
     this.state = {
       status: updater ? "idle" : "unsupported",
-      ...(!updater ? { unsupportedReason: isAlpha ? "alpha" as const : "installer-required" as const } : {}),
+      ...(!updater ? { unsupportedReason: !isStable ? "non-stable" as const : "installer-required" as const } : {}),
       currentVersion: normalizedVersion(currentVersion) ?? currentVersion,
       audience,
       source: options.source ?? "github",
@@ -108,7 +108,7 @@ export class DesktopUpdateController {
     updater.autoDownload = false;
     updater.autoInstallOnAppQuit = false;
     updater.autoRunAppAfterInstall = true;
-    updater.allowPrerelease = audience === "preview";
+    updater.allowPrerelease = false;
     updater.logger = logger;
 
     updater.on("checking-for-update", () => {
@@ -118,7 +118,10 @@ export class DesktopUpdateController {
       this.publish({ status: "up-to-date" });
     });
     updater.on("update-available", (info) => {
-      try { this.options.validateUpdateInfo?.(info); } catch (error) { this.fail(error); return; }
+      try {
+        if (!isStableDesktopVersion(info.version)) throw new Error("Only stable releases can be installed automatically");
+        this.options.validateUpdateInfo?.(info);
+      } catch (error) { this.fail(error); return; }
       const availableVersion = normalizedVersion(info.version);
       const releaseNotes = normalizedReleaseNotes(info.releaseNotes);
       this.publish({
@@ -140,7 +143,10 @@ export class DesktopUpdateController {
       });
     });
     updater.on("update-downloaded", (info) => {
-      try { this.options.validateUpdateInfo?.(info); } catch (error) { this.fail(error); return; }
+      try {
+        if (!isStableDesktopVersion(info.version)) throw new Error("Only stable releases can be installed automatically");
+        this.options.validateUpdateInfo?.(info);
+      } catch (error) { this.fail(error); return; }
       const availableVersion = normalizedVersion(info.version);
       const releaseNotes = normalizedReleaseNotes(info.releaseNotes);
       this.publish({

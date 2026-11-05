@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export function brandReleaseGroups(tag) {
-  if (!/^v\d+\.\d+\.\d+(?:-(?:alpha|beta)\.\d+)?$/.test(tag)) throw new Error("Invalid release tag");
+  if (!/^v\d+\.\d+\.\d+(?:-(?:beta)\.\d+)?$/.test(tag)) throw new Error("Invalid release tag");
   const version = tag.slice(1);
   const preview = version.includes("-beta.");
   return ["piora"].flatMap(id => {
@@ -14,7 +14,7 @@ export function brandReleaseGroups(tag) {
     const groups = [{
       directory: `${id}-windows-${tag}`,
       checksum: "SHA256SUMS.txt",
-      files: [`${prefix}-${version}-win-x64-setup.exe`, `${prefix}-${version}-win-x64-setup.exe.blockmap`, ...(version.includes("-alpha.") ? [] : [channel])],
+      files: [`${prefix}-${version}-win-x64-setup.exe`, `${prefix}-${version}-win-x64-setup.exe.blockmap`, channel],
     }];
     return groups;
   });

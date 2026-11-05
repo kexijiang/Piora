@@ -125,8 +125,8 @@ installation while tasks or unsaved edits remain.
 
 Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` to build and verify the
 Windows installer. Once the entire run succeeds, `publish-preview.yml` publishes
-those exact artifacts automatically without human approval. Installed beta builds
-use the beta update channel.
+those exact artifacts automatically without human approval. Installed beta builds require manual updates. Only stable Windows installer builds
+enable update checks, downloads and scheduled installation, regardless of historical audience enrollment.
 Settings > General also provides an opt-in scheduled silent update: installation
 waits for tasks to finish, edits to be saved, and the computer to be idle. This is
 unavailable in portable/development builds. See [release procedure](../docs/release.md)
@@ -190,6 +190,6 @@ Windows 安装版和便携版内置完整 PowerShell 7，终端默认直接启�
 `third_party/powershell/manifest.json` 锁定，GitHub Actions 打包时校验 SHA-256，
 保留全部上游许可文件，并在隔离目录验证内置终端。不要在本机构建发布包。
 
-### Alpha 手动测试包
+### 测试版发布
 
-`vX.Y.Z-alpha.N` 标签复用 preview 构建与发布工作流，发布 GitHub Pre-release。只提供 Windows x64 NSIS 安装包、blockmap 和 SHA256SUMS.txt；不发布 beta.yml/latest.yml，alpha 客户端禁用更新。验证通过后使用新的 beta 标签正常发布。发布前仍需同步根/桌面包与锁文件版本、许可证清单，并在 CHANGELOG.md 添加对应版本说明。更新元数据仅在 CI 内用于验证，上传前移除。
+Alpha 构建与分发已下线，发布入口仅接受 stable / beta 标签。Beta 为手动安装测试版；旧 Alpha 与开发版也不参与自动更新。Beta 保留安装包、blockmap、更新 YAML 和校验和供产物验证，客户端不会消费测试版更新。

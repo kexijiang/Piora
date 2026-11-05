@@ -8,7 +8,7 @@ import { listPackage, extractFile } from "@electron/asar";
 import { extractVersionNotes } from "./create-release-notes.mjs";
 import { loadBranding, runtimeBranding } from "./branding-config.mjs";
 
-const VERSION_PATTERN = /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(alpha|beta)\.(0|[1-9]\d*))?$/;
+const VERSION_PATTERN = /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(beta)\.(0|[1-9]\d*))?$/;
 
 function normalizeVersion(value) {
   const match = String(value ?? "").trim().match(VERSION_PATTERN);
@@ -50,7 +50,7 @@ export function verifyUpdateReleaseNotes(metadata, expected, label = "update met
 export async function verifyWindowsUpdateArtifacts(releaseRoot, requestedVersion, expectedReleaseNotes, brand) {
   const root = resolve(releaseRoot);
   const version = normalizeVersion(requestedVersion);
-  const audience = /-(?:alpha|beta)\./.test(version) ? "preview" : "stable";
+  const audience = /-(?:beta)\./.test(version) ? "preview" : "stable";
   const channel = brand?.updateChannels[audience] ?? (audience === "preview" ? "beta" : "latest");
   const installerName = `${brand?.artifactPrefix ?? "Piora"}-${version}-win-x64-setup.exe`;
   const installerPath = join(root, installerName);

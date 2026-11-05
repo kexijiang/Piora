@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - "v*-beta.*"
-      - "v*-alpha.*"
 
 permissions:
   contents: read
@@ -169,11 +168,6 @@ jobs:
             "$env:BRAND_PREFIX-$version-win-x64-setup.exe.blockmap",
             "$env:BRAND_CHANNEL.yml"
           )
-          if ($version -match "-alpha\.") {
-            # Keep metadata for package verification only, never in the published payload.
-            $expectedNames = @($expectedNames | Where-Object { $_ -notlike "*.yml" })
-            Remove-Item -LiteralPath (Join-Path $releaseRoot "$env:BRAND_CHANNEL.yml")
-          }
           $artifacts = @($expectedNames | ForEach-Object {
             $path = Join-Path $releaseRoot $_
             if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {

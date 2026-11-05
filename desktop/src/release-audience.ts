@@ -12,6 +12,10 @@ interface PersistedReleaseAudience {
 }
 
 const PREVIEW_VERSION_PATTERN = /^(?:v)?\d+\.\d+\.\d+-beta\.\d+$/;
+export function isStableDesktopVersion(version: string): boolean {
+  return /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(version.trim());
+}
+
 export const RELEASE_AUDIENCE_FILE = "release-audience.json";
 
 export function inferDesktopBuildAudience(version: string): DesktopReleaseAudience {

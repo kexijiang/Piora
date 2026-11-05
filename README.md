@@ -16,7 +16,7 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型和扩展机制。项目由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。Piora 不提供统一模型订阅或内置 API Key；使用自己的模型服务账号，费用与额度由服务商管理。
 
-**当前源码 / 本次 Beta：`0.5.10-beta.3`（2026-11-05）**，升级 Pi 内核至 1.5.0，并优化模板选择器、设置切换与长会话流式渲染，支持后续 beta 更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.3) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
+**当前源码 / 本次 Beta：`0.5.10-beta.3`（2026-11-05）**，升级 Pi 内核至 1.5.0，并优化模板选择器、设置切换与长会话流式渲染，测试版需手动下载安装更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.3) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
 
 [下载安装](#下载与安装) · [首次使用](#第一次完成任务) · [功能导览](#功能导览) · [更新与内网部署](#更新与内网部署) · [开发贡献](#开发与贡献) · [中文手册](docs/user-manual.zh-CN.md)
 
@@ -178,15 +178,15 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 ## 更新与内网部署
 
-**更新来源**和**稳定 / Beta 渠道**是两个独立选择。在设置中搜索“更新来源”，选择 GitHub 或内源，再检查更新。切换会清除旧来源的可安装状态；网络失败注明来源，允许手动切换重试。不会自动降级，也不会静默换源。
+**更新来源**和**版本更新资格**相互独立；只有正式安装版启用自动更新。在设置中搜索“更新来源”，选择 GitHub 或内源，再检查更新。切换会清除旧来源的可安装状态；网络失败注明来源，允许手动切换重试。不会自动降级，也不会静默换源。
 
 | 设置 | 当前 GitHub 发行版行为 |
 | --- | --- |
 | GitHub 来源 | 默认值，从本仓库 Release 获取安装包和更新说明 |
 | 内源 | 已有选择与持久化能力；地址为源码占位，未配置时提示“内源更新地址未配置” |
 | 稳定渠道 | 只选择稳定版 |
-| Beta 渠道 | 可选择更高版本的 Beta 或稳定版 |
-| Alpha 手动测试包 | 不提供自动更新，也不会被 Beta / 稳定更新选中 |
+| Beta 测试版 | 仅手动下载安装，不检查、下载或静默安装更新 |
+| 旧 Alpha / 开发版 | 不提供自动更新；Alpha 流水线已下线，请手动迁移到正式版或 Beta |
 
 <!-- SCREENSHOT: 12-updates -->
 ![待补截图 12：更新来源与版本](docs/images/readme/12-updates.svg)

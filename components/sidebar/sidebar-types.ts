@@ -119,7 +119,7 @@ declare global {
 
 export interface DesktopUpdateState {
   status: "unsupported" | "idle" | "checking" | "up-to-date" | "available" | "downloading" | "downloaded" | "error";
-  unsupportedReason?: "alpha" | "installer-required";
+  unsupportedReason?: "non-stable" | "installer-required";
   currentVersion: string;
   audience: "stable" | "preview";
   source?: "github" | "internal";
