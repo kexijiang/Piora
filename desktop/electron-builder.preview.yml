@@ -1,7 +1,7 @@
 extends: electron-builder.yml
 
 # GitHub releases do not infer an updater channel from a prerelease version.
-# Pin beta metadata explicitly so preview installations can consume beta.yml.
+# Keep beta metadata for artifact verification; beta clients require manual installation.
 publish:
   provider: github
   owner: kexijiang

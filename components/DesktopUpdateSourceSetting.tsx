@@ -60,6 +60,6 @@ export function DesktopUpdateSourceSetting() {
       <button type="button" className="ui-button" disabled={disabled} onClick={() => void act(source === "github" ? "internal" : "github", true)}>{t("settings.updateSourceSwitchRetry")}</button>
     </div>}
     {failed && <p role="alert" className={`ui-error ${updateStyles.status}`}>{t("settings.updateSourceSaveError")}</p>}
-    {state?.status === "unsupported" && <p id="desktop-update-source-unavailable" role="note" className={updateStyles.note}>{t(state.unsupportedReason === "alpha" ? "settings.updateAlphaUnsupported" : "settings.updateScheduleUnsupported")}</p>}
+    {state?.status === "unsupported" && <p id="desktop-update-source-unavailable" role="note" className={updateStyles.note}>{t(state.unsupportedReason === "non-stable" ? "settings.updateNonStableUnsupported" : "settings.updateScheduleUnsupported")}</p>}
   </div>;
 }

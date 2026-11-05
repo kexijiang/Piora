@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing alpha or beta tag produced by harmony-preview.yml
+        description: Existing beta tag produced by harmony-preview.yml
         type: string
         required: true
       build_run_id:
@@ -31,7 +31,7 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository &&
        startsWith(github.event.workflow_run.head_branch, 'v') &&
-       (contains(github.event.workflow_run.head_branch, '-beta.') || contains(github.event.workflow_run.head_branch, '-alpha.')))
+       contains(github.event.workflow_run.head_branch, '-beta.'))
     runs-on: windows-latest
     timeout-minutes: 15
     permissions:
@@ -59,7 +59,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if ($env:PREVIEW_TAG -notmatch '^v\d+\.\d+\.\d+-(alpha|beta)\.\d+$') { throw 'tag must be an alpha or beta version tag' }
+          if ($env:PREVIEW_TAG -notmatch '^v\d+\.\d+\.\d+-beta\.\d+$') { throw 'tag must be a beta version tag' }
           if ($env:BUILD_RUN_ID -notmatch '^[1-9]\d*$') { throw 'build_run_id must be a GitHub Actions run id' }
           git fetch --no-tags --force origin +refs/heads/main:refs/remotes/origin/main
           node scripts/verify-release-metadata.mjs $env:PREVIEW_TAG --prerelease --require-origin-main
@@ -104,9 +104,7 @@ jobs:
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "Piora-$version-win-x64-setup.exe.blockmap")).Path,
             (Resolve-Path -LiteralPath (Join-Path $releaseRoot "SHA256SUMS.txt")).Path
           )
-          if ($version -notmatch "-alpha\.") {
-            $assets += (Resolve-Path -LiteralPath (Join-Path $releaseRoot "beta.yml")).Path
-          }
+          $assets += (Resolve-Path -LiteralPath (Join-Path $releaseRoot "beta.yml")).Path
           $releaseNotesPath = (Resolve-Path -LiteralPath (Join-Path $releaseRoot 'release-notes.md')).Path
           gh release create $env:PREVIEW_TAG @assets `
             --repo $env:GITHUB_REPOSITORY `
