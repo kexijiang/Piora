@@ -52,8 +52,8 @@ declare global {
       setMenuLocale?: (locale: "en" | "zh-CN") => Promise<boolean>;
       setUpdateSource?: (source: "github" | "internal") => Promise<DesktopUpdateState | null>;
       getUpdateState?: () => Promise<DesktopUpdateState | null>;
-      getUpdateSchedule?: () => Promise<{ enabled: boolean; time: string; supported: boolean } | null>;
-      setUpdateSchedule?: (input: { enabled: boolean; time: string }) => Promise<{ enabled: boolean; time: string; supported: boolean } | null>;
+      getUpdateSchedule?: () => Promise<{ enabled: boolean; time: string; supported: boolean; unsupportedReason?: DesktopUpdateState["unsupportedReason"] } | null>;
+      setUpdateSchedule?: (input: { enabled: boolean; time: string }) => Promise<{ enabled: boolean; time: string; supported: boolean; unsupportedReason?: DesktopUpdateState["unsupportedReason"] } | null>;
       setUpdateBlocker?: (key: string, blocked: boolean) => Promise<void>;
       checkForUpdates?: () => Promise<DesktopUpdateState | null>;
       downloadUpdate?: () => Promise<DesktopUpdateState | null>;
@@ -119,6 +119,7 @@ declare global {
 
 export interface DesktopUpdateState {
   status: "unsupported" | "idle" | "checking" | "up-to-date" | "available" | "downloading" | "downloaded" | "error";
+  unsupportedReason?: "alpha" | "installer-required";
   currentVersion: string;
   audience: "stable" | "preview";
   source?: "github" | "internal";

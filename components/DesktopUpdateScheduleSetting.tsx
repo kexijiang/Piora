@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import styles from "./SettingsDialog.module.css";
+import updateStyles from "./DesktopUpdateSettings.module.css";
+import type { DesktopUpdateState } from "./sidebar/sidebar-types";
 
 export function DesktopUpdateScheduleSetting() {
   const { t } = useI18n();
-  const [state, setState] = useState<{ enabled: boolean; time: string; supported: boolean } | null>(null);
+  const [state, setState] = useState<{ enabled: boolean; time: string; supported: boolean; unsupportedReason?: DesktopUpdateState["unsupportedReason"] } | null>(null);
   const [time, setTime] = useState("03:00");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -29,16 +31,18 @@ export function DesktopUpdateScheduleSetting() {
     finally { setSaving(false); }
   }
 
-  return <div data-settings-id="general.updateSchedule">
-    <div className={styles.conversationRow}>
-      <div className={styles.conversationCopy}>
+  return <div data-settings-id="general.updateSchedule" className={updateStyles.setting}>
+    <div className={updateStyles.field}>
+      <div className={updateStyles.copy}>
         <div className={styles.rowTitle}>{t("settings.updateSchedule")}</div>
-        <div className={styles.rowDescription}>{t(state && !state.supported ? "settings.updateScheduleUnsupported" : "settings.updateScheduleDescription")}</div>
+        <p id="desktop-update-schedule-description" className={updateStyles.description}>{t("settings.updateScheduleDescription")}</p>
       </div>
       <button type="button" className={styles.switch} role="switch" aria-label={t("settings.updateSchedule")} aria-checked={state?.enabled ?? false}
+        aria-describedby={`desktop-update-schedule-description${state && !state.supported ? " desktop-update-schedule-unavailable" : ""}`}
         disabled={!state?.supported || saving} onClick={() => void save(!state?.enabled, state?.time)}><span /></button>
     </div>
-    {state?.supported && <div className={styles.conversationRow}>
+    {state && !state.supported && <p id="desktop-update-schedule-unavailable" role="note" className={updateStyles.note}>{t(state.unsupportedReason === "alpha" ? "settings.updateAlphaUnsupported" : "settings.updateScheduleUnsupported")}</p>}
+    {state?.supported && <div className={updateStyles.field}>
       <label htmlFor="desktop-update-time" className={styles.rowTitle}>{t("settings.updateScheduleTime")}</label>
       <div className="ui-inline-actions">
         <input id="desktop-update-time" className="ui-input" type="time" value={time} disabled={saving}
@@ -46,6 +50,6 @@ export function DesktopUpdateScheduleSetting() {
         <button className="ui-button" type="button" disabled={saving || time === state.time || !time} onClick={() => void save(state.enabled)}>{t("i18n.save")}</button>
       </div>
     </div>}
-    {error && <p className="ui-error" role="alert">{t("settings.updateScheduleError")}</p>}
+    {error && <p className={`ui-error ${updateStyles.status}`} role="alert">{t("settings.updateScheduleError")}</p>}
   </div>;
 }

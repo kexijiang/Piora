@@ -169,6 +169,7 @@ export const zhCNLocale: LocalePlugin = {
     "settings.updateScheduleDescription": "软件运行时，每天到点自动检查并下载更新。任务结束、文件已保存且电脑空闲一分钟后，静默覆盖安装并重新打开。失败会稍后重试；关闭开关可停止自动安装。",
     "settings.updateScheduleTime": "每天更新时间（本地时间）",
     "settings.updateScheduleUnsupported": "仅 Windows 安装版支持自动覆盖更新，便携版和开发模式不可用。",
+    "settings.updateAlphaUnsupported": "Alpha 测试版仅支持手动下载安装，不能切换更新来源或启用定时更新。请安装 Beta 或稳定版后使用自动更新。",
     "settings.updateScheduleError": "无法读取或保存更新设置，请重新打开设置后重试。",
     "trash.title": "回收站",
     "trash.description": "删除的会话及其分支保留 30 天，可在此恢复。",

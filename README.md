@@ -6,7 +6,7 @@
 <p align="center">把 AI 对话、项目文件、终端、浏览器与设备操作放在同一个桌面工作台。</p>
 
 <p align="center">
-  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.2"><img alt="预发布 0.5.10-beta.2" src="https://img.shields.io/badge/beta-0.5.10--beta.2-2563eb.svg"></a>
+  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.3"><img alt="预发布 0.5.10-beta.3" src="https://img.shields.io/badge/beta-0.5.10--beta.3-2563eb.svg"></a>
   <a href="https://github.com/kexijiang/Piora/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kexijiang/Piora/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <a href="#下载与安装"><img alt="Windows x64" src="https://img.shields.io/badge/Desktop-Windows%20x64-555.svg"></a>
@@ -16,7 +16,7 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型和扩展机制。项目由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。Piora 不提供统一模型订阅或内置 API Key；使用自己的模型服务账号，费用与额度由服务商管理。
 
-**当前源码 / 本次 Beta：`0.5.10-beta.2`（2026-11-05）**，升级 Pi 内核至 1.5.0，并优化模板选择器、设置切换与长会话流式渲染，支持后续 beta 更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.2) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
+**当前源码 / 本次 Beta：`0.5.10-beta.3`（2026-11-05）**，升级 Pi 内核至 1.5.0，并优化模板选择器、设置切换与长会话流式渲染，支持后续 beta 更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.3) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
 
 [下载安装](#下载与安装) · [首次使用](#第一次完成任务) · [功能导览](#功能导览) · [更新与内网部署](#更新与内网部署) · [开发贡献](#开发与贡献) · [中文手册](docs/user-manual.zh-CN.md)
 
@@ -30,7 +30,7 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 | 版本 | 安装包 | 校验与说明 |
 | --- | --- | --- |
-| 本次 Beta `0.5.10-beta.2` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.2/Piora-0.5.10-beta.2-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.2/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.2) |
+| 本次 Beta `0.5.10-beta.3` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.3/Piora-0.5.10-beta.3-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.3/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.3) |
 | 稳定版 `0.5.8` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.8/Piora-0.5.8-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.8/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.8) |
 
 下载后运行安装器，选择安装目录并启动。安装包尚未启用 Windows 代码签名，系统可能显示信誉提示。后续版本不再构建便携 EXE、ZIP 或 Linux AppImage；旧包可在[历史发布](https://github.com/kexijiang/Piora/releases)中查找。
@@ -190,11 +190,11 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 <!-- SCREENSHOT: 12-updates -->
 ![待补截图 12：更新来源与版本](docs/images/readme/12-updates.svg)
-*图 12 待补：在安装版展示当前版本 `0.5.10-beta.2`、更新来源和检查入口；内网截图在配置真实地址后补拍。*
+*图 12 待补：在安装版展示当前版本 `0.5.10-beta.3`、更新来源和检查入口；内网截图在配置真实地址后补拍。*
 
 内网维护者可将默认来源设为内网，并配置内部 HTTPS 发布镜像。配置点、Atom 列表、安装包目录和元数据格式见[桌面更新来源说明](docs/desktop-update-sources.md)。公网仓库不包含公司内网地址或凭据。
 
-内外分发使用同一套版本与标签格式，例如 **`0.5.10-beta.2` / `v0.5.10-beta.2`**；同一批更新应在两端同步版本号。相同版本号不会触发升级，切换来源不会重装同版本包；以后分发新代码时，应在两端同步递增版本号，并提供对应更新说明。版本号对齐不代表两个独立维护分支的代码和安装包自动相同。
+内外分发使用同一套版本与标签格式，例如 **`0.5.10-beta.3` / `v0.5.10-beta.3`**；同一批更新应在两端同步版本号。相同版本号不会触发升级，切换来源不会重装同版本包；以后分发新代码时，应在两端同步递增版本号，并提供对应更新说明。版本号对齐不代表两个独立维护分支的代码和安装包自动相同。
 
 安装包由 GitHub Actions 构建和校验，Beta 候选全部自动检查通过后，由独立发布工作流上传同一批产物。Release 正文与 `beta.yml` / `latest.yml` 的更新说明统一来自 CHANGELOG。关闭主窗口通常收起到托盘，完全退出或重启使用托盘菜单。
 

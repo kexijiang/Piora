@@ -15,6 +15,7 @@ export type DesktopUpdateStatus =
 
 export interface DesktopUpdateState {
   status: DesktopUpdateStatus;
+  unsupportedReason?: "alpha" | "installer-required";
   currentVersion: string;
   audience: DesktopReleaseAudience;
   source?: DesktopUpdateSource;
@@ -89,13 +90,15 @@ export class DesktopUpdateController {
     private readonly options: DesktopUpdateControllerOptions = {},
   ) {
     // Alpha builds never initialize an updater, including over existing beta installs.
-    if (/^(?:v)?\d+\.\d+\.\d+-alpha\.\d+$/.test(currentVersion.trim())) {
+    const isAlpha = /^(?:v)?\d+\.\d+\.\d+-alpha\.\d+$/.test(currentVersion.trim());
+    if (isAlpha) {
       this.updater = null;
       updater = null;
     }
     const audience = options.audience ?? "stable";
     this.state = {
       status: updater ? "idle" : "unsupported",
+      ...(!updater ? { unsupportedReason: isAlpha ? "alpha" as const : "installer-required" as const } : {}),
       currentVersion: normalizedVersion(currentVersion) ?? currentVersion,
       audience,
       source: options.source ?? "github",

@@ -698,7 +698,7 @@ function registerDesktopUpdateStateHandler(): void {
   ipcMain.removeHandler("pi:update-schedule-get");
   ipcMain.handle("pi:update-schedule-get", (event) => {
     if (!isTrustedMainWindowSender(event)) return null;
-    return { ...updateSchedule, supported: desktopUpdateState.status !== "unsupported" };
+    return { ...updateSchedule, supported: desktopUpdateState.status !== "unsupported", unsupportedReason: desktopUpdateState.unsupportedReason };
   });
   ipcMain.removeHandler("pi:update-schedule-set");
   ipcMain.handle("pi:update-schedule-set", (event, input: unknown) => {
@@ -710,7 +710,7 @@ function registerDesktopUpdateStateHandler(): void {
       ...(updateSchedule.lastCompletedDay ? { lastCompletedDay: updateSchedule.lastCompletedDay } : {}) };
     if (!writeUpdateSchedule(app.getPath("userData"), saved, logger)) throw new Error("Unable to save update schedule");
     updateSchedule = saved;
-    return { ...saved, supported: desktopUpdateState.status !== "unsupported" };
+    return { ...saved, supported: desktopUpdateState.status !== "unsupported", unsupportedReason: desktopUpdateState.unsupportedReason };
   });
   ipcMain.removeHandler("pi:update-blocker");
   ipcMain.handle("pi:update-blocker", (event, key: unknown, blocked: unknown) => {
