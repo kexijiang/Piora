@@ -542,7 +542,46 @@ test("stop then resume reconnects before releasing the original queued input and
   assert.equal(h.env.messages.at(-1).content[0].text, "live reply");
   h.env.ensureEventsConnected = async () => {};
   await h.resumeQueuedInput({ ...record, commandId: "second-cmd", idempotencyKey: "second-key" }, async () => draft, async () => ({ status: "queued" }));
+  assert.equal(h.env.messages.filter(message => message.role === "user").length, 1, "a busy run's queue acceptance must not insert another bubble");
+  h.handleAgentEvent({ type: "message_end", message: { role: "user", content: "same text", clientPromptId: "second-key", timestamp: 124 } });
   assert.equal(h.env.messages.filter(message => message.role === "user").length, 2, "identical text with distinct submission ids stays distinct");
+});
+
+test("active queue mode changes wait for consumption, including failed steering and repeated switches", async () => {
+  const h = queueResumeHarness();
+  h.env.agentRunningRef.current = true;
+  const steering = h.queueAction(h.record, "steer");
+  await h.draftRequested; h.releaseDraft(); await steering;
+  assert.equal(h.env.messages.length, 0, "steering acceptance is not a delivered chat message");
+  h.env.sendAgentCommand = async () => { throw new Error("steer failed"); };
+  const failed = h.queueAction(h.record, "steer");
+  await new Promise(resolve => setImmediate(resolve)); h.releaseDraft();
+  await assert.rejects(failed, /steer failed/);
+  assert.equal(h.env.messages.length, 0, "failed mode changes must not create ghost bubbles");
+  const delivered = { role: "user", content: h.draft.value, clientPromptId: h.record.idempotencyKey, timestamp: 456 };
+  h.handleAgentEvent({ type: "message_start", message: delivered });
+  assert.equal(h.env.messages.length, 0);
+  h.handleAgentEvent({ type: "message_end", message: delivered });
+  h.handleAgentEvent({ type: "message_end", message: delivered });
+  assert.deepEqual(h.env.messages, [delivered], "consumption adds exactly one message with its original identity");
+});
+
+test("consumed queued attachments load their display history instead of exposing runtime markers", async () => {
+  const loads = [];
+  const h = promptSubmissionHarness({
+    userMessageHasPromptMaterialMarker: () => true,
+    loadSession: async (...args) => { loads.push(args); },
+  });
+  h.env.agentRunningRef.current = true;
+  h.env.ensureEventsConnected = async () => {};
+  await h.resumeQueuedInput({ commandId: "attachment", idempotencyKey: "attachment-key", targetSessionId: "session-a" },
+    async () => ({ value: "read attachment", files: [{ name: "notes.txt", path: "C:/notes.txt", size: 42 }], images: [] }),
+    async () => ({ status: "delivered" }));
+  assert.equal(h.env.messages.length, 0);
+  assert.deepEqual(loads, [], "queue acceptance does not load a premature chat bubble");
+  h.handleAgentEvent({ type: "message_end", message: { role: "user", content: "[[PIORA_PROMPT_MATERIALS_V1:fixture]]" } });
+  assert.deepEqual(loads, [["session-a", false, true]]);
+  assert.equal(h.env.messages.length, 0, "raw runtime attachment markers are never rendered");
 });
 
 test("stop while resume reconnects prevents a late queue mutation", async () => {
