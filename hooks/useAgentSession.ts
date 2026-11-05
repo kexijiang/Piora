@@ -1589,6 +1589,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           const deliveredKey = userMessageKey(delivered);
           const optimisticKey = optimisticUserMessageKeyRef.current;
           optimisticUserMessageKeyRef.current = null;
+          // Queued attachments have no optimistic bubble. Once consumed, load
+          // their canonical display projection instead of leaking runtime markers.
+          if (materializedDelivery && !optimisticKey && sessionIdRef.current) {
+            void loadSession(sessionIdRef.current, false, true);
+          }
           setMessages((prev) => {
             if (delivered.role === "user" && delivered.clientPromptId && prev.some(message => message.role === "user" && message.clientPromptId === delivered.clientPromptId)) return prev;
             const optimisticIndex = prev.findIndex(message => message.role === "user"
@@ -1762,8 +1767,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         await ensureEventsConnected(sid);
         assertCurrentRun();
       } while (!agentRunningRef.current);
-      // Reuse the original durable identity. Never resubmit or infer delivery by text.
-      if (!record.operation) {
+      // A busy session only accepts a queue-mode change here, not consumption.
+      // Keep its message in the pending strip until message_end (or persisted
+      // history) confirms delivery. Idle resume still starts an ordinary prompt.
+      // Reuse the original durable identity; never infer delivery by text.
+      if (startsRun && !record.operation) {
         const files = draft.files ?? [];
         const text = [draft.value.trim(), ...files.map(file => file.kind === "paste" && file.text != null ? file.text.trim()
           : `附件: ${file.name}（${file.size} 字节）${file.path ? `\n${file.path}` : ""}`)].filter(Boolean).join("\n\n");
