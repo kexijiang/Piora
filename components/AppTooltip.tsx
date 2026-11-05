@@ -68,6 +68,7 @@ export function AppTooltip() {
   const [position, setPosition] = useState<TooltipPosition | null>(null);
 
   useEffect(() => {
+    let liveObserver: MutationObserver | null = null;
     const clearShowTimer = () => {
       if (showTimerRef.current === null) return;
       window.clearTimeout(showTimerRef.current);
@@ -94,6 +95,8 @@ export function AppTooltip() {
     };
 
     const hide = (restore = true) => {
+      liveObserver?.disconnect();
+      liveObserver = null;
       clearShowTimer();
       const active = activeRef.current;
       activeRef.current = null;
@@ -157,6 +160,35 @@ export function AppTooltip() {
       };
       activeRef.current = active;
       reveal(active, reason === "focus" ? 0 : POINTER_DELAY_MS);
+
+      // Queue delivery changes may replace a row while the pointer stays still.
+      // Observe only the opted-in queue, and follow the same message identity.
+      const liveId = element.getAttribute("data-live-tooltip");
+      const scope = element.closest("[data-tooltip-scope]");
+      if (liveId && scope) {
+        liveObserver = new MutationObserver(() => {
+          if (activeRef.current !== active) return;
+          if (!element.isConnected) {
+            const replacement = Array.from(scope.querySelectorAll("[data-live-tooltip]"))
+              .find(candidate => candidate.getAttribute("data-live-tooltip") === liveId);
+            const focus = active.focus && document.activeElement === document.body;
+            hide(false);
+            if (replacement && (replacement.matches(":hover") || focus)) {
+              activate(replacement, focus ? "focus" : "pointer");
+              if (focus && replacement instanceof HTMLElement) replacement.focus();
+              if (activeRef.current) reveal(activeRef.current, 0);
+            }
+            return;
+          }
+          const nextTitle = element.getAttribute("title");
+          if (nextTitle === null) return; // Our native-title suppression.
+          if (!nextTitle.trim()) { hide(); return; }
+          active.title = nextTitle;
+          element.removeAttribute("title");
+          reveal(active, 0);
+        });
+        liveObserver.observe(scope, { subtree: true, childList: true, attributes: true, attributeFilter: ["title"] });
+      }
     };
 
     const deactivate = (reason: ActivationReason) => {
@@ -198,6 +230,14 @@ export function AppTooltip() {
       const active = activeRef.current;
       if (!active || !(event.target instanceof Node) || !active.element.contains(event.target)) return;
       if (event.relatedTarget instanceof Node && active.element.contains(event.relatedTarget)) return;
+      if (liveObserver && event.relatedTarget === null) {
+        // Chromium blurs a focused button during removal, before the observer
+        // can transfer focus to its replacement. Ordinary blur still dismisses.
+        queueMicrotask(() => {
+          if (activeRef.current === active && active.element.isConnected) deactivate("focus");
+        });
+        return;
+      }
       deactivate("focus");
     };
 
@@ -206,6 +246,7 @@ export function AppTooltip() {
     };
 
     const hideVisibleTooltip = () => {
+      if (activeRef.current?.element.hasAttribute("data-live-tooltip")) return;
       clearShowTimer();
       setContent(null);
       setPosition(null);
@@ -239,6 +280,7 @@ export function AppTooltip() {
     window.addEventListener("blur", onWindowBlur);
 
     return () => {
+      liveObserver?.disconnect();
       document.removeEventListener("pointerover", onPointerOver, true);
       document.removeEventListener("pointerout", onPointerOut, true);
       document.removeEventListener("focusin", onFocusIn, true);

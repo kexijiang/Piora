@@ -189,7 +189,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       assert.match(chatWindowSource, /const composerQueueContent = useMemo\(\(\) => \(\s*<ChatCommandQueue records=\{chatCommands\.records\} actions=\{queueActions\} pendingMessages=\{queuedMessages\} onPendingAction=\{handlePendingInputAction\} \/>/);
       await page.evaluate(() => window.setRuntimeQueue({steering:['same <b>literal</b>','same <b>literal</b>'],followUp:[],pendingInputs:[{id:'first',text:'same <b>literal</b>',kind:'steer'},{id:'second',text:'same <b>literal</b>',kind:'steer'}]}));
       const runtimeRegion = conversation.getByRole('region', { name: locale === 'zh-CN' ? '接下来执行' : 'Up next' });
-      const restorePending = runtimeRegion.getByRole('button', { name: locale === 'zh-CN' ? '排队' : 'Queue', exact: true });
+      const restorePending = runtimeRegion.getByRole('button', { name: locale === 'zh-CN' ? '恢复排队' : 'Move to queue', exact: true });
       await restorePending.first().waitFor();
       assert.equal(await restorePending.count(), 2);
       await page.evaluate(() => window.setQueued([{commandId:'old-first',status:'delivered',preview:'same <b>literal</b>'},{commandId:'old-second',status:'delivered',preview:'same <b>literal</b>'}]));
@@ -278,7 +278,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         }
         await page.evaluate(() => document.documentElement.classList.remove("dark"));
       }
-      await pendingQueue.getByRole("button", { name: locale === "zh-CN" ? "引导" : "Steer", exact: true }).click();
+      await pendingQueue.getByRole("button", { name: locale === "zh-CN" ? "切换引导" : "Switch to steering", exact: true }).click();
       assert.equal(await page.evaluate(() => window.steered), "queue-preview");
       await pendingQueue.waitFor({ state: "hidden" });
       assert.equal(await conversation.locator("textarea").count(), 1);
