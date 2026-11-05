@@ -4,6 +4,12 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.5.10-alpha.1] - 2026-11-05
+
+- 基于 0.5.9-beta.8 当前主线提供 Windows x64 Alpha 安装包，供手动下载与安装验证；本次不新增业务功能。
+- Alpha 不发布自动更新元数据，不进入 beta/stable 自动更新渠道；安装包、blockmap 与 SHA256 校验和由 GitHub Actions 构建验证后发布。
+- 同步根包、桌面包、锁文件、README 下载入口与许可证清单，保留 0.5.9-beta.8 的内外版本对齐说明。
+
 ## [0.5.9-beta.8] - 2026-11-05
 
 - 统一根包、桌面包和锁文件版本为 0.5.9-beta.8，与内网开发版本编号对齐，并同步许可证清单；版本跳号不代表新增 beta.7 发布。

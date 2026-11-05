@@ -6,7 +6,7 @@
 <p align="center">把 AI 对话、项目文件、终端、浏览器与设备操作放在同一个桌面工作台。</p>
 
 <p align="center">
-  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.8"><img alt="预发布 0.5.9-beta.8" src="https://img.shields.io/badge/beta-0.5.9--beta.8-2563eb.svg"></a>
+  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.10-alpha.1"><img alt="预发布 0.5.10-alpha.1" src="https://img.shields.io/badge/alpha-0.5.10--alpha.1-2563eb.svg"></a>
   <a href="https://github.com/kexijiang/Piora/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kexijiang/Piora/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <a href="#下载与安装"><img alt="Windows x64" src="https://img.shields.io/badge/Desktop-Windows%20x64-555.svg"></a>
@@ -16,7 +16,7 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型和扩展机制。项目由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。Piora 不提供统一模型订阅或内置 API Key；使用自己的模型服务账号，费用与额度由服务商管理。
 
-**当前源码 / 本次预发布：`0.5.9-beta.8`（2026-11-05）**，与内网开发版本编号对齐。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.8) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
+**当前源码 / 本次 Alpha：`0.5.10-alpha.1`（2026-11-05）**，基于 0.5.9-beta.8 主线提供手动安装测试包，不提供自动更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-alpha.1) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
 
 [下载安装](#下载与安装) · [首次使用](#第一次完成任务) · [功能导览](#功能导览) · [更新与内网部署](#更新与内网部署) · [开发贡献](#开发与贡献) · [中文手册](docs/user-manual.zh-CN.md)
 
@@ -30,7 +30,7 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 | 版本 | 安装包 | 校验与说明 |
 | --- | --- | --- |
-| 本次 Beta `0.5.9-beta.8` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.9-beta.8/Piora-0.5.9-beta.8-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.9-beta.8/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.8) |
+| 本次 Alpha（手动安装） `0.5.10-alpha.1` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.10-alpha.1/Piora-0.5.10-alpha.1-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.10-alpha.1/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-alpha.1) |
 | 稳定版 `0.5.8` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.8/Piora-0.5.8-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.8/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.8) |
 
 下载后运行安装器，选择安装目录并启动。安装包尚未启用 Windows 代码签名，系统可能显示信誉提示。后续版本不再构建便携 EXE、ZIP 或 Linux AppImage；旧包可在[历史发布](https://github.com/kexijiang/Piora/releases)中查找。
