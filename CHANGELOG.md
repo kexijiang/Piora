@@ -5,6 +5,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 ## [Unreleased]
 
 - 待处理消息的操作明确显示“切换引导 / 恢复排队”，悬停说明当前状态和切换后的处理时机；切换后无需移开鼠标即可刷新提示，不增加常驻状态标签，也不改变发送按钮逻辑（#334）。
+- 同步中英文队列布局回归测试的操作名称，继续验证恢复排队、切换引导、失败恢复及窄屏控件可用性。
 
 ## [0.5.10-beta.3] - 2026-11-05
 
