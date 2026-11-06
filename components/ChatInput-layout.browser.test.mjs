@@ -219,6 +219,10 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       const pendingQueue = conversation.getByRole("region", { name: locale === "zh-CN" ? "接下来执行" : "Up next" });
       const cancelQueued = pendingQueue.getByRole("button", { name: locale === "zh-CN" ? "取消" : "Cancel", exact: true });
       await pendingQueue.waitFor();
+      assert.equal(await cancelQueued.count(), 1, "accepted submissions are not confirmed queue rows");
+      assert.equal(await pendingQueue.getByRole("button", { name: longPreview, exact: true }).count(), 0);
+      await page.evaluate(() => window.setQueued(current => current.map(item => item.commandId === "queued-second" ? { ...item, status: "queued" } : item)));
+      await cancelQueued.nth(1).waitFor();
       await conversation.evaluate(section => section.style.setProperty("--chat-column-width", "520px"));
       for (const width of [900, 590, 320]) {
         await conversation.evaluate((section, width) => { section.style.width = width + "px"; }, width);
@@ -271,6 +275,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await conversation.evaluate(section => { section.style.width = "590px"; section.style.removeProperty("--chat-column-width"); });
       // Reset the remaining fixture to capture a clean single-row preview.
       await page.evaluate(() => window.setQueued([{ commandId: "queue-preview", status: "queued", preview: "我想参考 chatgpt 的设计" }]));
+      await pendingQueue.locator('[data-live-tooltip="queue-preview"]').waitFor();
       if (process.env.PIORA_COMPOSER_SCREENSHOTS) {
         for (const dark of [false, true]) {
           await page.evaluate(dark => document.documentElement.classList.toggle("dark", dark), dark);

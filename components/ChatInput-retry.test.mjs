@@ -15,7 +15,7 @@ function composer(onSend) {
     value: " original\nmessage ",
     attachedImages: [{ data: "YWJj", mimeType: "image/png", previewUrl: "blob:preview" }],
     attachedFiles: [{ name: "notes.txt", text: "full attachment", size: 15 }],
-    permissionSaving: false, isStreaming: false, isProcessingImages: false, isAutoModelSelection: false, runningSendMode: "steer",
+    sendDisabled: false, permissionSaving: false, isStreaming: false, isProcessingImages: false, isAutoModelSelection: false, runningSendMode: "steer",
     pendingFileCountRef: { current: 0 },
     onBuiltinCommand: undefined, onQueueInput: undefined, contextUsage: null,
     commandInputOptions: {},
@@ -54,6 +54,26 @@ function composer(onSend) {
   };
   return { env, send: new Function("env", `with (env) { ${js}; return handleSend; }`)(env) };
 }
+
+test("workspace readiness blocks submission without clearing text, attachments or reply ownership", async () => {
+  const submissions = [];
+  const { env, send } = composer(async (...args) => { submissions.push(args); return true; });
+  env.replyDraftRef.current.spans = [{ start: 1, end: 9, id: "reply" }];
+  env.sendDisabled = true;
+  await send();
+  assert.equal(submissions.length, 0);
+  assert.equal(env.value, " original\nmessage ");
+  assert.equal(env.attachedImages[0].data, "YWJj");
+  assert.equal(env.attachedFiles[0].text, "full attachment");
+  assert.deepEqual(env.replyDraftRef.current.spans, [{ start: 1, end: 9, id: "reply" }]);
+  assert.equal(env.persistenceReleased, undefined);
+  env.sendDisabled = false;
+  await send();
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0][0], " original\nmessage ");
+  assert.equal(submissions[0][1][0].data, "YWJj");
+  assert.equal(submissions[0][2][0].text, "full attachment");
+});
 
 test("permission saving keeps the draft and prevents submission until the selected mode is saved", async () => {
   let submissions = 0;

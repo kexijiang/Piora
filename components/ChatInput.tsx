@@ -129,6 +129,8 @@ interface Props {
   onFollowUp?: (message: string, images?: AttachedImage[]) => boolean | void | Promise<boolean | void>;
   onPromptWithStreamingBehavior?: (message: string, behavior: "steer" | "followUp", images?: AttachedImage[]) => boolean | void | Promise<boolean | void>;
   isStreaming: boolean;
+  /** Block submissions while the launch workspace is unavailable, without hiding model selection. */
+  sendDisabled?: boolean;
   model?: { provider: string; modelId: string } | null;
   isAutoModelSelection?: boolean;
   modelNames?: Record<string, string>;
@@ -327,7 +329,7 @@ export function ModelErrorBanner({ error, title = "模型错误" }: { error?: st
 }
 
 export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function ChatInput({
-  onSend, onAbort, onSteer, onFollowUp, isStreaming, model, isAutoModelSelection, modelNames, modelList, modelError, onModelChange,
+  onSend, onAbort, onSteer, onFollowUp, isStreaming, sendDisabled = false, model, isAutoModelSelection, modelNames, modelList, modelError, onModelChange,
   onCompact, onAbortCompaction, isCompacting, compactionStartedAt = null, compactError, onDismissCompactError, compactResult, onDismissCompactResult,
   thinkingLevel, onThinkingLevelChange, availableThinkingLevels, thinkingLevelMap,
   retryInfo, inputHistory = [],
@@ -620,7 +622,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     },
     sendText(text: string) {
       const message = text.trim();
-      if (!message || isStreaming || isAutoModelSelection) return false;
+      if (!message || isStreaming || sendDisabled || isAutoModelSelection) return false;
       onSend(message);
       return true;
     },
@@ -866,7 +868,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     // Delivery from a recovered draft must never turn an ordinary send into steering.
     if (!commandSubmission) sentCommandOptions.delivery = overrideOptions?.delivery ?? (isStreaming ? runningSendMode : "next_turn");
     if (!msg && !attachedImages.length && !attachedFiles.length) return;
-    if (permissionSaving || (isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
+    if (sendDisabled || permissionSaving || (isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
     if (attachedFiles.some((file) => !file.path && file.text == null)) {
       setAttachmentError(t("chat.attachmentMissingPath"));
       return;
@@ -961,7 +963,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
-  }, [attachedImages, attachedFiles, permissionSaving, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode]);
+  }, [attachedImages, attachedFiles, sendDisabled, permissionSaving, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode]);
 
   useEffect(() => {
     submitRef.current = () => { void handleSend(); };
@@ -1041,7 +1043,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   useEffect(() => {
     if (!canQueueStreamingMessage) sendModeHoverDismissed.current = false;
   }, [canQueueStreamingMessage]);
-  const canSend = !permissionSaving && !isProcessingImages && !isProcessingFiles
+  const canSend = !sendDisabled && !permissionSaving && !isProcessingImages && !isProcessingFiles
     && (!isAutoModelSelection || isCommandInput)
     && (hasInputText || attachedImages.length > 0 || attachedFiles.length > 0);
   const canOptimizePrompt = hasInputText
