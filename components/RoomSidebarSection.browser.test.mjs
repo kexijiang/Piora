@@ -40,10 +40,12 @@ async function fixture(locale = "en", initialMode = "network") {
   await page.addInitScript(locale => localStorage.setItem("pi-locale", locale), locale);
   await page.clock.install();
   await page.clock.pauseAt(new Date());
-  const state = { mode: initialMode, name: "Existing group", requests: 0, held: [], errors: [], logs: [], aborted: 0 };
+  const heldRequests = [], heldWaiters = [];
+  const state = { mode: initialMode, name: "Existing group", requests: 0, held: [], errors: [], logs: [],
+    nextHeld: () => heldRequests.length ? Promise.resolve(heldRequests.shift()) : new Promise(resolve => heldWaiters.push(resolve)),
+  };
   page.on("pageerror", error => state.errors.push(error.message));
   page.on("console", message => { if (message.type() === "warning") state.logs.push(message.text()); });
-  page.on("requestfailed", request => { if (request.url().endsWith("/api/rooms") && request.failure()?.errorText.includes("ABORTED")) state.aborted++; });
   await page.route("https://room-sidebar.test/**", async route => {
     const pathname = new URL(route.request().url()).pathname;
     if (pathname === "/api/rooms") {
@@ -53,7 +55,12 @@ async function fixture(locale = "en", initialMode = "network") {
       if (state.mode === "http") return route.fulfill({ status: 503, json: { error: "Internal fixture diagnostic" } });
       if (state.mode === "json") return route.fulfill({ contentType: "application/json", body: "not-json" });
       if (state.mode === "shape") return route.fulfill({ json: { rooms: {} } });
-      if (state.mode === "hold") { state.held.push(route); return; }
+      if (state.mode === "hold") {
+        state.held.push(route);
+        if (heldWaiters.length) heldWaiters.shift()(route.request());
+        else heldRequests.push(route.request());
+        return;
+      }
       return route.fulfill({ json: { rooms: [{ id: "room", name: state.name, updatedAt: 1, members: [] }] } });
     }
     if (pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(directory, path.basename(pathname))) });
@@ -138,26 +145,33 @@ for (const locale of ["en", "zh-CN"]) {
 
 test("group refresh cancels superseded requests and releases a timed-out retry", { timeout: 90000 }, async () => {
   const { page, state, section, alert, retry, refresh } = await fixture("en", "hold");
+  const expectAbort = request => page.waitForEvent("requestfailed", { predicate: failed => failed === request, timeout: 10000 })
+    .then(failed => assert.match(failed.failure()?.errorText ?? "", /ABORTED/, "the exact pending request must be cancelled"));
   try {
     await section.getByRole("status").waitFor();
+    const timedOut = expectAbort(await state.nextHeld());
     await page.clock.runFor(15000);
+    await timedOut;
     await alert.waitFor();
     assert.ok(state.logs.some(message => message.includes("GET /api/rooms")));
     state.mode = "ok"; await retry().click(); await alert.waitFor({ state: "detached" });
     await section.getByRole("button", { name: /Existing group/ }).first().waitFor();
     state.mode = "hold"; await refresh();
+    const replaced = expectAbort(await state.nextHeld());
     state.mode = "ok"; state.name = "Newest group"; await refresh();
+    await replaced;
     await section.getByRole("button", { name: /Newest group/ }).first().waitFor();
     for (const route of state.held.splice(0)) await route.fulfill({ json: { rooms: [{ id: "old", name: "Stale group", updatedAt: 0 }] } }).catch(() => {});
     await page.clock.runFor(1);
     assert.equal(await section.getByRole("button", { name: /Stale group/ }).count(), 0);
     state.mode = "hold"; await refresh();
+    const unmounted = expectAbort(await state.nextHeld());
     await page.getByRole("button", { name: "Toggle fixture" }).click();
+    await unmounted;
     const before = state.requests;
     await page.clock.runFor(20000);
     await page.evaluate(() => window.dispatchEvent(new Event("online")));
     assert.equal(state.requests, before, "unmount removes polling and recovery listeners");
-    assert.ok(state.aborted >= 3, "timeouts, replacement and unmount abort their network request");
     assert.deepEqual(state.errors, []);
   } finally { await page.close(); }
 });
