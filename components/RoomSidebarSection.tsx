@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CollaborationRoom } from "@/lib/room-types";
 import type { TeamAgentRole } from "@/lib/team-types";
 import type { SessionInfo } from "@/lib/types";
@@ -38,6 +38,10 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
   const [busy, setBusy] = useState(false);
   const [picker, setPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadNoticeDismissed, setLoadNoticeDismissed] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const refreshRooms = useRef<() => void>(() => {});
   const [pins, setPins] = useState<string[]>([]);
   const [, setReadVersion] = useState(0);
   const creationId = useRef("");
@@ -46,33 +50,78 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
   const restored = useRef(false);
   useFocusTrap(dialogRef, open && !picker, { initialFocus: nameRef, onEscape: busy ? undefined : () => setOpen(false) });
 
-  const load = useCallback(async () => {
-    const response = await fetch("/api/rooms", { cache: "no-store" });
-    const body = await response.json();
-    if (!response.ok) throw new Error(typeof body.error === "string" ? body.error : body.error?.message ?? `HTTP ${response.status}`);
-    return body.rooms as RoomWithSummary[] ?? [];
-  }, []);
   useEffect(() => {
     let disposed = false;
-    const refresh = () => void load().then((next) => {
-      if (disposed) return;
-      setRooms(next);
-      if (initialRoomId && !restored.current) {
-        restored.current = true;
-        const room = next.find((candidate) => candidate.id === initialRoomId);
-        if (room) onSelectRoom(room, true);
-        onInitialRestoreDone?.();
+    let active: AbortController | null = null;
+    let timer: number | undefined;
+    let failedLastRefresh = false;
+    const scheduleRefresh = () => {
+      timer = window.setTimeout(() => {
+        if (document.visibilityState === "visible") void refresh();
+        else scheduleRefresh();
+      }, 5_000);
+    };
+    const refresh = async () => {
+      // Manual retries, polling and reconnect events share one in-flight request.
+      if (disposed || active) return;
+      window.clearTimeout(timer);
+      const controller = new AbortController();
+      active = controller;
+      setLoading(true);
+      const timeout = window.setTimeout(() => controller.abort(new DOMException("Group loading timed out", "TimeoutError")), 15_000);
+      try {
+        const response = await fetch("/api/rooms", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const body = await response.json();
+        if (!Array.isArray(body?.rooms) || body.rooms.some((room: RoomWithSummary | null) => !room || typeof room.id !== "string" || typeof room.name !== "string")) {
+          throw new Error("Invalid group list response");
+        }
+        if (disposed || controller.signal.aborted) return;
+        const next = body.rooms as RoomWithSummary[];
+        setRooms(next);
+        setLoadFailed(false);
+        setLoadNoticeDismissed(false);
+        failedLastRefresh = false;
+        if (initialRoomId && !restored.current) {
+          restored.current = true;
+          const room = next.find((candidate) => candidate.id === initialRoomId);
+          if (room) onSelectRoom(room, true);
+          onInitialRestoreDone?.();
+        }
+      } catch (reason) {
+        if (disposed) return;
+        // Retain the last good list; only diagnostics receive the raw exception.
+        if (!failedLastRefresh) console.warn("[RoomSidebarSection] GET /api/rooms failed", reason);
+        failedLastRefresh = true;
+        setLoadFailed(true);
+      } finally {
+        window.clearTimeout(timeout);
+        active = null;
+        if (!disposed) {
+          setLoading(false);
+          scheduleRefresh();
+        }
       }
-    }).catch((reason) => { if (!disposed) setError(String(reason)); });
-    refresh();
-    const timer = window.setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 5_000);
+    };
+    refreshRooms.current = () => { void refresh(); };
+    void refresh();
+    const refreshVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     const read = () => setReadVersion((version) => version + 1);
+    window.addEventListener("online", refreshVisible);
+    document.addEventListener("visibilitychange", refreshVisible);
     window.addEventListener("piora:room-read", read);
     try { const saved = JSON.parse(localStorage.getItem(pinKey) ?? "[]"); if (Array.isArray(saved)) setPins(saved.filter((id) => typeof id === "string")); } catch { /* Empty pin preferences. */ }
-    return () => { disposed = true; clearInterval(timer); window.removeEventListener("piora:room-read", read); };
+    return () => {
+      disposed = true;
+      active?.abort();
+      window.clearTimeout(timer);
+      window.removeEventListener("online", refreshVisible);
+      document.removeEventListener("visibilitychange", refreshVisible);
+      window.removeEventListener("piora:room-read", read);
+    };
     // Sidebar callbacks are owned by the parent; a refresh must not reset its restore lifecycle.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [load, refreshKey, initialRoomId]);
+  }, [refreshKey, initialRoomId]);
 
   const ordered = useMemo(() => [...rooms].sort((a, b) => Number(pins.includes(b.id)) - Number(pins.includes(a.id)) || b.updatedAt - a.updatedAt), [rooms, pins]);
   const openCreate = () => {
@@ -110,7 +159,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
       if (!response.ok || !result.room) throw new Error(typeof result.error === "string" ? result.error : result.error?.message ?? `HTTP ${response.status}`);
       try { localStorage.removeItem(creationKey); } catch { /* Form will still close. */ }
       setOpen(false); setRooms((previous) => [result.room, ...previous.filter((room) => room.id !== result.room.id)]); onSelectRoom(result.room);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); void load().then(setRooms).catch(() => {}); }
+    } catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); refreshRooms.current(); }
     finally { setBusy(false); }
   };
   const validAgents = agents.length > 0 && agents.length <= 12 && agents.every((agent) => agent.name.trim());
@@ -118,6 +167,20 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
   const togglePin = (id: string) => {
     const next = pins.includes(id) ? pins.filter((item) => item !== id) : [...pins, id];
     setPins(next); try { localStorage.setItem(pinKey, JSON.stringify(next)); } catch { /* Session-only pinning. */ }
+  };
+  const renderListStatus = () => {
+    if (loadFailed) {
+      if (loadNoticeDismissed || open) return null;
+      return <div className={styles.inlineError} role="alert">
+        <span>{t("roomUx.loadGroupsFailed")}</span>
+        <div className={styles.errorActions}>
+          <button type="button" className={styles.retryButton} disabled={loading} onClick={() => refreshRooms.current()}>{t(loading ? "roomUx.retryingGroups" : "common.retry")}</button>
+          <button type="button" className={styles.closeButton} aria-label={t("roomUx.dismissLoadGroupsError")} onClick={() => setLoadNoticeDismissed(true)}><AliIcon name="close" size={14} /></button>
+        </div>
+      </div>;
+    }
+    if (rooms.length) return null;
+    return loading ? <p className={styles.loading} role="status">{t("roomUx.loadingGroups")}</p> : <button type="button" className={styles.empty} onClick={openCreate}>{t("roomUx.noGroups")}<AliIcon name="plus" size={13} /></button>;
   };
 
   return <section className={styles.section} aria-label={t("roomUx.groups")}>
@@ -128,7 +191,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
       <button type="button" className={styles.addButton} onClick={openCreate} aria-label={t("roomUx.create")} title={t("roomUx.create")}><AliIcon name="plus" size={16} /></button>
     </div>
     {!collapsed && <div className={styles.list}>
-      {!rooms.length ? <button type="button" className={styles.empty} onClick={openCreate}>{t("roomUx.noGroups")}<AliIcon name="plus" size={13} /></button> : ordered.map((room) => {
+      {ordered.map((room) => {
         const summary = room.summary; const attention = ["waiting_user", "interrupted", "failed"].includes(summary?.phase ?? "");
         let unread = false;
         try { unread = room.id !== selectedRoomId && (summary?.lastMessage?.seq ?? 0) > Number(localStorage.getItem(`pi-room-read:${room.id}`) ?? 0); } catch { /* No persistent unread state. */ }
@@ -141,6 +204,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
           <button type="button" className={`${styles.pinButton}${pins.includes(room.id) ? ` ${styles.pinned}` : ""}`} aria-label={`${t(pins.includes(room.id) ? "roomUx.unpin" : "roomUx.pin")} ${room.name}`} onClick={() => togglePin(room.id)}><AliIcon name="bookmark" size={12} /></button>
         </div>;
       })}
+      {renderListStatus()}
     </div>}
     {open ? <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setOpen(false); }}>
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="room-create-title">
@@ -166,6 +230,5 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
       </section>
     </div> : null}
     {picker ? <DirectoryPicker onCancel={() => setPicker(false)} onSelect={(path) => { edit(); setCwd(path); if (!name.trim()) setName(`${basename(path)} 协作群`); setPicker(false); }} /> : null}
-    {error && !open ? <div className={styles.inlineError}>{error}</div> : null}
   </section>;
 }
