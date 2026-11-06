@@ -5,6 +5,7 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 ## [Unreleased]
 
 - 同步输入框恢复与重试测试的工作目录就绪状态，补充禁用发送时文字、附件及回复引用保持完整的验证，防止新任务初始化过程丢失草稿。
+- 补齐已接收消息转入确认排队后的界面回归测试，继续验证中英文窄屏布局、长消息编辑与取消操作。
 
 - 同步依赖升级后的 gRPC/PostCSS 安全回归版本与桌面 Electron 精确锁定声明，补充取消请求不会继续重试的真实 gRPC 传输测试；为 Windows Bash 取消测试补齐有界 PID 就绪检查、失败诊断与清理，保留原取消时限和进程存活断言。
 
