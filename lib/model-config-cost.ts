@@ -1,4 +1,4 @@
-import { isUnchangedIncompleteModel, previousProviderModels } from "./model-limits";
+import { isUnchangedEqualBudgetModel, isUnchangedIncompleteModel, previousProviderModels } from "./model-limits";
 
 const COST_KEYS = ["input", "output", "cacheRead", "cacheWrite"] as const;
 
@@ -16,7 +16,7 @@ export function normalizeModelConfigCosts(config: Record<string, unknown>, previ
     const oldModels = previousProviderModels(result, previous, providerId);
     for (const [index, model] of provider.models.entries()) {
       if (!isRecord(model) || model.cost === undefined) continue;
-      if (isUnchangedIncompleteModel(model, oldModels)) continue;
+      if (isUnchangedIncompleteModel(model, oldModels) || isUnchangedEqualBudgetModel(model, oldModels)) continue;
       const location = `providers.${providerId}.models.${index}.cost`;
       if (!isRecord(model.cost)) throw new Error(`${location}: 价格必须是对象`);
       for (const key of COST_KEYS) {
