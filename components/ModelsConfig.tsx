@@ -2211,10 +2211,12 @@ export function ModelsConfig({
   const modelScopeMutationRef = useRef(false);
   const modelScopeRequestRef = useRef(0);
   const persistedConfiguredModelKeysRef = useRef<Set<string>>(new Set());
+  const persistedConfigRef = useRef<ModelsJson>({ providers: {} });
   const configMutationRef = useRef(false);
   const persistedProviderNamesRef = useRef(new Map<string, string>());
   const persistedModelTargetsRef = useRef(new WeakMap<ModelEntry, ConfiguredModelRef>());
   const rememberPersistedConfig = useCallback((saved: ModelsJson) => {
+    persistedConfigRef.current = structuredClone(stripModelLimitUiMeta(saved));
     persistedProviderNamesRef.current = new Map();
     persistedModelTargetsRef.current = new WeakMap();
     for (const [provider, value] of Object.entries(saved.providers ?? {})) {
@@ -2557,7 +2559,7 @@ export function ModelsConfig({
 
   const handleSave = useCallback(async () => {
     if (configMutationRef.current) return;
-    const blocker = firstCustomModelSaveBlocker(config.providers);
+    const blocker = firstCustomModelSaveBlocker(config.providers, { previous: persistedConfigRef.current });
     if (blocker) {
       const blocked = config.providers?.[blocker.providerName]?.models?.[blocker.index];
       setSelection({ type: "model", providerName: blocker.providerName, index: blocker.index });
@@ -2650,7 +2652,7 @@ export function ModelsConfig({
     current?.dispose();
   }, []);
 
-  const missingLimits = customModelsMissingLimits(config.providers);
+  const missingLimits = customModelsMissingLimits(config.providers, persistedConfigRef.current);
   const limitsFetchable = automaticModelLimitSources().includes("endpoint") && missingLimits.some(({ providerName }) => {
     const provider = config.providers?.[providerName];
     return Boolean(provider?.baseUrl?.trim() && provider.models?.some((model) => (

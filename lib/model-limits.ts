@@ -155,6 +155,13 @@ export function isUnchangedIncompleteModel(model: Record<string, unknown>, oldMo
     && oldModels.some(old => isRecord(old) && old.id === model.id && sameJsonValue(old, model));
 }
 
+/** Older Piora versions allowed equality; unrelated saves must not rewrite it. */
+export function isUnchangedEqualBudgetModel(model: Record<string, unknown>, oldModels: unknown[]): boolean {
+  return positiveTokenCount(model.contextWindow) !== undefined
+    && model.maxTokens === model.contextWindow
+    && oldModels.some(old => isRecord(old) && old.id === model.id && sameJsonValue(old, model));
+}
+
 export function previousProviderModels(config: unknown, previous: unknown, providerId: string): unknown[] {
   const providers = isRecord(config) && isRecord(config.providers) ? config.providers : {};
   const oldProviders = isRecord(previous) && isRecord(previous.providers) ? previous.providers : {};
@@ -187,9 +194,9 @@ export function validateCustomModelLimits(config: unknown, previous?: unknown): 
       if (!isRecord(model)) throw new Error(`${providerId}/models[${index}]: model entry must be an object`);
       const error = modelLimitsError(model, typeof model.id === "string" && model.id.trim() ? model.id.trim() : `models[${index}]`);
       if (!error) continue;
-      // A legacy incomplete model may pass only if the exact same model was
-      // already on disk; new or edited incomplete models remain invalid.
-      if (isUnchangedIncompleteModel(model, oldModels)) continue;
+      // Preserve only exact legacy rows already on disk. New or edited rows
+      // (including a name/cost change) must satisfy the current limit rules.
+      if (isUnchangedIncompleteModel(model, oldModels) || isUnchangedEqualBudgetModel(model, oldModels)) continue;
       throw new Error(`${providerId}/${error}`);
     }
   }
@@ -230,7 +237,7 @@ export type CustomModelSaveBlocker =
 
 export function firstCustomModelSaveBlocker(
   providers: Record<string, { models?: ModelLimitDraft[] }> | undefined,
-  options?: { requireLimits?: boolean },
+  options?: { requireLimits?: boolean; previous?: unknown },
 ): CustomModelSaveBlocker | null {
   const requireLimits = options?.requireLimits ?? REQUIRE_CUSTOM_MODEL_LIMITS;
   for (const [providerName, provider] of Object.entries(providers ?? {})) {
@@ -247,7 +254,9 @@ export function firstCustomModelSaveBlocker(
     const idIndex = models.findIndex((model) => typeof model.id !== "string" || !model.id.trim());
     if (idIndex >= 0) return { kind: "modelId", providerName, index: idIndex };
     if (!requireLimits) continue;
-    const limitsIndex = models.findIndex((model) => modelLimitProblem(model));
+    const oldModels = previousProviderModels({ providers }, options?.previous, providerName);
+    const limitsIndex = models.findIndex((model) => modelLimitProblem(model)
+      && !isUnchangedEqualBudgetModel(model as Record<string, unknown>, oldModels));
     if (limitsIndex >= 0) {
       const label = models[limitsIndex].id?.trim() || `models[${limitsIndex}]`;
       return {
@@ -263,12 +272,15 @@ export function firstCustomModelSaveBlocker(
 
 export function customModelsMissingLimits(
   providers: Record<string, { models?: ModelLimitDraft[] }> | undefined,
+  previous?: unknown,
 ): Array<{ providerName: string; index: number; id: string }> {
   const missing: Array<{ providerName: string; index: number; id: string }> = [];
   for (const [providerName, provider] of Object.entries(providers ?? {})) {
+    const oldModels = previousProviderModels({ providers }, previous, providerName);
     (provider?.models ?? []).forEach((model, index) => {
       const id = typeof model.id === "string" ? model.id.trim() : "";
       if (!id || !modelLimitProblem(model)) return;
+      if (isUnchangedEqualBudgetModel(model as Record<string, unknown>, oldModels)) return;
       missing.push({ providerName, index, id });
     });
   }
