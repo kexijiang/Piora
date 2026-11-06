@@ -1127,7 +1127,7 @@ function ModelLimitFields({
 
   const hint = (field: ModelLimitField): { text: string; tone: "error" | "source"; source?: string; missing?: boolean } | null => {
     const pair = modelLimitProblem(model);
-    if (pair?.code === "output-exceeds-context") return { text: t("models.limits.outputTooLarge"), tone: "error" };
+    if (pair?.code === "output-exceeds-context") return { text: t("models.limits.outputTooLarge", { context: model.contextWindow ?? "" }), tone: "error" };
     const problem = modelLimitFieldProblem(model[field], field);
     if (problem?.code === "required" && model.limitsMeta?.unavailable?.[field]) {
       return { text: t("models.limits.endpointMissing"), tone: "error", missing: true };

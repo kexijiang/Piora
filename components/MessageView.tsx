@@ -628,6 +628,8 @@ function AssistantMessageView({
   const hideFooter = intermediate || isStreaming || blocks.some((block) => block.type === "toolCall");
   const providerError = getAssistantErrorMessage(message, { isStreaming });
   const providerErrorDetail = providerError ? summarizeProviderError(providerError) : null;
+  const providerErrorSummary = providerErrorDetail?.code === "model_output_budget"
+    ? t("chat.modelOutputBudgetError") : providerErrorDetail?.summary ?? "";
   const stopped = isAssistantAborted(message, { isStreaming });
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -756,7 +758,7 @@ function AssistantMessageView({
             overflowWrap: "anywhere",
           }}
         >
-          {stopped ? t("chat.generationStopped") : t("chat.providerError", { reason: providerErrorDetail?.summary ?? "" })}
+          {stopped ? t("chat.generationStopped") : t("chat.providerError", { reason: providerErrorSummary })}
           {!stopped && providerErrorDetail?.structured && <details>
             <summary>{t("chat.providerErrorDetails")}{providerErrorDetail.code ? ` · ${providerErrorDetail.code}` : ""}</summary>
             <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: "8px 0 0" }}>{providerError}</pre>

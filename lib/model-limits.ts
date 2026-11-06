@@ -22,7 +22,8 @@
  * invalid; Piora does not rewrite them into a hidden default either.
  *
  * Explicit discovery fills absent endpoint limits with visible, editable
- * defaults (512000 context / 65536 output). Loading saved models does not. New or
+ * defaults (512000 context / up to 65536 output, capped at half the context).
+ * Loading saved models does not. New or
  * edited custom models need valid limits; unchanged legacy models remain usable.
  */
 import { modelSamplingError } from "./model-sampling";
@@ -32,6 +33,13 @@ export const LEGACY_MODEL_LIMIT_RUNTIME = "keep-sdk-resolution" as const;
 export const REQUIRE_CUSTOM_MODEL_LIMITS = true;
 
 export const DISCOVERED_MODEL_LIMIT_DEFAULTS = { contextWindow: 512_000, maxTokens: 65_536 } as const;
+
+/** A visible discovery default, never a rewrite of a stored or supplied limit. */
+export function recommendedMaxOutputTokens(contextWindow: unknown): number {
+  const context = positiveTokenCount(contextWindow);
+  return context === undefined ? DISCOVERED_MODEL_LIMIT_DEFAULTS.maxTokens
+    : Math.min(DISCOVERED_MODEL_LIMIT_DEFAULTS.maxTokens, Math.max(1, Math.floor(context / 2)));
+}
 
 export type AutomaticModelLimitSource = "endpoint" | "models.dev";
 
@@ -97,7 +105,7 @@ export function modelLimitProblem(model: { contextWindow?: unknown; maxTokens?: 
   if (context) return context;
   const output = modelLimitFieldProblem(model.maxTokens, "maxTokens");
   if (output) return output;
-  if ((model.maxTokens as number) > (model.contextWindow as number)) return { code: "output-exceeds-context" };
+  if ((model.maxTokens as number) >= (model.contextWindow as number)) return { code: "output-exceeds-context" };
   return null;
 }
 
@@ -108,7 +116,7 @@ export function modelLimitsError(
   const problem = modelLimitProblem(model);
   if (!problem) return null;
   const who = label ?? (typeof model.id === "string" && model.id.trim() ? model.id.trim() : "model");
-  if (problem.code === "output-exceeds-context") return `${who}: maxTokens must be less than or equal to contextWindow`;
+  if (problem.code === "output-exceeds-context") return `${who}: maxTokens must be less than contextWindow (${model.contextWindow}); leave room for input tokens`;
   const reason = problem.code === "required" ? "is required" : "must be a positive integer";
   return `${who}: ${problem.field} ${reason}`;
 }
@@ -310,7 +318,7 @@ export function applyEndpointLimits<T extends ModelLimitDraft>(
   for (const field of ["contextWindow", "maxTokens"] as const) {
     const incoming = positiveTokenCount(discovered?.[field]);
     if (model[field] === undefined) {
-      next[field] = incoming ?? DISCOVERED_MODEL_LIMIT_DEFAULTS[field];
+      next[field] = incoming ?? (field === "maxTokens" ? recommendedMaxOutputTokens(next.contextWindow) : DISCOVERED_MODEL_LIMIT_DEFAULTS.contextWindow);
       meta[field] = incoming === undefined ? "default" : "endpoint";
       delete unavailable[field];
       changed = true;
