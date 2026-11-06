@@ -1,6 +1,6 @@
 # 侧栏分组与项目预览验证
 
-日期：2026-11-06。基线：`62b7856d`（PR #345 合并提交）。本机 Windows / Node 24.5.0 / headless Edge；工作区位于 `F:\Piora\.verification\issue-341-sidebar-groups`，主工作区未提交修改未动。
+日期：2026-11-06。基线：`62b7856d`（PR #345 合并提交）。本机 Windows / Node 24.5.0 / headless Edge；使用仓库下 `.verification/issue-341-sidebar-groups` 独立工作区，主工作区未提交修改未动。
 
 ## 范围与行为
 
@@ -27,6 +27,8 @@
 首轮新浏览器场景因测试夹具把会话对象当作 selectedSessionId，导致选择断言及分支恢复等待失败。已修正夹具传参，保留并新增选择状态断言；后续完整浏览器场景通过。没有删除或降低布局、排序、分支及成员设置断言。
 
 本地复用主工作区已安装的 Next 16.4.3；锁文件要求的 Next 16.4.4 留给 GitHub Actions 安装验证。没有运行本地 `next build`、发布包构建、原生 Electron 验收、真实模型或 Harmony 设备测试。最终 CI 以 PR 对应提交的 GitHub Actions 结果为准。
+
+首轮 PR CI 42161896538 的 Linux 清理检查发现本说明包含本机仓库绝对路径，已改为相对路径，未放宽扫描规则。本地 `npm run verify:hygiene` 复测通过，检查了 2869 个文件及可达 Git 文本历史。此项失败与修复后的检查结果分别记录，不能将首轮 CI 计为成功。
 
 ![中文折叠状态与五条预览](./sidebar-disclosure-zh-CN.png)
 
