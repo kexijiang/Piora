@@ -13,6 +13,8 @@ import { NewSessionProjectPicker } from "./NewSessionProjectPicker";
 import type { NewSessionInitialPrompt, NewSessionLaunch } from "./new-session-types";
 import type { Tab } from "./TabBar";
 import type { RightPanelHandle, RightPanelTab } from "./workspace/RightPanel";
+import { AnswerLinkProvider } from "./AnswerLinkProvider";
+import { useAnswerLinkNavigation } from "@/hooks/useAnswerLinkNavigation";
 import type { RoomWorkspaceHandle } from "./RoomWorkspace";
 import type { SettingsKey } from "@/lib/settings-search";
 import { useTheme } from "@/hooks/useTheme";
@@ -294,6 +296,11 @@ export function AppShell() {
   // Keep the server and first client render identical. The persisted tab is
   // restored after hydration so React never has to replace this subtree.
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>("home");
+  const showAnswerBrowser = useCallback(() => { setRightPanelTab("browser"); setRightPanelOpen(true); }, []);
+  const answerNavigation = useAnswerLinkNavigation(
+    selectedRoom ? `room:${selectedRoom.id}:${roomPanelMember?.binding.sessionId ?? ""}` : `chat:${selectedSession?.id ?? "new"}`,
+    showAnswerBrowser,
+  );
   const [selectedAutomationId, setSelectedAutomationId] = useState<string | null>(null);
   const [rightPanelTabRestored, setRightPanelTabRestored] = useState(false);
   const [rightPanelOverlayMode, setRightPanelOverlayMode] = useState(false);
@@ -2071,7 +2078,7 @@ export function AppShell() {
   const effectiveRightPanelOpen = rightPanelOpen && !settingsDialogOpen;
 
   return (
-    <>
+    <AnswerLinkProvider openLink={answerNavigation.openLink}>
     <style>{`
       @keyframes session-info-pop {
         0% {
@@ -2932,6 +2939,8 @@ export function AppShell() {
       >
         {rightPanelHasOpened ? <RightPanel
           ref={rightPanelRef}
+          answerNavigation={answerNavigation.request}
+          onAnswerNavigationConsumed={answerNavigation.consume}
           activeTab={rightPanelTab}
           onActiveTabChange={setRightPanelTab}
           maximized={rightPanelMaximized}
@@ -3015,6 +3024,6 @@ export function AppShell() {
       onPrepareFirstPrompt={handlePrepareFirstPrompt}
     />
     <ConfirmationHost />
-    </>
+    </AnswerLinkProvider>
   );
 }

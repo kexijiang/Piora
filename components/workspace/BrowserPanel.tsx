@@ -17,6 +17,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { nextFollowState } from "@/lib/browser-follow";
 import { createBrowserViewportSync } from "@/lib/browser-viewport-sync";
 import { pollVisibleDocument } from "@/lib/visible-poller";
+import { normalizeAnswerLink, type BrowserNavigationRequest } from "@/lib/answer-links";
 import { AliIcon } from "../AliIcon";
 import styles from "./WorkspacePanel.module.css";
 
@@ -136,12 +137,16 @@ function bookmarkBarNodes(profiles: ImportedChromeBookmarkProfile[]): ImportedCh
   return profiles.flatMap((profile) => profile.children);
 }
 
-interface BrowserNavigationProps { navigationRequest?: { id: string; url: string }; onNavigationConsumed?: () => void }
-function useRequestedNavigation(request: BrowserNavigationProps["navigationRequest"], ready: boolean, navigate: (input: { action: "navigate"; url: string }) => Promise<void>, consumed?: () => void) {
+interface BrowserNavigationProps { navigationRequest?: BrowserNavigationRequest; onNavigationConsumed?: (id: string) => void }
+function useRequestedNavigation(request: BrowserNavigationProps["navigationRequest"], ready: boolean, navigate: (input: { action: "navigate" | "new_tab"; url: string }) => Promise<void>, consumed?: (id: string) => void) {
   const previous = useRef<string | null>(null);
   useEffect(() => {
-    if (!request || !ready || previous.current === request.id || !/^https?:\/\//i.test(request.url)) return;
-    previous.current = request.id; void navigate({ action: "navigate", url: request.url }); consumed?.();
+    if (!request || !ready || previous.current === request.id) return;
+    const url = normalizeAnswerLink(request.url);
+    previous.current = request.id;
+    // Acknowledge before starting so a panel remount cannot replay the action.
+    consumed?.(request.id);
+    if (url) void navigate({ action: request.newTab ? "new_tab" : "navigate", url });
   }, [request, ready, navigate, consumed]);
 }
 
@@ -150,6 +155,12 @@ export function BrowserPanel({ active, maximized, sessionId, navigationRequest, 
   const [desktopBridge, setDesktopBridge] = useState<DesktopBrowserBridge | null | undefined>(undefined);
   const [followAgent, setFollowAgent] = useState<boolean | null>(null);
   const [agentBackend, setAgentBackend] = useState<DesktopBrowserAgentBackend | null>(null);
+
+  useEffect(() => {
+    // An explicit link click opens a manual page, including from read-only follow
+    // mode. Do not change the saved follow preference or the Agent's private page.
+    if (navigationRequest && agentBackend !== "desktop") setFollowAgent(false);
+  }, [navigationRequest, agentBackend]);
 
   useEffect(() => {
     const browser = window.piDesktop?.browser ?? null;
@@ -270,6 +281,7 @@ function AgentBrowserPanel({ active, sessionId }: { active: boolean; sessionId: 
 
 function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationRequest, onNavigationConsumed, linkAgent = false }: { active: boolean; bridge: DesktopBrowserBridge; maximized: boolean; sessionId: string | null; linkAgent?: boolean } & BrowserNavigationProps) {
   const { t } = useI18n();
+  const [readySession, setReadySession] = useState<string | null | undefined>(undefined);
   const [state, setState] = useState<DesktopBrowserState | null>(null);
   const [address, setAddress] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -311,7 +323,7 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
   useEffect(() => {
     let cancelled = false;
     void bridge.action({ action: "set_session", ...(sessionId ? { sessionId } : {}) }).then((next) => {
-      if (!cancelled) applyState(next);
+      if (!cancelled) { applyState(next); setReadySession(sessionId); }
     }).catch((sessionError) => {
       if (!cancelled) setError(sessionError instanceof Error ? sessionError.message : t("browser.unavailable"));
     });
@@ -416,7 +428,14 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
     }
   }, [applyState, bridge, t]);
 
-  useRequestedNavigation(navigationRequest, active && Boolean(state), act, onNavigationConsumed);
+  const navigateRequested = useCallback(async (input: { action: "navigate" | "new_tab"; url: string }) => {
+    if (input.action === "new_tab") {
+      followingRef.current = false;
+      setFollowingAgent(false);
+    }
+    await act(input);
+  }, [act]);
+  useRequestedNavigation(navigationRequest, active && Boolean(state) && readySession === sessionId, navigateRequested, onNavigationConsumed);
 
   useEffect(() => {
     if (!linkAgent) return;
