@@ -13,6 +13,21 @@ export function validateChatPayload(payload: unknown): void {
 
 type PayloadHook = (payload: unknown, model: unknown) => unknown | Promise<unknown>;
 const installed = new WeakSet<object>();
+const sharedContextApis = new Set(["openai-completions", "openai-responses", "azure-openai-responses", "anthropic-messages"]);
+
+/** Check the final wire parameters after hooks; the SDK normally clamps these. */
+export function validateOutputBudget(payload: unknown, model: unknown): void {
+  if (!payload || typeof payload !== "object" || !model || typeof model !== "object") return;
+  const { contextWindow, api } = model as { contextWindow?: unknown; api?: string };
+  if (!sharedContextApis.has(api ?? "") || typeof contextWindow !== "number" || !Number.isSafeInteger(contextWindow) || contextWindow <= 0) return;
+  const request = payload as Record<string, unknown>;
+  for (const field of ["max_tokens", "max_completion_tokens", "max_output_tokens"]) {
+    const output = request[field];
+    if (typeof output === "number" && Number.isFinite(output) && output >= contextWindow) {
+      throw new Error(`Invalid model output budget: ${field} (${output}) must be less than the context window (${contextWindow}). Check Max Output Tokens in model settings and any payload overrides; leave room for input. No request was sent.`);
+    }
+  }
+}
 
 export function installProviderPayloadValidation(runtime: unknown): boolean {
   if (!runtime || typeof runtime !== "object" || installed.has(runtime)) return false;
@@ -20,12 +35,14 @@ export function installProviderPayloadValidation(runtime: unknown): boolean {
   if (typeof holder.streamSimple !== "function") return false;
   const original = holder.streamSimple.bind(runtime);
   holder.streamSimple = (model, context, options) => {
-    if ((model as { api?: string } | null)?.api !== "openai-completions") return original(model, context, options);
+    const api = (model as { api?: string } | null)?.api;
+    if (!sharedContextApis.has(api ?? "")) return original(model, context, options);
     const previous = options?.onPayload as PayloadHook | undefined;
     return original(model, context, { ...options, onPayload: async (payload: unknown, selectedModel: unknown) => {
       const replacement = await previous?.(payload, selectedModel);
       const finalPayload = replacement === undefined ? payload : replacement;
-      validateChatPayload(finalPayload);
+      if (api === "openai-completions") validateChatPayload(finalPayload);
+      validateOutputBudget(finalPayload, model);
       return finalPayload;
     } });
   };
@@ -34,6 +51,13 @@ export function installProviderPayloadValidation(runtime: unknown): boolean {
 }
 
 export function summarizeProviderError(raw: string): { summary: string; code?: string; structured: boolean } {
+  // Keep the original diagnostics in the details disclosure; only the summary
+  // gets a localized, actionable explanation at the rendering boundary.
+  if (raw.includes("Invalid model output budget:")
+    || (/maximum context length/i.test(raw) && /requested\s+\d+\s+output tokens/i.test(raw) && /(?:\b0 input tokens|\b0 tokens for (?:the )?input)/i.test(raw))
+    || /\bmax_completion_tokens=\d+ cannot be greater than max_model_len=(?:max_total_tokens=)?\d+/i.test(raw)) {
+    return { summary: "Check Max Output Tokens and the context window in model settings against the provider's actual limits; leave room for input.", code: "model_output_budget", structured: true };
+  }
   const start = raw.indexOf("{");
   if (start < 0) return { summary: raw, structured: false };
   try {
