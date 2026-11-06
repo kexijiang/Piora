@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复聊天渲染回归测试的异步等待：进入提示词设置后等待模型响应，避免页面标题先显示时误报按需加载失败；保留其他页面不请求模型及提示词页必须请求的断言。
+
 - 补充回答链接与 Agent 浏览器跟随切换的交互回归，确认新页面不会被后台活动抢走，且点击 Agent 标签仍能恢复跟随。
 
 - 助手回答中的网页链接默认在内置浏览器的新标签页打开，保留当前页面；“对话与输入”中可切换系统浏览器，按住 Ctrl、Command 或 Shift 点击可临时使用另一种方式（#346）。
