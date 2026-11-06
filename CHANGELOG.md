@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 更新应用、渲染与桌面依赖；验证 node-forge 1.4.2 上游 RSA 规范编码修复，移除旧补丁和审计虚拟版本，保留源码完整性与畸形签名回归检查；核对依赖官方来源并同步许可证清单。
+
 ## [0.5.10-beta.4] - 2026-11-06
 
 - 自动更新仅对 Windows 正式安装版生效：Beta、旧 Alpha 与开发版跳过检查、下载和静默安装，设置中明确提示手动安装；正式版忽略历史测试渠道标记，继续支持 GitHub / 内源更新来源（#335）。
