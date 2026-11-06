@@ -73,6 +73,9 @@ window.submissions=[];window.queueActions=[];createRoot(document.getElementById(
     const toggle = page.locator('[data-live-tooltip="queue-fixture"]');
     const tooltip = page.locator("#pi-app-tooltip");
     await toggle.hover();
+    const queue = page.locator("section[data-tooltip-scope]");
+    assert.equal(await queue.getByText("检查 Windows 状态", { exact: true }).count(), 1, "a sustained confirmed queue entry becomes visible once");
+    assert.equal(await queue.getByRole("button", { name: "取消", exact: true }).isEnabled(), true, "confirmed entries retain their cancel control");
     await page.waitForFunction(() => document.querySelector('[role="tooltip"]').textContent.includes("当前：排队中"));
     assert.equal(await page.getByText("排队中", { exact: true }).count(), 0);
     // Keep the mouse stationary through both row replacements.

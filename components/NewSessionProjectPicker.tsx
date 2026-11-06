@@ -316,7 +316,7 @@ export function NewSessionProjectPicker({
   const modelsUnavailable = !modelsLoading && models.length === 0;
   const modelSelectionBlocked = modelsLoading
     || !selectedModel
-    || (selectedProject ? loadedModelCwd !== selectedProject.cwd : loadedModelCwd !== null || !projectlessCwd);
+    || loadedModelCwd !== (selectedProject?.cwd ?? null);
 
   const projectControl = (
     <div ref={projectControlRef} className={styles.projectControl}>
@@ -409,6 +409,7 @@ export function NewSessionProjectPicker({
           onSend={handleLandingSend}
           onAbort={() => {}}
           isStreaming={false}
+          sendDisabled={!selectedProject && !projectlessCwd}
           toolPermission={toolPermission}
           permissionSaving={permissionSaving}
           onToolPermissionChange={handleToolPermission}
