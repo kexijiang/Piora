@@ -9,8 +9,9 @@ import { fileURLToPath } from "node:url";
 import { findUnverifiedPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
 import { verifyPiSourceProfile } from "./pi-source-profile.mjs";
 
+import { patchNodeForgeDigestAlgorithm } from "./patch-bundled-dependencies.mjs";
+
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const NODE_FORGE_RSA_PATCHED_SHA256 = "18ae286c1ef8e00fc6359ffe3280416946c1dfd6684c98c1c6af1590d7f7e9f4";
 const reviewedReplacements = [
   { name: "brace-expansion", lockedVersion: "5.0.9", installedVersion: "5.0.12" },
   { name: "undici", lockedVersion: "8.10.2", installedVersion: "8.12.3" },
@@ -79,24 +80,18 @@ export async function createVerifiedAuditLock(root = projectRoot) {
   }
   const forgePath = "node_modules/node-forge";
   const forge = lock.packages[forgePath];
-  if (forge?.version !== "1.4.0"
-    || forge.resolved !== "https://registry.npmjs.org/node-forge/-/node-forge-1.4.0.tgz"
+  if (forge?.version !== "1.4.2"
+    || forge.resolved !== "https://registry.npmjs.org/node-forge/-/node-forge-1.4.2.tgz"
     || !/^sha512-/.test(forge.integrity ?? "")) {
-    throw new Error("Review the node-forge audit patch after a lockfile change");
+    throw new Error("Review the node-forge upstream audit fix after a lockfile change");
   }
-  const forgeManifest = JSON.parse(await readFile(join(root, forgePath, "package.json"), "utf8"));
-  const rsaBytes = await readFile(join(root, forgePath, "lib", "rsa.js"));
-  const rsaSha256 = createHash("sha256").update(rsaBytes).digest("hex");
-  if (forgeManifest.name !== "node-forge" || forgeManifest.version !== "1.4.0"
-    || rsaSha256 !== NODE_FORGE_RSA_PATCHED_SHA256) {
-    throw new Error("Installed node-forge does not contain the reviewed DigestAlgorithm patch");
-  }
-  // npm's advisory database can only compare package versions. The installed
-  // bytes remain integrity-locked node-forge 1.4.0 plus the exact reviewed
-  // postinstall patch above; represent that effective code as the next patch
-  // version only in this temporary audit lock.
-  effectiveLock.packages[forgePath] = { ...forge, version: "1.4.1-piora.1" };
-  const nodeForgePatch = { path: forgePath, from: "1.4.0", effective: "1.4.1-piora.1", rsaSha256 };
+  const verified = await patchNodeForgeDigestAlgorithm(root);
+  // Upstream now contains the fix. Audit its real locked version without
+  // synthesizing a patched version or suppressing future advisories.
+  const nodeForgePatch = {
+    path: forgePath, version: verified.version, reason: verified.reason,
+    rsaSha256: verified.sha256,
+  };
   return { lock: effectiveLock, replacements, nodeForgePatch };
 }
 
