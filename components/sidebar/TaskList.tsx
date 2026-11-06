@@ -37,9 +37,10 @@ interface SessionDragState {
   position: "before" | "after";
 }
 
-export function TaskList({ nodes, scope, onReorderSessions, onSelectSession: selectSession, ...props }: CommonProps & {
+export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, onSelectSession: selectSession, ...props }: CommonProps & {
   nodes: SessionTreeNode[];
   scope: string;
+  reorderable?: boolean;
   onReorderSessions: (sourceId: string, targetId: string, position: "before" | "after") => void;
 }) {
   const { t } = useI18n();
@@ -177,6 +178,7 @@ export function TaskList({ nodes, scope, onReorderSessions, onSelectSession: sel
   useEffect(() => stopDragging, [stopDragging]);
 
   const beginSessionDrag = useCallback((session: SessionInfo, sourceScope: string, event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!reorderable) return;
     if (!event.isPrimary || event.button !== 0) return;
     if ((event.target as Element).closest("button, input, textarea, select, a, [role='menu'], [data-session-drag-ignore]")) return;
     event.stopPropagation();
@@ -202,7 +204,7 @@ export function TaskList({ nodes, scope, onReorderSessions, onSelectSession: sel
       document.body.style.userSelect = "none";
       window.getSelection()?.removeAllRanges();
     }, SESSION_DRAG_HOLD_MS);
-  }, [clearHoldTimer]);
+  }, [clearHoldTimer, reorderable]);
 
   const suppressSessionClick = useCallback((sessionId: string, event: ReactMouseEvent<HTMLElement>) => {
     const suppressed = suppressClickRef.current;

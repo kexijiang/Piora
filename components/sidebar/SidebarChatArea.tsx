@@ -9,6 +9,7 @@ import { AliIcon } from "../AliIcon";
 import styles from "../SessionSidebar.module.css";
 import { TaskList } from "./TaskList";
 import type { SessionMoveTarget } from "./TaskContextMenu";
+import { useSectionDisclosure } from "./useSectionDisclosure";
 
 interface Props {
   sessions: SessionInfo[];
@@ -48,12 +49,16 @@ export function SidebarChatArea({
   onReorderSessions,
 }: Props) {
   const { t } = useI18n();
+  const { collapsed, toggle } = useSectionDisclosure("chats");
   const tree = useMemo(() => buildSessionTree(sessions), [sessions]);
 
   return (
     <section className={styles.chatSection} aria-label={t("sidebar.chats")}>
       <div className={`${styles.sectionLabel} ${styles.projectsHeader}`}>
-        <span>{t("sidebar.chats")}</span>
+        <button type="button" className={styles.projectsHeaderToggle} onClick={toggle} aria-expanded={!collapsed}>
+          <span>{t("sidebar.chats")}</span>
+          <AliIcon name="chevron-right" size={11} className={collapsed ? undefined : styles.projectsHeaderChevronOpen} />
+        </button>
         <div className={styles.sectionLabelActions}>
           <button
             type="button"
@@ -66,7 +71,7 @@ export function SidebarChatArea({
           </button>
         </div>
       </div>
-      <div className={styles.chatSessionList} data-session-drag-scroll>
+      {!collapsed && <div className={styles.chatSessionList} data-session-drag-scroll>
         {tree.length > 0 ? (
           <TaskList
             nodes={tree}
@@ -89,7 +94,7 @@ export function SidebarChatArea({
         ) : (
           <p className={styles.chatEmpty}>{t("sidebar.noProjectlessChats")}</p>
         )}
-      </div>
+      </div>}
     </section>
   );
 }

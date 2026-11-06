@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import {
   COLLAPSED_PROJECTS_STORAGE_KEY,
-  EXPANDED_PROJECT_SESSIONS_STORAGE_KEY,
   HIDDEN_PROJECTS_STORAGE_KEY,
   PINNED_PROJECTS_STORAGE_KEY,
   PROJECT_ORDER_STORAGE_KEY,
@@ -22,9 +21,6 @@ export function useSidebarState() {
   const [collapsedProjectKeys, setCollapsedProjectKeys] = useState<Set<string>>(
     () => loadStoredStringSet(COLLAPSED_PROJECTS_STORAGE_KEY),
   );
-  const [expandedProjectSessionKeys, setExpandedProjectSessionKeys] = useState<Set<string>>(
-    () => loadStoredStringSet(EXPANDED_PROJECT_SESSIONS_STORAGE_KEY),
-  );
   const [pinnedProjectRoots, setPinnedProjectRoots] = useState<Set<string>>(
     () => loadStoredStringSet(PINNED_PROJECTS_STORAGE_KEY),
   );
@@ -36,7 +32,6 @@ export function useSidebarState() {
   const [sessionOrder, setSessionOrder] = useState<string[]>(() => loadStoredStringList(SESSION_ORDER_STORAGE_KEY));
 
   useEffect(() => saveStoredStringSet(COLLAPSED_PROJECTS_STORAGE_KEY, collapsedProjectKeys), [collapsedProjectKeys]);
-  useEffect(() => saveStoredStringSet(EXPANDED_PROJECT_SESSIONS_STORAGE_KEY, expandedProjectSessionKeys), [expandedProjectSessionKeys]);
   useEffect(() => saveStoredStringSet(PINNED_PROJECTS_STORAGE_KEY, pinnedProjectRoots), [pinnedProjectRoots]);
   useEffect(() => saveProjectAliases(projectAliases), [projectAliases]);
   useEffect(() => saveStoredStringList(PROJECT_ORDER_STORAGE_KEY, projectOrder), [projectOrder]);
@@ -58,7 +53,6 @@ export function useSidebarState() {
 
   return {
     collapsedProjectKeys, setCollapsedProjectKeys,
-    expandedProjectSessionKeys, setExpandedProjectSessionKeys,
     pinnedProjectRoots, setPinnedProjectRoots,
     rememberedProjectRoots, setRememberedProjectRoots,
     hiddenProjectRoots, setHiddenProjectRoots,

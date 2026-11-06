@@ -1,5 +1,7 @@
 .section { flex-shrink: 0; padding: 8px 9px 12px; border-bottom: 1px solid var(--border); }
-.heading { display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 2px 7px 7px; color: var(--text-muted); font-size: var(--text-xs, 12px); font-weight: 550; }
+.heading { display: flex; align-items: center; min-height: 30px; padding: 0; border-radius: 5px; color: var(--text-muted); font-size: var(--text-xs, 12px); font-weight: 550; }
+.heading:hover { background: var(--bg-hover); }
+.headingToggle { display: flex; flex: 1; align-self: stretch; align-items: center; gap: 4px; min-width: 0; padding: 7px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .addButton, .closeButton, .pinButton { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 27px; height: 27px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .addButton { margin-left: auto; }
 .addButton:hover, .closeButton:hover, .pinButton:hover { background: var(--bg-hover); color: var(--text); }
