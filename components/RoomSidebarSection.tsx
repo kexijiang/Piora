@@ -10,6 +10,7 @@ import { AliIcon } from "./AliIcon";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { RoomAvatar } from "./RoomUi";
 import styles from "./RoomSidebarSection.module.css";
+import { useSectionDisclosure } from "./sidebar/useSectionDisclosure";
 
 type RoomWithSummary = CollaborationRoom & { summary?: { lastMessage?: { content: string; author: string; seq: number }; phase?: string; pending?: boolean } };
 type AgentDraft = { name: string; role?: TeamAgentRole; roleDescription?: string };
@@ -24,6 +25,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
   initialRoomId?: string | null; refreshKey?: number; onSelectRoom: (room: CollaborationRoom, isRestore?: boolean) => void; onInitialRestoreDone?: () => void;
 }) {
   const { t } = useI18n();
+  const { collapsed, toggle } = useSectionDisclosure("rooms");
   const [rooms, setRooms] = useState<RoomWithSummary[]>([]);
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -119,8 +121,13 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
   };
 
   return <section className={styles.section} aria-label={t("roomUx.groups")}>
-    <div className={styles.heading}><span>{t("roomUx.groups")}</span><button type="button" className={styles.addButton} onClick={openCreate} aria-label={t("roomUx.create")} title={t("roomUx.create")}><AliIcon name="plus" size={16} /></button></div>
-    <div className={styles.list}>
+    <div className={styles.heading}>
+      <button type="button" className={styles.headingToggle} onClick={toggle} aria-expanded={!collapsed}>
+        <span>{t("roomUx.groups")}</span><AliIcon name="chevron-right" size={11} style={{ transform: collapsed ? undefined : "rotate(90deg)" }} />
+      </button>
+      <button type="button" className={styles.addButton} onClick={openCreate} aria-label={t("roomUx.create")} title={t("roomUx.create")}><AliIcon name="plus" size={16} /></button>
+    </div>
+    {!collapsed && <div className={styles.list}>
       {!rooms.length ? <button type="button" className={styles.empty} onClick={openCreate}>{t("roomUx.noGroups")}<AliIcon name="plus" size={13} /></button> : ordered.map((room) => {
         const summary = room.summary; const attention = ["waiting_user", "interrupted", "failed"].includes(summary?.phase ?? "");
         let unread = false;
@@ -134,7 +141,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
           <button type="button" className={`${styles.pinButton}${pins.includes(room.id) ? ` ${styles.pinned}` : ""}`} aria-label={`${t(pins.includes(room.id) ? "roomUx.unpin" : "roomUx.pin")} ${room.name}`} onClick={() => togglePin(room.id)}><AliIcon name="bookmark" size={12} /></button>
         </div>;
       })}
-    </div>
+    </div>}
     {open ? <div className={styles.backdrop} onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setOpen(false); }}>
       <section ref={dialogRef} className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="room-create-title">
         <header className={styles.dialogHeader}><div><h2 id="room-create-title">{t("roomUx.create")}</h2><p>{t("roomUx.createHint")}</p></div><button type="button" className={styles.closeButton} aria-label={t("roomUx.close")} disabled={busy} onClick={() => setOpen(false)}><AliIcon name="close" size={20} /></button></header>

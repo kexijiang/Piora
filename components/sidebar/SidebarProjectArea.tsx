@@ -15,10 +15,9 @@ interface Props {
   loading: boolean; error: string | null;
   handleDefaultCwd: () => Promise<void>; handleCustomPathClick: () => void;
   projectGroups: SessionProjectGroup[];
-  selectedProject: string | null; collapsedProjectKeys: Set<string>; expandedProjectSessionKeys: Set<string>;
+  selectedProject: string | null; collapsedProjectKeys: Set<string>;
   setCollapsedProjectKeys: Dispatch<SetStateAction<Set<string>>>;
-  setExpandedProjectSessionKeys: Dispatch<SetStateAction<Set<string>>>;
-  selectedSessionId: string | null; runningSessionIds: Set<string>; unreadSessionIds: Set<string>; attentionSessionIds: Set<string>;
+  selectedSessionId: string | null; runningSessionIds: Set<string>; unreadSessionIds: Set<string>;
   moveTargets: SessionMoveTarget[];
   setSelectedCwd: Dispatch<SetStateAction<string | null>>; homeDir: string;
   handleSelectSessionFromList: (session: SessionInfo) => void; handleNewSessionInProject: (cwd: string) => void;
@@ -46,7 +45,7 @@ interface ProjectDragState {
 
 export function SidebarProjectArea(props: Props) {
   const { t } = useI18n();
-  const { loading, error, handleDefaultCwd, handleCustomPathClick, projectGroups, selectedProject, collapsedProjectKeys, expandedProjectSessionKeys, setCollapsedProjectKeys, setExpandedProjectSessionKeys, selectedSessionId, runningSessionIds, unreadSessionIds, attentionSessionIds, moveTargets, setSelectedCwd, homeDir, handleSelectSessionFromList, handleNewSessionInProject, loadSessions, handleSessionDeletedWithUndo, sessionFlags, patchSessionFlag, duplicateSession, markSessionUnread, moveSession, pinnedProjectRoots, projectAliases, mutedProjectRoots, toggleProjectMuted, togglePinnedProject, renameProject, removeProject, onReorderProjects, sessionOrder, onReorderSessions } = props;
+  const { loading, error, handleDefaultCwd, handleCustomPathClick, projectGroups, selectedProject, collapsedProjectKeys, setCollapsedProjectKeys, selectedSessionId, runningSessionIds, unreadSessionIds, moveTargets, setSelectedCwd, homeDir, handleSelectSessionFromList, handleNewSessionInProject, loadSessions, handleSessionDeletedWithUndo, sessionFlags, patchSessionFlag, duplicateSession, markSessionUnread, moveSession, pinnedProjectRoots, projectAliases, mutedProjectRoots, toggleProjectMuted, togglePinnedProject, renameProject, removeProject, onReorderProjects, sessionOrder, onReorderSessions } = props;
   const allProjectsCollapsed = projectGroups.length > 0
     && projectGroups.every((group) => collapsedProjectKeys.has(group.key));
   const projectScrollRef = useRef<HTMLDivElement>(null);
@@ -240,25 +239,15 @@ export function SidebarProjectArea(props: Props) {
             homeDir={homeDir}
             isSelectedProject={selectedProject === group.projectRoot}
             isCollapsed={collapsedProjectKeys.has(group.key)}
-            sessionsExpanded={expandedProjectSessionKeys.has(group.key)}
             selectedSessionId={selectedSessionId}
             runningSessionIds={runningSessionIds}
             unreadSessionIds={unreadSessionIds}
             moveTargets={moveTargets}
-            attentionSessionIds={attentionSessionIds}
             onSelectProject={() => {
               setSelectedCwd(group.preferredCwd);
             }}
             onToggleProject={() => {
               setCollapsedProjectKeys((previous) => {
-                const next = new Set(previous);
-                if (next.has(group.key)) next.delete(group.key);
-                else next.add(group.key);
-                return next;
-              });
-            }}
-            onToggleSessions={() => {
-              setExpandedProjectSessionKeys((previous) => {
                 const next = new Set(previous);
                 if (next.has(group.key)) next.delete(group.key);
                 else next.add(group.key);

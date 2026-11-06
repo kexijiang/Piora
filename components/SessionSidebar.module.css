@@ -174,14 +174,22 @@
 
 .projectsHeader {
   flex: 0 0 auto;
+  padding: 0;
+  border-radius: var(--radius-control);
+}
+
+.projectsHeader:hover {
+  background: var(--bg-hover);
 }
 
 .projectsHeaderToggle {
-  display: inline-flex;
+  display: flex;
+  flex: 1;
+  align-self: stretch;
   align-items: center;
   gap: 4px;
   min-width: 0;
-  padding: 2px 0;
+  padding: 7px 8px 7px 15px;
   border: 0;
   background: transparent;
   color: inherit;
@@ -191,7 +199,8 @@
 
 .projectsHeaderToggle:focus-visible {
   color: var(--text-muted);
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 .projectsHeaderToggle:disabled {
@@ -208,6 +217,7 @@
 }
 
 .projectsHeader .sectionLabelActions {
+  padding-right: 9px;
   opacity: 0;
   pointer-events: none;
   transition: opacity 100ms ease;

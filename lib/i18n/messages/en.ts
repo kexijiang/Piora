@@ -1797,6 +1797,7 @@ export const enLocale: LocalePlugin = {
     "sidebar.collapseAllProjects": "Collapse all projects",
     "sidebar.newConversation": "New conversation",
     "sidebar.showMoreSessions": "Show {count} more",
+    "sidebar.showAllSessions": "Show all ({count})",
     "sidebar.showFewerSessions": "Show fewer",
     "sidebar.sessionsCount": "{count} sessions",
     "sidebar.noSessionsInProject": "No conversations yet",
