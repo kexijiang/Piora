@@ -19,11 +19,14 @@ import { SSHPanel } from "./SSHPanel";
 import type { SessionCapabilitiesState } from "@/lib/session-capabilities";
 import type { PromptFileChanges } from "@/lib/prompt-file-changes";
 import { pollVisibleDocument } from "@/lib/visible-poller";
+import type { BrowserNavigationRequest } from "@/lib/answer-links";
 
 export type RightPanelTab = "home" | "automation" | "review" | "files" | "commands" | "ssh" | "browser" | "design" | "harmony";
 export interface RightPanelHandle { focusActiveTab: () => void; focusFileSearch: () => void; }
 
 interface Props {
+  answerNavigation?: BrowserNavigationRequest;
+  onAnswerNavigationConsumed?: (id: string) => void;
   commitRequest?: { cwd: string; id: number } | null;
   contextHeader?: ReactNode;
   activeTab: RightPanelTab;
@@ -90,7 +93,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
   const [resizingTree, setResizingTree] = useState(false);
   const [fileNavMode, setFileNavMode] = useState<"tree" | "run">("tree");
   const [runChanges, setRunChanges] = useState<PromptFileChanges | null>(null);
-  const [browserNavigation, setBrowserNavigation] = useState<{ id: string; url: string } | undefined>();
+  const [browserNavigation, setBrowserNavigation] = useState<BrowserNavigationRequest | undefined>();
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
   const firstLauncherRef = useRef<HTMLButtonElement | null>(null);
   const addMenuRef = useRef<HTMLDivElement | null>(null);
@@ -405,7 +408,10 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
       {active && activeTab === "ssh" ? <RenderErrorBoundary resetKey={`ssh:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><SSHPanel agentSessionId={props.sessionId} /></RenderErrorBoundary> : null}
     </section>
     <section id="workspace-browser" role="tabpanel" aria-labelledby="workspace-browser-tab" hidden={activeTab !== "browser"} className={styles.panel}>
-      {activeTab === "browser" ? <div className={styles.capabilityPanel}>{capabilityAccess("browser")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`browser:${props.sessionId ?? "manual"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><BrowserPanel active={active && activeTab === "browser"} maximized={props.maximized} sessionId={props.sessionId} navigationRequest={browserNavigation} onNavigationConsumed={() => setBrowserNavigation(undefined)} /></RenderErrorBoundary></div></div> : null}
+      {activeTab === "browser" ? <div className={styles.capabilityPanel}>{capabilityAccess("browser")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`browser:${props.sessionId ?? "manual"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><BrowserPanel active={active && activeTab === "browser"} maximized={props.maximized} sessionId={props.sessionId} navigationRequest={props.answerNavigation ?? browserNavigation} onNavigationConsumed={(id) => {
+        props.onAnswerNavigationConsumed?.(id);
+        setBrowserNavigation(current => current?.id === id ? undefined : current);
+      }} /></RenderErrorBoundary></div></div> : null}
     </section>
     <section id="workspace-harmony" role="tabpanel" aria-labelledby="workspace-harmony-tab" hidden={activeTab !== "harmony"} className={styles.panel}>
       {activeTab === "harmony" ? <div className={styles.capabilityPanel}>{capabilityAccess("device")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`harmony:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><SafeHarmonyPanel active={active && activeTab === "harmony"} maximized={props.maximized} onMaximizedChange={props.onMaximizedChange} cwd={cwd} sessionRunning={props.sessionRunning} onGuideAgent={props.onGuideAgent} onOpenLocalTerminal={() => onActiveTabChange("commands")} /></RenderErrorBoundary></div></div> : null}

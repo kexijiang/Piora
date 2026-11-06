@@ -1,6 +1,7 @@
 "use client";
 import { CredentialVaultSettings } from "./CredentialVaultSettings";
 import { RunningStatusSettings } from "./RunningStatusSettings";
+import { AnswerLinkSettings } from "./AnswerLinkSettings";
 import { useRunningSendMode } from "@/hooks/useRunningSendMode";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -638,6 +639,7 @@ export function SettingsDialog({
                     </div>
                   </div>
                 </section>
+                <AnswerLinkSettings />
                 <ReplySuggestionsSettings cwd={modelCwd} />
                 <InputPredictionSettings cwd={modelCwd} />
               </>
