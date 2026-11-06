@@ -82,6 +82,11 @@ return <I18nProvider><AnswerLinkProvider openLink={navigation.openLink}><main><A
               const tab = { id: String(state.tabs.length), title: input.url, url: input.url }; state.tabs.push(tab);
               Object.assign(state, { activeTabId: tab.id, url: tab.url, title: tab.title });
             }
+            if (input.action === "switch_tab") {
+              const tab = state.tabs.find(tab => tab.id === input.tabId);
+              if (!tab) throw new Error("Unknown fixture tab");
+              Object.assign(state, { activeTabId: tab.id, url: tab.url, title: tab.title });
+            }
             return structuredClone(state);
           },
           getState: async () => structuredClone(window.nativeStates[currentSession]),
@@ -117,6 +122,25 @@ return <I18nProvider><AnswerLinkProvider openLink={navigation.openLink}><main><A
       }
       // Returning from follow mode must remain on the explicit new manual tab.
       if (mode !== "desktop") assert.equal(await page.getByRole("switch").getAttribute("aria-checked"), "false");
+      if (mode === "desktop") {
+        const publishAgentActivity = () => page.evaluate(() => window.agentActivityListener({ sessionId: "first", tabId: "original", status: "running" }));
+        const switches = () => page.evaluate(() => window.nativeActions.filter(action => action.action === "switch_tab").length);
+        await publishAgentActivity();
+        await page.waitForTimeout(100);
+        assert.equal(await switches(), 0, "agent activity must not steal the newly opened answer tab");
+        const original = page.getByRole("tab", { name: /Keep original/ });
+        const answerTab = page.getByRole("tab", { name: /https:\/\/docs\.example\.test\/b/ });
+        assert.equal(await answerTab.getAttribute("aria-selected"), "true");
+        await original.click();
+        await publishAgentActivity();
+        await page.waitForFunction(() => window.nativeActions.filter(action => action.action === "switch_tab").length === 2);
+        assert.equal(await original.getAttribute("aria-selected"), "true", "clicking the agent tab resumes following");
+        await answerTab.click();
+        await publishAgentActivity();
+        await page.waitForTimeout(100);
+        assert.equal(await switches(), 3, "clicking a user tab pauses following again");
+        assert.equal(await answerTab.getAttribute("aria-selected"), "true");
+      }
       await linkA.focus(); await page.keyboard.press("Enter"); await waitCount(3);
       await linkB.click({ button: "middle" }); await waitCount(4);
       for (const modifier of ["Control", "Meta", "Shift"]) { t.diagnostic(`external ${modifier}`); await external(linkA, { modifiers: [modifier] }); }

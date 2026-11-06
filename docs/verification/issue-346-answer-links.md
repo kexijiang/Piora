@@ -14,7 +14,7 @@
 
 ## 测试结果
 
-68 项定向测试分次通过：
+76 项定向测试分次通过：
 
 | 测试文件 | 通过 |
 | --- | ---: |
@@ -24,6 +24,7 @@
 | lib/browser-mode-browser.test.mjs | 1 |
 | components/AnswerLinks.browser.test.mjs | 1 |
 | lib/browser-agent-control.test.mjs | 44 |
+| lib/browser-extension.test.mjs | 8 |
 
 Web 类型检查、改动范围 ESLint、`git diff --check` 通过。完整远端 CI 及最终提交的审查结果记录在 PR 中。
 
@@ -35,6 +36,7 @@ Web 类型检查、改动范围 ESLint、`git diff --check` 通过。完整远�
 
 ## 失败、修复与边界
 
+- 首轮远端 CI（42178821738）在浏览器扩展测试失败：旧断言禁止整个组件出现暂停跟随，与回答链接打开新用户标签的行为冲突。将断言明确限定到标签点击处理器，保留 Agent 标签恢复、其他标签暂停的完整判断，并增加真实 UI 点击及 Agent 活动事件验证；更新后的扩展测试 8 项与六组合 UI 测试 1 项复测全部通过。最终提交的完整 CI 结果另记于 PR。
 - 首次沙箱运行的两个浏览器测试被临时路径中的 `!` 阻断，webpack 尚未执行 UI 场景。改用正常本机临时目录重跑；没有改动 webpack 检查规则。
 - 首次真实 UI 测试在初始点击后失效。检查发现新队列依赖仅安全上下文提供的 `crypto.randomUUID`，现改用当前队列内部的递增标识，普通 HTTP 网页测试覆盖该路径。
 - 随后修饰键弹窗断言失败；最小 Edge 探针确认默认 Ctrl/Shift 点击没有产生可观察的新页。系统目标现明确使用用户点击中的 `window.open`，保留全部修饰键新页断言，最终六组组合通过。
