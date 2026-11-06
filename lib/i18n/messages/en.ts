@@ -2364,7 +2364,7 @@ export const enLocale: LocalePlugin = {
     "chat.sendCancelled": "Cancelled before sending",
     "chat.generationStopped": "Generation stopped",
     "chat.providerErrorDetails": "Original error details",
-    "chat.modelOutputBudgetError": "Maximum output tokens leave no room for input. Lower Max Output Tokens in model settings and check advanced parameters or extensions that override the output limit.",
+    "chat.modelOutputBudgetError": "Maximum output tokens reach or exceed the allowed context budget. Lower Max Output Tokens in model settings and verify the context window matches the provider's actual limit; also check advanced parameters or extensions that override the output limit.",
     "chat.providerError": "Error: {reason}",
     "chat.browserWaiting": "Waiting for browser input",
     "chat.runningCommand": "Running command...",

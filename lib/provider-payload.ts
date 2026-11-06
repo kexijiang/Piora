@@ -54,8 +54,9 @@ export function summarizeProviderError(raw: string): { summary: string; code?: s
   // Keep the original diagnostics in the details disclosure; only the summary
   // gets a localized, actionable explanation at the rendering boundary.
   if (raw.includes("Invalid model output budget:")
-    || (/maximum context length/i.test(raw) && /requested\s+\d+\s+output tokens/i.test(raw) && /(?:\b0 input tokens|\b0 tokens for (?:the )?input)/i.test(raw))) {
-    return { summary: "Check Max Output Tokens in model settings: output must leave room for input within the context window.", code: "model_output_budget", structured: true };
+    || (/maximum context length/i.test(raw) && /requested\s+\d+\s+output tokens/i.test(raw) && /(?:\b0 input tokens|\b0 tokens for (?:the )?input)/i.test(raw))
+    || /\bmax_completion_tokens=\d+ cannot be greater than max_model_len=(?:max_total_tokens=)?\d+/i.test(raw)) {
+    return { summary: "Check Max Output Tokens and the context window in model settings against the provider's actual limits; leave room for input.", code: "model_output_budget", structured: true };
   }
   const start = raw.indexOf("{");
   if (start < 0) return { summary: raw, structured: false };

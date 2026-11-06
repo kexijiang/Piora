@@ -2364,7 +2364,7 @@ export const zhCNLocale: LocalePlugin = {
     "chat.sendCancelled": "已取消，未发送",
     "chat.generationStopped": "已停止生成",
     "chat.providerErrorDetails": "原始错误详情",
-    "chat.modelOutputBudgetError": "最大输出 Token 占满了上下文，输入没有可用空间。请检查模型配置中的最大输出 Token 设置，将其调低，并检查高级参数或扩展是否覆盖了输出上限。",
+    "chat.modelOutputBudgetError": "最大输出 Token 达到或超过服务端允许的上下文预算。请检查模型配置中的最大输出 Token 设置，将其调低，并确认上下文窗口与服务商的实际限制一致；如有高级参数或扩展覆盖输出上限，也需一并调整。",
     "chat.providerError": "错误：{reason}",
     "chat.browserWaiting": "等待用户操作浏览器",
     "chat.runningCommand": "正在运行命令...",
