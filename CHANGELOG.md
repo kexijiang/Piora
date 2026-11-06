@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.5.10-beta.4] - 2026-11-06
+
 - 自动更新仅对 Windows 正式安装版生效：Beta、旧 Alpha 与开发版跳过检查、下载和静默安装，设置中明确提示手动安装；正式版忽略历史测试渠道标记，继续支持 GitHub / 内源更新来源（#335）。
 - 下线 Alpha 构建与分发，发布脚本拒绝 Alpha 标签；Beta 保留手动安装包及校验元数据，更新发布说明和回归测试。
 - 修复任务运行中切换引导或恢复排队时消息提前出现在聊天记录的问题；消息在实际接收前保留在待处理区，切换失败不会产生虚假聊天气泡。
