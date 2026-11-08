@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.5.10-beta.15] - 2026-11-09
+
 ### 修复
 
 - 投屏移除底部文字输入栏，按实际工具栏高度适配悬浮窗比例，避免画面两侧多余留白。
