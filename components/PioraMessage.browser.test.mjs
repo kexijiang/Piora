@@ -42,6 +42,7 @@ test("native message content paints above theme wallpaper and stays readable and
     for (const theme of themes) {
       await page.evaluate(theme => window.changeTheme(theme), theme);
       await page.waitForFunction(theme => (document.documentElement.dataset.theme ?? "light") === theme, theme);
+      await page.waitForFunction(dark => document.querySelector('[role="dialog"]')?.dataset.dark === String(dark), ["dark", "dream"].includes(theme));
       if (theme === "dream") await page.waitForFunction(() => document.querySelector("link[data-theme-pack]")?.sheet);
       for (const wallpaper of [false, true]) {
         await page.evaluate(wallpaper => {
@@ -49,7 +50,9 @@ test("native message content paints above theme wallpaper and stays readable and
           document.documentElement.style.setProperty("--app-background-image", "linear-gradient(#ff00ff,#ff00ff)");
           document.documentElement.style.setProperty("--app-background-overlay", "58%");
         }, wallpaper);
-        const pixels = await page.screenshot();
+        // Let finite color transitions settle before comparing screenshot ink
+        // against computed colors; the palette itself is asserted below.
+        const pixels = await page.screenshot({ animations: "disabled" });
         if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) {
           await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR, { recursive: true });
           await writeFile(path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR, `connection-${theme}-${wallpaper ? "wallpaper" : "plain"}.png`), pixels);
@@ -64,7 +67,7 @@ test("native message content paints above theme wallpaper and stays readable and
         };
         const controls = await dialog.evaluate(el => [...el.querySelectorAll("h2,p,button")].map(node => {
           const rect = node.getBoundingClientRect(); const style = getComputedStyle(node);
-          return { x: rect.left, y: rect.top, right: rect.right, bottom: rect.bottom, color: style.color.match(/[\d.]+/g).slice(0, 3).map(Number), background: getComputedStyle(node.tagName === "BUTTON" ? node : el).backgroundColor.match(/[\d.]+/g).slice(0, 3).map(Number) };
+          return { tag: node.tagName, x: rect.left, y: rect.top, right: rect.right, bottom: rect.bottom, color: style.color.match(/[\d.]+/g).slice(0, 3).map(Number), background: getComputedStyle(node.tagName === "BUTTON" ? node : el).backgroundColor.match(/[\d.]+/g).slice(0, 3).map(Number) };
         }));
         for (const box of controls) {
           assert.ok(contrast(box.color, box.background) >= 4.5, "title, body and button have readable contrast");
@@ -73,7 +76,7 @@ test("native message content paints above theme wallpaper and stays readable and
             const index = (y * info.width + x) * 4;
             if (contrast([...data.subarray(index, index + 3)], box.background) >= 3) ink++;
           }
-          assert.ok(ink > 8, `${theme}/${wallpaper}: each text control remains visibly painted`);
+          assert.ok(ink > 8, `${theme}/${wallpaper}: ${box.tag} remains visibly painted (${ink} contrasting pixels)`);
         }
         assert.equal(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth + 1 && el.getBoundingClientRect().bottom <= innerHeight), true, "dialog fits its native window");
         await page.getByRole("button", { name: "确定" }).click();
