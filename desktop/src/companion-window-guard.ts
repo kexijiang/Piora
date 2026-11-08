@@ -1,5 +1,5 @@
 import type { BrowserWindow, Rectangle, Screen } from "electron";
-import { clampCompanionBounds } from "./companion-motion.js";
+import { clampCompanionBounds, nativeCompanionPoint, validCompanionRectangle } from "./companion-motion.js";
 
 export function sanitizeCompanionHitRegion(input: unknown, size: { width: number; height: number }): Rectangle | null {
   if (!input || typeof input !== "object") return null;
@@ -13,29 +13,44 @@ export function sanitizeCompanionHitRegion(input: unknown, size: { width: number
 }
 
 /** Fixed DIP geometry and native cursor polling; no accumulating forwarded mouse hooks. */
-export function guardCompanionWindow(window: BrowserWindow, screen: Screen, size: { width: number; height: number }, now = Date.now) {
+export function guardCompanionWindow(window: BrowserWindow, screen: Screen, size: { width: number; height: number }, now = Date.now, onError: (error: unknown) => void = () => {}) {
   let region: Rectangle | null = null;
   let regionAt = 0;
   let dragAt: number | null = null;
   let ignoring = true;
-  window.setIgnoreMouseEvents(true);
+  let lastErrorAt = -Infinity;
+  const protect = <T>(action: () => T): T | undefined => {
+    try { return action(); } catch (error) {
+      // A transient display failure can affect every 50 ms poll. Keep diagnostics bounded.
+      if (now() - lastErrorAt >= 5_000) { lastErrorAt = now(); onError(error); }
+      return undefined;
+    }
+  };
+  protect(() => window.setIgnoreMouseEvents(true));
   const setIgnoring = (next: boolean) => {
     if (next === ignoring || window.isDestroyed()) return;
-    ignoring = next; window.setIgnoreMouseEvents(next);
+    window.setIgnoreMouseEvents(next); ignoring = next;
   };
-  const place = (point: { x: number; y: number }) => {
+  const placeUnsafe = (point: { x: number; y: number }) => {
     if (window.isDestroyed()) return;
+    const position = nativeCompanionPoint(point);
+    if (!position || !validCompanionRectangle({ ...position, ...size })) throw new RangeError("Invalid companion position or size");
     const current = window.getBounds();
-    const area = screen.getDisplayNearestPoint({ x: point.x + size.width / 2, y: point.y + size.height / 2 }).workArea;
+    const center = nativeCompanionPoint({ x: position.x + size.width / 2, y: position.y + size.height / 2 });
+    if (!center) throw new RangeError("Invalid companion display point");
+    const area = screen.getDisplayNearestPoint(center).workArea;
+    if (!validCompanionRectangle(area)) throw new RangeError("Invalid companion display work area");
     // Never reuse native width/height as the next desired size: DPI changes
     // can otherwise ratchet those values up across repeated monitor changes.
-    const fitted = clampCompanionBounds({ ...point, ...size }, area);
+    const fitted = clampCompanionBounds({ ...position, ...size }, area);
+    if (!validCompanionRectangle(fitted)) throw new RangeError("Invalid fitted companion bounds");
     if (current.width !== size.width || current.height !== size.height) window.setBounds(fitted, false);
     else if (current.x !== fitted.x || current.y !== fitted.y) window.setPosition(fitted.x, fitted.y, false);
     return fitted;
   };
-  const reset = () => { region = null; dragAt = null; setIgnoring(true); };
-  const sync = () => {
+  const place = (point: { x: number; y: number }) => protect(() => placeUnsafe(point));
+  const reset = () => protect(() => { region = null; dragAt = null; setIgnoring(true); });
+  const sync = () => protect(() => {
     if (window.isDestroyed()) return;
     const bounds = place(window.getBounds());
     if (!bounds || !window.isVisible() || !region || now() - regionAt > 1500) { setIgnoring(true); return; }
@@ -45,7 +60,7 @@ export function guardCompanionWindow(window: BrowserWindow, screen: Screen, size
     const dragging = dragAt !== null && now() - dragAt < 1500;
     const hit = x >= region.x && y >= region.y && x < region.x + region.width && y < region.y + region.height;
     setIgnoring(!(inWindow && (dragging || hit)));
-  };
+  });
   const timer = setInterval(sync, 50);
   timer.unref();
   window.webContents.on("did-start-loading", reset);
