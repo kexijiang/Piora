@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("sidebar disclosures persist, fill heading rows and retain five ordered session previews", { timeout: 180000 }, async () => {
+test("sidebar disclosures persist and project collapse hides every session", { timeout: 180000 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "piora-sidebar-disclosure-"));
   let browser;
   try {
@@ -59,37 +59,21 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
       await page.goto("https://sidebar.test/");
       const project = page.locator('[data-project-drag-root="C:/fixture"]');
       const previewIds = () => project.getByRole("treeitem").evaluateAll(rows => rows.map(row => row.dataset.sessionDragId));
-      await project.getByRole("treeitem").first().waitFor();
-      assert.deepEqual(await previewIds(), ["pinned", "fork", "newest", "third", "fourth"]);
-      assert.equal(await page.locator('[data-project-drag-root="C:/small"]').getByRole("treeitem").count(), 2);
-      assert.equal(await page.locator('[data-project-drag-root="C:/empty"]').getByRole("treeitem").count(), 0);
+      await page.waitForFunction(() => document.querySelector('[data-project-drag-root="C:/fixture"] button[aria-expanded]')?.getAttribute('aria-expanded') === 'false');
+      assert.deepEqual(await previewIds(), [], "collapsed project hides all sessions");
+      assert.equal(await page.locator('[data-project-drag-root="C:/small"]').getByRole("treeitem").count(), 0);
       assert.equal(await project.locator('[data-project-drag-handle] .sidebar-running-spinner').count(), 1, "hidden running sessions still surface on the project heading");
-      const dragRow = async (from, to) => {
-        const source = await project.getByRole("treeitem", { name: from, exact: true }).boundingBox();
-        const target = await project.getByRole("treeitem", { name: to, exact: true }).boundingBox();
-        await page.mouse.move(source.x + 60, source.y + source.height / 2);
-        await page.mouse.down();
-        await new Promise(resolve => setTimeout(resolve, 350));
-        await page.mouse.move(target.x + 60, target.y + 2, { steps: 5 });
-        await page.mouse.up();
-      };
-      await dragRow("fork", "newest");
-      assert.equal(await page.evaluate(() => window.events.reorder), 0, "flat previews cannot reorder sessions across branch ownership");
-      // Selection still works in the flat preview; full expansion restores ancestry.
-      await project.getByRole("treeitem", { name: "fork", exact: true }).click();
-      assert.equal(await project.getByRole("treeitem", { name: "fork", exact: true }).getAttribute("aria-selected"), "true", "preview selection reaches the active session");
-      const showAll = locale === "en" ? "Show all (7)" : "查看全部（7）";
-      await project.getByRole("button", { name: showAll, exact: true }).click();
+      const toggleProject = project.locator('[data-project-drag-handle] button[aria-expanded]').first();
+      await toggleProject.click();
+      const parent = project.getByRole("treeitem", { name: "older", exact: true });
+      if (await parent.getAttribute("aria-expanded") === "false") await parent.press("ArrowRight");
       await page.waitForFunction(() => document.querySelector('[data-session-drag-id="fork"]')?.getAttribute('aria-level') === '2');
-      assert.equal(await project.getByRole("treeitem").count(), 7);
-      await dragRow("newest", "third");
-      assert.equal(await page.evaluate(() => window.events.reorder), 1, "full trees retain sibling reordering");
-      await project.getByRole("button", { name: locale === "en" ? "Show fewer" : "收起会话", exact: true }).click();
-      assert.deepEqual(await previewIds(), ["pinned", "fork", "newest", "third", "fourth"]);
-      // Persisted manual order is applied inside the pin boundary, including forks.
+      assert.equal(await project.getByRole("treeitem").count(), 7, "expanding restores all sessions and their hierarchy");
+      await project.getByRole("treeitem", { name: "fork", exact: true }).click();
+      assert.equal(await project.getByRole("treeitem", { name: "fork", exact: true }).getAttribute("aria-selected"), "true");
+      await toggleProject.click();
+      assert.deepEqual(await previewIds(), [], "clicking the project again fully collapses it");
       await page.evaluate(() => window.setOrder(["fourth", "fork"]));
-      await page.waitForFunction(() => document.querySelectorAll('[data-project-drag-root="C:/fixture"] [role="treeitem"]')[1]?.getAttribute('data-session-drag-id') === 'fourth');
-      assert.deepEqual(await previewIds(), ["pinned", "fourth", "fork", "newest", "third"]);
 
       const chats = page.locator("#chats");
       const chatToggle = chats.locator('button[aria-expanded]').first();
@@ -132,12 +116,12 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
       assert.equal(await page.evaluate(() => window.events.newProject), 1);
       assert.equal(await projectsToggle.getAttribute("aria-expanded"), "true");
       await projectsToggle.focus(); await page.keyboard.press("Space");
-      assert.equal(await project.getByRole("treeitem").count(), 5);
+      assert.equal(await project.getByRole("treeitem").count(), 0);
       await page.reload();
       await page.waitForFunction(() => document.querySelector('#chats button[aria-expanded]')?.getAttribute('aria-expanded') === 'false');
       assert.equal(await roomToggle.getAttribute("aria-expanded"), "false");
       assert.equal(await projectsToggle.getAttribute("aria-expanded"), "false");
-      assert.deepEqual(await previewIds(), ["pinned", "fourth", "fork", "newest", "third"]);
+      assert.deepEqual(await previewIds(), [], "collapsed state persists after reload");
       await page.waitForFunction(() => window.events.restored === 1);
       assert.deepEqual(errors, []);
       await mkdir(path.join(repo, ".verification/sidebar-disclosure"), { recursive: true });

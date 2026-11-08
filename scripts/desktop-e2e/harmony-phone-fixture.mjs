@@ -48,7 +48,7 @@ export async function verifyMirrorInput({ page, directory, waitUntil }) {
     const launch = await hdc(['shell', `aa start -a MainAbility -b com.huawei.hmos.browser -U http://127.0.0.1:${port}/`]);
     assert.match(launch, /start ability successfully/i);
     await waitUntil(() => latest.revision > 0, 'real phone input page');
-    await control.click();
+    if (await control.getAttribute('aria-pressed') !== 'true') await control.click();
     assert.equal(await control.getAttribute('aria-pressed'), 'true');
     const zoom = page.getByRole('combobox', { name: /^(Video zoom|画面缩放)$/ });
     await zoom.selectOption('0.5');

@@ -636,3 +636,25 @@
 @container harmony-panel (max-width: 520px) { .deviceHeader { flex-wrap: wrap; } .deviceIdentity { flex-basis: 100%; } .toolbarActions { max-width: 100%; flex-wrap: wrap; } }
 
 .embeddedMirror { flex: 0 0 auto; min-height: 100px; max-height: 75dvh; overflow: hidden; border-bottom: 1px solid var(--border); }
+
+.deviceSelect { position: relative; min-width: 0; max-width: 320px; }
+.deviceSelect > button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 32px; padding: 5px 9px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); color: var(--text); font-size: calc(var(--text-base) * 13 / 14); font-weight: 600; text-align: left; }
+.deviceSelect > button > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deviceSelectMenu { position: absolute; z-index: 80; top: calc(100% + 4px); left: 0; width: max(100%, 220px); max-width: min(360px, 90vw); max-height: 260px; overflow: auto; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); box-shadow: var(--floating-shadow); }
+.deviceSelectMenu button { display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--text); text-align: left; overflow-wrap: anywhere; }
+.deviceSelectMenu button[data-active="true"], .deviceSelectMenu button:hover { background: var(--bg-hover); }
+.deviceSelectMenu button[aria-selected="true"] { color: var(--accent); font-weight: 650; }
+
+.settingsPanel [hidden] { display: none !important; }
+.settingsPanel { border: 0; border-radius: var(--radius-panel); box-shadow: none; background: var(--bg-panel); }
+.settingsHeading { min-height: 64px; padding: 16px 24px; }
+.settingsHeading strong { font-size: var(--text-base); }
+.settingsHeading small { margin-top: 3px; font-size: var(--text-sm); }
+.settingsPanel .settingGroup { gap: 12px; padding: 20px 24px; }
+.settingsPanel .settingCopy strong { font-size: var(--text-sm); }
+.settingsPanel .settingCopy small { font-size: var(--text-xs); line-height: 1.5; }
+.settingsPanel .settingsFooter { padding: 12px 24px; }
+
+.settingsPanel :global(.settings-embedded-surface) input { min-height: 36px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text); font: inherit; }
+.settingsPanel :global(.settings-embedded-surface) button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.settingsPanel :global(.settings-embedded-surface) button:hover { background: var(--bg-hover); }

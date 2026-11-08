@@ -823,7 +823,7 @@ export const zhCNLocale: LocalePlugin = {
     "harmonyStorage.title": "鸿蒙开发",
     "harmonyStorage.description": "配置设备截图和录屏的保存位置。",
     "harmonyStorage.mediaTitle": "截图与录屏",
-    "harmonyStorage.mediaDescription": "设置手动操作或 Agent 操作产生的截图与录屏文件的保存位置。",
+    "harmonyStorage.mediaDescription": "选择截图和录屏在电脑上的保存位置。",
     "harmonyStorage.edit": "允许修改保存路径",
     "harmonyStorage.editDescription": "开启后可以选择新文件夹；开关放在路径上方，避免错过。",
     "harmonyStorage.screenshotDirectory": "截图文件夹",

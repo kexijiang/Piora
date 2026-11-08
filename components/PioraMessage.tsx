@@ -12,12 +12,13 @@ export async function showPioraMessage(message: PioraMessage): Promise<string | 
   return new Promise(resolve => window.dispatchEvent(new CustomEvent("piora:message", { detail: { message, resolve } })));
 }
 export function PioraMessageContent({ message, finish, standalone = false }: { message: PioraMessage; finish: (id: string | null) => void; standalone?: boolean }) {
+  const { isDark } = useTheme();
   const ref = useRef<HTMLDivElement>(null);
   const notice = message.presentation === "notice";
   const finishRef = useRef(finish); finishRef.current = finish;
   useFocusTrap(ref, !notice, { onEscape: () => finish(null) });
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => finishRef.current(null), message.durationMs ?? 3000); return () => clearTimeout(timer); }, [notice, message]);
-  return <div ref={ref} className={`${styles.dialog} ${standalone ? styles.standalone : ""} ${notice ? styles.notice : ""}`} role={notice ? "status" : "dialog"} aria-modal={notice ? undefined : true} aria-labelledby="piora-message-title" aria-describedby="piora-message-body">
+  return <div ref={ref} data-dark={isDark} className={`${styles.dialog} ${standalone ? styles.standalone : ""} ${notice ? styles.notice : ""}`} role={notice ? "status" : "dialog"} aria-modal={notice ? undefined : true} aria-labelledby="piora-message-title" aria-describedby="piora-message-body">
     <div className={styles.body}><h2 id="piora-message-title">{message.title}</h2>
       {message.preview ? <img className={styles.preview} src={message.preview} alt="截图预览" /> : null /* eslint-disable-line @next/next/no-img-element */}
       <p id="piora-message-body">{message.message}</p></div>

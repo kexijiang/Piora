@@ -823,7 +823,7 @@ export const enLocale: LocalePlugin = {
     "harmonyStorage.title": "Harmony development",
     "harmonyStorage.description": "Configure where device screenshots and recordings are saved.",
     "harmonyStorage.mediaTitle": "Screenshots and recordings",
-    "harmonyStorage.mediaDescription": "Choose where screenshots and screen recordings captured manually or by the Agent are stored.",
+    "harmonyStorage.mediaDescription": "Choose where screenshots and screen recordings are saved on your computer.",
     "harmonyStorage.edit": "Allow storage path changes",
     "harmonyStorage.editDescription": "Enable this before choosing new folders. The control stays above the path fields so it is easy to find.",
     "harmonyStorage.screenshotDirectory": "Screenshot folder",

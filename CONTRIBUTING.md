@@ -33,7 +33,7 @@ Do not run `next build` or `npm run build` during development. It can pollute `.
 
 ## Quality checks
 
-Run all checks before submitting a pull request:
+Choose fast checks relevant to your change locally; the complete validation runs in GitHub Actions. Available checks include:
 
 ```powershell
 npm run licenses:check
@@ -50,7 +50,7 @@ CI is configured to run the source checks on Windows and Linux, including determ
 The test shards and `Quality validation` jobs run concurrently on separate
 runners. The existing `Quality checks (ubuntu-latest)` and
 `Quality checks (windows-latest)` checks are final gates: both require every test
-shard and both platform validation jobs to succeed. Failed, cancelled, or skipped
+shard, both platform validation jobs, and the changelog-fragment check to succeed. Failed, cancelled, or skipped
 dependencies fail the gate. The gates do not reinstall dependencies or repeat
 validation. Browser and native-resource tests retain their serial execution
 within each shard; this CI scheduling change does not speed up local `npm test`.
@@ -72,7 +72,8 @@ committed lock remains unchanged and no advisory is suppressed. The independent
 3. Add or update tests when the affected area has test coverage.
 4. Preserve Pi session compatibility and the security boundaries described in `AGENTS.md`.
 5. Update user-facing documentation when behavior changes.
-6. Run the quality checks and complete the pull request template.
+6. Add a unique `changelog.d/<id>.<type>.md` with concise Chinese release notes. Do not edit `CHANGELOG.md` in ordinary development PRs. See the [fragment guide](changelog.d/README.md) for types, justified exemptions, existing-PR migration, and release aggregation.
+7. Run relevant checks and complete the pull request template, accurately recording checks not run and known failures.
 
 For changes inherited from an upstream project, link the corresponding upstream issue or commit when possible. Do not remove upstream copyright or license notices.
 

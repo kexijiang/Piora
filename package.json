@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.5.10-beta.6",
+  "version": "0.5.10-beta.8",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -69,6 +69,9 @@
     "package.json"
   ],
   "scripts": {
+    "changelog:check": "node scripts/changelog-fragments.mjs check",
+    "changelog:check-pr": "node scripts/changelog-fragments.mjs check-pr",
+    "changelog:release": "node scripts/changelog-fragments.mjs release",
     "brand:prepare": "node scripts/prepare-branding.mjs",
     "predev": "node scripts/prepare-development.mjs",
     "predev:desktop": "node scripts/prepare-development.mjs",

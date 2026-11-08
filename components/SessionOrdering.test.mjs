@@ -47,7 +47,8 @@ test("long-presses every session row with the left pointer and persists the orde
   assert.match(list, /onReorderSessions\(activeDrag\.sourceId, activeDrag\.targetId, activeDrag\.position\)/);
   assert.match(sidebar, /sessionOrder, setSessionOrder/);
   assert.match(projectArea, /data-session-drag-scroll/);
-  assert.match(projectList, /projectOpen \? orderedRoots : getProjectSessionPreview\(group\.sessions, sessionFlags, sessionOrder\)/);
+  assert.match(projectList, /const visibleRoots = orderedRoots/);
+  assert.match(projectList, /projectOpen \? <div className=\{styles\.sessionList\}>/);
   assert.match(projectList, /reorderable=\{projectOpen\}/);
   assert.match(list, /if \(!reorderable\) return/);
   assert.match(chatArea, /data-session-drag-scroll/);

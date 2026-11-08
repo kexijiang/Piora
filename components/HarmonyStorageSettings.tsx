@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { AliIcon } from "./AliIcon";
 
@@ -14,12 +14,17 @@ function errorText(payload: ConfigPayload, status: number): string {
   return typeof payload.error === "string" ? payload.error : payload.error?.message || `HTTP ${status}`;
 }
 
-export function HarmonyStorageSettings() {
+export function HarmonyStorageSettings({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useI18n();
   const [desktopAvailable, setDesktopAvailable] = useState<boolean | null>(null);
   const [paths, setPaths] = useState<StoragePaths>({ screenshotDirectory: "", recordingDirectory: "" });
   const [defaults, setDefaults] = useState<StoragePaths | null>(null);
-  const [editing, setEditing] = useState(false);
+  const saved = useRef("");
+  const latest = useRef(paths);
+  const queue = useRef(Promise.resolve());
+  const intent = useRef(0);
+  const resetSnapshot = useRef<string | null>(null);
+  latest.current = paths;
   const [status, setStatus] = useState<"loading" | "idle" | "saving" | "saved" | "error">("loading");
   const [error, setError] = useState("");
   const load = useCallback(async () => {
@@ -29,10 +34,12 @@ export function HarmonyStorageSettings() {
       const payload = await response.json() as ConfigPayload;
       if (!response.ok || !payload.storage) throw new Error(errorText(payload, response.status));
       setDefaults(payload.storage);
-      setPaths({
+      const initial = {
         screenshotDirectory: payload.config?.storage?.screenshotDirectory || payload.storage.screenshotDirectory,
         recordingDirectory: payload.config?.storage?.recordingDirectory || payload.storage.recordingDirectory,
-      });
+      };
+      saved.current = JSON.stringify(initial);
+      setPaths(initial);
       setError("");
       setStatus("idle");
     } catch (reason) {
@@ -53,7 +60,7 @@ export function HarmonyStorageSettings() {
     if (selected) setPaths((current) => ({ ...current, [field]: selected }));
   };
 
-  const save = async (reset = false) => {
+  const save = async (reset = false, snapshot = paths) => {
     setStatus("saving");
     try {
       const response = await fetch("/api/harmony/config", {
@@ -61,23 +68,49 @@ export function HarmonyStorageSettings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           storage: reset ? null : {
-            screenshotDirectory: paths.screenshotDirectory.trim(),
-            recordingDirectory: paths.recordingDirectory.trim(),
+            screenshotDirectory: snapshot.screenshotDirectory.trim(),
+            recordingDirectory: snapshot.recordingDirectory.trim(),
           },
         }),
       });
       const payload = await response.json() as ConfigPayload;
       if (!response.ok || !payload.storage) throw new Error(errorText(payload, response.status));
       setDefaults(payload.storage);
-      setPaths(payload.storage);
-      setError("");
-      setStatus("saved");
-      setEditing(false);
+      saved.current = JSON.stringify(reset ? payload.storage : snapshot);
+      if (reset) resetSnapshot.current = null;
+      if (JSON.stringify(latest.current) === JSON.stringify(snapshot)) {
+        if (reset) setPaths(payload.storage);
+        setError("");
+        setStatus("saved");
+      }
     } catch (reason) {
+      if (reset) resetSnapshot.current = null;
       setError(reason instanceof Error ? reason.message : String(reason));
       setStatus("error");
     }
   };
+  const saveRef = useRef(save);
+  saveRef.current = save;
+  useEffect(() => () => {
+    const snapshot = latest.current;
+    if (saved.current && JSON.stringify(snapshot) !== saved.current && JSON.stringify(snapshot) !== resetSnapshot.current && snapshot.screenshotDirectory.trim() && snapshot.recordingDirectory.trim()) {
+      queue.current = queue.current.then(() => saveRef.current(false, snapshot));
+    }
+  }, []);
+
+  useEffect(() => {
+    const snapshot = paths, signature = JSON.stringify(snapshot), expectedIntent = intent.current;
+    if (!saved.current || signature === saved.current || !snapshot.screenshotDirectory.trim() || !snapshot.recordingDirectory.trim()) return;
+    const timer = setTimeout(() => {
+      queue.current = queue.current.then(async () => {
+        if (intent.current !== expectedIntent || JSON.stringify(latest.current) !== signature) return;
+        await save(false, snapshot);
+      });
+    }, 700);
+    return () => clearTimeout(timer);
+  // Changes to paths schedule persistence; status updates must not restart the timer.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paths]);
 
   const field = (key: keyof StoragePaths, label: string, description: string) => (
     <label data-settings-id={key === "screenshotDirectory" ? "harmony.screenshots" : "harmony.recordings"} style={{ display: "grid", gap: 7 }}>
@@ -89,11 +122,11 @@ export function HarmonyStorageSettings() {
         <input
           aria-label={label}
           value={paths[key]}
-          disabled={!editing}
+          disabled={status === "loading"}
           onChange={(event) => { setPaths((current) => ({ ...current, [key]: event.target.value })); setStatus("idle"); }}
           style={{ flex: 1, minWidth: 0 }}
         />
-        {editing && window.piDesktop?.selectDirectory ? (
+        {desktopAvailable && window.piDesktop?.selectDirectory ? (
           <button type="button" onClick={() => void choose(key)} title={t("harmonyStorage.choose")} aria-label={t("harmonyStorage.choose")}>
             <AliIcon name="folder-open" size={14} />
           </button>
@@ -103,11 +136,11 @@ export function HarmonyStorageSettings() {
   );
 
   return (
-    <div className="settings-embedded-surface" style={{ height: "100%", overflowY: "auto", padding: "26px 30px 34px" }}>
-      <div style={{ marginBottom: 22 }}>
+    <div className="settings-embedded-surface" style={embedded ? { padding: "20px 24px 24px" } : { height: "100%", overflowY: "auto", padding: "26px 30px 34px" }}>
+      {!embedded ? <div style={{ marginBottom: 22 }}>
         <h2 style={{ margin: 0, color: "var(--text)", fontSize: "calc(var(--text-lg) * 1.22)", fontWeight: 680 }}>{t("harmonyStorage.title")}</h2>
         <p style={{ margin: "7px 0 0", color: "var(--text-muted)", fontSize: "var(--text-sm)", lineHeight: 1.55 }}>{t("harmonyStorage.description")}</p>
-      </div>
+      </div> : null}
       {desktopAvailable === false ? (
         <section className="settings-conversation-section" style={{ maxWidth: 760 }}>
           <p style={{ margin: 0, color: "var(--text-muted)", lineHeight: 1.55 }}>{t("harmonyStorage.desktopOnly")}</p>
@@ -115,38 +148,12 @@ export function HarmonyStorageSettings() {
       ) : null}
       {desktopAvailable !== false ? (
       <div style={{ display: "grid", gap: 18, maxWidth: 760 }}>
-      <section className="settings-conversation-section" style={{ display: "grid", gap: 20, maxWidth: 760 }}>
+      <section className={embedded ? undefined : "settings-conversation-section"} style={{ display: "grid", gap: 20, maxWidth: 760 }}>
         <div style={{ display: "grid", gap: 4 }}><strong style={{ color: "var(--text)" }}>{t("harmonyStorage.mediaTitle")}</strong><small style={{ color: "var(--text-dim)", lineHeight: 1.5 }}>{t("harmonyStorage.mediaDescription")}</small></div>
-        <div style={{ minHeight: 58, display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", alignItems: "center", gap: 12, padding: "10px 12px", border: "1px solid color-mix(in srgb, var(--accent) 15%, var(--border))", borderRadius: "var(--radius-control)", background: "color-mix(in srgb, var(--accent) 5%, var(--bg))" }}>
-          <span style={{ display: "grid", gap: 2 }}>
-            <strong style={{ color: "var(--text)", fontSize: "var(--text-sm)" }}>{t("harmonyStorage.edit")}</strong>
-            <small style={{ color: "var(--text-dim)", lineHeight: 1.4 }}>{t("harmonyStorage.editDescription")}</small>
-          </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={editing}
-            aria-label={t("harmonyStorage.edit")}
-            onClick={() => {
-              setEditing((current) => !current);
-              if (editing && defaults) setPaths(defaults);
-              setError("");
-              setStatus("idle");
-            }}
-            style={{ width: 40, height: 24, position: "relative", padding: 2, border: 0, borderRadius: 999, background: editing ? "var(--accent)" : "color-mix(in srgb, var(--text-dim) 22%, var(--bg))", cursor: "pointer" }}
-          >
-            <span style={{ width: 20, height: 20, display: "block", borderRadius: "50%", background: "var(--bg)", boxShadow: "0 1px 4px color-mix(in srgb, #000 20%, transparent)", transform: editing ? "translateX(16px)" : "none", transition: "transform 140ms ease" }} />
-          </button>
-        </div>
         {field("screenshotDirectory", t("harmonyStorage.screenshotDirectory"), t("harmonyStorage.screenshotDescription"))}
         {field("recordingDirectory", t("harmonyStorage.recordingDirectory"), t("harmonyStorage.recordingDescription"))}
         {defaults ? <p style={{ margin: 0, color: "var(--text-dim)", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>{t("harmonyStorage.absolutePathHint")}</p> : null}
-        {editing ? <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <button type="button" disabled={status === "saving" || !paths.screenshotDirectory.trim() || !paths.recordingDirectory.trim()} onClick={() => void save(false)}>
-            {status === "saving" ? t("harmonyStorage.saving") : t("harmonyStorage.save")}
-          </button>
-          <button type="button" disabled={status === "saving"} onClick={() => void save(true)}>{t("harmonyStorage.restoreDefaults")}</button>
-        </div> : null}
+        <div><button type="button" disabled={status === "saving" || status === "loading"} onClick={() => { intent.current++; resetSnapshot.current = JSON.stringify(latest.current); queue.current = queue.current.then(() => save(true)); }}>{t("harmonyStorage.restoreDefaults")}</button></div>
         {status === "saved" ? <span role="status" style={{ color: "var(--status-success)", fontSize: "var(--text-xs)" }}>{t("harmonyStorage.saved")}</span> : null}
         {status === "loading" ? <p>{t("harmonyStorage.loading")}</p> : null}
         {error ? <p role="alert" style={{ color: "var(--status-failed)", overflowWrap: "anywhere" }}>{error}</p> : null}

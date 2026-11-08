@@ -152,8 +152,8 @@ test("keeps projectless conversations in a project-aligned chat section", () => 
   assert.match(sidebarStyles, /\.chatSessionList\s*\{[^}]*padding:\s*4px 1px 8px/s);
 });
 
-test("project previews stay bounded while expanded trees and status remain accessible", () => {
-  assert.match(source, /projectOpen \? orderedRoots : getProjectSessionPreview\(group\.sessions, sessionFlags, sessionOrder\)/);
+test("collapsed projects hide sessions while expanded trees and status remain accessible", () => {
+  assert.match(source, /projectOpen \? <div className=\{styles\.sessionList\}>/);
   assert.match(source, /applySessionOrder\(\s*group\.tree/);
   assert.match(source, /group\.sessions\.filter\(\(session\) => runningSessionIds\.has\(session\.id\)\)/);
   assert.match(source, /group\.sessions\.filter\(\(session\) => unreadSessionIds\.has\(session\.id\)\)/);
@@ -161,8 +161,7 @@ test("project previews stay bounded while expanded trees and status remain acces
   assert.match(source, /name=\{projectOpen \? "folder-open" : "folder"\}/);
   assert.match(sidebarSource, /sidebar-running-spinner/);
   assert.match(source, /aria-expanded=\{projectOpen\}/);
-  assert.match(source, /sidebar\.showAllSessions/);
-  assert.match(source, /sidebar\.showFewerSessions/);
+  assert.doesNotMatch(source, /getProjectSessionPreview/);
   assert.match(source, /onSelectProject\(\); onToggleProject\(\);/);
 });
 

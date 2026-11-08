@@ -56,12 +56,12 @@ export class MirrorCaptureSession {
 
   get whenClosing(): Promise<void> | undefined { return this.closing; }
 
-  static async start(serial: string, source: string | undefined, run: Run, onClose: () => void, ownershipDirectory?: string): Promise<MirrorCaptureSession> {
+  static async start(serial: string, source: string | undefined, run: Run, onClose: () => void, ownershipDirectory?: string, knownVersion?: string): Promise<MirrorCaptureSession> {
     const session = new MirrorCaptureSession(serial, run, await freePort(), `piora_video_${randomUUID().replaceAll("-", "")}.so`, onClose);
     try {
       session.ownership = new VideoOwnership(serial, session.name, session.port, run, ownershipDirectory);
       await session.ownership.prepare(); session.journaled = true;
-      await session.initialize(source); return session;
+      await session.initialize(source, knownVersion); return session;
     }
     catch (error) { await session.close(); throw error; }
   }
@@ -84,7 +84,7 @@ export class MirrorCaptureSession {
     return true;
   }
 
-  private async initialize(source: string | undefined) {
+  private async initialize(source: string | undefined, knownVersion?: string) {
     const sockets = await this.shell("cat /proc/net/unix", "debug_video_socket_check");
     if (sockets.includes("@scrcpy_grpc_socket")) {
       // Subscribe to the existing service without taking ownership of its daemon.
@@ -96,7 +96,7 @@ export class MirrorCaptureSession {
       return;
     }
     if (!source) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The native video runtime is missing. Repair or update Piora and reconnect.", { details: { reason: "debug-video-sdk-missing" }, retryable: true });
-    const version = await this.shell("uitest --version", "debug_video_version");
+    const version = knownVersion || await this.shell("uitest --version", "debug_video_version");
     const library = await readDebugVideoLibrary(source, version).catch(() => {
       throw fail("No compatible native video library is available for this device. Update Piora or use a compatible installed DevEco SDK and reconnect.");
     });
