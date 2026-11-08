@@ -25,11 +25,11 @@
 .screen[data-zoomed="true"] { overflow: auto; display: block; }
 .controls { padding: 5px; background: var(--bg-panel); border-top: 1px solid var(--border); }
 .controlRow { display: flex; gap: 4px; margin: 3px 0; }
-.controlRow button, .controlRow select, .controlRow input { font: inherit; font-size: 12px; min-height: 28px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; }
+.controlRow button, .controlRow select, .controlRow input { font: inherit; font-size: calc(var(--text-base) * 12 / 14); min-height: 28px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; }
 .controlRow button { cursor: pointer; padding: 2px 10px; }
 .controlRow input { flex: 1; min-width: 0; padding: 2px 6px; }
 .controlRow button:disabled { opacity: .4; cursor: default; }
-.titlebar button.fps { width: auto; flex: 0 0 auto; padding: 0 4px; font-size: 11px; font-variant-numeric: tabular-nums; display: block; }
+.titlebar button.fps { width: auto; flex: 0 0 auto; padding: 0 4px; font-size: calc(var(--text-base) * 11 / 14); font-variant-numeric: tabular-nums; display: block; }
 .titlebar button[aria-pressed="true"] { color: var(--mirror-bar-focus); background: var(--mirror-bar-hover); }
 @container (max-width: 340px) { .titlebar button.fps { display: none; } }
 .placeholder { position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; text-align: center; font-size: calc(var(--text-base) * 12 / 14); color: var(--text-muted); background: var(--bg); }
