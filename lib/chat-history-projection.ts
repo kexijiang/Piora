@@ -2,7 +2,7 @@ import { buildCompactChatHistoryRows } from "./compact-chat-history";
 import { insertCommandHistoryRows, layoutChatResponseRows } from "./chat-history";
 import { insertModelChangeRows, type ModelChangeNotice } from "./model-change-notices";
 import type { ChatCommandView } from "./chat-command-types";
-import type { AgentMessage, ToolResultMessage } from "./types";
+import type { AgentMessage, ToolResultMessage, UserMessage } from "./types";
 const NO_STABLE_KEYS: string[] = [];
 
 /** Rebuilt on persisted/history edits, not on every streaming text update. */
@@ -13,16 +13,20 @@ export function prepareChatHistory(
   const toolResults = new Map<string, ToolResultMessage>();
   const userIndices = new Map<number, number>();
   const showTimestamps = new Set<number>();
+  const retryPrompts = new Map<number, { message: UserMessage; entryId?: string }>();
+  let retryPrompt: { message: UserMessage; entryId?: string } | undefined;
   let lastUser = -1, lastAssistant = -1;
   for (let i = 0; i < saved.length; i++) {
     const message = saved[i];
     if (message.role === "toolResult") toolResults.set(message.toolCallId, message);
     if (message.role === "user") {
+      retryPrompt = { message, entryId: ids[i] };
       userIndices.set(i, userIndices.size);
       if (lastAssistant >= 0) showTimestamps.add(lastAssistant);
       lastUser = i; lastAssistant = -1;
     }
     if (message.role === "assistant") lastAssistant = i;
+    if (message.role === "assistant" && message.stopReason === "error" && retryPrompt) retryPrompts.set(i, retryPrompt);
   }
   if (lastAssistant >= 0) showTimestamps.add(lastAssistant);
   const start = Math.max(0, lastUser);
@@ -37,7 +41,7 @@ export function prepareChatHistory(
     .sort((a, b) => a.index - b.index);
   return { saved, ids, choices, compact, direct, start, prefix, rows, keys: rows.map(row => row.key), prefixToolCalls, operations, notices,
     tailExtras: extras.filter(row => row.index >= start),
-    metadata: { toolResults, userIndices, showTimestamps, lastUser } };
+    metadata: { toolResults, userIndices, showTimestamps, lastUser, retryPrompts } };
 }
 
 /** Only the latest user turn is reprojected as its assistant/tool output grows. */

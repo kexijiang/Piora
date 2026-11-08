@@ -12,6 +12,8 @@ const { buildLocalFilePrompt } = await createJiti(import.meta.url).import("../li
 const { normalizeToolCalls } = await createJiti(import.meta.url).import("../lib/normalize.ts");
 const { replaceFailedPromptMessage } = await createJiti(import.meta.url).import("../lib/prompt-recovery.ts");
 const { persistentChatInputOptions } = await createJiti(import.meta.url).import("../lib/chat-command-input.ts");
+const { PromptErrorNotices } = await createJiti(import.meta.url).import("../lib/prompt-error-notices.ts");
+const { getAssistantErrorMessage } = await createJiti(import.meta.url).import("../lib/message-display.ts");
 
 const source = (await readFile(new URL("./useAgentSession.ts", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 const commandSource = (await readFile(new URL("./useChatCommandOperations.ts", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
@@ -422,6 +424,8 @@ function promptSubmissionHarness(overrides = {}) {
     handleExtensionUiRequest() {}, refreshContextUsage() {},
     userMessageHasPromptMaterialMarker: () => false,
     normalizeToolCalls,
+    promptErrorNoticesRef: { current: new PromptErrorNotices() }, getAssistantErrorMessage,
+    dispatchNotice() {},
     sendAgentCommand: async () => ({ accepted: true, sessionId: "session-a", commandId: "cmd-current", status: "queued" }),
     response: { running: true, state: { runtime: "idle", isStreaming: false, isPromptRunning: false, isCompacting: false }, promptCommand: { commandId: "cmd-current", status: "queued" } },
     ...overrides,
@@ -429,6 +433,61 @@ function promptSubmissionHarness(overrides = {}) {
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent, resumeQueuedInput }; }`)(h.env) };
 }
+
+test("the actual event handler shows one terminal error and retires it when the failed reply arrives", () => {
+  for (const historyFirst of [true, false]) {
+    const notices = new Map();
+    const h = promptSubmissionHarness({
+      addNotice: notice => notices.set(notice.id, notice),
+      dispatchNotice: action => { if (action.type === "remove") notices.delete(action.id); },
+    });
+    h.env.agentRunningRef.current = true;
+    const failure = { type: "prompt_error", errorMessage: "timeout", runId: "server-run", commandId: "cmd-current" };
+    const message = { type: "message_end", message: { role: "assistant", content: [], stopReason: "error", errorMessage: "Error: timeout" } };
+    if (historyFirst) h.handleAgentEvent(message);
+    h.handleAgentEvent(failure); h.handleAgentEvent(failure);
+    assert.equal(notices.size, historyFirst ? 0 : 1);
+    if (!historyFirst) h.handleAgentEvent(message);
+    assert.equal(notices.size, 0);
+    assert.equal(h.env.messages.filter(item => item.role === "assistant").length, 1);
+    h.handleAgentEvent({ ...failure, errorMessage: "separate command failure" });
+    assert.equal(notices.size, 1);
+    h.env.promptRunIdRef.current++;
+    h.handleAgentEvent(failure);
+    assert.equal(notices.size, 2, "an identical error in a new request is still surfaced");
+  }
+});
+
+test("notice removal also removes a pending duplicate rather than resurfacing it later", () => {
+  const reducerSource = source.slice(source.indexOf("function markOldestNoticeExiting"), source.indexOf("function extractMessageText"));
+  const js = ts.transpileModule(reducerSource, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const reduce = new Function("MAX_NOTICES", `${js};return noticeReducer`)(5);
+  const notice = { id: "error", message: "timeout", type: "error" };
+  const state = { visible: [{ id: "old", exiting: true }], pending: [notice] };
+  assert.equal(reduce(state, { type: "add", notice }), state);
+  assert.deepEqual(reduce(state, { type: "remove", id: "error" }).pending, []);
+});
+
+test("reconciled history suppresses only the exact current prompt's error notice", () => {
+  const start = source.indexOf("  useEffect(() => {\n    // Reconciliation can restore the failed reply");
+  const effect = source.slice(start, source.indexOf("\n\n  const phaseEventRevisionRef", start));
+  const js = ts.transpileModule(effect, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const run = new Function("env", `with(env) { ${js} }`);
+  const failure = { role: "assistant", content: [], stopReason: "error", errorMessage: "timeout" };
+  for (const mode of ["current", "old-prompt", "old-run", "other-session"]) {
+    const tracker = new PromptErrorNotices();
+    const removals = [];
+    run({
+      useEffect: callback => callback(), getAssistantErrorMessage,
+      messages: [{ role: "user", clientPromptId: "old" }, failure, { role: "user", clientPromptId: "current" }, ...(mode === "old-prompt" ? [] : [failure])],
+      promptSubmissionRef: { current: { runId: mode === "old-run" ? 0 : 1, sid: mode === "other-session" ? "other" : "session", idempotencyKey: "current" } },
+      promptRunIdRef: { current: 1 }, sessionIdRef: { current: "session" }, promptErrorNoticesRef: { current: tracker },
+      dispatchNotice: action => removals.push(action),
+    });
+    assert.equal(removals.length, mode === "current" ? 1 : 0);
+    assert.equal(tracker.record("session:1", "timeout", "notice").show, mode !== "current");
+  }
+});
 
 // Exercise both hooks together: draft restoration must belong to the same
 // cancellable operation as the later event connection and queue mutation.
