@@ -18,7 +18,20 @@
 .recording { color: var(--mirror-bar-record); font-size: calc(var(--text-base) * 10 / 14); white-space: nowrap; display: flex; gap: 4px; }
 .clock { font-variant-numeric: tabular-nums; }
 .screen { position: relative; flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
-.screen canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; }
+.surface { width: 100%; height: 100%; min-height: 0; position: relative; outline: none; }
+.surface[data-interactive="true"] { touch-action: none; cursor: crosshair; }
+.surface:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.screen canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
+.screen[data-zoomed="true"] { overflow: auto; display: block; }
+.controls { padding: 5px; background: var(--bg-panel); border-top: 1px solid var(--border); }
+.controlRow { display: flex; gap: 4px; margin: 3px 0; }
+.controlRow button, .controlRow select, .controlRow input { font: inherit; font-size: 12px; min-height: 28px; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 5px; }
+.controlRow button { cursor: pointer; padding: 2px 10px; }
+.controlRow input { flex: 1; min-width: 0; padding: 2px 6px; }
+.controlRow button:disabled { opacity: .4; cursor: default; }
+.titlebar button.fps { width: auto; flex: 0 0 auto; padding: 0 4px; font-size: 11px; font-variant-numeric: tabular-nums; display: block; }
+.titlebar button[aria-pressed="true"] { color: var(--mirror-bar-focus); background: var(--mirror-bar-hover); }
+@container (max-width: 340px) { .titlebar button.fps { display: none; } }
 .placeholder { position: absolute; inset: 0; display: grid; place-items: center; padding: 8px; text-align: center; font-size: calc(var(--text-base) * 12 / 14); color: var(--text-muted); background: var(--bg); }
 @container (max-width: 340px) { .device { font-size: calc(var(--text-base) * 10 / 14); } .clock { display: none; } }
 @container (max-width: 240px) { .device { display: none; } .scale { margin-right: auto; } }

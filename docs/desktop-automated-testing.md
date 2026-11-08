@@ -61,6 +61,24 @@ npm run test:desktop:e2e -- --fail-at theme-dark
 
 ## 增加场景
 
+### Harmony 真机投屏
+
+在独立 worktree 连接已完成 USB 调试授权的鸿蒙手机：
+
+```powershell
+$env:PIORA_MIRROR_TEST_HDC = '实际 SDK 目录\toolchains\hdc.exe'
+$env:PIORA_MIRROR_TEST_SERIAL = '实际设备序列号'
+npm run test:desktop:e2e -- --scenario harmony-mirror --timeout-ms 1200000 --step-timeout-ms 150000
+```
+
+该场景通过真实 UI 打开浮窗、重新加载 Worker、保存截图、开始录屏、交接到侧栏、停止保存 MP4 和关闭投屏。使用独立 profile、媒体目录以及真实 Next、Electron、鉴权网关和 HDC；核对实际绘制统计、产物落盘，并断言观看和录屏没有请求手机控制权或发送输入。首次冷编译可能持续数分钟。不会复制模型凭据，也不会自动解锁手机。
+
+`worker-observations.json`、`media-evidence.json` 和截图保留诊断证据。此场景验证功能链路；它不替代持续 FPS / 延迟、触控注入或发布包验收。性能脚本和已知边界见 [投屏重写验收记录](harmony/mirror-rewrite-2026-11-07.md)。
+
+已授权操作手机时，额外设置 `$env:PIORA_MIRROR_TEST_INPUT = 'true'` 可启用真机输入验收。该模式在手机浏览器打开仅监听 loopback 的测试页面，经投屏 UI 点击、输入中文、滚轮与拖动，由手机页面的真实事件回传核对；同时检查缩放、置顶、返回浮窗后的交接和 30 个一秒左右统计窗口均至少绘制 60 FPS。滚轮惯性结束后再独立验证拖动，文字到达手机与服务端校验完成分别等待。不会自动解除机主锁屏。`phone-forward.json` 记录测试创建的反向转发，结束用 `fport rm` 删除并重新枚举确认；保留 `phone-input-observations.json`、`mirror-input-dispatch.json` 和 `application-video-statistics.json`，失败样本同样保留。未设置此选项时仍只验证被动观看和媒体操作。
+
+场景先通过 UI 分别打开浮窗和侧栏，让开发模式完成两种展示入口的编译，再测试录像交接；这不计入发布包冷启动验收。真实旋转和受控采集断流可另外运行 `node scripts/verify-harmony-mirror-lifecycle.mjs --hdc="实际路径" --serial=实际序列号`。它使用生产 Worker 与真实原生采集，在独立 Electron 中验证横竖屏与重连，恢复原方向并清理自己创建的资源，不代表物理拔插或 Next 鉴权链路测试。
+
 ### DSH Pet 桌面扩展
 
 `node scripts/run-desktop-e2e.mjs --scenario desktop-extensions` 验证独立设置入口、无项目时的安装入口、默认开关、受限 IPC 和桌面认证的任务快照接口，不下载插件、不调用模型。原版插件安装和原生窗口 smoke 使用 `node scripts/verify-dsh-pet.mjs`，详见 [DSH Pet](dsh-pet.md)。

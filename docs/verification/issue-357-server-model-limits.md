@@ -28,4 +28,10 @@ Windows 10.0.26340，Node 24.5.0，独立工作树及独立测试 agent 目录�
 - 首次本地测试缺少生成的品牌模块、测试认证目录落到用户目录，以及旧 assistant 夹具缺少 SDK usage。已生成开发品牌资源、隔离测试目录并补全 usage 夹具后复测通过。浏览器首次受沙箱临时目录 `!` 和 Edge 管道限制阻断；在独立临时配置中于沙箱外复测通过。
 - 未运行本地完整 CI、`next build`、发布包、Electron 原生窗口、真实模型或硬件验收。远端最终 head 的 CI 与审查以 PR 记录为准。
 
+## CI 发现的扩展加载回归
+
+`c5051243` 的 CI #1097 在 Windows 第 5 分片及打包扩展验证失败：项目扩展清单发现 `piora-room` / `piora-automations` 无法导入预算校验模块。原因是 Pi 的 jiti 把 `@earendil-works/pi-ai` 根别名映射到 compat 文件，新增的工具子路径被拼到文件名之后。
+
+预算估算改用项目已有的 Node 原生模块解析方式，从 `PIORA_WEB_RUNTIME_ROOT`（开发时为进程工作目录）按需加载固定版本 SDK 的 ESM 工具文件，其子路径只有 import 导出条件。仍执行相同的 SDK 算法；不复制估算逻辑、不改 SDK 或降低扩展清单断言。新增真实扩展加载器用例，在扩展工厂中执行恰好可用和多一 token 的两条校验。扩展加载、项目工具清单、会话启动清理共 24/24 回归通过；浏览器错误展示 1/1 复测通过。早期无输出进程已中断并重新运行，不算作通过；最终 head CI 状态记录在 PR。
+
 ![模型上下文冲突提示（虚构接口夹具）](../open-source/assets/model-server-limit-fixture.png)

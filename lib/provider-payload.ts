@@ -1,6 +1,26 @@
 import type { Context } from "@earendil-works/pi-ai";
-import { estimateContextTokens } from "@earendil-works/pi-ai/utils/estimate";
-import { normalizeContext } from "@earendil-works/pi-ai/utils/transcript";
+
+let estimateInput: ((context: Context) => number) | undefined;
+
+function estimateInputTokens(context: Context): number {
+  if (!estimateInput) {
+    // Pi's extension jiti aliases the package root to a compat FILE and treats
+    // unmatched subpaths as children of that file. Use Node resolution from the
+    // app runtime, as terminal-pty does, so extension imports keep working.
+    // Lazy loading also keeps this server-only dependency out of error rendering.
+    const { createRequire } = process.getBuiltinModule("node:module");
+    const { join } = process.getBuiltinModule("node:path");
+    const runtimeRoot = process.env.PIORA_WEB_RUNTIME_ROOT?.trim() || process.cwd();
+    const requireSdk = createRequire(join(runtimeRoot, "package.json"));
+    // Pi 1.5 exposes these subpaths only under the ESM import condition. Node
+    // >=22.19 can synchronously load their ESM files by absolute runtime path.
+    const sdkUtils = join(runtimeRoot, "node_modules", "@earendil-works", "pi-ai", "dist", "utils");
+    const { estimateContextTokens } = requireSdk(join(sdkUtils, "estimate.js")) as typeof import("@earendil-works/pi-ai/utils/estimate");
+    const { normalizeContext } = requireSdk(join(sdkUtils, "transcript.js")) as typeof import("@earendil-works/pi-ai/utils/transcript");
+    estimateInput = context => estimateContextTokens(normalizeContext(context)).tokens;
+  }
+  return estimateInput(context);
+}
 
 /** Validate the serialized OpenAI Chat Completions boundary, never rewrite roles. */
 export function validateChatPayload(payload: unknown): void {
@@ -28,7 +48,7 @@ export function validateOutputBudget(payload: unknown, model: unknown, context?:
   // Match Pi's shared-budget estimate, including system instructions and tools.
   // This is not an exact server tokenizer or a way to infer unknown server limits.
   const input = context && typeof context === "object" && Array.isArray((context as Context).messages)
-    ? estimateContextTokens(normalizeContext(context as Context)).tokens : undefined;
+    ? estimateInputTokens(context as Context) : undefined;
   if (input !== undefined && input >= contextWindow) {
     throw new Error(`maximum context length exceeded: estimated input (${input}) leaves no output room in the context window (${contextWindow}).`);
   }

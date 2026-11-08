@@ -21,6 +21,7 @@ function packet(type: number, payload: Buffer): Buffer {
 }
 
 export class HosVideoPacketizer {
+  constructor(private readonly fps = 30) {}
   private sps?: Buffer;
   private pps?: Buffer;
   private configured = false;
@@ -53,7 +54,7 @@ export class HosVideoPacketizer {
     const output: Buffer[] = [];
     if (!this.configured && this.width && this.height && this.sps && this.pps && this.sps.length <= 4096 && this.pps.length <= 4096) {
       const config = Buffer.allocUnsafe(17 + this.sps.length + this.pps.length);
-      config.writeUInt8(0, 0); config.writeUInt32BE(this.width, 1); config.writeUInt32BE(this.height, 5); config.writeUInt32BE(30, 9);
+      config.writeUInt8(0, 0); config.writeUInt32BE(this.width, 1); config.writeUInt32BE(this.height, 5); config.writeUInt32BE(this.fps, 9);
       config.writeUInt16BE(this.sps.length, 13); this.sps.copy(config, 15);
       config.writeUInt16BE(this.pps.length, 15 + this.sps.length); this.pps.copy(config, 17 + this.sps.length);
       output.push(packet(2, config)); this.configured = true;

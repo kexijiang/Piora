@@ -147,6 +147,21 @@ async function resolveSemanticComponent(
   return matches[0] ?? awaited;
 }
 
+async function focusedTextComponent(driver: HypiumDriver, module: HypiumModule): Promise<HypiumComponent> {
+  // Harmony reports focus on every ancestor of the focused input, including
+  // Web/Stack/Navigation. Only an editable field is an unambiguous text target.
+  const fields: HypiumComponent[] = [];
+  // Filter on the phone: querying each focused ancestor adds many RPCs, and
+  // the UiTest RPC transport must not receive overlapping property requests.
+  for (const type of ["TextInput", "TextArea", "textField", "RichEditor"]) {
+    fields.push(...await driver.findComponents(module.BY.focused(true).type(type)));
+  }
+  if (fields.length !== 1) throw new HarmonyError(fields.length ? "UI_TARGET_AMBIGUOUS" : "UI_TARGET_NOT_FOUND",
+    fields.length ? "More than one editable field has focus" : "Focus an editable text field before sending text",
+    { retryable: true, details: { dispatchState: "not-sent", matchCount: fields.length } });
+  return fields[0];
+}
+
 export class HypiumAutomationDriver {
   private readonly importDriver: () => Promise<HypiumModule>;
   private readonly now: () => number;
@@ -263,7 +278,7 @@ export class HypiumAutomationDriver {
         return await driver.triggerKey(args[0] === "recents" ? module.KeyCode.APPSELECT : module.KeyCode.ENTER);
       }
       if (operation === "input_text") {
-        const component = await resolveSemanticComponent(driver, module, { focused: true }, 1000);
+        const component = await focusedTextComponent(driver, module);
         if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Text operation cancelled");
         await component.inputText(String(args[0]));
         if (await component.getText() !== args[0]) throw new HarmonyError("SCENARIO_FAILED", "Focused text readback mismatch", { details: { dispatchState: "sent", verification: "failed" } });

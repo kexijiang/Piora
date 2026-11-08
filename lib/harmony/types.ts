@@ -205,6 +205,7 @@ export interface HarmonyRuntimeCandidate {
 }
 
 export interface HarmonyVideoConnection {
+  requestKeyframe?(): void;
   stream: ReadableStream<Uint8Array>;
   close(): Promise<void>;
 }

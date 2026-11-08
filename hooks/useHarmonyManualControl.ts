@@ -10,6 +10,7 @@ async function manualRequest(action: string, input: Record<string, unknown>) {
   const response = await fetch("/api/harmony/manual", {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, ...input }), keepalive: action === "release",
+    signal: AbortSignal.timeout(10000),
   });
   const data = await response.json();
   if (!response.ok) throw new HarmonyRequestError(data.error, response.status);
