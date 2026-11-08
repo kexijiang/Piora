@@ -15,8 +15,10 @@ import {
   applyDiscoveredLimits,
   applyEndpointLimits,
   automaticModelLimitSources,
+  captureModelLimitUndo,
   clearLimitMetaField,
   compactLimitMeta,
+  constrainToEndpointLimits,
   customModelsMissingLimits,
   findDiscoveredModel,
   firstCustomModelSaveBlocker,
@@ -25,6 +27,7 @@ import {
   parseModelLimitDraft,
   positiveTokenCount,
   stripModelLimitUiMeta,
+  undoModelLimitEdits,
   type ModelLimitField,
   type ModelLimitsMeta,
 } from "@/lib/model-limits";
@@ -70,6 +73,7 @@ export interface ModelEntry extends ModelSamplingConfig {
   id: string;
   name?: string;
   api?: string;
+  baseUrl?: string;
   reasoning?: boolean;
   thinkingLevelMap?: Record<string, string | null>;
   input?: string[];
@@ -1051,11 +1055,17 @@ function ModelLimitFields({
 }) {
   const { t } = useI18n();
   const limitsAbortRef = useRef<ReturnType<typeof createDiscoveryAbort> | null>(null);
-  const limitsUndoRef = useRef<ModelEntry | null>(null);
+  const limitsUndoRef = useRef<ReturnType<typeof captureModelLimitUndo> | null>(null);
+  const latestModelRef = useRef(model);
+  latestModelRef.current = model;
   const [limitsPhase, setLimitsPhase] = useState<"idle" | "loading">("idle");
   const [limitsError, setLimitsError] = useState<string | null>(null);
+  const [queriedLimits, setQueriedLimits] = useState<DiscoveredModel | null>(null);
   const endpointSource = automaticModelLimitSources().includes("endpoint");
-  const nothingEmpty = model.contextWindow !== undefined && model.maxTokens !== undefined;
+  const contextConflict = queriedLimits?.contextWindow !== undefined && model.contextWindow !== undefined
+    && model.contextWindow > queriedLimits.contextWindow;
+  const outputConflict = queriedLimits?.maxTokens !== undefined && model.maxTokens !== undefined
+    && model.maxTokens > queriedLimits.maxTokens;
 
   useEffect(() => () => {
     const current = limitsAbortRef.current;
@@ -1071,8 +1081,9 @@ function ModelLimitFields({
     current?.dispose();
     limitsUndoRef.current = null;
     setLimitsError(null);
+    setQueriedLimits(null);
     setLimitsPhase("idle");
-  }, [providerName, provider.baseUrl, model.id]);
+  }, [providerName, provider.baseUrl, provider.api, provider.apiKey, provider.headers, model.id, model.baseUrl, model.api]);
 
   const setLimit = (field: ModelLimitField, raw: string) => {
     onChange({
@@ -1084,7 +1095,7 @@ function ModelLimitFields({
 
   const handleFetchLimits = async () => {
     if (!endpointSource || limitsPhase === "loading") return;
-    if (!provider.baseUrl?.trim()) {
+    if (!(model.baseUrl || provider.baseUrl)?.trim()) {
       setLimitsError(t("models.limits.fetchNeedsEndpoint"));
       return;
     }
@@ -1100,13 +1111,20 @@ function ModelLimitFields({
     limitsAbortRef.current = discovery;
     setLimitsPhase("loading");
     setLimitsError(null);
+    setQueriedLimits(null);
     try {
-      const data = await requestDiscoveredModels({ providerName, provider, signal: discovery.signal });
+      const data = await requestDiscoveredModels({ providerName, provider: {
+        ...provider,
+        ...(model.baseUrl ? { baseUrl: model.baseUrl } : {}),
+        ...(model.api ? { api: model.api } : {}),
+      }, signal: discovery.signal });
       if (limitsAbortRef.current !== discovery) return;
       const match = findDiscoveredModel(data.models, model.id);
-      const applied = applyEndpointLimits(model, match);
+      setQueriedLimits(match ?? null);
+      const currentModel = latestModelRef.current;
+      const applied = applyEndpointLimits(currentModel, match);
       if (applied.changed) {
-        limitsUndoRef.current = model;
+        limitsUndoRef.current = captureModelLimitUndo(currentModel, applied.model);
         onChange(applied.model);
       }
       if (!match) setLimitsError(t("models.limits.modelNotListed"));
@@ -1177,12 +1195,12 @@ function ModelLimitFields({
             <button
               type="button"
               onClick={() => void handleFetchLimits()}
-              disabled={limitsPhase === "loading" || nothingEmpty}
+              disabled={limitsPhase === "loading"}
               style={{
                 height: 30, padding: "0 10px", border: "1px solid var(--border)", borderRadius: "var(--radius-control)",
                 background: "var(--bg-panel)",
-                color: limitsPhase === "loading" || nothingEmpty ? "var(--text-dim)" : "var(--text-muted)",
-                cursor: limitsPhase === "loading" || nothingEmpty ? "not-allowed" : "pointer",
+                color: limitsPhase === "loading" ? "var(--text-dim)" : "var(--text-muted)",
+                cursor: limitsPhase === "loading" ? "not-allowed" : "pointer",
                 fontSize: "var(--text-xs)",
               }}
             >
@@ -1196,7 +1214,7 @@ function ModelLimitFields({
                   if (!previous) return;
                   limitsUndoRef.current = null;
                   setLimitsError(null);
-                  onChange(previous);
+                  onChange(undoModelLimitEdits(latestModelRef.current, previous));
                 }}
                 style={{ padding: "0 2px", border: "none", background: "none", color: "var(--accent)", cursor: "pointer", fontSize: "var(--text-xs)" }}
               >
@@ -1206,6 +1224,24 @@ function ModelLimitFields({
           </div>
         )}
       </div>
+      {queriedLimits && (contextConflict || outputConflict) && (
+        <div data-endpoint-limit-conflict role="alert" style={{ marginTop: 6, color: "#ef4444", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
+          {contextConflict && <div>{t("models.limits.endpointContextConflict", { endpoint: queriedLimits.contextWindow!, configured: model.contextWindow! })}</div>}
+          {outputConflict && <div>{t("models.limits.endpointOutputConflict", { endpoint: queriedLimits.maxTokens!, configured: model.maxTokens! })}</div>}
+          <button type="button" onClick={() => {
+            const applied = constrainToEndpointLimits(model, queriedLimits);
+            limitsUndoRef.current = captureModelLimitUndo(model, applied);
+            onChange(applied);
+          }} style={{ border: "none", background: "none", padding: 0, color: "var(--accent)", cursor: "pointer" }}>
+            {t("models.limits.useEndpoint")}
+          </button>
+        </div>
+      )}
+      {queriedLimits && queriedLimits.contextWindow === undefined && queriedLimits.maxTokens === undefined && (
+        <p data-endpoint-limits-unknown style={{ color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
+          {t("models.limits.endpointUnknown")}
+        </p>
+      )}
       {limitsError && (
         <div role="alert" style={{ marginTop: 6, color: "#ef4444", fontSize: "var(--text-xs)", lineHeight: 1.4 }}>
           <ModelErrorText value={limitsError} />
