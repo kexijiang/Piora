@@ -1,4 +1,5 @@
 "use client";
+import { modelTimeoutDisplay } from "@/lib/model-timeout-display";
 import type { ChatCommandQueueActions } from "./ChatCommandCard";
 import { NestedToolCallsContext } from "./NestedToolCalls";
 import { BrowserHandoffNotice } from "./BrowserHandoffNotice";
@@ -1007,10 +1008,12 @@ function ExtensionWidgets({ widgets }: { widgets: Array<{ key: string; lines: st
 }
 
 function NoticeShelf({ notices, floating = false, align = "left" }: { notices: NoticeItem[]; floating?: boolean; align?: "left" | "right" }) {
+  const { t } = useI18n();
   if (notices.length === 0) return null;
   return (
     <div className={`notice-shelf${floating ? " is-floating" : ""}${align === "right" ? " is-right" : ""}`}>
       {notices.map((notice, index) => {
+        const timeout = notice.type === "error" ? modelTimeoutDisplay(notice.message) : null;
         return (
           <div
             key={notice.id}
@@ -1025,7 +1028,7 @@ function NoticeShelf({ notices, floating = false, align = "left" }: { notices: N
           >
             <AliIcon name={notice.type === "error" || notice.type === "warning" ? "warning" : notice.type === "success" ? "check" : "info"} size={13} className="notice-shelf-icon" />
             <span className="notice-shelf-message">
-              {notice.message}
+              {timeout ? t(timeout.key, { seconds: timeout.seconds }) : notice.message}
             </span>
           </div>
         );

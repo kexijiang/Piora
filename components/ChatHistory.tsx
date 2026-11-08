@@ -140,6 +140,7 @@ function ChatHistoryContent({ visible: _visible, messages: savedMessages, modelC
       ref={index === metadata.lastUser ? (element) => { lastUserMsgRef.current = element; if (element && pendingScrollToUserRef.current) list.current?.cancelNavigation(); } : undefined}>
       <RenderErrorBoundary resetKey={messageFingerprint(message, entryIds[index])} fallbackLabel={t("chat.messageRenderFailed")} errorTitle={t("chat.messageRenderError")}>
         <HistoryMessage {...messageProps} message={message} intermediate={row.intermediate} isStreaming={row.isStreaming} toolResults={toolResults} entryId={entryIds[index]}
+          retryPrompt={metadata.retryPrompts.get(index)} retryDisabled={messageProps.retryDisabled || busy || streaming}
           originalMessage={messages[index]} allowActions={row.attachRef !== false} onBranch={onBranch} onDeleteMessage={onDeleteMessage}
           actionsDisabled={busy || streaming || isNew || Boolean(forkingEntryId)} deleteDisabled={deleteDisabled || busy || streaming}
           onFork={busy || isNew || index === 0 && message.role === "user" ? undefined : messageProps.onFork}

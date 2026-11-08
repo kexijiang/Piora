@@ -1,4 +1,6 @@
 "use client";
+import { PromptErrorNotices } from "@/lib/prompt-error-notices";
+import { getAssistantErrorMessage } from "@/lib/message-display";
 import { DEFAULT_TOOL_PERMISSION_CHANGED, notifyDefaultToolPermissionChanged, saveDefaultToolPermission } from "./useDefaultToolPermission";
 import { isPermissionMode, type PermissionMode, type ToolPermissionState } from "@/lib/tool-permission-policy";
 import { NestedToolCallsStore } from "@/lib/nested-tool-calls";
@@ -297,6 +299,7 @@ function fillPendingNotices(visible: NoticeItem[], pending: NoticeItem[]): Notic
 function noticeReducer(state: NoticeState, action: NoticeAction): NoticeState {
   switch (action.type) {
     case "add": {
+      if ([...state.visible, ...state.pending].some(notice => notice.id === action.notice.id)) return state;
       if (state.visible.some((notice) => notice.exiting) || state.visible.length >= MAX_NOTICES) {
         return {
           visible: state.visible.some((notice) => notice.exiting)
@@ -311,7 +314,7 @@ function noticeReducer(state: NoticeState, action: NoticeAction): NoticeState {
       return { ...state, visible: markOldestNoticeExiting(state.visible) };
     case "remove": {
       const visible = state.visible.filter((notice) => notice.id !== action.id);
-      return fillPendingNotices(visible, state.pending);
+      return fillPendingNotices(visible, state.pending.filter(notice => notice.id !== action.id));
     }
     default:
       return state;
@@ -624,11 +627,28 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const systemPromptSavingRef = useRef(false);
   const thinkingLevelOverrideRef = useRef<Exclude<ThinkingLevelOption, "auto"> | null>(null);
   const promptRunIdRef = useRef(0);
+  const promptErrorNoticesRef = useRef(new PromptErrorNotices());
   const cancelledPromptRunIdRef = useRef<number | null>(null);
   const preparingPromptRunIdRef = useRef<number | null>(null);
   const promptSubmissionRef = useRef<{ runId: number; sid: string; idempotencyKey: string; pending: boolean; commandId: string | null } | null>(null);
   const cancelPreparedPromptRef = useRef<(() => void) | null>(null);
   const abortRequestRunIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Reconciliation can restore the failed reply without a message_end event.
+    // Match the durable prompt identity so an older, identical failure cannot
+    // suppress the error for a newly admitted request.
+    const submission = promptSubmissionRef.current;
+    if (!submission || submission.runId !== promptRunIdRef.current || submission.sid !== sessionIdRef.current) return;
+    const start = messages.findIndex(message => message.role === "user" && message.clientPromptId === submission.idempotencyKey);
+    if (start < 0) return;
+    for (const message of messages.slice(start + 1)) {
+      if (message.role === "user") break;
+      if (message.role !== "assistant" || message.stopReason !== "error") continue;
+      const notice = promptErrorNoticesRef.current.record(`${submission.sid}:${submission.runId}`, getAssistantErrorMessage(message)!, "history");
+      dispatchNotice({ type: "remove", id: notice.id });
+    }
+  }, [messages]);
 
   const phaseEventRevisionRef = useRef(0);
   /** Last time the active run produced visible progress (stream, tool output, results). */
@@ -1533,10 +1553,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           void waitForPromptSettlement(sessionIdRef.current, promptRunIdRef.current);
         }
         break;
-      case "prompt_error":
+      case "prompt_error": {
         suppressCompletionNotificationRef.current = true;
-        addNotice({ type: "error", message: (event.errorMessage as string | undefined) ?? "Command failed" });
+        const message = (event.errorMessage as string | undefined) ?? "Command failed";
+        const notice = promptErrorNoticesRef.current.record(`${sessionIdRef.current}:${promptRunIdRef.current}`, message, "notice");
+        if (notice.show) addNotice({ id: notice.id, type: "error", message });
         break;
+      }
       case "extension_error":
         suppressCompletionNotificationRef.current = true;
         addNotice({
@@ -1578,6 +1601,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (completed?.role === "toolResult") nestedCallsStore.finish(completed.toolCallId);
         if (completed?.role === "assistant" && completed.stopReason === "error") {
           suppressCompletionNotificationRef.current = true;
+          const notice = promptErrorNoticesRef.current.record(`${sessionIdRef.current}:${promptRunIdRef.current}`, getAssistantErrorMessage(completed)!, "history");
+          dispatchNotice({ type: "remove", id: notice.id });
         }
         if (completed && completed.role === "user") {
           // Delivered steering/follow-up messages surface here as user

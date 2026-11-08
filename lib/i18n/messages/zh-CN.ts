@@ -2365,6 +2365,8 @@ export const zhCNLocale: LocalePlugin = {
     "chat.generationStopped": "已停止生成",
     "chat.providerErrorDetails": "原始错误详情",
     "chat.modelOutputBudgetError": "最大输出 Token 达到或超过服务端允许的上下文预算。请检查模型配置中的最大输出 Token 设置，将其调低，并确认上下文窗口与服务商的实际限制一致；如有高级参数或扩展覆盖输出上限，也需一并调整。",
+    "chat.modelFirstEventTimeout": "模型在 {seconds} 秒内未返回数据。请检查网络或服务商状态后重试消息；可在“设置 > 通用”调整请求超时和自动重试。",
+    "chat.modelStreamTimeout": "模型连续 {seconds} 秒未返回新数据，网络连接或服务商可能已中断。重试会重新发送原消息和附件，不会从中断处续传；可在“设置 > 通用”调整超时和自动重试。",
     "chat.providerError": "错误：{reason}",
     "chat.browserWaiting": "等待用户操作浏览器",
     "chat.runningCommand": "正在运行命令...",
