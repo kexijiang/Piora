@@ -14,6 +14,7 @@ import { showPioraMessage } from "@/components/PioraMessage";
 import { AliIcon } from "@/components/AliIcon";
 import { formatHarmonyDeviceTitle, formatHarmonyDeviceLabel } from "@/lib/harmony/device-label";
 import styles from "./MirrorWindow.module.css";
+import { MirrorViewControls } from "./MirrorViewControls";
 
 type Device = { serial: string; name?: string; model?: string; product?: string; state: string; generation: number; capabilities: Record<string, boolean> };
 export function MirrorWindow({ embedded = false, serial: embeddedSerial, active = true }: { embedded?: boolean; serial?: string; active?: boolean } = {}) {
@@ -75,16 +76,16 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
     window.addEventListener("keydown", listener); return () => window.removeEventListener("keydown", listener);
   }, [bindings, canScreenshot, media]);
   const clock = `${String(Math.floor(media.elapsed / 60)).padStart(2, "0")}:${String(media.elapsed % 60).padStart(2, "0")}`;
-  return <div className={`${styles.root} ${embedded ? styles.embedded : ""}`}>
+  return <div className={`${styles.root} ${embedded ? styles.embedded : ""}`} data-dark={isDark}>
     <header className={styles.titlebar} data-dark={isDark}>
       <span className={styles.device} title={device ? formatHarmonyDeviceLabel(device) : serial}>{device ? formatHarmonyDeviceTitle(device, copy("鸿蒙设备", "Harmony device")) : copy("鸿蒙投屏", "Harmony mirror")}</span>
       {live.statistics ? <button className={styles.fps} title={copy("连接详情", "Connection details")} onClick={details}>{Math.round(live.statistics.presentedFps)}<small> FPS</small></button> : null}
       {media.recording ? <span className={styles.recording} title={copy(`录屏 ${clock} · 最长30分钟`, `Recording ${clock} · 30 minute limit`)}>●<span className={styles.clock}>{clock}</span></span> : null}
-      <button className={styles.capture} disabled={!canScreenshot || Boolean(media.busy)} title={copy("截图", "Screenshot")} aria-label={copy("截图", "Screenshot")} onClick={() => { void media.action("capture_screenshot"); }}><AliIcon name="save" size={15} /></button>
-      <button className={styles.record} disabled={media.transitioning || device?.state !== "online" || Boolean(media.recording && !media.ownsRecording)} title={media.recording ? copy("停止并保存", "Stop and save") : copy("录屏 · 最长30分钟", "Record · 30 minute limit")} aria-label={media.recording ? copy("停止录屏", "Stop recording") : copy("开始录屏", "Start recording")} onClick={record}><AliIcon name={media.recording ? "stop" : "play"} size={15} /></button>
+      <button className={styles.capture} disabled={!canScreenshot || Boolean(media.busy)} title={copy("截图", "Screenshot")} aria-label={copy("截图", "Screenshot")} onClick={() => { void media.action("capture_screenshot"); }}><AliIcon name="camera" size={16} /></button>
+      <button className={styles.record} disabled={media.transitioning || device?.state !== "online" || Boolean(media.recording && !media.ownsRecording)} title={media.recording ? copy("停止并保存", "Stop and save") : copy("录屏 · 最长30分钟", "Record · 30 minute limit")} aria-label={media.recording ? copy("停止录屏", "Stop recording") : copy("开始录屏", "Start recording")} onClick={record}><AliIcon name={media.recording ? "stop" : "record-circle"} size={16} /></button>
       <button title={embedded ? copy("切换到悬浮投屏", "Float mirror") : copy("在侧栏显示", "Dock mirror")} aria-label={embedded ? copy("切换到悬浮投屏", "Float mirror") : copy("在侧栏显示", "Dock mirror")} onClick={() => { void window.piDesktop?.harmonyMirror?.setPresentation(embedded ? "floating" : "sidebar"); }}><AliIcon name="layout" size={14} /></button>
-      <button aria-label={copy("操控手机", "Control device")} title={copy("操控手机", "Control device")} aria-pressed={controlEnabled} onClick={() => setControlEnabled(value => !value)}>⌖</button>
-      <button aria-label={copy("投屏菜单", "Mirror menu")} onClick={() => { if (embedded) details(); else void window.piDesktop?.harmonyMirror?.showMenu(); }}>⋯</button>
+      <button aria-label={copy("操控手机", "Control device")} title={copy("操控手机", "Control device")} aria-pressed={controlEnabled} onClick={() => setControlEnabled(value => !value)}><AliIcon name="mouse-pointer" size={16} /></button>
+      <button aria-label={copy("投屏菜单", "Mirror menu")} title={copy("投屏菜单", "Mirror menu")} onClick={() => { if (embedded) details(); else void window.piDesktop?.harmonyMirror?.showMenu(); }}><AliIcon name="ellipsis" size={16} /></button>
       <button aria-label={copy("关闭投屏", "Close mirror")} onClick={() => { void window.piDesktop?.harmonyMirror?.close(); }}><AliIcon name="close" size={14} /></button>
     </header>
     {state?.presentationFailed ? <div className={styles.compatibility} role="status">{copy("切换未完成，已保留原画面，请重试。", "The view could not be moved. Your original view is still active; please retry.")}</div> : null}
@@ -105,22 +106,23 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
         style={zoom !== "fit" && width && height ? { width: width * Number(zoom), height: height * Number(zoom), flex: "none" } : undefined} {...input.handlers} />
       {!live.frame || device?.state !== "online" ? <div className={styles.placeholder} role="status">{deviceError || (device?.state !== "online" ? copy("等待设备连接", "Waiting for device") : live.state === "recovering" || live.state === "error" ? copy("正在重新连接…", "Reconnecting…") : copy("正在连接画面…", "Connecting…"))}</div> : null}
     </main>
-    {controlEnabled ? <div className={styles.controls}>
+    {controlEnabled ? <footer className={styles.controls} aria-label={copy("手机控制", "Device controls")}>
       <div className={styles.controlRow}>
-        {(["back", "home", "recents"] as const).map((key, index) => <button key={key} disabled={!input.canControl} aria-label={copy(["返回", "主页", "最近任务"][index], key)} onClick={() => input.send({ action: "press_key", key })}>{["‹", "○", "□"][index]}</button>)}
-        <select aria-label={copy("画面缩放", "Video zoom")} value={zoom} onChange={event => setZoom(event.target.value)}><option value="fit">{copy("适应", "Fit")}</option><option value="0.5">50%</option><option value="1">100%</option><option value="2">200%</option></select>
-        <button aria-label={copy("窗口置顶", "Always on top")} aria-pressed={state?.alwaysOnTop} onClick={() => { void window.piDesktop?.harmonyMirror?.setAlwaysOnTop(!state?.alwaysOnTop); }}>⌃</button>
+        <div className={styles.controlGroup} role="group" aria-label={copy("手机导航", "Device navigation")}>
+          {(["back", "home", "recents"] as const).map((key, index) => <button type="button" key={key} disabled={!input.canControl} title={copy(["返回", "主页", "最近任务"][index], key)} aria-label={copy(["返回", "主页", "最近任务"][index], key)} onClick={() => { void input.send({ action: "press_key", key }); }}><AliIcon name={(["arrowleft", "home", "copy"] as const)[index]} size={18} /></button>)}
+        </div>
+        <div className={styles.controlGroup} role="group" aria-label={copy("设备按键", "Device keys")}>
+          {(["volume_down", "volume_up", "power"] as const).map((key, index) => <button type="button" key={key} disabled={!input.canControl} title={copy(["音量−", "音量＋", "电源键"][index], ["Volume −", "Volume +", "Power"][index])} aria-label={copy(["音量−", "音量＋", "电源键"][index], ["Volume −", "Volume +", "Power"][index])} onClick={() => { void input.send({ action: "key_hold", key, durationMs: 100 }); }}><AliIcon name={(["volume-minus", "volume-plus", "power"] as const)[index]} size={18} /></button>)}
+        </div>
+        <MirrorViewControls zoom={zoom} onZoom={setZoom} pinned={Boolean(state?.alwaysOnTop)} onPin={() => { void window.piDesktop?.harmonyMirror?.setAlwaysOnTop(!state?.alwaysOnTop); }} chinese={chinese} />
       </div>
-      <div className={styles.controlRow}>
-        {(["volume_down", "volume_up", "power"] as const).map((key, index) => <button key={key} disabled={!input.canControl} onClick={() => { void input.send({ action: "key_hold", key, durationMs: 100 }); }}>{copy(["音量−", "音量＋", "电源键"][index], ["Volume −", "Volume +", "Power"][index])}</button>)}
-      </div>
-      <form className={styles.controlRow} onSubmit={event => {
+      <form className={styles.textEntry} onSubmit={event => {
         event.preventDefault(); const text = inputText; if (!text) return;
         void input.send({ action: "input_text", text }).then(sent => { if (sent) setInputText(current => current === text ? "" : current); });
       }}>
         <input aria-label={copy("发送文字到手机", "Send text to device")} placeholder={copy("输入文字…", "Enter text…")} value={inputText} onChange={event => setInputText(event.target.value)} />
-        <button type="submit" disabled={!input.canControl || !inputText}>{copy("发送", "Send")}</button>
+        <button type="submit" aria-label={copy("发送", "Send")} title={copy("发送", "Send")} disabled={!input.canControl || !inputText}><AliIcon name="arrowup" size={17} /></button>
       </form>
-    </div> : null}
+    </footer> : null}
   </div>;
 }

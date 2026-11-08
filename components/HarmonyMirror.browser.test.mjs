@@ -28,7 +28,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     // old/new snapshots. Reduced motion also removes the transition-ready race.
     await page.emulateMedia({reducedMotion:"reduce"});
     page.on("pageerror",e=>errors.push(e.message));
-    await page.addInitScript(()=>{let state={serial:"phone",ownerId:"desktop-media",scale:75,open:true,minimized:false,alwaysOnTop:false},listeners=[];window.calls=[];window.transitionId=0;window.updateMirror=patch=>{state={...state,...patch};listeners.forEach(f=>f(state));};window.piDesktop={harmonyMirror:{getState:async()=>state,onStateChange:f=>{listeners.push(f);return()=>listeners=listeners.filter(x=>x!==f);},onCommand:f=>{window.command=f;return()=>{};},reportFrame:async f=>{window.geometry=f;if(f.presentation===state.pendingPresentation&&f.transition===state.presentationTransition)window.updateMirror({presentation:f.presentation,pendingPresentation:undefined,presentationTransition:undefined});},setScale:async scale=>{window.calls.push(scale);window.updateMirror({scale});return state;},setPresentation:async pendingPresentation=>{window.updateMirror({pendingPresentation,presentationTransition:String(++window.transitionId)});return state;},showMenu:async()=>window.menu=true,close:async()=>{window.closed=true;return true;}},clipboard:{copyHarmonyMedia:async f=>{window.copy=f;}}};window.EventSource=class{close(){}};});
+    await page.addInitScript(()=>{let state={serial:"phone",ownerId:"desktop-media",scale:75,open:true,minimized:false,alwaysOnTop:false},listeners=[];window.calls=[];window.transitionId=0;window.updateMirror=patch=>{state={...state,...patch};listeners.forEach(f=>f(state));};window.piDesktop={harmonyMirror:{getState:async()=>state,onStateChange:f=>{listeners.push(f);return()=>listeners=listeners.filter(x=>x!==f);},onCommand:f=>{window.command=f;return()=>{};},reportFrame:async f=>{window.geometry=f;if(f.presentation===state.pendingPresentation&&f.transition===state.presentationTransition)window.updateMirror({presentation:f.presentation,pendingPresentation:undefined,presentationTransition:undefined});},setAlwaysOnTop:async alwaysOnTop=>{window.updateMirror({alwaysOnTop});return state;},setScale:async scale=>{window.calls.push(scale);window.updateMirror({scale});return state;},setPresentation:async pendingPresentation=>{window.updateMirror({pendingPresentation,presentationTransition:String(++window.transitionId)});return state;},showMenu:async()=>window.menu=true,close:async()=>{window.closed=true;return true;}},clipboard:{copyHarmonyMedia:async f=>{window.copy=f;}}};window.EventSource=class{close(){}};});
     const globals=(await readFile(path.join(repo,"app/globals.css"),"utf8")).replace(/^@import.*$/gm,"");
     const css=globals+await readFile(path.join(repo,"app/theme-backgrounds.css"),"utf8")+await readFile(path.join(repo,"components/workspace/harmony/MirrorWindow.module.css"),"utf8")+await readFile(path.join(repo,"components/ConfirmDialog.module.css"),"utf8");
     await page.route("https://mirror.test/**",async route=>{const r=route.request(),u=new URL(r.url());if(u.pathname==="/themes/codex-dream-skin/skin.css")return route.fulfill({contentType:"text/css",body:await readFile(path.join(repo,"public/themes/codex-dream-skin/skin.css"),"utf8")});if(u.pathname==="/bundle.js")return route.fulfill({contentType:"text/javascript",body:await readFile(path.join(root,"bundle.js"))});if(u.pathname==="/api/harmony/devices")return route.fulfill({json:{devices:[{serial:"phone",name:"BRA-AL00",model:"BRA-AL00",product:"HUAWEI Mate 60 ",state:"online",generation:1,capabilities:{screenshot:true}}]}});if(u.pathname==="/api/harmony/media"){if(r.method()==="POST"){requests.push(r.postDataJSON());return route.fulfill({json:{artifact:{kind:"screenshot",serial:"phone",path:"C:/media/screen.png",filename:"screen.png"}}});}return route.fulfill({json:{recording,completion}});}if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});return route.fulfill({contentType:"text/html",body:`<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#fafafa;--bg-hover:#eee;--border:#ddd;--text:#222;--text-muted:#666;--text-dim:#888;--accent:#3478f6;--btn-primary-bg:#3478f6;--btn-primary-fg:#fff;--radius-surface:12px;--radius-control:6px;--font-ui:system-ui;--text-base:14px;--text-sm:13px}body{margin:0;font:14px system-ui}${css}</style><div id="root"></div><script src="/bundle.js"></script>`});});
@@ -54,6 +54,42 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     }
     assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'true');
     assert.deepEqual(inputRequests,[],'opening the mirror must not acquire an input lease');
+    assert.equal(await page.getByLabel('投屏交互区域').evaluate(el=>getComputedStyle(el).cursor),'default');
+    for (const width of [280, 362, 520]) {
+      await page.setViewportSize({width,height:758});
+      const layout=await page.locator('footer').evaluate(el=>({scroll:el.scrollWidth,width:el.clientWidth,buttons:[...el.querySelectorAll('button')].map(b=>{const r=b.getBoundingClientRect();return {x:r.x,right:r.right,h:r.height};})}));
+      assert.ok(layout.scroll<=layout.width+1,'control bar fits '+width);
+      assert.ok(layout.buttons.every(b=>b.x>=0&&b.right<=width&&b.h>=28),'buttons remain reachable at '+width);
+      assert.ok(await page.locator('main').evaluate(el=>el.clientHeight)>500,'controls preserve video height');
+      if(process.env.PIORA_HARMONY_SCREENSHOT_DIR){await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,'controls-'+width+'.png')});}
+    }
+    await page.setViewportSize({width:362,height:758});
+    await page.getByRole('button',{name:'显示选项',exact:true}).click();
+    await page.getByRole('button',{name:'100%',exact:true}).click();
+    assert.equal(await page.locator('main').getAttribute('data-zoomed'),'true');
+    await page.getByRole('button',{name:'适应',exact:true}).click();
+    assert.equal(await page.locator('main').getAttribute('data-zoomed'),'false');
+    await page.getByRole('button',{name:'窗口置顶',exact:true}).click();
+    assert.equal(await page.getByRole('button',{name:'窗口置顶',exact:true}).getAttribute('aria-pressed'),'true');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.getByRole('button',{name:'显示选项',exact:true}).getAttribute('aria-expanded'),'false');
+    assert.equal(await page.getByRole('button',{name:'显示选项',exact:true}).evaluate(el=>document.activeElement===el),true);
+    await page.getByRole('button',{name:'显示选项',exact:true}).click();
+    await page.locator('.device').click();
+    assert.equal(await page.getByRole('button',{name:'显示选项',exact:true}).getAttribute('aria-expanded'),'false');
+    assert.deepEqual(inputRequests,[],'display options never inject phone input');
+    await page.evaluate(()=>window.setMirrorTheme('dark'));
+    await page.waitForFunction(()=>document.querySelector('.root').dataset.dark==='true');
+    const contrast=await page.locator('footer').evaluate(el=>{const c=getComputedStyle(el);const lum=v=>v.match(/[0-9.]+/g).slice(0,3).map(Number).map(x=>x/255).map(x=>x<=.04045?x/12.92:((x+.055)/1.055)**2.4).reduce((s,x,i)=>s+x*[.2126,.7152,.0722][i],0);const a=lum(c.color),b=lum(c.backgroundColor);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05);});
+    assert.ok(contrast>=4.5,'dark controls remain legible');
+    if(process.env.PIORA_HARMONY_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,'controls-dark.png')});
+    await page.evaluate(()=>window.setMirrorTheme('light'));
+    await page.waitForFunction(()=>document.querySelector('.root').dataset.dark==='false');
+    await page.getByRole('button',{name:'显示选项',exact:true}).click();
+    if(process.env.PIORA_HARMONY_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,'controls-options.png')});
+    await page.keyboard.press('Escape');
+
+
     await page.getByRole('button',{name:'操控手机'}).click();
     await page.locator("canvas").click();await page.locator("canvas").press("a");assert.equal(requests.length,0);assert.deepEqual(inputRequests,[],'disabled control cannot acquire input leases or send gestures');
     assert.equal(await page.locator("footer").count(),0);
@@ -165,6 +201,10 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.waitForFunction(()=>document.querySelector('input[aria-label="发送文字到手机"]').value==='');
     assert.ok(actions().some(action=>action.action==='input_text'&&action.text==='中文输入'));
     assert.ok(actions().some(action=>action.action==='press_key'&&action.key==='home'));
+    for (const [label,key] of [['返回','back'],['主页','home'],['最近任务','recents'],['音量−','volume_down'],['音量＋','volume_up'],['电源键','power']]) {
+      await Promise.all([page.waitForResponse(r=>new URL(r.url()).pathname==='/api/harmony/action'),page.getByRole('button',{name:label,exact:true}).click()]);
+      assert.equal(actions().at(-1).key,key);
+    }
     geometryWidth=720;
     const beforeStale=actions().length;await surface.click();
     await page.getByRole('status').filter({hasText:'屏幕方向已变化'}).waitFor();

@@ -33,19 +33,19 @@
 .gate p { max-width: 360px; line-height: 1.6; }
 .iconButton, .focusButton { width: 30px; height: 30px; display: inline-grid; flex: 0 0 30px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text-muted); }
 .iconButton:hover:not(:disabled), .focusButton:hover, .iconButton[aria-pressed="true"] { background: var(--bg-hover); color: var(--text); }
-.deviceHeader { min-height: 52px; display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.deviceHeader { min-height: 64px; box-sizing: border-box; display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
 .deviceIdentity { min-width: 0; flex: 1; display: flex; align-items: center; gap: 8px; }
 .deviceIdentityText { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .deviceConnection { min-width: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text-dim); font-size: calc(var(--text-base) * 11 / 14); }
 .deviceConnection > span { white-space: nowrap; }
 .deviceIdentity select { min-width: 0; max-width: 320px; flex: 0 1 auto; height: 32px; padding: 0 22px 0 0; overflow: hidden; border: 0; background: var(--bg); color: var(--text); font-size: calc(var(--text-base) * 13 / 14); font-weight: 600; text-overflow: ellipsis; }
-.deviceMark { width: 30px; height: 30px; display: inline-grid; flex: 0 0 30px; place-items: center; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); }
+.deviceMark { width: 36px; height: 40px; display: inline-grid; flex: 0 0 36px; place-items: center; border: 0; border-radius: 12px; background: var(--bg-hover); color: var(--text-muted); }
 .deviceState { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; color: var(--text-dim); font-size: calc(var(--text-base) * 11 / 14); white-space: nowrap; }
 .deviceState i { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); }
 .deviceState[data-state="online"] i { background: var(--status-ready, #16a34a); }
 .deviceState[data-state="unauthorized"] i { background: var(--status-attention, #d97706); }
 .deviceState[data-state="offline"] i { background: var(--status-failed, #dc2626); }
-.toolbarActions { display: flex; flex: 0 0 auto; gap: 2px; }
+.toolbarActions { display: flex; align-items: center; flex: 0 0 auto; gap: 6px; }
 .toolbarActions > select { min-width: 0; height: 32px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: var(--text); padding: 4px 6px; font-size: var(--text-xs); }
 .secondaryActions { display: flex; gap: 2px; }
 .compactActions { display: none; position: relative; }
@@ -658,3 +658,20 @@
 .settingsPanel :global(.settings-embedded-surface) input { min-height: 36px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text); font: inherit; }
 .settingsPanel :global(.settings-embedded-surface) button { min-height: 36px; padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
 .settingsPanel :global(.settings-embedded-surface) button:hover { background: var(--bg-hover); }
+
+/* Device controls share one baseline and a single quiet icon treatment. */
+.deviceHeader .deviceSelect { max-width: none; }
+.deviceHeader .deviceSelect > button { min-height: 26px; padding: 2px 4px; border: 0; border-radius: 6px; background: transparent; justify-content: flex-start; gap: 6px; }
+.deviceHeader .deviceSelect > button:hover { background: var(--bg-hover); }
+.deviceConnection { padding-left: 4px; gap: 8px; }
+.toolbarActions > button, .toolbarActions .iconButton, .toolbarActions .focusButton, .compactActions summary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; min-height: 34px; border-radius: 9px; white-space: nowrap; font-size: calc(var(--text-base) * 12 / 14); }
+.toolbarActions .iconButton, .toolbarActions .focusButton, .compactActions summary { width: 34px; flex-basis: 34px; cursor: pointer; }
+.toolbarActions > .primaryButton { padding-inline: 12px; }
+.toolbarActions .secondaryActions { align-items: center; gap: 2px; border-left: 1px solid var(--border); padding-left: 6px; margin-left: 2px; }
+.presentationToggle { display: flex; align-items: center; gap: 2px; padding: 3px; background: var(--bg-hover); border-radius: 10px; }
+.presentationToggle button { display: grid; place-items: center; width: 30px; height: 28px; border: 0; border-radius: 7px; color: var(--text-muted); background: transparent; cursor: pointer; }
+.presentationToggle button[aria-pressed="true"] { background: var(--bg-panel); color: var(--text); box-shadow: 0 1px 3px #0001; }
+.deviceHeader button:focus-visible, .compactActions summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@container harmony-panel (max-width: 740px) { .deviceHeader { gap: 10px; padding: 10px 12px; } .toolbarActions > .mediaButton { width: 34px; padding: 0; } .mediaButton > span { display: none; } }
+@container harmony-panel (max-width: 520px) { .deviceHeader { gap: 10px; } .toolbarActions { flex: 1; gap: 6px; } .compactActions { margin-left: auto; } }
+@container harmony-panel (max-width: 300px) { .deviceHeader { padding: 8px; } .toolbarActions { gap: 3px; } .deviceMark { width: 30px; flex-basis: 30px; } .toolbarActions > .primaryButton { padding-inline: 8px; } }

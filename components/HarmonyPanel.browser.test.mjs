@@ -208,8 +208,18 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true}); await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"settings-visible.png")}); }
     await deviceSettings.getByRole("button", {name:"关闭", exact:true}).click();
     const wideViewport = page.viewportSize();
+    for(const width of [760, 380]) {
+      await page.setViewportSize({width,height:700});
+      const header=page.locator('.deviceHeader');
+      const positions=await header.locator('.toolbarActions').evaluate(el=>[...el.children].filter(c=>c.getBoundingClientRect().width>0).map(c=>{const b=c.getBoundingClientRect();return {x:b.left,right:b.right,y:b.top+b.height/2};}));
+      assert.ok(positions.every(p=>p.x>=0&&p.right<=width),'toolbar fits '+width);
+      assert.ok(Math.max(...positions.map(p=>p.y))-Math.min(...positions.map(p=>p.y))<=1,'toolbar controls share a baseline at '+width);
+      assert.equal(await header.evaluate(el=>el.scrollWidth<=el.clientWidth+1),true,'header does not overflow');
+      if(process.env.PIORA_HARMONY_SCREENSHOT_DIR){await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true});await header.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,'device-toolbar-'+width+'.png')});}
+    }
+    await page.setViewportSize(wideViewport);
     await page.setViewportSize({ width: 380, height: 700 });
-    assert.equal(await page.getByRole("combobox", { name: "投屏位置" }).isVisible(), true, "position selection remains available in a narrow sidebar");
+    assert.equal(await page.getByRole("group", { name: "投屏位置" }).isVisible(), true, "position selection remains available in a narrow sidebar");
     await page.getByLabel("设备操作菜单", { exact: true }).click();
     await page.locator(".compactActions").getByRole("button", { name: "设备设置", exact: true }).click();
     await deviceSettings.locator("input").first().waitFor();
@@ -220,13 +230,13 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     await deviceSettings.getByRole("button", { name: "关闭", exact: true }).click();
     await page.getByLabel("设备操作菜单", { exact: true }).click();
     await page.setViewportSize(wideViewport);
-    await page.getByRole("combobox", {name:"投屏位置"}).selectOption("sidebar");
+    await page.getByRole("button", {name:"侧栏内显示", exact:true}).click();
     await page.locator(".toolbarActions").getByRole("button", { name: "打开投屏", exact: true }).click();
     try { await page.getByRole("region", {name:"侧栏投屏"}).locator("canvas").waitFor(); } catch (error) { console.error("Sidebar diagnosis", errors, await page.locator("#root").innerText(), await page.locator(".embeddedMirror").count()); throw error; }
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"sidebar-mirror.png")});
     assert.deepEqual(await page.evaluate(()=>window.mirrorCalls), ["phone"], "docking reuses the viewer state without opening another floating window");
-    assert.equal(await page.getByRole("region",{name:"侧栏投屏"}).getByRole("combobox",{name:"画面缩放"}).count(),1);
-    await page.getByRole("combobox", {name:"投屏位置"}).selectOption("floating");
+    assert.equal(await page.getByRole("region",{name:"侧栏投屏"}).getByRole("button",{name:"显示选项",exact:true}).count(),1);
+    await page.getByRole("button", {name:"独立悬浮窗", exact:true}).click();
     await page.waitForFunction(()=>!document.querySelector('.embeddedMirror canvas'));
     assert.equal(await page.evaluate(() => window.maximized), false, "switching between sidebar and floating mirror does not expand the workspace");
     await page.getByText("响应 17 ms", { exact: true }).waitFor();
