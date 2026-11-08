@@ -49,7 +49,16 @@ Replace the example version with the actual candidate. Generated notes come from
 
 ## 每次提交与发布的更新说明
 
-每次提交都必须在 `CHANGELOG.md` 记录实际更新点：平时写入 `Unreleased`，发布前整理到带日期的目标版本中。使用明确的中文描述问题和改进后的行为，提交正文同时记录相关验证结果；不要仅写“修复若干问题”或将尚未执行的安装验证写成通过。
+开发提交维护本 PR 独立的 `changelog.d/<唯一标识>.<类型>.md`，不再共同编辑 `CHANGELOG.md` 的 `Unreleased`。使用明确的中文描述问题和改进后的行为，纯工程变更也说明用途；无需发布说明时以 `.skip.md` 记录具体理由并由评审确认。格式、检查命令和已有 PR 的迁移步骤见 [片段指南](../changelog.d/README.md)。提交正文同时记录相关验证结果，不将尚未执行的安装验证写成通过。
+
+发布准备在同步后的独立分支上，从已提交的说明输入生成预览，审核后写入：
+
+```powershell
+npm run changelog:release -- 1.2.3-beta.1 2026-11-08
+npm run changelog:release -- 1.2.3-beta.1 2026-11-08 --write
+```
+
+替换为实际版本及日期。脚本固定读取 HEAD，保留历史版本，将遗留 `Unreleased` 及本次片段汇总到新版本，并仅删除已消费片段。将这些变更与版本、锁文件、README、许可证清单一起提交为发布 PR；脚本不修改这些版本元数据，也不构建发布包。开发 PR 的 CI 只校验片段，不回写汇总文件。发布校验拒绝仍有待处理片段的源码；发布 PR 同步新变更后须核对新片段并重新整理，确保打标签的提交中所有变化均有对应说明。
 
 GitHub Release 与应用更新窗口共用该版本的说明。`electron-before-build.cjs` 调用 `prepareBuildReleaseNotes()` 生成 `desktop/build/release-notes.md`，electron-builder 的 `releaseInfo.releaseNotesFile` 将内容写入更新 YAML；生成文件不提交到 Git。Beta 更新器使用 generic feed，不能只依赖 GitHub Release 正文。
 
