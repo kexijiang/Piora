@@ -145,9 +145,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Prepare verified Electron download
+        run: node scripts/prepare-electron-download.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Build preview Windows installer
         run: npm run dist:win:preview
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           PIORA_PREVIEW_PARALLEL_TYPECHECK: "1"
           ELECTRON_BUILDER_COMPRESSION_LEVEL: "3"
 

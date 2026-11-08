@@ -142,9 +142,17 @@ jobs:
         if: runner.os == 'Linux'
         run: npm run verify:backgrounds
 
+      - name: Prepare verified Electron download
+        if: runner.os == 'Windows'
+        run: node scripts/prepare-electron-download.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Build unpacked Windows application
         if: runner.os == 'Windows'
         run: npm run pack:win
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Verify packaged standalone service in isolation
         if: runner.os == 'Windows'
