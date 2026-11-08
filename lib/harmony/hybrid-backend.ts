@@ -1,3 +1,4 @@
+import type { NativeDisplayGeometry } from "./observation/geometry";
 import type { HarmonyRecordingContext } from "./types";
 import { HypiumWorkerClient } from "./runtime/worker-client";
 import { HarmonyError } from "./errors";
@@ -123,7 +124,16 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
 
   mirrorPackagePath(): string { return this.hdc.mirrorPackagePath(); }
 
-  async displayGeometry(serial: string, signal?: AbortSignal) { return await this.hdc.displayGeometry(serial, signal); }
+  async displayGeometry(serial: string, signal?: AbortSignal): Promise<NativeDisplayGeometry> {
+    try {
+      const result = await this.hypium.execute(serial, "display_geometry", [], signal);
+      if (result.used) return result.value as NativeDisplayGeometry;
+    } catch (error) {
+      // Read-only queries may fall back. Input mutations are never replayed.
+      if (signal?.aborted || error instanceof HarmonyError && error.code === "STALE_SNAPSHOT") throw error;
+    }
+    return await this.hdc.displayGeometry(serial, signal);
+  }
 
   async initializeMirror(serial: string, hapPath: string, signal?: AbortSignal): Promise<void> {
     await this.hdc.initializeMirror(serial, hapPath, signal);
@@ -182,7 +192,7 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     });
   }
 
-  async pressKey(serial: string, key: "back" | "home" | "recents" | "enter", signal?: AbortSignal): Promise<void> {
+  async pressKey(serial: string, key: "back" | "home" | "recents" | "enter" | "volume_up" | "volume_down" | "power", signal?: AbortSignal): Promise<void> {
     await this.preferHypium(serial, "press_key", signal, [key], async () => await this.hdc.pressKey(serial, key, signal));
   }
 

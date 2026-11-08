@@ -22,6 +22,7 @@ class HarmonyDeviceWindow {
   private transition: Promise<unknown> = Promise.resolve();
   private closing: Promise<boolean> | undefined;
   private ratio = 9 / 20;
+  private chromeHeight = 85;
   private placing = false;
   private pendingPlace = false;
   private pendingPosition: SavedWindow | undefined;
@@ -56,12 +57,13 @@ class HarmonyDeviceWindow {
     call("top", (_event, value) => { if (typeof value !== "boolean") throw new Error("Invalid window preference"); this.state.alwaysOnTop = value; this.mirror?.setAlwaysOnTop(value); this.emit(); return this.snapshot(); });
     call("frame", (event, value) => {
       if (!value || typeof value !== "object") return;
-      const frame = value as { serial?: unknown; width?: unknown; height?: unknown; presentation?: unknown; transition?: unknown };
+      const frame = value as { serial?: unknown; width?: unknown; height?: unknown; chromeHeight?: unknown; presentation?: unknown; transition?: unknown };
       const presentation = this.trustedMirror(event) ? "floating" : "sidebar";
       if (frame.presentation !== undefined && frame.presentation !== presentation) return;
       if (frame.serial !== this.state.serial || typeof frame.width !== "number" || typeof frame.height !== "number" || !Number.isInteger(frame.width) || !Number.isInteger(frame.height) || frame.width < 1 || frame.height < 1 || frame.width > 8192 || frame.height > 8192) return;
       const ratio = frame.width / frame.height;
-      if (Math.abs(this.ratio - ratio) > .0001) { this.ratio = ratio; this.mirror?.setAspectRatio(ratio, { width: 2, height: 38 }); this.place(); }
+      const chromeHeight = presentation === "floating" && typeof frame.chromeHeight === "number" && Number.isInteger(frame.chromeHeight) && frame.chromeHeight >= 38 && frame.chromeHeight <= 400 ? frame.chromeHeight : this.chromeHeight;
+      if (Math.abs(this.ratio - ratio) > .0001 || chromeHeight !== this.chromeHeight) { this.ratio = ratio; this.chromeHeight = chromeHeight; this.mirror?.setAspectRatio(ratio, { width: 2, height: this.chromeHeight }); this.place(); }
       if (this.state.pendingPresentation === presentation && frame.transition === this.state.presentationTransition) {
         this.cancelPresentation(); this.state.presentation = presentation;
         if (presentation === "sidebar") this.mirror?.hide(); else this.focus();
@@ -136,12 +138,12 @@ class HarmonyDeviceWindow {
     try {
       const position = saved ?? this.mirror.getBounds();
       const display = screen.getDisplayNearestPoint({ x: position.x, y: position.y });
-      const base = mirrorBounds(display.workArea, this.ratio, this.state.scale, position);
+      const base = mirrorBounds(display.workArea, this.ratio, this.state.scale, position, this.chromeHeight);
       const height = saved?.height ?? this.mirror.getBounds().height;
       if (Number.isFinite(height) && height >= 120) {
-        base.height = Math.min(height, display.workArea.height);
-        base.width = Math.min(Math.round((base.height - 38) * this.ratio) + 2, display.workArea.width);
-        if (base.width === display.workArea.width) base.height = Math.round((base.width - 2) / this.ratio) + 38;
+        base.height = Math.min(Math.max(height, this.chromeHeight + 100), display.workArea.height);
+        base.width = Math.min(Math.round((base.height - this.chromeHeight) * this.ratio) + 2, display.workArea.width);
+        if (base.width === display.workArea.width) base.height = Math.round((base.width - 2) / this.ratio) + this.chromeHeight;
         base.x = Math.max(display.workArea.x, Math.min(base.x, display.workArea.x + display.workArea.width - base.width));
         base.y = Math.max(display.workArea.y, Math.min(base.y, display.workArea.y + display.workArea.height - base.height));
       }
@@ -183,8 +185,8 @@ class HarmonyDeviceWindow {
     if (this.mirror && !this.mirror.isDestroyed()) return;
     const saved = this.prefs.get(this.state.serial);
     const area = saved ? screen.getDisplayNearestPoint(saved).workArea : screen.getPrimaryDisplay().workArea;
-    const window = this.createSurface("/desktop-harmony", { ...mirrorBounds(area, this.ratio, this.state.scale, saved), title: "Piora · 鸿蒙投屏", frame: false, resizable: true, minWidth: 180, minHeight: 120, maximizable: false, fullscreenable: false, alwaysOnTop: this.state.alwaysOnTop });
-    this.mirror = window; window.setAspectRatio(this.ratio, { width: 2, height: 38 }); this.state.open = true; this.state.minimized = false;
+    const window = this.createSurface("/desktop-harmony", { ...mirrorBounds(area, this.ratio, this.state.scale, saved, this.chromeHeight), title: "Piora · 鸿蒙投屏", frame: false, resizable: true, minWidth: 180, minHeight: 120, maximizable: false, fullscreenable: false, alwaysOnTop: this.state.alwaysOnTop });
+    this.mirror = window; window.setAspectRatio(this.ratio, { width: 2, height: this.chromeHeight }); this.state.open = true; this.state.minimized = false;
     window.on("close", event => { if (this.forceClose) return; event.preventDefault(); void this.requestClose(); });
     window.on("closed", () => {
       this.mirror = null; this.state.minimized = false;

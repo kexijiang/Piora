@@ -35,11 +35,14 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
       const signal = AbortSignal.any([scopeSignal, AbortSignal.timeout(60000)]);
       try {
         if (!current()) return false;
-        const leaseToken = await manual.ensureControl();
+        const [leaseToken, geometryResult] = await Promise.all([
+          manual.ensureControl(),
+          coordinates ? harmonyJson<{ geometry: { geometryId: string; frameWidth: number; frameHeight: number } }>(`/api/harmony/geometry?serial=${encodeURIComponent(serial)}&space=video`, undefined, signal) : Promise.resolve(undefined),
+        ]);
         if (!current()) return false;
         let geometryId: string | undefined;
         if (coordinates) {
-          const result = await harmonyJson<{ geometry: { geometryId: string; frameWidth: number; frameHeight: number } }>(`/api/harmony/geometry?serial=${encodeURIComponent(serial)}&space=video`, undefined, signal);
+          const result = geometryResult!;
           if (!current()) return false;
           if (result.geometry.frameWidth !== expectedFrame.width || result.geometry.frameHeight !== expectedFrame.height) throw new Error(chinese ? "屏幕方向已变化，请重新操作" : "The screen orientation changed; try again");
           geometryId = result.geometry.geometryId;

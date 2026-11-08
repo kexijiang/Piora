@@ -1933,13 +1933,13 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
   async pressKey(
     serial: string,
-    key: "back" | "home" | "recents" | "enter",
+    key: "back" | "home" | "recents" | "enter" | "volume_up" | "volume_down" | "power",
     signal?: AbortSignal,
   ): Promise<void> {
     if (this.capabilitiesBySerial.get(serial)?.keys === false) {
       throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony UiTest key injection is unavailable on this device");
     }
-    const value = { back: "Back", home: "Home", recents: "2720", enter: "2054" }[key];
+    const value = { back: "Back", home: "Home", recents: "2720", enter: "2054", volume_up: "16", volume_down: "17", power: "18" }[key];
     if (!value) throw new HarmonyError("INVALID_ARGUMENT", "Unsupported key");
     await this.shell(serial, ["uitest", "uiInput", "keyEvent", value], "press_key", signal);
   }

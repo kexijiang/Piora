@@ -1,3 +1,4 @@
+import { physicalKeyCode } from "./input/key-catalog";
 import { mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -265,8 +266,25 @@ export class HypiumAutomationDriver {
   async execute(serial: string, operation: string, args: unknown[], signal?: AbortSignal): Promise<{ used: true; value: unknown } | { used: false }> {
     return await this.tryRun(serial, operation, signal, async (driver, module) => {
       if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Driver operation cancelled", { details: { dispatchState: "not-sent" } });
+      if (operation === "display_geometry") {
+        // UiDriver.getDisplaySize drops displayId; retain it from the same
+        // public RPC so secondary/unknown targets never become primary input.
+        const before = await driver.getDisplayRotation();
+        const size = JSON.parse(await driver.rpcClient.callUiTestRpc("Driver.getDisplaySize", driver)) as { x?: unknown; y?: unknown; displayId?: unknown };
+        const after = await driver.getDisplayRotation();
+        if (before !== after) throw new HarmonyError("STALE_SNAPSHOT", "Display rotated during geometry observation");
+        if (![0, 1, 2, 3].includes(after) || size.displayId !== 0 || ![size.x,size.y].every(value => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 16384)) {
+          throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Primary display geometry is unavailable from the control channel");
+        }
+        return { nativeWidth: size.x as number, nativeHeight: size.y as number, displayId: "0", displayRotation: after * 90 };
+      }
       const n = args.map(Number);
-      if (operation === "tap") return await driver.click(n[0], n[1]);
+      if (operation === "tap") {
+        const action = new module.PointerMatrix(2, 1);
+        action.setPoint(0, 0, new module.Point(n[0], n[1]), 8);
+        action.setPoint(0, 1, new module.Point(n[0], n[1]), 8);
+        return await driver.injectMultiPointerAction(action);
+      }
       if (operation === "double_tap") return await driver.doubleClick(n[0], n[1]);
       if (operation === "long_press") return await driver.longClick(n[0], n[1]);
       if (operation === "swipe" || operation === "drag") return await driver[operation](n[0], n[1], n[2], n[3], n[4]);
@@ -274,6 +292,7 @@ export class HypiumAutomationDriver {
       if (operation === "press_key") {
         if (args[0] === "back") return await driver.pressBack();
         if (args[0] === "home") return await driver.pressHome();
+        if (args[0] === "volume_up" || args[0] === "volume_down" || args[0] === "power") return await driver.triggerKey(physicalKeyCode(args[0]));
         if (args[0] !== "recents" && args[0] !== "enter") throw new HarmonyError("INVALID_ARGUMENT", "Unsupported logical key");
         return await driver.triggerKey(args[0] === "recents" ? module.KeyCode.APPSELECT : module.KeyCode.ENTER);
       }

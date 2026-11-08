@@ -12,6 +12,7 @@ const args = Object.fromEntries(process.argv.slice(2).map(arg => { const at = ar
 if (!args["--hdc"] || !args["--serial"]) throw new Error("Required: --hdc=path --serial=device [--seconds=30] [--phone=true]");
 const duration = Number(args["--seconds"] ?? 30);
 const runtime = args["--runtime"] ?? "electron";
+const inputProbe = args["--input"] === "true";
 if (!["electron", "edge"].includes(runtime)) throw new Error("Runtime must be electron or edge");
 if (!Number.isFinite(duration) || duration < 5 || duration > 600) throw new Error("Duration must be 5–600 seconds");
 const root = resolve(args["--output"] ?? `.verification/mirror-rewrite/performance-${Date.now()}`);
@@ -20,6 +21,15 @@ const jiti = createJiti(import.meta.url);
 const { MirrorCaptureSession } = await jiti.import("../lib/harmony/mirror/capture-session.ts");
 const { findDebugVideoSource } = await jiti.import("../lib/harmony/runtime/deveco-video-library.ts");
 const { startOwnedRecording } = await jiti.import("../lib/harmony/media/owned-recording.ts");
+const { HybridHarmonyBackend } = await jiti.import("../lib/harmony/hybrid-backend.ts");
+const { HypiumWorkerClient } = await jiti.import("../lib/harmony/runtime/worker-client.ts");
+const legacyWorker = args["--legacy-worker"] ? new HypiumWorkerClient(args["--hdc"], resolve(args["--legacy-worker"])) : undefined;
+const control = inputProbe ? new HybridHarmonyBackend({ hdcPath: args["--hdc"], ...(legacyWorker ? { hypiumDriver: legacyWorker } : {}) }) : undefined;
+const { HdcBackend } = await jiti.import("../lib/harmony/hdc-backend.ts");
+const legacyGeometry = args["--legacy-geometry"] === "true" ? new HdcBackend({hdcPath:args["--hdc"]}) : undefined;
+const geometryReader = legacyGeometry ?? control;
+const { HarmonyDeviceManager } = await jiti.import("../lib/harmony/device-manager.ts");
+let manager, manualLease;
 const execute = promisify(execFile);
 const hdc = async argv => (await execute(args["--hdc"], ["-t", args["--serial"], ...argv], { encoding: "utf8", windowsHide: true, timeout: 15000, maxBuffer: 2 * 1024 * 1024 })).stdout;
 const run = async argv => { const result = await execute(args["--hdc"], argv, { encoding: "buffer", windowsHide: true, timeout: 8000, maxBuffer: 2 * 1024 * 1024 }); return { ...result, exitCode: 0, durationMs: 0 }; };
@@ -34,14 +44,18 @@ await new Promise((resolveBuild, reject) => compiler.run((error, stats) => compi
 
 let capture, recorder, browser, electron, page, forward, phoneConnected = false, triggerTimer;
 const phoneStreams = new Set(), trials = [], errors = [];
-let expected;
+let expected, phoneVisible = false, lastPhoneHeartbeat = 0;
 const colors = ["255,0,0", "0,255,0", "0,0,255", "255,255,0", "255,0,255", "0,255,255"];
 const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, "http://localhost");
     if (url.pathname === "/phone") {
       response.setHeader("Content-Type", "text/html; charset=utf-8");
-      response.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>html,body{margin:0;background:#111;overflow:hidden}canvas{width:100vw;height:100vh}</style><canvas></canvas><script>const c=document.querySelector('canvas'),g=c.getContext('2d');let color='rgb(255,0,0)',tick=0,frames=0,last=performance.now();const events=new EventSource('/phone-events');events.onmessage=e=>{color='rgb('+JSON.parse(e.data).color+')';};function draw(now){c.width=innerWidth;c.height=innerHeight;g.fillStyle=color;g.fillRect(0,0,c.width,c.height);g.fillStyle='#fff';g.font='20px sans-serif';g.fillText('Piora 60 FPS / 200 ms',12,80);const size=26;for(let i=0;i<16;i++){const x=(now*.15+i*65)%c.width;g.fillRect(x,c.height*.15,size,size);g.fillRect(c.width-x,c.height*.8,size,size);}tick++;for(let bit=0;bit<16;bit++){g.fillStyle=tick&(1<<bit)?'#fff':'#000';g.fillRect(bit*c.width/16,c.height*.25,c.width/16+1,c.height*.18);}g.fillStyle='#000';g.fillText(String(tick),12,120);frames++;if(now-last>1000){fetch('/phone-fps',{method:'POST',body:JSON.stringify({fps:frames*1000/(now-last)})});frames=0;last=now;}requestAnimationFrame(draw);}requestAnimationFrame(draw);</script>`); return;
+      response.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><style>html,body{margin:0;background:#111;overflow:hidden}canvas{width:100vw;height:100vh}</style><canvas></canvas><script>const c=document.querySelector('canvas'),g=c.getContext('2d');let color='rgb(255,0,0)',tick=0,frames=0,last=performance.now();const colors=['255,0,0','0,255,0','0,0,255','255,255,0','255,0,255','0,255,255'];let colorIndex=0;const heartbeat=()=>fetch('/phone-visible',{method:'POST',body:JSON.stringify({visible:!document.hidden})});setInterval(heartbeat,200);document.addEventListener('visibilitychange',heartbeat);heartbeat();document.addEventListener('pointerup',()=>{color='rgb('+colors[(++colorIndex)%colors.length]+')';});const events=new EventSource('/phone-events');events.onmessage=e=>{color='rgb('+JSON.parse(e.data).color+')';};function draw(now){c.width=innerWidth;c.height=innerHeight;g.fillStyle=color;g.fillRect(0,0,c.width,c.height);g.fillStyle='#fff';g.font='20px sans-serif';g.fillText('Piora 60 FPS / 200 ms',12,80);const size=26;for(let i=0;i<16;i++){const x=(now*.15+i*65)%c.width;g.fillRect(x,c.height*.15,size,size);g.fillRect(c.width-x,c.height*.8,size,size);}tick++;for(let bit=0;bit<16;bit++){g.fillStyle=tick&(1<<bit)?'#fff':'#000';g.fillRect(bit*c.width/16,c.height*.25,c.width/16+1,c.height*.18);}g.fillStyle='#000';g.fillText(String(tick),12,120);frames++;if(now-last>1000){fetch('/phone-fps',{method:'POST',body:JSON.stringify({fps:frames*1000/(now-last)})});frames=0;last=now;}requestAnimationFrame(draw);}requestAnimationFrame(draw);</script>`); return;
+    }
+    if (url.pathname === "/phone-visible") {
+      let body="";for await(const chunk of request){body+=chunk;if(body.length>128)throw new Error("invalid heartbeat");}
+      phoneVisible=JSON.parse(body).visible===true;lastPhoneHeartbeat=performance.now();response.end("ok");return;
     }
     if (url.pathname === "/phone-events") {
       phoneConnected = true; response.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-store", Connection: "keep-alive" });
@@ -59,7 +73,7 @@ const server = createServer(async (request, response) => {
     if (url.pathname === "/api/harmony/video") {
       if (request.method === "POST") { capture?.requestKeyframe(); response.end("{}"); return; }
       const abort = new AbortController(); response.on("close", () => abort.abort());
-      const connection = capture.subscribe(abort.signal); const reader = connection.stream.getReader();
+      const connection = manager ? await manager.openVideoStream({serial:args["--serial"],signal:abort.signal}) : capture.subscribe(abort.signal); const reader = connection.stream.getReader();
       response.writeHead(200, { "Content-Type": "application/vnd.piora.harmony-stream", "Cache-Control": "no-store", "X-Harmony-Generation": "1" });
       try { while (!abort.signal.aborted) { const next = await reader.read(); if (next.done) break; if (!response.write(next.value)) await new Promise(resolveDrain => { const done = () => { response.off("drain", done); response.off("close", done); resolveDrain(); }; response.once("drain", done); response.once("close", done); }); } }
       finally { await reader.cancel().catch(() => {}); await connection.close(); response.end(); } return;
@@ -88,6 +102,11 @@ try {
     if (!phoneConnected) throw new Error("Phone benchmark page did not connect; no performance verdict");
   }
   capture = await MirrorCaptureSession.start(args["--serial"], await findDebugVideoSource(args["--hdc"]), run, () => {});
+  if (args["--manager"] === "true" && control) {
+    control.openVideoStream = async (_serial,signal) => capture.subscribe(signal);
+    manager = new HarmonyDeviceManager({backend:control,configPath:join(root,"manager.json"),arbitrationDirectory:join(root,"arbitration")});
+    manualLease = await manager.acquireLease({serial:args["--serial"],owner:{kind:"manual",id:"latency-probe"}});
+  }
   if (args["--record"] === "true") recorder = await startOwnedRecording(capture.subscribe(undefined, true), undefined, error => errors.push(`Recording: ${error.message}`), true);
   if (runtime === "electron") {
     await writeFile(join(root, "electron.cjs"), `const {app,BrowserWindow}=require("electron");app.setPath('userData',${JSON.stringify(join(root, "electron-profile"))});app.whenReady().then(()=>new BrowserWindow({width:900,height:900,title:'Piora mirror performance test',webPreferences:{sandbox:true,contextIsolation:true,nodeIntegration:false,backgroundThrottling:false}}).loadURL('about:blank'));app.on('window-all-closed',()=>app.quit());`);
@@ -103,15 +122,34 @@ try {
   await page.waitForFunction(() => window.events.some(event => event.type === "frame"), undefined, { timeout: 30000 });
   await page.waitForTimeout(3000);
   await page.evaluate(() => { window.samples = []; window.markers = []; });
+  if (control) await geometryReader.displayGeometry(args["--serial"]);
   let colorIndex = 0;
-  triggerTimer = setInterval(() => {
-    if (expected) { trials.push({ ...expected, timeout: true }); expected = undefined; }
+  let inputPending = false;
+  triggerTimer = setInterval(async () => {
+    if (inputPending) return;
+    if (expected) { trials.push({ ...expected, timeout: true }); expected = undefined; if(inputProbe){clearInterval(triggerTimer);errors.push("Input feedback was not observed; further injections stopped");return;} }
+    if(inputProbe && (!phoneVisible || performance.now()-lastPhoneHeartbeat>750)){clearInterval(triggerTimer);errors.push("Phone test page lost foreground; further injections stopped");return;}
     if (!phoneStreams.size) return;
     const color = colors[(++colorIndex) % colors.length]; expected = { color, sentAt: performance.now() };
-    for (const stream of phoneStreams) stream.write(`data: ${JSON.stringify({ color })}\n\n`);
+    if (control) {
+      inputPending = true;
+      const trial = expected;
+      try {
+        const initial = manager ? await manager.getFrameGeometry(args["--serial"],"video") : await geometryReader.displayGeometry(args["--serial"]);
+        const current = manager ? initial : await geometryReader.displayGeometry(args["--serial"]);
+        if (JSON.stringify(initial) !== JSON.stringify(current)) throw new Error("Display changed during input probe");
+        trial.geometryMs = performance.now() - trial.sentAt;
+        if(!phoneVisible || performance.now()-lastPhoneHeartbeat>750)throw new Error("Phone test page lost foreground before dispatch");
+        if (manager) await manager.tap({serial:args["--serial"],leaseToken:manualLease.token,geometryId:current.geometryId,generation:current.deviceEpoch,coordinateSpace:"frame",x:Math.round(current.frameWidth/2),y:Math.round(current.frameHeight/2)});
+        else await control.tap(args["--serial"], Math.round(current.nativeWidth / 2), Math.round(current.nativeHeight / 2));
+        trial.inputAckMs = performance.now() - trial.sentAt;
+      } catch (error) { clearInterval(triggerTimer); errors.push(`Input: ${error.message}`); }
+      finally { inputPending = false; }
+    } else for (const stream of phoneStreams) stream.write(`data: ${JSON.stringify({ color })}\n\n`);
   }, 1000);
   await page.waitForTimeout(duration * 1000);
   clearInterval(triggerTimer);
+  while(inputPending) await new Promise(resolve=>setTimeout(resolve,20));
   const samples = await page.evaluate(() => window.samples);
   const markers = await page.evaluate(() => window.markers);
   const probeIssues = await page.evaluate(() => window.events.filter(event => event.type === "probe-error" || event.type === "probe-skipped"));
@@ -150,7 +188,8 @@ try {
       triggerToDrawAckP95Ms: latencies[Math.floor(latencies.length * .95)] ?? null, triggerToDrawAckMaxMs: latencies.at(-1) ?? null,
       timedOutTrials: trials.filter(trial => trial.timeout).length,
       uniqueFrameFps: markers.length > 1 ? (markers.length - 1) * 1000 / (markers.at(-1).at - markers[0].at) : 0 },
-    boundary: "Real HDC capture and real WebCodecs/OffscreenCanvas in the stated runtime. The isolated performance server bypasses Next and desktop authentication. Latency is host-trigger-to-phone-test-page-change-to-host-canvas-draw-to-host-ack upper bound, not optical display measurement. Draw FPS does not prove physical monitor refresh."
+    inputProbe, managerProbe:Boolean(manager), legacyGeometry: Boolean(legacyGeometry),
+    boundary: "Input mode uses the real Hybrid backend geometry checks and tap; manager mode also includes the production lease, frame freshness, generation, queue and dispatch checks. React and HTTP routes are excluded; it is not full UI acceptance. Real HDC capture and real WebCodecs/OffscreenCanvas in the stated runtime. The isolated performance server bypasses Next and desktop authentication. Latency is host-trigger-to-phone-test-page-change-to-host-canvas-draw-to-host-ack upper bound, not optical display measurement. Draw FPS does not prove physical monitor refresh."
   };
   evidence.verdict = {
     passed: phoneConnected && duration >= 30 && samples.length >= 25 && latencies.length >= 25 && !errors.length && !probeIssues.length
@@ -169,6 +208,7 @@ finally {
   if (recorder) await cleanup("Recording cleanup", () => recorder.stop(join(root, "interrupted-recording.mp4")));
   await cleanup("Browser cleanup", async () => { await browser?.close(); });
   await cleanup("Electron cleanup", async () => { await electron?.close(); });
+  await cleanup("Control cleanup", async () => { if(manager) await manager.dispose(); else await control?.dispose(); await legacyGeometry?.dispose(); });
   await cleanup("Capture cleanup", async () => { await capture?.close(); });
   for (const stream of phoneStreams) stream.end();
   server.closeAllConnections(); await new Promise(resolveClose => server.close(resolveClose));

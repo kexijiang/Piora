@@ -7,7 +7,7 @@ const string = (maxLength = 512) => Type.String({ minLength: 1, maxLength });
 const optional = Type.Optional;
 const number = (minimum: number, maximum: number) => Type.Number({ minimum, maximum });
 const values = <T extends string>(items: T[]) => Type.Union(items.map(item => Type.Literal(item)));
-export const keyNames = ["back", "home", "recents", "enter"] as const;
+export const keyNames = ["back", "home", "recents", "enter", "volume_up", "volume_down", "power"] as const;
 export const keySchema = values([...keyNames]);
 const selectorFields = {
   id: optional(string()), text: optional(string()), type: optional(string()), hint: optional(string()),

@@ -14,7 +14,8 @@ export function validateWorkerRequest(value: unknown, epoch: string | undefined,
   } else if (request.method === "execute") {
     const [operation, args] = request.args;
     if (request.args.length !== 2 || typeof operation !== "string" || !Array.isArray(args)) return bad();
-    if (operation === "press_key") { if (args.length !== 1 || !["back", "home", "recents", "enter"].includes(args[0])) return bad(); }
+    if (operation === "display_geometry") { if (args.length !== 0) return bad(); }
+    else if (operation === "press_key") { if (args.length !== 1 || !["back", "home", "recents", "enter", "volume_up", "volume_down", "power"].includes(args[0])) return bad(); }
     else if (operation === "input_text") { if (args.length !== 1 || typeof args[0] !== "string" || args[0].includes("\0") || Buffer.byteLength(args[0]) > 16 * 1024) return bad(); }
     else {
       const length = ["tap", "double_tap", "long_press"].includes(operation) ? 2 : ["swipe", "drag", "fling"].includes(operation) ? 5 : 0;

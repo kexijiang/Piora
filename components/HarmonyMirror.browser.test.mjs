@@ -32,8 +32,9 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     const globals=(await readFile(path.join(repo,"app/globals.css"),"utf8")).replace(/^@import.*$/gm,"");
     const css=globals+await readFile(path.join(repo,"app/theme-backgrounds.css"),"utf8")+await readFile(path.join(repo,"components/workspace/harmony/MirrorWindow.module.css"),"utf8")+await readFile(path.join(repo,"components/ConfirmDialog.module.css"),"utf8");
     await page.route("https://mirror.test/**",async route=>{const r=route.request(),u=new URL(r.url());if(u.pathname==="/themes/codex-dream-skin/skin.css")return route.fulfill({contentType:"text/css",body:await readFile(path.join(repo,"public/themes/codex-dream-skin/skin.css"),"utf8")});if(u.pathname==="/bundle.js")return route.fulfill({contentType:"text/javascript",body:await readFile(path.join(root,"bundle.js"))});if(u.pathname==="/api/harmony/devices")return route.fulfill({json:{devices:[{serial:"phone",name:"BRA-AL00",model:"BRA-AL00",product:"HUAWEI Mate 60 ",state:"online",generation:1,capabilities:{screenshot:true}}]}});if(u.pathname==="/api/harmony/media"){if(r.method()==="POST"){requests.push(r.postDataJSON());return route.fulfill({json:{artifact:{kind:"screenshot",serial:"phone",path:"C:/media/screen.png",filename:"screen.png"}}});}return route.fulfill({json:{recording,completion}});}if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});return route.fulfill({contentType:"text/html",body:`<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#fafafa;--bg-hover:#eee;--border:#ddd;--text:#222;--text-muted:#666;--text-dim:#888;--accent:#3478f6;--btn-primary-bg:#3478f6;--btn-primary-fg:#fff;--radius-surface:12px;--radius-control:6px;--font-ui:system-ui;--text-base:14px;--text-sm:13px}body{margin:0;font:14px system-ui}${css}</style><div id="root"></div><script src="/bundle.js"></script>`});});
-    await page.route('https://mirror.test/api/harmony/manual',route=>route.fulfill({json:{lease:{token:'fixture-lease',serial:'phone',expiresAt:new Date(Date.now()+300000).toISOString()}}}));
-    await page.route('https://mirror.test/api/harmony/geometry?*',route=>route.fulfill({json:{geometry:{geometryId:'current-video-geometry',frameWidth:geometryWidth,frameHeight:720}}}));
+    let geometryRequested=false, geometryDuringAcquire=false;
+    await page.route('https://mirror.test/api/harmony/manual',async route=>{if(route.request().postDataJSON().action==='acquire'){await new Promise(resolve=>setTimeout(resolve,100));geometryDuringAcquire=geometryRequested;}return route.fulfill({json:{lease:{token:'fixture-lease',serial:'phone',expiresAt:new Date(Date.now()+300000).toISOString()}}});});
+    await page.route('https://mirror.test/api/harmony/geometry?*',route=>{geometryRequested=true;return route.fulfill({json:{geometry:{geometryId:'current-video-geometry',frameWidth:geometryWidth,frameHeight:720}}});});
     let firstInput = true;
     await page.route('https://mirror.test/api/harmony/action',async route=>{
       // Real-device cold driver startup exceeded the former 15-second budget.
@@ -54,6 +55,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     }
     assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'true');
     assert.deepEqual(inputRequests,[],'opening the mirror must not acquire an input lease');
+    assert.equal(await page.locator('footer input, footer form').count(),0,'no text entry in mirror controls');
     assert.equal(await page.getByLabel('投屏交互区域').evaluate(el=>getComputedStyle(el).cursor),'default');
     for (const width of [280, 362, 520]) {
       await page.setViewportSize({width,height:758});
@@ -63,7 +65,12 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
       assert.ok(await page.locator('main').evaluate(el=>el.clientHeight)>500,'controls preserve video height');
       if(process.env.PIORA_HARMONY_SCREENSHOT_DIR){await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,'controls-'+width+'.png')});}
     }
-    await page.setViewportSize({width:362,height:758});
+    const chromeHeight=await page.evaluate(()=>window.geometry.chromeHeight);
+    await page.setViewportSize({width:362,height:720+chromeHeight});
+    await page.waitForFunction(()=>Math.abs(document.querySelector('main').clientHeight-720)<=1);
+    const screenBox=await page.locator('main').boundingBox();
+    assert.ok(Math.abs(screenBox.width/ screenBox.height-.5)<.002,'reported chrome preserves full-width video aspect');
+    if(process.env.PIORA_HARMONY_SCREENSHOT_DIR)await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,'controls-full-width.png')});
     await page.getByRole('button',{name:'显示选项',exact:true}).click();
     await page.getByRole('button',{name:'100%',exact:true}).click();
     assert.equal(await page.locator('main').getAttribute('data-zoomed'),'true');
@@ -192,18 +199,17 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.getByRole('button',{name:'操控手机'}).click();
     const surface=page.getByLabel('投屏交互区域');
     await Promise.all([page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/action'),surface.click()]);
+    assert.equal(geometryDuringAcquire,true,'geometry starts before lease acquisition finishes');
     assert.equal(actions().at(-1).action,'tap');assert.equal(actions().at(-1).generation,1);
     assert.equal(actions().at(-1).geometryId,'current-video-geometry');assert.equal(actions().at(-1).leaseToken,'fixture-lease');
     assert.ok(Math.abs(actions().at(-1).x-180)<=1&&Math.abs(actions().at(-1).y-360)<=1,'letterboxed screen center maps to phone center');
-    await surface.press('Home');
-    await page.getByLabel('发送文字到手机').fill('中文输入');
-    await page.getByRole('button',{name:'发送',exact:true}).click();
-    await page.waitForFunction(()=>document.querySelector('input[aria-label="发送文字到手机"]').value==='');
-    assert.ok(actions().some(action=>action.action==='input_text'&&action.text==='中文输入'));
+    await Promise.all([page.waitForResponse(r=>new URL(r.url()).pathname==='/api/harmony/action'),surface.press('Home')]);
     assert.ok(actions().some(action=>action.action==='press_key'&&action.key==='home'));
     for (const [label,key] of [['返回','back'],['主页','home'],['最近任务','recents'],['音量−','volume_down'],['音量＋','volume_up'],['电源键','power']]) {
       await Promise.all([page.waitForResponse(r=>new URL(r.url()).pathname==='/api/harmony/action'),page.getByRole('button',{name:label,exact:true}).click()]);
       assert.equal(actions().at(-1).key,key);
+      assert.equal(actions().at(-1).action,'press_key');
+      assert.equal(actions().at(-1).durationMs,undefined);
     }
     geometryWidth=720;
     const beforeStale=actions().length;await surface.click();
@@ -211,9 +217,9 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     assert.equal(actions().length,beforeStale,'mismatched geometry cannot inject coordinates');
     await page.getByRole('button',{name:'操控手机'}).click();await page.getByRole('button',{name:'操控手机'}).click();
     geometryWidth=360;failInput=true;
-    await page.getByLabel('发送文字到手机').fill('失败后保留');await page.getByRole('button',{name:'发送',exact:true}).click();
+    await surface.click();
     await page.getByRole('status').filter({hasText:'Input rejected by fixture'}).waitFor();
-    assert.equal(await page.getByLabel('发送文字到手机').inputValue(),'失败后保留');
+    assert.equal(await page.getByLabel('发送文字到手机').count(),0);
     const afterFailure=actions().length;await surface.click();
     await page.waitForTimeout(150);assert.equal(actions().length,afterFailure,'ambiguous input failure stops queued gestures without replay');
     await page.route('https://mirror.test/api/harmony/media?*',route=>route.fulfill({status:503,json:{error:{code:'COMMAND_TIMEOUT',message:'Status read unavailable'}}}));

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useHarmonyWindow } from "@/hooks/useHarmonyWindow";
 import { useHarmonyMirror } from "@/hooks/useHarmonyMirror";
 import { useMirrorInput } from "@/hooks/useMirrorInput";
@@ -26,7 +26,16 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
   const [device, setDevice] = useState<Device | null>(null);
   const [deviceError, setDeviceError] = useState("");
   const [controlEnabled, setControlEnabled] = useState(true);
-  const [inputText, setInputText] = useState("");
+  const rootRef = useRef<HTMLDivElement>(null);
+  const screenRef = useRef<HTMLElement>(null);
+  const [chromeHeight, setChromeHeight] = useState(85);
+  useEffect(() => {
+    const root = rootRef.current, screen = screenRef.current;
+    if (!root || !screen) return;
+    const observer = new ResizeObserver(() => setChromeHeight(Math.ceil(root.getBoundingClientRect().height - screen.getBoundingClientRect().height)));
+    observer.observe(root); observer.observe(screen);
+    return () => observer.disconnect();
+  }, []);
   const [zoom, setZoom] = useState("fit");
   const { bindings } = useApplicationShortcuts();
   useEffect(() => {
@@ -52,8 +61,8 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
   const canScreenshot = device?.state === "online" && device.capabilities?.screenshot;
   const width = live.frame?.width, height = live.frame?.height;
   useEffect(() => {
-    if (presenting && live.state === "live" && live.frame?.serial === serial && width && height) void window.piDesktop?.harmonyMirror?.reportFrame({ serial, width, height, presentation, transition: state?.presentationTransition });
-  }, [serial, width, height, presenting, presentation, live.state, live.frame?.serial, state?.presentationTransition]);
+    if (presenting && live.state === "live" && live.frame?.serial === serial && width && height) void window.piDesktop?.harmonyMirror?.reportFrame({ serial, width, height, chromeHeight, presentation, transition: state?.presentationTransition });
+  }, [serial, width, height, presenting, presentation, live.state, live.frame?.serial, state?.presentationTransition, chromeHeight]);
   const record = useCallback(() => {
     if (media.recording && !media.ownsRecording) return;
     void media.action(media.recording?.systemRecorderStateUnknown ? "retrieve_recording" : media.recording ? "stop_recording" : "start_recording");
@@ -76,7 +85,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
     window.addEventListener("keydown", listener); return () => window.removeEventListener("keydown", listener);
   }, [bindings, canScreenshot, media]);
   const clock = `${String(Math.floor(media.elapsed / 60)).padStart(2, "0")}:${String(media.elapsed % 60).padStart(2, "0")}`;
-  return <div className={`${styles.root} ${embedded ? styles.embedded : ""}`} data-dark={isDark}>
+  return <div ref={rootRef} className={`${styles.root} ${embedded ? styles.embedded : ""}`} data-dark={isDark}>
     <header className={styles.titlebar} data-dark={isDark}>
       <span className={styles.device} title={device ? formatHarmonyDeviceLabel(device) : serial}>{device ? formatHarmonyDeviceTitle(device, copy("鸿蒙设备", "Harmony device")) : copy("鸿蒙投屏", "Harmony mirror")}</span>
       {live.statistics ? <button className={styles.fps} title={copy("连接详情", "Connection details")} onClick={details}>{Math.round(live.statistics.presentedFps)}<small> FPS</small></button> : null}
@@ -101,7 +110,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
       </div>)}
     </details> : null}
     {live.error || input.error ? <div className={styles.compatibility} role="status"><span>{input.error ?? live.error}</span><button onClick={() => { setControlEnabled(true); live.refresh(); }}>{copy("重新连接", "Reconnect")}</button></div> : null}
-    <main className={styles.screen} data-zoomed={zoom !== "fit"}>
+    <main ref={screenRef} className={styles.screen} data-zoomed={zoom !== "fit"}>
       <div ref={live.surfaceRef} className={styles.surface} tabIndex={controlEnabled ? 0 : -1} aria-label={copy("投屏交互区域", "Mirror interaction area")} data-interactive={controlEnabled}
         style={zoom !== "fit" && width && height ? { width: width * Number(zoom), height: height * Number(zoom), flex: "none" } : undefined} {...input.handlers} />
       {!live.frame || device?.state !== "online" ? <div className={styles.placeholder} role="status">{deviceError || (device?.state !== "online" ? copy("等待设备连接", "Waiting for device") : live.state === "recovering" || live.state === "error" ? copy("正在重新连接…", "Reconnecting…") : copy("正在连接画面…", "Connecting…"))}</div> : null}
@@ -112,17 +121,11 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
           {(["back", "home", "recents"] as const).map((key, index) => <button type="button" key={key} disabled={!input.canControl} title={copy(["返回", "主页", "最近任务"][index], key)} aria-label={copy(["返回", "主页", "最近任务"][index], key)} onClick={() => { void input.send({ action: "press_key", key }); }}><AliIcon name={(["arrowleft", "home", "copy"] as const)[index]} size={18} /></button>)}
         </div>
         <div className={styles.controlGroup} role="group" aria-label={copy("设备按键", "Device keys")}>
-          {(["volume_down", "volume_up", "power"] as const).map((key, index) => <button type="button" key={key} disabled={!input.canControl} title={copy(["音量−", "音量＋", "电源键"][index], ["Volume −", "Volume +", "Power"][index])} aria-label={copy(["音量−", "音量＋", "电源键"][index], ["Volume −", "Volume +", "Power"][index])} onClick={() => { void input.send({ action: "key_hold", key, durationMs: 100 }); }}><AliIcon name={(["volume-minus", "volume-plus", "power"] as const)[index]} size={18} /></button>)}
+          {(["volume_down", "volume_up", "power"] as const).map((key, index) => <button type="button" key={key} disabled={!input.canControl} title={copy(["音量−", "音量＋", "电源键"][index], ["Volume −", "Volume +", "Power"][index])} aria-label={copy(["音量−", "音量＋", "电源键"][index], ["Volume −", "Volume +", "Power"][index])} onClick={() => { void input.send({ action: "press_key", key }); }}><AliIcon name={(["volume-minus", "volume-plus", "power"] as const)[index]} size={18} /></button>)}
         </div>
         <MirrorViewControls zoom={zoom} onZoom={setZoom} pinned={Boolean(state?.alwaysOnTop)} onPin={() => { void window.piDesktop?.harmonyMirror?.setAlwaysOnTop(!state?.alwaysOnTop); }} chinese={chinese} />
       </div>
-      <form className={styles.textEntry} onSubmit={event => {
-        event.preventDefault(); const text = inputText; if (!text) return;
-        void input.send({ action: "input_text", text }).then(sent => { if (sent) setInputText(current => current === text ? "" : current); });
-      }}>
-        <input aria-label={copy("发送文字到手机", "Send text to device")} placeholder={copy("输入文字…", "Enter text…")} value={inputText} onChange={event => setInputText(event.target.value)} />
-        <button type="submit" aria-label={copy("发送", "Send")} title={copy("发送", "Send")} disabled={!input.canControl || !inputText}><AliIcon name="arrowup" size={17} /></button>
-      </form>
+
     </footer> : null}
   </div>;
 }

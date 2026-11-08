@@ -822,7 +822,14 @@ export class HarmonyDeviceManager {
 
   private async onlineDevice(serial: string, signal?: AbortSignal): Promise<HarmonyDevice> {
     const cached = this.devices.get(serial);
-    const device = cached?.state === "online" && this.now() - this.lastDeviceRefreshAt < DEVICE_REFRESH_TTL_MS
+    // A complete frame from the current live connection is newer evidence of
+    // connectivity than a device-list TTL. Do not put metadata subprocesses on
+    // the input path while that connection is actively delivering frames.
+    const live = this.frameCapturedAt.get(`${serial}:video`);
+    const frameAge = live ? this.now() - live.capturedAt : Infinity;
+    const liveOnline = live?.generation === cached?.generation && frameAge >= 0 && frameAge <= 250
+      && Boolean(this.videoConnections.get(serial)?.size);
+    const device = cached?.state === "online" && (liveOnline || this.now() - this.lastDeviceRefreshAt < DEVICE_REFRESH_TTL_MS)
       ? cached
       : (await this.refreshDevices(signal)).find((candidate) => candidate.serial === serial);
     if (!device) throw new HarmonyError("DEVICE_NOT_FOUND", "Harmony device is not connected", { retryable: true });
