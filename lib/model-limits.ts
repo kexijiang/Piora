@@ -349,6 +349,32 @@ export function applyEndpointLimits<T extends ModelLimitDraft>(
   return { model: next, changed: true };
 }
 
+/** Explicit editor action: lower configured limits to the queried endpoint. */
+export function constrainToEndpointLimits<T extends ModelLimitDraft>(
+  model: T,
+  discovered: { contextWindow?: number; maxTokens?: number },
+): T {
+  const next = { ...model };
+  const context = positiveTokenCount(discovered.contextWindow);
+  const output = positiveTokenCount(discovered.maxTokens);
+  const meta = { ...model.limitsMeta };
+  if (context !== undefined && positiveTokenCount(model.contextWindow) !== undefined && model.contextWindow! > context) {
+    next.contextWindow = context;
+    meta.contextWindow = "endpoint";
+  }
+  if (output !== undefined && positiveTokenCount(model.maxTokens) !== undefined && model.maxTokens! > output) {
+    next.maxTokens = output;
+    meta.maxTokens = "endpoint";
+  }
+  if (positiveTokenCount(next.contextWindow) !== undefined && positiveTokenCount(next.maxTokens) !== undefined
+    && next.maxTokens! >= next.contextWindow!) {
+    next.maxTokens = recommendedMaxOutputTokens(next.contextWindow);
+    meta.maxTokens = "default";
+  }
+  next.limitsMeta = compactLimitMeta(meta);
+  return next;
+}
+
 export function applyDiscoveredLimits<T extends { models?: ModelLimitDraft[] }>(
   providers: Record<string, T> | undefined,
   discoveredByProvider: Record<string, Array<{ id: string; contextWindow?: number; maxTokens?: number }>>,

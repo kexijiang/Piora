@@ -22,7 +22,6 @@ const CONTEXT_KEYS = [
   "context_length",
   "context_window",
   "max_context_length",
-  "max_model_len",
   "max_input_tokens",
   "inputTokenLimit",
 ] as const;
@@ -64,6 +63,13 @@ function readContextWindow(record: Record<string, unknown>): number | undefined 
   return undefined;
 }
 
+/** Per-model deployment limits, not a server-wide memory pool or an output cap. */
+function readDeploymentWindow(record: Record<string, unknown>): number | undefined {
+  const limits = [record.max_model_len, record.max_total_tokens]
+    .map(positiveTokenCount).filter((value): value is number => value !== undefined);
+  return limits.length ? Math.min(...limits) : undefined;
+}
+
 function readMaxTokens(record: Record<string, unknown>, api: string | undefined): number | undefined {
   const direct = firstPositive(record, OUTPUT_KEYS);
   if (direct !== undefined) return direct;
@@ -97,10 +103,16 @@ function modelFromValue(value: unknown, api: string | undefined): DiscoveredMode
     ?? cleanString(value.displayName)
     ?? (cleanString(value.id) || cleanString(value.model) ? cleanString(value.name) : undefined);
   let contextWindow = readContextWindow(value);
+  const deploymentWindow = readDeploymentWindow(value);
+  if (deploymentWindow !== undefined) {
+    contextWindow = Math.min(contextWindow ?? deploymentWindow, deploymentWindow);
+  }
   let maxTokens = readMaxTokens(value, api);
-  // A contradictory pair is not usable. Drop both and let the user type them.
+  // A contradictory pair is not usable; retain an explicit deployment ceiling.
   if (contextWindow !== undefined && maxTokens !== undefined && maxTokens > contextWindow) {
-    contextWindow = undefined;
+    // Never discard a known deployment ceiling in favor of the large discovery
+    // default. An unusable output cap can be replaced by the visible suggestion.
+    if (deploymentWindow === undefined) contextWindow = undefined;
     maxTokens = undefined;
   }
   const model: DiscoveredModel = { id };

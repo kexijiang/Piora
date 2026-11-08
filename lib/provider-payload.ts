@@ -1,3 +1,7 @@
+import type { Context } from "@earendil-works/pi-ai";
+import { estimateContextTokens } from "@earendil-works/pi-ai/utils/estimate";
+import { normalizeContext } from "@earendil-works/pi-ai/utils/transcript";
+
 /** Validate the serialized OpenAI Chat Completions boundary, never rewrite roles. */
 export function validateChatPayload(payload: unknown): void {
   if (!payload || typeof payload !== "object") return;
@@ -16,15 +20,23 @@ const installed = new WeakSet<object>();
 const sharedContextApis = new Set(["openai-completions", "openai-responses", "azure-openai-responses", "anthropic-messages"]);
 
 /** Check the final wire parameters after hooks; the SDK normally clamps these. */
-export function validateOutputBudget(payload: unknown, model: unknown): void {
+export function validateOutputBudget(payload: unknown, model: unknown, context?: unknown): void {
   if (!payload || typeof payload !== "object" || !model || typeof model !== "object") return;
   const { contextWindow, api } = model as { contextWindow?: unknown; api?: string };
   if (!sharedContextApis.has(api ?? "") || typeof contextWindow !== "number" || !Number.isSafeInteger(contextWindow) || contextWindow <= 0) return;
   const request = payload as Record<string, unknown>;
+  // Match Pi's shared-budget estimate, including system instructions and tools.
+  // This is not an exact server tokenizer or a way to infer unknown server limits.
+  const input = context && typeof context === "object" && Array.isArray((context as Context).messages)
+    ? estimateContextTokens(normalizeContext(context as Context)).tokens : undefined;
+  if (input !== undefined && input >= contextWindow) {
+    throw new Error(`maximum context length exceeded: estimated input (${input}) leaves no output room in the context window (${contextWindow}).`);
+  }
+  const available = input === undefined ? contextWindow - 1 : Math.max(1, contextWindow - input - 4096);
   for (const field of ["max_tokens", "max_completion_tokens", "max_output_tokens"]) {
     const output = request[field];
-    if (typeof output === "number" && Number.isFinite(output) && output >= contextWindow) {
-      throw new Error(`Invalid model output budget: ${field} (${output}) must be less than the context window (${contextWindow}). Check Max Output Tokens in model settings and any payload overrides; leave room for input. No request was sent.`);
+    if (typeof output === "number" && Number.isFinite(output) && (output >= contextWindow || output > available)) {
+      throw new Error(`Invalid model output budget: ${field} (${output}) must be less than the context window (${contextWindow}) and at most the remaining output budget (${available}). Check Max Output Tokens in model settings and any payload overrides; leave room for input. No request was sent.`);
     }
   }
 }
@@ -42,7 +54,7 @@ export function installProviderPayloadValidation(runtime: unknown): boolean {
       const replacement = await previous?.(payload, selectedModel);
       const finalPayload = replacement === undefined ? payload : replacement;
       if (api === "openai-completions") validateChatPayload(finalPayload);
-      validateOutputBudget(finalPayload, model);
+      validateOutputBudget(finalPayload, model, context);
       return finalPayload;
     } });
   };
