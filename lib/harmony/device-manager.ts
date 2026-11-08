@@ -1217,6 +1217,18 @@ export class HarmonyDeviceManager {
     return await promise;
   }
 
+  requestVideoKeyframe(serial: string, generation: number): void {
+    validateSerial(serial);
+    this.requireAdmission(serial, true);
+    if (this.generations.get(serial) !== generation || this.devices.get(serial)?.state !== "online") {
+      throw new HarmonyError("STALE_SNAPSHOT", "The device connection has changed");
+    }
+    const connections = this.videoConnections.get(serial);
+    const connection = connections && [...connections].find(value => value.requestKeyframe && this.videoConnectionCurrent.get(value)?.());
+    if (!connection) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "No active video connection supports keyframe recovery");
+    connection.requestKeyframe!();
+  }
+
   async openVideoStream(options: { serial: string; signal?: AbortSignal }): Promise<HarmonyVideoConnection> {
     validateSerial(options.serial);
     this.requireAdmission(options.serial, true);
@@ -1258,6 +1270,7 @@ export class HarmonyDeviceManager {
     const reader = observed.getReader();
     let downstream: ReadableStreamDefaultController<Uint8Array> | undefined;
     const tracked: HarmonyVideoConnection = {
+      requestKeyframe: connection.requestKeyframe ? () => { if (current()) connection.requestKeyframe!(); } : undefined,
       stream: new ReadableStream<Uint8Array>({
         start(controller) { downstream = controller; },
         async pull(controller) {

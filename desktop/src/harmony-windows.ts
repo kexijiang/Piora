@@ -168,7 +168,13 @@ class HarmonyDeviceWindow {
     window.webContents.on("will-redirect", (event, url) => { if (url !== target.href) event.preventDefault(); });
     window.webContents.on("will-attach-webview", event => event.preventDefault());
     window.webContents.setZoomFactor(1);
-    void window.webContents.setVisualZoomLevelLimits(1, 1);
+    // Electron may dispose the initial about:blank frame during loadURL.
+    // Apply frame-dependent limits only once the destination frame exists.
+    window.webContents.on("did-finish-load", () => {
+      if (!window.isDestroyed()) void window.webContents.setVisualZoomLevelLimits(1, 1).catch(error => {
+        if (!window.isDestroyed()) console.warn("Unable to apply mirror zoom limits", error);
+      });
+    });
     window.once("ready-to-show", () => { if (!window.isDestroyed() && (pathname !== "/desktop-harmony" || this.state.presentation === "floating")) { if (options.focusable === false) window.showInactive(); else window.show(); } });
     void window.loadURL(target.href).catch(() => { if (!window.isDestroyed()) window.destroy(); });
     return window;

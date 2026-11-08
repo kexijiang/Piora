@@ -71,7 +71,10 @@ export class HypiumWorkerClient {
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new HarmonyError("DEVICE_BUSY", "Worker termination is uncertain")), 1500);
       worker.child.once("exit", () => { clearTimeout(timer); resolve(); });
-      worker.child.kill();
+      // An idle worker can close its own RPC forwarding rules on IPC disconnect.
+      // A running/ambiguous action must still be interrupted immediately.
+      if (worker.pending.size === 0 && worker.child.connected) worker.child.disconnect();
+      else worker.child.kill();
     });
   }
   async reset(serial?: string): Promise<void> { await Promise.all((serial ? [serial] : [...this.workers.keys()]).map(value => this.invalidate(value))); }

@@ -11,18 +11,19 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("mirror is read-only, resizes through the desktop bridge, and shows common messages", { timeout: 120000 }, async () => {
-  const root=await mkdtemp(path.join(tmpdir(),"piora-mirror-ui-"));let browser, recording = null, completion = null;
+test("mirror starts passive, resizes through the desktop bridge, and shows common messages", { timeout: 120000 }, async () => {
+  const root=await mkdtemp(path.join(tmpdir(),"piora-mirror-ui-"));let browser, recording = null, completion = null, failInput = false, geometryWidth = 360;
   try {
     await writeFile(path.join(root,"loader.cjs"),`const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root,"css.cjs"),'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
-    await writeFile(path.join(root,"stub.tsx"),`import {useEffect} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyLiveFrame=o=>{window.frameOptions={active:o.active,serial:o.serial,allowFrameFallback:o.allowFrameFallback};useEffect(()=>{const c=o.canvasRef.current;c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});},[o.canvasRef]);return {status:"live",mode:"video",frame:{serial:o.serial,width:360,height:720},refresh:()=>{window.reconnected=true;}};};`);
+    await writeFile(path.join(root,"stub.tsx"),`import {useEffect,useRef} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyMirror=o=>{const surfaceRef=useRef(null);window.frameOptions={active:o.active,serial:o.serial,worker:true};useEffect(()=>{const c=document.createElement("canvas");surfaceRef.current.appendChild(c);c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});return()=>c.remove();},[surfaceRef]);return {surfaceRef,state:"live",frame:{serial:o.serial,generation:1,width:360,height:720},refresh:()=>{window.reconnected=true;}};};`);
     await writeFile(path.join(root,"entry.tsx"),`import React,{useState} from "react";import {createRoot} from "react-dom/client";import {MirrorWindow} from "@/components/workspace/harmony/MirrorWindow";import {PioraMessageHost,showPioraMessage} from "@/components/PioraMessage";import {useTheme} from "@/hooks/useTheme";window.showMessage=showPioraMessage;function Fixture(){const[embedded,setEmbedded]=useState(false);window.setEmbedded=setEmbedded;const {setTheme,themes}=useTheme();window.setMirrorTheme=setTheme;window.mirrorThemes=themes;return <><MirrorWindow embedded={embedded} serial={embedded?"phone":undefined}/><PioraMessageHost/></>;}createRoot(document.getElementById("root")).render(<Fixture/>);`);
-    const aliases=Object.fromEntries(["@/hooks/useI18n","@/hooks/useHarmonyLiveFrame"].map(k=>[k,path.join(root,"stub.tsx")]));
+    const aliases=Object.fromEntries(["@/hooks/useI18n","@/hooks/useHarmonyMirror"].map(k=>[k,path.join(root,"stub.tsx")]));
     const compiler=webpack({mode:"development",target:"web",devtool:false,entry:path.join(root,"entry.tsx"),output:{path:root,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],modules:[path.join(repo,"node_modules")],alias:{...aliases,"@":repo}},module:{rules:[{test:/\.tsx?$/,exclude:/node_modules/,use:path.join(root,"loader.cjs")},{test:/\.css$/,use:path.join(root,"css.cjs")}]}});
     await new Promise((resolve,reject)=>compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve())));
     browser=await chromium.launch({channel:process.platform==="win32"?"msedge":"chromium",headless:true});
-    const page=await browser.newPage({viewport:{width:362,height:758}});const requests=[],errors=[];
+    const page=await browser.newPage({viewport:{width:362,height:758}});const requests=[],errors=[],inputRequests=[];
+    page.on('request',request=>{if(request.method()==='POST'&&/\/api\/harmony\/(manual|action)$/.test(new URL(request.url()).pathname))inputRequests.push({path:new URL(request.url()).pathname,body:request.postDataJSON()});});
     // Pixel assertions target the settled theme, not the compositor's temporary
     // old/new snapshots. Reduced motion also removes the transition-ready race.
     await page.emulateMedia({reducedMotion:"reduce"});
@@ -31,8 +32,16 @@ test("mirror is read-only, resizes through the desktop bridge, and shows common 
     const globals=(await readFile(path.join(repo,"app/globals.css"),"utf8")).replace(/^@import.*$/gm,"");
     const css=globals+await readFile(path.join(repo,"app/theme-backgrounds.css"),"utf8")+await readFile(path.join(repo,"components/workspace/harmony/MirrorWindow.module.css"),"utf8")+await readFile(path.join(repo,"components/ConfirmDialog.module.css"),"utf8");
     await page.route("https://mirror.test/**",async route=>{const r=route.request(),u=new URL(r.url());if(u.pathname==="/themes/codex-dream-skin/skin.css")return route.fulfill({contentType:"text/css",body:await readFile(path.join(repo,"public/themes/codex-dream-skin/skin.css"),"utf8")});if(u.pathname==="/bundle.js")return route.fulfill({contentType:"text/javascript",body:await readFile(path.join(root,"bundle.js"))});if(u.pathname==="/api/harmony/devices")return route.fulfill({json:{devices:[{serial:"phone",name:"BRA-AL00",model:"BRA-AL00",product:"HUAWEI Mate 60 ",state:"online",generation:1,capabilities:{screenshot:true}}]}});if(u.pathname==="/api/harmony/media"){if(r.method()==="POST"){requests.push(r.postDataJSON());return route.fulfill({json:{artifact:{kind:"screenshot",serial:"phone",path:"C:/media/screen.png",filename:"screen.png"}}});}return route.fulfill({json:{recording,completion}});}if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});return route.fulfill({contentType:"text/html",body:`<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#fafafa;--bg-hover:#eee;--border:#ddd;--text:#222;--text-muted:#666;--text-dim:#888;--accent:#3478f6;--btn-primary-bg:#3478f6;--btn-primary-fg:#fff;--radius-surface:12px;--radius-control:6px;--font-ui:system-ui;--text-base:14px;--text-sm:13px}body{margin:0;font:14px system-ui}${css}</style><div id="root"></div><script src="/bundle.js"></script>`});});
+    await page.route('https://mirror.test/api/harmony/manual',route=>route.fulfill({json:{lease:{token:'fixture-lease',serial:'phone',expiresAt:new Date(Date.now()+300000).toISOString()}}}));
+    await page.route('https://mirror.test/api/harmony/geometry?*',route=>route.fulfill({json:{geometry:{geometryId:'current-video-geometry',frameWidth:geometryWidth,frameHeight:720}}}));
+    let firstInput = true;
+    await page.route('https://mirror.test/api/harmony/action',async route=>{
+      // Real-device cold driver startup exceeded the former 15-second budget.
+      if (firstInput) { firstInput = false; await new Promise(resolve=>setTimeout(resolve,16000)); }
+      return route.fulfill(failInput?{status:409,json:{error:{code:'STALE_SNAPSHOT',message:'Input rejected by fixture'}}}:{json:{result:{}}});
+    });
     await page.goto("https://mirror.test/");await page.addStyleTag({content:"*, *::before, *::after { transition: none !important; animation: none !important; }"});await page.waitForFunction(()=>window.geometry?.width===360);
-    await page.locator("canvas").click();await page.locator("canvas").press("a");assert.equal(requests.length,0);
+    await page.locator("canvas").click();await page.locator("canvas").press("a");assert.equal(requests.length,0);assert.deepEqual(inputRequests,[],'passive viewing cannot acquire input leases or send gestures');
     assert.equal(await page.locator("footer").count(),0);
     assert.equal(await page.locator(".device").innerText(), "HUAWEI Mate 60");
     const themes=await page.evaluate(()=>window.mirrorThemes);
@@ -101,13 +110,13 @@ test("mirror is read-only, resizes through the desktop bridge, and shows common 
     assert.equal(await page.evaluate(()=>window.geometry.presentation),"floating","outgoing surface remains live until the destination paints");
     await page.evaluate(()=>window.setEmbedded(true));
     await page.waitForFunction(()=>window.frameOptions.active===true);
-    assert.equal(await page.evaluate(()=>window.frameOptions.allowFrameFallback),false,"sidebar uses video without screenshot fallback");
+    assert.equal(await page.evaluate(()=>window.frameOptions.worker),true,"sidebar uses the dedicated video worker");
     await page.getByRole("button",{name:"切换到悬浮投屏"}).click();
     await page.waitForFunction(()=>window.frameOptions.active===true);
     assert.equal(await page.evaluate(()=>window.geometry.presentation),"sidebar","docking does not blank the source before the floating frame");
     await page.evaluate(()=>window.setEmbedded(false));
     await page.waitForFunction(()=>window.frameOptions.active===true);
-    assert.equal(await page.evaluate(()=>window.frameOptions.allowFrameFallback),false,"floating view uses the same video policy");
+    assert.equal(await page.evaluate(()=>window.frameOptions.worker),true,"floating view uses the same dedicated video worker");
     const screen=await page.locator("canvas").boundingBox();assert.ok(screen.y<=38&&screen.y+screen.height>=757);
     recording={serial:"phone",ownerId:"desktop-media",recordingId:"recording-limit",startedAt:new Date().toISOString(),phase:"recording"};
     await page.getByRole("button",{name:"停止录屏",exact:true}).waitFor();
@@ -129,6 +138,35 @@ test("mirror is read-only, resizes through the desktop bridge, and shows common 
     await page.getByRole("dialog").waitFor();await page.keyboard.press("Escape");await page.waitForFunction(()=>window.answer===null);
     await page.evaluate(()=>{window.showMessage({title:"截图已保存并复制",message:"screen.png",tone:"success",actions:[{id:"folder",label:"打开文件夹"},{id:"done",label:"完成",primary:true}]}).then(v=>window.answer=v);});
     await page.getByRole("dialog").waitFor();if(out)await page.screenshot({path:path.join(out,"common-message.png")});await page.getByRole("button",{name:"完成",exact:true}).click();await page.waitForFunction(()=>window.answer==="done");
+    const actions=()=>inputRequests.filter(request=>request.path.endsWith('/action')).map(request=>request.body);
+    await page.getByRole('button',{name:'操控手机'}).click();
+    const surface=page.getByLabel('投屏交互区域');
+    await Promise.all([page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/action'),surface.click()]);
+    assert.equal(actions().at(-1).action,'tap');assert.equal(actions().at(-1).generation,1);
+    assert.equal(actions().at(-1).geometryId,'current-video-geometry');assert.equal(actions().at(-1).leaseToken,'fixture-lease');
+    assert.ok(Math.abs(actions().at(-1).x-180)<=1&&Math.abs(actions().at(-1).y-360)<=1,'letterboxed screen center maps to phone center');
+    await surface.press('Home');
+    await page.getByLabel('发送文字到手机').fill('中文输入');
+    await page.getByRole('button',{name:'发送',exact:true}).click();
+    await page.waitForFunction(()=>document.querySelector('input[aria-label="发送文字到手机"]').value==='');
+    assert.ok(actions().some(action=>action.action==='input_text'&&action.text==='中文输入'));
+    assert.ok(actions().some(action=>action.action==='press_key'&&action.key==='home'));
+    geometryWidth=720;
+    const beforeStale=actions().length;await surface.click();
+    await page.getByRole('status').filter({hasText:'屏幕方向已变化'}).waitFor();
+    assert.equal(actions().length,beforeStale,'mismatched geometry cannot inject coordinates');
+    await page.getByRole('button',{name:'操控手机'}).click();await page.getByRole('button',{name:'操控手机'}).click();
+    geometryWidth=360;failInput=true;
+    await page.getByLabel('发送文字到手机').fill('失败后保留');await page.getByRole('button',{name:'发送',exact:true}).click();
+    await page.getByRole('status').filter({hasText:'Input rejected by fixture'}).waitFor();
+    assert.equal(await page.getByLabel('发送文字到手机').inputValue(),'失败后保留');
+    const afterFailure=actions().length;await surface.click();
+    await page.waitForTimeout(150);assert.equal(actions().length,afterFailure,'ambiguous input failure stops queued gestures without replay');
+    await page.route('https://mirror.test/api/harmony/media?*',route=>route.fulfill({status:503,json:{error:{code:'COMMAND_TIMEOUT',message:'Status read unavailable'}}}));
+    await page.getByRole('button',{name:'截图',exact:true}).click();
+    await page.getByRole('status').filter({hasText:'截图已保存'}).waitFor();
+    await page.waitForTimeout(100);
+    assert.equal(await page.getByRole('dialog').count(),0,'a successful save stays successful when the follow-up status read fails');
     assert.deepEqual(errors,[]);
   } finally {await browser?.close();await rm(root,{recursive:true,force:true});}
 });
