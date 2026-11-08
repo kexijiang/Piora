@@ -15,6 +15,7 @@ import {
   applyDiscoveredLimits,
   applyEndpointLimits,
   automaticModelLimitSources,
+  captureModelLimitUndo,
   clearLimitMetaField,
   compactLimitMeta,
   constrainToEndpointLimits,
@@ -26,6 +27,7 @@ import {
   parseModelLimitDraft,
   positiveTokenCount,
   stripModelLimitUiMeta,
+  undoModelLimitEdits,
   type ModelLimitField,
   type ModelLimitsMeta,
 } from "@/lib/model-limits";
@@ -1053,7 +1055,7 @@ function ModelLimitFields({
 }) {
   const { t } = useI18n();
   const limitsAbortRef = useRef<ReturnType<typeof createDiscoveryAbort> | null>(null);
-  const limitsUndoRef = useRef<ModelEntry | null>(null);
+  const limitsUndoRef = useRef<ReturnType<typeof captureModelLimitUndo> | null>(null);
   const latestModelRef = useRef(model);
   latestModelRef.current = model;
   const [limitsPhase, setLimitsPhase] = useState<"idle" | "loading">("idle");
@@ -1122,7 +1124,7 @@ function ModelLimitFields({
       const currentModel = latestModelRef.current;
       const applied = applyEndpointLimits(currentModel, match);
       if (applied.changed) {
-        limitsUndoRef.current = currentModel;
+        limitsUndoRef.current = captureModelLimitUndo(currentModel, applied.model);
         onChange(applied.model);
       }
       if (!match) setLimitsError(t("models.limits.modelNotListed"));
@@ -1212,7 +1214,7 @@ function ModelLimitFields({
                   if (!previous) return;
                   limitsUndoRef.current = null;
                   setLimitsError(null);
-                  onChange(previous);
+                  onChange(undoModelLimitEdits(latestModelRef.current, previous));
                 }}
                 style={{ padding: "0 2px", border: "none", background: "none", color: "var(--accent)", cursor: "pointer", fontSize: "var(--text-xs)" }}
               >
@@ -1227,8 +1229,9 @@ function ModelLimitFields({
           {contextConflict && <div>{t("models.limits.endpointContextConflict", { endpoint: queriedLimits.contextWindow!, configured: model.contextWindow! })}</div>}
           {outputConflict && <div>{t("models.limits.endpointOutputConflict", { endpoint: queriedLimits.maxTokens!, configured: model.maxTokens! })}</div>}
           <button type="button" onClick={() => {
-            limitsUndoRef.current = model;
-            onChange(constrainToEndpointLimits(model, queriedLimits));
+            const applied = constrainToEndpointLimits(model, queriedLimits);
+            limitsUndoRef.current = captureModelLimitUndo(model, applied);
+            onChange(applied);
           }} style={{ border: "none", background: "none", padding: 0, color: "var(--accent)", cursor: "pointer" }}>
             {t("models.limits.useEndpoint")}
           </button>
