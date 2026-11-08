@@ -79,6 +79,10 @@ npm run test:desktop:e2e -- --scenario harmony-mirror --timeout-ms 1200000 --ste
 
 场景先通过 UI 分别打开浮窗和侧栏，让开发模式完成两种展示入口的编译，再测试录像交接；这不计入发布包冷启动验收。真实旋转和受控采集断流可另外运行 `node scripts/verify-harmony-mirror-lifecycle.mjs --hdc="实际路径" --serial=实际序列号`。它使用生产 Worker 与真实原生采集，在独立 Electron 中验证横竖屏与重连，恢复原方向并清理自己创建的资源，不代表物理拔插或 Next 鉴权链路测试。
 
+### 随身舱开发编译回归
+
+`node scripts/run-desktop-e2e.mjs --scenario companion-panel --step-timeout-ms 120000` 通过 `Ctrl+Space` 打开真实开发桌面随身舱，点击剪贴板并刷新，验证 Turbopack 下共享桌面模块的加载和页面渲染。使用独立 profile、端口与输出目录，不调用模型；不代表发布包、显示器热插拔或原生重启菜单验收。
+
 ### DSH Pet 桌面扩展
 
 `node scripts/run-desktop-e2e.mjs --scenario desktop-extensions` 验证独立设置入口、无项目时的安装入口、默认开关、受限 IPC 和桌面认证的任务快照接口，不下载插件、不调用模型。原版插件安装和原生窗口 smoke 使用 `node scripts/verify-dsh-pet.mjs`，详见 [DSH Pet](dsh-pet.md)。
