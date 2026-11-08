@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { request } from "node:http";
 import { createServer } from "node:net";
+import { randomInt } from "node:crypto";
 import { dirname } from "node:path";
 import type { Readable } from "node:stream";
 import type { Logger } from "./logger.js";
@@ -46,13 +47,19 @@ function isRunning(child: ChildProcess): boolean {
   return child.exitCode === null && child.signalCode === null;
 }
 
-async function reservePort(preferredPort?: number): Promise<number> {
+async function reservePort(preferredPort?: number, attempt = 0): Promise<number> {
+  if (attempt >= 128 || preferredPort !== undefined && (!Number.isInteger(preferredPort) || preferredPort < 20000 || preferredPort > 65535)) {
+    throw new Error("Piora requires a local port in 20000–65535, outside the DevEco service range");
+  }
   return new Promise((resolvePort, rejectPort) => {
     const socket = createServer();
     socket.unref();
-    socket.once("error", rejectPort);
+    socket.once("error", (error: NodeJS.ErrnoException) => {
+      if (preferredPort === undefined && (error.code === "EADDRINUSE" || error.code === "EACCES")) void reservePort(undefined, attempt + 1).then(resolvePort, rejectPort);
+      else rejectPort(error);
+    });
     socket.listen(
-      { host: LOOPBACK_HOST, port: preferredPort ?? 0, exclusive: true },
+      { host: LOOPBACK_HOST, port: preferredPort ?? randomInt(20000, 65536), exclusive: true },
       () => {
         const address = socket.address();
         if (!address || typeof address === "string") {
@@ -64,6 +71,7 @@ async function reservePort(preferredPort?: number): Promise<number> {
         const allocatedPort = address.port;
         socket.close((error) => {
           if (error) rejectPort(error);
+          else if (allocatedPort < 20000) void reservePort(undefined, attempt + 1).then(resolvePort, rejectPort);
           else resolvePort(allocatedPort);
         });
       },

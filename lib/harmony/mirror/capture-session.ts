@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { createServer } from "node:net";
+import { allocatePioraPort } from "../runtime/local-port";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client, credentials, type ClientReadableStream } from "@grpc/grpc-js";
@@ -20,16 +20,6 @@ type Run = (args: readonly string[], operation: string, signal?: AbortSignal, ti
 type Reply = { getPayloadMap(): { get(key: string): { getValBytes_asU8(): Uint8Array } | undefined } };
 const decode = ScrcpyServiceService.onStart.responseDeserialize as unknown as (bytes: Buffer) => Reply;
 const fail = (message: string) => new HarmonyError("CAPABILITY_UNAVAILABLE", message, { details: { reason: "debug-video-unavailable" }, retryable: true });
-
-async function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const server = createServer(); server.once("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const address = server.address();
-      server.close(error => error ? reject(error) : resolve((address as { port: number }).port));
-    });
-  });
-}
 
 /** One owned HDC encoder per device. Recording and visible viewers have independent lifetimes. */
 export class MirrorCaptureSession {
@@ -56,12 +46,13 @@ export class MirrorCaptureSession {
 
   get whenClosing(): Promise<void> | undefined { return this.closing; }
 
-  static async start(serial: string, source: string | undefined, run: Run, onClose: () => void, ownershipDirectory?: string, knownVersion?: string): Promise<MirrorCaptureSession> {
-    const session = new MirrorCaptureSession(serial, run, await freePort(), `piora_video_${randomUUID().replaceAll("-", "")}.so`, onClose);
+  static async start(serial: string, source: string | undefined, run: Run, onClose: () => void, ownershipDirectory?: string, knownVersion?: string, scale = MIRROR_PROFILE.scale): Promise<MirrorCaptureSession> {
+    captureArguments(scale);
+    const session = new MirrorCaptureSession(serial, run, await allocatePioraPort(), `piora_video_${randomUUID().replaceAll("-", "")}.so`, onClose);
     try {
       session.ownership = new VideoOwnership(serial, session.name, session.port, run, ownershipDirectory);
       await session.ownership.prepare(); session.journaled = true;
-      await session.initialize(source, knownVersion); return session;
+      await session.initialize(source, knownVersion, scale); return session;
     }
     catch (error) { await session.close(); throw error; }
   }
@@ -84,7 +75,7 @@ export class MirrorCaptureSession {
     return true;
   }
 
-  private async initialize(source: string | undefined, knownVersion?: string) {
+  private async initialize(source: string | undefined, knownVersion?: string, scale = MIRROR_PROFILE.scale) {
     const sockets = await this.shell("cat /proc/net/unix", "debug_video_socket_check");
     if (sockets.includes("@scrcpy_grpc_socket")) {
       // Subscribe to the existing service without taking ownership of its daemon.
@@ -106,7 +97,7 @@ export class MirrorCaptureSession {
       await this.run(["-t", this.serial, "file", "send", path, `/data/local/tmp/${this.name}`], "debug_video_upload", undefined, 8000);
     } finally { await rm(directory, { recursive: true, force: true }); }
     // Both the bundled Hypium library and the optional SDK expose this capture service.
-    const pid = await this.shell(`uitest start-daemon singleness --extension-name ${this.name} ${captureArguments()} > /data/local/tmp/${this.name}.log 2>&1 & echo $!`, "debug_video_start");
+    const pid = await this.shell(`uitest start-daemon singleness --extension-name ${this.name} ${captureArguments(scale)} > /data/local/tmp/${this.name}.log 2>&1 & echo $!`, "debug_video_start");
     const match = /^\s*(\d+)\s*$/.exec(pid);
     if (!match) throw fail("The phone did not identify the debug video service");
     // uitest daemonizes: $! identifies the launcher, not the long-lived child.

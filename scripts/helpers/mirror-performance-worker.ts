@@ -1,6 +1,7 @@
 import { MirrorVideoEngine } from "../../lib/harmony/mirror/video-engine";
 let engine: MirrorVideoEngine | undefined;
 let lastColor = "", lastMarker = -1, lastTimestamp = -1;
+let clockOffset = 0, clockUncertaintyMs = Infinity;
 type Probe = { buffer: WebGLBuffer; fence: WebGLSync; at: number; timestamp: number };
 
 /** Test only: sample 17 pixels on the GPU, then read a tiny asynchronous PBO. */
@@ -41,7 +42,8 @@ function createProbe() {
       gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null); pool.push(item.buffer);
       if (item.timestamp <= lastTimestamp) continue; lastTimestamp = item.timestamp;
       const color = Array.from(pixels.subarray(64, 67), value => value > 128 ? 255 : 0).join(",");
-      if (color !== lastColor) { lastColor = color; postMessage({ type: "pixel", color, at: item.at }); }
+      if (color !== lastColor) { lastColor = color; postMessage({ type: "pixel", color, at: item.at,
+        submittedHostAt: item.at + clockOffset, confirmedHostAt: performance.now() + clockOffset, clockUncertaintyMs }); }
       let marker = 0;
       for (let bit = 0; bit < 16; bit++) if (pixels[bit * 4] > 128 && pixels[bit * 4 + 1] > 128 && pixels[bit * 4 + 2] > 128) marker |= 1 << bit;
       if (marker !== lastMarker) { lastMarker = marker; postMessage({ type: "marker", marker, at: item.at }); }
@@ -66,8 +68,17 @@ function createProbe() {
   };
 }
 
-onmessage = ({ data }) => {
+onmessage = async ({ data }) => {
   if (data.type === "start") {
+    // Diagnostic clock mapping only. The acceptance metric remains the conservative
+    // host ACK, including GPU confirmation and report transport.
+    for (let sample = 0; sample < 9; sample++) {
+      const before = performance.now();
+      const { hostTime } = await (await fetch("/clock", { cache: "no-store" })).json();
+      const after = performance.now(), uncertainty = (after - before) / 2;
+      if (uncertainty < clockUncertaintyMs) { clockOffset = hostTime - (before + after) / 2; clockUncertaintyMs = uncertainty; }
+    }
+    postMessage({ type: "clock", clockOffset, clockUncertaintyMs });
     const probe = createProbe();
     engine = new MirrorVideoEngine(data.canvas, data.serial, 1, event => postMessage(event), (_context, _width, _height, frame) => probe(frame)); engine.start();
   } else if (data.type === "stop") engine?.stop();

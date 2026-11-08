@@ -155,6 +155,16 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
       async () => await this.hdc.tap(serial, x, y, signal));
   }
 
+  async pointerPhase(serial: string, phase: "down" | "move" | "up", gestureId: string, x: number, y: number, signal?: AbortSignal): Promise<void> {
+    let result;
+    try { result = await this.hypium.execute(serial, `pointer_${phase}`, [gestureId, x, y], signal); }
+    catch (error) {
+      if (phase !== "up" || !(error instanceof HarmonyError) || error.details?.reason !== "pointer-session-lost") throw error;
+      result = await this.hypium.execute(serial, "pointer_release", [gestureId, x, y]);
+    }
+    if (!result.used) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Live pointer control requires the persistent device channel");
+  }
+
   async doubleTap(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void> {
     await this.preferHypium(serial, "double_tap", signal, [x, y],
       async () => await this.hdc.doubleTap(serial, x, y, signal));

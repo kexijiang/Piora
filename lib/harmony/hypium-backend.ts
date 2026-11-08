@@ -1,4 +1,7 @@
 import { physicalKeyCode } from "./input/key-catalog";
+import { openGestureConnection, type GestureConnection } from "./input/gesture-connection";
+import { LiveTouch } from "./input/live-touch";
+import { allocatePioraPort, configureHypiumPorts } from "./runtime/local-port";
 import { mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -26,6 +29,7 @@ export interface HypiumAutomationDriverOptions {
   importDriver?: () => Promise<HypiumModule>;
   now?: () => number;
   preparePrivacy?: () => void;
+  openGesture?: (driver: HypiumDriver, module: HypiumModule) => Promise<GestureConnection>;
 }
 
 export interface HypiumAutomationStatus {
@@ -164,6 +168,9 @@ async function focusedTextComponent(driver: HypiumDriver, module: HypiumModule):
 }
 
 export class HypiumAutomationDriver {
+  private readonly gestures = new Map<string, Promise<GestureConnection>>();
+  private readonly activeTouches = new Map<string, LiveTouch>();
+  private readonly openGesture: NonNullable<HypiumAutomationDriverOptions["openGesture"]>;
   private readonly importDriver: () => Promise<HypiumModule>;
   private readonly now: () => number;
   private readonly preparePrivacy: () => void;
@@ -173,7 +180,9 @@ export class HypiumAutomationDriver {
   private readonly cooldowns = new Map<string, number>();
 
   constructor(options: HypiumAutomationDriverOptions) {
+    this.openGesture = options.openGesture ?? (driver => openGestureConnection(driver.device, allocatePioraPort));
     this.importDriver = options.importDriver ?? (async () => {
+      configureHypiumPorts();
       const imported = await import("hypium-driver");
       return ((imported as { default?: HypiumModule }).default ?? imported) as HypiumModule;
     });
@@ -240,6 +249,9 @@ export class HypiumAutomationDriver {
   }
 
   private async run<T>(serial: string, operation: string, signal: AbortSignal | undefined, task: (driver: HypiumDriver, module: HypiumModule) => Promise<T>): Promise<T> {
+    if (this.activeTouchIds.has(serial) && !["pointer_move", "pointer_up", "pointer_release", "display_geometry"].includes(operation)) {
+      throw new HarmonyError("DEVICE_BUSY", "A manual pointer is still held");
+    }
     const driver = await withAbort(this.connect(serial), signal, () => { void this.invalidate(serial); });
     const driverModule = await this.module();
     try {
@@ -276,14 +288,42 @@ export class HypiumAutomationDriver {
         if (![0, 1, 2, 3].includes(after) || size.displayId !== 0 || ![size.x,size.y].every(value => typeof value === "number" && Number.isInteger(value) && value > 0 && value <= 16384)) {
           throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Primary display geometry is unavailable from the control channel");
         }
+        // Geometry preparation already established the agent. Open our input
+        // transport now, without claiming a lease or injecting a phone event.
+        await this.gestureConnection(serial, driver, module).catch(() => undefined);
         return { nativeWidth: size.x as number, nativeHeight: size.y as number, displayId: "0", displayRotation: after * 90 };
       }
       const n = args.map(Number);
+      if (operation.startsWith("pointer_")) {
+        const id = String(args[0]);
+        if (operation === "pointer_release" && !this.activeTouches.has(serial)) {
+          // Explicit parent-owned cleanup after a worker restart. Only UP is
+          // permitted here; a lost DOWN/MOVE is never reconstructed or replayed.
+          const { channel } = await this.gestureConnection(serial, driver, module);
+          await channel.touch("up", Number(args[1]), Number(args[2]));
+          return;
+        }
+        if (operation === "pointer_down") {
+          const touch = await this.beginTouch(serial, driver, module, signal, 10_000);
+          this.activeTouchIds.set(serial, id);
+          await touch.down({ x: Number(args[1]), y: Number(args[2]) });
+        } else {
+          const touch = this.activeTouches.get(serial);
+          if (!touch || this.activeTouchIds.get(serial) !== id) throw new HarmonyError("STALE_SNAPSHOT", "Pointer belongs to an expired gesture", { details: { reason: touch ? "foreign-pointer" : "pointer-session-lost" } });
+          if (operation === "pointer_move") await touch.move({ x: Number(args[1]), y: Number(args[2]) });
+          else if (operation === "pointer_up" || operation === "pointer_release") {
+            try { await touch.up(); }
+            finally { this.activeTouches.delete(serial); this.activeTouchIds.delete(serial); }
+          } else throw new HarmonyError("INVALID_ARGUMENT", "Unsupported pointer phase");
+        }
+        return;
+      }
+      if (this.activeTouchIds.has(serial)) throw new HarmonyError("DEVICE_BUSY", "A manual pointer is still held");
       if (operation === "tap") {
-        const action = new module.PointerMatrix(2, 1);
-        action.setPoint(0, 0, new module.Point(n[0], n[1]), 8);
-        action.setPoint(0, 1, new module.Point(n[0], n[1]), 8);
-        return await driver.injectMultiPointerAction(action);
+        const touch = await this.beginTouch(serial, driver, module, signal);
+        try { await touch.down({ x: n[0], y: n[1] }); }
+        finally { try { await touch.up(); } finally { this.activeTouches.delete(serial); } }
+        return;
       }
       if (operation === "double_tap") return await driver.doubleClick(n[0], n[1]);
       if (operation === "long_press") return await driver.longClick(n[0], n[1]);
@@ -355,12 +395,51 @@ export class HypiumAutomationDriver {
   }
 
   async invalidate(serial: string): Promise<void> {
+    this.activeTouchIds.delete(serial);
+    const touch = this.activeTouches.get(serial); this.activeTouches.delete(serial);
+    const gesture = this.gestures.get(serial); this.gestures.delete(serial);
     const promise = this.sessions.get(serial);
     this.sessions.delete(serial);
     const driver = this.ready.get(serial);
     this.ready.delete(serial);
     const resolved = driver ?? await promise?.catch(() => undefined);
-    if (resolved) await timeout(Promise.resolve(resolved.disconnect()), 5_000, "Timed out disconnecting Hypium").catch(() => undefined);
+    try { await touch?.up(); }
+    finally {
+      try { await (await gesture?.catch(() => undefined))?.close(); }
+      finally { if (resolved) await timeout(Promise.resolve(resolved.disconnect()), 5_000, "Timed out disconnecting Hypium").catch(() => undefined); }
+    }
+  }
+
+  private readonly activeTouchIds = new Map<string, string>();
+
+  private gestureConnection(serial: string, driver: HypiumDriver, module: HypiumModule): Promise<GestureConnection> {
+    let connection = this.gestures.get(serial);
+    if (!connection) {
+      connection = this.openGesture(driver, module);
+      this.gestures.set(serial, connection);
+      void connection.catch(() => { if (this.gestures.get(serial) === connection) this.gestures.delete(serial); });
+    }
+    return connection;
+  }
+
+  private async beginTouch(serial: string, driver: HypiumDriver, module: HypiumModule, signal?: AbortSignal, maxHoldMs = 2000): Promise<LiveTouch> {
+    if (this.activeTouches.has(serial)) throw new HarmonyError("DEVICE_BUSY", "A live touch is already active");
+    const { channel } = await this.gestureConnection(serial, driver, module);
+    if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Touch cancelled before dispatch");
+    const touch = new LiveTouch(channel, {
+      maxHoldMs,
+      validate(point) {
+        if (signal?.aborted) throw new HarmonyError("COMMAND_ABORTED", "Touch cancelled before dispatch");
+        if (![point.x, point.y].every(value => Number.isInteger(value) && value >= 0)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid touch coordinates");
+      },
+      recoverRelease: async point => {
+        const recovery = await this.openGesture(driver, module);
+        try { await recovery.channel.touch("up", point.x, point.y); }
+        finally { await recovery.close(); }
+      },
+      onError: () => { /* The awaiting down/up operation propagates the original failure. */ },
+    });
+    this.activeTouches.set(serial, touch); return touch;
   }
 
   async reset(serial?: string): Promise<void> {

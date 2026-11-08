@@ -503,6 +503,7 @@ export interface HarmonyAutomationBackend {
   displayGeometry?(serial: string, signal?: AbortSignal): Promise<import("./observation/geometry").NativeDisplayGeometry>;
   initializeMirror?(serial: string, hapPath: string, signal?: AbortSignal): Promise<void>;
   tap(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
+  pointerPhase?(serial: string, phase: "down" | "move" | "up", gestureId: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   doubleTap?(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   longPress?(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   swipe(

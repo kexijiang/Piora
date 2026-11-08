@@ -16,7 +16,7 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型和扩展机制。项目由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。Piora 不提供统一模型订阅或内置 API Key；使用自己的模型服务账号，费用与额度由服务商管理。
 
-**当前源码 / 本次 Beta：`0.5.10-beta.14`（2026-11-08）**，重写鸿蒙投屏链路，并包含聊天、模型及工作区改进；测试版需手动下载安装更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.14) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
+**当前源码 / 本次 Beta：`0.5.10-beta.14`（2026-11-09）**，重写鸿蒙投屏链路，并包含聊天、模型及工作区改进；测试版需手动下载安装更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.14) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
 
 [下载安装](#下载与安装) · [首次使用](#第一次完成任务) · [功能导览](#功能导览) · [更新与内网部署](#更新与内网部署) · [开发贡献](#开发与贡献) · [中文手册](docs/user-manual.zh-CN.md)
 

@@ -12,7 +12,7 @@ process.on("message", (raw: unknown) => {
     validateWorkerRequest(raw, epoch, serial);
     if (raw.id <= lastId || pending >= 64) throw new HarmonyError("DEVICE_BUSY", "Worker request was replayed or its queue is full", { details: { dispatchState: "not-sent" } });
     lastId = raw.id; pending++;
-    lane = lane.then(async () => {
+    const execute = async () => {
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         validateWorkerRequest(raw, epoch, serial);
@@ -25,7 +25,13 @@ process.on("message", (raw: unknown) => {
         respond({ value });
       } catch (error) { respond({ error: asHarmonyError(error).toJSON() }); }
       finally { clearTimeout(timer); pending--; }
-    }).catch(() => { process.exit(1); });
+    };
+    // MOVE/UP use a separate TCP channel and must not wait behind read-only
+    // geometry RPCs. DOWN still enters the lane; the driver binds subsequent
+    // phases to its gesture ID and blocks other mutations until release.
+    const livePhase = raw.method === "execute" && ["pointer_move", "pointer_up", "pointer_release"].includes(String(raw.args[0]));
+    if (livePhase) void execute().catch(() => { process.exit(1); });
+    else lane = lane.then(execute).catch(() => { process.exit(1); });
   } catch (error) { respond({ error: asHarmonyError(error).toJSON() }); }
 });
 process.on("disconnect", () => { void driver.reset().finally(() => process.exit(0)); setTimeout(() => process.exit(1), 1500).unref(); });

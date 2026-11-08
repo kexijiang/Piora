@@ -1,7 +1,8 @@
+import { allocatePioraPort } from "./runtime/local-port";
 import type { HarmonyRecordingContext } from "./types";
 import { existsSync } from "node:fs";
 import { link, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { createConnection, createServer, type Socket } from "node:net";
+import { createConnection, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -341,23 +342,7 @@ export function parseHarmonyForwardedPort(output: string): number | undefined {
   return Number.isSafeInteger(port) && port > 0 && port <= 65_535 ? port : undefined;
 }
 
-async function reserveLoopbackPort(): Promise<number> {
-  return await new Promise<number>((resolvePort, rejectPort) => {
-    const server = createServer();
-    server.unref();
-    server.once("error", rejectPort);
-    server.listen({ host: "127.0.0.1", port: 0, exclusive: true }, () => {
-      const address = server.address();
-      if (!address || typeof address === "string") {
-        server.close();
-        rejectPort(new Error("Unable to allocate a local Harmony video port"));
-        return;
-      }
-      const port = address.port;
-      server.close((error) => error ? rejectPort(error) : resolvePort(port));
-    });
-  });
-}
+const reserveLoopbackPort = allocatePioraPort;
 
 async function connectLoopback(port: number, signal?: AbortSignal): Promise<Socket> {
   return await new Promise<Socket>((resolveSocket, rejectSocket) => {

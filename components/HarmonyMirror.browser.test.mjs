@@ -23,7 +23,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await new Promise((resolve,reject)=>compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve())));
     browser=await chromium.launch({channel:process.platform==="win32"?"msedge":"chromium",headless:true});
     const page=await browser.newPage({viewport:{width:362,height:758}});const requests=[],errors=[],inputRequests=[];
-    page.on('request',request=>{if(request.method()==='POST'&&/\/api\/harmony\/(manual|action)$/.test(new URL(request.url()).pathname))inputRequests.push({path:new URL(request.url()).pathname,body:request.postDataJSON()});});
+    page.on('request',request=>{if(request.method()==='POST'&&/\/api\/harmony\/(manual|action|pointer)$/.test(new URL(request.url()).pathname))inputRequests.push({path:new URL(request.url()).pathname,body:request.postDataJSON()});});
     // Pixel assertions target the settled theme, not the compositor's temporary
     // old/new snapshots. Reduced motion also removes the transition-ready race.
     await page.emulateMedia({reducedMotion:"reduce"});
@@ -41,6 +41,9 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
       if (firstInput) { firstInput = false; await new Promise(resolve=>setTimeout(resolve,16000)); }
       return route.fulfill(failInput?{status:409,json:{error:{code:'STALE_SNAPSHOT',message:'Input rejected by fixture'}}}:{json:{result:{}}});
     });
+    await page.route('https://mirror.test/api/harmony/pointer',route=>route.fulfill(failInput
+      ?{status:409,json:{error:{code:'STALE_SNAPSHOT',message:'Input rejected by fixture'}}}
+      :{json:{gestureId:'c'.repeat(32),released:route.request().postDataJSON().phase==='up'}}));
     await page.goto("https://mirror.test/");await page.addStyleTag({content:"*, *::before, *::after { transition: none !important; animation: none !important; }"});await page.waitForFunction(()=>window.geometry?.width===360);
     for (const dark of [false,true]) {
       const ratios=await page.evaluate(dark=>{
@@ -196,13 +199,16 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.evaluate(()=>{window.showMessage({title:"截图已保存并复制",message:"screen.png",tone:"success",actions:[{id:"folder",label:"打开文件夹"},{id:"done",label:"完成",primary:true}]}).then(v=>window.answer=v);});
     await page.getByRole("dialog").waitFor();if(out)await page.screenshot({path:path.join(out,"common-message.png")});await page.getByRole("button",{name:"完成",exact:true}).click();await page.waitForFunction(()=>window.answer==="done");
     const actions=()=>inputRequests.filter(request=>request.path.endsWith('/action')).map(request=>request.body);
+    const pointers=()=>inputRequests.filter(request=>request.path.endsWith('/pointer')).map(request=>request.body);
+    const mutations=()=>inputRequests.filter(request=>/\/(action|pointer)$/.test(request.path));
     await page.getByRole('button',{name:'操控手机'}).click();
     const surface=page.getByLabel('投屏交互区域');
-    await Promise.all([page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/action'),surface.click()]);
+    await Promise.all([page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/pointer'&&response.request().postDataJSON().phase==='up'),surface.click()]);
     assert.equal(geometryDuringAcquire,true,'geometry starts before lease acquisition finishes');
-    assert.equal(actions().at(-1).action,'tap');assert.equal(actions().at(-1).generation,1);
-    assert.equal(actions().at(-1).geometryId,'current-video-geometry');assert.equal(actions().at(-1).leaseToken,'fixture-lease');
-    assert.ok(Math.abs(actions().at(-1).x-180)<=1&&Math.abs(actions().at(-1).y-360)<=1,'letterboxed screen center maps to phone center');
+    assert.deepEqual(pointers().map(input=>input.phase),['down','up']);assert.equal(pointers()[0].generation,1);
+    assert.equal(pointers()[0].geometryId,'current-video-geometry');assert.equal(pointers()[0].leaseToken,'fixture-lease');
+    assert.equal(pointers()[1].gestureId,'c'.repeat(32),'release stays bound to the acknowledged gesture');
+    assert.ok(Math.abs(pointers()[0].x-180)<=1&&Math.abs(pointers()[0].y-360)<=1,'letterboxed screen center maps to phone center');
     await Promise.all([page.waitForResponse(r=>new URL(r.url()).pathname==='/api/harmony/action'),surface.press('Home')]);
     assert.ok(actions().some(action=>action.action==='press_key'&&action.key==='home'));
     for (const [label,key] of [['返回','back'],['主页','home'],['最近任务','recents'],['音量−','volume_down'],['音量＋','volume_up'],['电源键','power']]) {
@@ -212,16 +218,16 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
       assert.equal(actions().at(-1).durationMs,undefined);
     }
     geometryWidth=720;
-    const beforeStale=actions().length;await surface.click();
+    const beforeStale=mutations().length;await surface.click();
     await page.getByRole('status').filter({hasText:'屏幕方向已变化'}).waitFor();
-    assert.equal(actions().length,beforeStale,'mismatched geometry cannot inject coordinates');
+    assert.equal(mutations().length,beforeStale,'mismatched geometry cannot inject coordinates');
     await page.getByRole('button',{name:'操控手机'}).click();await page.getByRole('button',{name:'操控手机'}).click();
     geometryWidth=360;failInput=true;
     await surface.click();
     await page.getByRole('status').filter({hasText:'Input rejected by fixture'}).waitFor();
     assert.equal(await page.getByLabel('发送文字到手机').count(),0);
-    const afterFailure=actions().length;await surface.click();
-    await page.waitForTimeout(150);assert.equal(actions().length,afterFailure,'ambiguous input failure stops queued gestures without replay');
+    const afterFailure=mutations().length;await surface.click();
+    await page.waitForTimeout(150);assert.equal(mutations().length,afterFailure,'ambiguous input failure stops queued gestures without replay');
     await page.route('https://mirror.test/api/harmony/media?*',route=>route.fulfill({status:503,json:{error:{code:'COMMAND_TIMEOUT',message:'Status read unavailable'}}}));
     await page.getByRole('button',{name:'截图',exact:true}).click();
     await page.getByRole('status').filter({hasText:'截图已保存'}).waitFor();
