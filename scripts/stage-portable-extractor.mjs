@@ -8,7 +8,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
-import { EnvHttpProxyAgent } from "undici";
+import { EnvHttpProxyAgent, fetch } from "undici";
 import { fetchReleaseAsset } from "./github-release-download.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -49,7 +49,7 @@ export async function stagePortableExtractor(projectRoot = root) {
     await mkdir(staged);
     const m = extractorManifest;
     for (const [url, path, sha] of [[m.url, join(temporary, m.asset), m.sha256], [m.sourceUrl, join(staged, m.sourceAsset), m.sourceSha256], [m.copyingUrl, join(staged, "COPYING"), m.copyingSha256]]) {
-      const response = await fetchReleaseAsset(url, { dispatcher, signal: AbortSignal.timeout(180_000) });
+      const response = await fetchReleaseAsset(url, { dispatcher, signal: AbortSignal.timeout(180_000) }, fetch);
       if (!response.ok || !response.body) { await response.body?.cancel(); throw new Error(`7-Zip download failed: HTTP ${response.status}`); }
       await pipeline(Readable.fromWeb(response.body), createWriteStream(path));
       await check(path, sha);
