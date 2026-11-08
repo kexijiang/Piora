@@ -6,5 +6,5 @@ import styles from "../../ConfirmDialog.module.css";
 export function HarmonySettingsSurface({ children, onClose, title }: { children: ReactNode; onClose: () => void; title: string }) {
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(ref, true, { onEscape: onClose });
-  return createPortal(<div className={styles.backdrop}><div ref={ref} className={styles.dialog} role="dialog" aria-modal="true" aria-label={title} style={{ width: "min(720px, calc(100vw - 32px))", maxHeight: "calc(100dvh - 40px)", overflow: "auto" }}>{children}</div></div>, document.body);
+  return createPortal(<div className={styles.backdrop} onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}><div ref={ref} className={styles.dialog} role="dialog" aria-modal="true" aria-label={title} style={{ width: "min(620px, calc(100vw - 32px))", maxHeight: "calc(100dvh - 40px)", overflow: "auto" }}>{children}</div></div>, document.body);
 }

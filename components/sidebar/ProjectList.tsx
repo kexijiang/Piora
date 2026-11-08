@@ -6,7 +6,6 @@ import { useI18n } from "@/hooks/useI18n";
 import type { SessionProjectGroup as SessionProjectGroupData } from "@/lib/session-project-groups";
 import type { SessionFlags } from "@/lib/session-flags";
 import type { SessionInfo } from "@/lib/types";
-import { getProjectSessionPreview } from "@/lib/sidebar-tree-window";
 import { AliIcon } from "../AliIcon";
 import { ProjectModelDialog } from "../ProjectModelDialog";
 import styles from "../SessionSidebar.module.css";
@@ -98,9 +97,7 @@ export function ProjectSessionGroup({
     (node) => node.session.id,
     (node) => Boolean(sessionFlags[node.session.id]?.pinned),
   );
-  // A compact preview counts sessions, including forks, rather than entire
-  // branch trees. Expanding restores the full hierarchy and its saved state.
-  const visibleRoots = projectOpen ? orderedRoots : getProjectSessionPreview(group.sessions, sessionFlags, sessionOrder);
+  const visibleRoots = orderedRoots;
   const runningCount = group.sessions.filter((session) => runningSessionIds.has(session.id)).length;
   const unreadCount = group.sessions.filter((session) => unreadSessionIds.has(session.id)).length;
 
@@ -164,7 +161,7 @@ export function ProjectSessionGroup({
         </div>
       </div>
 
-      <div className={styles.sessionList}>
+      {projectOpen ? <div className={styles.sessionList}>
         {group.tree.length === 0 && (
           <div style={{ padding: "8px 12px", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
             {t("sidebar.noSessionsInProject")}
@@ -189,29 +186,7 @@ export function ProjectSessionGroup({
           sessionOrder={sessionOrder}
           onReorderSessions={onReorderSessions}
         />
-        {group.sessions.length > 5 && (
-          <button
-            onClick={onToggleProject}
-            aria-expanded={projectOpen}
-            style={{
-              width: "calc(100% - 12px)",
-              margin: "2px 6px",
-              padding: "6px 10px",
-              border: "none",
-              borderRadius: "var(--radius-control)",
-              background: "transparent",
-              color: "var(--text-dim)",
-              cursor: "pointer",
-              textAlign: "left",
-              fontSize: "var(--text-xs)",
-            }}
-          >
-            {projectOpen
-              ? t("sidebar.showFewerSessions")
-              : t("sidebar.showAllSessions", { count: group.sessions.length })}
-          </button>
-        )}
-      </div>
+      </div> : null}
       {menuAnchor && createPortal(
         <ProjectContextMenu
           anchor={menuAnchor}

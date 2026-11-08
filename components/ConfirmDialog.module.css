@@ -58,6 +58,9 @@
 }
 
 .standalone { width: 100vw; height: 100dvh; display: flex; flex-direction: column; border-radius: 0; }
+/* Native message windows must remain legible even with translucent theme surfaces. */
+.standalone { --dialog-background: #ffffff; --text: #18181b; --text-muted: #454550; --btn-primary-bg: #27272a; --btn-primary-bg-hover: #3f3f46; --btn-primary-fg: #ffffff; --floating-section: #f4f4f5; --border-soft: #d4d4d8; --bg-hover: #e4e4e7; }
+.standalone[data-dark="true"] { --dialog-background: #202127; --text: #fafafa; --text-muted: #d4d4d8; --btn-primary-bg: #f4f4f5; --btn-primary-bg-hover: #d4d4d8; --btn-primary-fg: #18181b; --floating-section: #292a30; --border-soft: #52525b; --bg-hover: #3f3f46; }
 .noticeHost { position: fixed; z-index: 3500; top: 24px; right: 24px; pointer-events: none; }
 .notice { pointer-events: auto; width: min(340px, calc(100vw - 32px)); }
 .notice.standalone { width: 100vw; }

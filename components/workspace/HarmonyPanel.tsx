@@ -10,6 +10,7 @@ import { useHarmonyManualControl } from "@/hooks/useHarmonyManualControl";
 import { useHarmonyWindow } from "@/hooks/useHarmonyWindow";
 import { useHarmonyMedia } from "@/hooks/useHarmonyMedia";
 import { PioraMessageHost, showPioraMessage } from "../PioraMessage";
+import { HarmonyDeviceSelect } from "./harmony/HarmonyDeviceSelect";
 import { HarmonySettingsSurface } from "./harmony/HarmonySettingsSurface";
 import { HarmonyStorageSettings } from "../HarmonyStorageSettings";
 import dynamic from "next/dynamic";
@@ -563,19 +564,14 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       <div className={styles.deviceIdentity}>
         <span className={styles.deviceMark}><AliIcon name="mobile" size={15} /></span>
         <div className={styles.deviceIdentityText}>
-        <select aria-label={copy("选择设备", "Select device")} title={selected ? `${formatHarmonyDeviceLabel(selected)} · ${selected.serial}${selected.osVersion ? ` · ${selected.osVersion}` : ""}` : undefined} value={selectedSerial} onChange={(event) => {
-          const nextSerial = event.target.value;
+        <HarmonyDeviceSelect label={copy("选择设备", "Select device")} value={selectedSerial} onChange={nextSerial => {
           if (window.piDesktop?.harmonyMirror) void window.piDesktop.harmonyMirror.selectDevice(nextSerial).catch(failure => setError(String(failure)));
           else { clearControl(); setSelectedSerial(nextSerial); setTree(null); }
-        }}>
-          {selectedSerial && !devices.some(device => device.serial === selectedSerial) ? <option value={selectedSerial}>{formatHarmonyDeviceLabel(deviceIdentities.current.get(selectedSerial) ?? { serial: selectedSerial })} · {copy("已断连", "Disconnected")}</option> : null}
-          {!devices.length && !selectedSerial ? <option value="">{copy("没有设备", "No device")}</option> : null}
-          {devices.map((device) => {
-            const label = formatHarmonyDeviceLabel(device);
-            const suffix = devices.some(other => other.serial !== device.serial && other.serial.slice(-6) === device.serial.slice(-6)) ? device.serial : device.serial.slice(-6);
-            return <option key={device.serial} value={device.serial}>{label === device.serial ? label : `${label} · ${suffix}`}</option>;
-          })}
-        </select>
+        }} options={[
+          ...(selectedSerial && !devices.some(device => device.serial === selectedSerial) ? [{ value: selectedSerial, label: `${formatHarmonyDeviceLabel(deviceIdentities.current.get(selectedSerial) ?? { serial: selectedSerial })} · ${copy("已断连", "Disconnected")}` }] : []),
+          ...(!devices.length && !selectedSerial ? [{ value: "", label: copy("没有设备", "No device") }] : []),
+          ...devices.map(device => { const label = formatHarmonyDeviceLabel(device); const suffix = devices.some(other => other.serial !== device.serial && other.serial.slice(-6) === device.serial.slice(-6)) ? device.serial : device.serial.slice(-6); return { value: device.serial, label: label === device.serial ? label : `${label} · ${suffix}` }; }),
+        ]} />
         <div className={styles.deviceConnection}>
         <span className={styles.deviceState} data-state={selected?.state ?? "unknown"}><i />{deviceStateLabel}</span>
         {selected && serialSuffix ? <span title={copy(`设备序列号：${selected.serial}`, `Device serial: ${selected.serial}`)}>{selected.serial === serialSuffix ? serialSuffix : `…${serialSuffix}`}</span> : null}
@@ -628,7 +624,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
         {!runtimeCandidates.length ? <p className={styles.inlineHint}>{copy("没有自动找到，请手动选择。", "Nothing detected. Choose it manually.")}</p> : null}
       </div>
 
-      <div className={styles.settingGroup}>
+      <div hidden className={styles.settingGroup}>
         <div className={styles.settingCopy}><strong>{copy("手动 Wi-Fi 连接", "Manual Wi-Fi connection")}</strong><small>{copy("通过 HDC 连接或断开局域网设备", "Connect or disconnect a LAN device through HDC")}</small></div>
         <TcpDeviceConnection chinese={chinese} onRefresh={() => refresh()} />
         {selected ? <p className={styles.inlineHint}>{selected.transport === "usb" ? copy("当前设备：USB（HDC 已标注）", "Current device: USB (reported by HDC)")
@@ -637,7 +633,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
             : copy("当前设备的连接方式未知；HDC 未给出可核实的标记", "Connection type unknown; HDC did not provide a verifiable marker")}</p> : null}
       </div>
 
-      <div className={styles.settingGroup}>
+      <div hidden className={styles.settingGroup}>
         <div className={styles.settingCopy}><strong>{copy("投屏来源", "Video provider")}</strong><small>{copy("默认复用 DevEco 实时视频；锁屏与解锁使用同一通道，侧栏与悬浮窗保持一致。需要兼容的 DevEco 服务与已授权的 HDC 连接。", "Use DevEco live video by default, with the same stream while locked or unlocked in both docked and floating views. Requires a compatible DevEco service and authorized HDC connection.")}</small></div>
         <select aria-label={copy("投屏来源", "Video provider")} value={videoProvider} onChange={event => setVideoProvider(event.target.value as "deveco" | "bundled" | "hos-scrcpy")}>
           <option value="deveco">{copy("原生实时视频（内置，无需 DevEco）", "Native live video (built in, no DevEco required)")}</option><option value="bundled">{copy("旧版自动兼容（可回退手机组件）", "Legacy automatic (allow phone component fallback)")}</option><option value="hos-scrcpy">HOScrcpy</option>
@@ -649,7 +645,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
         </> : null}
       </div>
 
-      <div className={styles.settingGroup}>
+      <div hidden className={styles.settingGroup}>
         <label className={styles.settingToggle}>
           <span className={styles.settingCopy}><strong>{copy("视觉模型", "Vision model")}</strong><small>{copy("只负责看手机屏幕", "Only reads the phone screen")}</small></span>
           <input type="checkbox" checked={visionEnabled} onChange={(event) => setVisionEnabled(event.target.checked)} />
@@ -668,20 +664,21 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       </div>
 
       <div className={styles.settingGroup}>
-        <div className={styles.settingsLinks}>
+        <div hidden className={styles.settingsLinks}>
           <button type="button" onClick={() => openTools("diagnostics")}>{copy("连接诊断", "Diagnostics")}</button>
           <button type="button" onClick={() => openTools("inputs")}>{copy("按键与触摸校准", "Input calibration")}</button>
         </div>
         <p className={styles.inlineHint}>{copy("锁屏时请在手机上手动解锁。投屏不会自动唤醒或解锁。", "Unlock on the phone when needed. Mirroring never wakes or unlocks it.")}</p>
       </div>
+      <HarmonyStorageSettings embedded />
       <div className={styles.settingsFooter}>
-        <button type="button" onClick={() => setSettingsOpen(false)}>{copy("取消", "Cancel")}</button>
-        <button className={styles.primaryButton} type="button" disabled={busy || (visionEnabled && !visionModelKey) || (videoProvider === "hos-scrcpy" && !hosPackageDirectory.trim())} onClick={saveSettings}>{copy("保存", "Save")}</button>
+        <button type="button" onClick={() => setSettingsOpen(false)}>{copy("关闭", "Close")}</button>
+        <button className={styles.primaryButton} type="button" disabled={busy} onClick={saveSettings}>{copy("保存连接设置", "Save connection settings")}</button>
       </div>
-      <HarmonyStorageSettings />
+
     </section></HarmonySettingsSurface> : null}
 
-    <nav className={styles.workbenchTabs} role="tablist" aria-label={copy("设备功能", "Device functions")}>
+    <nav hidden className={styles.workbenchTabs} role="tablist" aria-label={copy("设备功能", "Device functions")}>
       {(["overview", "apps", "files", "media", ...extraTabs] as Array<typeof toolTab>).map(tab => <div key={tab} className={styles.tabItem}>
         <button id={`${drawerId}-${tab}`} role="tab" aria-controls={drawerId} type="button" aria-selected={toolTab === tab} tabIndex={toolTab === tab ? 0 : -1} onKeyDown={event => {
           const tabs = ["overview", "apps", "files", "media", ...extraTabs] as Array<typeof toolTab>;
@@ -699,8 +696,8 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       <button type="button" className={styles.tasksButton} onClick={() => changeToolTab("history")}>{copy("任务", "Tasks")}{tasksCount ? ` ${tasksCount}` : ""}</button>
       {lease || holder ? <button type="button" className={styles.stopButton} onClick={stopDevice} aria-label={copy("停止设备任务", "Stop device task")}>{copy("停止", "Stop")}</button> : null}
     </nav>
-    {mirror?.open && (mirror.presentation === "sidebar" || mirror.pendingPresentation === "sidebar") ? <section className={styles.embeddedMirror} style={{ height: `calc(36px + ${65 * mirror.scale / 100}dvh)`, ...(mirror.presentation !== "sidebar" ? { position: "absolute", visibility: "hidden", pointerEvents: "none" } as const : {}) }} aria-hidden={mirror.presentation !== "sidebar"} aria-label={copy("侧栏投屏", "Sidebar mirror")}><MirrorWindow key={mirror.serial} embedded serial={mirror.serial} active={active} /></section> : null}
-    <main className={styles.workbenchContent} data-tab={toolTab}>
+    {mirror?.open && (mirror.presentation === "sidebar" || mirror.pendingPresentation === "sidebar") ? <section className={styles.embeddedMirror} style={{ flex: "1 1 0", maxHeight: "none", height: "auto", ...(mirror.presentation !== "sidebar" ? { position: "absolute", visibility: "hidden", pointerEvents: "none" } as const : {}) }} aria-hidden={mirror.presentation !== "sidebar"} aria-label={copy("侧栏投屏", "Sidebar mirror")}><MirrorWindow key={mirror.serial} embedded serial={mirror.serial} active={active} /></section> : null}
+    <main hidden className={styles.workbenchContent} data-tab={toolTab}>
       <div ref={drawerBodyRef} id={drawerId} role="tabpanel" aria-labelledby={`${drawerId}-${toolTab}`} className={styles.workbenchBody} aria-label={copy("工具内容", "Tool content")}>
         {toolTab === "overview" ? <section className={styles.overview}>
           <h2>{selected ? formatHarmonyDeviceLabel(selected) : copy("连接一台鸿蒙设备", "Connect a Harmony device")}</h2>

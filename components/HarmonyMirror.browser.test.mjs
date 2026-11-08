@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("mirror starts passive, resizes through the desktop bridge, and shows common messages", { timeout: 120000 }, async () => {
+test("mirror defaults to direct control, can be disabled, and renders legible messages", { timeout: 120000 }, async () => {
   const root=await mkdtemp(path.join(tmpdir(),"piora-mirror-ui-"));let browser, recording = null, completion = null, failInput = false, geometryWidth = 360;
   try {
     await writeFile(path.join(root,"loader.cjs"),`const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
@@ -41,7 +41,21 @@ test("mirror starts passive, resizes through the desktop bridge, and shows commo
       return route.fulfill(failInput?{status:409,json:{error:{code:'STALE_SNAPSHOT',message:'Input rejected by fixture'}}}:{json:{result:{}}});
     });
     await page.goto("https://mirror.test/");await page.addStyleTag({content:"*, *::before, *::after { transition: none !important; animation: none !important; }"});await page.waitForFunction(()=>window.geometry?.width===360);
-    await page.locator("canvas").click();await page.locator("canvas").press("a");assert.equal(requests.length,0);assert.deepEqual(inputRequests,[],'passive viewing cannot acquire input leases or send gestures');
+    for (const dark of [false,true]) {
+      const ratios=await page.evaluate(dark=>{
+        const dialog=document.createElement('div');dialog.className='dialog standalone';dialog.dataset.dark=String(dark);
+        dialog.innerHTML='<div class="body"><h2>连接详情</h2><p>设备画面信息</p></div><div class="actions"><button class="primary">确定</button></div>';document.body.appendChild(dialog);
+        const luminance=value=>value.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((sum,v,i)=>sum+v*[.2126,.7152,.0722][i],0);
+        const ratio=(a,b)=>{a=luminance(a);b=luminance(b);return (Math.max(a,b)+.05)/(Math.min(a,b)+.05)};
+        const style=getComputedStyle(dialog),button=getComputedStyle(dialog.querySelector('button'));
+        const result=[ratio(getComputedStyle(dialog.querySelector('h2')).color,style.backgroundColor),ratio(getComputedStyle(dialog.querySelector('p')).color,style.backgroundColor),ratio(button.color,button.backgroundColor)];dialog.remove();return result;
+      },dark);
+      assert.ok(ratios.every(value=>value>=4.5),`standalone ${dark?'dark':'light'} message contrast: ${ratios}`);
+    }
+    assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'true');
+    assert.deepEqual(inputRequests,[],'opening the mirror must not acquire an input lease');
+    await page.getByRole('button',{name:'操控手机'}).click();
+    await page.locator("canvas").click();await page.locator("canvas").press("a");assert.equal(requests.length,0);assert.deepEqual(inputRequests,[],'disabled control cannot acquire input leases or send gestures');
     assert.equal(await page.locator("footer").count(),0);
     assert.equal(await page.locator(".device").innerText(), "HUAWEI Mate 60");
     const themes=await page.evaluate(()=>window.mirrorThemes);

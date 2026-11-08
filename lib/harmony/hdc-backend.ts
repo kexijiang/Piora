@@ -1645,9 +1645,11 @@ export class HdcBackend implements HarmonyAutomationBackend {
       // Only the legacy HAP and system recorder paths require an unlocked phone.
       let opening = this.debugVideos.get(serial);
       if (!opening) {
+        const cached = this.deviceInfoBySerial.get(serial);
+        const knownVersion = cached && cached.expiresAt > Date.now() ? cached.device.uitestVersion : undefined;
         opening = DevEcoVideoSession.start(serial, source, (args, operation, abort, timeout) => this.run(args, operation, abort, timeout), () => {
           if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
-        });
+        }, undefined, knownVersion);
         this.debugVideos.set(serial, opening);
       }
       try {

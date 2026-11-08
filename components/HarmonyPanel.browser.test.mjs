@@ -167,8 +167,17 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
       return route.fulfill({ json: data });
     });
     await page.goto("https://harmony-panel.test/");
+    assert.equal(await page.locator(".workbenchTabs").isHidden(), true);
+    assert.equal(await page.locator(".workbenchContent").isHidden(), true);
+    // Exercise retained workbench components in isolation, outside the normal UI.
+    await page.evaluate(() => { document.querySelector(".workbenchTabs").hidden=false; document.querySelector(".workbenchContent").hidden=false; });
     await page.getByRole("tab", { name: "概览", exact: true }).waitFor();
-    await page.waitForFunction(() => document.querySelector('[aria-label="选择设备"]')?.value === "phone");
+    await page.waitForFunction(() => document.querySelector('[aria-label="选择设备"]')?.dataset.value === "phone");
+    const devicePicker = page.getByRole("combobox", { name: "选择设备", exact: true });
+    await devicePicker.focus(); await devicePicker.press("ArrowDown");
+    assert.equal(await page.getByRole("listbox", { name: "选择设备" }).getByRole("option").count(), 2);
+    await devicePicker.press("Escape");
+    assert.equal(await page.getByRole("listbox", { name: "选择设备" }).count(), 0);
     const selectTool = async name => {
       const tab = page.getByRole("tab", { name, exact: true });
       if (!await tab.count()) { await page.getByRole("button", { name: "更多 ▾", exact: true }).click(); await page.locator(".morePopover").getByRole("button", { name: name === "自动化" ? "自动化场景" : name, exact: true }).click(); }
@@ -182,7 +191,14 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     assert.equal(requests.some(r => r.endpoint === "/api/harmony/manual"), false);
     await page.locator(".toolbarActions").getByRole("button", { name: "设备设置", exact: true }).click();
     const deviceSettings = page.getByRole("dialog", { name: "设备设置", exact: true });
-    await deviceSettings.getByRole("button", { name: "保存", exact: true }).waitFor();
+    await deviceSettings.getByRole("button", { name: "保存连接设置", exact: true }).waitFor();
+    assert.equal(await deviceSettings.getByRole("combobox", { name: "投屏来源", exact: true }).count(), 0);
+    if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true}); await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"settings-simplified.png")}); }
+    await page.locator('.backdrop').click({ position: { x: 1, y: 1 } });
+    await deviceSettings.waitFor({ state: 'detached' });
+    await page.locator(".toolbarActions").getByRole("button", { name: "设备设置", exact: true }).click();
+    await deviceSettings.getByRole("button", { name: "保存连接设置", exact: true }).waitFor();
+    await deviceSettings.locator(".settingGroup[hidden]").evaluateAll(items => items.forEach(item => item.hidden = false));
     assert.equal(await deviceSettings.getByRole("option", { name: "原生实时视频（内置，无需 DevEco）", exact: true }).count(), 1);
     assert.equal(await deviceSettings.getByRole("combobox", { name: "投屏来源", exact: true }).inputValue(), "deveco");
     assert.ok(await deviceSettings.locator(".settingsPanel").evaluate(panel => {
@@ -190,7 +206,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
       return inner.height > 100 && inner.width > 300 && inner.left >= outer.left - 1 && inner.right <= outer.right + 1;
     }), "settings content stays inside the modal instead of absolute-position clipping");
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true}); await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"settings-visible.png")}); }
-    await deviceSettings.getByRole("button", {name:"取消", exact:true}).click();
+    await deviceSettings.getByRole("button", {name:"关闭", exact:true}).click();
     const wideViewport = page.viewportSize();
     await page.setViewportSize({ width: 380, height: 700 });
     assert.equal(await page.getByRole("combobox", { name: "投屏位置" }).isVisible(), true, "position selection remains available in a narrow sidebar");
@@ -201,7 +217,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
       const box = dialog.getBoundingClientRect();
       return box.height > 200 && box.left >= 0 && box.right <= innerWidth && box.top >= 0 && box.bottom <= innerHeight && dialog.scrollWidth <= dialog.clientWidth + 1;
     }), "settings remain visible, scrollable and inside the narrow window");
-    await deviceSettings.getByRole("button", { name: "取消", exact: true }).click();
+    await deviceSettings.getByRole("button", { name: "关闭", exact: true }).click();
     await page.getByLabel("设备操作菜单", { exact: true }).click();
     await page.setViewportSize(wideViewport);
     await page.getByRole("combobox", {name:"投屏位置"}).selectOption("sidebar");
@@ -209,7 +225,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     try { await page.getByRole("region", {name:"侧栏投屏"}).locator("canvas").waitFor(); } catch (error) { console.error("Sidebar diagnosis", errors, await page.locator("#root").innerText(), await page.locator(".embeddedMirror").count()); throw error; }
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"sidebar-mirror.png")});
     assert.deepEqual(await page.evaluate(()=>window.mirrorCalls), ["phone"], "docking reuses the viewer state without opening another floating window");
-    assert.equal(await page.getByRole("region",{name:"侧栏投屏"}).getByRole("combobox",{name:"画面缩放"}).count(),0);
+    assert.equal(await page.getByRole("region",{name:"侧栏投屏"}).getByRole("combobox",{name:"画面缩放"}).count(),1);
     await page.getByRole("combobox", {name:"投屏位置"}).selectOption("floating");
     await page.waitForFunction(()=>!document.querySelector('.embeddedMirror canvas'));
     assert.equal(await page.evaluate(() => window.maximized), false, "switching between sidebar and floating mirror does not expand the workspace");
@@ -218,15 +234,17 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     phoneState = "offline";
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
     await page.waitForFunction(() => document.querySelector('.toolbarActions button[title^="截图"]')?.disabled);
-    assert.equal(await page.getByRole("combobox", { name: "选择设备", exact: true }).inputValue(), "phone", "disconnect preserves device identity");
+    assert.equal(await page.getByRole("combobox", { name: "选择设备", exact: true }).getAttribute("data-value"), "phone", "disconnect preserves device identity");
     phonePresent = false;
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    await page.getByRole("option", { name: "HUAWEI Mate 70 Pro · 已断连", exact: true }).waitFor({ state: "attached" });
+    await page.getByRole("combobox", { name: "选择设备", exact: true }).click();
+    await page.getByRole("option", { name: "HUAWEI Mate 70 Pro · 已断连", exact: true }).waitFor();
+    await page.keyboard.press("Escape");
     phonePresent = true; phoneName = undefined;
     phoneState = "online";
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
     await page.waitForFunction(() => !document.querySelector('.toolbarActions button[title^="截图"]')?.disabled);
-    assert.match(await page.locator('[aria-label="选择设备"] option:checked').textContent(), /HUAWEI Mate 70 Pro/, "partial reconnect retains the model label");
+    assert.match(await page.getByRole('combobox', { name: '选择设备', exact: true }).textContent(), /HUAWEI Mate 70 Pro/, "partial reconnect retains the model label");
     phoneName = "HUAWEI Mate 70 Pro";
     screenshotPreview = await page.evaluate(() => { const c=document.createElement('canvas');c.width=200;c.height=400;const g=c.getContext('2d');g.fillStyle='#eee';g.fillRect(0,0,200,400);g.fillStyle='#333';g.font='20px sans-serif';g.fillText('Fixture',30,70);return c.toDataURL().split(',')[1]; }).then(value => Buffer.from(value,'base64'));
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) { await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR, { recursive: true }); await page.locator("#root").screenshot({ path: path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"workbench.png") }); }
@@ -257,6 +275,10 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     assert.equal(captureCount(), countBeforeSettings, "the old binding stops immediately after customization");
     await captureShortcut("Control+Alt+s");
     await page.reload();
+    assert.equal(await page.locator(".workbenchTabs").isHidden(), true);
+    assert.equal(await page.locator(".workbenchContent").isHidden(), true);
+    // Exercise retained workbench components in isolation, outside the normal UI.
+    await page.evaluate(() => { document.querySelector(".workbenchTabs").hidden=false; document.querySelector(".workbenchContent").hidden=false; });
     await page.getByRole("tab", { name: "概览", exact: true }).waitFor();
     await page.waitForFunction(() => document.querySelector('.toolbarActions button[title^="截图"]')?.title === "截图 · Ctrl+Alt+S");
     await captureShortcut("Control+Alt+s");
@@ -629,10 +651,11 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     await page.getByRole("button", { name: "开始录屏", exact: true }).waitFor();
     assert.equal(recordingPairs.at(-1).stopped.recordingId, started.recordingId);
     assert.equal(recordingPairs.at(-1).stopped.ownerId, started.ownerId);
-    await page.getByRole("combobox", { name: "选择设备", exact: true }).selectOption("phone2");
-    await page.waitForFunction(() => document.querySelector('[aria-label="选择设备"]')?.value === "phone2");
+    await page.getByRole("combobox", { name: "选择设备", exact: true }).click();
+    await page.getByRole("option", { name: /phone2|HUAWEI.*70/ }).last().click();
+    await page.waitForFunction(() => document.querySelector('[aria-label="选择设备"]')?.dataset.value === "phone2");
     await page.getByRole("button", { name: "刷新设备", exact: true }).click();
-    assert.equal(await page.getByRole("combobox", { name: "选择设备", exact: true }).inputValue(), "phone2");
+    assert.equal(await page.getByRole("combobox", { name: "选择设备", exact: true }).getAttribute("data-value"), "phone2");
     await page.setViewportSize({ width: 360, height: 900 });
     assert.equal(await page.locator("#root").evaluate(root => root.scrollWidth > root.clientWidth), false);
     await page.evaluate(() => window.setFixtureActive(false));
