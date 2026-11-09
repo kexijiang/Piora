@@ -1,6 +1,6 @@
 # GitHub issue 核查与默认模型修复
 
-核查日期：2026-11-09。基线：`origin/main` 的 `54d31df3`。主工作区含未提交修改，本次使用独立 worktree `F:/Piora-worktrees/issue-358-default-model-20261109`。
+核查日期：2026-11-09。基线：`origin/main` 的 `54d31df3`。主工作区含未提交修改，本次使用独立 worktree，分支 `codex/issue-358-default-model-20261109`。
 
 ## 未关闭 issue
 
@@ -23,15 +23,17 @@
 
 ## 验证
 
-Windows、Node 24.5.0，本地复用 `F:/Piora/node_modules`（Next 16.4.3），不修改共享依赖。精确锁文件依赖由远端 CI 安装验证。
+Windows、Node 24.5.0，本地复用已安装的依赖（Next 16.4.3），不修改共享依赖。精确锁文件依赖由远端 CI 安装验证。
 
 - 58/58 定向逻辑/渲染用例通过：`node --test --test-concurrency=1 lib/default-model.test.mjs lib/model-policy.test.mjs lib/model-scope-settings.test.mjs lib/provider-order.test.mjs lib/removed-providers.test.mjs components/ChatInput.test.mjs`。新用例在临时 agent 目录使用真实 SDK ModelRuntime、实际持久存储与路由函数，覆盖保存、失败、排序、隐藏、渠道移除、模型删除及显式会话选择。
 - Web 类型检查通过；首轮发现 nullable scope 的类型问题，已修复并完成复测。最终使用明确的 Node 入口 `node node_modules/@typescript/native/bin/tsc --noEmit`；中途未完成的重复调用和错误的标准 TypeScript 入口不计为通过。
 - 浏览器首轮两项失败：旧断言要求没有默认按钮，以及新增菜单定位器遗漏同一菜单项中的模型名。已按新需求维护计数、持久选择断言和定位器，未降低原有布局、拖动、保存与错误断言；2/2 复测通过。覆盖失败后重试、刷新、内置/自定义渠道、长按排序后保留选择；输入框测试覆盖中英文和 320/420/480/590/900px 容器。
 - 另有 20/20 模型范围、会话启动及真实 hook 浏览器回归通过：`node --test --test-concurrency=1 hooks/model-scope-startup.test.mjs lib/model-scope.test.mjs lib/new-chat-model-refresh-browser.test.mjs`。
-- 本次全部修改代码与测试的定向 ESLint、`git diff --check`、`npm run changelog:check` 通过。更新说明按用户规则写入 Unreleased，新增具体说明原因的 skip 片段，避免发布汇总重复收录。
+- 本次全部修改代码与测试的定向 ESLint、`git diff --check`、`npm run changelog:check` 通过。用户确认采用现行主线流程后，将本次更新说明从 Unreleased 移到独立 feature 片段，保留主线 CHANGELOG 原文；发布时统一汇总。
 - 最后补齐不可用配置行的禁用按钮及提示，设置页 1/1 单独复测、对应 ESLint 与最终 Web 类型检查通过。
 - 远端完整 CI、最终提交状态以本次 PR 的 Checks 为准；上述本地检查不等同完整 CI。
+- 初轮 [CI 42598326079](https://github.com/kexijiang/Piora/actions/runs/42598326079) 失败：更新说明门禁要求独立片段，Linux 目录检查检出本文中的工作站绝对路径，Windows 分片 2 的 11 项启动生命周期测试因 VM 夹具漏注入新增的 `readDefaultModel` 而失败。已迁移片段并去除工作站路径；夹具补齐该依赖，保留原有错误、释放、重试及并发断言，新增真实策略和选择器将默认模型传入 SDK 构造的回归。
+- 修复后 `node --test --test-concurrency=1 --test-timeout=180000 lib/rpc-startup-cleanup.test.mjs lib/default-model.test.mjs` 14/14 通过，更新说明片段解析/发布回归 7 项完成并通过；`npm run verify:hygiene` 和 `npm run changelog:check` 通过。新增用例首次使用原生 TS 导入时因无后缀依赖解析失败，改用项目现有 jiti 加载后完成上述复测，失败轮次不计为通过。
 - 浏览器使用真实组件、样式和 headless Edge，HTTP/模型目录为离线夹具。未调用真实模型、未验证 Electron 原生窗口、未运行本地全量 CI、`next build` 或发布包构建；没有发布新版本。
 
 ![默认模型设置（离线夹具）](issue-358-default-model.png)
