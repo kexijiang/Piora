@@ -14,7 +14,7 @@ import { patchNodeForgeDigestAlgorithm } from "./patch-bundled-dependencies.mjs"
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const reviewedReplacements = [
   { name: "brace-expansion", lockedVersion: "5.0.9", installedVersion: "5.0.12" },
-  { name: "undici", lockedVersion: "8.10.2", installedVersion: "8.12.3" },
+  { name: "undici", lockedVersion: "8.10.2", installedVersion: "8.12.4" },
 ];
 
 async function fingerprint(directory) {
@@ -80,8 +80,8 @@ export async function createVerifiedAuditLock(root = projectRoot) {
   }
   const forgePath = "node_modules/node-forge";
   const forge = lock.packages[forgePath];
-  if (forge?.version !== "1.4.2"
-    || forge.resolved !== "https://registry.npmjs.org/node-forge/-/node-forge-1.4.2.tgz"
+  if (forge?.version !== "1.4.3"
+    || forge.resolved !== "https://registry.npmjs.org/node-forge/-/node-forge-1.4.3.tgz"
     || !/^sha512-/.test(forge.integrity ?? "")) {
     throw new Error("Review the node-forge upstream audit fix after a lockfile change");
   }
