@@ -37,3 +37,12 @@ Windows、Node 24.5.0，本地复用已安装的依赖（Next 16.4.3），不修
 - 浏览器使用真实组件、样式和 headless Edge，HTTP/模型目录为离线夹具。未调用真实模型、未验证 Electron 原生窗口、未运行本地全量 CI、`next build` 或发布包构建；没有发布新版本。
 
 ![默认模型设置（离线夹具）](issue-358-default-model.png)
+
+## PR #368 渠道排序后默认标签补充修复
+
+- 成功保存渠道顺序后重新加载设置范围，立即同步有效默认模型；保留当前选中的渠道。
+- 浏览器夹具新增无显式默认、显式默认不可用、可用显式默认、排序保存失败和连续排序的标签断言。
+- Linux 云端、Node.js v24.22.1，复用现有依赖：58/58 相关测试通过（default-model、model-policy、model-scope-settings、provider-order、removed-providers、ChatInput）；Web `tsc --noEmit`、改动范围 ESLint、`changelog:check`、`git diff --check` 通过。
+- 本地浏览器用例编译完成，但 Chromium 启动被云端 socket 限制阻断，提升运行后仍失败，未记为通过；新增浏览器回归由最终提交的 Windows CI 执行。
+- 本地 `verify:hygiene` 命中已有 SkillsConfig 浏览器合成夹具的路径，因为该路径恰与云端 home 一致；该文件相对原 head 无差异，本次未修改。最终完整门禁以远端 CI 为准。
+- 未运行本地全量测试、原生窗口或真实模型验收；未运行开发目录构建、发布或部署。

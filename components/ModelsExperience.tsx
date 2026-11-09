@@ -141,6 +141,7 @@ export function ModelsExperience({ cwd, onClose, onModelsChanged, embedded = fal
       setProviderOrder(result.providers);
       if (view.kind === "home" && providerIds[0]) setView({ kind: "manage", id: providerIds[0] });
       onModelsChanged?.();
+      await reload();
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
     finally { setBusy(false); }
   };
