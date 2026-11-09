@@ -138,22 +138,23 @@ export async function patchBundledUndici(root = projectRoot, sourceRoot = root) 
     root,
     sourceRoot,
     packageName: "undici",
-    patchedVersion: "8.12.3",
-    acceptedBundledVersions: new Set(["8.5.0", "8.9.0", "8.10.2", "8.12.2", "8.12.3"]),
+    patchedVersion: "8.12.4",
+    acceptedBundledVersions: new Set(["8.5.0", "8.9.0", "8.10.2", "8.12.2", "8.12.3", "8.12.4"]),
   });
 }
 
-// node-forge 1.4.2 includes the upstream canonical DER DigestInfo fix from
+// node-forge 1.4.3 retains byte-identical rsa.js from 1.4.2 and the canonical
+// DER DigestInfo fix from
 // 1.4.1, superseding Piora's narrower extra-DigestAlgorithm-element patch.
-// Reviewed: https://github.com/digitalbazaar/forge/blob/v1.4.2/lib/rsa.js
+// Reviewed: https://github.com/digitalbazaar/forge/blob/v1.4.3/lib/rsa.js
 export const NODE_FORGE_RSA_REVIEWED_SHA256 = "6632e195295ce76f6bb9131ee770dcd6cc1ee4ffac7906302208b00faf95a87f";
 
 // Keep the postinstall entry point, but verify rather than modify upstream code.
 export async function patchNodeForgeDigestAlgorithm(root = projectRoot) {
   const packageRoot = join(root, "node_modules", "node-forge");
   const manifest = await readPackage(packageRoot);
-  if (manifest.name !== "node-forge" || manifest.version !== "1.4.2") {
-    throw new Error(`Review the node-forge upstream RSA fix after upgrading from 1.4.2; found ${manifest.name}@${manifest.version}`);
+  if (manifest.name !== "node-forge" || manifest.version !== "1.4.3") {
+    throw new Error(`Review the node-forge upstream RSA fix after upgrading from 1.4.3; found ${manifest.name}@${manifest.version}`);
   }
   const source = await readFile(join(packageRoot, "lib", "rsa.js"));
   const digest = createHash("sha256").update(source).digest("hex");

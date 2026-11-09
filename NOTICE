@@ -69,3 +69,12 @@ Windows distributions include Microsoft PowerShell 7 and its self-contained
 .NET runtime. See resources/powershell/LICENSE.txt, ThirdPartyNotices.txt and
 module-specific notices for upstream terms; the pinned source and checksum are
 documented in third_party/powershell/manifest.json and SOURCE.md.
+
+Mermaid's ELK layout dependency elkjs 0.12.1 is distributed under the
+Eclipse Public License 2.0 option (EPL-2.0 OR GPL-3.0-or-later).
+Its original license text is retained in the packaged license bundle.
+Unmodified corresponding source is available at:
+  https://github.com/kieler/elkjs/tree/0.12.1
+  https://github.com/eclipse-elk/elk/tree/v0.12.1
+The exact npm distribution is:
+  https://registry.npmjs.org/elkjs/-/elkjs-0.12.1.tgz

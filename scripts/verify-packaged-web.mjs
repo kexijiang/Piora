@@ -826,7 +826,7 @@ async function stopChild(child) {
 export async function verifyPackagedBundledDependencies(runtimeWebRoot) {
   const patchedBundledDependencies = [
     { name: "brace-expansion", version: "5.0.12" },
-    { name: "undici", version: "8.12.3" },
+    { name: "undici", version: "8.12.4" },
   ];
   for (const expected of patchedBundledDependencies) {
     const codingAgentRoot = join(runtimeWebRoot, "node_modules", "@earendil-works", "pi-coding-agent");

@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `f71d83541642899d11b972da95977e82e4896964d0476c19b7046f6385a37194`
+Lockfile SHA-256: `d07d9a90871ce8959ff901fb91455a79f8ab8c1318e54ddce67a6071f6a1341b`
 
-Unique locked packages: **1269**. Runtime packages: **769**. Build/development-only packages: **500**.
+Unique locked packages: **1268**. Runtime packages: **768**. Build/development-only packages: **500**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -120,26 +120,26 @@ Every locked package declares a license.
 | `@isaacs/fs-minipass` | `4.0.1` | ISC | No |
 | `@isaacs/nonrecursive-glob-match` | `1.0.3` | BlueOak-1.0.0 | No |
 | `@js-sdsl/ordered-map` | `4.4.2` | MIT | No |
-| `@koromix/koffi-android-arm64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-android-x64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-darwin-arm64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-darwin-x64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-freebsd-arm64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-freebsd-ia32` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-freebsd-x64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-linux-arm` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-linux-arm64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-linux-ia32` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-linux-loong64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-linux-ppc64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-linux-riscv64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-linux-x64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-openbsd-arm64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-openbsd-ia32` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-openbsd-x64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-win32-arm64` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-win32-ia32` | `3.3.6` | MIT | Yes |
-| `@koromix/koffi-win32-x64` | `3.3.6` | MIT | Yes |
+| `@koromix/koffi-android-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-android-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-darwin-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-darwin-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-freebsd-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-freebsd-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-freebsd-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-arm` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-loong64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-ppc64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-riscv64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-openbsd-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-openbsd-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-openbsd-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-win32-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-win32-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-win32-x64` | `3.3.7` | MIT | Yes |
 | `@lezer/common` | `1.5.2` | MIT | No |
 | `@lezer/cpp` | `1.1.6` | MIT | No |
 | `@lezer/css` | `1.3.6` | MIT | No |
@@ -157,21 +157,21 @@ Every locked package declares a license.
 | `@lezer/sass` | `1.1.0` | MIT | No |
 | `@lezer/xml` | `1.0.6` | MIT | No |
 | `@lezer/yaml` | `1.0.4` | MIT | No |
-| `@lobehub/icons` | `6.14.0` | MIT | No |
+| `@lobehub/icons` | `6.15.0` | MIT | No |
 | `@marijn/find-cluster-break` | `1.0.4` | MIT | No |
 | `@mermaid-js/parser` | `2.0.1` | MIT | No |
 | `@microsoft/winappcli` | `0.7.1` | MIT | Yes |
 | `@mixmark-io/domino` | `2.2.0` | BSD-2-Clause | No |
 | `@modelcontextprotocol/sdk` | `1.32.2` | MIT | No |
-| `@next/env` | `16.4.4` | MIT | No |
-| `@next/swc-darwin-arm64` | `16.4.4` | MIT | Yes |
-| `@next/swc-darwin-x64` | `16.4.4` | MIT | Yes |
-| `@next/swc-linux-arm64-gnu` | `16.4.4` | MIT | Yes |
-| `@next/swc-linux-arm64-musl` | `16.4.4` | MIT | Yes |
-| `@next/swc-linux-x64-gnu` | `16.4.4` | MIT | Yes |
-| `@next/swc-linux-x64-musl` | `16.4.4` | MIT | Yes |
-| `@next/swc-win32-arm64-msvc` | `16.4.4` | MIT | Yes |
-| `@next/swc-win32-x64-msvc` | `16.4.4` | MIT | Yes |
+| `@next/env` | `16.4.5` | MIT | No |
+| `@next/swc-darwin-arm64` | `16.4.5` | MIT | Yes |
+| `@next/swc-darwin-x64` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-arm64-gnu` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-arm64-musl` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-x64-gnu` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-x64-musl` | `16.4.5` | MIT | Yes |
+| `@next/swc-win32-arm64-msvc` | `16.4.5` | MIT | Yes |
+| `@next/swc-win32-x64-msvc` | `16.4.5` | MIT | Yes |
 | `@oozcitak/dom` | `1.15.10` | MIT | No |
 | `@oozcitak/infra` | `1.0.8` | MIT | No |
 | `@oozcitak/url` | `1.0.4` | MIT | No |
@@ -394,7 +394,7 @@ Every locked package declares a license.
 | `ecdsa-sig-formatter` | `1.0.11` | Apache-2.0 | No |
 | `ee-first` | `1.1.1` | MIT | No |
 | `electron-updater` | `6.8.11` | MIT | No |
-| `elkjs` | `0.9.3` | EPL-2.0 | No |
+| `elkjs` | `0.12.1` | EPL-2.0 OR GPL-3.0-or-later | No |
 | `emoji-regex` | `8.0.0` | MIT | No |
 | `emoji-regex` | `9.2.2` | MIT | No |
 | `encodeurl` | `2.0.0` | MIT | No |
@@ -513,7 +513,7 @@ Every locked package declares a license.
 | `jws` | `4.0.1` | MIT | No |
 | `katex` | `0.19.1` | MIT | No |
 | `khroma` | `2.1.0` | MIT | No |
-| `koffi` | `3.3.6` | MIT | No |
+| `koffi` | `3.3.7` | MIT | No |
 | `layout-base` | `1.0.2` | MIT | No |
 | `layout-base` | `2.0.1` | MIT | No |
 | `lazy-val` | `1.0.5` | MIT | No |
@@ -553,9 +553,9 @@ Every locked package declares a license.
 | `mdast-util-to-markdown` | `2.1.2` | MIT | No |
 | `mdast-util-to-string` | `4.0.0` | MIT | No |
 | `media-typer` | `1.1.1` | MIT | No |
-| `mediabunny` | `1.65.0` | MPL-2.0 | No |
+| `mediabunny` | `1.65.2` | MPL-2.0 | No |
 | `merge-descriptors` | `2.0.0` | MIT | No |
-| `mermaid` | `12.2.0` | MIT | No |
+| `mermaid` | `12.3.0` | MIT | No |
 | `micromark` | `4.0.2` | MIT | No |
 | `micromark-core-commonmark` | `2.0.3` | MIT | No |
 | `micromark-extension-gfm` | `3.0.0` | MIT | No |
@@ -600,7 +600,7 @@ Every locked package declares a license.
 | `nan` | `2.28.0` | MIT | Yes |
 | `nanoid` | `3.3.18` | MIT | No |
 | `negotiator` | `1.1.0` | MIT | No |
-| `next` | `16.4.4` | MIT | No |
+| `next` | `16.4.5` | MIT | No |
 | `node-addon-api` | `7.1.1` | MIT | No |
 | `node-domexception` | `1.0.0` | MIT | No |
 | `node-fetch` | `3.3.2` | MIT | No |
@@ -629,7 +629,7 @@ Every locked package declares a license.
 | `picocolors` | `1.1.1` | ISC | No |
 | `pkce-challenge` | `5.0.1` | MIT | No |
 | `pkg-types` | `1.3.1` | MIT | No |
-| `playwright-core` | `1.64.1` | Apache-2.0 | No |
+| `playwright-core` | `1.65.0` | Apache-2.0 | No |
 | `points-on-curve` | `0.2.0` | MIT | No |
 | `points-on-path` | `0.2.1` | MIT | No |
 | `polished` | `4.3.1` | MIT | No |
@@ -733,16 +733,16 @@ Every locked package declares a license.
 | `ts-algebra` | `2.0.0` | MIT | No |
 | `ts-dedent` | `2.2.0` | MIT | No |
 | `tslib` | `2.8.1` | 0BSD | No |
-| `turndown` | `7.2.4` | MIT | No |
+| `turndown` | `7.2.5` | MIT | No |
 | `turndown-plugin-gfm` | `1.0.2` | MIT | No |
 | `tweetnacl` | `0.14.5` | Unlicense | No |
 | `type-is` | `2.1.0` | MIT | No |
 | `typebox` | `1.3.27` | MIT | No |
-| `typebox` | `1.4.3` | MIT | No |
+| `typebox` | `1.4.4` | MIT | No |
 | `typescript` | `6.0.2` | Apache-2.0 | No |
 | `ufo` | `1.6.4` | MIT | No |
 | `underscore` | `1.13.8` | MIT | No |
-| `undici` | `8.12.3` | MIT | No |
+| `undici` | `8.12.4` | MIT | No |
 | `undici-types` | `5.26.5` | MIT | No |
 | `undici-types` | `8.9.0` | MIT | No |
 | `unified` | `11.0.5` | MIT | No |
@@ -756,7 +756,6 @@ Every locked package declares a license.
 | `universalify` | `2.0.1` | MIT | No |
 | `unpipe` | `1.0.0` | MIT | No |
 | `util-deprecate` | `1.0.2` | MIT | No |
-| `uuid` | `11.1.1` | MIT | No |
 | `vary` | `1.1.2` | MIT | No |
 | `vfile` | `6.0.3` | MIT | No |
 | `vfile-location` | `5.0.3` | MIT | No |
@@ -851,7 +850,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@malept/flatpak-bundler` | `0.4.0` | MIT | No |
 | `@napi-rs/wasm-runtime` | `0.2.12` | MIT | Yes |
 | `@napi-rs/wasm-runtime` | `1.2.2` | MIT | Yes |
-| `@next/eslint-plugin-next` | `16.4.4` | MIT | No |
+| `@next/eslint-plugin-next` | `16.4.5` | MIT | No |
 | `@noble/hashes` | `1.4.0` | MIT | No |
 | `@noble/hashes` | `1.8.0` | MIT | No |
 | `@nodelib/fs.scandir` | `2.1.5` | MIT | No |
@@ -1011,7 +1010,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `dotenv-expand` | `11.0.7` | BSD-2-Clause | No |
 | `duplexer2` | `0.1.4` | BSD-3-Clause | No |
 | `ejs` | `3.1.10` | Apache-2.0 | No |
-| `electron` | `45.2.1` | MIT | No |
+| `electron` | `45.2.3` | MIT | No |
 | `electron-builder` | `26.18.0` | MIT | No |
 | `electron-publish` | `26.18.0` | MIT | No |
 | `electron-to-chromium` | `1.5.399` | ISC | No |
@@ -1027,7 +1026,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `es6-error` | `4.1.1` | MIT | Yes |
 | `escape-string-regexp` | `4.0.0` | MIT | No |
 | `eslint` | `10.14.0` | MIT | No |
-| `eslint-config-next` | `16.4.4` | MIT | No |
+| `eslint-config-next` | `16.4.5` | MIT | No |
 | `eslint-import-resolver-node` | `0.3.9` | MIT | No |
 | `eslint-import-resolver-typescript` | `3.10.1` | ISC | No |
 | `eslint-module-utils` | `2.12.1` | MIT | No |
@@ -1177,7 +1176,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `node-abi` | `4.40.0` | MIT | No |
 | `node-api-version` | `0.2.1` | MIT | No |
 | `node-exports-info` | `1.6.0` | MIT | No |
-| `node-forge` | `1.4.2` | (BSD-3-Clause OR GPL-2.0) | No |
+| `node-forge` | `1.4.3` | (BSD-3-Clause OR GPL-2.0) | No |
 | `node-gyp` | `12.4.0` | MIT | No |
 | `node-int64` | `0.4.0` | MIT | No |
 | `node-releases` | `2.0.51` | MIT | No |
