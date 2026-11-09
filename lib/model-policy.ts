@@ -41,16 +41,21 @@ export function readPioraDefaultModel(environment: Environment): ModelReference 
 /**
  * Resolve the default for a new desktop session.
  *
- * The first available model in display order is the default. Legacy settings
- * and launcher defaults must not silently override the user's channel order.
+ * An available explicit Piora choice wins; otherwise use display order.
+ * Legacy SDK settings and launcher defaults do not opt users into this choice.
  */
 export function resolveDefaultModelPreference(options: {
   models: readonly ModelIdentity[];
+  explicitDefault?: ModelReference | null;
   settingsProvider?: string | null;
   settingsModel?: string | null;
   environment: Environment;
   preferredProvider?: string;
 }): ModelReference | undefined {
+  const selected = options.explicitDefault;
+  if (selected && options.models.some(model => model.provider === selected.provider && model.id === selected.modelId)) {
+    return { provider: selected.provider, modelId: selected.modelId };
+  }
   const first = options.models[0];
   return first ? { provider: first.provider, modelId: first.id } : undefined;
 }

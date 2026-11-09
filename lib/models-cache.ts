@@ -1,6 +1,6 @@
 export interface ModelsData {
   models: Record<string, string>;
-  modelList: { id: string; name: string; provider: string; contextWindow?: number }[];
+  modelList: { id: string; name: string; provider: string; contextWindow?: number; isDefault?: boolean }[];
   defaultModel: { provider: string; modelId: string } | null;
   thinkingLevels: Record<string, string[]>;
   thinkingLevelMaps: Record<string, Record<string, string | null>>;

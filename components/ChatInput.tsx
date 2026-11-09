@@ -109,6 +109,7 @@ interface ModelOption {
   provider: string;
   modelId: string;
   name: string;
+  isDefault?: boolean;
 }
 
 interface PromptOptimizationState {
@@ -134,7 +135,7 @@ interface Props {
   model?: { provider: string; modelId: string } | null;
   isAutoModelSelection?: boolean;
   modelNames?: Record<string, string>;
-  modelList?: { id: string; name: string; provider: string; contextWindow?: number }[];
+  modelList?: { id: string; name: string; provider: string; contextWindow?: number; isDefault?: boolean }[];
   modelError?: string | null;
   onModelChange?: (provider: string, modelId: string) => Promise<boolean>;
   onCompact?: () => void;
@@ -1651,7 +1652,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   // Build model options: prefer modelList (has provider info), fallback to modelNames
   const modelOptions: ModelOption[] = (() => {
     if (modelList && modelList.length > 0) {
-      return modelList.map((m) => ({ provider: m.provider, modelId: m.id, name: m.name }));
+      return modelList.map((m) => ({ provider: m.provider, modelId: m.id, name: m.name, isDefault: m.isDefault }));
     }
     return Object.entries(modelNames ?? {}).map(([modelId, name]) => ({
         provider: model?.provider ?? "unknown",
@@ -2499,6 +2500,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                   <span className="model-settings-trigger-label">
                     {currentName ?? (modelOptions.length > 0 ? t("chat.selectModel") : t("chat.noModels"))}
                   </span>
+                  {!isAutoModelSelection && modelOptions.some(option => option.isDefault && option.provider === model?.provider && option.modelId === model?.modelId) && <span className="model-default-badge">{t("models.defaultBadge")}</span>}
                   {onThinkingLevelChange && !isAutoModelSelection ? <span className="model-settings-trigger-reasoning">{thinkingLevelLabel}</span> : null}
                 </button>
                 {modelDropdownOpen && modelDropdownRect && (() => {
@@ -2568,6 +2570,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                                 >
                                   <ModelProviderIcon className="model-settings-choice-icon" provider={option.provider} modelId={option.modelId} modelName={option.name} size={15} />
                                   <span className="model-settings-choice-label">{option.name}</span>
+                                  {option.isDefault && <span className="model-default-badge">{t("models.defaultBadge")}</span>}
                                   {isActive ? <AliIcon name="check" size={11} /> : null}
                                 </button>
                               );
