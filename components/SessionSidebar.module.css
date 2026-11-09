@@ -172,6 +172,28 @@
   overflow: hidden;
 }
 
+.projectAreaCollapsed {
+  min-height: 0;
+  flex: 0 0 auto;
+}
+
+.projectScroll[hidden] {
+  display: none;
+}
+
+.sessionOverflowToggle {
+  width: calc(100% - 12px);
+  margin: 2px 6px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-align: left;
+  font-size: var(--text-xs);
+}
+
 .projectsHeader {
   flex: 0 0 auto;
   padding: 0;

@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复侧栏顶部“项目”折叠误改各项目展开状态的问题，改为整体收起项目列表并保留内部状态；恢复项目内的五条会话预览、“显示所有会话 / 收起会话”入口和独立持久化状态，保留完整分支树、置顶及手动排序。
+
 ## [0.5.10-beta.15] - 2026-11-09
 
 ### 修复

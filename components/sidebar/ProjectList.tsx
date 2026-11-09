@@ -6,6 +6,7 @@ import { useI18n } from "@/hooks/useI18n";
 import type { SessionProjectGroup as SessionProjectGroupData } from "@/lib/session-project-groups";
 import type { SessionFlags } from "@/lib/session-flags";
 import type { SessionInfo } from "@/lib/types";
+import { getProjectSessionPreview } from "@/lib/sidebar-tree-window";
 import { AliIcon } from "../AliIcon";
 import { ProjectModelDialog } from "../ProjectModelDialog";
 import styles from "../SessionSidebar.module.css";
@@ -23,12 +24,14 @@ export function ProjectSessionGroup({
   homeDir,
   isSelectedProject,
   isCollapsed,
+  sessionsExpanded,
   selectedSessionId,
   runningSessionIds,
   unreadSessionIds,
   moveTargets,
   onSelectProject,
   onToggleProject,
+  onToggleSessions,
   onSelectSession,
   onNewSession,
   onRenamed,
@@ -56,12 +59,14 @@ export function ProjectSessionGroup({
   homeDir: string;
   isSelectedProject: boolean;
   isCollapsed: boolean;
+  sessionsExpanded: boolean;
   selectedSessionId: string | null;
   runningSessionIds: Set<string>;
   unreadSessionIds: Set<string>;
   moveTargets: SessionMoveTarget[];
   onSelectProject: () => void;
   onToggleProject: () => void;
+  onToggleSessions: () => void;
   onSelectSession: (session: SessionInfo) => void;
   onNewSession?: (cwd: string) => void;
   onRenamed: () => void;
@@ -97,7 +102,8 @@ export function ProjectSessionGroup({
     (node) => node.session.id,
     (node) => Boolean(sessionFlags[node.session.id]?.pinned),
   );
-  const visibleRoots = orderedRoots;
+  const showFullTree = sessionsExpanded || group.sessions.length <= 5;
+  const visibleRoots = showFullTree ? orderedRoots : getProjectSessionPreview(group.sessions, sessionFlags, sessionOrder);
   const runningCount = group.sessions.filter((session) => runningSessionIds.has(session.id)).length;
   const unreadCount = group.sessions.filter((session) => unreadSessionIds.has(session.id)).length;
 
@@ -169,7 +175,7 @@ export function ProjectSessionGroup({
         )}
         <TaskList
           nodes={visibleRoots}
-          reorderable={projectOpen}
+          reorderable={showFullTree}
           selectedSessionId={selectedSessionId}
           runningSessionIds={runningSessionIds}
           unreadSessionIds={unreadSessionIds}
@@ -186,6 +192,18 @@ export function ProjectSessionGroup({
           sessionOrder={sessionOrder}
           onReorderSessions={onReorderSessions}
         />
+        {group.sessions.length > 5 && (
+          <button
+            type="button"
+            onClick={onToggleSessions}
+            aria-expanded={sessionsExpanded}
+            className={styles.sessionOverflowToggle}
+          >
+            {sessionsExpanded
+              ? t("sidebar.showFewerSessions")
+              : t("sidebar.showAllSessions", { count: group.sessions.length })}
+          </button>
+        )}
       </div> : null}
       {menuAnchor && createPortal(
         <ProjectContextMenu

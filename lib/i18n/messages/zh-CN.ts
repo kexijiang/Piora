@@ -1805,7 +1805,7 @@ export const zhCNLocale: LocalePlugin = {
     "sidebar.collapseAllProjects": "折叠全部项目",
     "sidebar.newConversation": "新对话",
     "sidebar.showMoreSessions": "显示另外 {count} 个会话",
-    "sidebar.showAllSessions": "查看全部（{count}）",
+    "sidebar.showAllSessions": "显示所有会话（{count}）",
     "sidebar.showFewerSessions": "收起会话",
     "sidebar.sessionsCount": "{count} 个会话",
     "sidebar.noSessionsInProject": "还没有会话",

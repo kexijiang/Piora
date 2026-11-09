@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type Dispatch, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type Dispatch, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { getProjectLabel, type SessionProjectGroup } from "@/lib/session-project-groups";
 import type { SessionFlags } from "@/lib/session-flags";
@@ -10,6 +10,7 @@ import styles from "../SessionSidebar.module.css";
 import { ProjectSessionGroup } from "./ProjectList";
 import type { SessionMoveTarget } from "./TaskContextMenu";
 import { isProjectNotificationMuted } from "@/lib/project-notification-preferences";
+import { useSectionDisclosure } from "./useSectionDisclosure";
 
 interface Props {
   loading: boolean; error: string | null;
@@ -17,6 +18,8 @@ interface Props {
   projectGroups: SessionProjectGroup[];
   selectedProject: string | null; collapsedProjectKeys: Set<string>;
   setCollapsedProjectKeys: Dispatch<SetStateAction<Set<string>>>;
+  expandedProjectSessionKeys: Set<string>;
+  setExpandedProjectSessionKeys: Dispatch<SetStateAction<Set<string>>>;
   selectedSessionId: string | null; runningSessionIds: Set<string>; unreadSessionIds: Set<string>;
   moveTargets: SessionMoveTarget[];
   setSelectedCwd: Dispatch<SetStateAction<string | null>>; homeDir: string;
@@ -46,8 +49,9 @@ interface ProjectDragState {
 export function SidebarProjectArea(props: Props) {
   const { t } = useI18n();
   const { loading, error, handleDefaultCwd, handleCustomPathClick, projectGroups, selectedProject, collapsedProjectKeys, setCollapsedProjectKeys, selectedSessionId, runningSessionIds, unreadSessionIds, moveTargets, setSelectedCwd, homeDir, handleSelectSessionFromList, handleNewSessionInProject, loadSessions, handleSessionDeletedWithUndo, sessionFlags, patchSessionFlag, duplicateSession, markSessionUnread, moveSession, pinnedProjectRoots, projectAliases, mutedProjectRoots, toggleProjectMuted, togglePinnedProject, renameProject, removeProject, onReorderProjects, sessionOrder, onReorderSessions } = props;
-  const allProjectsCollapsed = projectGroups.length > 0
-    && projectGroups.every((group) => collapsedProjectKeys.has(group.key));
+  const { expandedProjectSessionKeys, setExpandedProjectSessionKeys } = props;
+  const { collapsed: projectsCollapsed, toggle: toggleProjects } = useSectionDisclosure("projects");
+  const projectListId = useId();
   const projectScrollRef = useRef<HTMLDivElement>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const candidateRef = useRef<{ pointerId: number; root: string; x: number; y: number } | null>(null);
@@ -156,7 +160,7 @@ export function SidebarProjectArea(props: Props) {
   }, []);
 
   return (
-    <section className={styles.projectArea}>
+    <section className={`${styles.projectArea}${projectsCollapsed ? ` ${styles.projectAreaCollapsed}` : ""}`}>
       {/* Keep the Projects bar outside the session scroller so rows cannot cover it. */}
       {!loading && !error && (
         <div
@@ -165,28 +169,19 @@ export function SidebarProjectArea(props: Props) {
           <button
             type="button"
             className={styles.projectsHeaderToggle}
-            onClick={() => {
-              setCollapsedProjectKeys((previous) => {
-                const shouldExpandAll = projectGroups.every((group) => previous.has(group.key));
-                const next = new Set(previous);
-                for (const group of projectGroups) {
-                  if (shouldExpandAll) next.delete(group.key);
-                  else next.add(group.key);
-                }
-                return next;
-              });
-            }}
+            onClick={toggleProjects}
             disabled={projectGroups.length === 0}
-            title={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
-            aria-label={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
-            aria-expanded={!allProjectsCollapsed}
+            title={t(projectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
+            aria-label={t(projectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
+            aria-expanded={!projectsCollapsed}
+            aria-controls={projectListId}
           >
             <span>{t("sidebar.projects")}</span>
             <AliIcon
               name="chevron-right"
               size={11}
               strokeWidth={1.8}
-              className={allProjectsCollapsed ? undefined : styles.projectsHeaderChevronOpen}
+              className={projectsCollapsed ? undefined : styles.projectsHeaderChevronOpen}
             />
           </button>
           <div className={styles.sectionLabelActions}>
@@ -213,6 +208,8 @@ export function SidebarProjectArea(props: Props) {
       )}
       {/* Codex-style project folders with their conversations nested below. */}
       <div
+        id={projectListId}
+        hidden={projectsCollapsed}
         ref={projectScrollRef}
         data-session-drag-scroll
         className={`sidebar-project-scroll ${styles.projectScroll}`}
@@ -239,6 +236,7 @@ export function SidebarProjectArea(props: Props) {
             homeDir={homeDir}
             isSelectedProject={selectedProject === group.projectRoot}
             isCollapsed={collapsedProjectKeys.has(group.key)}
+            sessionsExpanded={expandedProjectSessionKeys.has(group.key)}
             selectedSessionId={selectedSessionId}
             runningSessionIds={runningSessionIds}
             unreadSessionIds={unreadSessionIds}
@@ -248,6 +246,14 @@ export function SidebarProjectArea(props: Props) {
             }}
             onToggleProject={() => {
               setCollapsedProjectKeys((previous) => {
+                const next = new Set(previous);
+                if (next.has(group.key)) next.delete(group.key);
+                else next.add(group.key);
+                return next;
+              });
+            }}
+            onToggleSessions={() => {
+              setExpandedProjectSessionKeys((previous) => {
                 const next = new Set(previous);
                 if (next.has(group.key)) next.delete(group.key);
                 else next.add(group.key);

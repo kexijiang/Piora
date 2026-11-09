@@ -49,6 +49,7 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
   const deletedSessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     collapsedProjectKeys, setCollapsedProjectKeys,
+    expandedProjectSessionKeys, setExpandedProjectSessionKeys,
     pinnedProjectRoots, setPinnedProjectRoots,
     rememberedProjectRoots, setRememberedProjectRoots,
     hiddenProjectRoots, setHiddenProjectRoots,
@@ -391,8 +392,9 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
       return next.size === previous.size ? previous : next;
     };
     setCollapsedProjectKeys(prune);
+    setExpandedProjectSessionKeys(prune);
     setProjectOrder((previous) => reconcileProjectOrder(previous, projectGroups.map((group) => group.projectRoot)));
-  }, [projectGroups, loading, error, setCollapsedProjectKeys, setProjectOrder]);
+  }, [projectGroups, loading, error, setCollapsedProjectKeys, setExpandedProjectSessionKeys, setProjectOrder]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -458,6 +460,8 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
         projectGroups={projectGroups} selectedProject={selectedProject}
         collapsedProjectKeys={collapsedProjectKeys}
         setCollapsedProjectKeys={setCollapsedProjectKeys}
+        expandedProjectSessionKeys={expandedProjectSessionKeys}
+        setExpandedProjectSessionKeys={setExpandedProjectSessionKeys}
         selectedSessionId={selectedSessionId} runningSessionIds={runningSessionIds} unreadSessionIds={unreadSessionIds}
         moveTargets={sessionMoveTargets} setSelectedCwd={setSelectedCwd} homeDir={homeDir}
         handleSelectSessionFromList={handleSelectSessionFromList} handleNewSessionInProject={handleNewSessionInProject}

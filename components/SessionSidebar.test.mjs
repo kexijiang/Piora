@@ -152,7 +152,7 @@ test("keeps projectless conversations in a project-aligned chat section", () => 
   assert.match(sidebarStyles, /\.chatSessionList\s*\{[^}]*padding:\s*4px 1px 8px/s);
 });
 
-test("collapsed projects hide sessions while expanded trees and status remain accessible", () => {
+test("project visibility and session overflow keep independent state and preserve full trees", () => {
   assert.match(source, /projectOpen \? <div className=\{styles\.sessionList\}>/);
   assert.match(source, /applySessionOrder\(\s*group\.tree/);
   assert.match(source, /group\.sessions\.filter\(\(session\) => runningSessionIds\.has\(session\.id\)\)/);
@@ -161,7 +161,13 @@ test("collapsed projects hide sessions while expanded trees and status remain ac
   assert.match(source, /name=\{projectOpen \? "folder-open" : "folder"\}/);
   assert.match(sidebarSource, /sidebar-running-spinner/);
   assert.match(source, /aria-expanded=\{projectOpen\}/);
-  assert.doesNotMatch(source, /getProjectSessionPreview/);
+  assert.match(source, /const showFullTree = sessionsExpanded \|\| group\.sessions\.length <= 5/);
+  assert.match(source, /showFullTree \? orderedRoots : getProjectSessionPreview\(group\.sessions, sessionFlags, sessionOrder\)/);
+  assert.match(source, /reorderable=\{showFullTree\}/);
+  assert.match(source, /onClick=\{onToggleSessions\}/);
+  assert.match(source, /aria-expanded=\{sessionsExpanded\}/);
+  assert.match(source, /sidebar\.showAllSessions/);
+  assert.match(source, /sidebar\.showFewerSessions/);
   assert.match(source, /onSelectProject\(\); onToggleProject\(\);/);
 });
 
@@ -176,14 +182,21 @@ test("project creation lives in the projects header without a duplicate list", (
   assert.match(sidebarStyles, /\.projectsHeader:hover \.projectsHeaderToggle svg,[\s\S]*?\.projectsHeader:hover \.sectionLabelActions/);
 });
 
-test("toggles all visible project folders from the projects header", () => {
-  assert.match(source, /const allProjectsCollapsed = projectGroups\.length > 0[\s\S]*?projectGroups\.every/);
+test("projects header hides its list without rewriting individual project or session expansion", () => {
+  const projectArea = splitSources[2];
+  const header = projectArea.slice(projectArea.indexOf("className={styles.projectsHeaderToggle}"), projectArea.indexOf("className={styles.sectionLabelActions}"));
+  assert.match(projectArea, /useSectionDisclosure\("projects"\)/);
+  assert.match(header, /onClick=\{toggleProjects\}/);
+  assert.doesNotMatch(header, /setCollapsedProjectKeys|setExpandedProjectSessionKeys/);
   assert.match(source, /sidebar\.expandAllProjects/);
   assert.match(source, /sidebar\.collapseAllProjects/);
-  assert.match(source, /const next = new Set\(previous\)[\s\S]*?next\.delete\(group\.key\)[\s\S]*?next\.add\(group\.key\)/);
+  assert.match(projectArea, /hidden=\{projectsCollapsed\}/);
+  assert.match(projectArea, /aria-controls=\{projectListId\}/);
   assert.match(source, /name="chevron-right"/);
-  assert.match(source, /className=\{allProjectsCollapsed \? undefined : styles\.projectsHeaderChevronOpen\}/);
-  assert.match(source, /aria-expanded=\{!allProjectsCollapsed\}/);
+  assert.match(source, /className=\{projectsCollapsed \? undefined : styles\.projectsHeaderChevronOpen\}/);
+  assert.match(source, /aria-expanded=\{!projectsCollapsed\}/);
+  assert.match(sidebarStyles, /\.projectAreaCollapsed\s*\{[^}]*min-height:\s*0[^}]*flex:\s*0 0 auto/s);
+  assert.match(sidebarStyles, /\.projectScroll\[hidden\]\s*\{[^}]*display:\s*none/s);
 });
 
 test("exposes the existing validated project picker to shell-level project actions", () => {
