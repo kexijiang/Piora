@@ -37,7 +37,7 @@ export function BrowserHandoffNotice({ sessionId, busy, onWaitingChange }: { ses
     window.dispatchEvent(new CustomEvent("piora:open-agent-browser", { detail: { sessionId } }));
   }, [isWaiting, login, sessionId, wait]);
   useEffect(() => { onWaitingChange?.(isWaiting); return () => onWaitingChange?.(false); }, [isWaiting, onWaitingChange]);
-  if (snapshot?.id !== sessionId) return null;
+  if (!snapshot || snapshot.id !== sessionId) return null;
   const data = snapshot?.data;
   const waiting = data?.wait?.backend === "desktop";
   const outcome = data?.outcome;
