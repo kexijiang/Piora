@@ -855,7 +855,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
               sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={setCommandExecutionDialog}
             />
 
-            {agentRunning && (agentPhase?.kind === "stopping" || (!streamState.streamingMessage && visionStatus?.phase !== "failed")) && (
+            {agentRunning && (agentPhase?.kind === "stopping" || ((!streamState.streamingMessage || statusIdleMs >= STATUS_STALL_AFTER_MS) && visionStatus?.phase !== "failed")) && (
               visionStatus && agentPhase?.kind !== "stopping" ? (
                 <VisionAgentStatus status={visionStatus} t={t} />
               ) : (
