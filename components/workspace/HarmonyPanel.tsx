@@ -17,6 +17,7 @@ import dynamic from "next/dynamic";
 import { formatHarmonyDeviceLabel, formatHarmonyDeviceTitle, rememberHarmonyDeviceIdentity, type HarmonyDeviceLabelSource } from "@/lib/harmony/device-label";
 import { currentHarmonyResponseSample, normalizeHarmonyResponseSample, type HarmonyResponseSample } from "@/lib/harmony/device-connection";
 import { HarmonyRequestError } from "@/lib/harmony/request-error";
+import { subscribeHarmonyEvents } from "@/lib/harmony/event-source";
 import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
 const MirrorWindow = dynamic(() => import("./harmony/MirrorWindow").then(module => module.MirrorWindow), { ssr: false });
@@ -411,8 +412,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       if (!disposed) pollTimer = window.setTimeout(() => { void poll(); }, 5_000);
     };
     void poll();
-    const source = new EventSource("/api/harmony/events");
-    source.onmessage = (event) => {
+    const unsubscribe = subscribeHarmonyEvents((event) => {
       try {
         const metadata = recordOf(JSON.parse(event.data));
         if (!metadata) return;
@@ -430,11 +430,10 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       } catch {
         // A malformed metadata event cannot affect the device command path.
       }
-    };
-    source.onerror = () => { /* Polling below remains the recovery path. */ };
+    });
     return () => {
       disposed = true;
-      source.close();
+      unsubscribe();
       pollController?.abort();
       if (pollTimer !== undefined) window.clearTimeout(pollTimer);
     };

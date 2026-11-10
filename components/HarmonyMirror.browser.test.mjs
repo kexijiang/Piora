@@ -32,9 +32,9 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     const globals=(await readFile(path.join(repo,"app/globals.css"),"utf8")).replace(/^@import.*$/gm,"");
     const css=globals+await readFile(path.join(repo,"app/theme-backgrounds.css"),"utf8")+await readFile(path.join(repo,"components/workspace/harmony/MirrorWindow.module.css"),"utf8")+await readFile(path.join(repo,"components/ConfirmDialog.module.css"),"utf8");
     await page.route("https://mirror.test/**",async route=>{const r=route.request(),u=new URL(r.url());if(u.pathname==="/themes/codex-dream-skin/skin.css")return route.fulfill({contentType:"text/css",body:await readFile(path.join(repo,"public/themes/codex-dream-skin/skin.css"),"utf8")});if(u.pathname==="/bundle.js")return route.fulfill({contentType:"text/javascript",body:await readFile(path.join(root,"bundle.js"))});if(u.pathname==="/api/harmony/devices")return route.fulfill({json:{devices:[{serial:"phone",name:"BRA-AL00",model:"BRA-AL00",product:"HUAWEI Mate 60 ",state:"online",generation:1,capabilities:{screenshot:true}}]}});if(u.pathname==="/api/harmony/media"){if(r.method()==="POST"){requests.push(r.postDataJSON());return route.fulfill({json:{artifact:{kind:"screenshot",serial:"phone",path:"C:/media/screen.png",filename:"screen.png"}}});}return route.fulfill({json:{recording,completion}});}if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});return route.fulfill({contentType:"text/html",body:`<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#fafafa;--bg-hover:#eee;--border:#ddd;--text:#222;--text-muted:#666;--text-dim:#888;--accent:#3478f6;--btn-primary-bg:#3478f6;--btn-primary-fg:#fff;--radius-surface:12px;--radius-control:6px;--font-ui:system-ui;--text-base:14px;--text-sm:13px}body{margin:0;font:14px system-ui}${css}</style><div id="root"></div><script src="/bundle.js"></script>`});});
-    let geometryRequested=false, geometryDuringAcquire=false;
+    let geometryRequested=false, geometryDuringAcquire=false, geometryGate, finishGeometry;
     await page.route('https://mirror.test/api/harmony/manual',async route=>{if(route.request().postDataJSON().action==='acquire'){await new Promise(resolve=>setTimeout(resolve,100));geometryDuringAcquire=geometryRequested;}return route.fulfill({json:{lease:{token:'fixture-lease',serial:'phone',expiresAt:new Date(Date.now()+300000).toISOString()}}});});
-    await page.route('https://mirror.test/api/harmony/geometry?*',route=>{geometryRequested=true;return route.fulfill({json:{geometry:{geometryId:'current-video-geometry',frameWidth:geometryWidth,frameHeight:720}}});});
+    await page.route('https://mirror.test/api/harmony/geometry?*',async route=>{geometryRequested=true;if(geometryGate)await geometryGate;return route.fulfill({json:{geometry:{geometryId:'current-video-geometry',frameWidth:geometryWidth,frameHeight:720}}});});
     let firstInput = true;
     await page.route('https://mirror.test/api/harmony/action',async route=>{
       // Real-device cold driver startup exceeded the former 15-second budget.
@@ -169,12 +169,14 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.waitForFunction(()=>window.frameOptions.active===true);
     assert.equal(await page.evaluate(()=>window.geometry.presentation),"floating","outgoing surface remains live until the destination paints");
     await page.evaluate(()=>window.setEmbedded(true));
+    await page.waitForFunction(()=>document.querySelector('.root')?.classList.contains('embedded'));
     await page.waitForFunction(()=>window.frameOptions.active===true);
     assert.equal(await page.evaluate(()=>window.frameOptions.worker),true,"sidebar uses the dedicated video worker");
     await page.getByRole("button",{name:"切换到悬浮投屏"}).click();
     await page.waitForFunction(()=>window.frameOptions.active===true);
     assert.equal(await page.evaluate(()=>window.geometry.presentation),"sidebar","docking does not blank the source before the floating frame");
     await page.evaluate(()=>window.setEmbedded(false));
+    await page.waitForFunction(()=>{const root=document.querySelector('.root');return root&&!root.classList.contains('embedded')&&getComputedStyle(root).borderTopWidth==='1px'});
     await page.waitForFunction(()=>window.frameOptions.active===true);
     assert.equal(await page.evaluate(()=>window.frameOptions.worker),true,"floating view uses the same dedicated video worker");
     const screen=await page.locator("canvas").boundingBox();assert.ok(screen.y<=38&&screen.y+screen.height>=757);
@@ -216,6 +218,15 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     const mutations=()=>inputRequests.filter(request=>/\/(action|pointer)$/.test(request.path));
     await page.getByRole('button',{name:'操控手机'}).click();
     const surface=page.getByLabel('投屏交互区域');
+    geometryGate=new Promise(resolve=>{finishGeometry=resolve});
+    const warmGeometry=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/geometry');
+    const beforeWarmup=inputRequests.length;
+    await surface.hover();
+    await page.getByRole('status').filter({hasText:'正在准备设备控制'}).waitFor();
+    assert.equal(await surface.getAttribute('aria-busy'),'true');
+    await surface.click();assert.equal(inputRequests.length,beforeWarmup,'a click during read-only preparation cannot claim control or inject input');
+    finishGeometry();geometryGate=undefined;await warmGeometry;
+    await page.waitForFunction(()=>document.querySelector('[aria-label="投屏交互区域"]').getAttribute('aria-busy')==='false');
     await Promise.all([page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/pointer'&&response.request().postDataJSON().phase==='up'),surface.click()]);
     assert.equal(geometryDuringAcquire,true,'geometry starts before lease acquisition finishes');
     assert.deepEqual(pointers().map(input=>input.phase),['down','up']);assert.equal(pointers()[0].generation,1);
@@ -231,11 +242,17 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
       assert.equal(actions().at(-1).durationMs,undefined);
     }
     geometryWidth=720;
+    const staleGeometry=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/geometry');
+    await surface.hover();await staleGeometry;
+    await page.waitForFunction(()=>document.querySelector('[aria-label="投屏交互区域"]').getAttribute('aria-busy')==='false');
     const beforeStale=mutations().length;await surface.click();
     await page.getByRole('status').filter({hasText:'屏幕方向已变化'}).waitFor();
     assert.equal(mutations().length,beforeStale,'mismatched geometry cannot inject coordinates');
     await page.getByRole('button',{name:'操控手机'}).click();await page.getByRole('button',{name:'操控手机'}).click();
     geometryWidth=360;failInput=true;
+    const failedInputGeometry=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/harmony/geometry');
+    await surface.hover();await failedInputGeometry;
+    await page.waitForFunction(()=>document.querySelector('[aria-label="投屏交互区域"]').getAttribute('aria-busy')==='false');
     await surface.click();
     await page.getByRole('status').filter({hasText:'Input rejected by fixture'}).waitFor();
     assert.equal(await page.getByLabel('发送文字到手机').count(),0);

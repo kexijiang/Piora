@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { harmonyJson } from "@/lib/harmony/client";
+import { subscribeHarmonyEvents } from "@/lib/harmony/event-source";
 import { HarmonyRequestError } from "@/lib/harmony/request-error";
 import { showPioraMessage } from "@/components/PioraMessage";
 import type { HarmonyMediaArtifact, HarmonyRecordingState } from "@/lib/harmony/types";
@@ -64,8 +65,11 @@ export function useMirrorMedia(serial: string, ownerId: string, active: boolean,
       pending = true; void refresh(expected).catch(() => undefined).finally(() => { pending = false; });
     };
     poll(); const timer = setInterval(poll, 2000);
-    const events = new EventSource("/api/harmony/events"); events.onmessage = poll;
-    return () => { expected.abort.abort(); clearInterval(timer); events.close(); if (scope.current === expected) scope.current = null; };
+    // The workbench's metadata stream also refreshes its media controls. A
+    // floating/hidden view uses the existing polling fallback, without opening
+    // another persistent connection that could block input and log requests.
+    const unsubscribe = subscribeHarmonyEvents(poll, { connect: false });
+    return () => { expected.abort.abort(); clearInterval(timer); unsubscribe(); if (scope.current === expected) scope.current = null; };
   }, [serial, ownerId, active, refresh]);
 
   useEffect(() => {

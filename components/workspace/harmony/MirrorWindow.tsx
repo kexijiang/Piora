@@ -110,9 +110,10 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
       </div>)}
     </details> : null}
     <main ref={screenRef} className={styles.screen} data-zoomed={zoom !== "fit"}>
-      <div ref={live.surfaceRef} className={styles.surface} tabIndex={controlEnabled ? 0 : -1} aria-label={copy("投屏交互区域", "Mirror interaction area")} data-interactive={controlEnabled}
+      <div ref={live.surfaceRef} className={styles.surface} tabIndex={controlEnabled ? 0 : -1} aria-label={copy("投屏交互区域", "Mirror interaction area")} aria-busy={input.preparing} data-interactive={controlEnabled && !input.preparing}
         style={zoom !== "fit" && width && height ? { width: width * Number(zoom), height: height * Number(zoom), flex: "none" } : undefined} {...input.handlers} />
       {!live.frame ? <div className={styles.placeholder} role="status">{device?.state !== "online" ? copy("等待设备连接", "Waiting for device") : live.state === "error" ? copy("连接已暂停", "Connection paused") : copy("正在连接画面…", "Connecting…")}</div> : null}
+      {input.preparing ? <div className={styles.connectionNotice} role="status">{copy("正在准备设备控制，请稍候…", "Preparing device controls…")}</div> : null}
       {live.error || input.error || deviceError || live.frame && device?.state !== "online" ? <div className={styles.connectionNotice} role="status">
         <span title={input.error ?? live.error ?? deviceError}>{input.error ? input.error : device?.state !== "online" ? copy("设备已断开，保留最后画面", "Disconnected · last frame retained") : live.state === "recovering" ? copy("正在恢复连接", "Reconnecting") : copy("投屏连接已暂停", "Mirror paused")}</span>
         <button type="button" onClick={details}>{copy("详情", "Details")}</button>

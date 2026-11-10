@@ -19,17 +19,18 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
   const serial = frame?.serial ?? "";
   const manual = useHarmonyManualControl({ active: enabled, serial, online: Boolean(frame), chinese });
   const [error, setError] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
   const epoch = useRef(0), tail = useRef(Promise.resolve()), pending = useRef(0), stopped = useRef(false);
   const gesture = useRef<{ touch: LiveTouch; pointer: number } | null>(null);
   const wheelAt = useRef(0);
   const abort = useRef(new AbortController());
   type PreparedGeometry = { geometry: { geometryId: string; frameWidth: number; frameHeight: number } };
-  const prepared = useRef<{ epoch: number; at: number; request: Promise<PreparedGeometry> } | null>(null);
+  const prepared = useRef<{ epoch: number; at: number; pending: boolean; request: Promise<PreparedGeometry> } | null>(null);
   const identity = `${enabled}:${serial}:${frame?.generation}:${frame?.width}:${frame?.height}`;
   useEffect(() => {
     const controller = new AbortController();
     abort.current = controller;
-    const currentEpoch = ++epoch.current; stopped.current = false; gesture.current = null; prepared.current = null; setError(null);
+    const currentEpoch = ++epoch.current; stopped.current = false; gesture.current = null; prepared.current = null; setError(null); setPreparing(false);
     return () => {
       const active = gesture.current; gesture.current = null;
       controller.abort(); epoch.current = currentEpoch + 1; stopped.current = true;
@@ -39,10 +40,13 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
 
   const prepareGeometry = () => {
     const cached = prepared.current;
-    if (cached?.epoch === epoch.current && performance.now() - cached.at < 300) return cached.request;
+    if (cached?.epoch === epoch.current && (cached.pending || performance.now() - cached.at < 300)) return cached.request;
     const request = harmonyJson<PreparedGeometry>(`/api/harmony/geometry?serial=${encodeURIComponent(serial)}&space=video`, undefined, abort.current.signal);
-    const entry = { epoch: epoch.current, at: performance.now(), request }; prepared.current = entry;
-    void request.catch(() => { if (prepared.current === entry) prepared.current = null; });
+    const entry = { epoch: epoch.current, at: 0, pending: true, request }; prepared.current = entry;
+    setPreparing(true);
+    void request.then(() => {
+      if (prepared.current === entry) { entry.pending = false; entry.at = performance.now(); setPreparing(false); }
+    }, () => { if (prepared.current === entry) { prepared.current = null; setPreparing(false); } });
     return request;
   };
 
@@ -61,7 +65,7 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
   }, [releasePointer]);
 
   const send = useCallback((body: Record<string, unknown>, coordinates = false) => {
-    if (!enabled || !frame || !manual.canControl || stopped.current) return Promise.resolve(false);
+    if (!enabled || !frame || !manual.canControl || preparing || stopped.current) return Promise.resolve(false);
     if (pending.current >= 4) { setError(chinese ? "请等待当前操作完成" : "Wait for the current input to finish"); return Promise.resolve(false); }
     const expected = epoch.current, expectedFrame = frame;
     const scopeSignal = abort.current.signal;
@@ -103,16 +107,25 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
     const task = tail.current.then(run, run);
     tail.current = task.then(() => undefined, () => undefined);
     return task;
-  }, [enabled, frame, manual, serial, chinese]);
+  }, [enabled, frame, manual, preparing, serial, chinese]);
 
   const point = (event: { clientX: number; clientY: number; currentTarget: HTMLElement }) => frame
     ? mirrorPoint(event.clientX, event.clientY, event.currentTarget.getBoundingClientRect(), frame) : undefined;
-  return { error, send, canControl: enabled && manual.canControl,
+  return { error, preparing, send, canControl: enabled && manual.canControl && !preparing,
     handlers: {
       onPointerEnter() { if (enabled && frame && manual.canControl && !stopped.current) void prepareGeometry().catch(() => undefined); },
       onPointerDown(event: PointerEvent<HTMLDivElement>) {
         if (!enabled || !frame || !manual.canControl || stopped.current || gesture.current || event.button !== 0 || !event.isPrimary) return;
         const start = point(event); if (!start) return;
+        // Warm-up may establish the read-only control transport. Do not claim a
+        // lease or admit a gesture while it is pending: a mouse-up during cold
+        // setup must never turn into a later click once the device is ready.
+        if (!prepared.current || prepared.current.epoch !== epoch.current || prepared.current.pending) {
+          event.preventDefault();
+          const expected = epoch.current;
+          void prepareGeometry().catch(cause => { if (epoch.current === expected) setError(cause instanceof Error ? cause.message : String(cause)); });
+          return;
+        }
         event.preventDefault(); event.currentTarget.focus(); event.currentTarget.setPointerCapture(event.pointerId);
         const expected = epoch.current, expectedFrame = frame, previous = tail.current;
         // Bound setup as well as the physical hold: a late lease/geometry reply
