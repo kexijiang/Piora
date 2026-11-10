@@ -36,6 +36,7 @@ import { runPromptWithModelFallback } from "./model-fallback";
 import { readModelFallbackConfig } from "./model-fallback-config";
 import { applyConfiguredImageInput, modelSupportsImages } from "./model-capabilities";
 import { resolveDefaultModelPreference } from "./model-policy";
+import { readDefaultModel } from "./default-model-store";
 import {
   applyExtensionLoadPlan,
   installExtensionLoadPlanReload,
@@ -2963,6 +2964,7 @@ export async function startRpcSession(
     const defaultModelId = services.settingsManager.getDefaultModel();
     const preferredDefault = resolveDefaultModelPreference({
       models: scope.visible,
+      explicitDefault: readDefaultModel(),
       settingsProvider: defaultProvider,
       settingsModel: defaultModelId,
       environment: process.env,

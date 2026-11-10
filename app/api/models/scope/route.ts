@@ -1,6 +1,7 @@
 import { createGlobalModelServices } from "@/lib/global-model-services";
 import type { SettingsManager } from "@earendil-works/pi-coding-agent";
 import { invalidateModelsCache } from "@/lib/models-cache";
+import { writeDefaultModel } from "@/lib/default-model-store";
 import { setProviderRemoved, restoreRemovedProviders } from "@/lib/removed-providers";
 import {
   createTrustedModelServices,
@@ -189,10 +190,7 @@ export async function PATCH(req: Request) {
       const model = state.models.find((item) => item.provider === mutation.provider && item.id === mutation.id);
       if (!model) throw new ModelScopeMutationError("model_not_found", `Model is not available: ${mutation.provider}/${mutation.id}`);
       if (!model.enabled) return jsonError("model_disabled", "Enable the model before setting it as default.", 409);
-      settings.setDefaultModelAndProvider(mutation.provider, mutation.id);
-      await settings.flush();
-      const errors = settings.drainErrors();
-      if (errors.length > 0) throw new ModelScopeSettingsWriteError(errors);
+      writeDefaultModel({ provider: mutation.provider, modelId: mutation.id });
       invalidateModelsCache();
       const nextState = await buildModelScopeSettingsState({ runtime: services.modelRuntime, enabledPatterns: settings.getEnabledModels(), defaultProvider: settings.getDefaultProvider(), defaultModel: settings.getDefaultModel(), environment: process.env });
       return Response.json(publicState(nextState, projectOverride, true));
