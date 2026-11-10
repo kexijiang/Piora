@@ -4,6 +4,9 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 修复同时打开侧栏和右侧工具时，窄聊天面板的过程计数仍换到第二行的问题；图标、标题、计数和耗时固定在同一行，较长计数在原列省略显示。
+- README 明确投屏画布提供触控、滚轮与导航按键，文字输入通过 AI 或设备工具发起；补充已安装 Beta 的验证记录与真实容器宽度回归场景。
+
 ## [0.5.10-beta.20] - 2026-11-11
 
 ### 修复与改进
