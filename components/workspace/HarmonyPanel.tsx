@@ -275,8 +275,12 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
   });
   const mirror = useHarmonyWindow();
   useEffect(() => {
-    if (mirror?.open && mirror.presentation === "sidebar" && mirror.serial) setSelectedSerial(mirror.serial);
-  }, [mirror?.open, mirror?.presentation, mirror?.serial]);
+    if (!mirror?.open || (mirror.pendingPresentation ?? mirror.presentation) !== "sidebar") return;
+    if (mirror.serial) setSelectedSerial(mirror.serial);
+    // Reveal the destination before it acknowledges its first frame. Keep the
+    // dependency list on handoff identity so ordinary updates preserve logs.
+    setShowLogs(false);
+  }, [mirror?.open, mirror?.presentation, mirror?.pendingPresentation, mirror?.serial]);
   const [mirrorPresentation, setMirrorPresentation] = useState<"floating" | "sidebar">("floating");
   useEffect(() => { if (mirror?.presentation) setMirrorPresentation(mirror.pendingPresentation ?? mirror.presentation); }, [mirror?.presentation, mirror?.pendingPresentation]);
   const openSelectedMirror = async () => {
