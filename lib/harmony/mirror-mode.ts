@@ -3,7 +3,7 @@ export function harmonyWorkbenchEnabled(): boolean {
   return process.env.PIORA_HARMONY_WORKBENCH !== "0";
 }
 
-const mirrorRoutes = new Set(["profile", "devices", "state", "events", "config", "runtime-candidates", "frame", "video", "geometry", "media", "media/preview", "manual", "action"]);
+const mirrorRoutes = new Set(["profile", "devices", "state", "events", "config", "runtime-candidates", "frame", "video", "geometry", "media", "media/preview", "manual", "action", "recovery"]);
 const mirrorActions = new Set(["tap", "double_tap", "long_press", "swipe", "drag", "input_text", "press_key", "key_hold", "stop_device"]);
 export function mirrorRouteAllowed(pathname: string): boolean {
   const path = pathname.replace(/^\/api\/harmony\/?/, "").replace(/\/$/, "");

@@ -4,6 +4,10 @@
 .embedded .titlebar { -webkit-app-region: no-drag; }
 .compatibility { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px 6px; font-size: var(--text-xs); background: var(--bg-panel); color: var(--text-muted); }
 .compatibility button { border: 0; background: transparent; color: var(--accent); cursor: pointer; font: inherit; }
+.recovery { flex-wrap: wrap; }
+.recovery > span { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+.recovery button { flex: 0 0 auto; white-space: nowrap; }
+.recovery button:disabled { cursor: default; opacity: .5; }
 /* Native window controls need an opaque, paired palette even with colorful or translucent themes. */
 .titlebar { --mirror-bar-bg: #f6f7f9; --mirror-bar-fg: #202124; --mirror-bar-hover: #e3e5e9; --mirror-bar-focus: #185abc; --mirror-bar-record: #b91c1c; color-scheme: light; color: var(--mirror-bar-fg); background: var(--mirror-bar-bg); height: 36px; flex: 0 0 36px; display: flex; align-items: center; gap: 3px; padding: 0 6px; border-bottom: 1px solid color-mix(in srgb, var(--mirror-bar-fg) 18%, var(--mirror-bar-bg)); box-sizing: border-box; -webkit-app-region: drag; }
 .titlebar[data-dark="true"] { --mirror-bar-bg: #202124; --mirror-bar-fg: #f4f4f5; --mirror-bar-hover: #36383d; --mirror-bar-focus: #a8c7fa; --mirror-bar-record: #ff828a; color-scheme: dark; }
