@@ -1,0 +1,455 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-03",
+  "stage": "3C session lifecycle",
+  "status": "development-checkpoint-with-known-failure",
+  "baseCommit": "048c727b2704b11cf48faf1d5bc9fe3bbd3205fe",
+  "upstreamBase": "9540f859501f0923af379c4060aee0e79bf3c640",
+  "sourceHashes": {
+    "app/api/sessions/[id]/export/route.ts": "a1a0caba4a32bd7aa12c26cf54b0642f916125edd8dcd5a76863a4812a757fa8",
+    "components/SessionHistoryWorkbench.tsx": "5016c001c4a8866bda59f67ff8040c07f976f5b9c7d855d89f9a800a9e566162",
+    "components/SessionSidebar.tsx": "b41cb12af2df4f025ceab61dd0d7bc9ff6eb1d4ca5fa6042a6907fe135fd8525",
+    "lib/i18n/messages/en.ts": "6472e99ba4ccf398c4629681ae359127e0adaa16db04a67d00a2232db73c0ae5",
+    "lib/i18n/messages/zh-CN.ts": "836d59b4e4e2431ee77c1ab9e1a99cd5f8fcdbb5902c585c073920f55df4d104",
+    "lib/mini-app-client-browser.test.mjs": "78d105c79d1580883a755476bf934146cc7d47c4ea5a91b1d8c937f822815ba8",
+    "lib/mini-app/capability-evidence.json": "a46f0b55885bd008dc063617b96aa5d741efad61bdde0b0d8c57f0191fe4aaea",
+    "lib/mini-app/client-state.ts": "8f7bce4d64e6fdf81da357521f3e58546787e51a63a789dc5b7844c19568bc56",
+    "lib/session-delete-client.test.mjs": "a538ad0a4123a8085e051dd3d144c8e589429d7d18f64552c770ceba3c8095ba",
+    "lib/session-delete-client.ts": "bb725e04af08a60afbef42db62ec7466a13e9cc4176460f50c681353e68a0633",
+    "scripts/run-desktop-e2e.mjs": "e1c2a0d978be1b11027eb1bec7241afd042a2915fcedda2c2154e8d508bba6f8",
+    "lib/session-duplicate-client.ts": "00324c03bed154cc3958e5c7ece7044e0e80be9f28376323f174a60aad184c83",
+    "lib/session-duplicate-client.test.mjs": "0a5562072bcd88e41c78717881386570bea40cc50ce91c59cc37257365f4fedc",
+    "scripts/desktop-e2e/scenarios/intelligent-ui-session-lifecycle.mjs": "75051866c6cc3c1dfb1f29a6851436ed0c714da58086d88e3225f64b136567c2"
+  },
+  "changes": [
+    "Generic mounted-state save boundary before copy, history download and confirmed subtree trash",
+    "Copy failure feedback and per-session duplicate-request guard",
+    "Serialize state-client refresh and flush checkpoint gates; retain real branch conflicts",
+    "Native SDK HTML exporter import in Next; complete UI download unverified"
+  ],
+  "checks": {
+    "focused": {
+      "path": ".verification/phase3-session-lifecycle-focused.log",
+      "sha256": "e93ca6a392c9b280dadaf46b48f88fcb82b43f62e23a9a48396828ace4d8001d",
+      "tests": 37,
+      "passed": 37,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "concurrencyBeforeFix": {
+      "path": ".verification/phase3-session-lifecycle-gates-before.log",
+      "sha256": "e8dd8e3162c120cb07bd672afd1968fe7d7cc01f93c2ef32d0c16753da3569aa",
+      "tests": 17,
+      "passed": 15,
+      "failed": 2,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "concurrencyIntermediate": {
+      "path": ".verification/phase3-session-lifecycle-gates-after.log",
+      "sha256": "36c50e6a18779a4eb8ec1b0c30048475f968857af00be570cb0d13b1ad5096bd",
+      "tests": 17,
+      "passed": 17,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "capabilities": {
+      "path": ".verification/mini-app-capabilities-1kZLjm/tests.log",
+      "sha256": "04915783d8087bb57addfbb086378f1622404fc660dc5f1e5b23f16a8979bda1",
+      "tests": 516,
+      "passed": 516,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "result": {
+        "path": ".verification/mini-app-capabilities-1kZLjm/result.json",
+        "sha256": "b1d0bed07e92c9fcccd850cb0e7d37c51bca829921a1be75983cbae3dfbbf73b"
+      },
+      "testFiles": 57,
+      "capabilities": 14,
+      "verifiedSourceHashes": 166,
+      "scope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+    },
+    "exportReadOnly": {
+      "path": ".verification/phase3-session-lifecycle-export-test.log",
+      "sha256": "d8889c009ab29648c873dd8b7c975f40f7d5d73966e96878895da462fb427d5a",
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    "typecheck": {
+      "status": "passed",
+      "exitCode": 0,
+      "command": "node_modules/.bin/tsc.cmd --noEmit",
+      "log": {
+        "path": ".verification/phase3-session-lifecycle-checkpoint-typecheck-retry.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "typecheckCommandError": {
+      "status": "failed",
+      "exitCode": 1,
+      "reason": "Direct node_modules/typescript/bin/tsc path was absent; used the repository .bin/tsc shim on retry.",
+      "log": {
+        "path": ".verification/phase3-session-lifecycle-checkpoint-typecheck.log",
+        "sha256": "7131d9debbd819efbcbbb5ae4eda9516d6d49a91287866819da140cb421153ec"
+      }
+    },
+    "targetedLint": {
+      "status": "passed",
+      "exitCode": 0,
+      "log": {
+        "path": ".verification/phase3-session-lifecycle-checkpoint-lint.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "scenarioSyntax": {
+      "status": "passed",
+      "command": "node --check scripts/desktop-e2e/scenarios/intelligent-ui-session-lifecycle.mjs"
+    },
+    "scenarioList": {
+      "status": "passed",
+      "log": {
+        "path": ".verification/phase3-session-lifecycle-list-final.log",
+        "sha256": "c4b911db6586a655e085a9b50aff3d69b9f0b5861c9e96d6c4b18a53d3065025"
+      }
+    }
+  },
+  "desktop": {
+    "status": "failed",
+    "provider": "desktop-recovery-fixture",
+    "model": "recovery-fixture",
+    "usesRealModel": false,
+    "attempts": [
+      {
+        "directory": ".verification/desktop-e2e-9Qljj9",
+        "result": {
+          "path": ".verification/desktop-e2e-9Qljj9/result.json",
+          "sha256": "6e7eedf47911a53adcb2346e7145380f215488b7c7f4fe2353038b7050f66763"
+        },
+        "desktopLog": {
+          "path": ".verification/desktop-e2e-9Qljj9/desktop.log",
+          "sha256": "7d2f72a2ecbe1974638d0f0ba8148e6192dbaf71c174b5d5203ad45ccfa3fa16"
+        },
+        "status": "failed",
+        "failedStep": "failed-save-blocks-copy",
+        "error": {
+          "name": "TimeoutError",
+          "message": "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator('[data-mini-app-surface]').filter({ has: getByRole('heading', { name: 'Recovery counter', exact: true }) }).locator('iframe[title=\"Interactive answer\"]').contentFrame().locator('[data-text=\"count\"]').filter({ hasText: /^9$/ }) to be visible\n"
+        },
+        "steps": [
+          {
+            "name": "launch",
+            "status": "passed"
+          },
+          {
+            "name": "enable-and-create",
+            "status": "passed"
+          },
+          {
+            "name": "install-save-failure-fixture",
+            "status": "passed"
+          },
+          {
+            "name": "failed-save-blocks-copy",
+            "status": "failed"
+          }
+        ],
+        "cleanupErrors": [],
+        "pageErrors": [],
+        "interpretation": "Fixture assertion waited for an iframe after a deliberately failed save; retained static Count: 9 was present. Assertion corrected without removing retained-state checks.",
+        "failureScreenshot": {
+          "path": ".verification/desktop-e2e-9Qljj9/failure.png",
+          "sha256": "ad81c00afa10416746c113a78841f82983f2c8ea27a14e3e9cfdb6c2c3657efb"
+        },
+        "fixtureMetadataCorrection": "Raw fixture.transport inherited a different scenario description. Actual injection rejected PUT before persistence with 503; raw evidence is unchanged. Scenario reporting corrected after the latest run; complete scenario not rerun."
+      },
+      {
+        "directory": ".verification/desktop-e2e-bAiWJg",
+        "result": {
+          "path": ".verification/desktop-e2e-bAiWJg/result.json",
+          "sha256": "0233fda597c0fc74bed5c5bf079eae4892a276622967ff22efab04e8dfb6757b"
+        },
+        "desktopLog": {
+          "path": ".verification/desktop-e2e-bAiWJg/desktop.log",
+          "sha256": "8367264610be5253a5286ab378840453e02016f985fa69b5c122bfd38748c2d9"
+        },
+        "status": "failed",
+        "failedStep": "copy-retries-pending-checkpoint",
+        "error": {
+          "name": "TimeoutError",
+          "message": "locator.click: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator('.sidebar-session-row').filter({ has: getByText('Lifecycle original copy', { exact: true }) })\n"
+        },
+        "steps": [
+          {
+            "name": "launch",
+            "status": "passed"
+          },
+          {
+            "name": "enable-and-create",
+            "status": "passed"
+          },
+          {
+            "name": "install-save-failure-fixture",
+            "status": "passed"
+          },
+          {
+            "name": "failed-save-blocks-copy",
+            "status": "passed"
+          },
+          {
+            "name": "copy-retries-pending-checkpoint",
+            "status": "failed"
+          }
+        ],
+        "cleanupErrors": [],
+        "pageErrors": [],
+        "interpretation": "Fixture navigation waited for a child row inside a collapsed source; explicit UI expansion added.",
+        "failureScreenshot": {
+          "path": ".verification/desktop-e2e-bAiWJg/failure.png",
+          "sha256": "1f126942064694acb159e6aec347a01af358abb7bddaecc870872d93c90f1813"
+        },
+        "fixtureMetadataCorrection": "Raw fixture.transport inherited a different scenario description. Actual injection rejected PUT before persistence with 503; raw evidence is unchanged. Scenario reporting corrected after the latest run; complete scenario not rerun."
+      },
+      {
+        "directory": ".verification/desktop-e2e-6jJJ68",
+        "result": {
+          "path": ".verification/desktop-e2e-6jJJ68/result.json",
+          "sha256": "88180e059d6aed713cfeac1c9445817a3719a88ac842e5153a05cc6f2f99069c"
+        },
+        "desktopLog": {
+          "path": ".verification/desktop-e2e-6jJJ68/desktop.log",
+          "sha256": "663a3ca1d5d5037a576701af028ad4c79ecd609c6bd14e47e0399c92b3818913"
+        },
+        "status": "failed",
+        "failedStep": "fork-keeps-branch-visible-state",
+        "error": {
+          "name": "TimeoutError",
+          "message": "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator('[data-mini-app-surface]').filter({ has: getByRole('heading', { name: 'Recovery counter', exact: true }) }).getByText(/^(Saved · ready for your next message|已保存 · 后续追问可读取当前状态)$/) to be visible\n"
+        },
+        "steps": [
+          {
+            "name": "launch",
+            "status": "passed"
+          },
+          {
+            "name": "enable-and-create",
+            "status": "passed"
+          },
+          {
+            "name": "install-save-failure-fixture",
+            "status": "passed"
+          },
+          {
+            "name": "failed-save-blocks-copy",
+            "status": "passed"
+          },
+          {
+            "name": "copy-retries-pending-checkpoint",
+            "status": "passed"
+          },
+          {
+            "name": "fork-keeps-branch-visible-state",
+            "status": "failed"
+          }
+        ],
+        "cleanupErrors": [],
+        "pageErrors": [],
+        "interpretation": "Post-follow-up save failed. Checkpoint gate overlap was separately reproduced in a controlled browser test and serialized.",
+        "failureScreenshot": {
+          "path": ".verification/desktop-e2e-6jJJ68/failure.png",
+          "sha256": "05e7746bd2d00435ff35406de150ed46190c9fc38c8dded120b72ecb96f13cb2"
+        },
+        "fixtureMetadataCorrection": "Raw fixture.transport inherited a different scenario description. Actual injection rejected PUT before persistence with 503; raw evidence is unchanged. Scenario reporting corrected after the latest run; complete scenario not rerun."
+      },
+      {
+        "directory": ".verification/desktop-e2e-QkA9Zx",
+        "result": {
+          "path": ".verification/desktop-e2e-QkA9Zx/result.json",
+          "sha256": "0509c4d919bc6206300940b5ff99ff38eacfe694f7e06c6203a4bc7e1cd777d4"
+        },
+        "desktopLog": {
+          "path": ".verification/desktop-e2e-QkA9Zx/desktop.log",
+          "sha256": "40607ea9977b0699d0383ddb423869cfe9fe63b8137ea9b9353dd1299ed982c7"
+        },
+        "status": "failed",
+        "failedStep": "export-confirms-state-and-static-scope",
+        "error": {
+          "name": "AssertionError",
+          "message": "Expected values to be strictly equal:\n\n500 !== 200\n"
+        },
+        "steps": [
+          {
+            "name": "launch",
+            "status": "passed"
+          },
+          {
+            "name": "enable-and-create",
+            "status": "passed"
+          },
+          {
+            "name": "install-save-failure-fixture",
+            "status": "passed"
+          },
+          {
+            "name": "failed-save-blocks-copy",
+            "status": "passed"
+          },
+          {
+            "name": "copy-retries-pending-checkpoint",
+            "status": "passed"
+          },
+          {
+            "name": "fork-keeps-branch-visible-state",
+            "status": "passed"
+          },
+          {
+            "name": "failed-save-blocks-export",
+            "status": "passed"
+          },
+          {
+            "name": "export-confirms-state-and-static-scope",
+            "status": "failed"
+          }
+        ],
+        "cleanupErrors": [],
+        "pageErrors": [],
+        "interpretation": "HTML export returned 500: dynamic import expression could not be resolved by Next. Native SDK file URL import retained; full desktop download still unverified.",
+        "failureScreenshot": {
+          "path": ".verification/desktop-e2e-QkA9Zx/failure.png",
+          "sha256": "e7693aa48d7630fb31bbb93c3d917ea7c65a14a7375a4d25aa077e9d9966e5f6"
+        },
+        "fixtureMetadataCorrection": "Raw fixture.transport inherited a different scenario description. Actual injection rejected PUT before persistence with 503; raw evidence is unchanged. Scenario reporting corrected after the latest run; complete scenario not rerun."
+      },
+      {
+        "directory": ".verification/desktop-e2e-me9R4C",
+        "result": {
+          "path": ".verification/desktop-e2e-me9R4C/result.json",
+          "sha256": "0b113c6815b0ac21d48887512e3864b631d5c9ce913818a6c8b0a82571c4c07d"
+        },
+        "desktopLog": {
+          "path": ".verification/desktop-e2e-me9R4C/desktop.log",
+          "sha256": "4f9f8887ee0509f0e2902c66ad84da8398316034630d7c8e39bde39fa4e620af"
+        },
+        "status": "failed",
+        "failedStep": "fork-keeps-branch-visible-state",
+        "error": {
+          "name": "TimeoutError",
+          "message": "locator.waitFor: Timeout 45000ms exceeded.\nCall log:\n  - waiting for locator('[data-mini-app-surface]').filter({ has: getByRole('heading', { name: 'Recovery counter', exact: true }) }).getByText(/^(Saved · ready for your next message|已保存 · 后续追问可读取当前状态)$/) to be visible\n"
+        },
+        "steps": [
+          {
+            "name": "launch",
+            "status": "passed"
+          },
+          {
+            "name": "enable-and-create",
+            "status": "passed"
+          },
+          {
+            "name": "install-save-failure-fixture",
+            "status": "passed"
+          },
+          {
+            "name": "failed-save-blocks-copy",
+            "status": "passed"
+          },
+          {
+            "name": "copy-retries-pending-checkpoint",
+            "status": "passed"
+          },
+          {
+            "name": "fork-keeps-branch-visible-state",
+            "status": "failed"
+          }
+        ],
+        "cleanupErrors": [],
+        "pageErrors": [],
+        "interpretation": "Latest run failed before fork click: checkpoint PUT 409 after follow-up; static Count: 12 retained. Save wait timed out; remaining workflow did not execute.",
+        "failureScreenshot": {
+          "path": ".verification/desktop-e2e-me9R4C/failure.png",
+          "sha256": "e8de12b1512568cdcdb7d95793bc7ef7888705b26784dcbdb9d22f5fd190b3fe"
+        },
+        "fixtureMetadataCorrection": "Raw fixture.transport inherited a different scenario description. Actual injection rejected PUT before persistence with 503; raw evidence is unchanged. Scenario reporting corrected after the latest run; complete scenario not rerun."
+      }
+    ],
+    "latestObservedSnapshots": [
+      {
+        "label": "copied-current-state",
+        "states": [
+          {
+            "role": "original",
+            "count": 10,
+            "inputs": {
+              "start": 10
+            },
+            "stateRevision": 2
+          },
+          {
+            "role": "copy",
+            "count": 10,
+            "inputs": {
+              "start": 10
+            },
+            "stateRevision": 2
+          }
+        ]
+      }
+    ],
+    "latestCompletedSteps": 5,
+    "latestFailure": "Post-follow-up checkpoint PUT 409 before fork; draft 12 retained",
+    "notExecutedInLatestRun": [
+      "fork click and state inheritance",
+      "HTML download",
+      "subtree trash",
+      "restore and continued editing"
+    ],
+    "visualReview": {
+      "path": ".verification/desktop-e2e-me9R4C/failure.png",
+      "status": "inspected",
+      "finding": "Static Count: 12 and conflict/recovery controls visible; no saved acknowledgement"
+    },
+    "assertionsRelaxed": false,
+    "fullChainPassed": false
+  },
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-session-lifecycle-2026-11-03.md",
+    "sourceSha256": "443c2b31b5873862e7a6fa7343d826326f908009d5703be7b0a5d988b4eeeeac",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-session-lifecycle-2026-11-03.pdf",
+    "pdfSha256": "348db476a499d77074d8f4ef27958b127d6f8de0a3213438c89eba797098f239",
+    "pages": 2,
+    "pageTextLengths": [
+      1245,
+      1339
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed",
+    "reviewedPages": [
+      1,
+      2
+    ],
+    "visualNotes": "Both rendered pages inspected: readable Chinese text, table, headers and footers; no clipping or overlap."
+  },
+  "ci": {
+    "priorHead": "048c727b2704b11cf48faf1d5bc9fe3bbd3205fe",
+    "run": 41503414552,
+    "status": "completed",
+    "conclusion": "failure",
+    "newCommitStatus": "See upstream PR #238 after push"
+  },
+  "limits": [
+    "No real DeepSeek or other provider call in this batch",
+    "No native save dialog, minimize/hide/restore, other platform or release package acceptance",
+    "3B semantics, full 3C combinations and 3D complex tasks remain",
+    "Full CI repair, sealed set and two-human acceptance deferred by user; phase 3 is not complete",
+    "Tests overlap and are not cumulative model accuracy evidence"
+  ],
+  "report": {
+    "path": "docs/verification/intelligent-ui-phase3-session-lifecycle-2026-11-03.md",
+    "sha256": "443c2b31b5873862e7a6fa7343d826326f908009d5703be7b0a5d988b4eeeeac"
+  }
+}

@@ -1,0 +1,262 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "recordedAt": "2026-11-02T18:07:12.996Z",
+  "codeBase": "49c608acd9a5487fb9770dcef5757effbf3f608a",
+  "status": "semantic-issues-remain",
+  "modifiedSourceSha256": {
+    "lib/answer-output-decision.ts": "567c4f680b35f5fbbdb017e4ad1d994075ecb0391e90295a6b1bb6a137a5ef71",
+    "lib/mini-app/action-field-effects.ts": "540c3c1f71e6d8788eb860ebfce6873246d9c532f93e6ef2d7599490661e5275",
+    "lib/mini-app/action-preview.ts": "773017505654db08cdc8ab938a3132d5bee08a926757f492e9c70a7d6de27f4e",
+    "lib/mini-app/generation-runtime.ts": "3cda84fac6987d6451fa42f4a17ec197c87925a768867ecd4798419b344e8ca8",
+    "lib/mini-app/capability-manifest.ts": "782882f5824225ecb2fc7db481b3189d29c1077298cffdf34fc51f2e58098af0",
+    "lib/mini-app/capability-evidence.json": "a348c3f2b492cf952928d9121a27928fa0df06fa082bd36b36d559a4fab76894",
+    "lib/mini-app-action-preview.test.mjs": "91caf83085c147f2d43d5f7ec838d56e58c92fb412b0e00b263c7f563d584acf",
+    "lib/mini-app-generation-runtime.test.mjs": "d502fab84ffe9f87ca77aae14073329cd893a076f4fa8e97c9bed897b462b4a0",
+    "scripts/verify-recorded-mini-app-tasks.mjs": "3113450079a3a333b8c2da38aabfdfe7e0da59f63a4c5a800bdfd756207ddfae"
+  },
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "thinking": "enabled",
+    "fallback": false
+  },
+  "reportedModelIds": [
+    "deepseek-flash"
+  ],
+  "policy": "answer-form-4",
+  "scope": "Host-derived field effects and unchanged original tasks on Windows development Electron. Not new generation, formal semantic acceptance or completion of Phase 3.",
+  "verification": [
+    {
+      "name": "capabilities",
+      "path": ".verification/mini-app-capabilities-zqEefV/result.json",
+      "status": "passed: 512/512, 57 files, 14 capabilities",
+      "sha256": "d1fe8302e4c23c1ec503570d290dee45633868f86f8536c9974ff8598bb11a2e"
+    },
+    {
+      "name": "focused-first",
+      "path": ".verification/phase3-field-effects-focused.log",
+      "status": "failed: 12 passed, 9 failed including parent; previous capability evidence invalidated by source changes",
+      "sha256": "78d7d4f5552390adfbeada9f02206a2b25530f5ad397c4c7e36b740038ae0a33"
+    },
+    {
+      "name": "focused-normal-retry",
+      "path": ".verification/phase3-field-effects-focused-retry.log",
+      "status": "passed: 21/21 after capability verification, no development override",
+      "sha256": "204572d98bbcbafdd7acd9cc59f51ed2eb542bce689633cc7fbccbf5f4a1e812"
+    },
+    {
+      "name": "web-typecheck",
+      "path": ".verification/phase3-field-effects-typecheck.log",
+      "status": "passed",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "targeted-lint",
+      "path": ".verification/phase3-field-effects-lint.log",
+      "status": "passed",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "isolated-goal-probe",
+      "path": ".verification/phase3-field-effects-goal-probe.json",
+      "status": "completed; original jugs-3 currently-goal label remains wrong after fill/empty",
+      "sha256": "8d6554df18046dad39155505ae5cceab7530f22033f651d5b582b42a3a1845a5"
+    },
+    {
+      "name": "desktop",
+      "path": ".verification/desktop-e2e-xshvGa/result.json",
+      "status": "mechanical path passed; semantic failures retained",
+      "sha256": "f4d52833d2b4e212253bdfc514afe720b2a70226be9798e6b5a647c3c6746c55"
+    }
+  ],
+  "desktop": {
+    "path": ".verification/desktop-e2e-xshvGa/result.json",
+    "status": "passed",
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed",
+        "durationMs": 22583
+      },
+      {
+        "name": "jugs-1",
+        "status": "passed",
+        "durationMs": 45092
+      },
+      {
+        "name": "jugs-2",
+        "status": "passed",
+        "durationMs": 36504
+      },
+      {
+        "name": "jugs-3",
+        "status": "passed",
+        "durationMs": 34767
+      },
+      {
+        "name": "board-2",
+        "status": "passed",
+        "durationMs": 110175
+      },
+      {
+        "name": "sorting-1",
+        "status": "passed",
+        "durationMs": 43327
+      }
+    ],
+    "cleanupErrors": [],
+    "interactions": 58,
+    "reloads": 12,
+    "actionPreviews": 36,
+    "sourceAndStateIntegrity": "Original artifact digests, saved checkpoint and state revision checked by the desktop runner",
+    "rows": [
+      {
+        "id": "jugs-1",
+        "source": ".verification\\mini-app-live-vph3zd\\result.json",
+        "sourceSha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+        "interaction": "completed",
+        "actions": 8,
+        "fieldPaths": [
+          "/state/small",
+          "/state/big",
+          "/state/moves",
+          "/state/showHint",
+          "/state/notice"
+        ],
+        "omittedFields": 1,
+        "independentFieldPairs": 14,
+        "answerSha256": "40fa46c4691beff3507d09d8a92488e565376e0626e1b8e50234b326c5b84198",
+        "review": {
+          "status": "requested-facts-correct-with-scope-concern",
+          "observation": "3/4 litres, achieved and no further action needed are correct. Correctly identifies emptying the other vessel as preserving 4. Adds unasked alternatives and says nothing changes for actions whose notice changes."
+        }
+      },
+      {
+        "id": "jugs-2",
+        "source": ".verification\\mini-app-live-005vkb\\result.json",
+        "sourceSha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+        "interaction": "completed",
+        "actions": 8,
+        "fieldPaths": [
+          "/state/a",
+          "/state/b",
+          "/state/moves",
+          "/state/hint",
+          "/inputs"
+        ],
+        "omittedFields": 0,
+        "independentFieldPairs": 14,
+        "answerSha256": "c2da8be027b8aedf02ab96be95ab48af5b94cbfd2cd0109dbec4dbf77888b8cd",
+        "review": {
+          "status": "semantic-failed",
+          "observation": "Current quantities correct. Incorrectly lists empty3 as destroying the result; also describes a nonempty source as empty. Verified empty3 preserves the large vessel at 4."
+        }
+      },
+      {
+        "id": "jugs-3",
+        "source": ".verification\\mini-app-live-DzQKbZ\\result.json",
+        "sourceSha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+        "interaction": "completed",
+        "actions": 8,
+        "fieldPaths": [
+          "/state/cup3",
+          "/state/cup5",
+          "/state/moves",
+          "/state/solved",
+          "/state/showHint"
+        ],
+        "omittedFields": 13,
+        "independentFieldPairs": 14,
+        "answerSha256": "1f96ee93399a95ce835e90c652f1dff43e9af8c5fe52f6e47b1a1ab82e5ca3fb",
+        "review": {
+          "status": "semantic-failed",
+          "observation": "Current quantities correct. Incorrectly lists empty3 as destroying the result although the confirmed field effects and worker retain cup5=4."
+        }
+      },
+      {
+        "id": "board-2",
+        "source": ".verification\\mini-app-live-51dGCn\\result.json",
+        "sourceSha256": "a439eb109ae6e05ccb309eee531026a8184e51cf06592ab0a6cae61bdec76bc6",
+        "interaction": "completed",
+        "actions": 10,
+        "fieldPaths": [
+          "/state/board/0",
+          "/state/board/1",
+          "/state/board/2",
+          "/state/board/3",
+          "/state/board/4"
+        ],
+        "omittedFields": 10,
+        "independentFieldPairs": 1,
+        "answerSha256": "3d61ade4011f9be6895ee4d0f10691da9c6e9268be45507f2e2ae3150197f911",
+        "review": {
+          "status": "requested-facts-correct",
+          "observation": "One X in the center, O to move, no winner."
+        }
+      },
+      {
+        "id": "sorting-1",
+        "source": ".verification\\mini-app-live-X940ig\\result.json",
+        "sourceSha256": "df6b3b5955c4393485027327711a9bdcab1944de973463b7e6bf1084982d571d",
+        "interaction": "completed",
+        "actions": 2,
+        "fieldPaths": [
+          "/state/arr/0",
+          "/state/arr/1",
+          "/state/arr/2",
+          "/state/arr/3",
+          "/state/passIndex",
+          "/state/j",
+          "/state/swapsInPass",
+          "/state/comparisons",
+          "/state/swaps",
+          "/state/lastLeft",
+          "/state/newPass"
+        ],
+        "omittedFields": 11,
+        "independentFieldPairs": 2,
+        "answerSha256": "9e673bc8d8c9ccf6da540050271046962f2754ce17bb8031729eeb808279808e",
+        "review": {
+          "status": "requested-facts-correct-with-extra-unverified-prediction",
+          "observation": "Two comparisons/two swaps, previous 6/5, next 6/1 and third swap correct. Added second future transition is outside the checked single-step scope."
+        }
+      }
+    ]
+  },
+  "semanticReview": {
+    "kind": "single developer inspection against independent numeric oracles; no two-human acceptance",
+    "clearFailureIds": [
+      "jugs-2",
+      "jugs-3"
+    ],
+    "conclusion": "This batch does not demonstrate that field effects plus policy changes fix explanation quality. Mechanical success is not semantic success."
+  },
+  "additionalFinding": {
+    "source": "jugs-3",
+    "kind": "historical achievement used as a current-goal label",
+    "cases": [
+      {
+        "action": "fill5",
+        "large": 5
+      },
+      {
+        "action": "empty5",
+        "large": 0
+      }
+    ],
+    "observedLabel": "目标达成：5 升杯里正好 4 升水。还想再试一次就点“全部清空重来”。",
+    "scope": "Read-only isolated execution and projection from the final UI-confirmed checkpoint, not extra desktop operations or repaired generation"
+  },
+  "remaining": [
+    "3B explanation correctness and initial generation semantics including post-goal transitions",
+    "3C native-window recovery and complete operation combinations",
+    "3D complex task coverage",
+    "3E full CI, sealed set and independent human acceptance"
+  ],
+  "rawEvidence": {
+    "path": ".verification/desktop-e2e-xshvGa/task-replay.json",
+    "sha256": "35a447c1635a02643f0f83abe02e60bbb6e5aaa83bca8191d4331a2fbdea152c"
+  }
+}

@@ -79,6 +79,7 @@ import { runOptionalStartupTask } from "./startup-tasks.js";
 import { ensurePortableDesktopShortcut, type PortableShortcutResult } from "./portable-shortcut.js";
 import { StandaloneServer, type ServerExit } from "./server-supervisor.js";
 import { fitBoundsToVisibleDisplays } from "./window-bounds.js";
+import { configureWindowVisibility } from "./window-visibility.js";
 import { protectTransparentCompanion } from "./transparent-companion.js";
 import { guardCompanionWindow } from "./companion-window-guard.js";
 import { nativeCompanionPoint, validCompanionRectangle } from "./companion-motion.js";
@@ -159,6 +160,9 @@ const STARTUP_SHELL_BACKGROUND = "#080a0f";
 const PI_AGENT_DIRECTORY_ENV = "PI_CODING_AGENT_DIR";
 const desktopDevelopmentRuntime = resolveDesktopDevelopmentRuntime();
 const DESKTOP_DISPLAY_NAME = desktopDevelopmentRuntime ? `${APP_DISPLAY_NAME} Dev` : APP_DISPLAY_NAME;
+
+// Chromium feature switches must be configured before Electron becomes ready.
+configureWindowVisibility(app.commandLine, process.platform);
 
 const requestedSmokeUserData = process.env.PIORA_SMOKE_USER_DATA?.trim();
 const requestedCompanionUiTestUserData = process.env.PIORA_COMPANION_UI_TEST === "1"

@@ -1,0 +1,1219 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-02T15:35:34.222Z",
+  "scope": "First 24 original development samples. Evidence spans code batches; not a current-code generation evaluation, sealed-set result or human acceptance.",
+  "originalBatch": {
+    "path": ".verification/mini-app-evaluation-DSNO1F/result.json",
+    "sha256": "fbe8f8fc639d4c2d8b637ac54e9240104b8f5291ee92f6f55337031a95228e60"
+  },
+  "codeBase": "c121eda97fcba18bf8db2ece90464e55ec8ed5f2",
+  "modifiedSourceSha256": {
+    "lib/mini-app/renderer-runtime.ts": "f2399fc9a899c46d0bff57c27333104722d93834b2694385cd28dec5d50872ab",
+    "lib/answer-output-decision.ts": "fc7ea1a94f98e87221648ff17fe4463da0614ea8b12f61b9aeae77bbd28498ff"
+  },
+  "counts": {
+    "originalSamples": 24,
+    "fullMechanicalUiSamples": 18,
+    "nonUiSamples": 6,
+    "knownSemanticFailureSamples": 7
+  },
+  "verification": {
+    "focusedBrowserTests": "8/8 passed",
+    "capabilities": "494/494 passed in 55 files; includes focused tests",
+    "webTypecheck": "passed",
+    "targetedLint": "passed",
+    "nativeWindow": "unresolved",
+    "fullCi": "deferred",
+    "humanAcceptance": "deferred"
+  },
+  "runs": [
+    {
+      "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+      "sha256": "ef3413646e8ad0aca193ee5cf8f948a2c8aa7d377d89f5f9ccad03af611113d6",
+      "status": "failed",
+      "cleanupErrors": [],
+      "codeCommit": "af6dbbbd2507d707e7447e00d76df37a12713b74",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      }
+    },
+    {
+      "path": ".verification/desktop-e2e-fz5CjN/component-replay.json",
+      "sha256": "c90d60445183a805ebbfe76e6908ccc20ccb1c3f254cd29fae8d5feb0891b9f6",
+      "status": "passed",
+      "cleanupErrors": [],
+      "codeCommit": "af6dbbbd2507d707e7447e00d76df37a12713b74",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      }
+    },
+    {
+      "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+      "sha256": "79c8667e8b5d94fca6fce6c2ae286d899148d5e2f4cd2a613388745e0f9bec14",
+      "status": "failed",
+      "cleanupErrors": [],
+      "codeCommit": "af6dbbbd2507d707e7447e00d76df37a12713b74",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      }
+    },
+    {
+      "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+      "sha256": "f61ed0b32de2d9fa2152913a68090dcabaa5151c1977642c67e15f991d814733",
+      "status": "failed",
+      "cleanupErrors": [],
+      "codeCommit": "c121eda97fcba18bf8db2ece90464e55ec8ed5f2",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      }
+    },
+    {
+      "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+      "sha256": "96c7df5e7847eb80ffba1cb734244cec081abc11e8a20750835189955778c71d",
+      "status": "passed",
+      "cleanupErrors": [],
+      "codeCommit": "c121eda97fcba18bf8db2ece90464e55ec8ed5f2",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      }
+    },
+    {
+      "path": ".verification/desktop-e2e-BQqm15/task-replay.json",
+      "sha256": "a1e80859f0f6347dac9ce46f78c184239ff2a0b87597abf7755435fe9d209cf2",
+      "status": "passed",
+      "cleanupErrors": [],
+      "codeCommit": "c121eda97fcba18bf8db2ece90464e55ec8ed5f2",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      }
+    }
+  ],
+  "samples": [
+    {
+      "id": "direct-1",
+      "task": "direct",
+      "generation": {
+        "path": ".verification/mini-app-live-osKxQJ/result.json",
+        "sha256": "68024c380f008bf8d3c0be5221e056fd8dc6781f4d9fc6db1d5c0ca04740ba59",
+        "status": "completed",
+        "observedForms": [
+          "non-ui"
+        ],
+        "finalTextSha256": "6d543b3643d9a2a0e7cbde2d6d609a19e6c91280e5b7df1710bb47922b576728"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": [],
+        "expected": "480 / 6 = 80; all three original responses satisfy this without UI."
+      },
+      "attempts": []
+    },
+    {
+      "id": "clarification-1",
+      "task": "clarification",
+      "generation": {
+        "path": ".verification/mini-app-live-QerGOB/result.json",
+        "sha256": "63aaccfe19fa5ad281d92592313f3987cbc2ea0e9bceaab18cc642095795ae97",
+        "status": "completed",
+        "observedForms": [
+          "non-ui"
+        ],
+        "finalTextSha256": "7c31ce5df8f959be91a59e841d2d0ede34529abeb074fa87d27d2fa90c0d78a4"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "needs-review",
+        "findings": [],
+        "warnings": [
+          "No invented commission or UI; clarification is verbose and multi-turn acceptance is pending."
+        ],
+        "expected": "Commission rules are not supplied: ask for the rule without inventing a rate or computing a commission."
+      },
+      "attempts": []
+    },
+    {
+      "id": "outing-1",
+      "task": "outing",
+      "generation": {
+        "path": ".verification/mini-app-live-Ft4rlm/result.json",
+        "sha256": "5fd0dae5b6cea44f7e6aba93541b13f0b111b8216783e7200b06dae4c1db09f5",
+        "status": "completed",
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "finalTextSha256": "85d13b8b0d38f467c2883d996ba4a41b72771356a61f2d84424bb456bdac614f"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "known-semantic-failure",
+        "findings": [
+          "The original component invented max=60 without a user-supplied bound.",
+          "The component static rule text reverses which plan is cheaper below and above four people, contradicting its correct dynamic calculation and table.",
+          "The original final response also reversed the comparison in two bullets."
+        ],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+          "automationStatus": "semantic-failed",
+          "recordedCheckpoints": 3
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+        "status": "completed",
+        "operationCount": 3,
+        "reloadCount": 1,
+        "finalSnapshot": "周末出行 A/B 方案总价对比\n改人数看看\n出游人数 (人): 6\n按 6 人计算：A 方案共 300 元，B 方案共 330 元，A 更省钱，差额 30 元。\n两种方案各花多少\nA 方案\nA 门票合计（30 元/人） (元): 180\nA 总价（含车费 120 元） (元): 300\nB 方案\nB 门票合计（45 元/人） (元): 270\nB 总价（含车费 60 元） (元): 330\n差额与对比\n两种方案总价差额 (元): 30\nA 总价: 300\nB 总价: 330\n1–8 人对照表与规则\n人数 | A 总价（元） | B 总价（元） | 更省\n1 | 150 | 105 | B\n2 | 180 | 150 | B\n3 | 210 | 195 | B\n4 | 240 | 240 | 一样\n5 | 270 | 285 | A\n6 | 300 | 330 | A\n7 | 330 | 375 | A\n8 | 360 | 420 | A\n计算规则：A = 人数×30 + 120（车费总额固定）；B = 人数×45 + 60（车费总额固定）。两者相交在 4 人：少于 4 人 A 便宜，正好 4 人一样，多于 4 人 B 便宜，且每多一人 B 再多省 15 元。",
+        "followupRecorded": true,
+        "followupSha256": "e575f153d09e824cde93a1462f93898987d3207ec8a83754108389bf54972133"
+      }
+    },
+    {
+      "id": "discount-1",
+      "task": "discount",
+      "generation": {
+        "path": ".verification/mini-app-live-wJlR86/result.json",
+        "sha256": "825c49fe5367d2967e2ce8e86adcc4da9e8546655734a2b4ed20802c32111a48",
+        "status": "completed",
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "finalTextSha256": "b83c6422cfcbb8e348c07ce60dbd59804bc6e2ed654240f730a2807ec1fc847d"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "known-semantic-failure",
+        "findings": [
+          "The original final response incorrectly said average cost falls as quantity increases beyond six; actual average is 18 - 20/n and rises.",
+          "It also claimed the sixth cup costs 8 extra, whereas total changes from 90 to 88."
+        ],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 3
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+        "status": "completed",
+        "operationCount": 3,
+        "reloadCount": 1,
+        "finalSnapshot": "奶茶实付与每杯均价\n调整杯数\n杯数 (杯): 8\n结算结果\n实付金额 (元): 124\n平均每杯 (元/杯): 15.5\n原价合计（18 元 × 杯数） (元): 144\n本次立减 (元): 20\n当前 8 杯，原价合计 144 元；已达 100 元，立减 20 元。实付 124 元，平均每杯约 15.5 元。\n规则：每杯 18 元；订单满 100 元减 20 元，每单只减一次。杯数设为 1 杯起，避免出现除零的无意义均价。",
+        "followupRecorded": true,
+        "followupSha256": "dfdb5989b3fc3af1825a0e2ffcd006445aa02bd993f4c80ef5ae0dc7661df24d"
+      }
+    },
+    {
+      "id": "sorting-1",
+      "task": "sorting",
+      "generation": {
+        "path": ".verification/mini-app-live-X940ig/result.json",
+        "sha256": "df6b3b5955c4393485027327711a9bdcab1944de973463b7e6bf1084982d571d",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "02620226d30f5f31e65468f96f34b02b9263bea09705befdd318096fc0d0b535"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 12
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+        "status": "completed",
+        "operationCount": 12,
+        "reloadCount": 3,
+        "finalSnapshot": {
+          "inputs": {
+            "n1": 6,
+            "n2": 2,
+            "n3": 5,
+            "n4": 1
+          },
+          "state": {
+            "arr": [
+              2,
+              5,
+              6,
+              1
+            ],
+            "passIndex": 0,
+            "j": 2,
+            "swapsInPass": 2,
+            "comparisons": 2,
+            "swaps": 2,
+            "lastLeft": 6,
+            "lastRight": 5,
+            "lastSwapped": true,
+            "newPass": false,
+            "settled": 0,
+            "settledValue": -1,
+            "justSettled": false,
+            "started": true,
+            "done": false
+          },
+          "tick": 11,
+          "rng": 1346981714
+        },
+        "summary": "比较下标 1 和 2：左边是 6，右边是 5。6 比 5 大，左边大就要交换，两个数调换位置。",
+        "followupRecorded": true,
+        "followupSha256": "a9b46993f6de7c5037c30f22a553a73ccabba258c815be24f6a3f156745abc04"
+      }
+    },
+    {
+      "id": "triangle-1",
+      "task": "triangle",
+      "generation": {
+        "path": ".verification/mini-app-live-StMMvk/result.json",
+        "sha256": "337c6e1754075defe7dd029718fda840fca34ffa120ec1fb1e884cc2b472b6bf",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "ca22a9de42215bcb53efb9fa9d0a1bdf2220ef766a04b7cee0a62e84d73e09fb"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+          "automationStatus": "failed",
+          "recordedCheckpoints": 3,
+          "error": "See retained original report"
+        },
+        {
+          "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 7
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+        "status": "completed",
+        "operationCount": 7,
+        "reloadCount": 2,
+        "finalSnapshot": {
+          "inputs": {},
+          "state": {
+            "base": 6,
+            "height": 2,
+            "drag": ""
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "底 6 × 高 2 ÷ 2 = 面积 6",
+        "followupRecorded": true,
+        "followupSha256": "e018baf24ccadd1f7dc2b5879ef71795703907239fb817b5c45f9efd14f7857b"
+      }
+    },
+    {
+      "id": "jugs-1",
+      "task": "jugs",
+      "generation": {
+        "path": ".verification/mini-app-live-vph3zd/result.json",
+        "sha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "1f9d86903755648886eb6e026dce62e41d12e800c3a650a5c90e82635f09a205"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "known-semantic-failure",
+        "findings": [
+          "After answer-form-3, current volumes are correct, but the explanation incorrectly predicts that pouring into an already full 3L cup leaves only 1L in the 5L cup."
+        ],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 8
+        },
+        {
+          "path": ".verification/desktop-e2e-BQqm15/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 8
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-BQqm15/task-replay.json",
+        "status": "completed",
+        "operationCount": 8,
+        "reloadCount": 2,
+        "finalSnapshot": {
+          "inputs": {
+            "showMark": true
+          },
+          "state": {
+            "small": 3,
+            "big": 4,
+            "moves": 6,
+            "showHint": false,
+            "notice": "成功！5 升杯里正好 4 升水，一共用了 6 步。"
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "成功：5 升杯里正好 4 升水，已用 6 步。",
+        "followupRecorded": true,
+        "followupSha256": "8478bbf665edb21bb1c86d19ed5b77a6c04436fbb27192efd7a222b159424c3f"
+      }
+    },
+    {
+      "id": "board-1",
+      "task": "board",
+      "generation": {
+        "path": ".verification/mini-app-live-EQfGWc/result.json",
+        "sha256": "2dc3a20a94b962039a1f6447138105635447038f16b9cc9d5bb0157afe7e520e",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "60bd4b1143371b8f6f5ba31b8494071c021f7335dece16b30ba3acbfc5429298"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 22
+        },
+        {
+          "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 22
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+        "status": "completed",
+        "operationCount": 22,
+        "reloadCount": 3,
+        "finalSnapshot": {
+          "inputs": {
+            "first": "X"
+          },
+          "state": {
+            "cells": [
+              "",
+              "",
+              "",
+              "",
+              "X",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "turn": "O",
+            "status": "playing",
+            "winner": "",
+            "lineIndex": -1,
+            "xWins": 1,
+            "oWins": 0,
+            "draws": 1
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "轮到 O 落子 这是第 2 手，棋盘上已有 1 颗棋子。",
+        "followupRecorded": true,
+        "followupSha256": "4b16a37d02f4b77ef94b4541cd1effe0a763289a43300f6a86cf95e942dbc2d2"
+      }
+    },
+    {
+      "id": "direct-2",
+      "task": "direct",
+      "generation": {
+        "path": ".verification/mini-app-live-MSJkiB/result.json",
+        "sha256": "1582d6233390c5822fe253b7fda2d111f720c866e11df93e7b8dadc6868a5e36",
+        "status": "completed",
+        "observedForms": [
+          "non-ui"
+        ],
+        "finalTextSha256": "6b79bb4ac1930f23b59e88d7b00a27a34a8eb2c934fd1162c839a2f90f39d9fb"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": [],
+        "expected": "480 / 6 = 80; all three original responses satisfy this without UI."
+      },
+      "attempts": []
+    },
+    {
+      "id": "clarification-2",
+      "task": "clarification",
+      "generation": {
+        "path": ".verification/mini-app-live-GFc6iu/result.json",
+        "sha256": "7d6ae6187432d0cc8cb71bb298fd3dbb85c7ca0bd07d42d25d4291d053a15ad5",
+        "status": "completed",
+        "observedForms": [
+          "non-ui"
+        ],
+        "finalTextSha256": "fadf809d25abb6b3efedfce6418aa958a3f2d13d397e4a93e7b0f1017dc1a199"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "needs-review",
+        "findings": [],
+        "warnings": [
+          "No invented commission or UI; clarification is verbose and multi-turn acceptance is pending."
+        ],
+        "expected": "Commission rules are not supplied: ask for the rule without inventing a rate or computing a commission."
+      },
+      "attempts": []
+    },
+    {
+      "id": "outing-2",
+      "task": "outing",
+      "generation": {
+        "path": ".verification/mini-app-live-JX9Zpx/result.json",
+        "sha256": "7bde2046842d0f6b5f17b98646381f8231ed9e6f2785671ec05a53b4795c35a7",
+        "status": "completed",
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "finalTextSha256": "5a375101793d3e8705efd39fe5962cc3fa695f85df8ed9466bcb792758cae8c7"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 3
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+        "status": "completed",
+        "operationCount": 3,
+        "reloadCount": 1,
+        "finalSnapshot": "周末出行两种方案总价对比\n调整人数\n出行人数 (人): 6\n两种方案总价\nA 方案：30 元/人 + 车费 120\nA 方案总价 (元): 300\n门票 180 元 + 车费 120 元\nB 方案：45 元/人 + 车费 60\nB 方案总价 (元): 330\n门票 270 元 + 车费 60 元\n结论\n按 6 人计算：A 更省。两方案总价相差 30 元。\nA 方案: 300\nB 方案: 330\nA：门票 30 元/人 + 车费一共 120 元；B：门票 45 元/人 + 车费一共 60 元。人数每多 1 人，A 比 B 多省 15 元；4 人时两者相同，少于 4 人 B 更省，多于 4 人 A 更省。\n不同人数下的对比\n人数 | A 总价（元） | B 总价（元） | B − A（元，正数表示 A 更省）\n1 人 | 150 | 105 | -45\n2 人 | 180 | 150 | -30\n3 人 | 210 | 195 | -15\n4 人 | 240 | 240 | 0\n5 人 | 270 | 285 | 15\n6 人 | 300 | 330 | 30\n7 人 | 330 | 375 | 45\n8 人 | 360 | 420 | 60",
+        "followupRecorded": true,
+        "followupSha256": "cd447208d8d6d5463aecd676e70b37a46226902eaf15e3f9a999f909cd538e43"
+      }
+    },
+    {
+      "id": "discount-2",
+      "task": "discount",
+      "generation": {
+        "path": ".verification/mini-app-live-VaGC8Z/result.json",
+        "sha256": "bb432f5c5f6fbad741107efefe384b094c20a11b366c48fca83fc858c8a9c169",
+        "status": "completed",
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "finalTextSha256": "675d8ded5510e47f02570a40a638f2b585af58eb82385914a0b4624e20fb5313"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "needs-review",
+        "findings": [],
+        "warnings": [
+          "The original final response introduced an unexplained eleven-cup remark; explanatory prose needs review even though sampled arithmetic is correct."
+        ]
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 3
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+        "status": "completed",
+        "operationCount": 3,
+        "reloadCount": 1,
+        "finalSnapshot": "奶茶订单实付与每杯均价\n改杯数\n杯数 (杯): 8\n按当前杯数结算\n金额与优惠\n商品金额 (元): 144\n满减优惠 (元): 20\n实付\n实付金额 (元): 124\n平均每杯（约） (元): 15.5\n计算说明\n按 8 杯计算，商品金额 144 元，满足满 100 减 20：实付 124 元，平均每杯约 15.5 元。\n规则：每杯 18 元；单笔订单商品金额满 100 元时整单减 20 元，且每单只能减一次。杯数按整数杯计。\n1–10 杯对照表\n杯数 | 商品金额（元） | 优惠（元） | 实付（元） | 平均每杯（元）\n1 | 18 | 0 | 18 | 18\n2 | 36 | 0 | 36 | 18\n3 | 54 | 0 | 54 | 18\n4 | 72 | 0 | 72 | 18\n5 | 90 | 0 | 90 | 18\n6 | 108 | 20 | 88 | 14.67\n7 | 126 | 20 | 106 | 15.14\n8 | 144 | 20 | 124 | 15.5\n9 | 162 | 20 | 142 | 15.78\n10 | 180 | 20 | 160 | 16",
+        "followupRecorded": true,
+        "followupSha256": "9743552e37947cc5e95045e6727dafb7860793523b637533c876c8c21d44c916"
+      }
+    },
+    {
+      "id": "sorting-2",
+      "task": "sorting",
+      "generation": {
+        "path": ".verification/mini-app-live-RaGmL8/result.json",
+        "sha256": "fc1fef776bf54f401456f655dcce552272ced2aed22e6527a226c1463f0008f1",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "9552e59ece376c5f1eb5dfba5ee861842fad8071c53ea4957acf6b209e1584a5"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 12
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+        "status": "completed",
+        "operationCount": 12,
+        "reloadCount": 3,
+        "finalSnapshot": {
+          "inputs": {},
+          "state": {
+            "arr": [
+              2,
+              5,
+              6,
+              1
+            ],
+            "pass": 0,
+            "j": 2,
+            "comparisons": 2,
+            "swaps": 2,
+            "started": true,
+            "done": false,
+            "lastLeft": 6,
+            "lastRight": 5,
+            "lastSwapped": true,
+            "lastIndex": 1
+          },
+          "tick": 11,
+          "rng": 1346981714
+        },
+        "summary": "当前数组：2  5  6  1。 刚比较第2位和第3位：6 和 5。因为 6 > 5，左边更大、顺序不对，所以交换，把大的数往右推。 下一次：第3位和第4位（6 和 1）。",
+        "followupRecorded": true,
+        "followupSha256": "03e994e4815790a8009ca6cea960043d66147168ab8625ac507f48030288742f"
+      }
+    },
+    {
+      "id": "triangle-2",
+      "task": "triangle",
+      "generation": {
+        "path": ".verification/mini-app-live-WXk9w4/result.json",
+        "sha256": "3ed8de17f7f10ad8da3bea1ec7dbc45ac9a3b6d06cf42915db9dd98913272155",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "7a80f0b80a3e727936d14f7e08f898d4842be0c5319aa00aa930ea67fd314204"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 7
+        },
+        {
+          "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 7
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+        "status": "completed",
+        "operationCount": 7,
+        "reloadCount": 2,
+        "finalSnapshot": {
+          "inputs": {},
+          "state": {
+            "base": 6,
+            "height": 2,
+            "drag": "none"
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "底 6，高 2，面积 6",
+        "followupRecorded": true,
+        "followupSha256": "b5d8478ecce965312a856423dab0c8e92df3b36cd94bdb7a9cb64e20e4d9d009"
+      }
+    },
+    {
+      "id": "jugs-2",
+      "task": "jugs",
+      "generation": {
+        "path": ".verification/mini-app-live-005vkb/result.json",
+        "sha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "125093d496528c7d4f75d511274290bc23d25ea51f916b6d7ccd980bfbfe26fa"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "known-semantic-failure",
+        "findings": [
+          "After answer-form-3, current volumes are correct, but the explanation claims any further pour breaks the goal while also acknowledging operations that leave 4L unchanged."
+        ],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+          "automationStatus": "failed",
+          "recordedCheckpoints": 0,
+          "error": "See retained original report"
+        },
+        {
+          "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 8
+        },
+        {
+          "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 8
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+        "status": "completed",
+        "operationCount": 8,
+        "reloadCount": 2,
+        "finalSnapshot": {
+          "inputs": {},
+          "state": {
+            "a": 3,
+            "b": 4,
+            "moves": 6,
+            "hint": ""
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "成功：5 升杯中正好有 4 升水。 3 升杯 3 升，5 升杯 4 升，已操作 6 步。",
+        "followupRecorded": true,
+        "followupSha256": "d1cd2c897fafb0241a86f65ee5011629268ff8c013a5c7daf8723a7bb7ec0d8c"
+      }
+    },
+    {
+      "id": "board-2",
+      "task": "board",
+      "generation": {
+        "path": ".verification/mini-app-live-51dGCn/result.json",
+        "sha256": "a439eb109ae6e05ccb309eee531026a8184e51cf06592ab0a6cae61bdec76bc6",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "68f984178ce2998b3eb2d98be1adeef7b625d7e1877f4d1a387591f9ebfae7ee"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+          "automationStatus": "failed",
+          "recordedCheckpoints": 3,
+          "error": "See retained original report"
+        },
+        {
+          "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 22
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+        "status": "completed",
+        "operationCount": 22,
+        "reloadCount": 3,
+        "finalSnapshot": {
+          "inputs": {},
+          "state": {
+            "board": [
+              ".",
+              ".",
+              ".",
+              ".",
+              "X",
+              ".",
+              ".",
+              ".",
+              "."
+            ],
+            "turn": "O",
+            "status": "playing",
+            "winner": "-",
+            "line": [],
+            "moves": 1
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "对局进行中，轮到 O 下第 2 手。",
+        "followupRecorded": true,
+        "followupSha256": "7072e287c98890a176ae4eceb78c1be72af0a354b71f0077988236f90fac9c79"
+      }
+    },
+    {
+      "id": "direct-3",
+      "task": "direct",
+      "generation": {
+        "path": ".verification/mini-app-live-2s2YF7/result.json",
+        "sha256": "6327210104ec97eb42dea8d9e878cb35148839e50cc9f6cad122554c2e831d59",
+        "status": "completed",
+        "observedForms": [
+          "non-ui"
+        ],
+        "finalTextSha256": "b5b0f50e48cc0b22e9f90fd3c7d2a7ab2c7156e3a534911280e2c51670a0e7e1"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": [],
+        "expected": "480 / 6 = 80; all three original responses satisfy this without UI."
+      },
+      "attempts": []
+    },
+    {
+      "id": "clarification-3",
+      "task": "clarification",
+      "generation": {
+        "path": ".verification/mini-app-live-pBwrop/result.json",
+        "sha256": "8fbaf8094afee4472193a161c3ea45989a9ff0b906e25a7b8c58456a67f0788a",
+        "status": "completed",
+        "observedForms": [
+          "non-ui"
+        ],
+        "finalTextSha256": "84eb5cf5a79c3cd12a47c5380f035c6e56d1558afc0a922d3db9725f51547e25"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "needs-review",
+        "findings": [],
+        "warnings": [
+          "No invented commission or UI; clarification is verbose and multi-turn acceptance is pending."
+        ],
+        "expected": "Commission rules are not supplied: ask for the rule without inventing a rate or computing a commission."
+      },
+      "attempts": []
+    },
+    {
+      "id": "outing-3",
+      "task": "outing",
+      "generation": {
+        "path": ".verification/mini-app-live-1NIXaX/result.json",
+        "sha256": "dc5ddc02300861bb063917a6ae2e47c6b8d0e413730e7e45624845867e90238b",
+        "status": "completed",
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "finalTextSha256": "79ff2f05ed0c7e4b49b4ad968c10d617c485439f27cb76886c875ca984bea46a"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "no-known-error-in-reviewed-sample",
+        "findings": [],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+          "automationStatus": "failed",
+          "recordedCheckpoints": 0,
+          "error": "See retained original report"
+        },
+        {
+          "path": ".verification/desktop-e2e-fz5CjN/component-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 3
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-fz5CjN/component-replay.json",
+        "status": "completed",
+        "operationCount": 3,
+        "reloadCount": 1,
+        "finalSnapshot": "A / B 出游方案费用对比\n人数\n出行人数 (人): 6\nA：门票 30 元/人 + 一次性车费 120 元；B：门票 45 元/人 + 一次性车费 60 元。车费不随人数变化。\n两个方案总额对比\nA 方案\nA 方案总额 (元): 300\n30 元/人 × 人数 + 120 元车费\nB 方案\nB 方案总额 (元): 330\n45 元/人 × 人数 + 60 元车费\n差额与结论\n差额（B − A） (元): 30\n按 6 人计算：A 共 300 元，B 共 330 元；B − A = 30 元。结论：A 方案更省。\nA 方案: 300\nB 方案: 330\n不同人数下的对比\n人数 | A 总额（元） | B 总额（元） | B − A（元） | 更省\n1 | 150 | 105 | -45 | B\n2 | 180 | 150 | -30 | B\n3 | 210 | 195 | -15 | B\n4 | 240 | 240 | 0 | 一样\n5 | 270 | 285 | 15 | A\n6 | 300 | 330 | 30 | A\n8 | 360 | 420 | 60 | A\n10 | 420 | 510 | 90 | A",
+        "followupRecorded": true,
+        "followupSha256": "80ebe35efb5c73dc532ff1a06587143f27b2f4365b634b62ee476f55f40760f1"
+      }
+    },
+    {
+      "id": "discount-3",
+      "task": "discount",
+      "generation": {
+        "path": ".verification/mini-app-live-umVDAd/result.json",
+        "sha256": "8e882991142af494bd2100fda43a87f3015fd237323bd95abd77e1cdb6d42595",
+        "status": "completed",
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "finalTextSha256": "fac6595d3bcaef07025e9de6347b96df59781f2ec9590649907658c09a538e41"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "known-semantic-failure",
+        "findings": [
+          "The original final response incorrectly said average cost falls as quantity increases after the one-time discount threshold."
+        ],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 3
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-SWSdXU/component-replay.json",
+        "status": "completed",
+        "operationCount": 3,
+        "reloadCount": 1,
+        "finalSnapshot": "奶茶订单实付与每杯均价（满 100 减 20）\n改成想要的杯数\n杯数 (杯): 8\n这单要花多少钱\n实付金额 (元): 124\n平均每杯（实付 ÷ 杯数，保留 2 位小数） (元): 15.5\n明细与规则\n按每杯 18 元计算，8 杯小计 144 元；已满 100 元，每单减 20 元（只减一次），实付 124 元，平均每杯约 15.5 元。\n项目 | 金额（元）\n小计（18 × 杯数） | 144\n满减优惠 | 20\n实付 | 124\n规则：每杯 18 元；订单小计满 100 元时减 20 元，每单只减一次，不随杯数重复叠加。平均每杯 = 实付 ÷ 杯数。",
+        "followupRecorded": true,
+        "followupSha256": "bbc1b5b84af5c165232765e9fce69eab8d86b4a291dd8018f62bc6eb419846cb"
+      }
+    },
+    {
+      "id": "sorting-3",
+      "task": "sorting",
+      "generation": {
+        "path": ".verification/mini-app-live-knFMbc/result.json",
+        "sha256": "cd7885b37ba0581d858f04963e2e224dd0c0626fac9288e676b9133611c77392",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "ae560edc1ba8d12fbefd3432acb7fb9ac607cca2e6d38fb33539b8c8baeae232"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "known-semantic-failure",
+        "findings": [
+          "The original initialSnapshot and final response claimed four swaps; the independent inversion count and actual terminal state show five."
+        ],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+          "automationStatus": "semantic-failed",
+          "recordedCheckpoints": 12
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+        "status": "completed",
+        "operationCount": 12,
+        "reloadCount": 3,
+        "finalSnapshot": {
+          "inputs": {
+            "sequence": "6, 2, 5, 1"
+          },
+          "state": {
+            "arr": [
+              2,
+              5,
+              6,
+              1
+            ],
+            "end": 4,
+            "j": 2,
+            "pass": 1,
+            "comparisons": 2,
+            "swaps": 2,
+            "phase": "running",
+            "kind": "compare",
+            "lastIdx": 1,
+            "lastA": 6,
+            "lastB": 5,
+            "lastSwapped": true,
+            "locked": 0,
+            "notice": ""
+          },
+          "tick": 14,
+          "rng": 1346981714
+        },
+        "summary": "比较位置 1 的 6 和位置 2 的 5：6 > 5，大的数在左边，位置不对，所以要交换。交换后这两个位置变成 5、6，大的 6 往右挪了一格。",
+        "followupRecorded": true,
+        "followupSha256": "cc271479fd15bcfb5b03cdb12554df87f165d79c66d70cf3d3e75d0e35c25e6f"
+      }
+    },
+    {
+      "id": "triangle-3",
+      "task": "triangle",
+      "generation": {
+        "path": ".verification/mini-app-live-TvT8jQ/result.json",
+        "sha256": "5e4b33b89cb56aef5639d93015f41fbb0f323133f72d402396fc678ede792178",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "02b7e31763b4a556dc91008a7d90416a3e9207484b335eb8059a8ee1af4b195a"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "needs-review",
+        "findings": [],
+        "warnings": [
+          "The follow-up describes A and B as unmoved, although the replay changed B and reset it. Treat current-versus-initial equality separately from action history."
+        ]
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+          "automationStatus": "failed",
+          "recordedCheckpoints": 3,
+          "error": "See retained original report"
+        },
+        {
+          "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 7
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+        "status": "completed",
+        "operationCount": 7,
+        "reloadCount": 2,
+        "finalSnapshot": {
+          "inputs": {
+            "snap": true
+          },
+          "state": {
+            "ax": 60,
+            "ay": 420,
+            "bx": 420,
+            "by": 420,
+            "cx": 60,
+            "cy": 300,
+            "drag": -1
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "底 6，高 2，面积 6 平方单位。",
+        "followupRecorded": true,
+        "followupSha256": "055d13cd8607b05dbcde11a2e013a4ceff63db1bd3e357e71b94a7cb642c38ec"
+      }
+    },
+    {
+      "id": "jugs-3",
+      "task": "jugs",
+      "generation": {
+        "path": ".verification/mini-app-live-DzQKbZ/result.json",
+        "sha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "8ee3f1b6ffbe7d86c6158f703c98dff929b70b56126a08472681f489c982ccaa"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "known-semantic-failure",
+        "findings": [
+          "After answer-form-3, current volumes are correct, but the blanket claim that further operations break the goal is false: emptying the 3L cup preserves 4L in the other cup."
+        ],
+        "warnings": []
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-VP4LkI/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 8
+        },
+        {
+          "path": ".verification/desktop-e2e-BQqm15/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 8
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-BQqm15/task-replay.json",
+        "status": "completed",
+        "operationCount": 8,
+        "reloadCount": 2,
+        "finalSnapshot": {
+          "inputs": {},
+          "state": {
+            "cup3": 3,
+            "cup5": 4,
+            "moves": 6,
+            "solved": true,
+            "showHint": false,
+            "log": [
+              {
+                "key": "s1",
+                "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+              },
+              {
+                "key": "s2",
+                "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+              },
+              {
+                "key": "s3",
+                "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+              },
+              {
+                "key": "s4",
+                "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+              },
+              {
+                "key": "s5",
+                "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+              },
+              {
+                "key": "s6",
+                "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+              }
+            ]
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "3 升杯 3 升，5 升杯 4 升，已操作 6 步。已量出 4 升。",
+        "followupRecorded": true,
+        "followupSha256": "72405be9fb14a5795f4987d75bd223ee73c4024011be1e1c126b031feb3fefee"
+      }
+    },
+    {
+      "id": "board-3",
+      "task": "board",
+      "generation": {
+        "path": ".verification/mini-app-live-l5p5aS/result.json",
+        "sha256": "1390344d19812dc88255be3732390fe0c7eacfc2bf68299f9ab135b35841ffb4",
+        "status": "completed",
+        "observedForms": [
+          "mini-app"
+        ],
+        "finalTextSha256": "f5e35dcfa7a2da6543c2951e7878ce0073bccf08e9a5daa6afaa73de8d64c992"
+      },
+      "review": {
+        "kind": "single development-agent evidence review; not independent human acceptance",
+        "status": "needs-review",
+        "findings": [],
+        "warnings": [
+          "The follow-up exposes the internal winner field and loosely describes the timing of win evaluation; the requested current board and turn are correct."
+        ]
+      },
+      "attempts": [
+        {
+          "path": ".verification/desktop-e2e-JBl1tO/task-replay.json",
+          "automationStatus": "failed",
+          "recordedCheckpoints": 3,
+          "error": "See retained original report"
+        },
+        {
+          "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+          "automationStatus": "completed",
+          "recordedCheckpoints": 22
+        }
+      ],
+      "latestMechanical": {
+        "path": ".verification/desktop-e2e-c6BwpG/task-replay.json",
+        "status": "completed",
+        "operationCount": 22,
+        "reloadCount": 3,
+        "finalSnapshot": {
+          "inputs": {},
+          "state": {
+            "board": [
+              "",
+              "",
+              "",
+              "",
+              "X",
+              "",
+              "",
+              "",
+              ""
+            ],
+            "turn": "O",
+            "winner": "",
+            "moves": 1,
+            "winsX": 1,
+            "winsO": 0,
+            "draws": 1
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "还没有结果 当前比分：X 胜 1 · O 胜 0 · 平局 1",
+        "followupRecorded": true,
+        "followupSha256": "2d6a65451ba21a41b3c9407a3ca70b9fb55e8764e558b9f037633f91a3ea69a2"
+      }
+    }
+  ]
+}

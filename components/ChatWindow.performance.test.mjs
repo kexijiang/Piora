@@ -24,6 +24,13 @@ test("main chat ignores the retired compact process preference", () => {
   assert.match(source, /const compactProcess = false/);
 });
 
+test("running composer enters durable submission before its save gate and queue promotions retain cancellation checks", () => {
+  assert.match(source, /onQueueInput=\{chatCommands\.submit\}/);
+  assert.doesNotMatch(source, /onQueueInput=\{handleQueuedComposerInput\}/);
+  for (const action of ["steer", "resume"]) assert.ok(source.includes(`if (await prepareAnswerStateForSubmission(record.targetSessionId)) await queueAction(record, "${action}")`));
+  assert.match(source, /cancel: async record => \{ await queueAction\(record, "cancel"\); \}/, "cancellation remains available when saving fails");
+});
+
 test("long chat rows use browser rendering containment", () => {
   assert.match(historySource, /chat-message-shell/);
   assert.match(historySource, /<VirtualList/);

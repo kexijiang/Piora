@@ -1,0 +1,1557 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "scopeVersion": "phase3-v3.9-user-approved",
+  "phase3Status": "usable-beta-functional-complete",
+  "phase4Status": "planned",
+  "codeBaseline": "6c59034cc9e5353d6db080814d40e5faaefea719",
+  "scope": "Representative functional tasks and main persistence/revision/action/conversion flows; systematic reliability, full CI, sealed set and human semantic acceptance move to phase 4 by explicit user agreement.",
+  "changes": [
+    "Phase 3/4 scope and completion documents",
+    "Real UI grouped operations, held-key canvas observation, exact field/reload/terminal assertions in the desktop replay runner",
+    "No production runtime code changed in this batch"
+  ],
+  "sourceChecks": {
+    "desktop": {
+      "count": 519,
+      "status": "matched"
+    },
+    "capability": {
+      "count": 178,
+      "status": "matched"
+    }
+  },
+  "checks": {
+    "capability": {
+      "reused": true,
+      "id": "tojLhp",
+      "tests": 538,
+      "passed": 538,
+      "failed": 0,
+      "files": 61,
+      "note": "All 178 source hashes currently match. No repeat full suite in this batch."
+    },
+    "syntax": "passed",
+    "targetedLint": "passed"
+  },
+  "generation": {
+    "id": "Ju40zR",
+    "prompt": "做个能用左右键移动挡板接球的小游戏，接住加分，漏掉扣一条命，能暂停继续和重新开始。",
+    "status": "completed",
+    "attempts": [
+      {
+        "toolCallId": "call_00_52aJRqNtV6BtN5er47IN5823",
+        "toolName": "piora_render_mini_app",
+        "isError": false,
+        "diagnostic": null
+      }
+    ],
+    "planDigest": "a3a7e994ef63fa4536fbe89abdb74380896f9e079823b5dc5dc48e676714b9c3",
+    "requests": [
+      {
+        "generationSettings": {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "high"
+        },
+        "httpStatus": 200
+      },
+      {
+        "generationSettings": {
+          "model": "deepseek-flash",
+          "max_tokens": 32768,
+          "thinking": {
+            "type": "enabled"
+          },
+          "reasoning_effort": "high"
+        },
+        "httpStatus": 200
+      }
+    ],
+    "providerModelIds": [
+      "deepseek-flash"
+    ],
+    "initialText": "接球小游戏已生成并发布（`paddleBallGame` 第 1 版）。\n\n**操作方式**\n- **← / → 方向键**左右移动挡板（也支持 A / D）；点一下球区即可获得键盘焦点。\n- 触屏/鼠标可用「◀ 左移 / 右移 ▶」按钮，按住移动、松开停止。\n- 先点宿主的 ▶ 播放键让球动起来；「暂停游戏 / 继续游戏」冻结或恢复小球。\n\n**规则**\n- 接住一次球：+1 分，球速 +14（上限 560）。\n- 漏球：生命 −1，立即从中央重新发球，方向左右交替。\n- 3 条命用完显示「游戏结束」，点「重新开始」重置分数、生命和球速，再按一次播放键继续。\n\n当前读数：得分 0，生命 ♥♥♥，球速 250，状态 进行中。"
+  },
+  "desktop": {
+    "id": "qlXUas",
+    "status": "passed",
+    "steps": [
+      {
+        "name": "launch",
+        "status": "passed",
+        "startedAt": "2026-11-03T08:28:20.252Z",
+        "durationMs": 29692
+      },
+      {
+        "name": "catching-1",
+        "status": "passed",
+        "startedAt": "2026-11-03T08:28:49.948Z",
+        "durationMs": 75399
+      }
+    ],
+    "cleanupErrors": [],
+    "pageErrors": [],
+    "checkpoints": [
+      {
+        "index": 0,
+        "status": "passed",
+        "operation": "group",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 458.3333333333331,
+            "ballX": 563.4912144820781,
+            "ballY": 294.539292868405,
+            "ballVX": 129.8779202751217,
+            "ballVY": -229.8428285263848,
+            "speed": 264,
+            "score": 1,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 88,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 1,
+        "status": "passed",
+        "operation": "reload",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 458.3333333333331,
+            "ballX": 563.4912144820781,
+            "ballY": 294.539292868405,
+            "ballVX": 129.8779202751217,
+            "ballVY": -229.8428285263848,
+            "speed": 264,
+            "score": 1,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 88,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 2,
+        "status": "passed",
+        "operation": "click",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 458.3333333333331,
+            "ballX": 563.4912144820781,
+            "ballY": 294.539292868405,
+            "ballVX": 129.8779202751217,
+            "ballVY": -229.8428285263848,
+            "speed": 264,
+            "score": 1,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": true,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 88,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 3，状态：已暂停"
+      },
+      {
+        "index": 3,
+        "status": "passed",
+        "operation": "group",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 458.3333333333331,
+            "ballX": 563.4912144820781,
+            "ballY": 294.539292868405,
+            "ballVX": 129.8779202751217,
+            "ballVY": -229.8428285263848,
+            "speed": 264,
+            "score": 1,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": true,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 108,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 3，状态：已暂停"
+      },
+      {
+        "index": 4,
+        "status": "passed",
+        "operation": "click",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 458.3333333333331,
+            "ballX": 563.4912144820781,
+            "ballY": 294.539292868405,
+            "ballVX": 129.8779202751217,
+            "ballVY": -229.8428285263848,
+            "speed": 264,
+            "score": 1,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 108,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 5,
+        "status": "passed",
+        "operation": "group",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 0,
+            "ballX": 294.39428196584754,
+            "ballY": 222.7322369680886,
+            "ballVX": -83.04557200265509,
+            "ballVY": -250.59815037376438,
+            "speed": 264,
+            "score": 1,
+            "lives": 2,
+            "serveDir": -1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 207,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 2，状态：进行中"
+      },
+      {
+        "index": 6,
+        "status": "passed",
+        "operation": "reload",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 0,
+            "ballX": 294.39428196584754,
+            "ballY": 222.7322369680886,
+            "ballVX": -83.04557200265509,
+            "ballVY": -250.59815037376438,
+            "speed": 264,
+            "score": 1,
+            "lives": 2,
+            "serveDir": -1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 207,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 2，状态：进行中"
+      },
+      {
+        "index": 7,
+        "status": "passed",
+        "operation": "group",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 301,
+            "ballX": 549.7594158740167,
+            "ballY": 408.95704059802534,
+            "ballVX": 0,
+            "ballVY": 0,
+            "speed": 264,
+            "score": 1,
+            "lives": 0,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "over"
+          },
+          "tick": 364,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 0，状态：游戏结束"
+      },
+      {
+        "index": 8,
+        "status": "passed",
+        "operation": "wait",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 301,
+            "ballX": 549.7594158740167,
+            "ballY": 408.95704059802534,
+            "ballVX": 0,
+            "ballVY": 0,
+            "speed": 264,
+            "score": 1,
+            "lives": 0,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "over"
+          },
+          "tick": 364,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 0，状态：游戏结束"
+      },
+      {
+        "index": 9,
+        "status": "passed",
+        "operation": "key",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 301,
+            "ballX": 549.7594158740167,
+            "ballY": 408.95704059802534,
+            "ballVX": 0,
+            "ballVY": 0,
+            "speed": 264,
+            "score": 1,
+            "lives": 0,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "over"
+          },
+          "tick": 364,
+          "rng": 1346981714
+        },
+        "summary": "得分 1，剩余生命 0，状态：游戏结束"
+      },
+      {
+        "index": 10,
+        "status": "passed",
+        "operation": "click",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 272,
+            "ballX": 320,
+            "ballY": 300,
+            "ballVX": 78.64164015402945,
+            "ballVY": -237.3088545206102,
+            "speed": 250,
+            "score": 0,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 364,
+          "rng": 1346981714
+        },
+        "summary": "得分 0，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 11,
+        "status": "passed",
+        "operation": "group",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 0,
+            "ballX": 435.34107222590137,
+            "ballY": 63.37206605480915,
+            "ballVX": 78.64164015402945,
+            "ballVY": 237.3088545206102,
+            "speed": 250,
+            "score": 0,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 408,
+          "rng": 1346981714
+        },
+        "summary": "得分 0，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 12,
+        "status": "passed",
+        "operation": "reload",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 0,
+            "ballX": 435.34107222590137,
+            "ballY": 63.37206605480915,
+            "ballVX": 78.64164015402945,
+            "ballVY": 237.3088545206102,
+            "speed": 250,
+            "score": 0,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 408,
+          "rng": 1346981714
+        },
+        "summary": "得分 0，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 13,
+        "status": "passed",
+        "operation": "group",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 0,
+            "ballX": 479.90466831318145,
+            "ballY": 197.84708361648873,
+            "ballVX": 78.64164015402945,
+            "ballVY": 237.3088545206102,
+            "speed": 250,
+            "score": 0,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 425,
+          "rng": 1346981714
+        },
+        "summary": "得分 0，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 14,
+        "status": "passed",
+        "operation": "host",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 272,
+            "ballX": 320,
+            "ballY": 300,
+            "ballVX": 78.64164015402945,
+            "ballVY": -237.3088545206102,
+            "speed": 250,
+            "score": 0,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "得分 0，剩余生命 3，状态：进行中"
+      },
+      {
+        "index": 15,
+        "status": "passed",
+        "operation": "reload",
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "paddleX": 272,
+            "ballX": 320,
+            "ballY": 300,
+            "ballVX": 78.64164015402945,
+            "ballVY": -237.3088545206102,
+            "speed": 250,
+            "score": 0,
+            "lives": 3,
+            "serveDir": 1,
+            "paused": false,
+            "left": false,
+            "right": false,
+            "phase": "playing"
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "得分 0，剩余生命 3，状态：进行中"
+      }
+    ],
+    "reloads": 4,
+    "canvasObservations": [
+      {
+        "operation": {
+          "index": 0,
+          "kind": "group",
+          "action": 1,
+          "childKind": "hold-key"
+        },
+        "scan": {
+          "y": 366,
+          "color": "#38bdf8",
+          "minimum": 430,
+          "maximum": 515
+        },
+        "observed": 459
+      },
+      {
+        "operation": {
+          "index": 5,
+          "kind": "group",
+          "action": 1,
+          "childKind": "hold-key"
+        },
+        "scan": {
+          "y": 366,
+          "color": "#38bdf8",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "observed": 0
+      },
+      {
+        "operation": {
+          "index": 7,
+          "kind": "group",
+          "action": 1,
+          "childKind": "hold-key"
+        },
+        "scan": {
+          "y": 366,
+          "color": "#38bdf8",
+          "minimum": 225,
+          "maximum": 340
+        },
+        "observed": 287
+      },
+      {
+        "operation": {
+          "index": 11,
+          "kind": "group",
+          "action": 1,
+          "childKind": "hold-key"
+        },
+        "scan": {
+          "y": 366,
+          "color": "#38bdf8",
+          "minimum": 0,
+          "maximum": 0
+        },
+        "observed": 0
+      }
+    ],
+    "followup": {
+      "prompt": "现在是多少分、还剩几条命？先别改游戏，按当前保存的状态告诉我。",
+      "answer": "当前保存的状态：\n\n- **得分：0**\n- **剩余生命：3 条（♥♥♥）**\n- 状态：进行中，球速 250，未暂停\n\n补充一句（历史记录，不是当前值）：之前的存档里曾有一次游戏结束（当时得分 1、生命 0），随后点了「重新开始」，所以现在回到 0 分、3 条命。\n\n没有改动游戏。",
+      "requestIds": [
+        2
+      ],
+      "semanticReview": "pending-independent-human-review"
+    },
+    "requests": [
+      {
+        "purpose": "background",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "disabled"
+        }
+      },
+      {
+        "purpose": "follow-up",
+        "model": "deepseek-flash",
+        "thinking": {
+          "type": "enabled"
+        }
+      }
+    ],
+    "responses": [
+      {
+        "purpose": "background",
+        "status": 200,
+        "modelIds": [
+          "deepseek-flash"
+        ],
+        "text": "左右键挡板接球小游戏"
+      },
+      {
+        "purpose": "follow-up",
+        "status": 200,
+        "modelIds": [
+          "deepseek-flash"
+        ],
+        "text": "当前保存的状态：\n\n- **得分：0**\n- **剩余生命：3 条（♥♥♥）**\n- 状态：进行中，球速 250，未暂停\n\n补充一句（历史记录，不是当前值）：之前的存档里曾有一次游戏结束（当时得分 1、生命 0），随后点了「重新开始」，所以现在回到 0 分、3 条命。\n\n没有改动游戏。"
+      }
+    ],
+    "bindings": {
+      "id": "catching-1",
+      "source": ".verification/mini-app-live-Ju40zR/result.json",
+      "sha256": "07e04661f3ce47f123e3a24852a11067e3599aef9aae7c64178fd0302c6bdc96",
+      "readySelector": "[data-text=\"scoreText\"]",
+      "oracleBasis": "Game rules: catch adds exactly 1 point and 14 speed up to 560; each miss loses 1 of 3 lives. Read pixels of the visible paddle to stop real held-key input; never write task state. Reset values from reviewed original declarations. After the first miss, move the paddle into the middle before waiting for terminal state: the left-edge position permits corner catches. Preserve the score=1 terminal assertion; the original failed run is 9HG10f.",
+      "operations": [
+        {
+          "kind": "group",
+          "actions": [
+            {
+              "kind": "host",
+              "name": "^(Play|播放)$"
+            },
+            {
+              "kind": "hold-key",
+              "selector": "[data-event=\"arena\"]",
+              "key": "ArrowRight",
+              "canvas": "canvas",
+              "scan": {
+                "y": 366,
+                "color": "#38bdf8",
+                "minimum": 430,
+                "maximum": 515
+              }
+            },
+            {
+              "kind": "wait-ui",
+              "ui": {
+                "[data-text=\"scoreText\"]": "1"
+              }
+            }
+          ],
+          "expected": {
+            "snapshot.state.score": 1,
+            "snapshot.state.lives": 3,
+            "snapshot.state.speed": 264,
+            "snapshot.state.left": false,
+            "snapshot.state.right": false,
+            "snapshot.state.phase": "playing"
+          },
+          "screenshot": true
+        },
+        {
+          "kind": "reload",
+          "sameAs": 0
+        },
+        {
+          "kind": "click",
+          "selector": "[data-event=\"togglePause\"]",
+          "expected": {
+            "snapshot.state.paused": true,
+            "snapshot.state.score": 1,
+            "snapshot.state.lives": 3
+          }
+        },
+        {
+          "kind": "group",
+          "actions": [
+            {
+              "kind": "host",
+              "name": "^(Play|播放)$"
+            },
+            {
+              "kind": "wait",
+              "milliseconds": 700
+            }
+          ],
+          "sameFieldsAs": {
+            "snapshot.state": 2
+          },
+          "screenshot": true
+        },
+        {
+          "kind": "click",
+          "selector": "[data-event=\"togglePause\"]",
+          "expected": {
+            "snapshot.state.paused": false
+          }
+        },
+        {
+          "kind": "group",
+          "actions": [
+            {
+              "kind": "host",
+              "name": "^(Play|播放)$"
+            },
+            {
+              "kind": "hold-key",
+              "selector": "[data-event=\"arena\"]",
+              "key": "ArrowLeft",
+              "canvas": "canvas",
+              "scan": {
+                "y": 366,
+                "color": "#38bdf8",
+                "minimum": 0,
+                "maximum": 0
+              }
+            },
+            {
+              "kind": "wait-ui",
+              "ui": {
+                "[data-text=\"livesText\"]": "♥♥♡"
+              }
+            }
+          ],
+          "expected": {
+            "snapshot.state.paddleX": 0,
+            "snapshot.state.score": 1,
+            "snapshot.state.lives": 2,
+            "snapshot.state.left": false,
+            "snapshot.state.right": false
+          },
+          "screenshot": true
+        },
+        {
+          "kind": "reload",
+          "sameAs": 5
+        },
+        {
+          "kind": "group",
+          "actions": [
+            {
+              "kind": "host",
+              "name": "^(Play|播放)$"
+            },
+            {
+              "kind": "hold-key",
+              "selector": "[data-event=\"arena\"]",
+              "key": "ArrowRight",
+              "canvas": "canvas",
+              "scan": {
+                "y": 366,
+                "color": "#38bdf8",
+                "minimum": 225,
+                "maximum": 340
+              }
+            },
+            {
+              "kind": "wait-ui",
+              "ui": {
+                "[data-text=\"status\"]": "游戏结束"
+              }
+            }
+          ],
+          "expected": {
+            "snapshot.state.score": 1,
+            "snapshot.state.lives": 0,
+            "snapshot.state.phase": "over",
+            "snapshot.state.left": false,
+            "snapshot.state.right": false
+          },
+          "hostDisabled": [
+            "^(Play|播放)$",
+            "^(Step|单步)$"
+          ],
+          "screenshot": true
+        },
+        {
+          "kind": "wait",
+          "milliseconds": 700,
+          "sameAs": 7
+        },
+        {
+          "kind": "key",
+          "selector": "[data-event=\"arena\"]",
+          "key": "ArrowRight",
+          "sameAs": 7
+        },
+        {
+          "kind": "click",
+          "selector": "[data-event=\"restart\"]",
+          "expected": {
+            "snapshot.state.paddleX": 272,
+            "snapshot.state.ballX": 320,
+            "snapshot.state.ballY": 300,
+            "snapshot.state.score": 0,
+            "snapshot.state.lives": 3,
+            "snapshot.state.speed": 250,
+            "snapshot.state.paused": false,
+            "snapshot.state.left": false,
+            "snapshot.state.right": false,
+            "snapshot.state.phase": "playing"
+          },
+          "screenshot": true
+        },
+        {
+          "kind": "group",
+          "actions": [
+            {
+              "kind": "host",
+              "name": "^(Play|播放)$"
+            },
+            {
+              "kind": "hold-key",
+              "selector": "[data-event=\"arena\"]",
+              "key": "ArrowLeft",
+              "canvas": "canvas",
+              "scan": {
+                "y": 366,
+                "color": "#38bdf8",
+                "minimum": 0,
+                "maximum": 0
+              }
+            },
+            {
+              "kind": "wait",
+              "milliseconds": 500
+            }
+          ],
+          "expected": {
+            "snapshot.state.paddleX": 0,
+            "snapshot.state.score": 0,
+            "snapshot.state.left": false,
+            "snapshot.state.right": false
+          }
+        },
+        {
+          "kind": "reload",
+          "sameAs": 11
+        },
+        {
+          "kind": "group",
+          "actions": [
+            {
+              "kind": "host",
+              "name": "^(Play|播放)$"
+            },
+            {
+              "kind": "wait",
+              "milliseconds": 500
+            }
+          ],
+          "sameFieldsAs": {
+            "snapshot.state.paddleX": 11
+          },
+          "expected": {
+            "snapshot.state.left": false,
+            "snapshot.state.right": false
+          }
+        },
+        {
+          "kind": "host",
+          "name": "^(Reset|重置|复位)$",
+          "expected": {
+            "snapshot.state.paddleX": 272,
+            "snapshot.state.ballX": 320,
+            "snapshot.state.ballY": 300,
+            "snapshot.state.score": 0,
+            "snapshot.state.lives": 3,
+            "snapshot.state.speed": 250,
+            "snapshot.state.paused": false,
+            "snapshot.state.left": false,
+            "snapshot.state.right": false,
+            "snapshot.state.phase": "playing",
+            "snapshot.tick": 0
+          }
+        },
+        {
+          "kind": "reload",
+          "sameAs": 14
+        }
+      ],
+      "expectInspection": false,
+      "followup": "现在是多少分、还剩几条命？先别改游戏，按当前保存的状态告诉我。"
+    }
+  },
+  "failure": {
+    "id": "9HG10f",
+    "status": "failed",
+    "checkpointCount": 8,
+    "error": "Independent oracle at 7: snapshot.state.score\n\n3 !== 1\n",
+    "cleanupErrors": [],
+    "classification": "The fixture incorrectly expected the left-edge paddle never to catch another ball. The terminal score was 3, not 1. Retest moves to the middle outside the two serving routes and retains score=1 and lives=0 assertions; no product or generated program changes."
+  },
+  "semanticReview": {
+    "currentScoreAndLives": "passed: 0 and 3",
+    "additionalClaims": "Deferred: unpaused describes the generated paused=false field while the host is paused; saved state differences alone do not prove the exact restart button clicked.",
+    "humanAcceptance": "phase4"
+  },
+  "historical": [
+    {
+      "id": "3Gxxsc",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "shopping-list-1",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": []
+    },
+    {
+      "id": "RV39D2",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "install-save-failure-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-copy",
+          "status": "passed"
+        },
+        {
+          "name": "copy-retries-pending-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "fork-keeps-branch-visible-state",
+          "status": "passed"
+        },
+        {
+          "name": "failed-save-blocks-export",
+          "status": "passed"
+        },
+        {
+          "name": "export-confirms-state-and-static-scope",
+          "status": "passed"
+        },
+        {
+          "name": "failed-descendant-save-blocks-subtree-trash",
+          "status": "passed"
+        },
+        {
+          "name": "trash-retry-preserves-descendant",
+          "status": "passed"
+        },
+        {
+          "name": "restore-subtree-and-continue",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": []
+    },
+    {
+      "id": "lJHHGD",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "install-response-fixture",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "lost-save-response-retains-checkpoint",
+          "status": "passed"
+        },
+        {
+          "name": "reload-recovers-receipt-without-second-write",
+          "status": "passed"
+        },
+        {
+          "name": "cancel-candidate-preserves-progress",
+          "status": "passed"
+        },
+        {
+          "name": "source-edit-invalidates-an-open-review",
+          "status": "passed"
+        },
+        {
+          "name": "refresh-review-and-migrate-current-progress",
+          "status": "passed"
+        },
+        {
+          "name": "reload-edit-and-follow-up",
+          "status": "passed"
+        },
+        {
+          "name": "continue-editing-after-follow-up",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": []
+    },
+    {
+      "id": "hHAybn",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "reproduce-original-defect-and-save-progress",
+          "status": "passed"
+        },
+        {
+          "name": "real-model-proposes-a-source-bound-repair",
+          "status": "passed"
+        },
+        {
+          "name": "cancel-then-request-another-real-revision",
+          "status": "passed"
+        },
+        {
+          "name": "explicitly-confirm-and-preserve-current-progress",
+          "status": "passed"
+        },
+        {
+          "name": "check-no-op-reasons-and-unchanged-game-rules",
+          "status": "passed"
+        },
+        {
+          "name": "real-follow-up-keeps-repaired-state",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": []
+    },
+    {
+      "id": "JzCyrg",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "load-original-program",
+          "status": "passed"
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed"
+        },
+        {
+          "name": "declared-input-presets",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:neutral",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:pitch-up-30",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:pitch-down-30",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:yaw-90",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:roll-90",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:compound-90",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:return-zero",
+          "status": "passed"
+        },
+        {
+          "name": "reload-and-explain",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": []
+    },
+    {
+      "id": "JVNyaH",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "load-original-program",
+          "status": "passed"
+        },
+        {
+          "name": "operate-and-save",
+          "status": "passed"
+        },
+        {
+          "name": "declared-input-presets",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:home",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:base-quarter",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:elbow-up",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:compound",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:lower-bound",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:oblique",
+          "status": "passed"
+        },
+        {
+          "name": "geometry:return-home",
+          "status": "passed"
+        },
+        {
+          "name": "reload-and-explain",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": []
+    },
+    {
+      "id": "FCn6fg",
+      "status": "passed",
+      "steps": [
+        {
+          "name": "launch",
+          "status": "passed"
+        },
+        {
+          "name": "enable-and-create",
+          "status": "passed"
+        },
+        {
+          "name": "native-minimize-releases-and-pauses",
+          "status": "passed"
+        },
+        {
+          "name": "native-close-hides-and-releases",
+          "status": "passed"
+        },
+        {
+          "name": "saved-reload-and-followup",
+          "status": "passed"
+        }
+      ],
+      "cleanupErrors": []
+    }
+  ],
+  "representatives": [
+    {
+      "id": "sorting-2",
+      "attempt": {
+        "batch": "desktop-e2e-RStSh4",
+        "id": "fresh-sorting-2",
+        "status": "completed",
+        "checkpoints": 16,
+        "passedCheckpoints": 16,
+        "reloads": 4,
+        "followupChecksCompleted": true,
+        "postFollowupStatePreserved": true,
+        "semanticFindings": [],
+        "error": null,
+        "hostFailure": null,
+        "networkFailures": [],
+        "approximateChecks": []
+      },
+      "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+    },
+    {
+      "id": "triangle-3",
+      "attempt": {
+        "batch": "desktop-e2e-6ekHlw",
+        "id": "fresh-triangle-3-retest",
+        "status": "completed",
+        "checkpoints": 12,
+        "passedCheckpoints": 12,
+        "reloads": 3,
+        "followupChecksCompleted": true,
+        "postFollowupStatePreserved": true,
+        "semanticFindings": [],
+        "error": null,
+        "hostFailure": null,
+        "networkFailures": [],
+        "approximateChecks": [
+          {
+            "path": "snapshot.state.ax",
+            "actual": 85.003,
+            "value": 85,
+            "tolerance": 0.01,
+            "difference": 0.0030000000000001137,
+            "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+          },
+          {
+            "path": "snapshot.state.ay",
+            "actual": 369.996,
+            "value": 370,
+            "tolerance": 0.01,
+            "difference": 0.004000000000019099,
+            "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+          },
+          {
+            "path": "snapshot.state.ax",
+            "actual": 85.003,
+            "value": 85,
+            "tolerance": 0.01,
+            "difference": 0.0030000000000001137,
+            "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+          },
+          {
+            "path": "snapshot.state.ay",
+            "actual": 369.996,
+            "value": 370,
+            "tolerance": 0.01,
+            "difference": 0.004000000000019099,
+            "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+          }
+        ]
+      },
+      "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+    },
+    {
+      "id": "jugs-1",
+      "attempt": {
+        "batch": "desktop-e2e-9dHAYX",
+        "id": "fresh-jugs-1",
+        "status": "completed",
+        "checkpoints": 22,
+        "passedCheckpoints": 22,
+        "reloads": 3,
+        "followupChecksCompleted": true,
+        "postFollowupStatePreserved": true,
+        "semanticFindings": [],
+        "error": null,
+        "hostFailure": null,
+        "networkFailures": [],
+        "approximateChecks": []
+      },
+      "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+    },
+    {
+      "id": "board-3",
+      "attempt": {
+        "batch": "desktop-e2e-RStSh4",
+        "id": "fresh-board-3",
+        "status": "completed",
+        "checkpoints": 83,
+        "passedCheckpoints": 83,
+        "reloads": 6,
+        "followupChecksCompleted": true,
+        "postFollowupStatePreserved": true,
+        "semanticFindings": [],
+        "error": null,
+        "hostFailure": null,
+        "networkFailures": [],
+        "approximateChecks": []
+      },
+      "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+    }
+  ],
+  "acceptance": [
+    {
+      "id": "dynamic-list",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "desktop-e2e-3Gxxsc",
+        "mini-app-repeat-browser.test.mjs in tojLhp"
+      ]
+    },
+    {
+      "id": "algorithm-and-geometry",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "sorting-2",
+        "triangle-3"
+      ]
+    },
+    {
+      "id": "spatial-interaction",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "JzCyrg geometry/picking/camera/reset/reload",
+        "JVNyaH independent input inspection"
+      ]
+    },
+    {
+      "id": "continuous-game",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "qlXUas 16 checkpoints and actual model followup"
+      ]
+    },
+    {
+      "id": "persistence-and-session",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "RV39D2",
+        "lJHHGD",
+        "FCn6fg"
+      ]
+    },
+    {
+      "id": "revision-and-migration",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "hHAybn",
+        "migration browser checks in tojLhp"
+      ]
+    },
+    {
+      "id": "actions-and-conversion",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "actual action/approval/adoption and bidirectional conversion browser checks in tojLhp"
+      ],
+      "boundary": "Real browser UI, SDK, files and production routes with deterministic plans; not fresh model success rate or native packaging"
+    },
+    {
+      "id": "readable-main-controls",
+      "status": "passed-in-declared-scope",
+      "evidence": [
+        "qlXUas initial and checkpoints 0/7 screenshots inspected"
+      ],
+      "boundary": "Visible scene and controls at current Windows viewport; some header content outside chat scroll viewport, full visual matrix in phase4"
+    }
+  ],
+  "deferred": [
+    "Natural language selection and fresh-generation reliability",
+    "General business semantics and unasked explanations",
+    "Complex cross-flow recovery matrix",
+    "Complete visual/keyboard/reduced-motion/long-running/resource/platform matrix",
+    "Full CI and historical failed checks",
+    "Sealed 16x3 and two-human acceptance"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/mini-app-live-Ju40zR/result.json",
+      "sha256": "07e04661f3ce47f123e3a24852a11067e3599aef9aae7c64178fd0302c6bdc96"
+    },
+    {
+      "path": ".verification/desktop-e2e-qlXUas/task-replay.json",
+      "sha256": "65f80df38c377227cce408cc751696e8726c833ce3ffadb4e608df9082303c03"
+    },
+    {
+      "path": ".verification/desktop-e2e-qlXUas/result.json",
+      "sha256": "9748a7abb91d3dc69c10fe10180af54381c7feaf03c3f0e61c099b7f52c3af06"
+    },
+    {
+      "path": ".verification/desktop-e2e-9HG10f/task-replay.json",
+      "sha256": "641df43956ec380c092a04aca154e058a6eec8f0f989513caedb435b840f1d22"
+    },
+    {
+      "path": ".verification/desktop-e2e-9HG10f/result.json",
+      "sha256": "5778b63b5232b24fa7008b0d0eeca193fe3051ccd20298fce15354c5c83b1a7e"
+    },
+    {
+      "path": ".verification/phase3-catching-bindings.json",
+      "sha256": "8d59e7cedd878b852ce6a065f5071b1819945659c558d57bd93f0f0d59b7606b"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-tojLhp/result.json",
+      "sha256": "ab60c6a737bd0f5f2f83a07394c752eda4d2daf8809b5f3f33ede698c2482abb"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-tojLhp/tests.log",
+      "sha256": "7575a851289a9d80d67ef1d9df37ed74439a15125a258307ef582b6f22548154"
+    },
+    {
+      "path": "scripts/verify-recorded-mini-app-tasks.mjs",
+      "sha256": "11851af118906da3c0d3c1ba79d2b28bd19a482d63592320638e2a8933dc92a1"
+    },
+    {
+      "path": ".verification/desktop-e2e-3Gxxsc/result.json",
+      "sha256": "0b02e9bdb524845b1543fd15ecb4c0359a26d87fbf5d739c2fee52b6f998054b"
+    },
+    {
+      "path": ".verification/desktop-e2e-RV39D2/result.json",
+      "sha256": "59aa3c76a9fed0a8ff1ad58754764115a251b4a62328460126d908462cab24e6"
+    },
+    {
+      "path": ".verification/desktop-e2e-lJHHGD/result.json",
+      "sha256": "3d6e5e87e7fc6ef041a86fcde8324ca049e224f4d527bdc0ebcb7ef3eeaf8d20"
+    },
+    {
+      "path": ".verification/desktop-e2e-hHAybn/result.json",
+      "sha256": "56371f29cf32e9e8b8942c3b270b25aa68e47537035a5029bef7050239966729"
+    },
+    {
+      "path": ".verification/desktop-e2e-JzCyrg/result.json",
+      "sha256": "35cda0eb047de547f2f3e2948534fd9fc54b6330afe9c49b06a18ba86fc3a9f6"
+    },
+    {
+      "path": ".verification/desktop-e2e-JVNyaH/result.json",
+      "sha256": "08bc0a668d881d77acb395cd2a1b15f05a8168dccb4c6d1c253771130dd55016"
+    },
+    {
+      "path": ".verification/desktop-e2e-FCn6fg/result.json",
+      "sha256": "947b3f2cbb216cfe8905d64ff2d5382a79ee581a2d632b9e76711fa3989ff852"
+    },
+    {
+      "path": "docs/verification/intelligent-ui-phase3-task-matrix-2026-11-03.json",
+      "sha256": "5841317110b1b2ad6b564416f97886963f1e40d9f10ab8d85a09dce89e1793fd"
+    },
+    {
+      "path": ".verification/desktop-e2e-qlXUas/catching-1-checkpoint-0.png",
+      "sha256": "9d61cbd1a6a5252f3f45cf877566b84913db1906b134f9dcd64b12d5036f85f9"
+    },
+    {
+      "path": ".verification/desktop-e2e-qlXUas/catching-1-checkpoint-7.png",
+      "sha256": "4e84f0eefce43aaa8c553ba027d580844817bdd09e950d8a29a4cac99afcd868"
+    }
+  ],
+  "delivery": {
+    "status": "complete-in-user-approved-phase3-scope",
+    "documents": [
+      {
+        "path": "docs/intelligent-ui-phase3-design-v3.9.md",
+        "sha256": "d15cbb8a31079e1d3f41d42047a74bc42b28ddd5cb320c46619a4cda829423d8"
+      },
+      {
+        "path": "docs/intelligent-ui-phase3-testing.md",
+        "sha256": "798990813b1f4d81273d7880a6ad83de54ed960d6d2d67c28e46518a33ef1855"
+      },
+      {
+        "path": "docs/intelligent-ui-phase4-plan.md",
+        "sha256": "f45ff86edb44266ae0c1458e8998fd10eba9d290b1b7e192eda6f49b656b6255"
+      },
+      {
+        "path": "docs/verification/intelligent-ui-phase3-usable-2026-11-03.md",
+        "sha256": "1ab69ee44b0ec144ac64ce16b4c72391badb8be4be4e979bb0964dad84016763"
+      },
+      {
+        "path": "docs/intelligent-ui-phase3-progress.md",
+        "sha256": "1f837eccbd4009e475442096b43328e4775fcf41d8382a5b8e23d027b52d7311"
+      },
+      {
+        "path": "docs/intelligent-ui-phases.md",
+        "sha256": "135a8250af46407b110fe92f1937036045033c8cf3f1ebbc9b95df5539209b91"
+      },
+      {
+        "path": "docs/intelligent-ui.md",
+        "sha256": "534973e9246def0522e444dbe6a0b7d80c0bc4297ac54fbf0aee786901475b7c"
+      },
+      {
+        "path": "docs/intelligent-ui-recorded-task-testing.md",
+        "sha256": "8d9d7475fdaed914c90c5e3e7e84b33f121e935b0ac511ba46b55fd2781bd90e"
+      }
+    ],
+    "pdfs": [
+      {
+        "source": "docs\\intelligent-ui-phase3-design-v3.9.md",
+        "sourceSha256": "d15cbb8a31079e1d3f41d42047a74bc42b28ddd5cb320c46619a4cda829423d8",
+        "output": "output\\pdf\\piora-intelligent-ui-phase3-design-v3.9.pdf",
+        "pdfSha256": "e7f64c994cec8f2b3e3996d3ddd79de3f21a7dcb31aa616c3b61deeb63f4c7b5",
+        "pages": 2,
+        "pageTextLengths": [
+          1153,
+          1042
+        ],
+        "textChecks": "passed",
+        "visualReview": "passed",
+        "visualReviewScope": "Every final PNG page opened: typography, tables, headers/footers, pagination and image placement",
+        "images": [
+          {
+            "path": ".verification/phase3-design-v3.9-pdf/page-1.png",
+            "sha256": "f17b8db70ace834b7ee69a8da7be6e9c9421f2e427eeca3ab9a7595134395803"
+          },
+          {
+            "path": ".verification/phase3-design-v3.9-pdf/page-2.png",
+            "sha256": "1d714aa2c75a167e850e7ed205db6ef4434b9acd4508207ccb011b95fc0565ce"
+          }
+        ]
+      },
+      {
+        "source": "docs\\verification\\intelligent-ui-phase3-usable-2026-11-03.md",
+        "sourceSha256": "1ab69ee44b0ec144ac64ce16b4c72391badb8be4be4e979bb0964dad84016763",
+        "output": "output\\pdf\\piora-intelligent-ui-phase3-usable-2026-11-03.pdf",
+        "pdfSha256": "9697463a1d45fe13bf388f43d6793a79a46ee429758025ddc09ac8c0aa37c8ef",
+        "pages": 3,
+        "pageTextLengths": [
+          1106,
+          660,
+          1143
+        ],
+        "textChecks": "passed",
+        "visualReview": "passed",
+        "visualReviewScope": "Every final PNG page opened: typography, tables, headers/footers, pagination and image placement",
+        "images": [
+          {
+            "path": ".verification/phase3-usable-pdf/page-1.png",
+            "sha256": "3f13ae474ad821c4a1412f9753b26a714e8d26d416db107d1e4a9cdc80e7f4b3"
+          },
+          {
+            "path": ".verification/phase3-usable-pdf/page-2.png",
+            "sha256": "c1b9f7bf72c8099bcc33a79654c0191400a5f45ecce479863edce23030f03ca7"
+          },
+          {
+            "path": ".verification/phase3-usable-pdf/page-3.png",
+            "sha256": "b5d2bf4dfc39a909680839945dae05768d38bc8c7798bca3f075de69cb1013e9"
+          }
+        ]
+      }
+    ],
+    "relativeLinks": {
+      "checked": 234,
+      "status": "passed"
+    },
+    "checks": {
+      "syntax": "passed",
+      "targetedLint": "passed",
+      "diffWhitespace": "passed",
+      "evidenceHashes": 19,
+      "implementationHashes": 519,
+      "capabilityHashes": 178
+    },
+    "commitStatus": "not committed or pushed in this batch",
+    "excluded": "Full CI, fresh full suite, sealed set, human acceptance and release packaging were not run in this batch"
+  }
+}

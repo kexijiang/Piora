@@ -1,0 +1,2712 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "stage": "3B in development",
+  "baseCommit": "67e2357b79d55f3887a8a2ed02aaee2c1748dadb",
+  "generation": {
+    "batch": "9PkiZj",
+    "completed": 24,
+    "uiPublished": 18,
+    "uiFirstAttempt": 15,
+    "nonUiWithoutUiCalls": 6,
+    "sourceSha256": "c0b5ebc0fb9bbb1b18f16acf5436dda2570a4a9da850e84274500365e5d08bff",
+    "notNewGeneration": true
+  },
+  "model": {
+    "configuredName": "DeepSeek V4.1 Flash",
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "taskThinking": "enabled",
+    "fallback": false,
+    "providerAliasDoesNotProveInternalRevision": true,
+    "backgroundRequestsRecordedSeparately": true
+  },
+  "summary": {
+    "reviewedSamples": 24,
+    "samplesWithKnownIssue": 5,
+    "othersWithoutKnownIssueWithinReviewedScope": 19,
+    "completeTaskAcceptance": "not-passed",
+    "independentHumanAcceptance": "deferred",
+    "remaining": "3B failures and retests; full 3C combinations; 3D complex interaction/visual/keyboard coverage; then 3E CI/sealed set/two-human acceptance"
+  },
+  "batches": [
+    {
+      "id": "desktop-e2e-9dHAYX",
+      "scope": "previous-first-four",
+      "reportPath": ".verification/desktop-e2e-9dHAYX/task-replay.json",
+      "sha256": "d238804bfecdb5354f4f7a6507a7001a9493043fe10ea334e0a9eaf312e2379d",
+      "status": "failed",
+      "cleanupErrors": [],
+      "startedAt": "2026-11-02T21:42:54.452Z",
+      "finishedAt": "2026-11-02T21:48:56.625Z",
+      "counts": {
+        "samples": 4,
+        "checkpoints": 129,
+        "passedCheckpoints": 129,
+        "reloads": 15
+      },
+      "rows": [
+        {
+          "id": "fresh-sorting-1",
+          "status": "failed",
+          "checkpoints": 16,
+          "passedCheckpoints": 16,
+          "reloads": 4,
+          "followupChecksCompleted": false,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": "Requested future effects must be inspected",
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-triangle-1",
+          "status": "completed",
+          "checkpoints": 8,
+          "passedCheckpoints": 8,
+          "reloads": 2,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-jugs-1",
+          "status": "completed",
+          "checkpoints": 22,
+          "passedCheckpoints": 22,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-board-1",
+          "status": "completed",
+          "checkpoints": 83,
+          "passedCheckpoints": 83,
+          "reloads": 6,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "modelRequests": [
+        {
+          "id": 1,
+          "caseId": "fresh-sorting-1",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 2,
+          "caseId": "fresh-sorting-1",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 3,
+          "caseId": "fresh-triangle-1",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 4,
+          "caseId": "fresh-triangle-1",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 5,
+          "caseId": "fresh-jugs-1",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 6,
+          "caseId": "fresh-jugs-1",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 7,
+          "caseId": "fresh-board-1",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 8,
+          "caseId": "fresh-board-1",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        }
+      ],
+      "providerResponses": [
+        {
+          "id": 1,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 2,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 3,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 4,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 5,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 6,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 7,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 8,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        }
+      ]
+    },
+    {
+      "id": "desktop-e2e-CZVzXH",
+      "scope": "six-components",
+      "reportPath": ".verification/desktop-e2e-CZVzXH/component-replay.json",
+      "sha256": "f213ec1cc94678498123c53fdc2f879ceb2d50f74c26f2c6789807ae8aeb275a",
+      "status": "passed",
+      "cleanupErrors": [],
+      "startedAt": "2026-11-02T22:00:21.663Z",
+      "finishedAt": "2026-11-02T22:02:31.173Z",
+      "counts": {
+        "samples": 6,
+        "checkpoints": 22,
+        "passedCheckpoints": null,
+        "reloads": 6
+      },
+      "rows": [
+        {
+          "id": "outing-1",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "discount-1",
+          "status": "completed",
+          "checkpoints": 3,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "outing-2",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "discount-2",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "outing-3",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "discount-3",
+          "status": "completed",
+          "checkpoints": 3,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "modelRequests": [
+        {
+          "id": 1,
+          "caseId": "outing-1",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 2,
+          "caseId": "outing-1",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 3,
+          "caseId": "discount-1",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 4,
+          "caseId": "discount-1",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 5,
+          "caseId": "outing-2",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 6,
+          "caseId": "outing-2",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 7,
+          "caseId": "discount-2",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 8,
+          "caseId": "discount-2",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 9,
+          "caseId": "outing-3",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 10,
+          "caseId": "outing-3",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 11,
+          "caseId": "discount-3",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 12,
+          "caseId": "discount-3",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        }
+      ],
+      "providerResponses": [
+        {
+          "id": 1,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 2,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 3,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 4,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 5,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 6,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 7,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 8,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 9,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 10,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 11,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 12,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        }
+      ]
+    },
+    {
+      "id": "desktop-e2e-RStSh4",
+      "scope": "remaining-eight-mini-apps",
+      "reportPath": ".verification/desktop-e2e-RStSh4/task-replay.json",
+      "sha256": "b40798b4e9f1e8d199bae2f6f337ffaca86b8c69377243175214fbfef34a0f31",
+      "status": "failed",
+      "cleanupErrors": [],
+      "startedAt": "2026-11-02T22:03:53.176Z",
+      "finishedAt": "2026-11-02T22:20:35.400Z",
+      "counts": {
+        "samples": 8,
+        "checkpoints": 253,
+        "passedCheckpoints": 252,
+        "reloads": 29
+      },
+      "rows": [
+        {
+          "id": "fresh-sorting-2",
+          "status": "completed",
+          "checkpoints": 16,
+          "passedCheckpoints": 16,
+          "reloads": 4,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-sorting-3",
+          "status": "completed",
+          "checkpoints": 16,
+          "passedCheckpoints": 16,
+          "reloads": 4,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-triangle-2",
+          "status": "semantic-failed",
+          "checkpoints": 12,
+          "passedCheckpoints": 12,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [
+            {
+              "kind": "keyboard-instruction",
+              "finding": "The generated hint says left/right switches the selected vertex, but when B is selected these keys change the base; verify actual keyboard behavior and retain the incorrect instruction."
+            }
+          ],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-triangle-3",
+          "status": "failed",
+          "checkpoints": 6,
+          "passedCheckpoints": 5,
+          "reloads": 1,
+          "followupChecksCompleted": false,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": "Independent oracle at 5: snapshot.state.ax\n\n85.003 !== 85\n",
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-jugs-2",
+          "status": "semantic-failed",
+          "checkpoints": 22,
+          "passedCheckpoints": 22,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [
+            {
+              "index": 0,
+              "path": "frame.bindings.note",
+              "expected": "With both cups empty, a no-op must not claim the destination cup is full.",
+              "actual": "3 升杯已经满了，5 升杯的水倒不进去。"
+            }
+          ],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-jugs-3",
+          "status": "completed",
+          "checkpoints": 24,
+          "passedCheckpoints": 24,
+          "reloads": 4,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-board-2",
+          "status": "failed",
+          "checkpoints": 74,
+          "passedCheckpoints": 74,
+          "reloads": 4,
+          "followupChecksCompleted": false,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": "Host state error",
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-board-3",
+          "status": "completed",
+          "checkpoints": 83,
+          "passedCheckpoints": 83,
+          "reloads": 6,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "modelRequests": [
+        {
+          "id": 1,
+          "caseId": "fresh-sorting-2",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 2,
+          "caseId": "fresh-sorting-2",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 3,
+          "caseId": "fresh-sorting-2",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 4,
+          "caseId": "fresh-sorting-3",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 5,
+          "caseId": "fresh-sorting-3",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 6,
+          "caseId": "fresh-sorting-3",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 7,
+          "caseId": "fresh-triangle-2",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 8,
+          "caseId": "fresh-triangle-2",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 9,
+          "caseId": "fresh-triangle-3",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 10,
+          "caseId": "fresh-jugs-2",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 11,
+          "caseId": "fresh-jugs-2",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 12,
+          "caseId": "fresh-jugs-3",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 13,
+          "caseId": "fresh-jugs-3",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 14,
+          "caseId": "fresh-board-2",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 15,
+          "caseId": "fresh-board-3",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 16,
+          "caseId": "fresh-board-3",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        }
+      ],
+      "providerResponses": [
+        {
+          "id": 1,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 2,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 3,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 4,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 5,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 6,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 7,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 8,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 9,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 10,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 11,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 12,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 13,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 14,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 15,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 16,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        }
+      ]
+    },
+    {
+      "id": "desktop-e2e-6ekHlw",
+      "scope": "frozen-retests-and-counterexample",
+      "reportPath": ".verification/desktop-e2e-6ekHlw/task-replay.json",
+      "sha256": "1380dff9ffd7ec1c4398f8c7f572862e72d931d37236715c3765270b36c1923d",
+      "status": "failed",
+      "cleanupErrors": [],
+      "startedAt": "2026-11-02T22:23:01.541Z",
+      "finishedAt": "2026-11-02T22:31:54.327Z",
+      "counts": {
+        "samples": 3,
+        "checkpoints": 104,
+        "passedCheckpoints": 104,
+        "reloads": 10
+      },
+      "rows": [
+        {
+          "id": "fresh-triangle-3-retest",
+          "status": "completed",
+          "checkpoints": 12,
+          "passedCheckpoints": 12,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": [
+            {
+              "path": "snapshot.state.ax",
+              "actual": 85.003,
+              "value": 85,
+              "tolerance": 0.01,
+              "difference": 0.0030000000000001137,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            },
+            {
+              "path": "snapshot.state.ay",
+              "actual": 369.996,
+              "value": 370,
+              "tolerance": 0.01,
+              "difference": 0.004000000000019099,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            },
+            {
+              "path": "snapshot.state.ax",
+              "actual": 85.003,
+              "value": 85,
+              "tolerance": 0.01,
+              "difference": 0.0030000000000001137,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            },
+            {
+              "path": "snapshot.state.ay",
+              "actual": 369.996,
+              "value": 370,
+              "tolerance": 0.01,
+              "difference": 0.004000000000019099,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            }
+          ]
+        },
+        {
+          "id": "fresh-board-2-retest",
+          "status": "completed",
+          "checkpoints": 83,
+          "passedCheckpoints": 83,
+          "reloads": 6,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "fresh-board-1-clear-score",
+          "status": "semantic-failed",
+          "checkpoints": 9,
+          "passedCheckpoints": 9,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [
+            {
+              "kind": "initial-prose-exclusive-claim",
+              "finding": "Original model said only the restart button can start a new round, but Clear scores also clears the board and starts an X round."
+            }
+          ],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "modelRequests": [
+        {
+          "id": 1,
+          "caseId": "fresh-triangle-3-retest",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 2,
+          "caseId": "fresh-triangle-3-retest",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 3,
+          "caseId": "fresh-board-2-retest",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 4,
+          "caseId": "fresh-board-2-retest",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 5,
+          "caseId": "fresh-board-1-clear-score",
+          "purpose": "background",
+          "model": "deepseek-flash",
+          "thinking": "disabled",
+          "status": null,
+          "returnedIds": null
+        },
+        {
+          "id": 6,
+          "caseId": "fresh-board-1-clear-score",
+          "purpose": "follow-up",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": null,
+          "returnedIds": null
+        }
+      ],
+      "providerResponses": [
+        {
+          "id": 1,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 2,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 3,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 4,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        },
+        {
+          "id": 5,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "background"
+        },
+        {
+          "id": 6,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "purpose": "follow-up"
+        }
+      ]
+    },
+    {
+      "id": "phase3-text-replay-A8Kius",
+      "scope": "six-text-followups",
+      "reportPath": ".verification/phase3-text-replay-A8Kius/result.json",
+      "sha256": "184bc5fc909a0f37adc783a780124c475437745447820961ca0887b70038fdd8",
+      "status": "completed",
+      "cleanupErrors": null,
+      "startedAt": "2026-11-02T22:16:12.618Z",
+      "finishedAt": "2026-11-02T22:16:24.179Z",
+      "counts": {
+        "samples": 6,
+        "checkpoints": 0,
+        "passedCheckpoints": null,
+        "reloads": 0
+      },
+      "rows": [
+        {
+          "id": "direct-1",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "direct-2",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "direct-3",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "clarification-1",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "clarification-2",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "id": "clarification-3",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "modelRequests": [
+        {
+          "id": 1,
+          "caseId": null,
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": 200,
+          "returnedIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "id": 1,
+          "caseId": null,
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": 200,
+          "returnedIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "id": 1,
+          "caseId": null,
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": 200,
+          "returnedIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "id": 1,
+          "caseId": null,
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": 200,
+          "returnedIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "id": 1,
+          "caseId": null,
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": 200,
+          "returnedIds": [
+            "deepseek-flash"
+          ]
+        },
+        {
+          "id": 1,
+          "caseId": null,
+          "purpose": "task",
+          "model": "deepseek-flash",
+          "thinking": "enabled",
+          "status": 200,
+          "returnedIds": [
+            "deepseek-flash"
+          ]
+        }
+      ],
+      "providerResponses": []
+    }
+  ],
+  "matrix": [
+    {
+      "id": "direct-1",
+      "task": "direct",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-p83BFR/result.json",
+      "sourceSha256": "6a0b7a716a78b88a91588edfb875832ba0bd654c37c2d22335ab997d5eddaea2",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "non-ui"
+        ],
+        "uiAttempts": 0,
+        "publications": 0,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true
+      },
+      "attempts": [
+        {
+          "batch": "phase3-text-replay-A8Kius",
+          "id": "direct-1",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "clarification-1",
+      "task": "clarification",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-IID4NI/result.json",
+      "sourceSha256": "17a48344f5667bff7cf24f7075bbff0693cc5a04daafff79cd995a9b08a79f2c",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "non-ui"
+        ],
+        "uiAttempts": 0,
+        "publications": 0,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true
+      },
+      "attempts": [
+        {
+          "batch": "phase3-text-replay-A8Kius",
+          "id": "clarification-1",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "outing-1",
+      "task": "outing",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-GYD5Uq/result.json",
+      "sourceSha256": "a0197fe2fc0330da369179e9e9849860ee464c2411d2ec2c44d4e2fd817fb471",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "intelligent-ui"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-CZVzXH",
+          "id": "outing-1",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "discount-1",
+      "task": "discount",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-YqhUSj/result.json",
+      "sourceSha256": "1fdafc36b2018bab6d017ce030b3e763a0ec5e0c9471620e29b5851a0df9891a",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "intelligent-ui"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-CZVzXH",
+          "id": "discount-1",
+          "status": "completed",
+          "checkpoints": 3,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "sorting-1",
+      "task": "sorting",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-0jxQe4/result.json",
+      "sourceSha256": "75313e31763064376110a363d8c30c657f6ef92b058dfb8bd585049f73039749",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-9dHAYX",
+          "id": "fresh-sorting-1",
+          "status": "failed",
+          "checkpoints": 16,
+          "passedCheckpoints": 16,
+          "reloads": 4,
+          "followupChecksCompleted": false,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": "Requested future effects must be inspected",
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "known-issue",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "failed-contract",
+        "issue": {
+          "kind": "inspection-contract",
+          "finding": "询问下一次按钮后果未调用要求的只读试算；16项操作通过，追问后状态保持断言未执行。",
+          "initial": "no-known-issue-in-reviewed-scope",
+          "followup": "failed-contract"
+        },
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "triangle-1",
+      "task": "triangle",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-bGALOl/result.json",
+      "sourceSha256": "6ab62df81517796edd34a0a17180b2fd7c0ad13fa007197d5c945d95ac0f0833",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 2,
+        "publications": 1,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-9dHAYX",
+          "id": "fresh-triangle-1",
+          "status": "completed",
+          "checkpoints": 8,
+          "passedCheckpoints": 8,
+          "reloads": 2,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "known-issue",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "incorrect-extra-claim",
+        "issue": {
+          "kind": "false-extra-advice",
+          "finding": "当前共线面积0解释正确，但额外说C移到(0,4)面积恢复12；当前B为(8,0)，实际为16。",
+          "initial": "no-known-issue-in-reviewed-scope",
+          "followup": "incorrect-extra-claim"
+        },
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "jugs-1",
+      "task": "jugs",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-JPmuDT/result.json",
+      "sourceSha256": "34cf14a7c8f9428b8457103390e038a18d3c908dcb5cf1dac314c57a6bb4fa5d",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 2,
+        "publications": 1,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-9dHAYX",
+          "id": "fresh-jugs-1",
+          "status": "completed",
+          "checkpoints": 22,
+          "passedCheckpoints": 22,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "board-1",
+      "task": "board",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-icC50B/result.json",
+      "sourceSha256": "73168b2a0565b4cf1be2ad00d2c3ac1c0927a3f76f1b3a2542f185d253a77a65",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-9dHAYX",
+          "id": "fresh-board-1",
+          "status": "completed",
+          "checkpoints": 83,
+          "passedCheckpoints": 83,
+          "reloads": 6,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "batch": "desktop-e2e-6ekHlw",
+          "id": "fresh-board-1-clear-score",
+          "status": "semantic-failed",
+          "checkpoints": 9,
+          "passedCheckpoints": 9,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [
+            {
+              "kind": "initial-prose-exclusive-claim",
+              "finding": "Original model said only the restart button can start a new round, but Clear scores also clears the board and starts an X round."
+            }
+          ],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "known-issue",
+        "initialAnswer": "incorrect-exclusive-claim",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": {
+          "kind": "false-exclusive-initial-claim",
+          "finding": "初始回答说只有再来一局能开新局；9项补测证实清空比分也清空棋盘、轮到X并保存刷新。",
+          "initial": "incorrect-exclusive-claim",
+          "followup": "no-known-issue-in-reviewed-scope"
+        },
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "direct-2",
+      "task": "direct",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-6XcJHO/result.json",
+      "sourceSha256": "bf8d0c7c7580519a579310c9949d7dda7174dc36797bfcc94b3f0cc266fcd8c9",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "non-ui"
+        ],
+        "uiAttempts": 0,
+        "publications": 0,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true
+      },
+      "attempts": [
+        {
+          "batch": "phase3-text-replay-A8Kius",
+          "id": "direct-2",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "clarification-2",
+      "task": "clarification",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-o3Hv0c/result.json",
+      "sourceSha256": "7a99b31e9b3107a15764905126ceeb301ae5f72e182c1a4884ad3d56a8994242",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "non-ui"
+        ],
+        "uiAttempts": 0,
+        "publications": 0,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true
+      },
+      "attempts": [
+        {
+          "batch": "phase3-text-replay-A8Kius",
+          "id": "clarification-2",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "outing-2",
+      "task": "outing",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-vbpnqp/result.json",
+      "sourceSha256": "db4dda1a635962f8514a0a71fcc73e7bce8dcc0b302be202c86cd753c0c39207",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "intelligent-ui"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-CZVzXH",
+          "id": "outing-2",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "discount-2",
+      "task": "discount",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-4RCWr4/result.json",
+      "sourceSha256": "4b869ccde22fc6be267839206f0aecdffc78e850784d85a625b42c8e06b6d5b6",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "intelligent-ui"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-CZVzXH",
+          "id": "discount-2",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "sorting-2",
+      "task": "sorting",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-QKaaAI/result.json",
+      "sourceSha256": "076556d27ab2468dac31ccb83c00fd2602b64b6b17f1d202ef95be6b2c011e7a",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 2,
+        "publications": 1,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-sorting-2",
+          "status": "completed",
+          "checkpoints": 16,
+          "passedCheckpoints": 16,
+          "reloads": 4,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "triangle-2",
+      "task": "triangle",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-L7KN3e/result.json",
+      "sourceSha256": "2dfb53981ba24f50f9580acb45830513f9d4966cc22e1bd1742572f321b7e1c7",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-triangle-2",
+          "status": "semantic-failed",
+          "checkpoints": 12,
+          "passedCheckpoints": 12,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [
+            {
+              "kind": "keyboard-instruction",
+              "finding": "The generated hint says left/right switches the selected vertex, but when B is selected these keys change the base; verify actual keyboard behavior and retain the incorrect instruction."
+            }
+          ],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "known-issue",
+        "initialAnswer": "incorrect-keyboard-claim",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": {
+          "kind": "incorrect-keyboard-help",
+          "finding": "初始回答及界面提示说左右键切换顶点，B选中时实际改变底长；12项操作及当前面积20的追问完成。",
+          "initial": "incorrect-keyboard-claim",
+          "followup": "no-known-issue-in-reviewed-scope"
+        },
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "jugs-2",
+      "task": "jugs",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-64Wr8L/result.json",
+      "sourceSha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-jugs-2",
+          "status": "semantic-failed",
+          "checkpoints": 22,
+          "passedCheckpoints": 22,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [
+            {
+              "index": 0,
+              "path": "frame.bindings.note",
+              "expected": "With both cups empty, a no-op must not claim the destination cup is full.",
+              "actual": "3 升杯已经满了，5 升杯的水倒不进去。"
+            }
+          ],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "known-issue",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": {
+          "kind": "incorrect-no-op-reason",
+          "finding": "两杯均为空时点5升倒3升，数值仍0/0但提示3升杯已满；目标保持/失效及当前3/5未成功追问正确。",
+          "initial": "no-known-issue-in-reviewed-scope",
+          "followup": "no-known-issue-in-reviewed-scope"
+        },
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "board-2",
+      "task": "board",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-s54DD9/result.json",
+      "sourceSha256": "8a1376d766e2000004859573f0a66dfd6cd501313fc2036de648237f80b6297f",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-board-2",
+          "status": "failed",
+          "checkpoints": 74,
+          "passedCheckpoints": 74,
+          "reloads": 4,
+          "followupChecksCompleted": false,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": "Host state error",
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "batch": "desktop-e2e-6ekHlw",
+          "id": "fresh-board-2-retest",
+          "status": "completed",
+          "checkpoints": 83,
+          "passedCheckpoints": 83,
+          "reloads": 6,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "direct-3",
+      "task": "direct",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-6qbwe7/result.json",
+      "sourceSha256": "fa49b2b2928d01219fdd1deb6a07317d398956fbe4b5f1b0fe00cf4e55e87468",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "non-ui"
+        ],
+        "uiAttempts": 0,
+        "publications": 0,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true
+      },
+      "attempts": [
+        {
+          "batch": "phase3-text-replay-A8Kius",
+          "id": "direct-3",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "clarification-3",
+      "task": "clarification",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-uGB1JZ/result.json",
+      "sourceSha256": "115d0bb4f3884a7e4d8b28cfdf4882757c46a6df58fd9798c878546eb22ad307",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "non-ui"
+        ],
+        "uiAttempts": 0,
+        "publications": 0,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true
+      },
+      "attempts": [
+        {
+          "batch": "phase3-text-replay-A8Kius",
+          "id": "clarification-3",
+          "status": "completed",
+          "checkpoints": 0,
+          "passedCheckpoints": null,
+          "reloads": 0,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "outing-3",
+      "task": "outing",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-UT9761/result.json",
+      "sourceSha256": "5b7e011481485ba4e5c0d194bb49278ffe2a11b04530474c999d86b2294c3bc9",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "intelligent-ui"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-CZVzXH",
+          "id": "outing-3",
+          "status": "completed",
+          "checkpoints": 4,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "discount-3",
+      "task": "discount",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-VUIWhf/result.json",
+      "sourceSha256": "dea56791f135f4406f8425e71a3818b5bc0fdf3b2d855b4aeeba9888c0cb3222",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "intelligent-ui"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-CZVzXH",
+          "id": "discount-3",
+          "status": "completed",
+          "checkpoints": 3,
+          "passedCheckpoints": null,
+          "reloads": 1,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "sorting-3",
+      "task": "sorting",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-AMjloV/result.json",
+      "sourceSha256": "948e429e3518908be7ac2d98c82ed4cba232a8a2a88524cde08688dc246b1597",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-sorting-3",
+          "status": "completed",
+          "checkpoints": 16,
+          "passedCheckpoints": 16,
+          "reloads": 4,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "triangle-3",
+      "task": "triangle",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-ZIXa1k/result.json",
+      "sourceSha256": "dcd48add0b799d0e030f4b28aa07062fd9038938fa015fc01a93d3d9efb224fd",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-triangle-3",
+          "status": "failed",
+          "checkpoints": 6,
+          "passedCheckpoints": 5,
+          "reloads": 1,
+          "followupChecksCompleted": false,
+          "postFollowupStatePreserved": false,
+          "semanticFindings": [],
+          "error": "Independent oracle at 5: snapshot.state.ax\n\n85.003 !== 85\n",
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        },
+        {
+          "batch": "desktop-e2e-6ekHlw",
+          "id": "fresh-triangle-3-retest",
+          "status": "completed",
+          "checkpoints": 12,
+          "passedCheckpoints": 12,
+          "reloads": 3,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": [
+            {
+              "path": "snapshot.state.ax",
+              "actual": 85.003,
+              "value": 85,
+              "tolerance": 0.01,
+              "difference": 0.0030000000000001137,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            },
+            {
+              "path": "snapshot.state.ay",
+              "actual": 369.996,
+              "value": 370,
+              "tolerance": 0.01,
+              "difference": 0.004000000000019099,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            },
+            {
+              "path": "snapshot.state.ax",
+              "actual": 85.003,
+              "value": 85,
+              "tolerance": 0.01,
+              "difference": 0.0030000000000001137,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            },
+            {
+              "path": "snapshot.state.ay",
+              "actual": 369.996,
+              "value": 370,
+              "tolerance": 0.01,
+              "difference": 0.004000000000019099,
+              "reason": "SVG screen-to-viewBox conversion and browser pointer coordinates have subpixel rounding; 0.01 viewBox unit is below 0.02 CSS pixel at this viewport. Base, height, area and reload equality remain exact."
+            }
+          ]
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "jugs-3",
+      "task": "jugs",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-KrwUJO/result.json",
+      "sourceSha256": "e50671266c655cf7fd2f37bb87981dd6f24fe5857b6e7a572ffaa4f5e34b9c39",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-jugs-3",
+          "status": "completed",
+          "checkpoints": 24,
+          "passedCheckpoints": 24,
+          "reloads": 4,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    },
+    {
+      "id": "board-3",
+      "task": "board",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-QGYiET/result.json",
+      "sourceSha256": "3ed41435c93df568f29fb7958a7c8463ef88823d7704a3ac61f64271681a959c",
+      "generation": {
+        "status": "completed",
+        "forms": [
+          "mini-app"
+        ],
+        "uiAttempts": 1,
+        "publications": 1,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null
+      },
+      "attempts": [
+        {
+          "batch": "desktop-e2e-RStSh4",
+          "id": "fresh-board-3",
+          "status": "completed",
+          "checkpoints": 83,
+          "passedCheckpoints": 83,
+          "reloads": 6,
+          "followupChecksCompleted": true,
+          "postFollowupStatePreserved": true,
+          "semanticFindings": [],
+          "error": null,
+          "hostFailure": null,
+          "networkFailures": [],
+          "approximateChecks": []
+        }
+      ],
+      "developerReview": {
+        "verdict": "no-known-issue-in-reviewed-scope",
+        "initialAnswer": "no-known-issue-in-reviewed-scope",
+        "followup": "no-known-issue-in-reviewed-scope",
+        "issue": null,
+        "scope": "Independent operation values, available UI text, initial and follow-up answers; untested claims and full visual behavior not accepted"
+      },
+      "independentHumanAcceptance": "deferred"
+    }
+  ],
+  "sourceChecks": {
+    "at": "2026-11-02T22:32:15.676Z",
+    "groups": {
+      "frozen": {
+        "files": 519,
+        "mismatch": []
+      },
+      "generation": {
+        "files": 516,
+        "mismatch": []
+      },
+      "capability": {
+        "files": 169,
+        "mismatch": []
+      }
+    }
+  },
+  "retestNotes": {
+    "triangle3": "Original exact coordinate assertion failed at 85.003 versus85. Retest uses explicit absolute0.01 tolerance only for ax/ay; base/height/area and whole snapshot equality remain exact.",
+    "board2": "Original failed after74 passed checkpoints with Host state error. Writing another script preceded failure by about11seconds; Next log had10.8/10.6second compilations near10second state deadline. Correlation only, root cause unconfirmed. Frozen retest completed83 checkpoints with no captured host/network failure; no product fix claimed.",
+    "board1": "Counterexample to the initial exclusive claim remains semantic-failed despite9 successful checkpoints and correct followup."
+  },
+  "checks": {
+    "scriptSyntax": "passed",
+    "targetedEslint": "passed",
+    "diffCheck": "passed",
+    "previousCapabilityResult": "520/520 passed;169 hashes rechecked, suite not rerun",
+    "previousCi": {
+      "run": 930,
+      "id": 41533132865,
+      "status": "completed",
+      "conclusion": "failure",
+      "failedAreas": [
+        "release-tree hygiene on both OS",
+        "test shards on both OS"
+      ],
+      "remediation": "deferred by user"
+    }
+  },
+  "limitations": [
+    "Development samples only, not a success-rate estimate of generalization",
+    "Mechanical completed does not establish semantic correctness",
+    "Screenshots crop upper content; no full visual/theme/multiplatform acceptance",
+    "Text replay uses production SDK/wrapper with only first-party UI extensions; no desktop",
+    "No next build or release packaging; full CI, sealed evaluation and two-human acceptance deferred",
+    "No application runtime semantic fix in this increment"
+  ],
+  "evidence": [
+    {
+      "path": ".verification/mini-app-evaluation-9PkiZj/result.json",
+      "sha256": "4dc067093732c2ff53ddc5520fecbaff8f5a5bf3cffdf94f21c440eeff28fbb9"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-ylGfPp/result.json",
+      "sha256": "666ab375ab704bea64ba3a574e089dd83e7c2ca14cdbd13aeafab28a0c5f2b4f"
+    },
+    {
+      "path": ".verification/phase3-task-matrix-source-checks.json",
+      "sha256": "cd79e2173a70d23ddcea1aedcebeb798a137871d2d3c51ed6606ef6796b64154"
+    },
+    {
+      "path": ".verification/phase3-completion-retest-sources.json",
+      "sha256": "422eabd65e771d8aa82f922102f0f37abc4165a4cdff605b326ec1c57f0ce23a"
+    },
+    {
+      "path": ".verification/phase3-completion-mini-bindings.json",
+      "sha256": "35c40c687221f63c9f2d55d9da896a55a8578308a71a921f2f0e0d634441684e"
+    },
+    {
+      "path": ".verification/phase3-completion-retest-bindings.json",
+      "sha256": "fa5e2f00b6789b9fa432f11bdd2dc2febe922721d81962e766fa2ad111d5606c"
+    },
+    {
+      "path": ".verification/phase3-completion-text-bindings.json",
+      "sha256": "540e4eb73fa00d18cfb46dfdd3234bca2ca9bc725eb831618d6846e523734c60"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-component-bindings.json",
+      "sha256": "5a7046659682b0e4be4ae573ca75cc3410709ca11e78a811a55d2f45075373d5"
+    },
+    {
+      "path": ".verification/phase3-text-replay-TKse68/result.json",
+      "sha256": "944984939e10cd235a2aa0e2380257816dc347631309c0672d8b561fe35b5a47"
+    },
+    {
+      "path": ".verification/desktop-e2e-9dHAYX/task-replay.json",
+      "sha256": "d238804bfecdb5354f4f7a6507a7001a9493043fe10ea334e0a9eaf312e2379d"
+    },
+    {
+      "path": ".verification/desktop-e2e-9dHAYX/result.json",
+      "sha256": "51db6989edf0b67e1b8a5faaadb73e13e7a0a0c9f3e07a67a5f7bf9422cb081e"
+    },
+    {
+      "path": ".verification/desktop-e2e-CZVzXH/component-replay.json",
+      "sha256": "f213ec1cc94678498123c53fdc2f879ceb2d50f74c26f2c6789807ae8aeb275a"
+    },
+    {
+      "path": ".verification/desktop-e2e-CZVzXH/result.json",
+      "sha256": "a28ddf9efbaf8223b5bbfcdefa7693e984bf5242c1fa320c5e9a6aadeb315e3c"
+    },
+    {
+      "path": ".verification/desktop-e2e-RStSh4/task-replay.json",
+      "sha256": "b40798b4e9f1e8d199bae2f6f337ffaca86b8c69377243175214fbfef34a0f31"
+    },
+    {
+      "path": ".verification/desktop-e2e-RStSh4/result.json",
+      "sha256": "0683c4a0de5704b17ac715aec4f650e3342935a452ba3651eb1f79ab5e3c3387"
+    },
+    {
+      "path": ".verification/desktop-e2e-6ekHlw/task-replay.json",
+      "sha256": "1380dff9ffd7ec1c4398f8c7f572862e72d931d37236715c3765270b36c1923d"
+    },
+    {
+      "path": ".verification/desktop-e2e-6ekHlw/result.json",
+      "sha256": "b7cb3e405db5922617c55308f66be1f814b480da82cf5c788d57e64dcaa78413"
+    },
+    {
+      "path": ".verification/phase3-text-replay-A8Kius/result.json",
+      "sha256": "184bc5fc909a0f37adc783a780124c475437745447820961ca0887b70038fdd8"
+    },
+    {
+      "path": ".verification/mini-app-live-p83BFR/result.json",
+      "sha256": "6a0b7a716a78b88a91588edfb875832ba0bd654c37c2d22335ab997d5eddaea2"
+    },
+    {
+      "path": ".verification/mini-app-live-IID4NI/result.json",
+      "sha256": "17a48344f5667bff7cf24f7075bbff0693cc5a04daafff79cd995a9b08a79f2c"
+    },
+    {
+      "path": ".verification/mini-app-live-GYD5Uq/result.json",
+      "sha256": "a0197fe2fc0330da369179e9e9849860ee464c2411d2ec2c44d4e2fd817fb471"
+    },
+    {
+      "path": ".verification/mini-app-live-YqhUSj/result.json",
+      "sha256": "1fdafc36b2018bab6d017ce030b3e763a0ec5e0c9471620e29b5851a0df9891a"
+    },
+    {
+      "path": ".verification/mini-app-live-0jxQe4/result.json",
+      "sha256": "75313e31763064376110a363d8c30c657f6ef92b058dfb8bd585049f73039749"
+    },
+    {
+      "path": ".verification/mini-app-live-bGALOl/result.json",
+      "sha256": "6ab62df81517796edd34a0a17180b2fd7c0ad13fa007197d5c945d95ac0f0833"
+    },
+    {
+      "path": ".verification/mini-app-live-JPmuDT/result.json",
+      "sha256": "34cf14a7c8f9428b8457103390e038a18d3c908dcb5cf1dac314c57a6bb4fa5d"
+    },
+    {
+      "path": ".verification/mini-app-live-icC50B/result.json",
+      "sha256": "73168b2a0565b4cf1be2ad00d2c3ac1c0927a3f76f1b3a2542f185d253a77a65"
+    },
+    {
+      "path": ".verification/mini-app-live-6XcJHO/result.json",
+      "sha256": "bf8d0c7c7580519a579310c9949d7dda7174dc36797bfcc94b3f0cc266fcd8c9"
+    },
+    {
+      "path": ".verification/mini-app-live-o3Hv0c/result.json",
+      "sha256": "7a99b31e9b3107a15764905126ceeb301ae5f72e182c1a4884ad3d56a8994242"
+    },
+    {
+      "path": ".verification/mini-app-live-vbpnqp/result.json",
+      "sha256": "db4dda1a635962f8514a0a71fcc73e7bce8dcc0b302be202c86cd753c0c39207"
+    },
+    {
+      "path": ".verification/mini-app-live-4RCWr4/result.json",
+      "sha256": "4b869ccde22fc6be267839206f0aecdffc78e850784d85a625b42c8e06b6d5b6"
+    },
+    {
+      "path": ".verification/mini-app-live-QKaaAI/result.json",
+      "sha256": "076556d27ab2468dac31ccb83c00fd2602b64b6b17f1d202ef95be6b2c011e7a"
+    },
+    {
+      "path": ".verification/mini-app-live-L7KN3e/result.json",
+      "sha256": "2dfb53981ba24f50f9580acb45830513f9d4966cc22e1bd1742572f321b7e1c7"
+    },
+    {
+      "path": ".verification/mini-app-live-64Wr8L/result.json",
+      "sha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53"
+    },
+    {
+      "path": ".verification/mini-app-live-s54DD9/result.json",
+      "sha256": "8a1376d766e2000004859573f0a66dfd6cd501313fc2036de648237f80b6297f"
+    },
+    {
+      "path": ".verification/mini-app-live-6qbwe7/result.json",
+      "sha256": "fa49b2b2928d01219fdd1deb6a07317d398956fbe4b5f1b0fe00cf4e55e87468"
+    },
+    {
+      "path": ".verification/mini-app-live-uGB1JZ/result.json",
+      "sha256": "115d0bb4f3884a7e4d8b28cfdf4882757c46a6df58fd9798c878546eb22ad307"
+    },
+    {
+      "path": ".verification/mini-app-live-UT9761/result.json",
+      "sha256": "5b7e011481485ba4e5c0d194bb49278ffe2a11b04530474c999d86b2294c3bc9"
+    },
+    {
+      "path": ".verification/mini-app-live-VUIWhf/result.json",
+      "sha256": "dea56791f135f4406f8425e71a3818b5bc0fdf3b2d855b4aeeba9888c0cb3222"
+    },
+    {
+      "path": ".verification/mini-app-live-AMjloV/result.json",
+      "sha256": "948e429e3518908be7ac2d98c82ed4cba232a8a2a88524cde08688dc246b1597"
+    },
+    {
+      "path": ".verification/mini-app-live-ZIXa1k/result.json",
+      "sha256": "dcd48add0b799d0e030f4b28aa07062fd9038938fa015fc01a93d3d9efb224fd"
+    },
+    {
+      "path": ".verification/mini-app-live-KrwUJO/result.json",
+      "sha256": "e50671266c655cf7fd2f37bb87981dd6f24fe5857b6e7a572ffaa4f5e34b9c39"
+    },
+    {
+      "path": ".verification/mini-app-live-QGYiET/result.json",
+      "sha256": "3ed41435c93df568f29fb7958a7c8463ef88823d7704a3ac61f64271681a959c"
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-task-matrix-2026-11-03.md",
+    "sourceSha256": "379ebc4ca248947b2a9daf47c71331df15bf60129ced9227ff60f5b305420431",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-task-matrix-2026-11-03.pdf",
+    "pdfSha256": "b56582ebe69e12442368b99bcc2afc1f13bf6bc188cb5d88b40121645ea26b3d",
+    "pages": 3,
+    "pageTextLengths": [
+      1182,
+      1060,
+      1193
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: all three rendered pages inspected; no clipping, overlaps or missing glyphs"
+  }
+}

@@ -43,6 +43,7 @@ export function isolatedEnvironment(source, paths) {
     PIORA_DEV_TSCONFIG: paths.tsconfig,
     PIORA_DESKTOP_DEV_PORT: String(paths.port),
     PIORA_DESKTOP_DEV_DEBUG_PORT: String(paths.debugPort),
+    PIORA_DESKTOP_DEV_COMPILE_ONCE: '1',
     NEXT_TELEMETRY_DISABLED: '1',
   };
 }

@@ -1,7 +1,7 @@
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 
-export function createConversationFork(sourceFile: string, sessionDir: string, entryId: string, includeEntry = false): string {
-  const source = SessionManager.open(sourceFile, sessionDir);
+/** Shared by ordinary forks and the staged, state-aware publication path. */
+export function resolveConversationForkAnchor(source: Pick<SessionManager, "getEntry">, entryId: string, includeEntry = false): string | null {
   const entry = source.getEntry(entryId);
   if (!entry) throw new Error("Invalid entry ID for forking");
   if (includeEntry && (entry.type !== "message"
@@ -9,7 +9,12 @@ export function createConversationFork(sourceFile: string, sessionDir: string, e
     || entry.message.role === "assistant" && entry.message.content.some(block => block.type === "toolCall"))) {
     throw new Error("Choose a user message or a completed assistant reply to create a branch.");
   }
-  const anchor = includeEntry ? entry.id : entry.parentId;
+  return includeEntry ? entry.id : entry.parentId;
+}
+
+export function createConversationFork(sourceFile: string, sessionDir: string, entryId: string, includeEntry = false): string {
+  const source = SessionManager.open(sourceFile, sessionDir);
+  const anchor = resolveConversationForkAnchor(source, entryId, includeEntry);
   if (!anchor) {
     const fork = SessionManager.create(source.getCwd(), sessionDir);
     fork.newSession({ parentSession: sourceFile });

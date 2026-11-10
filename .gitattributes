@@ -30,4 +30,5 @@ NOTICE text eol=lf
 *.jpeg binary
 *.jpg binary
 *.png binary
+*.pdf binary
 *.webp binary

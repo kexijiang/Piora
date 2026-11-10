@@ -12,6 +12,9 @@ import {
 } from "@/lib/session-system-prompt";
 import { invalidateSessionListCache, resolveSessionPath } from "@/lib/session-reader";
 import type { SystemPromptSelection } from "@/lib/system-prompt-types";
+import { runSessionFileOperation, drainSessionShutdown } from "@/lib/session-mutation";
+import { openOwnedSessionManager } from "@/lib/session-owned-manager";
+import { isSessionOwnershipError } from "@/lib/session-file-ownership";
 
 function parseSelection(value: unknown): SystemPromptSelection {
   if (!value || typeof value !== "object") throw new Error("Invalid system prompt selection.");
@@ -57,6 +60,8 @@ export async function PUT(
     }
     const body = await request.json() as { selection?: unknown };
     const selection = parseSelection(body.selection);
+    return await runSessionFileOperation(id, async () => {
+    await drainSessionShutdown(id);
     const live = getRpcSession(id);
     if (live?.isAlive()) {
       if (live.isRunning()) return NextResponse.json({ error: "Wait for the current task to finish before changing the system prompt." }, { status: 409 });
@@ -72,13 +77,17 @@ export async function PUT(
     const filePath = await resolveSessionPath(id);
     if (!filePath) return NextResponse.json({ error: "Session not found" }, { status: 404 });
     await resolveSessionAgentRuntimeProfile(id, runtimeProfile);
-    const manager = SessionManager.open(filePath);
+    const owned = openOwnedSessionManager(filePath);
+    try {
+    const manager = owned.manager;
     const previous = readLatestSessionSystemPromptBinding(manager.getEntries());
     const binding = createSessionSystemPromptBinding(selection, undefined, previous);
     appendSessionSystemPromptBinding(manager, binding);
     invalidateSessionListCache();
     return NextResponse.json({ binding, selection: selectionForSessionSystemPromptBinding(binding) });
+    } finally { owned.release(); }
+    });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: isSessionOwnershipError(error) ? 409 : 400 });
   }
 }

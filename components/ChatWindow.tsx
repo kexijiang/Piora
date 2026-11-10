@@ -12,6 +12,7 @@ import { prepareMessageRetry } from "@/lib/message-retry";
 import { messageFingerprint } from "@/lib/chat-history";
 import { CompactProcessContext } from "./CompactProcessContext";
 import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
+import { AnswerOutputInteractionPaused, AnswerOutputPreviews, AnswerOutputScope } from "./AnswerOutputScope";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
@@ -207,7 +208,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
   }, [chatInputRef]);
 
   const {
-    nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
+    nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, answerOutputScope, answerOutputPreviews, switchHistoryBranch, forkHistoryQuestion,
     toolPermission, permissionSaving, handleToolPermission, toolReviews,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
@@ -223,7 +224,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
     pendingScrollToUserRef,
     handleSend, handleAbort, handleFork, handleBranch, handleNavigate, handleRewindRecovery, handleModelChange, handleScrollToBottom, pauseHistoryFollow, handleDeleteMessage, deletingMessage,
     handleCompact, handleDismissCompactError, handleDismissCompactResult, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
-    handlePendingInputAction,
+    handlePendingInputAction, prepareAnswerStateForSubmission,
     handleThinkingLevelChange, handleSystemPromptSelection, loadSlashCommands,
   } = useAgentSession({
     viewVisible: visible,
@@ -651,11 +652,11 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
   const { queueAction, edit: editQueuedDraft } = chatCommands;
   const queueActions = useMemo<ChatCommandQueueActions>(() => ({
     cancel: async record => { await queueAction(record, "cancel"); },
-    steer: async record => { await queueAction(record, "steer"); },
+    steer: async record => { if (await prepareAnswerStateForSubmission(record.targetSessionId)) await queueAction(record, "steer"); },
     edit: editQueuedDraft,
     save: async (record, text) => { await queueAction(record, "edit", text); },
-    resume: async record => { await queueAction(record, "resume"); },
-  }), [queueAction, editQueuedDraft]);
+    resume: async record => { if (await prepareAnswerStateForSubmission(record.targetSessionId)) await queueAction(record, "resume"); },
+  }), [queueAction, editQueuedDraft, prepareAnswerStateForSubmission]);
   const composerQueueContent = useMemo(() => (
     <ChatCommandQueue records={chatCommands.records} actions={queueActions} pendingMessages={queuedMessages} onPendingAction={handlePendingInputAction} />
   ), [chatCommands.records, queueActions, queuedMessages, handlePendingInputAction]);
@@ -839,7 +840,8 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
             <div className="chat-column">
               <ExtensionWidgets widgets={aboveEditorWidgets} />
 
-            <ChatHistory
+            <AnswerOutputInteractionPaused.Provider value={sessionBusy || streamState.isStreaming || replyHistorySettling || isCompacting}>
+            <AnswerOutputPreviews.Provider value={answerOutputPreviews}><AnswerOutputScope.Provider value={String(answerOutputScope)}><ChatHistory
               visible={visible}
               key={session?.id ?? sessionIdRef.current ?? "new"}
               operations={chatCommands.records} commandActions={commandActions}
@@ -853,7 +855,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
               onEditFailed={handleEditFailedMessage} onRetry={handleRetryMessage} retryDisabled={sessionBusy || deletingMessage || preparingRetry}
               onDeleteMessage={handleDeleteMessage} deleteDisabled={sessionBusy || deletingMessage || isCompacting || preparingRetry}
               sessionId={session?.id ?? sessionIdRef.current ?? undefined} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={setCommandExecutionDialog}
-            />
+            /></AnswerOutputScope.Provider></AnswerOutputPreviews.Provider></AnswerOutputInteractionPaused.Provider>
 
             {agentRunning && (agentPhase?.kind === "stopping" || (!streamState.streamingMessage && visionStatus?.phase !== "failed")) && (
               visionStatus && agentPhase?.kind !== "stopping" ? (

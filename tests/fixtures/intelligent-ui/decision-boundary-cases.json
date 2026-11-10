@@ -1,0 +1,19 @@
+{
+  "version": "decision-boundary-development-1",
+  "capabilityVersion": "plan-2.3-admitted",
+  "purpose": "Development comparison frozen before intent-3 changes; includes known failures and new contrasting contexts. Not held-out acceptance.",
+  "tasks": [
+    {"id":"b01","family":"unknown-shared-rule","domain":"shared-rule","split":"development","label":"clarify","turns":[{"user":"做个房租分摊工具，我们三个人分法不一样，具体怎么算还没定。总租金6000。"}]},
+    {"id":"b02","family":"unknown-commission","domain":"commission","split":"development","label":"clarify","turns":[{"user":"帮我做个销售提成计算器，卖10万元能拿多少？我们提成分档，但具体档位我还没说。"}]},
+    {"id":"b03","family":"unknown-company-rule","domain":"reimbursement","split":"development","label":"clarify","turns":[{"user":"按我们公司的差旅报销规则算一下这次最多能报多少，我还没把规则和费用明细发给你。"}]},
+    {"id":"b04","family":"missing-shipping-tariff","domain":"shipping-tariff","split":"development","label":"clarify","turns":[{"user":"给我弄个运费计算器，可以改重量和地区。首重续重怎么收费还没拿到，现在这个包裹是3公斤，要寄上海。"}]},
+    {"id":"b05","family":"undecided-reward-rule","domain":"reward-rule","split":"development","label":"clarify","turns":[{"user":"做个能调签到天数和答题次数的积分小工具。每天签到和答题到底给几分还没定，暂时各做了5次。"}]},
+    {"id":"b06","family":"unsettled-partner-share","domain":"partner-share","split":"development","label":"clarify","turns":[{"user":"活动收入先按9000，三个合伙人各出了不同的钱和力，但怎么分成还没谈好。想要个能改收入就算出各自分成的东西。"}]},
+    {"id":"b07","family":"explicit-rule-comparison","domain":"explicit-rule-comparison","split":"development","label":"ui","turns":[{"user":"我就是想比较两种房租分法：总租金6000，三个房间10、15、20平米。一种每人均摊，一种按房间面积分；给我一个能改租金和面积，同时看两种结果的工具。"}],"checks":["均摊每人2000；面积法分别6000*10/45、6000*15/45、6000*20/45；改租金9000后均摊3000"]},
+    {"id":"b08","family":"known-rule-in-context","domain":"known-rule-in-context","split":"development","label":"ui","turns":[{"user":"租金6000，三个人已经商量好按1:2:3分，先告诉我每人多少。","label":"text"},{"user":"按刚才定好的办法弄个可以调租金的工具。","label":"ui"}],"checks":["初始1000、2000、3000；总租金变为9000时为1500、3000、4500；无需再询问已给定规则"]},
+    {"id":"b09","family":"authorized-hypothetical-rule","domain":"hypothetical-rule","split":"development","label":"ui","turns":[{"user":"积分政策还没定，不过我明确想先试每天签到给10分这个假设。做个能改每天分数和天数的试算，先5天，标明只是试算。"}],"checks":["初始50分；每天12分、7天为84分；说明是假设试算"]},
+    {"id":"b10","family":"one-off-budget","domain":"one-off-budget","split":"development","label":"text","turns":[{"user":"活动预算9000，已经花了6800，还剩多少？"}]},
+    {"id":"b11","family":"missing-presentation-bounds","domain":"presentation-bounds","split":"development","label":"ui","turns":[{"user":"每个纸袋2块，现在要18个，给我弄个能改数量看总价的小工具。"}],"checks":["初始36元；改数量25得到50元；不因为缺少滑块上限而澄清"]},
+    {"id":"b12","family":"explicit-text-rule-advice","domain":"text-rule-advice","split":"development","label":"text","turns":[{"user":"三个人租房，分法还没定。先只用文字讲讲可以怎么分，不要做计算器。"}]}
+  ]
+}

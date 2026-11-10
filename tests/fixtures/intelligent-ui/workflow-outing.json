@@ -1,0 +1,13 @@
+{
+  "id": "workflow-outing-development",
+  "split": "development",
+  "prompt": "周末我们4个人出去玩，门票每人30元，吃饭每人40元，车费一共120元。我想来回改人数和每人餐费，看看各项、总共和每人多少。",
+  "changes": [{ "label": "人数", "value": 6 }, { "label": "餐费|饭费|吃饭", "value": 50 }],
+  "followup": "我刚才自己调了参数。现在多少人，总共花多少、每个人出多少？简单解释下，直接说就行。",
+  "expected": {
+    "initial": { "tickets": 120, "meals": 160, "transport": 120, "total": 400, "perPerson": 100 },
+    "afterPeople": { "tickets": 180, "meals": 240, "transport": 120, "total": 540, "perPerson": 90 },
+    "afterMeal": { "tickets": 180, "meals": 300, "transport": 120, "total": 600, "perPerson": 100 },
+    "followup": "Uses 6 people and the saved 50 yuan meal value. Explains 600 total and 100 each without generating another UI. Static labels and notes must remain true."
+  }
+}

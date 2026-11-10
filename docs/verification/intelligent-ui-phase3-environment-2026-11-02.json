@@ -1,0 +1,596 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "status": "partial-phase-progress",
+  "phaseComplete": false,
+  "branch": "codex/intelligent-ui",
+  "baseCommit": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "committed": false,
+  "feature": "Current-window WebGL2 negotiation bound to the original UI submission, revalidated for admission, execution, publication and loading",
+  "sourceHashes": {
+    ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
+    ".mini-app-runtime/renderer.js": "b6a568dd9f4047397e373091371de829cc7f91b3cedfb60738af0157bdd9bfa0",
+    ".mini-app-runtime/server-worker.cjs": "53c9cfb223cac89237ecb60602dd4561875b7a708723fa9e7dc98a92c965b193",
+    "app/api/mini-app/environment/route.ts": "4bb20319df118cec4a26b685f8e71a7d0d6d80f135c77b2383bc914688b628d4",
+    "extensions/piora-mini-app.ts": "d5cbe1effec3d65453ef56700863028363e4c22e355148ec953796c05422abf5",
+    "lib/agent-client.ts": "e0574392c90b87c1bc7c9e6a4930a52caf2f9caecf363608efa676f44434fa0a",
+    "lib/answer-output-admission.ts": "f29e5b0e792f04792dd9cee265e02a4310eb99ca71ef4bf3e74a65bbfd43ede0",
+    "lib/answer-output-client.ts": "9bc2409ae4a5211316b2fa4dbc6b2f1705b0f263707a9e8f6eb890f1e7f2cf53",
+    "lib/mini-app/appearance.ts": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919",
+    "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
+    "lib/mini-app/capabilities.ts": "8f1b2143cd7ea2ae580bb86e127a75132962f6c56f7e721928549bac17dcd4be",
+    "lib/mini-app/capability-host.ts": "f3318018a37480e8cb231a2c9433a692be950bfc4d88ffa8815d6e25869d2b85",
+    "lib/mini-app/capability-manifest.ts": "e5ec1d39cc98e68f7a147ff702ec9fb5ca7b28baae89d4f36d3c306d8303c99d",
+    "lib/mini-app/controller.ts": "5627b54c816377828790e10a0827306b84c7fc22bea2fda78a5b776962eae28f",
+    "lib/mini-app/decision-policy.ts": "a5073366e3c579725b40b3de4d689c986608117f2951cc667e199602f333b076",
+    "lib/mini-app/document-capabilities.ts": "3a1f78e18de9b3d152f57c779d8fd13b9ac35eb453457b17f66ffa2d7e362179",
+    "lib/mini-app/document.ts": "8ca7100ee79231eef55ebfe01bb48c59a3702485b19a7897e15cfb8d9c1c0cf8",
+    "lib/mini-app/environment-client.ts": "3781c170d415ad15a733ebf4ae7818a95ccc110d81b8afc42bb15f5fec95ad79",
+    "lib/mini-app/environment-protocol.ts": "7ce9aea94eb3ddefab98c11b276e93ab5cd5ceae83e02f52549e2fa65b10478e",
+    "lib/mini-app/environment-store.ts": "18f169395b5b0942ef7e065036b94c628f3275a5f1327f54b2566547dbc5861f",
+    "lib/mini-app/events.ts": "0a07781d4f779f83aa8c0e2c59d4403961552103edbf088e73b0733b544cdd1b",
+    "lib/mini-app/frame-host.ts": "0c2bc72063a9fa4be667d5367f123ef485975b247a46d54f88e488e3ff6da187",
+    "lib/mini-app/frame.ts": "a097e2b5a9aa859de3332d8e537b2b5af36dd8aa437858cc30ea12a1022aa6f4",
+    "lib/mini-app/generation-runtime.ts": "d486b509888f1da8a723663c7ecaa3ff5a62fe2d15b78885d0132b5866bc2493",
+    "lib/mini-app/guest-runtime.ts": "5238a3bb69e85a05310e5ad4ca59b667235df446697b5c30a34405bd9f6b40fd",
+    "lib/mini-app/json.ts": "d69be1140f8da80559da63f5d5a98f893105c667869f0aa6da3ef6bff81b5144",
+    "lib/mini-app/limits.ts": "0ecdcd4c63a9970846de5af0a51bb71443fa7968290ec8aa9742120b08c5eee1",
+    "lib/mini-app/plan-admission.ts": "103dd2e8ec6e215859249263936ced2b418089f461afb1d5f37148bc221847a5",
+    "lib/mini-app/plan-schema.ts": "923c1ffc2ecd53b5d12c7d62f553efc46d414d73895e9a811851b17ab2995eac",
+    "lib/mini-app/plan.ts": "951c085d9bd9abf29bdce2333728b77dd2d868b51fa0be4070deceab4d6790a2",
+    "lib/mini-app/playback.ts": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78",
+    "lib/mini-app/program.ts": "461e17ccbf9a96326b95a364b851c200167141a6a3dd4b5f10a269018e6b1bdb",
+    "lib/mini-app/renderer-runtime.ts": "e4aa47bc56c59bc743d8443f94baa165cfb0cb0d7ebe92aee811e4dde840c54f",
+    "lib/mini-app/repeat-example.ts": "d219da4b93ed144e9d35f469d36a1e5c627362ca4d05791d8d301b98ae4cfb13",
+    "lib/mini-app/repeat-renderer.ts": "1adb95d34d30204c6114a4bdf5742d032f9d24c2ae5ccca1253af3b9dd91fe19",
+    "lib/mini-app/repeat.ts": "a63ad7c7b6a0dd1b6e8c659097eb753cc6a28c7a348cbaf843ac3c2fdd7d7281",
+    "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+    "lib/mini-app/runtime-worker.ts": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8",
+    "lib/mini-app/scene-example.ts": "01bb0b80af2163bdb44584ada2a32d69074219b7f527f91e550fdc65bc8c88cd",
+    "lib/mini-app/scene-renderer.ts": "52219fb26188eb94d226a88d2f4ec9104ca8fa748766f2207450e4f4021bcf20",
+    "lib/mini-app/scene-state.ts": "b70c4c07f78164a27ef42ff6f92718b1838f34d5d94c80f2c876f2558559b747",
+    "lib/mini-app/state-schema.ts": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b",
+    "lib/mini-app/vm.ts": "aa9ff7b2b6c2bf866c78ed815ba4ef9c816ec7ef013abd4ffafd9f8964788d65",
+    "lib/mini-app/wasm-memory.ts": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e",
+    "lib/mini-app/worker-client.ts": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb",
+    "lib/prompt-run-registry.ts": "cf0e7e950377d2ed7f8095951916a128b115fd528edcb884801d0bb93f55bd14",
+    "lib/rpc-manager.ts": "7bb45219137b554b781ff4829ac9ec97266fb7bc3cd72763d13fc8a859ce511e",
+    "lib/mini-app-capabilities.test.mjs": "c58442e23717c225ec700bf5416ea4595591fe598552795b83a0bd2b5558040b",
+    "lib/mini-app-contract.test.mjs": "d35a432d2e80b278d57edd7fded29a7b851a446d91c861547fd0d67b0a3c28cf",
+    "lib/mini-app-generation.test.mjs": "e851c99aae68d48b6668c9952a8c3572e09fff7067bf36692e3e5c94e3979a48",
+    "lib/mini-app-generation-runtime.test.mjs": "eeab5dd7e11eacd2e03583c8e9efd630b837b60a7a249d85dee267bbea11bfac",
+    "lib/mini-app-admission.test.mjs": "3c59f2d8169b0fcc606de38df55ac6c1f4ece4b3632bf65d8c9a1da941f18e50",
+    "lib/mini-app-controller-browser.test.mjs": "1c58c4f5676e8d3b9350406c3ac04897e5b2580f46b024ad045b12bcb97723fd",
+    "lib/mini-app-renderer-browser.test.mjs": "22ebe7eef363b2e43cd33fdb44923ee7598858cfb43fe8c9a54a7241c9dbfa36",
+    "lib/mini-app-worker-browser.test.mjs": "d9fff6b6c2a89124e26fd503fa831d5e9a65073b713304036f9917ff47f5cda3",
+    "lib/mini-app-runtime.test.mjs": "7a31e87ab50ae6525a8a3ef986d630493ebc1c4e16d749c59e42fad4595605d6",
+    "lib/mini-app-restore-budget.test.mjs": "2caae406ac5bba9749f4d641f8157c74795de9dd351ef30de949b0c49c74a38a",
+    "lib/mini-app-document.test.mjs": "b9d83e1e0d2dab4751e9ef0cb83e2b744f2d305246bf8f0e95c414df52c2791e",
+    "lib/mini-app-frame.test.mjs": "1c03af3db0c15ebe844399cfa235653e93051b19b09571d7cbf6ff363fd16ec6",
+    "lib/mini-app-server-trial.test.mjs": "92b0a04972ee458e7ea7935f75b1f7bbdf4e0f28e2440df31a03750030cc4c15",
+    "lib/mini-app-repeat.test.mjs": "9e272d477f3f9b22498d04d4d1c3af08968dd60fb51724ec038acb698b4d2c34",
+    "lib/mini-app-repeat-browser.test.mjs": "d293bbab51305cf0fa06b657969f0d9ad65ea9046c7abc8b65a2b12c4493554f",
+    "lib/mini-app-state.test.mjs": "85c2b118c11c28c421b900bd0b73051f6abac105af4b89ce69627e68ff7f1b31",
+    "lib/mini-app-scene.test.mjs": "b1bc1618fbd2900de0812afa51108140d509d7acd861b4261117629af975e817",
+    "lib/mini-app-scene-browser.test.mjs": "6104531dcabf79fd5cd59e063727e5c5589a88b9bf04413bb4cb516837234f30",
+    "lib/mini-app-environment.test.mjs": "c3198e0bf9faebc1de44c404ca54971be8046fc8131a12cc752618fb8f3ceea7",
+    "lib/mini-app-environment-route.test.mjs": "6cf93ec261cc14a4e7eb67161aa76b28c19037fb9ef0f4767be3786866e57ec4",
+    "lib/mini-app-environment-browser.test.mjs": "eb461f8a698bc6cbf005f0689638253c14e596a3735b7ec5477a38f0017fad87",
+    "lib/prompt-run-registry.test.mjs": "5f5ca7317991d81cf6fef060d23f077a43e958647cb0464c99be8c12755141c7",
+    "lib/agent-client.test.mjs": "238afed4e6a58c6adeba9377e04e58b64b6710b546961af475e5d504b34d6e51",
+    "lib/rpc-manager-behavior.test.mjs": "1b10173f7db43a417ab0b8da4bbcb29e99fab78c359ad01c9d23baca5b53ce0d",
+    "components/mini-app/MiniAppSurface.tsx": "6c5a1011bfe85cfd30f267f0d9f6e43eb053a623c26407de6d05229f8eab8ab3",
+    "scripts/verify-mini-app-capabilities.mjs": "673dcbc94821c2635196151c419b7acd622309e552d464718b9df08724d04f1c",
+    "scripts/verify-spatial-ui-desktop.mjs": "bf8d3ccda420dddfb4847ff60bf7aa967ca1771209d850037912a40129342d7b",
+    "scripts/desktop-e2e/real-model-proxy.mjs": "d24216274ba25354689b35f944c522868cea44ff0ed0563d45319f4ffef798b3",
+    "lib/desktop-e2e-model-proxy.test.mjs": "b4072d918bedfcd211fe13b372370c4446c42e66d0b0b2b22adf4b9528b594c3"
+  },
+  "checks": {
+    "capabilities": {
+      "passed": 156,
+      "failed": 0,
+      "files": 24,
+      "evidence": {
+        "path": ".verification/mini-app-capabilities-luXkdp/result.json",
+        "sha256": "8ccca8b1135f063e1a83ec404e9e7ddf364bf764770137976604e3624c61b8f5"
+      }
+    },
+    "typecheck": {
+      "status": "passed",
+      "evidence": {
+        "path": ".verification/phase3-environment-typecheck-retest.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "lint": {
+      "status": "passed",
+      "files": 26,
+      "evidence": {
+        "path": ".verification/phase3-environment-lint.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "relay": {
+      "passed": 7,
+      "failed": 0,
+      "evidence": {
+        "path": ".verification/phase3-environment-relay-final.log",
+        "sha256": "ea04fe284f88a848bfb3a32b3ccc14b1297c0a735665af18a3a22fe0a87e2431"
+      }
+    },
+    "relayLint": {
+      "status": "passed",
+      "files": 3,
+      "evidence": {
+        "path": ".verification/phase3-environment-relay-lint-complete.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "browser": {
+    "status": "passed",
+    "scope": "Real Chromium/Edge probe, generic client submission, production environment API and store; prompt execution is an HTTP fixture; unsupported window is an explicit null-WebGL fixture, not a hardware compatibility matrix",
+    "evidence": {
+      "path": ".verification/mini-app-environment-browser-xhuP2G/observations.json",
+      "sha256": "e02773edba98cfb8addd7991900ce00f49c48673fcdfb6fa14b10dc21219320f"
+    }
+  },
+  "desktop": [
+    {
+      "directory": ".verification/desktop-e2e-FJsaR7",
+      "status": "failed",
+      "error": {
+        "name": "AssertionError",
+        "message": "Real model request failed"
+      },
+      "cleanupErrors": [],
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "environmentAccepted": true,
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash"
+        }
+      ],
+      "responses": [
+        {
+          "id": 1,
+          "status": "failed",
+          "stage": "parse"
+        }
+      ],
+      "publishedCheckpoints": 0,
+      "diagnostics": [],
+      "evidence": [
+        {
+          "path": ".verification/desktop-e2e-FJsaR7/result.json",
+          "sha256": "135a0640ac7b335531b1edfe485baa4f987ccf2d15d3d892779577da2be0beb0"
+        },
+        {
+          "path": ".verification/desktop-e2e-FJsaR7/spatial-task.json",
+          "sha256": "5e9e6db3967a4f34bac5f548fffa0a9dd1ed1d00734c75a5206e5eec71036339"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-XlCGaz",
+      "status": "failed",
+      "error": {
+        "name": "AssertionError",
+        "message": "Real model request failed"
+      },
+      "cleanupErrors": [],
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "environmentAccepted": true,
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash"
+        }
+      ],
+      "responses": [
+        {
+          "id": 1,
+          "status": "failed",
+          "stage": "parse",
+          "failureCode": "RESPONSE_LIMIT",
+          "receivedCharacters": 2098057,
+          "receivedEvents": 6688
+        }
+      ],
+      "publishedCheckpoints": 0,
+      "diagnostics": [],
+      "evidence": [
+        {
+          "path": ".verification/desktop-e2e-XlCGaz/result.json",
+          "sha256": "76b7674372863f494956a552b32f4047d06ba869c9529053468a245d47455ebb"
+        },
+        {
+          "path": ".verification/desktop-e2e-XlCGaz/spatial-task.json",
+          "sha256": "3156283ec2067de749eae3f0b3df83be18fd1438e5265545444b275adfc1815b"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-pLBSQ3",
+      "status": "failed",
+      "error": {
+        "name": "Error",
+        "message": "Timed out waiting for generated 3D surface"
+      },
+      "cleanupErrors": [],
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "environmentAccepted": true,
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash"
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "model": "deepseek-flash"
+        }
+      ],
+      "responses": [
+        {
+          "id": 1,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "usage": {
+            "prompt_tokens": 28392,
+            "completion_tokens": 8192,
+            "total_tokens": 36584,
+            "prompt_tokens_details": {
+              "cached_tokens": 15232
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 8192
+            },
+            "prompt_cache_hit_tokens": 15232,
+            "prompt_cache_miss_tokens": 13160
+          }
+        },
+        {
+          "id": 2,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "usage": {
+            "prompt_tokens": 26105,
+            "completion_tokens": 110,
+            "total_tokens": 26215,
+            "prompt_tokens_details": {
+              "cached_tokens": 15232
+            },
+            "completion_tokens_details": {
+              "reasoning_tokens": 98
+            },
+            "prompt_cache_hit_tokens": 15232,
+            "prompt_cache_miss_tokens": 10873
+          }
+        }
+      ],
+      "publishedCheckpoints": 0,
+      "diagnostics": [],
+      "evidence": [
+        {
+          "path": ".verification/desktop-e2e-pLBSQ3/result.json",
+          "sha256": "9fe9b6462ffa216a6363503d01a43955685eae6affd57b3185e415a46ae2d732"
+        },
+        {
+          "path": ".verification/desktop-e2e-pLBSQ3/spatial-task.json",
+          "sha256": "afc8ea44a6e721826fdc89f632ae73bb3cf8ed446bd084110c972c6a80e88ee9"
+        }
+      ]
+    },
+    {
+      "directory": ".verification/desktop-e2e-iEqvz1",
+      "status": "failed",
+      "error": {
+        "name": "Error",
+        "message": "Timed out waiting for generated 3D surface"
+      },
+      "cleanupErrors": [],
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "environmentAccepted": true,
+      "requests": [
+        {
+          "id": 1,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          },
+          "maxTokens": 32768
+        },
+        {
+          "id": 2,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          },
+          "maxTokens": 32768
+        },
+        {
+          "id": 3,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          },
+          "maxTokens": 32768
+        },
+        {
+          "id": 4,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          },
+          "maxTokens": 32768
+        },
+        {
+          "id": 5,
+          "phase": "generation",
+          "model": "deepseek-flash",
+          "thinking": {
+            "type": "disabled"
+          },
+          "maxTokens": 32768
+        }
+      ],
+      "responses": [
+        {
+          "id": 1,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "finishReasons": [
+            "tool_calls"
+          ],
+          "usage": {
+            "prompt_tokens": 28462,
+            "completion_tokens": 3783,
+            "total_tokens": 32245,
+            "prompt_tokens_details": {
+              "cached_tokens": 0
+            },
+            "prompt_cache_hit_tokens": 0,
+            "prompt_cache_miss_tokens": 28462
+          }
+        },
+        {
+          "id": 2,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "finishReasons": [
+            "tool_calls"
+          ],
+          "usage": {
+            "prompt_tokens": 32400,
+            "completion_tokens": 3838,
+            "total_tokens": 36238,
+            "prompt_tokens_details": {
+              "cached_tokens": 25728
+            },
+            "prompt_cache_hit_tokens": 25728,
+            "prompt_cache_miss_tokens": 6672
+          }
+        },
+        {
+          "id": 3,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "finishReasons": [
+            "tool_calls"
+          ],
+          "usage": {
+            "prompt_tokens": 36312,
+            "completion_tokens": 3820,
+            "total_tokens": 40132,
+            "prompt_tokens_details": {
+              "cached_tokens": 29696
+            },
+            "prompt_cache_hit_tokens": 29696,
+            "prompt_cache_miss_tokens": 6616
+          }
+        },
+        {
+          "id": 4,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "finishReasons": [
+            "stop"
+          ],
+          "usage": {
+            "prompt_tokens": 40174,
+            "completion_tokens": 116,
+            "total_tokens": 40290,
+            "prompt_tokens_details": {
+              "cached_tokens": 33664
+            },
+            "prompt_cache_hit_tokens": 33664,
+            "prompt_cache_miss_tokens": 6510
+          }
+        },
+        {
+          "id": 5,
+          "status": 200,
+          "modelIds": [
+            "deepseek-flash"
+          ],
+          "finishReasons": [
+            "stop"
+          ],
+          "usage": {
+            "prompt_tokens": 38007,
+            "completion_tokens": 10,
+            "total_tokens": 38017,
+            "prompt_tokens_details": {
+              "cached_tokens": 15232
+            },
+            "prompt_cache_hit_tokens": 15232,
+            "prompt_cache_miss_tokens": 22775
+          }
+        }
+      ],
+      "publishedCheckpoints": 0,
+      "diagnostics": [
+        {
+          "tool": "piora_render_mini_app",
+          "error": true,
+          "diagnostic": {
+            "code": "SCHEMA",
+            "message": "Only top-level bounded max-width media rules are supported",
+            "path": "document/css",
+            "repairable": true,
+            "issues": [
+              {
+                "code": "SCHEMA",
+                "message": "Only top-level bounded max-width media rules are supported",
+                "path": "document/css",
+                "repairable": true
+              },
+              {
+                "code": "SYNTAX",
+                "message": "Top-level const needs a simple name and a finite primitive literal; no objects, references, calls or computed initializers",
+                "path": "program",
+                "repairable": true
+              }
+            ],
+            "contract": {
+              "tool": "piora_render_mini_app",
+              "planVersion": 1,
+              "resubmit": "complete plan including purpose, stateSchema, playback and initialSnapshot"
+            }
+          }
+        },
+        {
+          "tool": "piora_render_mini_app",
+          "error": true,
+          "diagnostic": {
+            "code": "SCHEMA",
+            "message": "Unsupported field",
+            "path": "plan/viewport_placeholder",
+            "repairable": true,
+            "contract": {
+              "tool": "piora_render_mini_app",
+              "planVersion": 1,
+              "resubmit": "complete plan including purpose, stateSchema, playback and initialSnapshot"
+            }
+          }
+        },
+        {
+          "tool": "piora_render_mini_app",
+          "error": true,
+          "diagnostic": {
+            "code": "UI_CORRECTIONS_EXHAUSTED",
+            "repairable": false
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": ".verification/desktop-e2e-iEqvz1/result.json",
+          "sha256": "e24e40228ec7381e27e018abe02935bc89fbdb7e8636e22b0af735727e140348"
+        },
+        {
+          "path": ".verification/desktop-e2e-iEqvz1/spatial-task.json",
+          "sha256": "59646ee11a6fac3c656d1588667c5fb7c1c3eb5a6257365be4a9902322cd762a"
+        }
+      ]
+    }
+  ],
+  "desktopConclusion": "Environment reaches real model context; the configured natural-language task failed protocol checks and exhausted the existing correction budget. No published scene, UI operation, reload or real follow-up passed.",
+  "failures": [
+    {
+      "kind": "wrong-typecheck-command",
+      "evidence": {
+        "path": ".verification/phase3-environment-typecheck.log",
+        "sha256": "7131d9debbd819efbcbbb5ae4eda9516d6d49a91287866819da140cb421153ec"
+      },
+      "resolvedBy": "repository tsc entry"
+    },
+    {
+      "kind": "unused-test-script-import",
+      "evidence": {
+        "path": ".verification/phase3-environment-desktop-lint.log",
+        "sha256": "b6f4d4f3d9b0c559e4d323bf83d0723e29e42f1111049b2ad54d5f4515ba9983"
+      },
+      "resolvedBy": "removed unused import"
+    },
+    {
+      "kind": "relay-wire-size-bound",
+      "resolvedBy": "separate total stream and generated content bounds; 7 relay tests passed"
+    },
+    {
+      "kind": "test-model-config-omitted-reasoning-compat",
+      "resolvedBy": "preserved model metadata and verified actual thinking disabled request"
+    },
+    {
+      "kind": "natural-generation-schema-and-correction-budget",
+      "resolved": false
+    }
+  ],
+  "subsequentChangesNotLiveRetested": [
+    "Fail immediately when the generation ends without a published interface instead of waiting for the full UI deadline"
+  ],
+  "pdf": {
+    "path": ".verification/phase3-environment-pdf/checks.json",
+    "sha256": "143b71ce4dd010ef22295716ba798814b68271936def9e0de8314c5b7d6c086b",
+    "output": {
+      "path": "output/pdf/piora-intelligent-ui-phase3-environment-2026-11-02.pdf",
+      "sha256": "990a155348ab079487868dd0ec5af67e7164a21a3ea7023170f9867f4145e245"
+    },
+    "pages": 2,
+    "visualReview": "passed"
+  },
+  "notRun": [
+    "native scene operations/save/reload/follow-up for this generated sample",
+    "physical GPU compatibility matrix",
+    "other operating systems",
+    "full CI",
+    "two-human semantic acceptance",
+    "release packages"
+  ],
+  "remaining": [
+    "Natural-language generation reliability under the existing shared budget",
+    "Complete spatial tasks with independent geometry and explanations",
+    "Continuous simulation and games",
+    "Complete recovery matrix",
+    "Confirmed candidate migrations and component/mini-app transitions",
+    "Registered actions and permission receipts",
+    "Complete development and sealed task matrix and final gates"
+  ]
+}

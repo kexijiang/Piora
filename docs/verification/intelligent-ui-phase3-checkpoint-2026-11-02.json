@@ -1,0 +1,32 @@
+{
+  "source": "docs\\verification\\intelligent-ui-phase3-checkpoint-2026-11-02.md",
+  "sourceSha256": "c243d82fad345a8e9f53fe82071c8cc0be55ef1abec149f86fda2701d1f9c24c",
+  "output": "output\\pdf\\piora-intelligent-ui-phase3-checkpoint-2026-11-02.pdf",
+  "pdfSha256": "60a0ca9249ad430ca15eb2d54166e5b948806553191c8dd283af534258cf78dd",
+  "pages": 2,
+  "pageTextLengths": [
+    1083,
+    1157
+  ],
+  "textChecks": "passed",
+  "visualReview": "passed",
+  "reviewedPages": [
+    1,
+    2
+  ],
+  "status": "development-checkpoint",
+  "upstreamBase": "357bc252",
+  "capabilityChecks": {
+    "tests": 492,
+    "passed": 492,
+    "failed": 0
+  },
+  "integrationChecks": {
+    "tests": 99,
+    "passed": 65,
+    "failed": 34
+  },
+  "nativeWindowStatus": "failed-before-rebase",
+  "fullCi": "deferred",
+  "humanAcceptance": "deferred"
+}

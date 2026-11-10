@@ -1,0 +1,1560 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "recordedAt": "2026-11-02T16:47:37.309Z",
+  "codeBase": "fd17e68ada440ab168bda2cfde5fb9bcab2893a7",
+  "modifiedSourceSha256": {
+    "lib/mini-app/checkpoint-changes.ts": "99bc2ad04a505ce139adfefbc502ff0e76d409d88a776ea5452c09bac09a1e5f",
+    "lib/mini-app/action-preview.ts": "dacac7e8cb4b7c9871e9483f8577b4b733db7aa2afbea203742790b491bed985",
+    "lib/mini-app/generation-runtime.ts": "04d73bfea0bcc6bcb4080c700ae9e57f2b3acf80caa148b68c912bde17a7f5d5",
+    "lib/mini-app/server-worker.ts": "2c060605c6ffc344e5ce533d46d14e109208c4d876f421489023e2a614dc2414",
+    "lib/mini-app/server-trial.ts": "1d901b50384d4dcd1d9d06f1d7becc962f4a71d459727436004c83eae256442c",
+    "lib/mini-app/capability-manifest.ts": "532d5d58d2104cecb284a197aca00e964423990a689dcf002d1f465357780f28",
+    "lib/mini-app-action-preview.test.mjs": "980dab415c56aad0be6e8d1bc123786755bd34fd76f984caff9ca28077744d3b",
+    "lib/mini-app-generation-runtime.test.mjs": "efc37c810a33859800bb82aa4895455692cd06001558bcda32f6af9a617ad58d",
+    "scripts/verify-recorded-mini-app-tasks.mjs": "c6f61af02cd2af5f46e400f64cb6d0690d2679a15d5d6e7e2eac59a64347b4d3"
+  },
+  "scope": "Host-computed bounded field changes; independent original-program UI replay and pinned-model followups. Not a sealed-set evaluation, new generation, sequence search or human acceptance.",
+  "model": {
+    "provider": "deepseek",
+    "id": "deepseek-flash",
+    "name": "DeepSeek V4.1 Flash",
+    "thinking": "enabled",
+    "fallback": false
+  },
+  "run": {
+    "path": ".verification/desktop-e2e-5PxDaK/task-replay.json",
+    "sha256": "7a661b334ffd00db89f2aa3e39fe9b1e30640cf8729567556eaecafa15e976f4",
+    "mechanicalStatus": "passed",
+    "cleanupErrors": []
+  },
+  "verification": {
+    "focusedTests": "18/18 passed; includes 9 preview/change tests",
+    "capabilities": {
+      "path": ".verification/mini-app-capabilities-sYesHV/result.json",
+      "tests": 503,
+      "passed": 503,
+      "files": 56
+    },
+    "webTypecheck": "passed",
+    "targetedLint": "passed",
+    "fullCi": "deferred",
+    "nativeWindow": "not retested, unresolved"
+  },
+  "counts": {
+    "tasks": 5,
+    "operations": 58,
+    "reloads": 12,
+    "followups": 5,
+    "previewActions": 36,
+    "pairedFieldChecks": 50,
+    "definiteSemanticFailures": 2,
+    "needsReview": 1,
+    "requestedFactsReviewed": 2
+  },
+  "contextComparison": [
+    {
+      "id": "jugs-1",
+      "previousCharacters": 2588,
+      "currentCharacters": 2930,
+      "previousActions": 8,
+      "currentActions": 8,
+      "omittedActions": 0
+    },
+    {
+      "id": "jugs-2",
+      "previousCharacters": 2395,
+      "currentCharacters": 2336,
+      "previousActions": 8,
+      "currentActions": 8,
+      "omittedActions": 0
+    },
+    {
+      "id": "jugs-3",
+      "previousCharacters": 4342,
+      "currentCharacters": 3344,
+      "previousActions": 6,
+      "currentActions": 8,
+      "omittedActions": 0
+    }
+  ],
+  "samples": [
+    {
+      "id": "jugs-1",
+      "source": ".verification\\mini-app-live-vph3zd\\result.json",
+      "sourceSha256": "04869ed2a716ee88c63250075e2bf00db3d9e3b913f5289fcfe2127f94b08eda",
+      "mechanical": "completed",
+      "operations": 8,
+      "reloads": 2,
+      "saved": {
+        "stateRevision": 6,
+        "snapshot": {
+          "inputs": {
+            "showMark": true
+          },
+          "state": {
+            "small": 3,
+            "big": 4,
+            "moves": 6,
+            "showHint": false,
+            "notice": "成功！5 升杯里正好 4 升水，一共用了 6 步。"
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "成功：5 升杯里正好 4 升水，已用 6 步。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "a48dc74951e9c353bfb21ed12a42722d70a463dd7b7e8e68aa450557539eaad1",
+          "stateRevision": 6,
+          "checkpointDigest": "740c7ded46ff23385ae1c0ce1b1563efe717ff3b0fb4297e8ec2db33bef8ad57"
+        },
+        "version": 2,
+        "sourceCheckpointDigest": "740c7ded46ff23385ae1c0ce1b1563efe717ff3b0fb4297e8ec2db33bef8ad57",
+        "eligibleActions": 8,
+        "omittedActions": 0,
+        "actions": [
+          {
+            "id": "fill3",
+            "label": "装满 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/notice",
+                  "kind": "replace",
+                  "before": "成功！5 升杯里正好 4 升水，一共用了 6 步。",
+                  "after": "3 升杯已经满了，装不进更多水。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "fill5",
+            "label": "装满 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/big",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 5
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/notice",
+                  "kind": "replace",
+                  "before": "成功！5 升杯里正好 4 升水，一共用了 6 步。",
+                  "after": "把 5 升杯装满了。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "empty3",
+            "label": "倒空 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/small",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/notice",
+                  "kind": "replace",
+                  "before": "成功！5 升杯里正好 4 升水，一共用了 6 步。",
+                  "after": "成功！5 升杯里正好 4 升水，一共用了 7 步。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "empty5",
+            "label": "倒空 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/big",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/notice",
+                  "kind": "replace",
+                  "before": "成功！5 升杯里正好 4 升水，一共用了 6 步。",
+                  "after": "把 5 升杯倒空了。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "pour3to5",
+            "label": "3 升杯 → 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 4,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/small",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 2
+                },
+                {
+                  "path": "/state/big",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 5
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/notice",
+                  "kind": "replace",
+                  "before": "成功！5 升杯里正好 4 升水，一共用了 6 步。",
+                  "after": "从 3 升杯往 5 升杯倒了 1 升。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "pour5to3",
+            "label": "5 升杯 → 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/notice",
+                  "kind": "replace",
+                  "before": "成功！5 升杯里正好 4 升水，一共用了 6 步。",
+                  "after": "3 升杯是满的，倒不进去了。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "hint",
+            "label": "显示 / 隐藏提示",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/showHint",
+                  "kind": "replace",
+                  "before": false,
+                  "after": true
+                }
+              ]
+            }
+          },
+          {
+            "id": "reset",
+            "label": "重新开始",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 4,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/small",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 0
+                },
+                {
+                  "path": "/state/big",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 0
+                },
+                {
+                  "path": "/state/notice",
+                  "kind": "replace",
+                  "before": "成功！5 升杯里正好 4 升水，一共用了 6 步。",
+                  "after": "杯子全部倒空，重新开始。"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+        "answerSha256": "7269e8e095f7658a93fa76c78f3d7225ef82b3db4ad7b51f16356ae0c957bddf",
+        "requestCount": 1
+      },
+      "agentReview": {
+        "status": "needs-review",
+        "requestedCurrentValues": "correct",
+        "findings": [
+          "Says any action changes the current situation. All eight previews do change some checkpoint field, sometimes only notice text; the wording can mislead about preservation of the target water. Do not misclassify this as a definite numerical contradiction."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    },
+    {
+      "id": "jugs-2",
+      "source": ".verification\\mini-app-live-005vkb\\result.json",
+      "sourceSha256": "4d5f6c7d0dbdf84598bddd11e15a9ed72603eb22ca952729b5b71119c6e0416a",
+      "mechanical": "completed",
+      "operations": 8,
+      "reloads": 2,
+      "saved": {
+        "stateRevision": 6,
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "a": 3,
+            "b": 4,
+            "moves": 6,
+            "hint": ""
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "成功：5 升杯中正好有 4 升水。 3 升杯 3 升，5 升杯 4 升，已操作 6 步。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "f350805c8ae15683fa038f2e1bb93f9c8e7b10e45c4b8a4583d31ba5330db2cf",
+          "stateRevision": 6,
+          "checkpointDigest": "a6ec232bcf7897c5284ccb932d813ccb1f19f9905cf3ce6a11b48aa58f98c301"
+        },
+        "version": 2,
+        "sourceCheckpointDigest": "a6ec232bcf7897c5284ccb932d813ccb1f19f9905cf3ce6a11b48aa58f98c301",
+        "eligibleActions": 8,
+        "omittedActions": 0,
+        "actions": [
+          {
+            "id": "fill3",
+            "label": "倒满 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/hint",
+                  "kind": "replace",
+                  "before": "",
+                  "after": "这一步没有改变水量，换一个动作试试。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "fill5",
+            "label": "倒满 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 2,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/b",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 5
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                }
+              ]
+            }
+          },
+          {
+            "id": "empty3",
+            "label": "倒空 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 2,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/a",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                }
+              ]
+            }
+          },
+          {
+            "id": "empty5",
+            "label": "倒空 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 2,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/b",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                }
+              ]
+            }
+          },
+          {
+            "id": "pour35",
+            "label": "3 升倒入 5 升",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/a",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 2
+                },
+                {
+                  "path": "/state/b",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 5
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                }
+              ]
+            }
+          },
+          {
+            "id": "pour53",
+            "label": "5 升倒入 3 升",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/hint",
+                  "kind": "replace",
+                  "before": "",
+                  "after": "这一步没有改变水量，换一个动作试试。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "hint",
+            "label": "提示下一步",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/hint",
+                  "kind": "replace",
+                  "before": "",
+                  "after": "已经成功了，5 升杯里正好 4 升水。"
+                }
+              ]
+            }
+          },
+          {
+            "id": "reset",
+            "label": "全部倒空重来",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/a",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 0
+                },
+                {
+                  "path": "/state/b",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 0
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+        "answerSha256": "745b95415df792ffdf4f0e48246f3a9b58a5e6612fac57a37bbe39c684002308",
+        "requestCount": 1
+      },
+      "agentReview": {
+        "status": "semantic-failed",
+        "requestedCurrentValues": "correct",
+        "findings": [
+          "Claims any action destroys the 4L result while the verified empty3 operation preserves 4L, and the answer itself acknowledges pour53 cannot transfer water."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    },
+    {
+      "id": "jugs-3",
+      "source": ".verification\\mini-app-live-DzQKbZ\\result.json",
+      "sourceSha256": "e6845aa23176a1b9e1653474f636f05784bf6e75098ccd7c7aa3befe1a8d0fb7",
+      "mechanical": "completed",
+      "operations": 8,
+      "reloads": 2,
+      "saved": {
+        "stateRevision": 6,
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "cup3": 3,
+            "cup5": 4,
+            "moves": 6,
+            "solved": true,
+            "showHint": false,
+            "log": [
+              {
+                "key": "s1",
+                "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+              },
+              {
+                "key": "s2",
+                "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+              },
+              {
+                "key": "s3",
+                "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+              },
+              {
+                "key": "s4",
+                "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+              },
+              {
+                "key": "s5",
+                "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+              },
+              {
+                "key": "s6",
+                "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+              }
+            ]
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "3 升杯 3 升，5 升杯 4 升，已操作 6 步。已量出 4 升。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "3bd42b984de7489cdbda75b67b747e89ef5d246bc30149731966380c1610a300",
+          "stateRevision": 6,
+          "checkpointDigest": "af50e72bbe9854ce46f6573ad7c005782f0c451a19db4c506ff313c6e0322e14"
+        },
+        "version": 2,
+        "sourceCheckpointDigest": "af50e72bbe9854ce46f6573ad7c005782f0c451a19db4c506ff313c6e0322e14",
+        "eligibleActions": 8,
+        "omittedActions": 0,
+        "actions": [
+          {
+            "id": "fill3",
+            "label": "装满 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": true,
+            "changes": {
+              "complete": true,
+              "total": 0,
+              "omitted": 0,
+              "items": []
+            }
+          },
+          {
+            "id": "empty3",
+            "label": "倒空 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/cup3",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/log/6",
+                  "kind": "add",
+                  "after": {
+                    "key": "s7",
+                    "text": "第 7 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 4 升"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "fill5",
+            "label": "装满 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/cup5",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 5
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/log/6",
+                  "kind": "add",
+                  "after": {
+                    "key": "s7",
+                    "text": "第 7 步：装满 5 升杯，现在 3 升杯 3 升、5 升杯 5 升"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "empty5",
+            "label": "倒空 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/cup5",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/log/6",
+                  "kind": "add",
+                  "after": {
+                    "key": "s7",
+                    "text": "第 7 步：倒空 5 升杯，现在 3 升杯 3 升、5 升杯 0 升"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "pour3to5",
+            "label": "3 升杯 → 5 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 4,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/cup3",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 2
+                },
+                {
+                  "path": "/state/cup5",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 5
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 7
+                },
+                {
+                  "path": "/state/log/6",
+                  "kind": "add",
+                  "after": {
+                    "key": "s7",
+                    "text": "第 7 步：3 升杯倒入 5 升杯 1 升，现在 3 升杯 2 升、5 升杯 5 升"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "pour5to3",
+            "label": "5 升杯 → 3 升杯",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": true,
+            "changes": {
+              "complete": true,
+              "total": 0,
+              "omitted": 0,
+              "items": []
+            }
+          },
+          {
+            "id": "reset",
+            "label": "全部清空重来",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 10,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/cup3",
+                  "kind": "replace",
+                  "before": 3,
+                  "after": 0
+                },
+                {
+                  "path": "/state/cup5",
+                  "kind": "replace",
+                  "before": 4,
+                  "after": 0
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 0
+                },
+                {
+                  "path": "/state/solved",
+                  "kind": "replace",
+                  "before": true,
+                  "after": false
+                },
+                {
+                  "path": "/state/log/0",
+                  "kind": "remove",
+                  "before": {
+                    "key": "s1",
+                    "text": "第 1 步：装满 5 升杯，现在 3 升杯 0 升、5 升杯 5 升"
+                  }
+                },
+                {
+                  "path": "/state/log/1",
+                  "kind": "remove",
+                  "before": {
+                    "key": "s2",
+                    "text": "第 2 步：5 升杯倒入 3 升杯 3 升，现在 3 升杯 3 升、5 升杯 2 升"
+                  }
+                },
+                {
+                  "path": "/state/log/2",
+                  "kind": "remove",
+                  "before": {
+                    "key": "s3",
+                    "text": "第 3 步：倒空 3 升杯，现在 3 升杯 0 升、5 升杯 2 升"
+                  }
+                },
+                {
+                  "path": "/state/log/3",
+                  "kind": "remove",
+                  "before": {
+                    "key": "s4",
+                    "text": "第 4 步：5 升杯倒入 3 升杯 2 升，现在 3 升杯 2 升、5 升杯 0 升"
+                  }
+                },
+                {
+                  "path": "/state/log/4",
+                  "kind": "remove",
+                  "before": {
+                    "key": "s5",
+                    "text": "第 5 步：装满 5 升杯，现在 3 升杯 2 升、5 升杯 5 升"
+                  }
+                },
+                {
+                  "path": "/state/log/5",
+                  "kind": "remove",
+                  "before": {
+                    "key": "s6",
+                    "text": "第 6 步：5 升杯倒入 3 升杯 1 升，现在 3 升杯 3 升、5 升杯 4 升"
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "id": "hint",
+            "label": "显示 / 隐藏提示",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 1,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/showHint",
+                  "kind": "replace",
+                  "before": false,
+                  "after": true
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "现在两个杯子里各有多少水？已经量出4升了吗，还需要继续倒吗？只解释当前状态，不要重建界面。",
+        "answerSha256": "615d0c9042d38d49dc4a0b869786360f7af765fa65d6111c786000f4c4c484a6",
+        "requestCount": 1
+      },
+      "agentReview": {
+        "status": "semantic-failed",
+        "requestedCurrentValues": "correct",
+        "findings": [
+          "Claims any action destroys the result and filling/emptying either cup changes water; the verified full receiving cup accepts no water and empty3 preserves 4L."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    },
+    {
+      "id": "board-2",
+      "source": ".verification\\mini-app-live-51dGCn\\result.json",
+      "sourceSha256": "a439eb109ae6e05ccb309eee531026a8184e51cf06592ab0a6cae61bdec76bc6",
+      "mechanical": "completed",
+      "operations": 22,
+      "reloads": 3,
+      "saved": {
+        "stateRevision": 17,
+        "snapshot": {
+          "inputs": {},
+          "state": {
+            "board": [
+              ".",
+              ".",
+              ".",
+              ".",
+              "X",
+              ".",
+              ".",
+              ".",
+              "."
+            ],
+            "turn": "O",
+            "status": "playing",
+            "winner": "-",
+            "line": [],
+            "moves": 1
+          },
+          "tick": 0,
+          "rng": 1346981714
+        },
+        "summary": "对局进行中，轮到 O 下第 2 手。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "fad9ec871818ad81454f58f42af78a35deee0bc9f8530c552e1ec27106a42889",
+          "stateRevision": 17,
+          "checkpointDigest": "04e340a0a4184b13f5a8b00dfb5c68d4f9a41f4bfb93612495758c57fd5c108a"
+        },
+        "version": 2,
+        "sourceCheckpointDigest": "04e340a0a4184b13f5a8b00dfb5c68d4f9a41f4bfb93612495758c57fd5c108a",
+        "eligibleActions": 10,
+        "omittedActions": 0,
+        "actions": [
+          {
+            "id": "cell0",
+            "label": "1",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/0",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "cell1",
+            "label": "2",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/1",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "cell2",
+            "label": "3",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/2",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "cell3",
+            "label": "4",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/3",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "cell4",
+            "label": "5X",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": true,
+            "changes": {
+              "complete": true,
+              "total": 0,
+              "omitted": 0,
+              "items": []
+            }
+          },
+          {
+            "id": "cell5",
+            "label": "6",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/5",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "cell6",
+            "label": "7",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/6",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "cell7",
+            "label": "8",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/7",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "cell8",
+            "label": "9",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/8",
+                  "kind": "replace",
+                  "before": ".",
+                  "after": "O"
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 2
+                }
+              ]
+            }
+          },
+          {
+            "id": "reset",
+            "label": "重新开始",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 3,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/board/4",
+                  "kind": "replace",
+                  "before": "X",
+                  "after": "."
+                },
+                {
+                  "path": "/state/turn",
+                  "kind": "replace",
+                  "before": "O",
+                  "after": "X"
+                },
+                {
+                  "path": "/state/moves",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 0
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "现在轮到谁？棋盘上有几颗棋子，分别在哪里？只解释当前状态，不要重建界面。",
+        "answerSha256": "cc19574740fee20c528525b2837e3f3b17ae3fceebda307da795b8a7981becd9",
+        "requestCount": 1
+      },
+      "agentReview": {
+        "status": "requested-facts-reviewed",
+        "requestedCurrentValues": "correct",
+        "findings": [
+          "Correctly identifies one central X, next turn O, eight empty cells and no winner. Independent human semantic acceptance remains deferred."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    },
+    {
+      "id": "sorting-1",
+      "source": ".verification\\mini-app-live-X940ig\\result.json",
+      "sourceSha256": "df6b3b5955c4393485027327711a9bdcab1944de973463b7e6bf1084982d571d",
+      "mechanical": "completed",
+      "operations": 12,
+      "reloads": 3,
+      "saved": {
+        "stateRevision": 10,
+        "snapshot": {
+          "inputs": {
+            "n1": 6,
+            "n2": 2,
+            "n3": 5,
+            "n4": 1
+          },
+          "state": {
+            "arr": [
+              2,
+              5,
+              6,
+              1
+            ],
+            "passIndex": 0,
+            "j": 2,
+            "swapsInPass": 2,
+            "comparisons": 2,
+            "swaps": 2,
+            "lastLeft": 6,
+            "lastRight": 5,
+            "lastSwapped": true,
+            "newPass": false,
+            "settled": 0,
+            "settledValue": -1,
+            "justSettled": false,
+            "started": true,
+            "done": false
+          },
+          "tick": 11,
+          "rng": 1346981714
+        },
+        "summary": "比较下标 1 和 2：左边是 6，右边是 5。6 比 5 大，左边大就要交换，两个数调换位置。"
+      },
+      "preview": {
+        "source": {
+          "planDigest": "bb2a62ed4f2fe31a7ce12cabef49c70080b941621e084a0e1b3c59e9d2fbc5e0",
+          "stateRevision": 10,
+          "checkpointDigest": "6c1ebb7a7e90013c13c36d40ef93f6c21e05316be123ccd12e29451fee5fe9ea"
+        },
+        "version": 2,
+        "sourceCheckpointDigest": "6c1ebb7a7e90013c13c36d40ef93f6c21e05316be123ccd12e29451fee5fe9ea",
+        "eligibleActions": 2,
+        "omittedActions": 0,
+        "actions": [
+          {
+            "id": "next",
+            "label": "下一步",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 11,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/arr/2",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 1
+                },
+                {
+                  "path": "/state/arr/3",
+                  "kind": "replace",
+                  "before": 1,
+                  "after": 6
+                },
+                {
+                  "path": "/state/j",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 3
+                },
+                {
+                  "path": "/state/swapsInPass",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 3
+                },
+                {
+                  "path": "/state/comparisons",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 3
+                },
+                {
+                  "path": "/state/swaps",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 3
+                },
+                {
+                  "path": "/state/lastRight",
+                  "kind": "replace",
+                  "before": 5,
+                  "after": 1
+                },
+                {
+                  "path": "/state/settled",
+                  "kind": "replace",
+                  "before": 0,
+                  "after": 1
+                },
+                {
+                  "path": "/state/settledValue",
+                  "kind": "replace",
+                  "before": -1,
+                  "after": 6
+                },
+                {
+                  "path": "/state/justSettled",
+                  "kind": "replace",
+                  "before": false,
+                  "after": true
+                },
+                {
+                  "path": "/tick",
+                  "kind": "replace",
+                  "before": 11,
+                  "after": 12
+                }
+              ]
+            }
+          },
+          {
+            "id": "reset",
+            "label": "重新开始",
+            "disabled": false,
+            "status": "ok",
+            "checkpointUnchanged": false,
+            "changes": {
+              "complete": true,
+              "total": 11,
+              "omitted": 0,
+              "items": [
+                {
+                  "path": "/state/arr/0",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 6
+                },
+                {
+                  "path": "/state/arr/1",
+                  "kind": "replace",
+                  "before": 5,
+                  "after": 2
+                },
+                {
+                  "path": "/state/arr/2",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": 5
+                },
+                {
+                  "path": "/state/j",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 0
+                },
+                {
+                  "path": "/state/swapsInPass",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 0
+                },
+                {
+                  "path": "/state/comparisons",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 0
+                },
+                {
+                  "path": "/state/swaps",
+                  "kind": "replace",
+                  "before": 2,
+                  "after": 0
+                },
+                {
+                  "path": "/state/lastLeft",
+                  "kind": "replace",
+                  "before": 6,
+                  "after": -1
+                },
+                {
+                  "path": "/state/lastRight",
+                  "kind": "replace",
+                  "before": 5,
+                  "after": -1
+                },
+                {
+                  "path": "/state/lastSwapped",
+                  "kind": "replace",
+                  "before": true,
+                  "after": false
+                },
+                {
+                  "path": "/state/started",
+                  "kind": "replace",
+                  "before": true,
+                  "after": false
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "followup": {
+        "prompt": "看我现在停的这一步，已经比较和交换了几次？刚才比的是哪两个数，为什么交换，下一步会比谁？不要重建界面。",
+        "answerSha256": "435e49e8f6879a011ff20dc37a87dd5d632ccb536f240b54c4c9f0f1409c4e90",
+        "requestCount": 1
+      },
+      "agentReview": {
+        "status": "requested-facts-reviewed",
+        "requestedCurrentValues": "correct",
+        "findings": [
+          "Correct 2 comparisons/2 swaps, stored previous values 6 and 5, and next comparison 6 versus 1 producing [2,5,1,6] and counters 3/3. Independent human semantic acceptance remains deferred."
+        ]
+      },
+      "independentHumanReview": "deferred"
+    }
+  ]
+}

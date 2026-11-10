@@ -1,0 +1,607 @@
+{
+  "formatVersion": 1,
+  "date": "2026-10-29",
+  "scope": "isolated-model-generation",
+  "status": "pilot-only",
+  "baselineRepositoryCommit": "62c7401c",
+  "notes": [
+    "Six synthetic single-turn development families, two models, three variants, one repetition.",
+    "This evidence does not measure production browser interaction, persistence or independent human acceptance.",
+    "Old experimental budgets differ from production admission defaults. Preserve frozen experiments; do not resume with changed source.",
+    "Policy/plan differences are exploratory, not a formal preregistered baseline or proof of improvement."
+  ],
+  "sourceHashes": {
+    "manifest": {
+      "path": ".verification/intelligent-ui-phase2-pilot-v2/results/manifest.json",
+      "sha256": "f9bb93476d3f3773c84744a28f8ec7ac93af7d9b5f882d7fb032d7e906d70c7f"
+    },
+    "descriptor": {
+      "path": ".verification/intelligent-ui-phase2-pilot-v2/results/adapter.json",
+      "sha256": "d87a4f4928502ac0bee9748e0d06b09cd7f3d2c9a9559e0736f89aeef5ba2962"
+    },
+    "runs": {
+      "path": ".verification/intelligent-ui-phase2-pilot-v2/results/runs.jsonl",
+      "sha256": "4139de9dc19ec59f740788eb4ca853fe6a436412967f4f7fba309b4538782550"
+    },
+    "suite": {
+      "path": ".verification/intelligent-ui-phase2-pilot-v2/suite.json",
+      "sha256": "b66d79f432afbe30cdeceb42991c78278942bf8532ea9bbb76e9797883bae1f0"
+    }
+  },
+  "settings": {
+    "reasoning": "low",
+    "maxTokens": 4096,
+    "timeoutMs": 90000,
+    "maxRequestsPerTurn": 4,
+    "maxToolAttemptsPerTurn": 8,
+    "maxRetries": 0
+  },
+  "runCount": 36,
+  "completed": 34,
+  "timeouts": 2,
+  "groups": [
+    {
+      "model": "deepseek/deepseek-flash",
+      "policy": "phase1",
+      "expectedUiRuns": 3,
+      "firstStructureValid": 2,
+      "eventualStructureValid": 3,
+      "uiAttempts": 5,
+      "expectedUiNoCall": 0,
+      "textCalls": 0,
+      "clarifyCalls": 0,
+      "unsupportedCalls": 2
+    },
+    {
+      "model": "deepseek/deepseek-flash",
+      "policy": "intent-1",
+      "expectedUiRuns": 3,
+      "firstStructureValid": 3,
+      "eventualStructureValid": 3,
+      "uiAttempts": 3,
+      "expectedUiNoCall": 0,
+      "textCalls": 0,
+      "clarifyCalls": 0,
+      "unsupportedCalls": 1
+    },
+    {
+      "model": "deepseek/deepseek-flash",
+      "policy": "plan-1",
+      "expectedUiRuns": 3,
+      "firstStructureValid": 1,
+      "eventualStructureValid": 3,
+      "uiAttempts": 5,
+      "expectedUiNoCall": 0,
+      "textCalls": 0,
+      "clarifyCalls": 0,
+      "unsupportedCalls": 0
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro",
+      "policy": "phase1",
+      "expectedUiRuns": 3,
+      "firstStructureValid": 2,
+      "eventualStructureValid": 3,
+      "uiAttempts": 4,
+      "expectedUiNoCall": 0,
+      "textCalls": 0,
+      "clarifyCalls": 0,
+      "unsupportedCalls": 0
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro",
+      "policy": "intent-1",
+      "expectedUiRuns": 3,
+      "firstStructureValid": 2,
+      "eventualStructureValid": 3,
+      "uiAttempts": 4,
+      "expectedUiNoCall": 0,
+      "textCalls": 0,
+      "clarifyCalls": 0,
+      "unsupportedCalls": 0
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro",
+      "policy": "plan-1",
+      "expectedUiRuns": 3,
+      "firstStructureValid": 1,
+      "eventualStructureValid": 3,
+      "uiAttempts": 5,
+      "expectedUiNoCall": 0,
+      "textCalls": 0,
+      "clarifyCalls": 0,
+      "unsupportedCalls": 0
+    }
+  ],
+  "runs": [
+    {
+      "taskId": "d01",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "phase1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 6393
+    },
+    {
+      "taskId": "d01",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "intent-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 3428
+    },
+    {
+      "taskId": "d01",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "plan-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 2,
+      "firstStructureValid": false,
+      "anyStructureValid": true,
+      "errors": [
+        "PLAN_ARITY"
+      ],
+      "turnErrors": [],
+      "durationMs": 7385
+    },
+    {
+      "taskId": "d01",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "phase1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 6024
+    },
+    {
+      "taskId": "d01",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "intent-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 10317
+    },
+    {
+      "taskId": "d01",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "plan-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 2,
+      "firstStructureValid": false,
+      "anyStructureValid": true,
+      "errors": [
+        "PLAN_ARITY"
+      ],
+      "turnErrors": [],
+      "durationMs": 17541
+    },
+    {
+      "taskId": "d04",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "phase1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 3585
+    },
+    {
+      "taskId": "d04",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "intent-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 3526
+    },
+    {
+      "taskId": "d04",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "plan-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 3501
+    },
+    {
+      "taskId": "d04",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "phase1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 9266
+    },
+    {
+      "taskId": "d04",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "intent-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 9492
+    },
+    {
+      "taskId": "d04",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "plan-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 12561
+    },
+    {
+      "taskId": "d09",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "phase1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 3,
+      "firstStructureValid": false,
+      "anyStructureValid": true,
+      "errors": [
+        "UI_SURFACE_INVALID",
+        "UI_SURFACE_INVALID"
+      ],
+      "turnErrors": [],
+      "durationMs": 14201
+    },
+    {
+      "taskId": "d09",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "intent-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 1,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 4519
+    },
+    {
+      "taskId": "d09",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "plan-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 2,
+      "firstStructureValid": false,
+      "anyStructureValid": true,
+      "errors": [
+        "PLAN_SHAPE"
+      ],
+      "turnErrors": [],
+      "durationMs": 7655
+    },
+    {
+      "taskId": "d09",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "phase1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 2,
+      "firstStructureValid": false,
+      "anyStructureValid": true,
+      "errors": [
+        "UI_SURFACE_INVALID"
+      ],
+      "turnErrors": [],
+      "durationMs": 42303
+    },
+    {
+      "taskId": "d09",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "intent-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 2,
+      "firstStructureValid": false,
+      "anyStructureValid": true,
+      "errors": [
+        "UI_SURFACE_INVALID"
+      ],
+      "turnErrors": [],
+      "durationMs": 23151
+    },
+    {
+      "taskId": "d09",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "plan-1",
+      "label": "ui",
+      "outcome": "completed",
+      "attempts": 2,
+      "firstStructureValid": false,
+      "anyStructureValid": true,
+      "errors": [
+        "PLAN_SHAPE"
+      ],
+      "turnErrors": [],
+      "durationMs": 19301
+    },
+    {
+      "taskId": "d21",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "phase1",
+      "label": "text",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 1419
+    },
+    {
+      "taskId": "d21",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "intent-1",
+      "label": "text",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 2499
+    },
+    {
+      "taskId": "d21",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "plan-1",
+      "label": "text",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 1973
+    },
+    {
+      "taskId": "d21",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "phase1",
+      "label": "text",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 1659
+    },
+    {
+      "taskId": "d21",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "intent-1",
+      "label": "text",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 1635
+    },
+    {
+      "taskId": "d21",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "plan-1",
+      "label": "text",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 934
+    },
+    {
+      "taskId": "d35",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "phase1",
+      "label": "clarify",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 3978
+    },
+    {
+      "taskId": "d35",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "intent-1",
+      "label": "clarify",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 2295
+    },
+    {
+      "taskId": "d35",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "plan-1",
+      "label": "clarify",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 2619
+    },
+    {
+      "taskId": "d35",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "phase1",
+      "label": "clarify",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 3903
+    },
+    {
+      "taskId": "d35",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "intent-1",
+      "label": "clarify",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 4746
+    },
+    {
+      "taskId": "d35",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "plan-1",
+      "label": "clarify",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 2104
+    },
+    {
+      "taskId": "d38",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "phase1",
+      "label": "unsupported",
+      "outcome": "completed",
+      "attempts": 2,
+      "firstStructureValid": true,
+      "anyStructureValid": true,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 19147
+    },
+    {
+      "taskId": "d38",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "intent-1",
+      "label": "unsupported",
+      "outcome": "timeout",
+      "attempts": 1,
+      "firstStructureValid": false,
+      "anyStructureValid": false,
+      "errors": [
+        "output-token-limit"
+      ],
+      "turnErrors": [
+        "output-token-limit"
+      ],
+      "durationMs": 20193
+    },
+    {
+      "taskId": "d38",
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "plan-1",
+      "label": "unsupported",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 6969
+    },
+    {
+      "taskId": "d38",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "phase1",
+      "label": "unsupported",
+      "outcome": "timeout",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [
+        "output-token-limit"
+      ],
+      "durationMs": 53061
+    },
+    {
+      "taskId": "d38",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "intent-1",
+      "label": "unsupported",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 33125
+    },
+    {
+      "taskId": "d38",
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "plan-1",
+      "label": "unsupported",
+      "outcome": "completed",
+      "attempts": 0,
+      "firstStructureValid": null,
+      "anyStructureValid": false,
+      "errors": [],
+      "turnErrors": [],
+      "durationMs": 7706
+    }
+  ]
+}

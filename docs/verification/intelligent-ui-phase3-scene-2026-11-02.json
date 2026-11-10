@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "date": "2026-11-02",
+  "status": "partial-phase-progress",
+  "phaseComplete": false,
+  "branch": "codex/intelligent-ui",
+  "baseCommit": "b41fa2ffd33f2b603a7863b3ea7d3c2e958e9146",
+  "committed": false,
+  "feature": "Trusted 3D ray picking, keyboard selection, orbit and zoom, independent durable view state, stale event identity and graphics context loss handling",
+  "sourceHashes": {
+    ".mini-app-runtime/quickjs.wasm": "d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9",
+    ".mini-app-runtime/renderer.js": "a713dcc193f226fc8346c34d4b9b67ada260b218a829a1743a2b9f9c497297bb",
+    ".mini-app-runtime/server-worker.cjs": "53c9cfb223cac89237ecb60602dd4561875b7a708723fa9e7dc98a92c965b193",
+    "extensions/piora-mini-app.ts": "4f2a09b0110c3c9260a7c1fb69e191e0b5e3a1c11c6afa256689b1c06c3a785a",
+    "lib/answer-output-admission.ts": "3b37a18738894a0ab87b2ebeca53b1b64eb7f1f078a90b26143bbe46b93875d3",
+    "lib/mini-app/appearance.ts": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919",
+    "lib/mini-app/authoring-example.ts": "4b48cdef97fb7e3191134899f32f6cb25dd8a68b8a5b2af8d3d934d64e95305c",
+    "lib/mini-app/capabilities.ts": "8f1b2143cd7ea2ae580bb86e127a75132962f6c56f7e721928549bac17dcd4be",
+    "lib/mini-app/capability-host.ts": "9c88d852491265f293d44fa0a62606273eaeef7b54ad05154dad310340cdf773",
+    "lib/mini-app/capability-manifest.ts": "54ba1dd0148dfd99854ad7ae4b043f37fc3357fedd84a63dc6e85708de9a0029",
+    "lib/mini-app/controller.ts": "103ce5586740c9c1df7ec97cf569c10aab847b1fcab52648b96607739833b73b",
+    "lib/mini-app/decision-policy.ts": "41774376c82520fb3e09cad3077ac7fbe0e97250be4704603244dfe622a7d062",
+    "lib/mini-app/document-capabilities.ts": "3a1f78e18de9b3d152f57c779d8fd13b9ac35eb453457b17f66ffa2d7e362179",
+    "lib/mini-app/document.ts": "8ca7100ee79231eef55ebfe01bb48c59a3702485b19a7897e15cfb8d9c1c0cf8",
+    "lib/mini-app/events.ts": "0a07781d4f779f83aa8c0e2c59d4403961552103edbf088e73b0733b544cdd1b",
+    "lib/mini-app/frame-host.ts": "760870a2f7932bad8af3aaa8f6a8feaec08c6a132153eca7d8d82ee7118eb53e",
+    "lib/mini-app/frame.ts": "a097e2b5a9aa859de3332d8e537b2b5af36dd8aa437858cc30ea12a1022aa6f4",
+    "lib/mini-app/generation-runtime.ts": "c2d05ba4c2ea067035b66eaa3c9611e844c986ed1a9e563212b81882ec77dd67",
+    "lib/mini-app/guest-runtime.ts": "5238a3bb69e85a05310e5ad4ca59b667235df446697b5c30a34405bd9f6b40fd",
+    "lib/mini-app/json.ts": "d69be1140f8da80559da63f5d5a98f893105c667869f0aa6da3ef6bff81b5144",
+    "lib/mini-app/limits.ts": "0ecdcd4c63a9970846de5af0a51bb71443fa7968290ec8aa9742120b08c5eee1",
+    "lib/mini-app/plan-admission.ts": "16687fd313c6d7ec570332045dae737132b86cf1845d5b2d372eb1670377648d",
+    "lib/mini-app/plan-schema.ts": "923c1ffc2ecd53b5d12c7d62f553efc46d414d73895e9a811851b17ab2995eac",
+    "lib/mini-app/plan.ts": "951c085d9bd9abf29bdce2333728b77dd2d868b51fa0be4070deceab4d6790a2",
+    "lib/mini-app/playback.ts": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78",
+    "lib/mini-app/program.ts": "461e17ccbf9a96326b95a364b851c200167141a6a3dd4b5f10a269018e6b1bdb",
+    "lib/mini-app/renderer-runtime.ts": "d57167a83995faf0bd3eb7c7f50a3deac8bb6fdfab3587357a34c2ac6b47a332",
+    "lib/mini-app/repeat-example.ts": "d219da4b93ed144e9d35f469d36a1e5c627362ca4d05791d8d301b98ae4cfb13",
+    "lib/mini-app/repeat-renderer.ts": "1adb95d34d30204c6114a4bdf5742d032f9d24c2ae5ccca1253af3b9dd91fe19",
+    "lib/mini-app/repeat.ts": "a63ad7c7b6a0dd1b6e8c659097eb753cc6a28c7a348cbaf843ac3c2fdd7d7281",
+    "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+    "lib/mini-app/runtime-worker.ts": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8",
+    "lib/mini-app/scene-example.ts": "01bb0b80af2163bdb44584ada2a32d69074219b7f527f91e550fdc65bc8c88cd",
+    "lib/mini-app/scene-renderer.ts": "52219fb26188eb94d226a88d2f4ec9104ca8fa748766f2207450e4f4021bcf20",
+    "lib/mini-app/scene-state.ts": "b70c4c07f78164a27ef42ff6f92718b1838f34d5d94c80f2c876f2558559b747",
+    "lib/mini-app/state-schema.ts": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b",
+    "lib/mini-app/vm.ts": "aa9ff7b2b6c2bf866c78ed815ba4ef9c816ec7ef013abd4ffafd9f8964788d65",
+    "lib/mini-app/wasm-memory.ts": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e",
+    "lib/mini-app/worker-client.ts": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb",
+    "lib/mini-app-capabilities.test.mjs": "c58442e23717c225ec700bf5416ea4595591fe598552795b83a0bd2b5558040b",
+    "lib/mini-app-contract.test.mjs": "d35a432d2e80b278d57edd7fded29a7b851a446d91c861547fd0d67b0a3c28cf",
+    "lib/mini-app-generation.test.mjs": "e0c52eb4fc67e9775ce007b4236203a696ed805327d9c80641e93510a2166717",
+    "lib/mini-app-generation-runtime.test.mjs": "eeab5dd7e11eacd2e03583c8e9efd630b837b60a7a249d85dee267bbea11bfac",
+    "lib/mini-app-admission.test.mjs": "3c59f2d8169b0fcc606de38df55ac6c1f4ece4b3632bf65d8c9a1da941f18e50",
+    "lib/mini-app-controller-browser.test.mjs": "1c58c4f5676e8d3b9350406c3ac04897e5b2580f46b024ad045b12bcb97723fd",
+    "lib/mini-app-renderer-browser.test.mjs": "22ebe7eef363b2e43cd33fdb44923ee7598858cfb43fe8c9a54a7241c9dbfa36",
+    "lib/mini-app-worker-browser.test.mjs": "d9fff6b6c2a89124e26fd503fa831d5e9a65073b713304036f9917ff47f5cda3",
+    "lib/mini-app-runtime.test.mjs": "7a31e87ab50ae6525a8a3ef986d630493ebc1c4e16d749c59e42fad4595605d6",
+    "lib/mini-app-restore-budget.test.mjs": "2caae406ac5bba9749f4d641f8157c74795de9dd351ef30de949b0c49c74a38a",
+    "lib/mini-app-document.test.mjs": "b9d83e1e0d2dab4751e9ef0cb83e2b744f2d305246bf8f0e95c414df52c2791e",
+    "lib/mini-app-frame.test.mjs": "1c03af3db0c15ebe844399cfa235653e93051b19b09571d7cbf6ff363fd16ec6",
+    "lib/mini-app-server-trial.test.mjs": "92b0a04972ee458e7ea7935f75b1f7bbdf4e0f28e2440df31a03750030cc4c15",
+    "lib/mini-app-repeat.test.mjs": "9e272d477f3f9b22498d04d4d1c3af08968dd60fb51724ec038acb698b4d2c34",
+    "lib/mini-app-repeat-browser.test.mjs": "d293bbab51305cf0fa06b657969f0d9ad65ea9046c7abc8b65a2b12c4493554f",
+    "lib/mini-app-state.test.mjs": "85c2b118c11c28c421b900bd0b73051f6abac105af4b89ce69627e68ff7f1b31",
+    "lib/mini-app-scene.test.mjs": "b1bc1618fbd2900de0812afa51108140d509d7acd861b4261117629af975e817",
+    "lib/mini-app-scene-browser.test.mjs": "6104531dcabf79fd5cd59e063727e5c5589a88b9bf04413bb4cb516837234f30",
+    "components/mini-app/MiniAppSurface.tsx": "53f6758da2f79c67f609a778a349df71d4f3089ca0c30fb6ed97af082fd3cd56",
+    "scripts/verify-mini-app-capabilities.mjs": "c27333905ee5cee19c881eae33fa662dd4cfb249f8a89013cc88b7498ec07fcc"
+  },
+  "checks": {
+    "capabilities": {
+      "passed": 83,
+      "failed": 0,
+      "evidence": {
+        "path": ".verification/mini-app-capabilities-hI9pxz/result.json",
+        "sha256": "f67e4f79116a95802574f1b3c4377252512a219d6ac39a52523ac07d8712e1c7"
+      }
+    },
+    "typecheck": {
+      "status": "passed",
+      "evidence": {
+        "path": ".verification/phase3-scene-typecheck-complete.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "lint": {
+      "status": "passed",
+      "files": 22,
+      "evidence": {
+        "path": ".verification/phase3-scene-lint.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  },
+  "browser": {
+    "status": "passed",
+    "scope": "Actual Chromium/Edge, QuickJS and software WebGL via SwiftShader; localStorage checkpoint fixture, not production save API, real model, native desktop or hardware GPU verification",
+    "evidence": {
+      "path": ".verification/mini-app-scene-browser-2s8cUI/observations.json",
+      "sha256": "ceb424d4f2c9d003a8213c6db6624400a1938506dfcad98bdc13899551e45307"
+    },
+    "screenshot": {
+      "path": ".verification/mini-app-scene-browser-2s8cUI/restored.png",
+      "sha256": "5a9b1df4056d5920fa8d9431611ad8b04d3c3e6e7b182af3e128df668702ecd8"
+    },
+    "visualReview": "inspected",
+    "assertions": [
+      "Independent perspective coordinates hit the aircraft wing",
+      "Keyboard selection and orbit/zoom",
+      "Parameter change retains user camera",
+      "Freeze/save drains pending camera",
+      "Restored checkpoint and canvas pixels equal original",
+      "Explicit camera reset and task reset",
+      "Interrupted pointer capture followed by another gesture",
+      "Repeated zoom reaches bounded limits",
+      "Real WEBGL_lose_context extension stops execution and retains checkpoint"
+    ]
+  },
+  "productionState": {
+    "test": "lib/mini-app-state.test.mjs",
+    "assertions": [
+      "Actual saved file and receipt replay",
+      "Preserves task parameters, selection and independent camera",
+      "Rejects unknown viewport without rewriting disk"
+    ],
+    "includedInCapabilityChecks": true
+  },
+  "failures": [
+    {
+      "log": {
+        "path": ".verification/phase3-scene-browser.log",
+        "sha256": "86ce30f2572a794a42d9a2b096fb797d3169c76e475086e3e4c3f51ac4b5532e"
+      },
+      "reason": "Fixture queried HTML aria-label instead of the compiler-owned plan label"
+    },
+    {
+      "log": {
+        "path": ".verification/phase3-scene-browser-retest.log",
+        "sha256": "ca389789f853cbc51ba331e8fcff295e0b25578d3d919ccd86d2f05158255332"
+      },
+      "reason": "Fixture did not await asynchronous checkpoint settlement and reused a pre-scroll canvas rectangle"
+    },
+    {
+      "log": {
+        "path": ".verification/phase3-scene-browser-settled.log",
+        "sha256": "1267aa239d6c802aa7bb751720612733e2d14c121ae3913085b31e436c62d52e"
+      },
+      "reason": "Fixture expected task reset to reset inputs, while existing contract restarts using current inputs"
+    }
+  ],
+  "currentAvailability": {
+    "sceneCapabilities": "implemented with matching deterministic/browser evidence",
+    "webglEnvironment": "unconfirmed; false in production capability host",
+    "ordinaryNewGeneration": "not available until per-submission window negotiation is implemented"
+  },
+  "notRun": [
+    "real model generation or follow-up",
+    "native Electron desktop",
+    "physical GPU or other operating systems",
+    "full CI",
+    "human semantic acceptance"
+  ],
+  "remaining": [
+    "Per-window WebGL report and original prompt binding, including publication and load checks",
+    "Full natural-language spatial tasks and generalization",
+    "Continuous simulations/games",
+    "Complete persistence and recovery matrix",
+    "Candidate migration and registered actions",
+    "Full development and held-out task matrix and final gates"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "source": "docs\\intelligent-ui-phase3-testing.md",
+  "sourceSha256": "87b4d34c6941d49a3eb72ba887204236ab342bd5c02a9986e4753dc91323d5c6",
+  "output": "output\\pdf\\piora-intelligent-ui-phase3-testing.pdf",
+  "pdfSha256": "718a944d799c83a21b08bcfa7093ee3e4d93a20643b2830e505e0455e310d353",
+  "pages": 5,
+  "pageTextLengths": [
+    1112,
+    815,
+    890,
+    965,
+    1122
+  ],
+  "textChecks": "passed",
+  "visualReview": "passed",
+  "visualReviewScope": "All five final rendered pages opened and inspected; no clipped text, orphan page, overlapping table or unreadable glyphs.",
+  "pageImages": [
+    {
+      "page": 1,
+      "sha256": "6fc0239a451954e85b9ca644f04f7a03df0314ee6dca0550f9edeef2861ad49b"
+    },
+    {
+      "page": 2,
+      "sha256": "bbcfb3ca086b238432454429e968d321310a499cb0d8f2809726fe8edc44461a"
+    },
+    {
+      "page": 3,
+      "sha256": "18d4c8692880f23404ebd0d163f40167592f2baaaa8535e422ae92240494218b"
+    },
+    {
+      "page": 4,
+      "sha256": "7e25483410f2cd3a6affb38e7769ce1a153a35a2384b52da3b1f40e208ed29ac"
+    },
+    {
+      "page": 5,
+      "sha256": "2ca18725b2c58f41398aa9c7ac88e3ae5e74875f016e5e0676f8b2e12a800fe9"
+    }
+  ],
+  "date": "2026-11-03",
+  "featureCommit": "d33f6c79",
+  "scope": "Documentation only; expands the phase-2 manual testing format into nine phase-3 groups. No new model/desktop/manual acceptance run.",
+  "relativeLinks": {
+    "count": 126,
+    "status": "passed"
+  },
+  "diffWhitespace": "passed",
+  "layoutRevision": "An intermediate render had a near-empty sixth page. Adjusted only the results table padding; final five-page render and all text checks pass."
+}

@@ -40,6 +40,8 @@ export async function prepareDevelopment(root = sourceRoot) {
   const brand = await prepareDevelopmentBranding(root);
   console.log(`[dev:prepare] ${brand.brand} branding ${brand.reused ? "unchanged; reusing resources" : "prepared"}`);
   await prepareDevelopmentWorker(root);
+  const { prepareMiniAppRuntime } = await import("./prepare-mini-app-runtime.mjs");
+  await prepareMiniAppRuntime(root);
   console.log(`[dev:prepare] ready in ${Math.round(performance.now() - started)}ms`);
 }
 

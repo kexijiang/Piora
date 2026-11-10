@@ -1,0 +1,55 @@
+{
+  "version": "phase3-first-tasks-1",
+  "split": "development",
+  "scope": "First eight of the planned 32 development tasks; no sealed samples are included.",
+  "tasks": [
+    {
+      "id": "direct", "family": "one-off-arithmetic", "acceptedForms": ["non-ui"],
+      "prompt": "六个人分 480 块，每人多少？",
+      "expectedBehavior": "Directly answer 80; interaction provides no extra value.",
+      "checks": ["Answer is 80 per person; no unnecessary UI or clarification."]
+    },
+    {
+      "id": "clarification", "family": "missing-business-rule", "acceptedForms": ["non-ui"],
+      "prompt": "我们公司的提成规则还没定，我这个月销售额 12 万，先帮我算一下提成。",
+      "expectedBehavior": "Ask for the missing commission rule or rate; do not invent a rate or publish a calculator with an invented default.",
+      "checks": ["Clarification targets the missing rule; the response does not claim a concrete commission."]
+    },
+    {
+      "id": "outing", "family": "parameterized-comparison", "acceptedForms": ["intelligent-ui"],
+      "prompt": "周末出去玩，A 是每人门票 30 加一共 120 的车费，B 是每人门票 45 加一共 60 的车费。先按两个人算，我想改改人数，看什么时候哪边省钱。",
+      "expectedBehavior": "A component UI updates both totals and the recommendation when the group size changes.",
+      "checks": ["Two people: A=180, B=150; four people: both 240; six people: A=300, B=330.", "The cheaper option, table and explanation agree at every tested group size.", "Save, refresh and explain the acknowledged edited group size."]
+    },
+    {
+      "id": "discount", "family": "conditional-price", "acceptedForms": ["intelligent-ui"],
+      "prompt": "奶茶每杯 18 元，满 100 减 20，每单只能减一次。先按 6 杯算，我想改改杯数，看实付多少钱、平均每杯多少钱。",
+      "expectedBehavior": "A component UI evaluates the threshold and per-cup average from the same quantity and rule.",
+      "checks": ["Five cups cost 90; six cups cost 88; eight cups cost 124.", "Per-cup averages use the discounted total; changing quantity does not retain a stale conclusion.", "Save, refresh and explain the acknowledged edited quantity."]
+    },
+    {
+      "id": "sorting", "family": "discrete-algorithm", "acceptedForms": ["mini-app"],
+      "prompt": "冒泡排序我没看懂。拿 6、2、5、1 这几个数，让我一步步点着看它怎么排好，每一步告诉我在比较谁、为什么交换。",
+      "expectedBehavior": "A discrete mini app explains adjacent comparisons, exchanges and completion.",
+      "checks": ["Six comparison states: [2,6,5,1], [2,5,6,1], [2,5,1,6], [2,5,1,6], [2,1,5,6], [1,2,5,6]; five swaps.", "Application step, host step and playback share checkpoints; completion stops advancement.", "Pause, save, refresh, continue and explain the saved step."]
+    },
+    {
+      "id": "triangle", "family": "geometric-drag", "acceptedForms": ["mini-app"],
+      "prompt": "画个底 6、高 4 的直角三角形，我想拖动顶点，看看面积怎么变。",
+      "expectedBehavior": "A draggable geometric mini app starts with area 12 and recomputes from current coordinates.",
+      "checks": ["Initial perpendicular base and height are 6 and 4, with area 12.", "After moving a vertex, independently compute polygon area from coordinates and compare the displayed result.", "Pointer capture, resize coordinate mapping and a keyboard or numeric alternative work.", "Save, refresh and explain the acknowledged geometry."]
+    },
+    {
+      "id": "jugs", "family": "bounded-state-puzzle", "acceptedForms": ["mini-app"],
+      "prompt": "只有 3 升和 5 升两个杯子，怎么量出 4 升水？让我点着装水、倒水试试。",
+      "expectedBehavior": "An interactive state puzzle exposes filling, emptying and transfer operations with visible volumes.",
+      "checks": ["Volumes stay within [0,3] and [0,5]; pouring transfers min(source volume, target free capacity).", "Path for (3L,5L): (0,0)->(0,5)->(3,2)->(0,2)->(2,0)->(2,5)->(3,4).", "A solved state is explained from actual volumes, not a fixed heading.", "After (3,4), emptying the small vessel gives (0,4) and preserves the current goal; filling the large vessel gives (0,5) and emptying it gives (0,0), neither currently meets the goal. Success text and highlights must agree after save/reload; a historical achievement must be labelled as history.", "Exploration remains available after reaching the goal; reset clears quantities and starts a new attempt.", "Save, refresh and explain the acknowledged volumes."]
+    },
+    {
+      "id": "board", "family": "turn-based-board", "acceptedForms": ["mini-app"],
+      "prompt": "做个能两个人轮流玩的井字棋，谁赢了就提醒我，能重新来一局。",
+      "expectedBehavior": "A local two-player board enforces turns, occupied cells, win/draw and restart.",
+      "checks": ["X/O alternate; choosing an occupied cell leaves state unchanged.", "Independently check row, column and diagonal wins and a draw; terminal boards reject further moves.", "Restart clears the board; save, refresh and explain the acknowledged position."]
+    }
+  ]
+}

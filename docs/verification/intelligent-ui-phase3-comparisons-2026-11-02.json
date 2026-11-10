@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "status": "development-incomplete",
+  "compiler": "2.7.0",
+  "evidence": {
+    "proof": {
+      "path": ".verification/mini-app-capabilities-Rq9wDA/result.json",
+      "sha256": "2239bdf3dc19794344916d211112465d634b243624b94535a610d3a6663f1542"
+    },
+    "disabled": {
+      "path": ".verification/comparison-evaluation-R82OkE/result.json",
+      "sha256": "0f5d468493b121d75477c4ddcc0d2c84667f749f687e9187dcae618b7f575f0c",
+      "summary": {
+        "requested": 9,
+        "finished": 9,
+        "failed": 0,
+        "pending": 0,
+        "ui": {
+          "denominator": 9,
+          "generationAccepted": 2,
+          "firstAttemptAccepted": 1
+        },
+        "nonUi": {
+          "denominator": 0,
+          "responsesWithoutUi": 0,
+          "unexpectedUiAttempts": 0
+        },
+        "semanticAcceptance": "pending",
+        "completeTaskAcceptance": "pending",
+        "denominatorPolicy": "Every scheduled repetition stays in its denominator, including errors, timeouts and unfinished slots."
+      }
+    },
+    "enabled": {
+      "path": ".verification/comparison-evaluation-lRz2vq/result.json",
+      "sha256": "cbdf5965596179e0baa9179d97a0ad32a2ad3a732618ebcc6b76dd35999aee8d",
+      "summary": {
+        "requested": 9,
+        "finished": 9,
+        "failed": 0,
+        "pending": 0,
+        "ui": {
+          "denominator": 9,
+          "generationAccepted": 9,
+          "firstAttemptAccepted": 7
+        },
+        "nonUi": {
+          "denominator": 0,
+          "responsesWithoutUi": 0,
+          "unexpectedUiAttempts": 0
+        },
+        "semanticAcceptance": "pending",
+        "completeTaskAcceptance": "pending",
+        "denominatorPolicy": "Every scheduled repetition stays in its denominator, including errors, timeouts and unfinished slots."
+      }
+    },
+    "firstSuite": {
+      "path": ".verification/mini-app-evaluation-DSNO1F/result.json",
+      "sha256": "fbe8f8fc639d4c2d8b637ac54e9240104b8f5291ee92f6f55337031a95228e60",
+      "summary": {
+        "requested": 24,
+        "finished": 24,
+        "failed": 0,
+        "pending": 0,
+        "ui": {
+          "denominator": 18,
+          "generationAccepted": 18,
+          "firstAttemptAccepted": 12
+        },
+        "nonUi": {
+          "denominator": 6,
+          "responsesWithoutUi": 6,
+          "unexpectedUiAttempts": 0
+        },
+        "semanticAcceptance": "pending",
+        "completeTaskAcceptance": "pending",
+        "denominatorPolicy": "Every scheduled repetition stays in its denominator, including errors, timeouts and unfinished slots."
+      }
+    },
+    "native": {
+      "path": ".verification/desktop-e2e-PQPiGO/component-replay.json",
+      "sha256": "5d09aeaedf3d006935c8b6b11f475cc37c8ee468ea1a775b153e5d9dbb5cf9b3"
+    },
+    "nativeHost": {
+      "path": ".verification/desktop-e2e-PQPiGO/result.json",
+      "sha256": "0422256520a5abc044a191866e79d3037c2487f2459768fc6247d1e9d4c8e2be"
+    }
+  },
+  "productSourceDifference": [],
+  "harnessSourceDifference": [
+    "scripts/probe-mini-app-generation.mjs"
+  ],
+  "semanticReview": {
+    "scope": "Development agent review of recorded arithmetic, full checkpoint text and follow-up answers; not two independent human reviewers",
+    "rows": [
+      {
+        "id": "discount-1",
+        "checkpointCount": 3,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": []
+      },
+      {
+        "id": "shipping-1",
+        "checkpointCount": 3,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": []
+      },
+      {
+        "id": "temperature-1",
+        "checkpointCount": 5,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": []
+      },
+      {
+        "id": "discount-2",
+        "checkpointCount": 3,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": [
+          {
+            "kind": "generated-domain",
+            "message": "No upper bound was supplied, but this generated input has max=100."
+          }
+        ]
+      },
+      {
+        "id": "shipping-2",
+        "checkpointCount": 3,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": [
+          {
+            "kind": "generated-domain",
+            "message": "No upper bound was supplied, but this generated input has max=1000000."
+          }
+        ]
+      },
+      {
+        "id": "temperature-2",
+        "checkpointCount": 5,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": []
+      },
+      {
+        "id": "discount-3",
+        "checkpointCount": 3,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": []
+      },
+      {
+        "id": "shipping-3",
+        "checkpointCount": 3,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": []
+      },
+      {
+        "id": "temperature-3",
+        "checkpointCount": 5,
+        "followupNumbersAndConclusion": "consistent-with-final-saved-input",
+        "findings": []
+      }
+    ],
+    "visualReview": {
+      "screenshots": [
+        "discount-1-operated.png",
+        "shipping-1-operated.png",
+        "temperature-1-operated.png"
+      ],
+      "result": "Visible light-theme viewport legible with number inputs, cards, tables and bound text. Offscreen portions, other samples, dark theme and narrow windows not visually accepted in this batch."
+    }
+  },
+  "nativeStatus": "failed-semantic",
+  "checkpoints": 33,
+  "ci": "deferred",
+  "independentHumanAcceptance": "deferred",
+  "failures": [
+    ".verification/phase3-comparisons-focused.log",
+    ".verification/desktop-e2e-9samm0/result.json"
+  ],
+  "checks": {
+    "capabilities": "490/490",
+    "focused": "17/17",
+    "legacyRegression": "54/54",
+    "typecheck": "passed",
+    "lint": "passed",
+    "desktopHarness": "19/19",
+    "metricsAndHarnessPrior": "23/23",
+    "overlapping": true
+  }
+}

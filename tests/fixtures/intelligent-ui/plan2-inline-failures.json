@@ -1,0 +1,1854 @@
+{
+  "version": 1,
+  "scope": "Unmodified tool arguments from synthetic development failures; no model reasoning or credentials.",
+  "cases": [
+    {
+      "id": "baseline-flash-b08-1",
+      "taskId": "b08",
+      "repetition": 1,
+      "sourceRunSha256": "37967eaf1611d80737d482c58a10a5e673be0dd02861078b98953ff231f2e447",
+      "originalDiagnostic": {
+        "code": "PLAN_SHAPE",
+        "path": "$.derived[0].args[0]",
+        "expected": "Expected exactly one literal, input, or derived field",
+        "repairable": true
+      },
+      "plan": {
+        "planVersion": 2,
+        "id": "rent-split-123",
+        "title": "租金按 1:2:3 分摊计算器",
+        "inputs": [
+          {
+            "id": "rent",
+            "label": "月租金",
+            "valueType": "number",
+            "value": 6000,
+            "unit": "元",
+            "min": 0,
+            "presentation": "number"
+          }
+        ],
+        "derived": [
+          {
+            "id": "share1",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "rent"
+                  },
+                  1
+                ]
+              },
+              6
+            ]
+          },
+          {
+            "id": "share2",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "rent"
+                  },
+                  2
+                ]
+              },
+              6
+            ]
+          },
+          {
+            "id": "share3",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "rent"
+                  },
+                  3
+                ]
+              },
+              6
+            ]
+          },
+          {
+            "id": "total",
+            "op": "add",
+            "args": [
+              {
+                "derived": "share1"
+              },
+              {
+                "derived": "share2"
+              },
+              {
+                "derived": "share3"
+              }
+            ]
+          }
+        ],
+        "views": [
+          {
+            "id": "noteText",
+            "kind": "text",
+            "text": "分摊办法：三人按 1:2:3 分摊，总份数 6 份。每人金额 = 月租金 ÷ 6 × 自己的份数。金额未做取整，若需要进位到元可分脚注协商。"
+          },
+          {
+            "id": "share1Metric",
+            "kind": "metric",
+            "label": "第一个人（1 份）应付",
+            "unit": "元",
+            "value": {
+              "derived": "share1"
+            }
+          },
+          {
+            "id": "share2Metric",
+            "kind": "metric",
+            "label": "第二个人（2 份）应付",
+            "unit": "元",
+            "value": {
+              "derived": "share2"
+            }
+          },
+          {
+            "id": "share3Metric",
+            "kind": "metric",
+            "label": "第三个人（3 份）应付",
+            "unit": "元",
+            "value": {
+              "derived": "share3"
+            }
+          },
+          {
+            "id": "totalMetric",
+            "kind": "metric",
+            "label": "三人合计",
+            "unit": "元",
+            "value": {
+              "derived": "total"
+            }
+          },
+          {
+            "id": "shareTable",
+            "kind": "table",
+            "columns": [
+              "分摊人",
+              "份数",
+              "应付金额（元）"
+            ],
+            "rows": [
+              [
+                "第一个人",
+                1,
+                {
+                  "derived": "share1"
+                }
+              ],
+              [
+                "第二个人",
+                2,
+                {
+                  "derived": "share2"
+                }
+              ],
+              [
+                "第三个人",
+                3,
+                {
+                  "derived": "share3"
+                }
+              ],
+              [
+                "合计",
+                6,
+                {
+                  "derived": "total"
+                }
+              ]
+            ]
+          },
+          {
+            "id": "shareChart",
+            "kind": "barChart",
+            "labels": [
+              "第一个人",
+              "第二个人",
+              "第三个人"
+            ],
+            "values": [
+              {
+                "derived": "share1"
+              },
+              {
+                "derived": "share2"
+              },
+              {
+                "derived": "share3"
+              }
+            ]
+          }
+        ],
+        "layout": [
+          {
+            "id": "inputGroup",
+            "type": "group",
+            "title": "输入租金",
+            "columns": 1,
+            "nodeIds": [
+              "rent",
+              "noteText"
+            ]
+          },
+          {
+            "id": "resultGroup",
+            "type": "group",
+            "title": "分摊结果",
+            "columns": 3,
+            "nodeIds": [
+              "share1Metric",
+              "share2Metric",
+              "share3Metric",
+              "totalMetric"
+            ]
+          },
+          {
+            "id": "tableGroup",
+            "type": "group",
+            "title": "明细表",
+            "columns": 1,
+            "nodeIds": [
+              "shareTable"
+            ]
+          },
+          {
+            "id": "chartGroup",
+            "type": "group",
+            "title": "各人分担对比",
+            "columns": 1,
+            "nodeIds": [
+              "shareChart"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "baseline-flash-b08-2",
+      "taskId": "b08",
+      "repetition": 2,
+      "sourceRunSha256": "37967eaf1611d80737d482c58a10a5e673be0dd02861078b98953ff231f2e447",
+      "originalDiagnostic": {
+        "code": "PLAN_LIMIT",
+        "path": "$",
+        "expected": "Complete plan JSON exceeds the traversal or nesting limit",
+        "repairable": false
+      },
+      "plan": {
+        "planVersion": 2,
+        "id": "rent-split-123",
+        "title": "租金 1:2:3 分摊工具",
+        "inputs": [
+          {
+            "id": "rent",
+            "label": "每月租金",
+            "valueType": "number",
+            "value": 6000,
+            "unit": "元",
+            "presentation": "number"
+          }
+        ],
+        "derived": [
+          {
+            "id": "unit",
+            "op": "divide",
+            "args": [
+              {
+                "input": "rent"
+              },
+              {
+                "literal": 6
+              }
+            ]
+          },
+          {
+            "id": "share1",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "unit"
+                      },
+                      {
+                        "literal": 100
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "literal": 100
+              }
+            ]
+          },
+          {
+            "id": "share2",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "unit"
+                      },
+                      {
+                        "literal": 200
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "literal": 100
+              }
+            ]
+          },
+          {
+            "id": "share3",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "unit"
+                      },
+                      {
+                        "literal": 300
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "literal": 100
+              }
+            ]
+          },
+          {
+            "id": "total",
+            "op": "add",
+            "args": [
+              {
+                "derived": "share1"
+              },
+              {
+                "derived": "share2"
+              },
+              {
+                "derived": "share3"
+              }
+            ]
+          }
+        ],
+        "views": [
+          {
+            "id": "splitTable",
+            "kind": "table",
+            "columns": [
+              "成员",
+              "比例份数",
+              "应付租金（元）"
+            ],
+            "rows": [
+              [
+                "第一人",
+                1,
+                {
+                  "derived": "share1"
+                }
+              ],
+              [
+                "第二人",
+                2,
+                {
+                  "derived": "share2"
+                }
+              ],
+              [
+                "第三人",
+                3,
+                {
+                  "derived": "share3"
+                }
+              ],
+              [
+                "合计",
+                6,
+                {
+                  "derived": "total"
+                }
+              ]
+            ]
+          },
+          {
+            "id": "splitChart",
+            "kind": "barChart",
+            "labels": [
+              "第一人",
+              "第二人",
+              "第三人"
+            ],
+            "values": [
+              {
+                "derived": "share1"
+              },
+              {
+                "derived": "share2"
+              },
+              {
+                "derived": "share3"
+              }
+            ]
+          },
+          {
+            "id": "totalMetric",
+            "kind": "metric",
+            "label": "三人合计",
+            "value": {
+              "derived": "total"
+            },
+            "unit": "元"
+          },
+          {
+            "id": "note",
+            "kind": "text",
+            "text": "分摊规则固定为 1:2:3（共 6 份）：每人金额 = 租金 ÷ 6 × 各自份数，结果四舍五入到分。"
+          }
+        ],
+        "layout": [
+          {
+            "id": "inputGroup",
+            "type": "group",
+            "title": "租金输入",
+            "columns": 1,
+            "nodeIds": [
+              "rent"
+            ]
+          },
+          {
+            "id": "resultGroup",
+            "type": "group",
+            "title": "每人应付",
+            "columns": 1,
+            "nodeIds": [
+              "splitTable",
+              "totalMetric",
+              "splitChart",
+              "note"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "baseline-flash-b07-2",
+      "taskId": "b07",
+      "repetition": 2,
+      "sourceRunSha256": "37967eaf1611d80737d482c58a10a5e673be0dd02861078b98953ff231f2e447",
+      "originalDiagnostic": {
+        "code": "PLAN_LIMIT",
+        "path": "$",
+        "expected": "Complete plan JSON exceeds the traversal or nesting limit",
+        "repairable": false
+      },
+      "plan": {
+        "planVersion": 2,
+        "id": "rent_split_compare",
+        "title": "房租分摊对比：均摊 vs 按面积",
+        "inputs": [
+          {
+            "id": "totalRent",
+            "label": "总租金",
+            "valueType": "number",
+            "value": 6000,
+            "min": 0,
+            "unit": "元"
+          },
+          {
+            "id": "people",
+            "label": "同住人数（均摊法）",
+            "valueType": "number",
+            "value": 3,
+            "min": 1
+          },
+          {
+            "id": "area1",
+            "label": "房间1 面积",
+            "valueType": "number",
+            "value": 10,
+            "min": 0,
+            "unit": "m²"
+          },
+          {
+            "id": "area2",
+            "label": "房间2 面积",
+            "valueType": "number",
+            "value": 15,
+            "min": 0,
+            "unit": "m²"
+          },
+          {
+            "id": "area3",
+            "label": "房间3 面积",
+            "valueType": "number",
+            "value": 20,
+            "min": 0,
+            "unit": "m²"
+          }
+        ],
+        "derived": [
+          {
+            "id": "totalArea",
+            "op": "add",
+            "args": [
+              {
+                "input": "area1"
+              },
+              {
+                "input": "area2"
+              },
+              {
+                "input": "area3"
+              }
+            ]
+          },
+          {
+            "id": "equalRaw",
+            "op": "divide",
+            "args": [
+              {
+                "input": "totalRent"
+              },
+              {
+                "input": "people"
+              }
+            ]
+          },
+          {
+            "id": "equalShare",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "equalRaw"
+                      },
+                      100
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          },
+          {
+            "id": "equalTotal",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "equalShare"
+                      },
+                      {
+                        "input": "people"
+                      },
+                      100
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          },
+          {
+            "id": "raw1",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "totalRent"
+                  },
+                  {
+                    "input": "area1"
+                  }
+                ]
+              },
+              {
+                "derived": "totalArea"
+              }
+            ]
+          },
+          {
+            "id": "share1",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "raw1"
+                      },
+                      100
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          },
+          {
+            "id": "raw2",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "totalRent"
+                  },
+                  {
+                    "input": "area2"
+                  }
+                ]
+              },
+              {
+                "derived": "totalArea"
+              }
+            ]
+          },
+          {
+            "id": "share2",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "raw2"
+                      },
+                      100
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          },
+          {
+            "id": "raw3",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "totalRent"
+                  },
+                  {
+                    "input": "area3"
+                  }
+                ]
+              },
+              {
+                "derived": "totalArea"
+              }
+            ]
+          },
+          {
+            "id": "share3",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "derived": "raw3"
+                      },
+                      100
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          },
+          {
+            "id": "areaTotal",
+            "op": "add",
+            "args": [
+              {
+                "derived": "share1"
+              },
+              {
+                "derived": "share2"
+              },
+              {
+                "derived": "share3"
+              }
+            ]
+          },
+          {
+            "id": "pct1",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "op": "divide",
+                        "args": [
+                          {
+                            "input": "area1"
+                          },
+                          {
+                            "derived": "totalArea"
+                          }
+                        ]
+                      },
+                      10000
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          },
+          {
+            "id": "pct2",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "op": "divide",
+                        "args": [
+                          {
+                            "input": "area2"
+                          },
+                          {
+                            "derived": "totalArea"
+                          }
+                        ]
+                      },
+                      10000
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          },
+          {
+            "id": "pct3",
+            "op": "divide",
+            "args": [
+              {
+                "op": "round",
+                "args": [
+                  {
+                    "op": "multiply",
+                    "args": [
+                      {
+                        "op": "divide",
+                        "args": [
+                          {
+                            "input": "area3"
+                          },
+                          {
+                            "derived": "totalArea"
+                          }
+                        ]
+                      },
+                      10000
+                    ]
+                  }
+                ]
+              },
+              100
+            ]
+          }
+        ],
+        "views": [
+          {
+            "id": "note",
+            "kind": "text",
+            "text": "均摊法：总租金 ÷ 人数，每人金额相同。按面积法：总租金 × 房间面积 ÷ 总面积。金额四舍五入到分，合计行的按面积金额为各房间四舍五入后相加，可能与总租金相差几分钱。"
+          },
+          {
+            "id": "equalShareView",
+            "kind": "metric",
+            "label": "均摊：每人应付",
+            "unit": "元",
+            "value": {
+              "derived": "equalShare"
+            }
+          },
+          {
+            "id": "equalTotalView",
+            "kind": "metric",
+            "label": "均摊：合计收取",
+            "unit": "元",
+            "value": {
+              "derived": "equalTotal"
+            }
+          },
+          {
+            "id": "areaTotalView",
+            "kind": "metric",
+            "label": "按面积：逐间相加",
+            "unit": "元",
+            "value": {
+              "derived": "areaTotal"
+            }
+          },
+          {
+            "id": "detailTable",
+            "kind": "table",
+            "columns": [
+              "房间",
+              "面积 (m²)",
+              "面积占比 (%)",
+              "按面积分摊 (元)",
+              "均摊每人 (元)"
+            ],
+            "rows": [
+              [
+                {
+                  "literal": "房间1"
+                },
+                {
+                  "input": "area1"
+                },
+                {
+                  "derived": "pct1"
+                },
+                {
+                  "derived": "share1"
+                },
+                {
+                  "derived": "equalShare"
+                }
+              ],
+              [
+                {
+                  "literal": "房间2"
+                },
+                {
+                  "input": "area2"
+                },
+                {
+                  "derived": "pct2"
+                },
+                {
+                  "derived": "share2"
+                },
+                {
+                  "derived": "equalShare"
+                }
+              ],
+              [
+                {
+                  "literal": "房间3"
+                },
+                {
+                  "input": "area3"
+                },
+                {
+                  "derived": "pct3"
+                },
+                {
+                  "derived": "share3"
+                },
+                {
+                  "derived": "equalShare"
+                }
+              ],
+              [
+                {
+                  "literal": "合计"
+                },
+                {
+                  "derived": "totalArea"
+                },
+                {
+                  "literal": 100
+                },
+                {
+                  "derived": "areaTotal"
+                },
+                {
+                  "derived": "equalTotal"
+                }
+              ]
+            ]
+          },
+          {
+            "id": "areaChart",
+            "kind": "barChart",
+            "labels": [
+              "房间1",
+              "房间2",
+              "房间3"
+            ],
+            "values": [
+              {
+                "derived": "share1"
+              },
+              {
+                "derived": "share2"
+              },
+              {
+                "derived": "share3"
+              }
+            ]
+          }
+        ],
+        "layout": [
+          {
+            "id": "paramsGroup",
+            "type": "group",
+            "title": "可调参数",
+            "columns": 2,
+            "nodeIds": [
+              "totalRent",
+              "people",
+              "area1",
+              "area2",
+              "area3",
+              "note"
+            ]
+          },
+          {
+            "id": "compareBlocks",
+            "type": "comparison",
+            "title": "两种分法对比",
+            "cards": [
+              {
+                "id": "equalCard",
+                "title": "每人均摊",
+                "nodeIds": [
+                  "equalShareView",
+                  "equalTotalView"
+                ]
+              },
+              {
+                "id": "areaCard",
+                "title": "按房间面积分摊",
+                "nodeIds": [
+                  "areaTotalView",
+                  "detailTable",
+                  "areaChart"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "candidate-flash-b07-1",
+      "taskId": "b07",
+      "repetition": 1,
+      "sourceRunSha256": "6a2f78dbd78dba99172dacc8b13deb649ae63c1e8185358f566605d514410eca",
+      "originalDiagnostic": {
+        "code": "PLAN_SHAPE",
+        "path": "$.derived[2].args[0]",
+        "expected": "Expected exactly one literal, input, or derived field",
+        "repairable": true
+      },
+      "plan": {
+        "planVersion": 2,
+        "id": "rent_split_compare",
+        "title": "房租分摊对比：均摊法 vs 按面积法",
+        "inputs": [
+          {
+            "id": "totalRent",
+            "label": "月租金总额",
+            "valueType": "number",
+            "value": 6000,
+            "unit": "元",
+            "min": 0
+          },
+          {
+            "id": "area1",
+            "label": "房间1 面积",
+            "valueType": "number",
+            "value": 10,
+            "unit": "㎡",
+            "min": 0
+          },
+          {
+            "id": "area2",
+            "label": "房间2 面积",
+            "valueType": "number",
+            "value": 15,
+            "unit": "㎡",
+            "min": 0
+          },
+          {
+            "id": "area3",
+            "label": "房间3 面积",
+            "valueType": "number",
+            "value": 20,
+            "unit": "㎡",
+            "min": 0
+          }
+        ],
+        "derived": [
+          {
+            "id": "sumArea",
+            "op": "add",
+            "args": [
+              {
+                "input": "area1"
+              },
+              {
+                "input": "area2"
+              },
+              {
+                "input": "area3"
+              }
+            ]
+          },
+          {
+            "id": "equalShare",
+            "op": "divide",
+            "args": [
+              {
+                "input": "totalRent"
+              },
+              {
+                "literal": 3
+              }
+            ]
+          },
+          {
+            "id": "pct1",
+            "op": "multiply",
+            "args": [
+              {
+                "op": "divide",
+                "args": [
+                  {
+                    "input": "area1"
+                  },
+                  {
+                    "derived": "sumArea"
+                  }
+                ]
+              },
+              {
+                "literal": 100
+              }
+            ]
+          },
+          {
+            "id": "pct2",
+            "op": "multiply",
+            "args": [
+              {
+                "op": "divide",
+                "args": [
+                  {
+                    "input": "area2"
+                  },
+                  {
+                    "derived": "sumArea"
+                  }
+                ]
+              },
+              {
+                "literal": 100
+              }
+            ]
+          },
+          {
+            "id": "pct3",
+            "op": "multiply",
+            "args": [
+              {
+                "op": "divide",
+                "args": [
+                  {
+                    "input": "area3"
+                  },
+                  {
+                    "derived": "sumArea"
+                  }
+                ]
+              },
+              {
+                "literal": 100
+              }
+            ]
+          },
+          {
+            "id": "areaRent1",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "totalRent"
+                  },
+                  {
+                    "input": "area1"
+                  }
+                ]
+              },
+              {
+                "derived": "sumArea"
+              }
+            ]
+          },
+          {
+            "id": "areaRent2",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "totalRent"
+                  },
+                  {
+                    "input": "area2"
+                  }
+                ]
+              },
+              {
+                "derived": "sumArea"
+              }
+            ]
+          },
+          {
+            "id": "areaRent3",
+            "op": "divide",
+            "args": [
+              {
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "totalRent"
+                  },
+                  {
+                    "input": "area3"
+                  }
+                ]
+              },
+              {
+                "derived": "sumArea"
+              }
+            ]
+          },
+          {
+            "id": "diff1",
+            "op": "subtract",
+            "args": [
+              {
+                "derived": "areaRent1"
+              },
+              {
+                "derived": "equalShare"
+              }
+            ]
+          },
+          {
+            "id": "diff2",
+            "op": "subtract",
+            "args": [
+              {
+                "derived": "areaRent2"
+              },
+              {
+                "derived": "equalShare"
+              }
+            ]
+          },
+          {
+            "id": "diff3",
+            "op": "subtract",
+            "args": [
+              {
+                "derived": "areaRent3"
+              },
+              {
+                "derived": "equalShare"
+              }
+            ]
+          }
+        ],
+        "views": [
+          {
+            "id": "note",
+            "kind": "text",
+            "text": "假设三个房间各由一人承担，均摊法＝租金总额 ÷ 3；按面积法＝租金总额 × 房间面积 ÷ 总面积。两法总额都等于租金总额，差额为正表示该房间按面积法要付得更多。"
+          },
+          {
+            "id": "equalMetric",
+            "kind": "metric",
+            "label": "均摊法：每间（每人）应付",
+            "unit": "元",
+            "value": {
+              "derived": "equalShare"
+            }
+          },
+          {
+            "id": "sumAreaMetric",
+            "kind": "metric",
+            "label": "三间总面积",
+            "unit": "㎡",
+            "value": {
+              "derived": "sumArea"
+            }
+          },
+          {
+            "id": "splitTable",
+            "kind": "table",
+            "columns": [
+              "房间",
+              "面积 (㎡)",
+              "面积占比 (%)",
+              "均摊法 (元)",
+              "按面积法 (元)",
+              "差额 (元)"
+            ],
+            "rows": [
+              [
+                "房间1",
+                {
+                  "input": "area1"
+                },
+                {
+                  "derived": "pct1"
+                },
+                {
+                  "derived": "equalShare"
+                },
+                {
+                  "derived": "areaRent1"
+                },
+                {
+                  "derived": "diff1"
+                }
+              ],
+              [
+                "房间2",
+                {
+                  "input": "area2"
+                },
+                {
+                  "derived": "pct2"
+                },
+                {
+                  "derived": "equalShare"
+                },
+                {
+                  "derived": "areaRent2"
+                },
+                {
+                  "derived": "diff2"
+                }
+              ],
+              [
+                "房间3",
+                {
+                  "input": "area3"
+                },
+                {
+                  "derived": "pct3"
+                },
+                {
+                  "derived": "equalShare"
+                },
+                {
+                  "derived": "areaRent3"
+                },
+                {
+                  "derived": "diff3"
+                }
+              ]
+            ]
+          },
+          {
+            "id": "equalChart",
+            "kind": "barChart",
+            "labels": [
+              "房间1",
+              "房间2",
+              "房间3"
+            ],
+            "values": [
+              {
+                "derived": "equalShare"
+              },
+              {
+                "derived": "equalShare"
+              },
+              {
+                "derived": "equalShare"
+              }
+            ]
+          },
+          {
+            "id": "areaChart",
+            "kind": "barChart",
+            "labels": [
+              "房间1",
+              "房间2",
+              "房间3"
+            ],
+            "values": [
+              {
+                "derived": "areaRent1"
+              },
+              {
+                "derived": "areaRent2"
+              },
+              {
+                "derived": "areaRent3"
+              }
+            ]
+          }
+        ],
+        "layout": [
+          {
+            "id": "inputGroup",
+            "type": "group",
+            "title": "输入：租金与房间面积",
+            "columns": 2,
+            "nodeIds": [
+              "totalRent",
+              "area1",
+              "area2",
+              "area3"
+            ]
+          },
+          {
+            "id": "overview",
+            "type": "group",
+            "title": "概览",
+            "columns": 2,
+            "nodeIds": [
+              "equalMetric",
+              "sumAreaMetric",
+              "note"
+            ]
+          },
+          {
+            "id": "compareCards",
+            "type": "comparison",
+            "title": "两种分法各房间金额（元）",
+            "cards": [
+              {
+                "id": "equalCard",
+                "title": "均摊法",
+                "nodeIds": [
+                  "equalChart"
+                ]
+              },
+              {
+                "id": "areaCard",
+                "title": "按面积法",
+                "nodeIds": [
+                  "areaChart"
+                ]
+              }
+            ]
+          },
+          {
+            "id": "tableGroup",
+            "type": "group",
+            "title": "逐间明细对比",
+            "columns": 1,
+            "nodeIds": [
+              "splitTable"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "candidate-pro-b07-1",
+      "taskId": "b07",
+      "repetition": 1,
+      "sourceRunSha256": "3b5885ca00e8347fdd4a002fc9960070c3c9cf3b5a3c65a81298d9a905d4765d",
+      "originalDiagnostic": {
+        "code": "PLAN_SHAPE",
+        "path": "$.derived[2].args[0]",
+        "expected": "Expected exactly one literal, input, or derived field",
+        "repairable": true
+      },
+      "plan": {
+        "planVersion": 2,
+        "id": "rent-split-compare",
+        "title": "两种房租分摊方式对比",
+        "inputs": [
+          {
+            "id": "totalRent",
+            "label": "总租金",
+            "valueType": "number",
+            "value": 6000,
+            "unit": "元",
+            "min": 0
+          },
+          {
+            "id": "area1",
+            "label": "房间1面积",
+            "valueType": "number",
+            "value": 10,
+            "unit": "㎡",
+            "min": 0
+          },
+          {
+            "id": "area2",
+            "label": "房间2面积",
+            "valueType": "number",
+            "value": 15,
+            "unit": "㎡",
+            "min": 0
+          },
+          {
+            "id": "area3",
+            "label": "房间3面积",
+            "valueType": "number",
+            "value": 20,
+            "unit": "㎡",
+            "min": 0
+          }
+        ],
+        "derived": [
+          {
+            "id": "totalArea",
+            "op": "add",
+            "args": [
+              {
+                "input": "area1"
+              },
+              {
+                "input": "area2"
+              },
+              {
+                "input": "area3"
+              }
+            ]
+          },
+          {
+            "id": "equalShare",
+            "op": "divide",
+            "args": [
+              {
+                "input": "totalRent"
+              },
+              {
+                "literal": 3
+              }
+            ]
+          },
+          {
+            "id": "share1",
+            "op": "divide",
+            "args": [
+              {
+                "id": "temp1",
+                "op": "multiply",
+                "args": [
+                  {
+                    "input": "totalRent"
+                  },
+                  {
+                    "input": "area1"
+                  }
+                ]
+              },
+              {
+                "derived": "totalArea"
+              }
+            ]
+          }
+        ],
+        "views": [
+          {
+            "id": "equalMetric",
+            "kind": "metric",
+            "label": "每人租金（均摊）",
+            "value": {
+              "derived": "equalShare"
+            },
+            "unit": "元"
+          },
+          {
+            "id": "share1Metric",
+            "kind": "metric",
+            "label": "房间1租金",
+            "value": {
+              "derived": "share1"
+            },
+            "unit": "元"
+          },
+          {
+            "id": "share2Metric",
+            "kind": "metric",
+            "label": "房间2租金",
+            "value": {
+              "derived": "share2"
+            },
+            "unit": "元"
+          },
+          {
+            "id": "share3Metric",
+            "kind": "metric",
+            "label": "房间3租金",
+            "value": {
+              "derived": "share3"
+            },
+            "unit": "元"
+          },
+          {
+            "id": "areaChart",
+            "kind": "barChart",
+            "labels": [
+              "房间1",
+              "房间2",
+              "房间3"
+            ],
+            "values": [
+              {
+                "derived": "share1"
+              },
+              {
+                "derived": "share2"
+              },
+              {
+                "derived": "share3"
+              }
+            ]
+          }
+        ],
+        "layout": [
+          {
+            "id": "paramsGroup",
+            "type": "group",
+            "title": "参数",
+            "columns": 2,
+            "nodeIds": [
+              "totalRent",
+              "area1",
+              "area2",
+              "area3"
+            ]
+          },
+          {
+            "id": "resultsComparison",
+            "type": "comparison",
+            "title": "两种分法对比",
+            "cards": [
+              {
+                "id": "equalCard",
+                "title": "每人均摊",
+                "nodeIds": [
+                  "equalMetric"
+                ]
+              },
+              {
+                "id": "areaCard",
+                "title": "按房间面积分",
+                "nodeIds": [
+                  "share1Metric",
+                  "share2Metric",
+                  "share3Metric",
+                  "areaChart"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "refined-flash-b07-1",
+      "taskId": "b07",
+      "repetition": 1,
+      "sourceRunSha256": "d827758678f3972465d9be6366f4d61ad8a25133eebfe2e7d7366de60b074588",
+      "originalDiagnostic": {
+        "code": "PLAN_SHAPE",
+        "path": "$.derived[3].args[1]",
+        "expected": "Expected a literal, input, or derived reference; nested expressions are unsupported",
+        "repairable": true
+      },
+      "plan": {
+        "planVersion": 2,
+        "id": "rent_split_compare",
+        "title": "房租分摊对比：均摊 vs 按面积",
+        "inputs": [
+          {
+            "id": "totalRent",
+            "label": "总租金",
+            "valueType": "number",
+            "value": 6000,
+            "min": 0,
+            "unit": "元"
+          },
+          {
+            "id": "area1",
+            "label": "房间1 面积",
+            "valueType": "number",
+            "value": 10,
+            "min": 0,
+            "unit": "m²"
+          },
+          {
+            "id": "area2",
+            "label": "房间2 面积",
+            "valueType": "number",
+            "value": 15,
+            "min": 0,
+            "unit": "m²"
+          },
+          {
+            "id": "area3",
+            "label": "房间3 面积",
+            "valueType": "number",
+            "value": 20,
+            "min": 0,
+            "unit": "m²"
+          }
+        ],
+        "derived": [
+          {
+            "id": "sumArea",
+            "op": "add",
+            "args": [
+              {
+                "input": "area1"
+              },
+              {
+                "input": "area2"
+              },
+              {
+                "input": "area3"
+              }
+            ]
+          },
+          {
+            "id": "sumGuard",
+            "op": "max",
+            "args": [
+              {
+                "derived": "sumArea"
+              },
+              {
+                "literal": 0.000001
+              }
+            ]
+          },
+          {
+            "id": "equalShare",
+            "op": "divide",
+            "args": [
+              {
+                "input": "totalRent"
+              },
+              {
+                "literal": 3
+              }
+            ]
+          },
+          {
+            "id": "byArea1",
+            "op": "multiply",
+            "args": [
+              {
+                "input": "totalRent"
+              },
+              {
+                "op_not_used": 0
+              }
+            ]
+          }
+        ],
+        "views": [
+          {
+            "id": "equalShareMetric",
+            "kind": "metric",
+            "label": "均摊：每人",
+            "value": {
+              "derived": "equalShare"
+            },
+            "unit": "元"
+          }
+        ],
+        "layout": [
+          {
+            "id": "g",
+            "type": "group",
+            "title": "x",
+            "columns": 1,
+            "nodeIds": [
+              "totalRent"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "baseline-flash-b09-1",
+      "taskId": "b09",
+      "repetition": 1,
+      "sourceRunSha256": "37967eaf1611d80737d482c58a10a5e673be0dd02861078b98953ff231f2e447",
+      "originalDiagnostic": {
+        "code": "PLAN_TYPE",
+        "path": "$.derived[1].args",
+        "expected": "Arithmetic operands must have numeric types",
+        "repairable": true
+      },
+      "plan": {
+        "planVersion": 2,
+        "id": "checkin_points_trial",
+        "title": "签到积分试算（假设：每天固定得分）",
+        "inputs": [
+          {
+            "id": "pointsPerDay",
+            "label": "每天签到得分",
+            "valueType": "number",
+            "value": 10,
+            "unit": "分",
+            "min": 0
+          },
+          {
+            "id": "days",
+            "label": "签到天数",
+            "valueType": "number",
+            "value": 5,
+            "unit": "天",
+            "min": 0,
+            "step": 1
+          }
+        ],
+        "derived": [
+          {
+            "id": "totalPoints",
+            "op": "multiply",
+            "args": [
+              {
+                "input": "pointsPerDay"
+              },
+              {
+                "input": "days"
+              }
+            ]
+          },
+          {
+            "id": "perDayText",
+            "op": "add",
+            "args": [
+              {
+                "literal": "当前假设为每天 "
+              },
+              {
+                "input": "pointsPerDay"
+              },
+              {
+                "literal": " 分"
+              }
+            ]
+          }
+        ],
+        "views": [
+          {
+            "id": "totalMetric",
+            "kind": "metric",
+            "label": "试算可得积分合计",
+            "unit": "分",
+            "value": {
+              "derived": "totalPoints"
+            }
+          },
+          {
+            "id": "noteText",
+            "kind": "text",
+            "text": "【仅为试算，非正式积分政策】积分政策尚未确定，本页只验证“每天签到固定给分”这一条假设，未考虑连续签到奖励、每日/每周封顶、补签、扣减等规则。数值随上方输入实时变化，不代表已生效的规则。"
+          }
+        ],
+        "layout": [
+          {
+            "id": "inputGroup",
+            "type": "group",
+            "title": "试算参数",
+            "columns": 2,
+            "nodeIds": [
+              "pointsPerDay",
+              "days"
+            ]
+          },
+          {
+            "id": "resultGroup",
+            "type": "group",
+            "title": "试算结果（非正式政策）",
+            "columns": 1,
+            "nodeIds": [
+              "totalMetric",
+              "noteText"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "date": "2026-10-31",
+  "scope": "Phase 3B/3C browser client and React surface; chat tool not registered",
+  "head": "b41fa2ff",
+  "branch": "codex/intelligent-ui",
+  "workingTree": "uncommitted",
+  "checks": [
+    {
+      "command": "node --test lib/mini-app-*.test.mjs lib/answer-output-route.test.mjs lib/session-trash.test.mjs",
+      "exitCode": 0,
+      "tests": 62,
+      "passed": 62,
+      "log": ".verification/phase3-client-surface-tests.log"
+    },
+    {
+      "command": "node_modules/.bin/tsc.cmd --noEmit --pretty false",
+      "exitCode": 0,
+      "log": ".verification/phase3-client-surface-typecheck.log"
+    },
+    {
+      "command": "node_modules/.bin/eslint.cmd lib/mini-app/client-state.ts lib/mini-app/client-cache.ts lib/mini-app/client-protocol.ts lib/mini-app/drafts.ts lib/mini-app/controller.ts lib/mini-app/resource.ts lib/mini-app/state-service.ts lib/mini-app/frame-host.ts lib/mini-app/renderer-runtime.ts lib/answer-output-data.ts lib/answer-output-receipts.ts components/mini-app/MiniAppSurface.tsx app/api/sessions/[id]/mini-app/route.ts scripts/mini-app-typescript-loader.cjs",
+      "exitCode": 0,
+      "log": ".verification/phase3-client-surface-lint.log"
+    },
+    {
+      "command": "node --test lib/mini-app-client-browser.test.mjs",
+      "exitCode": 0,
+      "tests": 12,
+      "passed": 12,
+      "log": ".verification/phase3-client-surface-screenshot-check.log",
+      "purpose": "Final component-only screenshot and browser regression"
+    }
+  ],
+  "sourceHashes": {
+    "lib/mini-app/client-state.ts": "fe6a0fe37057cac54f6f4e91c76ed48aeb94e86f50dc2f18622203fbe7afcb1f",
+    "lib/mini-app/client-cache.ts": "a3b8cd3606a4ce246b2e493a84b9b1cdbda64e4d52aafd6fc1d847cef0cadf24",
+    "lib/mini-app/client-protocol.ts": "0febff03ef3dd8267fafffbe804b5e5af4b0b77bb03764a42afd1e0021ca72e9",
+    "lib/mini-app/drafts.ts": "df419e905c611ba9795b911ee130ad1b9c3cfcc955610fed5b87f6ad269807ad",
+    "lib/mini-app/controller.ts": "e6b6ff924deae44982fea281a05b83295c549aaa4082ab8d160ceeacab7ae66c",
+    "lib/mini-app/resource.ts": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a",
+    "lib/mini-app/state-service.ts": "2bedb8142a5d3d956bb427b924686d5e52bb7e58eed1f9b7b74cdc1c02a5d69f",
+    "lib/mini-app/frame-host.ts": "63774ee1aa31d07458ee421acb5b421d49fabe5d26a07b0afa2a731b1e8bb5c5",
+    "lib/mini-app/renderer-runtime.ts": "32c4598fbac11640c770a77a7a531beacc2391b03e20859d6e84922350a8ce9e",
+    "lib/answer-output-data.ts": "17edb753809c513984bd3be0a635a6ec7e532f91179d3bc538bc01eb9ba0ff6e",
+    "lib/answer-output-receipts.ts": "66e28c18706835ce8f96d1cda8ae42214527c074a1200709610c23868efb2540",
+    "components/mini-app/MiniAppSurface.tsx": "277012537632b35c380a17ee4b075195862b56f93c8093a9b356df1a1000f436",
+    "app/api/sessions/[id]/mini-app/route.ts": "e7d55934f2087aeacb510bdcdc12161dd0287123dbb82f9194b19300c67e8ce7",
+    "scripts/mini-app-typescript-loader.cjs": "47d2ce914d22a3bc0b60f78c8ee465719cd312a17e667d7720649722c564c55f",
+    "lib/mini-app-client-browser.test.mjs": "d52de818d9907b456640af2a82fe7c7ca5e14fc00fa491cf43d499e9d5536812",
+    "lib/mini-app-controller-browser.test.mjs": "aa231156e3eb0cdc5aeb1650200716060ab6263034d3455a96141333b86229ec",
+    "lib/mini-app-route.test.mjs": "1d36692518cc6e345d7db483500d6885627d49e6240beafed5e2320810b064ad"
+  },
+  "notCovered": [
+    "Actual Next/Electron chat generation flow",
+    "Real answer model calls",
+    "Native GPU and other platforms",
+    "Release artifacts",
+    "Final CI and human semantic acceptance"
+  ],
+  "fixture": "Real Edge, IndexedDB, SDK files, route handlers and Worker/QuickJS; deterministic publication, HTTP transport and local-write fault injection; no answer model",
+  "earlierFailures": [
+    "Resource reader third argument type mismatch; explicit allowErrorStatus option added",
+    "Dropped socket was transparently retried by Chromium; truncated-body and socket-retry tests separated",
+    "TypeScript loader parsed generic TS as JSX; supplied actual resource filename"
+  ]
+}

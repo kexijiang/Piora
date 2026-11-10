@@ -1,0 +1,1384 @@
+{
+  "version": 1,
+  "date": "2026-11-03",
+  "scope": "Phase 3 development checkpoint; incomplete",
+  "implementationBaseCommit": "35d6c12c309a4dce1a909fe3005aba00f069edec",
+  "upstreamBase": "9540f859501f0923af379c4060aee0e79bf3c640",
+  "policy": {
+    "answer": "answer-form-6",
+    "miniApp": "mini-app-intent-23"
+  },
+  "sourceVerification": {
+    "frozen": {
+      "count": 174,
+      "mismatches": [],
+      "verifiedAt": "2026-11-02T21:56:05.070Z"
+    },
+    "generation": {
+      "count": 516,
+      "mismatches": [],
+      "verifiedAt": "2026-11-02T21:56:05.139Z"
+    },
+    "capabilities": {
+      "count": 169,
+      "mismatches": [],
+      "verifiedAt": "2026-11-02T21:56:05.166Z"
+    }
+  },
+  "checks": {
+    "capabilities": {
+      "status": "passed",
+      "tests": 520,
+      "passed": 520,
+      "failed": 0,
+      "testFiles": 57,
+      "capabilities": 14,
+      "command": [
+        "D:\\nvm4w\\nodejs\\node.exe",
+        "--test",
+        "--test-concurrency=2",
+        "lib/mini-app-capabilities.test.mjs",
+        "lib/mini-app-contract.test.mjs",
+        "lib/mini-app-generation.test.mjs",
+        "lib/mini-app-generation-runtime.test.mjs",
+        "lib/mini-app-admission.test.mjs",
+        "lib/mini-app-controller-browser.test.mjs",
+        "lib/mini-app-renderer-browser.test.mjs",
+        "lib/mini-app-worker-browser.test.mjs",
+        "lib/mini-app-runtime.test.mjs",
+        "lib/mini-app-restore-budget.test.mjs",
+        "lib/mini-app-document.test.mjs",
+        "lib/mini-app-frame.test.mjs",
+        "lib/mini-app-server-trial.test.mjs",
+        "lib/mini-app-repeat.test.mjs",
+        "lib/mini-app-repeat-browser.test.mjs",
+        "lib/mini-app-state.test.mjs",
+        "lib/mini-app-scene.test.mjs",
+        "lib/mini-app-scene-browser.test.mjs",
+        "lib/mini-app-action-preview.test.mjs",
+        "lib/answer-output-client.test.mjs",
+        "lib/mini-app-groups.test.mjs",
+        "lib/mini-app-groups-browser.test.mjs",
+        "lib/mini-app-presets.test.mjs",
+        "lib/mini-app-migration.test.mjs",
+        "lib/mini-app-migration-browser.test.mjs",
+        "lib/mini-app-journal.test.mjs",
+        "lib/mini-app-inheritance.test.mjs",
+        "lib/mini-app-client-browser.test.mjs",
+        "lib/mini-app-route.test.mjs",
+        "lib/mini-app-progress-migration.test.mjs",
+        "lib/mini-app-authoring-repair.test.mjs",
+        "lib/mini-app-plan.test.mjs",
+        "lib/intelligent-ui-plan.test.mjs",
+        "lib/intelligent-ui-admission.test.mjs",
+        "lib/mini-app-input-ordering.test.mjs",
+        "lib/intelligent-ui/comparisons.test.mjs",
+        "lib/intelligent-ui/preview-plan.test.mjs",
+        "lib/mini-app-actions.test.mjs",
+        "lib/mini-app-actions-route.test.mjs",
+        "lib/mini-app-actions-browser.test.mjs",
+        "lib/intelligent-ui/action-runtime.test.mjs",
+        "lib/intelligent-ui/action-route.test.mjs",
+        "lib/intelligent-ui/action-files.test.mjs",
+        "components/intelligent-ui-actions-browser.test.mjs",
+        "lib/mini-app-environment.test.mjs",
+        "lib/mini-app-environment-route.test.mjs",
+        "lib/mini-app-environment-browser.test.mjs",
+        "lib/prompt-run-registry.test.mjs",
+        "lib/agent-client.test.mjs",
+        "lib/rpc-manager-behavior.test.mjs",
+        "lib/answer-output-conversion-receipts.test.mjs",
+        "lib/answer-output-conversion.test.mjs",
+        "lib/answer-output-conversion-browser.test.mjs",
+        "lib/intelligent-ui/generation-runtime.test.mjs",
+        "lib/intelligent-ui-generation.test.mjs",
+        "lib/intelligent-ui-generation-copy.test.mjs",
+        "lib/intelligent-ui/rich-plan.test.mjs"
+      ]
+    },
+    "sharedPolicy": {
+      "passed": 4,
+      "failed": 0
+    },
+    "webTypecheck": "passed after exact dependency restoration",
+    "targetedLint": "passed",
+    "initialAttempts": {
+      "webTypecheck": "failed: missing dependencies",
+      "capabilities": "failed before tests: proper-lockfile unavailable"
+    }
+  },
+  "generation": {
+    "id": "9PkiZj",
+    "status": "completed",
+    "model": {
+      "provider": "deepseek",
+      "id": "deepseek-flash",
+      "configuredNameRequirement": "V4.1",
+      "fallback": false
+    },
+    "thinking": "enabled",
+    "sourceUnchanged": true,
+    "sourceSha256": "c0b5ebc0fb9bbb1b18f16acf5436dda2570a4a9da850e84274500365e5d08bff",
+    "summary": {
+      "requested": 24,
+      "finished": 24,
+      "failed": 0,
+      "pending": 0,
+      "ui": {
+        "denominator": 18,
+        "generationAccepted": 18,
+        "firstAttemptAccepted": 15
+      },
+      "nonUi": {
+        "denominator": 6,
+        "responsesWithoutUi": 6,
+        "unexpectedUiAttempts": 0
+      },
+      "semanticAcceptance": "pending",
+      "completeTaskAcceptance": "pending",
+      "denominatorPolicy": "Every scheduled repetition stays in its denominator, including errors, timeouts and unfinished slots."
+    },
+    "slots": [
+      {
+        "id": "direct-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-p83BFR/result.json",
+        "sha256": "6a0b7a716a78b88a91588edfb875832ba0bd654c37c2d22335ab997d5eddaea2",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 5473,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "clarification-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-IID4NI/result.json",
+        "sha256": "17a48344f5667bff7cf24f7075bbff0693cc5a04daafff79cd995a9b08a79f2c",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 4568,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "outing-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-GYD5Uq/result.json",
+        "sha256": "a0197fe2fc0330da369179e9e9849860ee464c2411d2ec2c44d4e2fd817fb471",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 34608,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "discount-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-YqhUSj/result.json",
+        "sha256": "1fdafc36b2018bab6d017ce030b3e763a0ec5e0c9471620e29b5851a0df9891a",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 23350,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "sorting-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-0jxQe4/result.json",
+        "sha256": "75313e31763064376110a363d8c30c657f6ef92b058dfb8bd585049f73039749",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 106794,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "triangle-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-bGALOl/result.json",
+        "sha256": "6ab62df81517796edd34a0a17180b2fd7c0ad13fa007197d5c945d95ac0f0833",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 2,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": false,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 3,
+          "elapsedMs": 89283,
+          "diagnostics": [
+            {
+              "code": "SCHEMA",
+              "message": "Unsupported CSS property",
+              "path": "document/css/stroke-linecap",
+              "repairable": true,
+              "issues": [
+                {
+                  "code": "SCHEMA",
+                  "message": "Unsupported CSS property",
+                  "path": "document/css/stroke-linecap",
+                  "repairable": true
+                }
+              ],
+              "contract": {
+                "tool": "piora_render_mini_app",
+                "planVersion": 1,
+                "resubmit": "Resubmit a complete plan including purpose and all required keys below, not a patch. Keep planVersion:1; correct all issues together without changing the task.",
+                "required": [
+                  "planVersion",
+                  "id",
+                  "title",
+                  "purpose",
+                  "assumptions",
+                  "inputs",
+                  "stateSchema",
+                  "document",
+                  "viewports",
+                  "playback",
+                  "program",
+                  "initialSnapshot"
+                ],
+                "omitUnused": [
+                  "inputPresets",
+                  "migration",
+                  "conversion",
+                  "actions"
+                ]
+              }
+            }
+          ],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "jugs-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-JPmuDT/result.json",
+        "sha256": "34cf14a7c8f9428b8457103390e038a18d3c908dcb5cf1dac314c57a6bb4fa5d",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 2,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": false,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 3,
+          "elapsedMs": 58104,
+          "diagnostics": [
+            {
+              "code": "SCHEMA",
+              "message": "Unsupported field. Remove it instead of using an extra placeholder. Allowed keys for this object: html, css.",
+              "path": "document/css_note",
+              "repairable": true,
+              "issues": [
+                {
+                  "code": "SCHEMA",
+                  "message": "Unsupported field. Remove it instead of using an extra placeholder. Allowed keys for this object: html, css.",
+                  "path": "document/css_note",
+                  "repairable": true
+                }
+              ],
+              "contract": {
+                "tool": "piora_render_mini_app",
+                "planVersion": 1,
+                "resubmit": "Resubmit a complete plan including purpose and all required keys below, not a patch. Keep planVersion:1; correct all issues together without changing the task.",
+                "required": [
+                  "planVersion",
+                  "id",
+                  "title",
+                  "purpose",
+                  "assumptions",
+                  "inputs",
+                  "stateSchema",
+                  "document",
+                  "viewports",
+                  "playback",
+                  "program",
+                  "initialSnapshot"
+                ],
+                "omitUnused": [
+                  "inputPresets",
+                  "migration",
+                  "conversion",
+                  "actions"
+                ]
+              }
+            }
+          ],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "board-1",
+        "status": "completed",
+        "result": ".verification/mini-app-live-icC50B/result.json",
+        "sha256": "73168b2a0565b4cf1be2ad00d2c3ac1c0927a3f76f1b3a2542f185d253a77a65",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 48305,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "direct-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-6XcJHO/result.json",
+        "sha256": "bf8d0c7c7580519a579310c9949d7dda7174dc36797bfcc94b3f0cc266fcd8c9",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 2881,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "clarification-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-o3Hv0c/result.json",
+        "sha256": "7a99b31e9b3107a15764905126ceeb301ae5f72e182c1a4884ad3d56a8994242",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 4419,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "outing-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-vbpnqp/result.json",
+        "sha256": "db4dda1a635962f8514a0a71fcc73e7bce8dcc0b302be202c86cd753c0c39207",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 31796,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "discount-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-4RCWr4/result.json",
+        "sha256": "4b869ccde22fc6be267839206f0aecdffc78e850784d85a625b42c8e06b6d5b6",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 10457,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "sorting-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-QKaaAI/result.json",
+        "sha256": "076556d27ab2468dac31ccb83c00fd2602b64b6b17f1d202ef95be6b2c011e7a",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 2,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": false,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 3,
+          "elapsedMs": 96620,
+          "diagnostics": [
+            {
+              "code": "STATE",
+              "message": "State does not match its declared schema",
+              "path": "state/lastA",
+              "repairable": true,
+              "contract": {
+                "tool": "piora_render_mini_app",
+                "planVersion": 1,
+                "resubmit": "Resubmit a complete plan including purpose and all required keys below, not a patch. Keep planVersion:1; correct all issues together without changing the task.",
+                "required": [
+                  "planVersion",
+                  "id",
+                  "title",
+                  "purpose",
+                  "assumptions",
+                  "inputs",
+                  "stateSchema",
+                  "document",
+                  "viewports",
+                  "playback",
+                  "program",
+                  "initialSnapshot"
+                ],
+                "omitUnused": [
+                  "inputPresets",
+                  "migration",
+                  "conversion",
+                  "actions"
+                ]
+              }
+            }
+          ],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "triangle-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-L7KN3e/result.json",
+        "sha256": "2dfb53981ba24f50f9580acb45830513f9d4966cc22e1bd1742572f321b7e1c7",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 81471,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "jugs-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-64Wr8L/result.json",
+        "sha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 52584,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "board-2",
+        "status": "completed",
+        "result": ".verification/mini-app-live-s54DD9/result.json",
+        "sha256": "8a1376d766e2000004859573f0a66dfd6cd501313fc2036de648237f80b6297f",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 43450,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "direct-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-6qbwe7/result.json",
+        "sha256": "fa49b2b2928d01219fdd1deb6a07317d398956fbe4b5f1b0fe00cf4e55e87468",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 1932,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "clarification-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-uGB1JZ/result.json",
+        "sha256": "115d0bb4f3884a7e4d8b28cfdf4882757c46a6df58fd9798c878546eb22ad307",
+        "evidence": {
+          "observedForms": [
+            "non-ui"
+          ],
+          "expectsUi": false,
+          "uiAttempts": 0,
+          "publicationCount": 0,
+          "generationAccepted": null,
+          "firstAttemptAccepted": null,
+          "noUiResponse": true,
+          "unexpectedUiAttempt": false,
+          "requestCount": 1,
+          "elapsedMs": 3709,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "outing-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-UT9761/result.json",
+        "sha256": "5b7e011481485ba4e5c0d194bb49278ffe2a11b04530474c999d86b2294c3bc9",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 29984,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "discount-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-VUIWhf/result.json",
+        "sha256": "dea56791f135f4406f8425e71a3818b5bc0fdf3b2d855b4aeeba9888c0cb3222",
+        "evidence": {
+          "observedForms": [
+            "intelligent-ui"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 33115,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "sorting-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-AMjloV/result.json",
+        "sha256": "948e429e3518908be7ac2d98c82ed4cba232a8a2a88524cde08688dc246b1597",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 79225,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "triangle-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-ZIXa1k/result.json",
+        "sha256": "dcd48add0b799d0e030f4b28aa07062fd9038938fa015fc01a93d3d9efb224fd",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 105190,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "jugs-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-KrwUJO/result.json",
+        "sha256": "e50671266c655cf7fd2f37bb87981dd6f24fe5857b6e7a572ffaa4f5e34b9c39",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 55379,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      },
+      {
+        "id": "board-3",
+        "status": "completed",
+        "result": ".verification/mini-app-live-QGYiET/result.json",
+        "sha256": "3ed41435c93df568f29fb7958a7c8463ef88823d7704a3ac61f64271681a959c",
+        "evidence": {
+          "observedForms": [
+            "mini-app"
+          ],
+          "expectsUi": true,
+          "uiAttempts": 1,
+          "publicationCount": 1,
+          "generationAccepted": true,
+          "firstAttemptAccepted": true,
+          "noUiResponse": null,
+          "unexpectedUiAttempt": null,
+          "requestCount": 2,
+          "elapsedMs": 81744,
+          "diagnostics": [],
+          "choiceCorrect": null,
+          "semanticCorrect": null,
+          "browserInteraction": null,
+          "savedAfterInteraction": null,
+          "reload": null,
+          "followup": null
+        }
+      }
+    ]
+  },
+  "desktop": [
+    {
+      "id": "sWetKt",
+      "status": "failed",
+      "cleanupErrors": [],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "rows": [
+        {
+          "id": "jugs-1",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 8,
+          "reloadsIncluded": 2,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "jugs-2",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 8,
+          "reloadsIncluded": 2,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "jugs-3",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 8,
+          "reloadsIncluded": 2,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "board-2",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 22,
+          "reloadsIncluded": 3,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "sorting-1",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 12,
+          "reloadsIncluded": 3,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 1,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "new-sorting-1",
+          "status": "failed",
+          "error": "Requested future effects must be inspected",
+          "operationCheckpoints": 11,
+          "reloadsIncluded": 2,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": false,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "new-jugs-1",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 20,
+          "reloadsIncluded": 3,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        }
+      ],
+      "operationsIncludingReload": 89,
+      "reloadsIncluded": 17,
+      "followupModelRequests": 8,
+      "scope": "Windows development desktop, original generated programs, UI-only task operations; storage/API for preparation and verification"
+    },
+    {
+      "id": "QjbcPp",
+      "status": "passed",
+      "cleanupErrors": [],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "rows": [
+        {
+          "id": "jugs-2-action",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 8,
+          "reloadsIncluded": 2,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 1,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "jugs-3-action",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 8,
+          "reloadsIncluded": 2,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 1,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "board-2-action",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 22,
+          "reloadsIncluded": 3,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 1,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        }
+      ],
+      "operationsIncludingReload": 38,
+      "reloadsIncluded": 7,
+      "followupModelRequests": 6,
+      "scope": "Windows development desktop, original generated programs, UI-only task operations; storage/API for preparation and verification"
+    },
+    {
+      "id": "9dHAYX",
+      "status": "failed",
+      "cleanupErrors": [],
+      "model": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash",
+        "thinking": "enabled",
+        "fallback": false
+      },
+      "rows": [
+        {
+          "id": "fresh-sorting-1",
+          "status": "failed",
+          "error": "Requested future effects must be inspected",
+          "operationCheckpoints": 16,
+          "reloadsIncluded": 4,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": false,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "fresh-triangle-1",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 8,
+          "reloadsIncluded": 2,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "fresh-jugs-1",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 22,
+          "reloadsIncluded": 3,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        },
+        {
+          "id": "fresh-board-1",
+          "status": "completed",
+          "error": null,
+          "operationCheckpoints": 83,
+          "reloadsIncluded": 6,
+          "allOperationCheckpointsPassed": true,
+          "followupAnswerObserved": true,
+          "inspectionCalls": 0,
+          "postFollowupStateAssertionCompleted": true,
+          "independentHumanSemanticReview": "pending"
+        }
+      ],
+      "operationsIncludingReload": 129,
+      "reloadsIncluded": 15,
+      "followupModelRequests": 4,
+      "scope": "Windows development desktop, original generated programs, UI-only task operations; storage/API for preparation and verification"
+    }
+  ],
+  "semanticFindings": [
+    {
+      "case": "9dHAYX/fresh-triangle-1",
+      "status": "failed",
+      "finding": "Current area 0 was correct; unrequested advice claimed moving C to (0,4) restores 12 while base is 8, so actual area would be 16."
+    },
+    {
+      "case": "sWetKt/new-sorting-1",
+      "status": "failed",
+      "finding": "Expected action inspection absent. Original failure retained. Post-followup state check not completed."
+    },
+    {
+      "case": "9dHAYX/fresh-sorting-1",
+      "status": "failed",
+      "finding": "Expected action inspection absent. Extra multi-step explanation not accepted as verified. Post-followup state check not completed."
+    },
+    {
+      "case": "sWetKt/sorting-1",
+      "status": "observed improvement",
+      "finding": "No host tick relabelled as task step; comparisons and swaps were both 2. Not a generalization guarantee."
+    },
+    {
+      "case": "QjbcPp",
+      "status": "developer factual review found no error in three answers",
+      "finding": "Not independent two-human acceptance."
+    }
+  ],
+  "environment": {
+    "cacheMigration": "Terminated Next caches moved to D drive; nested junction traversal moved original dependency contents into archive.",
+    "recovery": "Restored exact original files for ten packages; lockfile versions and file hashes checked without following symlinks. No package or lock changes.",
+    "staleLock": "Old process/ports absent; old lock renamed and retained",
+    "previousDiskFailures": "Retained; not rewritten as passing"
+  },
+  "notRun": [
+    "six fresh component desktop replays (bindings prepared)",
+    "remaining eight fresh mini-app desktop replays",
+    "full CI remediation",
+    "sealed evaluation",
+    "two-human semantic acceptance",
+    "other platforms/hardware",
+    "local release packaging"
+  ],
+  "previousCI": {
+    "head": "35d6c12c309a4dce1a909fe3005aba00f069edec",
+    "run": 41527032897,
+    "number": 929,
+    "status": "completed",
+    "conclusion": "failure",
+    "failedAreas": [
+      "Linux/Windows release-tree hygiene",
+      "Linux/Windows test shards"
+    ],
+    "remediation": "deferred by user until all phases developed"
+  },
+  "artifacts": [
+    {
+      "path": ".verification/desktop-e2e-9dHAYX/result.json",
+      "sha256": "51db6989edf0b67e1b8a5faaadb73e13e7a0a0c9f3e07a67a5f7bf9422cb081e"
+    },
+    {
+      "path": ".verification/desktop-e2e-9dHAYX/task-replay.json",
+      "sha256": "d238804bfecdb5354f4f7a6507a7001a9493043fe10ea334e0a9eaf312e2379d"
+    },
+    {
+      "path": ".verification/desktop-e2e-QjbcPp/result.json",
+      "sha256": "2abb8eebdaf54fc7253ab4eb9af5053b2535e1ff28488c8b5497f1522b1cc82e"
+    },
+    {
+      "path": ".verification/desktop-e2e-QjbcPp/task-replay.json",
+      "sha256": "7bba40c4309d19febced07b9def1474ffd6c77ba8cd74ef091b86c748291273e"
+    },
+    {
+      "path": ".verification/desktop-e2e-sWetKt/result.json",
+      "sha256": "8c74a007c97d968b89202a5d3244192e0f3b8303e9a5e76c2117845b41d2c321"
+    },
+    {
+      "path": ".verification/desktop-e2e-sWetKt/task-replay.json",
+      "sha256": "de88468d015f190985cc9ddd72114bfd1451da7b204f6850b43fe7f8b8038465"
+    },
+    {
+      "path": ".verification/mini-app-capabilities-ylGfPp/result.json",
+      "sha256": "666ab375ab704bea64ba3a574e089dd83e7c2ca14cdbd13aeafab28a0c5f2b4f"
+    },
+    {
+      "path": ".verification/mini-app-evaluation-9PkiZj/result.json",
+      "sha256": "4dc067093732c2ff53ddc5520fecbaff8f5a5bf3cffdf94f21c440eeff28fbb9"
+    },
+    {
+      "path": ".verification/mini-app-live-0jxQe4/result.json",
+      "sha256": "75313e31763064376110a363d8c30c657f6ef92b058dfb8bd585049f73039749"
+    },
+    {
+      "path": ".verification/mini-app-live-4RCWr4/result.json",
+      "sha256": "4b869ccde22fc6be267839206f0aecdffc78e850784d85a625b42c8e06b6d5b6"
+    },
+    {
+      "path": ".verification/mini-app-live-64Wr8L/result.json",
+      "sha256": "342db82b0f36742726e7ff5a073a3c6870cce36c2d4969fd1bfb6a46bf027d53"
+    },
+    {
+      "path": ".verification/mini-app-live-6XcJHO/result.json",
+      "sha256": "bf8d0c7c7580519a579310c9949d7dda7174dc36797bfcc94b3f0cc266fcd8c9"
+    },
+    {
+      "path": ".verification/mini-app-live-6qbwe7/result.json",
+      "sha256": "fa49b2b2928d01219fdd1deb6a07317d398956fbe4b5f1b0fe00cf4e55e87468"
+    },
+    {
+      "path": ".verification/mini-app-live-AMjloV/result.json",
+      "sha256": "948e429e3518908be7ac2d98c82ed4cba232a8a2a88524cde08688dc246b1597"
+    },
+    {
+      "path": ".verification/mini-app-live-GYD5Uq/result.json",
+      "sha256": "a0197fe2fc0330da369179e9e9849860ee464c2411d2ec2c44d4e2fd817fb471"
+    },
+    {
+      "path": ".verification/mini-app-live-IID4NI/result.json",
+      "sha256": "17a48344f5667bff7cf24f7075bbff0693cc5a04daafff79cd995a9b08a79f2c"
+    },
+    {
+      "path": ".verification/mini-app-live-JPmuDT/result.json",
+      "sha256": "34cf14a7c8f9428b8457103390e038a18d3c908dcb5cf1dac314c57a6bb4fa5d"
+    },
+    {
+      "path": ".verification/mini-app-live-KrwUJO/result.json",
+      "sha256": "e50671266c655cf7fd2f37bb87981dd6f24fe5857b6e7a572ffaa4f5e34b9c39"
+    },
+    {
+      "path": ".verification/mini-app-live-L7KN3e/result.json",
+      "sha256": "2dfb53981ba24f50f9580acb45830513f9d4966cc22e1bd1742572f321b7e1c7"
+    },
+    {
+      "path": ".verification/mini-app-live-QGYiET/result.json",
+      "sha256": "3ed41435c93df568f29fb7958a7c8463ef88823d7704a3ac61f64271681a959c"
+    },
+    {
+      "path": ".verification/mini-app-live-QKaaAI/result.json",
+      "sha256": "076556d27ab2468dac31ccb83c00fd2602b64b6b17f1d202ef95be6b2c011e7a"
+    },
+    {
+      "path": ".verification/mini-app-live-UT9761/result.json",
+      "sha256": "5b7e011481485ba4e5c0d194bb49278ffe2a11b04530474c999d86b2294c3bc9"
+    },
+    {
+      "path": ".verification/mini-app-live-VUIWhf/result.json",
+      "sha256": "dea56791f135f4406f8425e71a3818b5bc0fdf3b2d855b4aeeba9888c0cb3222"
+    },
+    {
+      "path": ".verification/mini-app-live-YqhUSj/result.json",
+      "sha256": "1fdafc36b2018bab6d017ce030b3e763a0ec5e0c9471620e29b5851a0df9891a"
+    },
+    {
+      "path": ".verification/mini-app-live-ZIXa1k/result.json",
+      "sha256": "dcd48add0b799d0e030f4b28aa07062fd9038938fa015fc01a93d3d9efb224fd"
+    },
+    {
+      "path": ".verification/mini-app-live-bGALOl/result.json",
+      "sha256": "6ab62df81517796edd34a0a17180b2fd7c0ad13fa007197d5c945d95ac0f0833"
+    },
+    {
+      "path": ".verification/mini-app-live-icC50B/result.json",
+      "sha256": "73168b2a0565b4cf1be2ad00d2c3ac1c0927a3f76f1b3a2542f185d253a77a65"
+    },
+    {
+      "path": ".verification/mini-app-live-o3Hv0c/result.json",
+      "sha256": "7a99b31e9b3107a15764905126ceeb301ae5f72e182c1a4884ad3d56a8994242"
+    },
+    {
+      "path": ".verification/mini-app-live-p83BFR/result.json",
+      "sha256": "6a0b7a716a78b88a91588edfb875832ba0bd654c37c2d22335ab997d5eddaea2"
+    },
+    {
+      "path": ".verification/mini-app-live-s54DD9/result.json",
+      "sha256": "8a1376d766e2000004859573f0a66dfd6cd501313fc2036de648237f80b6297f"
+    },
+    {
+      "path": ".verification/mini-app-live-uGB1JZ/result.json",
+      "sha256": "115d0bb4f3884a7e4d8b28cfdf4882757c46a6df58fd9798c878546eb22ad307"
+    },
+    {
+      "path": ".verification/mini-app-live-vbpnqp/result.json",
+      "sha256": "db4dda1a635962f8514a0a71fcc73e7bce8dcc0b302be202c86cd753c0c39207"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-bindings.json",
+      "sha256": "50b22e798e91b11fa9fdcc2e7afdf5968218306757c9012de6012d7bd45548cd"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-capabilities-recovered.log",
+      "sha256": "0afdf1a53c328ca53523dbcdc0313edf302fae5d5a535e72c9c12d0b7a0df900"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-capabilities.log",
+      "sha256": "d2faa856c69bae6ffb072a25292b9c300300b35c0bd8ab0c5d211b0cf9d1ce8a"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-dependency-recovery.json",
+      "sha256": "3a52dc6ef1464c2866b2cd33a7adc6efdb8661487f99e5c7cd3c218b0c9c0858"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-fresh-mini-bindings.json",
+      "sha256": "69765072500dcd77ef7136655a23f55743b17664841396b240b126d98505be8b"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-fresh-mini-desktop.log",
+      "sha256": "166bdac8392cc7a887762747334290b64501b28b0ba551dd3f277c65f656fd2f"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-generation.log",
+      "sha256": "498b00debcee6fe73f2050692dc00de3b3bc4be1d96202351cc2c4cc0496466a"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-policy.log",
+      "sha256": "063ba24282b4c1adf65d5a254706ea48e7d55c411d4b06ff53fbfa12b9f3a524"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-sources.json",
+      "sha256": "23abcf0f765f94259d9c7ab9e57195f695534f62fecf755080db2ab4867dd0af"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-typecheck-recovered.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-clock-scope-typecheck.log",
+      "sha256": "1d96d34849f93b835a221544fc2b0100b715075c3bbc255778b083fd30db8ed2"
+    },
+    {
+      "path": ".verification/phase3-on-demand-action-bindings.json",
+      "sha256": "76150892be54de320323c9333606538b095fb866382d1a6153d6008f26e04406"
+    }
+  ],
+  "pdf": {
+    "source": "docs\\verification\\intelligent-ui-phase3-clock-scope-2026-11-03.md",
+    "sourceSha256": "ebffbdf53f9dffcd7ecb73d8c24cfa02a602ff4b9df7fa81a7ce9ff735f4a86d",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-clock-scope-2026-11-03.pdf",
+    "pdfSha256": "054784403c35cdb7cd0f1d8b755113a13eddd3a19a7407f2243d2946ed843f85",
+    "pages": 3,
+    "pageTextLengths": [
+      1046,
+      925,
+      1222
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed: all three rendered pages inspected"
+  },
+  "submissionChecks": {
+    "artifactHashes": 45,
+    "pdfPagesReviewed": 3,
+    "scriptSyntax": "passed",
+    "gitDiffCheck": "passed"
+  }
+}

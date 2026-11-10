@@ -1,0 +1,157 @@
+{
+  "date": "2026-11-02",
+  "phase": "3B",
+  "phaseComplete": false,
+  "sourceHashes": {
+    "lib/mini-app/capability-manifest.ts": "dca50d3bdf80ef36faf252137a1dc8340f287677ef95dcf1076fac1890ec024f",
+    "lib/mini-app/capabilities.ts": "ce03a6c92c43f1795faabc1b481bf999aa0d0766bd9adb187d5f3ecdc54dc436",
+    "lib/mini-app/capability-host.ts": "9c88d852491265f293d44fa0a62606273eaeef7b54ad05154dad310340cdf773",
+    "lib/mini-app/capability-evidence.json": "a89bf2cc54fde8d56590834439c324a24ec1853214fa8dc31b662bf3ec988fbe",
+    "lib/mini-app/decision-policy.ts": "5a61fcc2f293eec88db20be423eadfaf5e39c887b07528fb5b7416a749527777",
+    "lib/mini-app/plan-admission.ts": "16687fd313c6d7ec570332045dae737132b86cf1845d5b2d372eb1670377648d",
+    "lib/mini-app/generation-runtime.ts": "29c9d09027909191f362fd29dc4841a58722bb4690286734127efc6e6833ce43",
+    "extensions/piora-mini-app.ts": "4f2a09b0110c3c9260a7c1fb69e191e0b5e3a1c11c6afa256689b1c06c3a785a",
+    "lib/mini-app-capabilities.test.mjs": "c58442e23717c225ec700bf5416ea4595591fe598552795b83a0bd2b5558040b",
+    "lib/mini-app-admission.test.mjs": "3c59f2d8169b0fcc606de38df55ac6c1f4ece4b3632bf65d8c9a1da941f18e50",
+    "scripts/verify-mini-app-capabilities.mjs": "f24469b6a031c4b4f4593ea8277a7652ef0e77ee2502cdffaea11d0a9679015d",
+    "scripts/stage-standalone.mjs": "e8fd9949ee6ad968eddf1076d3977eb4b74273eed5b546c13cbec8f16edac485"
+  },
+  "capabilities": {
+    "manifestVersion": 1,
+    "development": false,
+    "capabilities": [
+      {
+        "id": "document",
+        "version": 1,
+        "status": "verified",
+        "available": true,
+        "reason": "Verified for the recorded scope",
+        "evidenceScope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+      },
+      {
+        "id": "events",
+        "version": 1,
+        "status": "verified",
+        "available": true,
+        "reason": "Verified for the recorded scope",
+        "evidenceScope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+      },
+      {
+        "id": "playback",
+        "version": 1,
+        "status": "verified",
+        "available": true,
+        "reason": "Verified for the recorded scope",
+        "evidenceScope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+      },
+      {
+        "id": "svg",
+        "version": 1,
+        "status": "verified",
+        "available": true,
+        "reason": "Verified for the recorded scope",
+        "evidenceScope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+      },
+      {
+        "id": "canvas2d",
+        "version": 1,
+        "status": "verified",
+        "available": true,
+        "reason": "Verified for the recorded scope",
+        "evidenceScope": "Deterministic SDK, QuickJS, headless Chromium/Edge and Controller fixtures; excludes natural task semantics, native window behavior and GPU compatibility"
+      },
+      {
+        "id": "scene3d",
+        "version": 1,
+        "status": "implemented",
+        "available": false,
+        "reason": "Required host environment is unavailable or unconfirmed"
+      },
+      {
+        "id": "repeat",
+        "version": 1,
+        "status": "planned",
+        "available": false,
+        "reason": "Not implemented"
+      },
+      {
+        "id": "scenePicking",
+        "version": 1,
+        "status": "planned",
+        "available": false,
+        "reason": "Not implemented"
+      },
+      {
+        "id": "cameraControls",
+        "version": 1,
+        "status": "planned",
+        "available": false,
+        "reason": "Not implemented"
+      },
+      {
+        "id": "registeredActions",
+        "version": 1,
+        "status": "planned",
+        "available": false,
+        "reason": "Not implemented"
+      },
+      {
+        "id": "stateMigration",
+        "version": 1,
+        "status": "planned",
+        "available": false,
+        "reason": "Not implemented"
+      }
+    ]
+  },
+  "checks": [
+    {
+      "path": ".verification/mini-app-capabilities-ktRgqm/tests.log",
+      "status": "passed",
+      "tests": 51,
+      "mode": "isolated development",
+      "sha256": "c6942e1a62d51c71f268458804ae6034dcdb75825bfc37843c26f4e33e4a522c"
+    },
+    {
+      "path": ".verification/phase3-capabilities-production.log",
+      "status": "passed",
+      "tests": 26,
+      "mode": "ordinary configuration, deterministic model",
+      "sha256": "84d21847f340badf0420e53313f546a7bbb2dbd893eba56753cb7a6f3ce6777a"
+    },
+    {
+      "path": ".verification/phase3-capabilities-typecheck-current.log",
+      "status": "passed",
+      "command": "node_modules/.bin/tsc.cmd --noEmit",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": ".verification/phase3-capabilities-lint-current.log",
+      "status": "passed",
+      "command": "node_modules/.bin/eslint.cmd lib/mini-app/capability-manifest.ts lib/mini-app/capabilities.ts lib/mini-app/capability-host.ts lib/mini-app/decision-policy.ts lib/mini-app/plan-admission.ts lib/mini-app/generation-runtime.ts extensions/piora-mini-app.ts lib/mini-app-capabilities.test.mjs lib/mini-app-admission.test.mjs scripts/verify-mini-app-capabilities.mjs scripts/stage-standalone.mjs",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "evidenceBatch": ".verification/mini-app-capabilities-ktRgqm/result.json",
+  "earlierBatch": ".verification/mini-app-capabilities-zLwmHK/result.json",
+  "overlappingChecks": true,
+  "notRun": [
+    "real model",
+    "native desktop window",
+    "cross-platform",
+    "GPU compatibility",
+    "full CI",
+    "human semantic acceptance",
+    "release package"
+  ],
+  "pending": [
+    "browser environment negotiation for 3D",
+    "8 real tasks x 3 complete workflows",
+    "dynamic lists",
+    "scene picking and camera controls",
+    "sustained simulations and games",
+    "state migration and registered actions",
+    "complete recovery matrix",
+    "full acceptance"
+  ]
+}

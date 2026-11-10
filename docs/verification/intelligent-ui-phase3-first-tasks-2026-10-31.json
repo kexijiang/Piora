@@ -1,0 +1,4111 @@
+{
+  "version": 1,
+  "date": "2026-10-31",
+  "stage": "3B",
+  "stageComplete": false,
+  "source": ".verification/mini-app-evaluation-tCm2dL/result.json",
+  "sourceSha256": "0ea87aec73df758f9e4ccb320669f49b4c802b8eca1d5b9ab397f2cdfa341fe4",
+  "baseline": {
+    "startedAt": "2026-10-31T08:57:03.708Z",
+    "endedAt": "2026-10-31T09:04:19.588Z",
+    "status": "completed",
+    "sourceUnchanged": true,
+    "scope": "production SDK generation/admission/publication; no browser interaction, edited-state saving or semantic acceptance",
+    "model": {
+      "provider": "deepseek",
+      "id": "deepseek-flash",
+      "configuredNameRequirement": "V4.1",
+      "fallback": false
+    },
+    "maxTokens": 32768,
+    "reasoning": "low",
+    "repetitions": 3,
+    "sources": {
+      "sha256": "c3fc46689996b07f5c6b10dc7fca39f4bed5a7504e02fcf63b60e50e86a38528",
+      "files": [
+        {
+          "path": "components/mini-app/MiniAppPreview.tsx",
+          "sha256": "7f3405b78dcb4f0575572e639ec1a02b9c75ce282e10a2245d8558131dffb6cc"
+        },
+        {
+          "path": "components/mini-app/MiniAppSurface.module.css",
+          "sha256": "f1ae68bbb8f01ea28ebb27d6f445e6c3808043a9e9ad0940da363f5be2840fe3"
+        },
+        {
+          "path": "components/mini-app/MiniAppSurface.tsx",
+          "sha256": "09accb60f93bcc00a14d43b642c9efb942a3f7f03b4add4a194e046c1d1d3167"
+        },
+        {
+          "path": "extensions/piora-intelligent-ui.ts",
+          "sha256": "e0821f98fd27d1ef5f50a495db17b68ea1d6fcaa040dfcfd1db86ec5cf9d6712"
+        },
+        {
+          "path": "extensions/piora-mini-app.ts",
+          "sha256": "a0089bfca480322c20e5b2b3e4369d0144b644d88574d185d79e1019e478319c"
+        },
+        {
+          "path": "lib/agent-client.ts",
+          "sha256": "f309707b642ced31f2b44dae4f2d9016907413283ca9b2f0531ab4cc7ec1b46e"
+        },
+        {
+          "path": "lib/agent-event-transport.ts",
+          "sha256": "3e6c123f5b4fdf07eecadd4fce5cdf87b8c155fb57a8f26876fa7c34ce9db029"
+        },
+        {
+          "path": "lib/agent-phase.ts",
+          "sha256": "7b8db713d2fadaed3870ae225ec5173f0ea41bbc11932a9e890e62771921606d"
+        },
+        {
+          "path": "lib/agent-profile-store.ts",
+          "sha256": "0fc2c6e0aa9a09d9313acd4b164ec482386df1de7502247eb713d10437f189ca"
+        },
+        {
+          "path": "lib/agent-runtime-profile.ts",
+          "sha256": "329fe9d171674eea24ed20e845f4ab57e0186fdee4c782872ab708459366a398"
+        },
+        {
+          "path": "lib/agent-terminal-registry.ts",
+          "sha256": "ee8aa2c375bf530e9de800d11931d8f78bebca8f38299c08b12a31ebcfe7f238"
+        },
+        {
+          "path": "lib/agent-terminal.ts",
+          "sha256": "62416828abed1c1ee2145d562e821c482119deaddfe731b283817b27700dcfc9"
+        },
+        {
+          "path": "lib/allowed-roots.ts",
+          "sha256": "6167c8e00821b3a836178f7740a4792691147bf7ea947af9647305818673c676"
+        },
+        {
+          "path": "lib/ansi.ts",
+          "sha256": "a8ef98cb63aba0996fdd398a023cbf1eae0db1e598faa86dc73f3f9d1e644c44"
+        },
+        {
+          "path": "lib/answer-output-action.ts",
+          "sha256": "1d1b8f8b502f07bc59240b581fdb9075188e536a5dd46b94c1390bdc13459df1"
+        },
+        {
+          "path": "lib/answer-output-admission.ts",
+          "sha256": "3b37a18738894a0ab87b2ebeca53b1b64eb7f1f078a90b26143bbe46b93875d3"
+        },
+        {
+          "path": "lib/answer-output-catalog.ts",
+          "sha256": "1337093fbe8db046c1061dce35673ee1313769d0153b8351698530d627e9c68c"
+        },
+        {
+          "path": "lib/answer-output-client.ts",
+          "sha256": "6e1063ecc5655a3d5a6e65760064eee0e16786c0fcbd96f5e61bfc3e895b00a2"
+        },
+        {
+          "path": "lib/answer-output-data.ts",
+          "sha256": "17edb753809c513984bd3be0a635a6ec7e532f91179d3bc538bc01eb9ba0ff6e"
+        },
+        {
+          "path": "lib/answer-output-decision.ts",
+          "sha256": "1b8004a1e758b66cf0e79d1445008b892478005fa023cdd287e4c931b651453a"
+        },
+        {
+          "path": "lib/answer-output-generation-adapters.ts",
+          "sha256": "29eb83689b188a33e56e5d961697d425ef83584af5aaad574045a99ef75ef540"
+        },
+        {
+          "path": "lib/answer-output-generation.ts",
+          "sha256": "e411fe4bb97df29efe1009a388919e94a410b8f3e4c239de9dc887fcf8016ecb"
+        },
+        {
+          "path": "lib/answer-output-inheritance.ts",
+          "sha256": "4eb1fbf472dd6eeb361438dce29f60f2f22f208475d183e40b4d0a458bcf3097"
+        },
+        {
+          "path": "lib/answer-output-paths.ts",
+          "sha256": "b583502a47c2a018db9b0f2092ab3671a38c41806999273948ee1f4e5eb645e6"
+        },
+        {
+          "path": "lib/answer-output-persistence.ts",
+          "sha256": "8a3f5a805cc6685ed3d218b9a684cb307b28361212dfe59faa84aad06efcf68b"
+        },
+        {
+          "path": "lib/answer-output-prefix.ts",
+          "sha256": "f3d4d79afda425e20c3dcab7272229f7c394565f58d5546924403b8d657a756a"
+        },
+        {
+          "path": "lib/answer-output-preview-client.ts",
+          "sha256": "bfab384602cbe9e6a3b3456f836b7415baa8303526e2dcec21d4594efe47f24c"
+        },
+        {
+          "path": "lib/answer-output-preview.ts",
+          "sha256": "946906142ff6923ca13137bcd3e6eb6dc846b9bf5c11c1c6e585375891b38548"
+        },
+        {
+          "path": "lib/answer-output-receipts.ts",
+          "sha256": "66e28c18706835ce8f96d1cda8ae42214527c074a1200709610c23868efb2540"
+        },
+        {
+          "path": "lib/answer-output-server.ts",
+          "sha256": "b8ce4c230bdca89cd8bfc17accf5c7aee1faaddc9fc771fa8ddb48afa35e4393"
+        },
+        {
+          "path": "lib/answer-output-session.ts",
+          "sha256": "b65979e7d235cdc2e176979465094895389aa7490a463f57bd0fcd7eb6ee72e8"
+        },
+        {
+          "path": "lib/answer-output.ts",
+          "sha256": "4bae770cc62bf1afe02821a64d84df1b1a6c4d11c2e5ff64c8938ed366a36486"
+        },
+        {
+          "path": "lib/api-types.ts",
+          "sha256": "625fdea6425b6af41cd7140816a9e41a4d603653a579211ea371032fa3c76775"
+        },
+        {
+          "path": "lib/app-backup-archive.ts",
+          "sha256": "3af21bdfd7dced0757cbd041d71da79e07d93eb9304fe5d9cc9d32cd90382114"
+        },
+        {
+          "path": "lib/app-backup-client.ts",
+          "sha256": "15b37babac35749e67bb271b4f68e2b0a4fc4697e838e6955517a267eb823f78"
+        },
+        {
+          "path": "lib/app-backup.ts",
+          "sha256": "7d9c993049255a77f146ed1d52c501dbb33da5961f94ec9e2eaa3e4842eaa8d6"
+        },
+        {
+          "path": "lib/async-snapshot-cache.ts",
+          "sha256": "f33bf5e5b32e785aa55ab2c0667bde71a81d5c8f3eff5eefc731d088a14a4ccf"
+        },
+        {
+          "path": "lib/atomic-file.ts",
+          "sha256": "417552d66e73687168c7a4a1cc2594a16b3ee8e28ab2cafdbe4177b7c2107835"
+        },
+        {
+          "path": "lib/automation-runtime.ts",
+          "sha256": "9ba236ae7830039c605df2faee09d16767e154e22237d3e446883e9aea789d75"
+        },
+        {
+          "path": "lib/automation-schedule.ts",
+          "sha256": "ad43a6209c396b369ed318cda74e54fb355b647cdeb4e7d9f1a90e890f49af93"
+        },
+        {
+          "path": "lib/automation-store.ts",
+          "sha256": "3494dbfcb051f529a4ec2ea5e8d322bc9a3598662b0be84b51559f2cd03cf190"
+        },
+        {
+          "path": "lib/automation-types.ts",
+          "sha256": "359eb38ccb875053c56e2a222f5dbcbb5176976b8df69e13530f27d59d17294d"
+        },
+        {
+          "path": "lib/background-storage.ts",
+          "sha256": "611bfd526fa5c113d27f5ff0e0d47c3ac7fc25b7d7aeffa03464e0a178dbf69a"
+        },
+        {
+          "path": "lib/backgrounds.ts",
+          "sha256": "09deb160c35a833d1a86320684a76fb692e2209c77613cbb6e20ec6cfe61f78b"
+        },
+        {
+          "path": "lib/bash-output.ts",
+          "sha256": "166e16104920db3377786dc3a056d1458dea84eb912f5f775aca92d1f01b5cdf"
+        },
+        {
+          "path": "lib/beta-feature-events.ts",
+          "sha256": "b365e9591afdc38b124778b58b5244c25db543b3b2217dd049e54bc1a4432961"
+        },
+        {
+          "path": "lib/beta-feature-types.ts",
+          "sha256": "d9420adabc748ea4b77dd65d29aca576efd7c4b69ede771dcb90175ada1a668a"
+        },
+        {
+          "path": "lib/beta-features.ts",
+          "sha256": "b62881f5a6d0ceb2b4285af5d4c3665e8ee8f0b8b20aa7e884fc07a76be0bef7"
+        },
+        {
+          "path": "lib/bounded-bytes.ts",
+          "sha256": "54d2f2fab0d537f96c55db013c4e201062cfd8957836d684a5eec4bac2dd1b33"
+        },
+        {
+          "path": "lib/bounded-form-data.ts",
+          "sha256": "713a797434d92ea39803046e3f2b5e722e8b7838e95d11610a2161193bcd00dd"
+        },
+        {
+          "path": "lib/bounded-json.ts",
+          "sha256": "0b235794cfb765492224fecf8422ca7c803d4af9e70bb4bc80342c301907e5fd"
+        },
+        {
+          "path": "lib/branding.ts",
+          "sha256": "c6e076f463ebe6034bee54d8d1d01f38ea5a973c9be41a4618069c541ba4c9f5"
+        },
+        {
+          "path": "lib/browser-backend.ts",
+          "sha256": "6880f0f8b0756671139c961aa2f826dc594015350980eaff4a621804fc63d032"
+        },
+        {
+          "path": "lib/browser-follow.ts",
+          "sha256": "3013226f8d2e735acfab8de7f4dbb3bde5980b8e40638c3a527b305521e8588d"
+        },
+        {
+          "path": "lib/browser-mode.ts",
+          "sha256": "a2ab7265244ac564f60bd5b9b176b1ca8ba95a228b20657b67fdb326ece2cceb"
+        },
+        {
+          "path": "lib/browser-user-wait.ts",
+          "sha256": "b261e78db75c602200977a5e7be68ded81129b841f1d6db28b8d39bb72405758"
+        },
+        {
+          "path": "lib/browser-viewport-sync.ts",
+          "sha256": "1c1e7f6ccf09ab5ea750471d60da94502adcce38c3eab83ea77739e0794409c9"
+        },
+        {
+          "path": "lib/capability-bundles.ts",
+          "sha256": "aa12c76cb0df93bb9b93d3f258c5c133c0e7710a52d55e95a38f040bea96e83a"
+        },
+        {
+          "path": "lib/character-appearance.ts",
+          "sha256": "a9e650820387e986ab86feb710cd108792413568ce784c7897976256a2e5c850"
+        },
+        {
+          "path": "lib/character-themes.ts",
+          "sha256": "e13f5e6fa47e9459b14a7167ca9e323b06083e7cb9c8b6874d973860826106c2"
+        },
+        {
+          "path": "lib/chat-bottom-follow.ts",
+          "sha256": "470b524402beffb5a5fa885b5791474050c4927e60a2d11b9071ba619e13c323"
+        },
+        {
+          "path": "lib/chat-command-activity.ts",
+          "sha256": "64f324e1c6ffc235d4dae5211f913a63f2129d1c6b86fe7e431945314fc4d5f0"
+        },
+        {
+          "path": "lib/chat-command-events.ts",
+          "sha256": "c3d61cbf186be0083452168fd36666bc39cbdd1123785718b16c4a7de0cc187a"
+        },
+        {
+          "path": "lib/chat-command-input.ts",
+          "sha256": "37b0d1273e819341a1b7e24b93b58085fab444d284f34abf63ee1a63fcf98f60"
+        },
+        {
+          "path": "lib/chat-command-runtime.ts",
+          "sha256": "c65efe5b950cebbd2ecdd7ae05a4a6e8db9c93a5e16519248621d24dd8131a73"
+        },
+        {
+          "path": "lib/chat-command-types.ts",
+          "sha256": "3730164b6d9f160ab20503756592794a56d9a579e0db580d3832b85c64cfab74"
+        },
+        {
+          "path": "lib/chat-command-views.ts",
+          "sha256": "7e04df5290f352a8151446f527d0a535a7e2d634de19cf7c0598c479b8d9bc22"
+        },
+        {
+          "path": "lib/chat-history.ts",
+          "sha256": "95252c262d72453b4c1a925f3a5604e4fb5bc40994173ae8e61d2bb443f6dce3"
+        },
+        {
+          "path": "lib/chat-input-dispatch.ts",
+          "sha256": "35872109c4259e96f2335840a16ccb5b8dd785c8f3d2cca9bff2d1accbc0312d"
+        },
+        {
+          "path": "lib/chat-lazy-load.ts",
+          "sha256": "fa7a20259de8dddde313f8493f63a484a9f023d196db6b24a63859c414e47686"
+        },
+        {
+          "path": "lib/chat-scroll.ts",
+          "sha256": "e60a1d8dcf2100e6af62268a72fd3efc5450d5da3b18a83c30616dc0f9a3c1f2"
+        },
+        {
+          "path": "lib/clipboard.ts",
+          "sha256": "89296b5de205f6997136ad301d55e3aeffd696681dbcdf3ecf4a957fd1133b7c"
+        },
+        {
+          "path": "lib/code-intelligence-types.ts",
+          "sha256": "81be91d9eff7568b67171957f6c5a6575f6258208e26fbb3e3a8bea0789b9fa3"
+        },
+        {
+          "path": "lib/code-intelligence.ts",
+          "sha256": "9266779aad3c7abfb25f9bd79458b163b24df1e278c43684acbb2902577ab403"
+        },
+        {
+          "path": "lib/collapsible-content.ts",
+          "sha256": "ac6b0718ce626ee0cda72078208e62180716de72ecdff6b75b23a1f33d8896a6"
+        },
+        {
+          "path": "lib/command-execution.ts",
+          "sha256": "b32fd3c952036bb1302fafc58ecf8c660ab136b73b2350b747d9c3dc84a90b80"
+        },
+        {
+          "path": "lib/command-history.ts",
+          "sha256": "53024e0306e2506a8e4485e97922d02c36b317a9e3bd9c75cc4aab80c8a3b45c"
+        },
+        {
+          "path": "lib/commands.ts",
+          "sha256": "42ca1032af5b2d440a699646672059c7f2d840d6ca3df42d9f185e08776c5bb6"
+        },
+        {
+          "path": "lib/compact-chat-history.ts",
+          "sha256": "c9e6fed1ba47baa4bc36fdaea240b65e21bbee07be0f003739c591f7ef11ddd9"
+        },
+        {
+          "path": "lib/compact-process-preference.ts",
+          "sha256": "e47dc324da3ade225b53e7a50898c55a1d5316f9245db3bb5de0e12709498c46"
+        },
+        {
+          "path": "lib/compaction-settings.ts",
+          "sha256": "1d8938d852cd13dd3a09b488c5fe05f6d88f5bebe85263e4482a44ad3ecacb19"
+        },
+        {
+          "path": "lib/compaction-summary.ts",
+          "sha256": "bac9b55ba17b4e26a1c0b4ab9c515b63ee9352d1d2e5f14e0fbef4934071a622"
+        },
+        {
+          "path": "lib/companion-behavior.ts",
+          "sha256": "4860590eaf737f36c631c914ffbe32d98b0b697b0a74512fdf43a49fde968c59"
+        },
+        {
+          "path": "lib/companion-blink.ts",
+          "sha256": "a2ae8f30f2c8257d12d7b98ccb0e086426f9941e7e2ad228d2f9d1718079f90a"
+        },
+        {
+          "path": "lib/companion-expression.ts",
+          "sha256": "e578fd2f2e96f41bb7fea1c30ca11403afaa834c5c5c2cb894e7ecd3a85b7a5c"
+        },
+        {
+          "path": "lib/companion-focus-reminder.ts",
+          "sha256": "c05949c36921e351dae729be984ee60b6c1ff1d46c00934e8fef6c1d04a7a098"
+        },
+        {
+          "path": "lib/companion-focus-timer.ts",
+          "sha256": "332bf24b1406529ea59dee4f64f4ea85f93a387d8b2e3997fe8f413897c85af8"
+        },
+        {
+          "path": "lib/companion-hit-region.ts",
+          "sha256": "b5ee175cb6bc0881d67616d7f0b7f93c06a0747f7e06675b6910b9346fa943ae"
+        },
+        {
+          "path": "lib/companion-interaction.ts",
+          "sha256": "3a1878961f63cb69c788d1934099446c0cfcea630410bce91d6b915633ab7a39"
+        },
+        {
+          "path": "lib/companion-models.ts",
+          "sha256": "2e1cbe0630a4eddee2fbc015d65b18808a8c92f4485f3075b0b332a0661eb10f"
+        },
+        {
+          "path": "lib/companion-pets.ts",
+          "sha256": "a1659eb7c9c5fc5e9cc83cbb27f00bbee89d548d33ed46447b8cadc0ded28744"
+        },
+        {
+          "path": "lib/companion-preference-sync.ts",
+          "sha256": "54d8a8ccbe77b30180883abceddc012705566b8a9fd94800d09d5da2bd8f17aa"
+        },
+        {
+          "path": "lib/companion-runtime-client.ts",
+          "sha256": "90fce12e5dd710e00ef72b9d25d3a0e29dfe23bbdadbba9a5ea4a97679ee3889"
+        },
+        {
+          "path": "lib/companion-runtime.ts",
+          "sha256": "2e527631c50be0eb33bddcef44299948809a01a34f268e2b16878ef085739df6"
+        },
+        {
+          "path": "lib/companion-storage.ts",
+          "sha256": "b8c9c30477e8ab4ae78ea30bf44a5e45ac046078006080cf330c42092a581342"
+        },
+        {
+          "path": "lib/companion-store.ts",
+          "sha256": "684175105942e5281965b23e098b15b4cf809a71c8be04e04c407a34c7b70238"
+        },
+        {
+          "path": "lib/companion-task-capture.ts",
+          "sha256": "a46b8afde1301c3d1a9b1ab3343af55035747a5d34d2cc2225cb1f4e66be59d7"
+        },
+        {
+          "path": "lib/companion-todo-reminder.ts",
+          "sha256": "e14558a46230d9311642ad9517ace3cbd179ee6301835b799f077aef37c8f667"
+        },
+        {
+          "path": "lib/companion-wander.ts",
+          "sha256": "9feb28e5578b03fd66400b6419d1eee3b7971590cb81a1633195ffa9688be4fc"
+        },
+        {
+          "path": "lib/companion.ts",
+          "sha256": "120962d78c0dff46b07e2e4b25897d7e201e4dec938cb9ab857f70c3478405fc"
+        },
+        {
+          "path": "lib/computer-control.ts",
+          "sha256": "28672d3af30a615e6c559c1999e65676bc9ccd7dc49556d63e137225551f986a"
+        },
+        {
+          "path": "lib/context-usage.ts",
+          "sha256": "9a4b5ab686cb0dd7ee25e14fc88b67b84ee2625759ecdbc76311bdede83e166f"
+        },
+        {
+          "path": "lib/conversation-search-filter.ts",
+          "sha256": "c76a5bc00ef0a7ebfe06e4c5bf82804c05496428f5eb7e5ba7b66a7f97efb99f"
+        },
+        {
+          "path": "lib/conversation-search.ts",
+          "sha256": "cbe0d2a6e8851a4c89b0e28f5ad3c4a4afb36e6beb3ef16d3ae778acb460e98a"
+        },
+        {
+          "path": "lib/custom-ui-terminal.ts",
+          "sha256": "cd56d3bb156c2e3522069cf59641aef1db855b0c78baa04bda2937cf012162a5"
+        },
+        {
+          "path": "lib/desktop-browser-agent.ts",
+          "sha256": "06103e5aab85aca92189dc26b64eb6559516b65f20ef6be4814a72c54a12d141"
+        },
+        {
+          "path": "lib/desktop-clipboard-backup.ts",
+          "sha256": "47231d1ac7dc3b65f632c40b0d28daf3a35c86851f50b9bd62195c75bbb49f54"
+        },
+        {
+          "path": "lib/desktop-network-proxy.ts",
+          "sha256": "48875fadff77b7d6baf4aac9b300413776bdc12ba8fd6e0d31f502a017daa186"
+        },
+        {
+          "path": "lib/diff-parse.ts",
+          "sha256": "20da3945a4b011a0f1a9058b50181df33317c3fce83655075204cdc3275c2b74"
+        },
+        {
+          "path": "lib/diff-progressive.ts",
+          "sha256": "108d8331f4c79135f849fec48ce515eaab7693aa152293f6ed354071b9bc972c"
+        },
+        {
+          "path": "lib/directory-browser.ts",
+          "sha256": "8fa812a1325208a3f7ce64339002f6dd7de527a2599edf9ce3ae7d7913d3d192"
+        },
+        {
+          "path": "lib/draft-store.ts",
+          "sha256": "23de9f46313301265aff52c3523fedfbe869a300b940837d113807277470e6a7"
+        },
+        {
+          "path": "lib/editor-search-panel.ts",
+          "sha256": "d4c172317ed436accb648bb2eb0c7f8ca7ebbac4cca954fcdb30b14daa555f45"
+        },
+        {
+          "path": "lib/extension-config.ts",
+          "sha256": "42d889a36f30665091eb51c8dccf5af5a48bc4b2fc58d3354a6b1b09f564ba8b"
+        },
+        {
+          "path": "lib/file-access.ts",
+          "sha256": "94026526a6b7c345e2b6935dc2aaae3377500b8c1bef9dadc15acf45f7059b70"
+        },
+        {
+          "path": "lib/file-attachments.ts",
+          "sha256": "068209604e95bd4798120abcfb88f545725b3eac51c46c8722a1289990c59209"
+        },
+        {
+          "path": "lib/file-change-navigation.ts",
+          "sha256": "1df41b11a72c43a066a868975ab9173233287d14551528c75ac4b6fe8dd3379f"
+        },
+        {
+          "path": "lib/file-change.ts",
+          "sha256": "2e209c303ee79286bdce8938b5ef13efa189103ba5426041bbcb486af996a5dc"
+        },
+        {
+          "path": "lib/file-dirent.ts",
+          "sha256": "d151b614b99bdaa6aa37820da4c8b8a685190c139d5e371a46f7f57af3d5c5fe"
+        },
+        {
+          "path": "lib/file-editor-line-changes.ts",
+          "sha256": "bf5980760be9d77db984e90a580adedf9d556cfb95b97307f9efea2e3cc446c1"
+        },
+        {
+          "path": "lib/file-editor.ts",
+          "sha256": "59edf40e690cfe40dd7aaf194fb2ba19aee90a532489e66d0df563f775b54c38"
+        },
+        {
+          "path": "lib/file-fuzzy.ts",
+          "sha256": "cc044b56b52e91496f7d744641415c920b2ddb84378b6ab39061726ae4ba51b3"
+        },
+        {
+          "path": "lib/file-index-client.ts",
+          "sha256": "b4425a0c2723008415e745c56ae5ff05a07cfb37837148d8b0757ca016009f57"
+        },
+        {
+          "path": "lib/file-link-click.ts",
+          "sha256": "e72bbdb485eb638931494fa80fcbe60dfa90d680709d4b0fdb5350ec491a1382"
+        },
+        {
+          "path": "lib/file-links.ts",
+          "sha256": "79fa41ba9df7be60c498b31eeaef4fff31781b0b2935f58b43bb38cae1e6d301"
+        },
+        {
+          "path": "lib/file-paths.ts",
+          "sha256": "d617af45f7db192d945e4308fa2cdcaff1aaafbd9a6f2a299dc5b207df95fe6d"
+        },
+        {
+          "path": "lib/file-tabs.ts",
+          "sha256": "a55f411abd291f3f52d1a5c48a39fd86ace6de8fcfb2136ae3fb7dde34677590"
+        },
+        {
+          "path": "lib/file-tool-guidance.ts",
+          "sha256": "6f14bd2ff12e26675881f846ec846131c50c5358f0e40757be5751b6aab5e250"
+        },
+        {
+          "path": "lib/file-tool-result.ts",
+          "sha256": "42494b5b2f5d28cd4e1b739aba61c5c76bc648db4199d576a6c2aada3fa752e6"
+        },
+        {
+          "path": "lib/file-types.ts",
+          "sha256": "7eefef4235d22dafe3cd474d6a78a8cb28ca080793b4b696863ecd7569266b8a"
+        },
+        {
+          "path": "lib/file-upload.ts",
+          "sha256": "a3a68f98bde91d27c2ef2e486ca4c439ee25bf1e3def988bf5bb744a1c3bd072"
+        },
+        {
+          "path": "lib/first-party-extensions.ts",
+          "sha256": "e9d0c69cc1c2a86c7c68f7db5d77fdff866bc2bd113fe970286b96ca55bcfcd2"
+        },
+        {
+          "path": "lib/first-run-onboarding.ts",
+          "sha256": "b99522cb30b60294330b94a2a29fb76be9ad3ce5b38003874987fc4243b05be5"
+        },
+        {
+          "path": "lib/font-preferences.ts",
+          "sha256": "0dedd3b9f25a3642342d704e08f1a524f0469f7b4f786d850abb01f5b6d911cb"
+        },
+        {
+          "path": "lib/git-accounts.ts",
+          "sha256": "e6ecf8ca464a65007b08d4656a175edd2fa003c64e2897a2632204b536b3bbab"
+        },
+        {
+          "path": "lib/git-branches.ts",
+          "sha256": "bf17475919ad855309c9d019e93cd21d4a95d84714ac6ee0be95057b0d3bf5fe"
+        },
+        {
+          "path": "lib/git-changes.ts",
+          "sha256": "b625c2cb7d5a4526fee400504012a0ea9f8a95d7ce2be0287c675375542aa35f"
+        },
+        {
+          "path": "lib/git-hosting.ts",
+          "sha256": "864f9e27c5ea531413ddfddb32df69f0cdcb6a90d8b6b98000a214654f068da0"
+        },
+        {
+          "path": "lib/git-line-stats.ts",
+          "sha256": "10297c4dae90a3cc736c34a64c9c18804ec51ab6f4198be8c8f19b651be9af37"
+        },
+        {
+          "path": "lib/git-publish-operations.ts",
+          "sha256": "861f2a2df461365fd500b6b0ccb6fadde88735952df22b1c7a4fd89f4d8a68c7"
+        },
+        {
+          "path": "lib/git-remotes.ts",
+          "sha256": "93f8450df3582259cf1f32177fd965642e10ad26e2713758a24ecc8b69b24b66"
+        },
+        {
+          "path": "lib/git-status-cache.ts",
+          "sha256": "1c49b685e13eff8c3aac5a34f5ea1918126d5ee7f4cd61d502b1c90bf56ba22b"
+        },
+        {
+          "path": "lib/git-status-client.ts",
+          "sha256": "b88fa322e34d96984097d9d098c3c2c398bbde24ddbf9b2d03d11f5415f65a90"
+        },
+        {
+          "path": "lib/git-status.ts",
+          "sha256": "fec180338b69e20123cba44b86c01a2126b1916889868c3bf4e79b9eea202628"
+        },
+        {
+          "path": "lib/git-sync.ts",
+          "sha256": "dff6b0671948bcc76a92c6af51236e4d211797662371905abd3486aa36835548"
+        },
+        {
+          "path": "lib/git-types.ts",
+          "sha256": "edd6bdd7cb13455e5a46bfe3b10f4bb28cdad00a272e9ba93ce0a0d3f4742e33"
+        },
+        {
+          "path": "lib/git-write.ts",
+          "sha256": "b97bc3751f1a59be9d23e9ce3ad470929a4ee14917b9ddcce9ae252f3806126b"
+        },
+        {
+          "path": "lib/global-model-services.ts",
+          "sha256": "538bea6d1c3d91d416fce2e097fef04b16efddfd8b03278bcd64c34e3a79cb55"
+        },
+        {
+          "path": "lib/history-navigation.ts",
+          "sha256": "08a00a1b96fd3e538a21c8196c763b8e5a651c780bc545e4a2a08899f2681c12"
+        },
+        {
+          "path": "lib/html-to-markdown.ts",
+          "sha256": "29e0f2a1883b33112fe0a07b2019a5e5026a06a1960670f357a44b4a09a18900"
+        },
+        {
+          "path": "lib/http-dispatcher.ts",
+          "sha256": "c038b8f35bfab9e1db003e7f63a0aa85438c6701b59f6819123a9b0e7ba990fd"
+        },
+        {
+          "path": "lib/hunk-patch.ts",
+          "sha256": "53a8feb1acbd4f28a71a5695bf50e658b4c1debf865a3259545d6a4253c27fe1"
+        },
+        {
+          "path": "lib/image-attachments.ts",
+          "sha256": "7671f5b850b4b830d1549192692c9dfdf1819bf6e319ac4281b6e8a9f3884deb"
+        },
+        {
+          "path": "lib/image-context.ts",
+          "sha256": "9ceba1d327295cbfbeefb113a2335092c77719b38f80a10fd95ae0e5cdc8499c"
+        },
+        {
+          "path": "lib/initial-navigation.ts",
+          "sha256": "f7cf62ae9d5d4c62754b6bac2f8267b0a886d4a0b333c00935b73e3d612817d7"
+        },
+        {
+          "path": "lib/intelligent-ui/action-contract.ts",
+          "sha256": "8e05a9f4cdcf99f5bbc47c376fb93212bb1579a507c92c9464cd0e842f5116ab"
+        },
+        {
+          "path": "lib/intelligent-ui/action-description.ts",
+          "sha256": "6f00bc00e5154360fc5f331afbfb4b95e8f44fe075fd5ff46070cd821e5880af"
+        },
+        {
+          "path": "lib/intelligent-ui/action-feedback.ts",
+          "sha256": "e7fcbd611100bf47b520b86c0c40f9cc0fa79218f29837c7c621bfdc24e67d22"
+        },
+        {
+          "path": "lib/intelligent-ui/action-files.ts",
+          "sha256": "87e1980e2b58b29551a95babd6c77f12365d3d427f690eb2120f9e48bc8c387b"
+        },
+        {
+          "path": "lib/intelligent-ui/action-operation.ts",
+          "sha256": "faca4cab3c723a305f6bcdc9612e0061000550e294509abc072c036b5c4b7af5"
+        },
+        {
+          "path": "lib/intelligent-ui/action-runtime.ts",
+          "sha256": "ca81f1ca82ffefb74fc28f448d9a15916f5b4479e95c7879bd1db66a8f37513c"
+        },
+        {
+          "path": "lib/intelligent-ui/action-service.ts",
+          "sha256": "eaa51422a39d108c8b09aaca44d879f121ce979ac7a25ba771082389479f4c4f"
+        },
+        {
+          "path": "lib/intelligent-ui/admission.ts",
+          "sha256": "5b0cf0510c8bab747292d058ee06e6415b795531d40d85e7b2759a2eaba332ac"
+        },
+        {
+          "path": "lib/intelligent-ui/answer-output-adapter.ts",
+          "sha256": "b91a34a5f7162a84a56622ddbece7c38a547a057b3ea9cba00b0231af9357930"
+        },
+        {
+          "path": "lib/intelligent-ui/confirm-migration.ts",
+          "sha256": "7f91f8b67f62cc0bc4efec21f3dda0d59d35ee95e57d4d30623aa5971c847f20"
+        },
+        {
+          "path": "lib/intelligent-ui/decision-context.ts",
+          "sha256": "8df1e154fb529f97f979e8b89fd26c14cb35f055fc8c5a6ae75404bd4bedb670"
+        },
+        {
+          "path": "lib/intelligent-ui/decision-policy.ts",
+          "sha256": "ed7b9b21ada35147254fb183528e2752d9e958c4a0fde68f6c039e73eaaf8cb5"
+        },
+        {
+          "path": "lib/intelligent-ui/draft-migration.ts",
+          "sha256": "fabd2dee0b480019dc810f30b9ac87435e582b444aca768666e717f0c694843d"
+        },
+        {
+          "path": "lib/intelligent-ui/generation-journal.ts",
+          "sha256": "a67409a2d8b3095ccb0ab3e70bca5ec59dbb9ea4ed1fbaa409169fd068f5b1ff"
+        },
+        {
+          "path": "lib/intelligent-ui/generation-runtime.ts",
+          "sha256": "1f40e947df4a5bf6d4b11b6783a0682ab961aa1f74209b05b8239d1e888d3c40"
+        },
+        {
+          "path": "lib/intelligent-ui/input-protocol.ts",
+          "sha256": "4fe34f9b2aa3a089d97ca579e0019e4f44429c086763753903c29f3e3cd9c453"
+        },
+        {
+          "path": "lib/intelligent-ui/migration-authorization.ts",
+          "sha256": "3c5b0290136f84c6b895f35857a40ecbba03aaaf372b880d019df6a3fcd61019"
+        },
+        {
+          "path": "lib/intelligent-ui/plan-admission.ts",
+          "sha256": "77dd9ccc9bbde3af7fd7e8ae5ac10d956a0137e5b3b05cf9280f89a4e4eeb5da"
+        },
+        {
+          "path": "lib/intelligent-ui/plan-schema.ts",
+          "sha256": "e5bc43bbe47f4f1a277027012a6a615a2ff2dd1f82e109378f02fc688c1dba74"
+        },
+        {
+          "path": "lib/intelligent-ui/plan-types.ts",
+          "sha256": "838c77e768d7f215a3fcbb3b8a55f034f1e3ff40b01f3944a63ebe4c72718acc"
+        },
+        {
+          "path": "lib/intelligent-ui/plan.ts",
+          "sha256": "657c24b02680c8f60be1406e4354ee5a6434ef7f8b7fd039823a31e8d36eb9dd"
+        },
+        {
+          "path": "lib/intelligent-ui/plan2-expressions.ts",
+          "sha256": "3a4d5b405ca479f28e54c1a7a2c4a40f29ed82a404eb65f71c96fbe2c2e2dc4f"
+        },
+        {
+          "path": "lib/intelligent-ui/preview-parser.ts",
+          "sha256": "8cd589772070815745d33c3568f254b1fbb3df0b29fca5f0c8b23e162f7ee9f5"
+        },
+        {
+          "path": "lib/intelligent-ui/preview-plan.ts",
+          "sha256": "079235d107dcb7f2311ab7bd347b565f5dddd8b7b3dc07f0635c566bb8ccb682"
+        },
+        {
+          "path": "lib/intelligent-ui/preview-runtime.ts",
+          "sha256": "99f1a9a9ad8b7e7f39c9835540347f11ac0f41ac459da114b4eb532d68c4f047"
+        },
+        {
+          "path": "lib/intelligent-ui/protocol.ts",
+          "sha256": "200289cd52ed51f06382ca00bfb3c7e26028813b86b5109574ff48a2334cee69"
+        },
+        {
+          "path": "lib/intelligent-ui/read-output.ts",
+          "sha256": "a22493e87fd39646b3539066289c1f6ae72d1162d059b90c5c304cb56b1c9095"
+        },
+        {
+          "path": "lib/intelligent-ui/rich-plan-schema.ts",
+          "sha256": "3e67b87bb6daa7f3335bdbe618a3f5b92ff3b4382c28f64d8f8b1b61b6e23eec"
+        },
+        {
+          "path": "lib/intelligent-ui/rich-plan.ts",
+          "sha256": "ab4eb0630bf75b169af13ca77e1079a8c363e1c7704928b0ed08121b7952b32b"
+        },
+        {
+          "path": "lib/intelligent-ui/rich-protocol.ts",
+          "sha256": "2473f2c74313dd383706a958e6abbb38465c5b06448e99b5d9dfc7bf6012acec"
+        },
+        {
+          "path": "lib/intelligent-ui/session-lock.ts",
+          "sha256": "af3d4b5dcf7b205a9e884b8453a725eab99941cf7633d8f4e48e769c61d31807"
+        },
+        {
+          "path": "lib/intelligent-ui/session.ts",
+          "sha256": "3efb1299d7aea9eebc7ab02d2a7c18c910765217f7451b4368f6fd5e9b32e445"
+        },
+        {
+          "path": "lib/intelligent-ui/store.ts",
+          "sha256": "db8cb4ca207980415407f5fb0dbddabb1111660e8811f1d5fc29bffe9288d04c"
+        },
+        {
+          "path": "lib/intelligent-ui/structure-migration.ts",
+          "sha256": "64159ab02c7621f879f91a4d7953dd5bf20b3ff8b70a2fd8ee9b63b3bab39066"
+        },
+        {
+          "path": "lib/intelligent-ui/surface-diagnostic.ts",
+          "sha256": "f614fefaa0f1093571e4987304fd66aad483734d9d9a337d832f4cd3b78cbc3e"
+        },
+        {
+          "path": "lib/intelligent-ui/surface-document.ts",
+          "sha256": "2d725b97edf25aef9022c670212a757d4fd9ff679574bf6899129cb8ac33f0bb"
+        },
+        {
+          "path": "lib/intelligent-ui/write-output.ts",
+          "sha256": "62f38d7342d3a8bb6c84fbb55cf4d5af4c1d5f3209d2488ed31bc111c28773b7"
+        },
+        {
+          "path": "lib/interface-transparency.ts",
+          "sha256": "09f560786c0fb84e400971cda8562e9ad3577e6ff960d2f48ecc26e832bb15d5"
+        },
+        {
+          "path": "lib/json-workbench.ts",
+          "sha256": "edf64e544be06208d51c04498a5337dbc339f7b60840c2e747f971cacca64904"
+        },
+        {
+          "path": "lib/json-workspace-storage.ts",
+          "sha256": "70dd1ce361f4a35cc79f148cd7b4e924d04a1b460fbd2f6527d61c32c5183430"
+        },
+        {
+          "path": "lib/keyboard-shortcuts.ts",
+          "sha256": "c173126e08e37e81f17017adca22c0568cf4859f1392f7bf4fe51944c7e1e220"
+        },
+        {
+          "path": "lib/live-dictation.ts",
+          "sha256": "fad55dc700435593520a78fdab3ebf448f56256321144744f419b591fa520c38"
+        },
+        {
+          "path": "lib/live-output-auto-scroll.ts",
+          "sha256": "7db507c37164a7c25c2acbe0fd713affc2003b7806afd63c3f87ab5baea07fa4"
+        },
+        {
+          "path": "lib/markdown-draft.ts",
+          "sha256": "6cf03fa87bfebf749ca8d4461f2d17a74a1a709006a4ceccb1f3ef21e9b52fbc"
+        },
+        {
+          "path": "lib/markdown-editor-commands.ts",
+          "sha256": "9522fa6dc541df6e8f2350822de8ecca3ee5272423dca50fd6a1fa73faeab402"
+        },
+        {
+          "path": "lib/markdown-emphasis.ts",
+          "sha256": "701cd3f22edf90ba10a137efb7368711ca9f73de082b698737b280e24534fac6"
+        },
+        {
+          "path": "lib/markdown-export.ts",
+          "sha256": "43bfbda1fcfdd98cf57267e49456d1f948482550358fdc47c34a5f8af112d142"
+        },
+        {
+          "path": "lib/markdown-outline.ts",
+          "sha256": "612aa3d631f370d42e6527d2292f38d8bb3979b542f5264a035d1fe39b3dae4f"
+        },
+        {
+          "path": "lib/markdown.ts",
+          "sha256": "b5e9a449ea8af404b36fe21d87d4b3c162886fce2c27383f2bca533953a82f7a"
+        },
+        {
+          "path": "lib/mcp-capabilities.ts",
+          "sha256": "1f4b4430bd3ecea6ea319d59ce59e0baa59c52427731ebb4607ebbd879d03ff1"
+        },
+        {
+          "path": "lib/mermaid-preview.ts",
+          "sha256": "b7ef81986a4f9010756d7bac8c4b52d605d65065d8dc5b91a9d5df8ddc960060"
+        },
+        {
+          "path": "lib/message-display.ts",
+          "sha256": "f47bf61d7c03641c69c799a474c208063ecd5e9c19e372b5234d3914c4b3e6bf"
+        },
+        {
+          "path": "lib/message-images.ts",
+          "sha256": "756e318de8095cfd12c6ba56d83bb84330d950cba1c4aed1f3ff35220808a132"
+        },
+        {
+          "path": "lib/message-retry.ts",
+          "sha256": "f302815b9f1cd2058c993d01bb0633ecbb5bcaccc9c04e3ff3ca8ae41b4a6e60"
+        },
+        {
+          "path": "lib/mini-app/answer-output-adapter.ts",
+          "sha256": "ac3a2900ea890a00da86e5f445fd04e5a43d535e518e7c797fd60a6461152399"
+        },
+        {
+          "path": "lib/mini-app/appearance.ts",
+          "sha256": "e67ebb0d8ca2132da8507b31bb409be5c9f7360cae16e8a73ec6446fcdc60919"
+        },
+        {
+          "path": "lib/mini-app/client-cache.ts",
+          "sha256": "a3b8cd3606a4ce246b2e493a84b9b1cdbda64e4d52aafd6fc1d847cef0cadf24"
+        },
+        {
+          "path": "lib/mini-app/client-protocol.ts",
+          "sha256": "0febff03ef3dd8267fafffbe804b5e5af4b0b77bb03764a42afd1e0021ca72e9"
+        },
+        {
+          "path": "lib/mini-app/client-state.ts",
+          "sha256": "fe6a0fe37057cac54f6f4e91c76ed48aeb94e86f50dc2f18622203fbe7afcb1f"
+        },
+        {
+          "path": "lib/mini-app/controller.ts",
+          "sha256": "a61932f729fb90fb10ed38b2259ea0801f58c92c748f4232a5d48bcc6d3661df"
+        },
+        {
+          "path": "lib/mini-app/decision-policy.ts",
+          "sha256": "674fcd06d7d44acee16a7f09171a7de99f29aeb1caff5fe45905d2c50bdde4b7"
+        },
+        {
+          "path": "lib/mini-app/diagnostic.ts",
+          "sha256": "5f6f31e3562318a20345d9503376ea46d55f3fa0fc90d92a566f6178e6292acc"
+        },
+        {
+          "path": "lib/mini-app/document-capabilities.ts",
+          "sha256": "2ca121f39ccab2ea0d13cc983239788b94532484626ecab0b8d67267df7659e3"
+        },
+        {
+          "path": "lib/mini-app/document.ts",
+          "sha256": "fb5a8804aa162d5e2bdba586b5395361e548f281212f4cd0ea2fc30c0191a75e"
+        },
+        {
+          "path": "lib/mini-app/drafts.ts",
+          "sha256": "df419e905c611ba9795b911ee130ad1b9c3cfcc955610fed5b87f6ad269807ad"
+        },
+        {
+          "path": "lib/mini-app/events.ts",
+          "sha256": "b865e71f2a2b0b9e4cb782f332f0b2f5c05aae729708f6c2e0a770ba28e699c5"
+        },
+        {
+          "path": "lib/mini-app/frame-host.ts",
+          "sha256": "f476076ed0138a7f0066ed09302d76a6088f18c50ba63b680b1c7335b74051ca"
+        },
+        {
+          "path": "lib/mini-app/frame.ts",
+          "sha256": "dbfabe674b8f68d2e57d990c0c459517ea394e69bc3ffb9086bd7e00b24eb485"
+        },
+        {
+          "path": "lib/mini-app/generation-runtime.ts",
+          "sha256": "2a4c2ebb3693907d6628aa20742d9cc2a30cf9ee1aefd1e4703d4b668a71e2cb"
+        },
+        {
+          "path": "lib/mini-app/guest-runtime.ts",
+          "sha256": "5238a3bb69e85a05310e5ad4ca59b667235df446697b5c30a34405bd9f6b40fd"
+        },
+        {
+          "path": "lib/mini-app/journal.ts",
+          "sha256": "c5a82dfdebdada7e34360fe08058cf1afc480c94a2d097c85a1440e73b8cb472"
+        },
+        {
+          "path": "lib/mini-app/json.ts",
+          "sha256": "d69be1140f8da80559da63f5d5a98f893105c667869f0aa6da3ef6bff81b5144"
+        },
+        {
+          "path": "lib/mini-app/limits.ts",
+          "sha256": "0fce0e3b30c907799e49826498f80ec3897626f04175313b10b303fef609886d"
+        },
+        {
+          "path": "lib/mini-app/plan-admission.ts",
+          "sha256": "13cf1b80dede49139b9052a27702814d40401afc1a81e708a1abb3be9ed92942"
+        },
+        {
+          "path": "lib/mini-app/plan-schema.ts",
+          "sha256": "774b66f36555793051bc1467f5c37c542950944dd3863b38d531f264fbee4d4d"
+        },
+        {
+          "path": "lib/mini-app/plan.ts",
+          "sha256": "fc70f0b04b51b962e1804d7add7ac555a3e756e2639ea1d49037c6e9a8acbd72"
+        },
+        {
+          "path": "lib/mini-app/playback.ts",
+          "sha256": "3e920c2e69cc74852ff2f14c39aecfda3a5f54bd3afa48febb57591c4f833d78"
+        },
+        {
+          "path": "lib/mini-app/preview-runtime.ts",
+          "sha256": "03566567a55c06d87c5fc89553cbd8d565ac01130d4ee234bed62a0e96138818"
+        },
+        {
+          "path": "lib/mini-app/preview.ts",
+          "sha256": "88805df0a1d0de380ef169edbabee1707035b3bd4ada9e63e713d0750f75bfd7"
+        },
+        {
+          "path": "lib/mini-app/program.ts",
+          "sha256": "6ac89678b09f1f6f793dacda82519ac20134780361559cb82717431a25cce071"
+        },
+        {
+          "path": "lib/mini-app/renderer-runtime.ts",
+          "sha256": "58de6348047af4d6cf85712bf6fa65608c71edb39c0108446552ec6c5718c4a6"
+        },
+        {
+          "path": "lib/mini-app/resource.ts",
+          "sha256": "00d4664874afa6df0349302aaed10c09613d3b71dfdfb29caae0a5e8db65d40a"
+        },
+        {
+          "path": "lib/mini-app/runtime-worker.ts",
+          "sha256": "6f49896bced8f7ba74433ed76e6f3f26f23aff5ac9a2ed63450a00aadf8220a8"
+        },
+        {
+          "path": "lib/mini-app/server-trial.ts",
+          "sha256": "56a052a5033369eed98698018b36f54cb69da100cf0f79985541d3b1b3c8b697"
+        },
+        {
+          "path": "lib/mini-app/server-worker.ts",
+          "sha256": "0ee1bde167836250766600ca1d2e395e36f030c2f4f2418d916189b5e353f5b6"
+        },
+        {
+          "path": "lib/mini-app/state-schema.ts",
+          "sha256": "94b387681dd216ac9cbc2a438d964cf1b2d7309bec4a7ab61cbeaeae00b62c3b"
+        },
+        {
+          "path": "lib/mini-app/state-service.ts",
+          "sha256": "da026a78903116a7cddc92dd0254bfe8b707132c7b5cf26c51fe715e0bdb4ef2"
+        },
+        {
+          "path": "lib/mini-app/state-store.ts",
+          "sha256": "660cc4d99d3d202c52d3bfff59d83fe4ab2aae53e0fb3efcf4b5ff206259d74b"
+        },
+        {
+          "path": "lib/mini-app/vm.ts",
+          "sha256": "f0e68471fbc54e7f80a76c6a5811d203577743e98fd42c35ed121eac69daaad6"
+        },
+        {
+          "path": "lib/mini-app/wasm-memory.ts",
+          "sha256": "94d56a06bc211f92d5640e62389537e5f40a213fec0ce7896effdfc52a03b75e"
+        },
+        {
+          "path": "lib/mini-app/worker-client.ts",
+          "sha256": "11aa766813b450dfdfa0cb156e877c26971201ecfb27ec93e98a6f75749dc5bb"
+        },
+        {
+          "path": "lib/minimap-position.ts",
+          "sha256": "c3ab299e6f8afd06e90eacbcfa33ea499a0923a6c5a142587a2e0bded6157a5a"
+        },
+        {
+          "path": "lib/model-capabilities.ts",
+          "sha256": "7a77ab57428d527c1ce6ae8574a66dff408e0db294760c884e0ec42d671a8014"
+        },
+        {
+          "path": "lib/model-catalog-client.ts",
+          "sha256": "b66ff67226dd4ab9270a8b84a216e8183896f053ef7172236d5b95e65a8ffbe3"
+        },
+        {
+          "path": "lib/model-catalog.ts",
+          "sha256": "5aaaea1fea7e6eb8706c231855602452702fc02311a61a2d38b8c19ae05a37d1"
+        },
+        {
+          "path": "lib/model-change-coordinator.ts",
+          "sha256": "00f31f8b9ab40db6f3e9485dce450a8e715675c2e26d06b5d322052c591c6356"
+        },
+        {
+          "path": "lib/model-config-cost.ts",
+          "sha256": "0cb024c159ad851c29a9facbef26e8a3e8f01b89a1313bcc157ca113ce0ff495"
+        },
+        {
+          "path": "lib/model-discovery-auth.ts",
+          "sha256": "13bfe91e4e57a4f326ead5d165d46c48a2a3cad3a3b48b9d2d920cee96e48445"
+        },
+        {
+          "path": "lib/model-discovery.ts",
+          "sha256": "2cca0e58560f3fa037091ea555663fab96ef12b5e092938dfbb862cf9c746153"
+        },
+        {
+          "path": "lib/model-error-message.ts",
+          "sha256": "bb10e0ea3cf9df2320b99e3f4b404e16841f2b65a53de3350c10a638d13ae433"
+        },
+        {
+          "path": "lib/model-fallback-config.ts",
+          "sha256": "57dbe09602a07e47b61a2ac5ac1ff984ac9e1412d98b93f5da88c3174aa087ff"
+        },
+        {
+          "path": "lib/model-fallback.ts",
+          "sha256": "aabbcf22a3e2f629e666f6981783a0a87300002df68ef2bcc590e18223e23b84"
+        },
+        {
+          "path": "lib/model-image-context.ts",
+          "sha256": "a8021dfd46476599375a646f06ae69302e9825fc3700d0992bc8b0892e873a87"
+        },
+        {
+          "path": "lib/model-limits.ts",
+          "sha256": "2f81378006cbd497544658befc0ec4cfb31d980f758751d9cc3253c05894e6c9"
+        },
+        {
+          "path": "lib/model-policy.ts",
+          "sha256": "0443f3b4a164a329ece3a090e72b0664bc11fff4884057108a6419bc5226e33d"
+        },
+        {
+          "path": "lib/model-runtime-context.ts",
+          "sha256": "c5132071793e43570004d64ec7200ee3f769fe8e96aa1ff0192d35c1403f5f4c"
+        },
+        {
+          "path": "lib/model-sampling.ts",
+          "sha256": "1619ee3dd03d3ce97c188f4b065816019719e4559e01468b535415eb9477c444"
+        },
+        {
+          "path": "lib/model-scope-settings.ts",
+          "sha256": "be52cd5a04ba35878244d6344233d6b5e1b4f85e7839ce1f516bb7697a9ce22b"
+        },
+        {
+          "path": "lib/model-scope.ts",
+          "sha256": "09972c74c5b35f39b3cc7e1fc477a7e01eeab967086d8efa8e373d7047d18b80"
+        },
+        {
+          "path": "lib/model-stall-guard.ts",
+          "sha256": "9bf63c53fad92886451a5d49a13dbd68f7604cfb45271ede8c222a0e486dd8dd"
+        },
+        {
+          "path": "lib/models-cache.ts",
+          "sha256": "483bff59f082eacb5ddf2b9012e703d25ca421abb3d23c1f3fc3dc0c8760f6bf"
+        },
+        {
+          "path": "lib/native-mcp-config.ts",
+          "sha256": "04d3fcc015009d9ebee499167e97d30dce52e76732f83d92777c2f79dc9d9067"
+        },
+        {
+          "path": "lib/native-mcp.ts",
+          "sha256": "f089e2f72c45b5ff5e11b8e47bb1f47a8fc9a915776972d5d43f57b3dc117229"
+        },
+        {
+          "path": "lib/nested-tool-calls.ts",
+          "sha256": "0aca7a109321a4ae374f9f6a94d2b7cdc62d9b16dad5c1fcc87e2871a45b55bb"
+        },
+        {
+          "path": "lib/network-proxy.ts",
+          "sha256": "5e23669528be1c1d9a23f660b4bc67a919b8b340da35e4c940b156fd25466311"
+        },
+        {
+          "path": "lib/normalize.ts",
+          "sha256": "2d4e3bc1b907ca63e72da868f505173b0b60b4c764a21278e842df8d42438dd0"
+        },
+        {
+          "path": "lib/npx.ts",
+          "sha256": "4e2bed01af1263afc34047001f4976debbfeb8d24d846ea761baf457ede78ef5"
+        },
+        {
+          "path": "lib/panel-layout.ts",
+          "sha256": "efde83a3e4bc4bf7822b6459ec059d9084f11bd7d00665469052d509680ca11a"
+        },
+        {
+          "path": "lib/patch.ts",
+          "sha256": "f9f33dbf299c859054f361dbc6fd915366f07e7ec075a151110bd941b7090a80"
+        },
+        {
+          "path": "lib/path-security.ts",
+          "sha256": "67b261abb80911b13f866ae2917a9b5c2cfa49a87cd0e42d6618e7eb2760cedc"
+        },
+        {
+          "path": "lib/pi-types.ts",
+          "sha256": "32ce1585c82edfe09f72f66acd32cd655f499e49461f3bc06321b1c8ee3d37c3"
+        },
+        {
+          "path": "lib/pocket-storage.ts",
+          "sha256": "71cca525718038b615a9c058d80b045eeb530bf7ff4c7c403e20caeea5fe3113"
+        },
+        {
+          "path": "lib/process-completion.ts",
+          "sha256": "de465b866974175d7012b8f3177a494759f3ca62d22895082931dabb3e30ec12"
+        },
+        {
+          "path": "lib/process-duration.ts",
+          "sha256": "b4c777abd61681128b6102673756a395bd5e299d78ad4d732b747fd60974bd7d"
+        },
+        {
+          "path": "lib/project-info.ts",
+          "sha256": "2ea4d31501f6d509727b2ec400b66e55d683b528233df0d6d46abb6d969792df"
+        },
+        {
+          "path": "lib/project-notification-preferences.ts",
+          "sha256": "baf6c40461692eb2a6c0400f8173aad50e84d8fd35844db7eef6d1bbcf1d504d"
+        },
+        {
+          "path": "lib/project-tool-settings.ts",
+          "sha256": "3cbd194f76713e962ef2b4211773fee9bdc46a79ced1ccfb36069e1f6eae3782"
+        },
+        {
+          "path": "lib/project-tools.ts",
+          "sha256": "7f12f1e7729ce7b1ea05a3374719e4acd296b4c14c98774c40cc6d86b767126b"
+        },
+        {
+          "path": "lib/projectless-chat-path.ts",
+          "sha256": "fb4158aa002dbacf4798b0815899911123fed660e9a8445a5fe0154b1b778266"
+        },
+        {
+          "path": "lib/projectless-chat-server.ts",
+          "sha256": "9fcf45c3d13055237473edb4a920ae284bc670fffafcc789efc69274be00fe34"
+        },
+        {
+          "path": "lib/prompt-file-changes.ts",
+          "sha256": "578c4fdd5fb92e22ac5a2b195a882d894b488321186dcce7b8f9406bab399d46"
+        },
+        {
+          "path": "lib/prompt-files.ts",
+          "sha256": "2ed7963b6916505b209c3f6681a62ae01a9011a5372788bba76d696154c17092"
+        },
+        {
+          "path": "lib/prompt-input-enrichment.ts",
+          "sha256": "4f9d37d3d624667017c2dee7d40b216295857e0a27612b1eca2b943e2652f69d"
+        },
+        {
+          "path": "lib/prompt-input-policy.ts",
+          "sha256": "d7c65445ba0d6a71c0a0c77a0c2c36f55d36996287807e2f2d9dcde93a3a7e43"
+        },
+        {
+          "path": "lib/prompt-material-format.ts",
+          "sha256": "2216c40080b9bca581458b7c09ba05910876ad81e1a2314c8dcf4da148760aa4"
+        },
+        {
+          "path": "lib/prompt-materials.ts",
+          "sha256": "7aefff61d650b3c5534944edb610145a1b6d8edf767b897708c0d4c2ae824b7f"
+        },
+        {
+          "path": "lib/prompt-optimizer-settings.ts",
+          "sha256": "f121ecc0c2698691f128311628a458c8004135511aa5ca1073330fbc6ad93194"
+        },
+        {
+          "path": "lib/prompt-optimizer.ts",
+          "sha256": "9c54c3b6c077a66abcec5d7aae7caf17c5216052ae46c78023eba217a4907cbd"
+        },
+        {
+          "path": "lib/prompt-recovery.ts",
+          "sha256": "ee28eedf36900069ca6287079c0042bd4c0f0be3c190cbf146dfd20c44c332d1"
+        },
+        {
+          "path": "lib/prompt-run-registry.ts",
+          "sha256": "5ccec06b0869949c8eb18884f0ea03f7ec5cf43ad6866070fea4cf5ad3ae087f"
+        },
+        {
+          "path": "lib/provider-credential-store.ts",
+          "sha256": "cc9d69ff8b75f4302889ac982d321a47652de4e071784f929fb3fe3f6dc0ca41"
+        },
+        {
+          "path": "lib/provider-listing-runtime.ts",
+          "sha256": "14f32d3ab7ef5dde627ac709664a9a53284159cb14288f57a6dd99acd2933cc1"
+        },
+        {
+          "path": "lib/provider-listing.ts",
+          "sha256": "6ae86648e247c76977fc77e91c1bf293e0f2673fb3362279e1d991c3d876e35c"
+        },
+        {
+          "path": "lib/queued-input-recall.ts",
+          "sha256": "09f9ad23dabd9e39e18dd8de3eba6adf0bd509adc67911e7a8d59e0278c877c0"
+        },
+        {
+          "path": "lib/quick-access.ts",
+          "sha256": "ce814caac572e7da45c5ea61215ad65a62c8c1b75c0cd21f4e5c7c6a5c9fbe68"
+        },
+        {
+          "path": "lib/remote-content-stream.ts",
+          "sha256": "fd3d792d8919e87e9f5519f50492339a75bcebec1066b875a4cfb367bd2f4b21"
+        },
+        {
+          "path": "lib/remote-content.ts",
+          "sha256": "edb3a99950b0420ffdc5232fa8e5ae27659b697ac489e670c5aece82acf542e7"
+        },
+        {
+          "path": "lib/remote-control-auth.ts",
+          "sha256": "6e3fc993484f0ab3e6c10b92092064916dec8fad0d22876ea0eb8f65f291873a"
+        },
+        {
+          "path": "lib/remote-control-connector.ts",
+          "sha256": "081f6216b89c2128921286ee2cdf2b4699d3a2e8588d084b04980a8ce766252a"
+        },
+        {
+          "path": "lib/remote-control-request.ts",
+          "sha256": "8c013752daacfe049b15d37b62e94e33cc2487b781feb5f659f67cd23e986d9c"
+        },
+        {
+          "path": "lib/remote-control-response.ts",
+          "sha256": "07c998dcd60e3e542e5931ebba8194490d0df610a18234f2e2912f43ac1dad1e"
+        },
+        {
+          "path": "lib/remote-control-store.ts",
+          "sha256": "7e59143978ccb0c82dd9d41cce96b3cff3f40d4ceb7f3d9c8ce8f81424c2a77e"
+        },
+        {
+          "path": "lib/remote-control-types.ts",
+          "sha256": "cc25ed178d2635b49ea8a40947d57c95deab91b5e2248f0743a6709e27b3c3cb"
+        },
+        {
+          "path": "lib/remote-creation-policy.ts",
+          "sha256": "fe8acdc636b2c1091a5caf6ef831a72606b9931c7f07a1067fa9a438d18c18c6"
+        },
+        {
+          "path": "lib/remote-discovery.ts",
+          "sha256": "71740845afdd8415d42e78a1844b63e9ed8532a322bf589101af957b216ef3b5"
+        },
+        {
+          "path": "lib/remote-events-stream.ts",
+          "sha256": "457160ae6b2518288136b88bba09e46671eadca6f71d6ee08bfaab9049740e82"
+        },
+        {
+          "path": "lib/remote-session-creation.ts",
+          "sha256": "79de2f18cfec4f05bb124c591ab580915b034884b8faa9ccf68c3fb36eb33711"
+        },
+        {
+          "path": "lib/remote-session-policy.ts",
+          "sha256": "1b55d5b10c468aaa6f54b691a76e08b095c39b1e45dbfdecc7e493c61f31c123"
+        },
+        {
+          "path": "lib/reply-draft.ts",
+          "sha256": "abd8ed3fa7143cd09b134a5783fde7910917efca5aa4787a9b83d18fb63ea554"
+        },
+        {
+          "path": "lib/reply-storage.ts",
+          "sha256": "4d137d862ff10f0d54305b1fb3f18925108be50a1e8bf7b82332d185547b0386"
+        },
+        {
+          "path": "lib/reply-suggestions-server.ts",
+          "sha256": "ac2e656241323639b3158ef57e9fa9a3a32925fc7c20837462e44d11bf69435b"
+        },
+        {
+          "path": "lib/reply-suggestions-settings.ts",
+          "sha256": "dd8ee1345a1809aff0176efba13ac938b619a4760fa5af498e0d30397ed417e5"
+        },
+        {
+          "path": "lib/reply-suggestions.ts",
+          "sha256": "1e5c58466ce723dc379a293b4425e628d66266d0d478d42a24fe76fb605f015e"
+        },
+        {
+          "path": "lib/request-security.ts",
+          "sha256": "6544cbe2e220d4e582949d6162503584cbfa9f499d3793bc4f126a6406bac431"
+        },
+        {
+          "path": "lib/retry-settings.ts",
+          "sha256": "0464f209ffbf531affe7fffaa00c0336341aeee75f066a2f1767c02388584aaa"
+        },
+        {
+          "path": "lib/review-keyboard.ts",
+          "sha256": "4503b36164b4bb497a84dd0267652afd7c282a7de4c66a842543f2859c02b0fd"
+        },
+        {
+          "path": "lib/review-progressive.ts",
+          "sha256": "b66b95bf32c3dbb3edcf2804cb6f9f2f8425587f9bb4d409cb771b9cc0625663"
+        },
+        {
+          "path": "lib/room-activity-stream.ts",
+          "sha256": "f3356cbce10cb43f5138d058021f4bb1eaef6936965e4fd05ee35fd3267205ff"
+        },
+        {
+          "path": "lib/room-activity.ts",
+          "sha256": "4cf1995fb1832df11f62a630b861b418689938549e54dae7ced09a407483721e"
+        },
+        {
+          "path": "lib/room-chat-routing.ts",
+          "sha256": "ebf87eedee90f17e4aee81b3714b02938431a44ee37e81ed7c09d1e374cdb908"
+        },
+        {
+          "path": "lib/room-chat.ts",
+          "sha256": "513481ec2d74692f00940810c46364a738cb41914b2f7a21eb832850693d7aeb"
+        },
+        {
+          "path": "lib/room-composer.ts",
+          "sha256": "d43a3545754e6e2b5fdb11cff754a092da11ee29db1af5fc1efb7039497d578d"
+        },
+        {
+          "path": "lib/room-conversation.ts",
+          "sha256": "3fcda17927a66d710c7d11d3763778f7d61956e83eeb4c6fcf239fbb01c6d7f6"
+        },
+        {
+          "path": "lib/room-coordinator.ts",
+          "sha256": "d3925f3ab18a898a388a7d7e9771fa353ae9666af1b26a285b4e7cf514b6f333"
+        },
+        {
+          "path": "lib/room-creation.ts",
+          "sha256": "81514df895f57e2bf39126e8782ae9f7a6d82850f1646a8437fb8671439d37e2"
+        },
+        {
+          "path": "lib/room-downloads.ts",
+          "sha256": "e75bb27fbe015800afce21470d3cbe20ddabf4f39f6062f13c6f54615b23e3d3"
+        },
+        {
+          "path": "lib/room-member-assessment.ts",
+          "sha256": "6b42bf7c0b689687f4e5c2328143fba7513e689a2fd73d82ab0a45a8b5c3c507"
+        },
+        {
+          "path": "lib/room-member-selection.ts",
+          "sha256": "906c3924c3480759abfb12cbceb506eae169da599f6117614cfeed23e4d06322"
+        },
+        {
+          "path": "lib/room-message-navigation.ts",
+          "sha256": "9afbe5bb188237c9cbe3e90729a8916483f84b899e56a0cf987a4158ff24e74a"
+        },
+        {
+          "path": "lib/room-prompt-auth.ts",
+          "sha256": "b4dd6df2527a44fe796c910d7aae6a9ca7d6c77aaff1b79f515ba770beb4eaeb"
+        },
+        {
+          "path": "lib/room-question.ts",
+          "sha256": "05590fbb702a77aa60def02748428e25c080fdf8e263b3b737ef93003cde350d"
+        },
+        {
+          "path": "lib/room-session-visibility.ts",
+          "sha256": "86f6886d005b07f552316dfdfa58e4cfdea738314625fc5e1f513dcbf429ce92"
+        },
+        {
+          "path": "lib/room-store.ts",
+          "sha256": "5091ad60ba86ea3f562f25468ddd4944b20a306c129eb22038cf8c45bcf77a40"
+        },
+        {
+          "path": "lib/room-submissions.ts",
+          "sha256": "89674633a91faf7d136f3a2622c88590b3ea5e8cb80c0fb6eda52420b86a55e8"
+        },
+        {
+          "path": "lib/room-types.ts",
+          "sha256": "265b85daaf7bf8288cb6fcca41884ca4a8fbf63506cdeb589d5aed40ca882805"
+        },
+        {
+          "path": "lib/rpc-manager.ts",
+          "sha256": "fe66df46ac1de4b56daf1b03f361387b88f1dc37e8005c46489944e16b457b5e"
+        },
+        {
+          "path": "lib/rpc-task-activity.ts",
+          "sha256": "a1da5a30d563866ae2fa8dcded2d99d1cd913ce86f482108b7dd14cb863f0cf5"
+        },
+        {
+          "path": "lib/rpc-ui-adapter.ts",
+          "sha256": "c68372b609b6017bacc01405300d1259b848f59ff69fe26d8ae73da4ad3ba07e"
+        },
+        {
+          "path": "lib/run-progress.ts",
+          "sha256": "a9ecf91b64fdc89eb224e55cf8f22dcc158eba366878bd19c7ea38790dca6104"
+        },
+        {
+          "path": "lib/runtime-error-report.ts",
+          "sha256": "dfe020c8fa34768117fff0eaf495c8f484ab2f365688fcf7e9d4e19a2387de10"
+        },
+        {
+          "path": "lib/runtime-evidence.ts",
+          "sha256": "462d700bab888a4112fa79fd6da5c4cb07f501acf3eb02155be4a6f1a424398a"
+        },
+        {
+          "path": "lib/runtime-home.ts",
+          "sha256": "dc8dff7daa38982955d0fa9f11e5966ed6be17d7696595dffaf064643af57384"
+        },
+        {
+          "path": "lib/send-shortcut.ts",
+          "sha256": "4681bd536b0e905fec4e881ea631d24547c037325ce23210969be4d59c836476"
+        },
+        {
+          "path": "lib/session-ancestors.ts",
+          "sha256": "fe4060ca5b18f8b14b0020f1286182be162228898a80fefb25063935404aab10"
+        },
+        {
+          "path": "lib/session-capabilities.ts",
+          "sha256": "bcdb0918762894c54278f0d82e4341629ceb374f7df29b7e93587d61874d3d3a"
+        },
+        {
+          "path": "lib/session-catalog-index.ts",
+          "sha256": "8e3d3f4cd9b07de3ffa617de9c38cbe6ca9716a3f0119f55226783fcb21c31b1"
+        },
+        {
+          "path": "lib/session-command-events.ts",
+          "sha256": "2f468931f583e7104b7385168aab81d125d8ec3a6b351f99f0c4d6966a4b104e"
+        },
+        {
+          "path": "lib/session-control-store.ts",
+          "sha256": "e0ed5c39b73aef96ceed8aa7c340f4df5f38f77db9aae4e46ce4f665eaffeb0e"
+        },
+        {
+          "path": "lib/session-creation.ts",
+          "sha256": "a9429ebfcec71257537d63101f0c0fd577eb2192c5933995acac2a2f95736e6c"
+        },
+        {
+          "path": "lib/session-delete-client.ts",
+          "sha256": "0d6295dd010ba705d217eab226c33cef4ba7ce36511633bb6ce7817cc956ccc1"
+        },
+        {
+          "path": "lib/session-detail-source.ts",
+          "sha256": "906be59e6741064d45c6adb81dc60451d084f4e6cbfd4b10e48cb5ca5e1670da"
+        },
+        {
+          "path": "lib/session-file-ownership.ts",
+          "sha256": "2bbeb5f14c5ba4d612c01146b1a9fc9f38866b40de4d9bfd4c6902552e9eca61"
+        },
+        {
+          "path": "lib/session-file-references-core.ts",
+          "sha256": "6071f1c7caea186a62dec951854ac67db1d53512527b474f810f459e5785059e"
+        },
+        {
+          "path": "lib/session-file-references.ts",
+          "sha256": "6c00f3a4a6a274323fdf86fdc79487c043244dfc64e2ce927b13d55bf8d5f230"
+        },
+        {
+          "path": "lib/session-flags.ts",
+          "sha256": "4b262cc6c0e18ca8214375a6c9a8e7b004ccd733c575d11c023881310b5b66b5"
+        },
+        {
+          "path": "lib/session-fork-publication.ts",
+          "sha256": "7eb79b2087dcd76e1b46087f53f85a19cb690133694e812c2ffc2cbc1ef0c1d3"
+        },
+        {
+          "path": "lib/session-history-store.ts",
+          "sha256": "3c84bd1bb035908d92555767fcb408a11bd8620868ef77ba2577dc2a0c0992a8"
+        },
+        {
+          "path": "lib/session-history.ts",
+          "sha256": "1c58320527c5b9a088f1e8a6969bbf6a8e1837bef6fade8f97aa637ef25f5425"
+        },
+        {
+          "path": "lib/session-inbox.ts",
+          "sha256": "71eba60350d0f9164a81cf3ee92c0fe1b71cbd108f71d606f4cefe6699892100"
+        },
+        {
+          "path": "lib/session-message-delete.ts",
+          "sha256": "100cd0160bf0cd9c98a1a4fe46351d23456bc9cf73ee8a39ec2e82106708fe2d"
+        },
+        {
+          "path": "lib/session-message-router.ts",
+          "sha256": "ffc4ffd77ba0018ce140bc8e3655e30cc0b84dde6487b3d11408989a9d5aa84c"
+        },
+        {
+          "path": "lib/session-message-types.ts",
+          "sha256": "fde1c1458ac751570ce8d3eba36178d4ffd077c4c35f38091260871b63533030"
+        },
+        {
+          "path": "lib/session-model-selection.ts",
+          "sha256": "1626d5d4fb56b679e852989a5bb7261032f6c4d3481b9e029fe200693cfb1cec"
+        },
+        {
+          "path": "lib/session-move.ts",
+          "sha256": "700dd16b4de908b3fb5e07e9669da6cde82b2a7eaed4465b0d270a7674653f0e"
+        },
+        {
+          "path": "lib/session-mutation.ts",
+          "sha256": "b49434ec6dcb486d8bc481f0462dea03c3437f3cedcd137b905e5a171b3dcda4"
+        },
+        {
+          "path": "lib/session-owned-manager.ts",
+          "sha256": "112f1ee48e3ed5282314e85d6c64ecf5be3cb53027da3fd6b69a8b78e8c9cbe2"
+        },
+        {
+          "path": "lib/session-path.ts",
+          "sha256": "f608a612025ec68fb614473f8f8ade0a543d02cf639acae2019c1f6765c489a6"
+        },
+        {
+          "path": "lib/session-persistence.ts",
+          "sha256": "cb32f64314848fd4daddc8b6b110427e61822ecd74cef5535a1d2232e5036527"
+        },
+        {
+          "path": "lib/session-prefetch.ts",
+          "sha256": "9500fd074e1fa916c13371fda5a9b61e517ac74200cc0e154e555bf0284e4808"
+        },
+        {
+          "path": "lib/session-project-groups.ts",
+          "sha256": "20799f1dd476693541fcbe7f70356341bd7d7cb053434b006316acfe23a927d3"
+        },
+        {
+          "path": "lib/session-reader.ts",
+          "sha256": "91ed01f905a00221d25d915cb79c464c701014fea0aaea078e4942348bb166ef"
+        },
+        {
+          "path": "lib/session-readonly-manager.ts",
+          "sha256": "cee12bd688c683efc68e10ca5cdb0ee2a1d3e073636bbbe51caf48329182ebed"
+        },
+        {
+          "path": "lib/session-runtime-resolver.ts",
+          "sha256": "6f4ce5a294c9d17305a9787d1bf60b8278466fff386ef633ff4b5cc74469bccf"
+        },
+        {
+          "path": "lib/session-search.ts",
+          "sha256": "982b86b4ab8c9265315844d96c8775cc1135b7a76c33c76b53ee5f9fba573528"
+        },
+        {
+          "path": "lib/session-stats.ts",
+          "sha256": "0d98202151883cf2fd0538264cf5f42ba70ebd8b1c6d5e51de581d99e54d2dfe"
+        },
+        {
+          "path": "lib/session-system-prompt.ts",
+          "sha256": "5531a9780fea9715096987a7996f847c84b81da862fffe8d65af55c56fd20b6b"
+        },
+        {
+          "path": "lib/session-title-prompt.ts",
+          "sha256": "a56c8dd273241bfcccc9243978313ec5600ec373217719eaedd0528aa5caf482"
+        },
+        {
+          "path": "lib/session-title-settings.ts",
+          "sha256": "7fd1f16214b96c190bd3d17712fe01132b5c3249effe7f699bb9ae51ce516efe"
+        },
+        {
+          "path": "lib/session-title.ts",
+          "sha256": "af8e7d138c6010cb170105ba4d5ebf067b44dda5f038ca93b6b206261f34f4e7"
+        },
+        {
+          "path": "lib/session-trash.ts",
+          "sha256": "b207b6b4c72e9393bbcd21f99f3eb74bb1aa975d204918a74220d11be76119be"
+        },
+        {
+          "path": "lib/settings-portability.ts",
+          "sha256": "1d05b5e386cdb317322dc802db68317ae119e894cf9964a6fa4f3cf97f0cdf9f"
+        },
+        {
+          "path": "lib/settings-read-client.ts",
+          "sha256": "f3ead3dbed1ff015e0bda02e1b2f3f17d62b6c04d1994a14bf53da6b610bfbb1"
+        },
+        {
+          "path": "lib/settings-search.ts",
+          "sha256": "85a006e68af911c30d55275fa0e08f7ac0d2c5e88181b3154a33f73dfa179797"
+        },
+        {
+          "path": "lib/shell-timeout-settings.ts",
+          "sha256": "a737ef43b7df706d57f10ad6db52e3ff33489c7252b00568ca04334ef97b32f7"
+        },
+        {
+          "path": "lib/sidebar-tree-window.ts",
+          "sha256": "55497f8b6ae72f1cea5e971e4bb822b2ec9f403a5c337378a8619710548151a0"
+        },
+        {
+          "path": "lib/skill-lock.ts",
+          "sha256": "df381817eb54e7fda65bc24bb8f8774453bc544a619f074dbbb3b59a8de52696"
+        },
+        {
+          "path": "lib/skill-updates.ts",
+          "sha256": "914ee5f2dd9a7c22f79e83c44c430081179da3f510fb2e4bc51a30a2aff8c84a"
+        },
+        {
+          "path": "lib/skills-service.ts",
+          "sha256": "f911fa8be01a4ddea4badab46fe109ee6d10bd2431ef9a5361b0a3057e9a7963"
+        },
+        {
+          "path": "lib/speech-manual-file.ts",
+          "sha256": "0019fb92e3bf1d9b0061987fc58782b3fcf4dd556b002a079c0cc9a8c1792c32"
+        },
+        {
+          "path": "lib/speech-pack-catalog.ts",
+          "sha256": "feaee48be1733ee98946f569d4ce6a8367356969b39423921daf55ec8052c37d"
+        },
+        {
+          "path": "lib/speech-pack-manager.ts",
+          "sha256": "66cf347b360d2a3571ed6f49aa22271c6e50074acbc871f0b923a21abcc829fa"
+        },
+        {
+          "path": "lib/speech-runtime.ts",
+          "sha256": "c37d4294bcae4f728f7c154e3f4e6f8e7593de604b2079091dd6d1e060dafab2"
+        },
+        {
+          "path": "lib/speech-settings.ts",
+          "sha256": "7a0a3e84478e48677b29259bf5da8f069851e703205350f2beb45052da6646b3"
+        },
+        {
+          "path": "lib/speech-types.ts",
+          "sha256": "15006e57559ebc456d6c6ad4851511f0d5e519bc27ce8ebdd137bfac2d377ba2"
+        },
+        {
+          "path": "lib/starters.ts",
+          "sha256": "fee1e87d8af3cd3d8831b4f7a5957b1e30a75b3bc7ff3f3ba57dbba0a2edb51e"
+        },
+        {
+          "path": "lib/status-duration.ts",
+          "sha256": "861712dabb28bc79f4a62f1d7b85352604cd0894140bb1056be2a419212b5f98"
+        },
+        {
+          "path": "lib/streaming-metrics.ts",
+          "sha256": "98dc5b74aa204bff5e96983240457db78a30c2b20bb997cd6156daa4b1dffc82"
+        },
+        {
+          "path": "lib/system-prompt-config.ts",
+          "sha256": "8d583c25d0bc80ecd38dd8544a8292b24f73ccf5339a194dcf5b97d098e0007f"
+        },
+        {
+          "path": "lib/system-prompt-types.ts",
+          "sha256": "8d6cbd2fba3761c02976315369d4d223748e8bfa40e26d52acf4ef02ebf494cd"
+        },
+        {
+          "path": "lib/task-run.ts",
+          "sha256": "86ac7b2301a8354d3dd0f845aa6e860338fec2cf7a21610bca1d3e3a7f6b4f58"
+        },
+        {
+          "path": "lib/task-status.ts",
+          "sha256": "bfcc406bcc8fc00f3e491bb78be5e85c513329ad7c2abb888e55e1b01f48fe87"
+        },
+        {
+          "path": "lib/team-agent-api.ts",
+          "sha256": "9f8fa1214091c5bbb19131d771c4bd6e1dafbedca607bec35779922f663e7af0"
+        },
+        {
+          "path": "lib/team-agent-provisioner.ts",
+          "sha256": "6553683add072ff6018ac782a5e1905b951b6f294412aa340bca6f618c98a3bc"
+        },
+        {
+          "path": "lib/team-agent-templates.ts",
+          "sha256": "203c8d1039550c0a7582823f79cfd2542c422446a6cad22d83cb271ab7e3d2f9"
+        },
+        {
+          "path": "lib/team-agent-tools.ts",
+          "sha256": "59514110a4a5eb0cb19ab6d615ae33e6681ca42d4ad20b7c7d8ff7d51638d130"
+        },
+        {
+          "path": "lib/team-api.ts",
+          "sha256": "0cc714eafee0bc6bedd40a37037d0e9ab1be55c3882f207c68e4bef323dd107b"
+        },
+        {
+          "path": "lib/team-assignment-view.ts",
+          "sha256": "204208de0a052d8fa02675074887f027b6e826013a464fa35cf84a4c8e41af2b"
+        },
+        {
+          "path": "lib/team-bootstrap.ts",
+          "sha256": "c91ad5bec2006da62a2eab23e055e7c1829f37b5ce4d21d77d735b7f83e12674"
+        },
+        {
+          "path": "lib/team-coordinator-service.ts",
+          "sha256": "3008c44de819c8a8094ece5ab0439731bac2fc53be006f45cd6f5dd41274ff83"
+        },
+        {
+          "path": "lib/team-errors.ts",
+          "sha256": "eae7990574e8961c99fdff07d852f94431efbc5cabbbf826d6e41bf15923c51e"
+        },
+        {
+          "path": "lib/team-execution-secrets.ts",
+          "sha256": "644085894f1a1426706c9f28b2dbe3ab2e8733a4043285d6dddcf85ec30cd7fa"
+        },
+        {
+          "path": "lib/team-prompt-context.ts",
+          "sha256": "8f600e16e4fc4150b47f22e9d2eac7a58efa05e042bfc4fe8d5276060a3c6b8f"
+        },
+        {
+          "path": "lib/team-run-reducer.ts",
+          "sha256": "1f0fd9c958491347a8f951b9eeba8216d52cca77d0b952d8d212c761ac6bda27"
+        },
+        {
+          "path": "lib/team-run-store.ts",
+          "sha256": "9755877eb9dddf7f234e13f2fff5cfdb981230055c8566634a1f4d4795a78cff"
+        },
+        {
+          "path": "lib/team-runtime-evidence.ts",
+          "sha256": "63b713546d1456d48b56b14ef7785512441c42e1579b9da974ea599ac65bf326"
+        },
+        {
+          "path": "lib/team-tool-service.ts",
+          "sha256": "5938b05b1f23ec1859680b3e4a3bbb85b6b0fcfe5ecac5d2b836c30c35b019bc"
+        },
+        {
+          "path": "lib/team-types.ts",
+          "sha256": "e6ed5ea333ba1f4e38eb49c2415de0f90dfaefd1a66e70df6fbcaebdaeaa76de"
+        },
+        {
+          "path": "lib/terminal-input.ts",
+          "sha256": "6f1e0a81dbd04b7bf467e0b78c39bf8fb79aee4c3d87767e8b9e16999d777e0b"
+        },
+        {
+          "path": "lib/terminal-pty.ts",
+          "sha256": "3bd8d7d2a26eb7890c3a85778060c42fcc33e5d22c173cca07b2e993204c50aa"
+        },
+        {
+          "path": "lib/terminal-session.ts",
+          "sha256": "e78bf3ce870366094a481e2d09f15e00ef01add80bfb03bc44344cf77f108c1e"
+        },
+        {
+          "path": "lib/theme-preferences.ts",
+          "sha256": "34a9a24098e8fc53b0c3dbdb3701a0c0fe0ca79fbe060cfc6db59b5b8c5c85e2"
+        },
+        {
+          "path": "lib/thinking-preview.ts",
+          "sha256": "85e3c37e8028486f7198a4a2265fcc8fe8e8ec8de01c28d37e39a1c05fb10389"
+        },
+        {
+          "path": "lib/tool-activity.ts",
+          "sha256": "672319a92436cf40962258390d92816f74f0e25c3d6a6df5818dcce01e19b28b"
+        },
+        {
+          "path": "lib/tool-definition-budget.ts",
+          "sha256": "7ff0145585aeccb360e80fc903597dbc35b7af5aa0c4960b7cb0da6af69a3b2d"
+        },
+        {
+          "path": "lib/tool-install-progress.ts",
+          "sha256": "38c55d526a5d9860a5a88dbb407c77911bcfb8e76be6200a83e208cfa413c339"
+        },
+        {
+          "path": "lib/tool-install-stream.ts",
+          "sha256": "7a0b333514a6a94ecab1647e50a5a25a1a54431cd259f61a1e800593322417fe"
+        },
+        {
+          "path": "lib/tool-json.ts",
+          "sha256": "4bc0b3f73b49123850660a3363ac3a51638b81aa1cf2b7e22efc7ae3e47121c7"
+        },
+        {
+          "path": "lib/tool-permission-gate.ts",
+          "sha256": "bd49bcb11f8dc81cb935caed3c3fbeb5f86cc1fb5184f22667f1c23554afc8bd"
+        },
+        {
+          "path": "lib/tool-permission-policy.ts",
+          "sha256": "8410b974b3cb6c771536c98bbcfb0a0192dcc36b9f3e342a5b841e54a3a454fe"
+        },
+        {
+          "path": "lib/tool-permission-store.ts",
+          "sha256": "2288a6c74500e3af9429bf4a60577b9ef65ed043878cad6d80b865a416dd06ec"
+        },
+        {
+          "path": "lib/tool-presets.ts",
+          "sha256": "7c0473400e2c4558a79dee9b457efc00a6ad7584697ba71dfd994a48fb1c9d2f"
+        },
+        {
+          "path": "lib/tool-review-browser.ts",
+          "sha256": "29f8e675bbff6ffc845fff5a4475d11f722cc1681a5c37a914a716391f59c9e0"
+        },
+        {
+          "path": "lib/tool-review-evidence.ts",
+          "sha256": "e154f59870de212c63a5973f4738a3361fc113ddd500c917f262f053ba416ae8"
+        },
+        {
+          "path": "lib/tool-review-model.ts",
+          "sha256": "18bfe3ad53180430c814b9a1ce5d8866cb648a361d56034df8c55f216fe1d9db"
+        },
+        {
+          "path": "lib/tool-review-redaction.ts",
+          "sha256": "6a9f7937ca63246260134a03fd34f4008dbb7762e6c7f25b85a8fadebad36d80"
+        },
+        {
+          "path": "lib/tool-review-store.ts",
+          "sha256": "09c28f4aee5454678ab270214fdc233046f169399f7c70da810849c94e335b63"
+        },
+        {
+          "path": "lib/tool-review-types.ts",
+          "sha256": "9a0b085ad05a94eac88dcad4c1e3cf41cc5f8687769c57367870612dce982b11"
+        },
+        {
+          "path": "lib/tool-runtime.ts",
+          "sha256": "6bd7a2a2e78eedf328c428b781c76cd37f0e6ba387853dfb27ea507c11d46767"
+        },
+        {
+          "path": "lib/tool-summary.ts",
+          "sha256": "0de5891e43530e92a3c642b354ca6113a21111dfd784f0c65f1a3eedd1620a1d"
+        },
+        {
+          "path": "lib/transfer-station-client.ts",
+          "sha256": "901136b332afc2c4974e203136e9bac5b1f2e5b4d1ee1e05789d75ce345a70ef"
+        },
+        {
+          "path": "lib/transfer-station.ts",
+          "sha256": "728bd63187ef4659d6f9e8bccadb5f1efafb12b105da9aa8c9deb48ed7542f78"
+        },
+        {
+          "path": "lib/transfer-workspace.ts",
+          "sha256": "5ccc7c562c05d82d9efc75eb7a85d22c89b2e583ca4e952d1f1b3f738268d2d3"
+        },
+        {
+          "path": "lib/tree-progressive.ts",
+          "sha256": "27c8a608ea2fd8876336dace9294bead874b2b56d9035e362dd6ef4833b0415a"
+        },
+        {
+          "path": "lib/types.ts",
+          "sha256": "de3d7b8ee7455637dbf4bb72da448eb40dddaf88d4697bf6f22713e4c2f3fdde"
+        },
+        {
+          "path": "lib/ui-theme-packs.ts",
+          "sha256": "0fcd12b261e7c80c9a96e924a33932e40d34f6974b4f388bb31611b0a8f99281"
+        },
+        {
+          "path": "lib/usage-statistics.ts",
+          "sha256": "d4d9d3dce3958e92276e626dd8580c6434a09d8a2a42069a324bf90b028d3595"
+        },
+        {
+          "path": "lib/user-input.ts",
+          "sha256": "5defc3230736fc9201ee93c74b448b51be45b2d34e92728fb75334404f5c5946"
+        },
+        {
+          "path": "lib/user-message-links.ts",
+          "sha256": "64e574ad1ed23967fe75473a04e32b87550894a32db8d7536c49342454faa65d"
+        },
+        {
+          "path": "lib/virtual-row-state.ts",
+          "sha256": "079117d81d51043ca70ad3c5ed6be422f2bfb771593c4e36151f7d72938de2b0"
+        },
+        {
+          "path": "lib/virtual-window.ts",
+          "sha256": "725a978e5002580e2e69db7ac8e89a2012a560046fe67e4650b898c57cf4921a"
+        },
+        {
+          "path": "lib/visible-poller.ts",
+          "sha256": "b81ff2a8c244d56c54007bf84b151448ffe6dc62cc0ac84a43246a3bf6b55e51"
+        },
+        {
+          "path": "lib/vision-agent-status.ts",
+          "sha256": "3a974cfa3d90b900fc489947efdc226e764b9a0d6dae2e80a128af2dcce34b60"
+        },
+        {
+          "path": "lib/vision-agent.ts",
+          "sha256": "1776caff3c58e138559b273aa98fdb1879e5302062d24726671de477203c27e0"
+        },
+        {
+          "path": "lib/vision-request.ts",
+          "sha256": "a5faa275fbbf28b4f06e3262a45537a2c629c53aed22f944f5dbd1194751ba5e"
+        },
+        {
+          "path": "lib/voice-audio.ts",
+          "sha256": "533fda8aae4600fff326b2b7032873b446676fd512d71131d12f25c5a8a3b820"
+        },
+        {
+          "path": "lib/web-auth.ts",
+          "sha256": "b2e73e74d77fc42ef5da327596adc9d5a027ee851a7d85a3b0ba27be963eb495"
+        },
+        {
+          "path": "lib/whisper-transcription.ts",
+          "sha256": "d12da9524b50a2c2503536bf814eaa4f3e3e2f736d70835db444863f238c60bc"
+        },
+        {
+          "path": "lib/winapp-uia.ts",
+          "sha256": "15590ebff60b99826dd756312f21a31d069838e9d16e738ba91af6bdf1d6b10f"
+        },
+        {
+          "path": "lib/windows-bash.ts",
+          "sha256": "baf928ecbc458ca7ab240c356e26d5b019d5c9cfc8023cf9e18b5cadd8b116a7"
+        },
+        {
+          "path": "lib/workspace-continuity.ts",
+          "sha256": "534d72a63a20dc15bed98130e109ddf958892458b6d2b191121e88ec21dad464"
+        },
+        {
+          "path": "lib/workspace-search.ts",
+          "sha256": "268eb8fd2b073bf70fc47b6c5318ac6020de660403032a93024ad0b439b76c5e"
+        },
+        {
+          "path": "lib/worktree.ts",
+          "sha256": "808d2ebf1fac4f9e54a5e6ebe88f7fe5ea1b040eafe62020b5d864ccd40884a8"
+        },
+        {
+          "path": "package-lock.json",
+          "sha256": "4ebb9de5a62f4393035801fbcc66f7c97132db4b07221ec29ff971df09320b21"
+        },
+        {
+          "path": "scripts/evaluate-mini-apps.mjs",
+          "sha256": "a4a56cdec9bd9f508a0e0e182ba1c70c374c1f637555f7e6f0333e1cd785fed5"
+        },
+        {
+          "path": "scripts/mini-app-evaluation-data.mjs",
+          "sha256": "a9f813b4dd0ae5f8295749f454ac53e4caf5b277e046c4c9b2d98d91b9997e73"
+        },
+        {
+          "path": "scripts/probe-mini-app-generation.mjs",
+          "sha256": "4d2e3aa4b4160d2944c7b3147ee2a4c67c7f6c397cc9e31a6fc54ad8a216eaea"
+        },
+        {
+          "path": "tests/fixtures/intelligent-ui/phase3-first-tasks.json",
+          "sha256": "70f638b803375488866902ca0090f21a5ed6b7374ff12905018dcdea1a9474f6"
+        }
+      ]
+    },
+    "summary": {
+      "requested": 24,
+      "finished": 24,
+      "failed": 0,
+      "pending": 0,
+      "ui": {
+        "denominator": 18,
+        "generationAccepted": 14,
+        "firstAttemptAccepted": 7
+      },
+      "nonUi": {
+        "denominator": 6,
+        "responsesWithoutUi": 6,
+        "unexpectedUiAttempts": 0
+      },
+      "semanticAcceptance": "pending",
+      "completeTaskAcceptance": "pending",
+      "denominatorPolicy": "Every scheduled repetition stays in its denominator, including errors, timeouts and unfinished slots."
+    }
+  },
+  "samples": [
+    {
+      "id": "direct-1",
+      "taskId": "direct",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-hdj3mQ/result.json",
+      "sourceSha256": "32a278909ddbd352e6705ead8dfcc79189a660f1fed837c3aae182850da20074",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": false,
+        "uiAttempts": 0,
+        "publicationCount": 0,
+        "generationAccepted": null,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true,
+        "unexpectedUiAttempt": false,
+        "requestCount": 1,
+        "elapsedMs": 2361,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "clarification-1",
+      "taskId": "clarification",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-Tykux2/result.json",
+      "sourceSha256": "4bc82de6821e462b8b0cda10b926c30302f43b0c5da30f6a9dc0689ad933a3c2",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": false,
+        "uiAttempts": 0,
+        "publicationCount": 0,
+        "generationAccepted": null,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true,
+        "unexpectedUiAttempt": false,
+        "requestCount": 1,
+        "elapsedMs": 3725,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "outing-1",
+      "taskId": "outing",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-XLEZkQ/result.json",
+      "sourceSha256": "81b28d259e6a4074a15bb1a53d4b5ed3fdf8c34fefef33bf91359cad0229c556",
+      "status": "completed",
+      "outcome": "published-components",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 1,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 2,
+        "elapsedMs": 14636,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "discount-1",
+      "taskId": "discount",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-T4o7ZG/result.json",
+      "sourceSha256": "49ba2ff0ab257367dc7a99149445fedc9636dd09768fdb4efb13b55d2f7bfe62",
+      "status": "completed",
+      "outcome": "published-components",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 1,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 2,
+        "elapsedMs": 9685,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "sorting-1",
+      "taskId": "sorting",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-QXwkZN/result.json",
+      "sourceSha256": "86c5be5e0f68a1543de51c90f19c1914d0dacdb03fd3a0d777edf1e8be8f7e40",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 100507,
+        "diagnostics": [
+          {
+            "code": "FRAME",
+            "message": "Number is outside the renderer range",
+            "path": "frame/canvases/bars/13/y2",
+            "repairable": true
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "triangle-1",
+      "taskId": "triangle",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-49gqrN/result.json",
+      "sourceSha256": "943ce2a16ed417282024f9cc87107ce42ee368522af46bcb32781e4a0a4728b5",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 59625,
+        "diagnostics": [
+          {
+            "code": "SCHEMA",
+            "message": "Use element/class/id selectors or data-input/event/viewport/text presence/equality selectors",
+            "path": "document/css",
+            "repairable": true
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "jugs-1",
+      "taskId": "jugs",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-E4hFHY/result.json",
+      "sourceSha256": "96cde6c54f9d5309b3ecba1dc6c4b22a5114fe565fd92b97a2bd14e87f00c67f",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 3,
+        "publicationCount": 0,
+        "generationAccepted": false,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 4,
+        "elapsedMs": 57537,
+        "diagnostics": [
+          {
+            "code": "SYNTAX",
+            "message": "Only synchronous function declarations are allowed at module scope",
+            "path": "program",
+            "repairable": true
+          },
+          {
+            "code": "SCHEMA",
+            "message": "Expected nonempty text of at most 600 characters",
+            "path": "purpose",
+            "repairable": true
+          },
+          {
+            "code": "UI_CORRECTIONS_EXHAUSTED",
+            "repairable": false
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "board-1",
+      "taskId": "board",
+      "repetition": 1,
+      "source": ".verification/mini-app-live-R9zNe1/result.json",
+      "sourceSha256": "534dc1dc0c3fe62f46209c9a89c9a7a8e132109858e4536d3d0e68afa0b83114",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 50481,
+        "diagnostics": [
+          {
+            "code": "SYNTAX",
+            "message": "Only synchronous function declarations are allowed at module scope",
+            "path": "program",
+            "repairable": true
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "direct-2",
+      "taskId": "direct",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-GPEMyE/result.json",
+      "sourceSha256": "58ba346beb08d84eaffadcef43e97436df4741574d1861486a5ed772ad0641f8",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": false,
+        "uiAttempts": 0,
+        "publicationCount": 0,
+        "generationAccepted": null,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true,
+        "unexpectedUiAttempt": false,
+        "requestCount": 1,
+        "elapsedMs": 2047,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "clarification-2",
+      "taskId": "clarification",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-r9gIve/result.json",
+      "sourceSha256": "526912842bf378af818c3154b1213b3c371451b084f168e3aa0aba9ccb7f852b",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": false,
+        "uiAttempts": 0,
+        "publicationCount": 0,
+        "generationAccepted": null,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true,
+        "unexpectedUiAttempt": false,
+        "requestCount": 1,
+        "elapsedMs": 3148,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "outing-2",
+      "taskId": "outing",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-O91vJ1/result.json",
+      "sourceSha256": "14748c38ab7a14bfbbee23570cf1f1d6e5f7a1ec9b2820eb4ca985003450b257",
+      "status": "completed",
+      "outcome": "published-components",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 1,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 2,
+        "elapsedMs": 21544,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "discount-2",
+      "taskId": "discount",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-1R20ZX/result.json",
+      "sourceSha256": "187a1ea5b6132940f6eeafe3c1fec1ca0a599ded355ab35b01bf36e66dc0627a",
+      "status": "completed",
+      "outcome": "published-components",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 1,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 2,
+        "elapsedMs": 15603,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "sorting-2",
+      "taskId": "sorting",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-rE8JAN/result.json",
+      "sourceSha256": "d4031c879b56b107ab21b9e81b3a53c31af6163109b364b040ca23c7515effce",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 48596,
+        "diagnostics": [
+          {
+            "code": "SCHEMA",
+            "message": "Expected MiniAppPlan version 1",
+            "path": "planVersion",
+            "repairable": true
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "triangle-2",
+      "taskId": "triangle",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-dxd3BU/result.json",
+      "sourceSha256": "c068f53eb506b3ee378f5905f62b62e827248918f5f2a4d2713cb67078425ad8",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 3,
+        "publicationCount": 0,
+        "generationAccepted": false,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 4,
+        "elapsedMs": 61759,
+        "diagnostics": [
+          {
+            "code": "SYNTAX",
+            "message": "Only synchronous function declarations are allowed at module scope",
+            "path": "program",
+            "repairable": true
+          },
+          {
+            "code": "SCHEMA",
+            "message": "State strings require maxLength between 0 and 4000",
+            "path": "stateSchema/properties/drag",
+            "repairable": true
+          },
+          {
+            "code": "UI_CORRECTIONS_EXHAUSTED",
+            "repairable": false
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "jugs-2",
+      "taskId": "jugs",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-XqFs82/result.json",
+      "sourceSha256": "7ffc8d0c954548db2c21fb3ff3183cac8043bcdf80a26e02ceac6fc23aa21981",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 3,
+        "publicationCount": 0,
+        "generationAccepted": false,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 4,
+        "elapsedMs": 68319,
+        "diagnostics": [
+          {
+            "code": "SCHEMA",
+            "message": "Unsupported CSS property",
+            "path": "document/css/font-family",
+            "repairable": true
+          },
+          {
+            "code": "SCHEMA",
+            "message": "Only top-level bounded max-width media rules are supported",
+            "path": "document/css",
+            "repairable": true
+          },
+          {
+            "code": "UI_CORRECTIONS_EXHAUSTED",
+            "repairable": false
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "board-2",
+      "taskId": "board",
+      "repetition": 2,
+      "source": ".verification/mini-app-live-TRJeWZ/result.json",
+      "sourceSha256": "e48e89f5373d1d96c24187f59947ae24592fa799e4e4aa44b0f70635870bcaa9",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 63320,
+        "diagnostics": [
+          {
+            "code": "SCHEMA",
+            "message": "Unsupported field",
+            "path": "document/function",
+            "repairable": true
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "direct-3",
+      "taskId": "direct",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-Q8TEDe/result.json",
+      "sourceSha256": "010867669049e9cca401ab9da9af9b52d2479e1bf043cee2da6a7d46ea8eb19b",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": false,
+        "uiAttempts": 0,
+        "publicationCount": 0,
+        "generationAccepted": null,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true,
+        "unexpectedUiAttempt": false,
+        "requestCount": 1,
+        "elapsedMs": 2893,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "clarification-3",
+      "taskId": "clarification",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-ivKQZy/result.json",
+      "sourceSha256": "4202b2c761a38951bf8ef48692d088913156514c1b6aa79f53ba34ddfb1f8882",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": false,
+        "uiAttempts": 0,
+        "publicationCount": 0,
+        "generationAccepted": null,
+        "firstAttemptAccepted": null,
+        "noUiResponse": true,
+        "unexpectedUiAttempt": false,
+        "requestCount": 1,
+        "elapsedMs": 4509,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "outing-3",
+      "taskId": "outing",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-Y8uSYu/result.json",
+      "sourceSha256": "a830c4e45c10391e852f05b864c9da9eb301e4d7e570864153d725c4ebf8b38b",
+      "status": "completed",
+      "outcome": "published-components",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "intelligent-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 1,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 2,
+        "elapsedMs": 12863,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "discount-3",
+      "taskId": "discount",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-VUSCpb/result.json",
+      "sourceSha256": "f6d777511d9ca41e4c460837d51aaa1c009f6f48d64a3a84f44bde96d9060f87",
+      "status": "completed",
+      "outcome": "no-ui",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "non-ui"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 0,
+        "generationAccepted": false,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 11926,
+        "diagnostics": [
+          {
+            "code": "PLAN_VERSION",
+            "path": "$.planVersion",
+            "expected": "Expected plan version 2",
+            "repairable": false
+          },
+          {
+            "code": "UI_OPERATION_FAILED",
+            "repairable": false
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "sorting-3",
+      "taskId": "sorting",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-yVSdTS/result.json",
+      "sourceSha256": "d35cc3b45c337d043ba33db4184f1e5c0aff754eb7ac5b0f76a095246e8bacde",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 64598,
+        "diagnostics": [
+          {
+            "code": "FRAME",
+            "message": "Number is outside the renderer range",
+            "path": "frame/canvases/board/0/y2",
+            "repairable": true
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "triangle-3",
+      "taskId": "triangle",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-MYk1OE/result.json",
+      "sourceSha256": "9494b20cb1221c8d4726b97345aa9d6bb3db90b1d7e6a37e05430bd6c5722ec7",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 1,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 2,
+        "elapsedMs": 49235,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "jugs-3",
+      "taskId": "jugs",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-RO4LZG/result.json",
+      "sourceSha256": "68466b386f612ecf3d183dea7cafcf88716650e36c5728a3fdd73d5280505112",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 1,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": true,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 2,
+        "elapsedMs": 55986,
+        "diagnostics": [],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    },
+    {
+      "id": "board-3",
+      "taskId": "board",
+      "repetition": 3,
+      "source": ".verification/mini-app-live-0iNLIt/result.json",
+      "sourceSha256": "9d8b2c9f71ff03e1babe74ed2a05b406f56880c10349f7d057ff3d3e30ee549f",
+      "status": "completed",
+      "outcome": "published-mini-app",
+      "configuredModel": {
+        "provider": "deepseek",
+        "id": "deepseek-flash",
+        "name": "DeepSeek V4.1 Flash"
+      },
+      "providerModelIds": [
+        "deepseek-flash"
+      ],
+      "evidence": {
+        "observedForms": [
+          "mini-app"
+        ],
+        "expectsUi": true,
+        "uiAttempts": 2,
+        "publicationCount": 1,
+        "generationAccepted": true,
+        "firstAttemptAccepted": false,
+        "noUiResponse": null,
+        "unexpectedUiAttempt": null,
+        "requestCount": 3,
+        "elapsedMs": 34407,
+        "diagnostics": [
+          {
+            "code": "SCHEMA",
+            "message": "Use element/class/id selectors or data-input/event/viewport/text presence/equality selectors",
+            "path": "document/css",
+            "repairable": true
+          }
+        ],
+        "choiceCorrect": null,
+        "semanticCorrect": null,
+        "browserInteraction": null,
+        "savedAfterInteraction": null,
+        "reload": null,
+        "followup": null
+      }
+    }
+  ],
+  "componentChecks": {
+    "scope": "Offline post-hoc numeric trajectories for generated components. Expectations come from the pre-existing eight task checks. Labels, recommendation prose, browser/save/reload/followup and human acceptance are not established.",
+    "source": ".verification/mini-app-evaluation-tCm2dL/result.json",
+    "denominator": 6,
+    "rows": [
+      {
+        "id": "outing-1",
+        "status": "completed",
+        "source": ".verification\\mini-app-live-XLEZkQ\\result.json",
+        "numeric": {
+          "status": "matched",
+          "matches": [
+            [
+              "costAMetric.value",
+              "compareChart.values[0]",
+              "verdictText.parts[2]"
+            ],
+            [
+              "costBMetric.value",
+              "compareChart.values[1]",
+              "verdictText.parts[4]"
+            ]
+          ],
+          "trajectories": [
+            {
+              "path": "costAMetric.value",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "costBMetric.value",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "perAMetric.value",
+              "values": [
+                90,
+                60,
+                50
+              ]
+            },
+            {
+              "path": "perBMetric.value",
+              "values": [
+                75,
+                60,
+                55
+              ]
+            },
+            {
+              "path": "gapMetric.value",
+              "values": [
+                30,
+                0,
+                30
+              ]
+            },
+            {
+              "path": "compareChart.values[0]",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "compareChart.values[1]",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "verdictText.parts[0]",
+              "values": [
+                2,
+                4,
+                6
+              ]
+            },
+            {
+              "path": "verdictText.parts[1]",
+              "values": [
+                " 人出行时，A 共 ",
+                " 人出行时，A 共 ",
+                " 人出行时，A 共 "
+              ]
+            },
+            {
+              "path": "verdictText.parts[2]",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "verdictText.parts[3]",
+              "values": [
+                " 元，B 共 ",
+                " 元，B 共 ",
+                " 元，B 共 "
+              ]
+            },
+            {
+              "path": "verdictText.parts[4]",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "verdictText.parts[5]",
+              "values": [
+                " 元：",
+                " 元：",
+                " 元："
+              ]
+            },
+            {
+              "path": "verdictText.parts[6]",
+              "values": [
+                "B 方案更省",
+                "两边花费相同",
+                "A 方案更省"
+              ]
+            },
+            {
+              "path": "verdictText.parts[7]",
+              "values": [
+                "，相差 ",
+                "，相差 ",
+                "，相差 "
+              ]
+            },
+            {
+              "path": "verdictText.parts[8]",
+              "values": [
+                30,
+                0,
+                30
+              ]
+            },
+            {
+              "path": "verdictText.parts[9]",
+              "values": [
+                " 元。",
+                " 元。",
+                " 元。"
+              ]
+            }
+          ]
+        },
+        "controlCount": 1,
+        "boundaryErrors": [],
+        "snapshots": [
+          {
+            "value": 2,
+            "text": "周末出游 A / B 方案花费对比\n人数设置\n出行人数 (人): 2\n两种方案花费\nA 方案\nA 方案总花费（门票 30/人 + 车费 120） (元): 180\nA 方案人均 (元/人): 90\nB 方案\nB 方案总花费（门票 45/人 + 车费 60） (元): 150\nB 方案人均 (元/人): 75\n对比与结论\n2 人出行时，A 共 180 元，B 共 150 元：B 方案更省，相差 30 元。\n两者差额 (元): 30\nA 方案: 180\nB 方案: 150\n换算规则：A = 30 × 人数 + 120；B = 45 × 人数 + 60。两者相等时 30n+120 = 45n+60，即 n = 4。所以 4 人及以下 B 更省（4 人时持平可再算），5 人及以上 A 更省；人越多，A 的优势越大（每多 1 人省 15 元）。"
+          },
+          {
+            "value": 1,
+            "text": "周末出游 A / B 方案花费对比\n人数设置\n出行人数 (人): 1\n两种方案花费\nA 方案\nA 方案总花费（门票 30/人 + 车费 120） (元): 150\nA 方案人均 (元/人): 150\nB 方案\nB 方案总花费（门票 45/人 + 车费 60） (元): 105\nB 方案人均 (元/人): 105\n对比与结论\n1 人出行时，A 共 150 元，B 共 105 元：B 方案更省，相差 45 元。\n两者差额 (元): 45\nA 方案: 150\nB 方案: 105\n换算规则：A = 30 × 人数 + 120；B = 45 × 人数 + 60。两者相等时 30n+120 = 45n+60，即 n = 4。所以 4 人及以下 B 更省（4 人时持平可再算），5 人及以上 A 更省；人越多，A 的优势越大（每多 1 人省 15 元）。"
+          }
+        ],
+        "boundaryStatus": "no-error-in-sampled-values"
+      },
+      {
+        "id": "discount-1",
+        "status": "completed",
+        "source": ".verification\\mini-app-live-T4o7ZG\\result.json",
+        "numeric": {
+          "status": "matched",
+          "matches": [
+            [
+              "payMetric.value",
+              "explain.parts[7]"
+            ]
+          ],
+          "trajectories": [
+            {
+              "path": "subtotalMetric.value",
+              "values": [
+                90,
+                108,
+                144
+              ]
+            },
+            {
+              "path": "discountMetric.value",
+              "values": [
+                0,
+                20,
+                20
+              ]
+            },
+            {
+              "path": "payMetric.value",
+              "values": [
+                90,
+                88,
+                124
+              ]
+            },
+            {
+              "path": "avgMetric.value",
+              "values": [
+                18,
+                14.67,
+                15.5
+              ]
+            },
+            {
+              "path": "explain.parts[0]",
+              "values": [
+                "按每杯 18 元、",
+                "按每杯 18 元、",
+                "按每杯 18 元、"
+              ]
+            },
+            {
+              "path": "explain.parts[1]",
+              "values": [
+                5,
+                6,
+                8
+              ]
+            },
+            {
+              "path": "explain.parts[2]",
+              "values": [
+                " 杯计算，原价小计 ",
+                " 杯计算，原价小计 ",
+                " 杯计算，原价小计 "
+              ]
+            },
+            {
+              "path": "explain.parts[3]",
+              "values": [
+                90,
+                108,
+                144
+              ]
+            },
+            {
+              "path": "explain.parts[4]",
+              "values": [
+                " 元；",
+                " 元；",
+                " 元；"
+              ]
+            },
+            {
+              "path": "explain.parts[5]",
+              "values": [
+                "未满 100 元，本单不减免",
+                "满 100 元，本单减 20 元（每单仅一次）",
+                "满 100 元，本单减 20 元（每单仅一次）"
+              ]
+            },
+            {
+              "path": "explain.parts[6]",
+              "values": [
+                "，实付 ",
+                "，实付 ",
+                "，实付 "
+              ]
+            },
+            {
+              "path": "explain.parts[7]",
+              "values": [
+                90,
+                88,
+                124
+              ]
+            },
+            {
+              "path": "explain.parts[8]",
+              "values": [
+                " 元，平均每杯 ",
+                " 元，平均每杯 ",
+                " 元，平均每杯 "
+              ]
+            },
+            {
+              "path": "explain.parts[9]",
+              "values": [
+                18,
+                14.67,
+                15.5
+              ]
+            },
+            {
+              "path": "explain.parts[10]",
+              "values": [
+                " 元。",
+                " 元。",
+                " 元。"
+              ]
+            }
+          ]
+        },
+        "averageMatches": [
+          "avgMetric.value",
+          "explain.parts[9]"
+        ],
+        "controlCount": 1,
+        "boundaryErrors": [
+          {
+            "controlId": "cups",
+            "value": 0,
+            "nodeId": "avgMetric",
+            "error": "Cannot divide by zero"
+          }
+        ],
+        "snapshots": [
+          {
+            "value": 6,
+            "text": "奶茶订单实付与均价\n调整杯数\n杯数 (杯): 6\n金额结果\n价格\n原价小计 (元): 108\n本单优惠 (元): 20\n实付与均价\n实付 (元): 88\n平均每杯 (元): 14.67\n说明\n按每杯 18 元、6 杯计算，原价小计 108 元；满 100 元，本单减 20 元（每单仅一次），实付 88 元，平均每杯 14.67 元。\n计算规则：小计 = 杯数 × 18 元；小计满 100 元时整单减 20 元且只减一次；平均每杯 = 实付 ÷ 杯数（四舍五入到分）。"
+          },
+          {
+            "value": 0,
+            "text": "奶茶订单实付与均价\n调整杯数\n杯数 (杯): 0\n金额结果\n价格\n原价小计 (元): 0\n本单优惠 (元): 0\n实付与均价\n实付 (元): 0\n平均每杯 (元): [calculation unavailable]\n说明\n按每杯 18 元、0 杯计算，原价小计 0 元；未满 100 元，本单不减免，实付 0 元，平均每杯 [calculation unavailable] 元。\n计算规则：小计 = 杯数 × 18 元；小计满 100 元时整单减 20 元且只减一次；平均每杯 = 实付 ÷ 杯数（四舍五入到分）。"
+          }
+        ],
+        "boundaryStatus": "failed"
+      },
+      {
+        "id": "outing-2",
+        "status": "completed",
+        "source": ".verification\\mini-app-live-O91vJ1\\result.json",
+        "numeric": {
+          "status": "matched",
+          "matches": [
+            [
+              "costAMetric.value",
+              "conclusion.parts[3]",
+              "compareChart.values[0]"
+            ],
+            [
+              "costBMetric.value",
+              "conclusion.parts[5]",
+              "compareChart.values[1]"
+            ]
+          ],
+          "trajectories": [
+            {
+              "path": "costAMetric.value",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "costBMetric.value",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "savingBMetric.value",
+              "values": [
+                30,
+                0,
+                0
+              ]
+            },
+            {
+              "path": "savingAMetric.value",
+              "values": [
+                0,
+                0,
+                30
+              ]
+            },
+            {
+              "path": "conclusion.parts[0]",
+              "values": [
+                "当前 ",
+                "当前 ",
+                "当前 "
+              ]
+            },
+            {
+              "path": "conclusion.parts[1]",
+              "values": [
+                2,
+                4,
+                6
+              ]
+            },
+            {
+              "path": "conclusion.parts[2]",
+              "values": [
+                " 人：A 方案 ",
+                " 人：A 方案 ",
+                " 人：A 方案 "
+              ]
+            },
+            {
+              "path": "conclusion.parts[3]",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "conclusion.parts[4]",
+              "values": [
+                " 元，B 方案 ",
+                " 元，B 方案 ",
+                " 元，B 方案 "
+              ]
+            },
+            {
+              "path": "conclusion.parts[5]",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "conclusion.parts[6]",
+              "values": [
+                " 元，所以",
+                " 元，所以",
+                " 元，所以"
+              ]
+            },
+            {
+              "path": "conclusion.parts[7]",
+              "values": [
+                "B 更省钱",
+                "两个方案总价相同",
+                "A 更省钱"
+              ]
+            },
+            {
+              "path": "conclusion.parts[8]",
+              "values": [
+                "。",
+                "。",
+                "。"
+              ]
+            },
+            {
+              "path": "compareChart.values[0]",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "compareChart.values[1]",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "detailTable.rows[0][0]",
+              "values": [
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "path": "detailTable.rows[0][1]",
+              "values": [
+                150,
+                150,
+                150
+              ]
+            },
+            {
+              "path": "detailTable.rows[0][2]",
+              "values": [
+                105,
+                105,
+                105
+              ]
+            },
+            {
+              "path": "detailTable.rows[0][3]",
+              "values": [
+                -45,
+                -45,
+                -45
+              ]
+            },
+            {
+              "path": "detailTable.rows[1][0]",
+              "values": [
+                2,
+                2,
+                2
+              ]
+            },
+            {
+              "path": "detailTable.rows[1][1]",
+              "values": [
+                180,
+                180,
+                180
+              ]
+            },
+            {
+              "path": "detailTable.rows[1][2]",
+              "values": [
+                150,
+                150,
+                150
+              ]
+            },
+            {
+              "path": "detailTable.rows[1][3]",
+              "values": [
+                -30,
+                -30,
+                -30
+              ]
+            },
+            {
+              "path": "detailTable.rows[2][0]",
+              "values": [
+                3,
+                3,
+                3
+              ]
+            },
+            {
+              "path": "detailTable.rows[2][1]",
+              "values": [
+                210,
+                210,
+                210
+              ]
+            },
+            {
+              "path": "detailTable.rows[2][2]",
+              "values": [
+                195,
+                195,
+                195
+              ]
+            },
+            {
+              "path": "detailTable.rows[2][3]",
+              "values": [
+                -15,
+                -15,
+                -15
+              ]
+            },
+            {
+              "path": "detailTable.rows[3][0]",
+              "values": [
+                4,
+                4,
+                4
+              ]
+            },
+            {
+              "path": "detailTable.rows[3][1]",
+              "values": [
+                240,
+                240,
+                240
+              ]
+            },
+            {
+              "path": "detailTable.rows[3][2]",
+              "values": [
+                240,
+                240,
+                240
+              ]
+            },
+            {
+              "path": "detailTable.rows[3][3]",
+              "values": [
+                0,
+                0,
+                0
+              ]
+            },
+            {
+              "path": "detailTable.rows[4][0]",
+              "values": [
+                5,
+                5,
+                5
+              ]
+            },
+            {
+              "path": "detailTable.rows[4][1]",
+              "values": [
+                270,
+                270,
+                270
+              ]
+            },
+            {
+              "path": "detailTable.rows[4][2]",
+              "values": [
+                285,
+                285,
+                285
+              ]
+            },
+            {
+              "path": "detailTable.rows[4][3]",
+              "values": [
+                15,
+                15,
+                15
+              ]
+            },
+            {
+              "path": "detailTable.rows[5][0]",
+              "values": [
+                6,
+                6,
+                6
+              ]
+            },
+            {
+              "path": "detailTable.rows[5][1]",
+              "values": [
+                300,
+                300,
+                300
+              ]
+            },
+            {
+              "path": "detailTable.rows[5][2]",
+              "values": [
+                330,
+                330,
+                330
+              ]
+            },
+            {
+              "path": "detailTable.rows[5][3]",
+              "values": [
+                30,
+                30,
+                30
+              ]
+            }
+          ]
+        },
+        "controlCount": 1,
+        "boundaryErrors": [],
+        "snapshots": [
+          {
+            "value": 2,
+            "text": "周末出游 A/B 方案费用对比\n改成你的人数和票价规则\n人数 (人): 2\n两个方案的总费用\nA 方案\nA 方案总费用（门票 30/人 + 车费 120） (元): 180\nB 方案\nB 方案总费用（门票 45/人 + 车费 60） (元): 150\n哪个更省\n当前 2 人：A 方案 180 元，B 方案 150 元，所以B 更省钱。\n选 B 比 A 省下 (元): 30\n选 A 比 B 省下 (元): 0\n计算规则：A = 30 × 人数 + 120；B = 45 × 人数 + 60。两方案相等时 30N + 120 = 45N + 60，即 N = 4：1–3 人 B 更省，4 人打平，5 人及以上 A 更省（每多 1 人 A 多省 15 元）。\n图形与人数对照表\nA 方案: 180\nB 方案: 150\n人数 | A 总价（元） | B 总价（元） | A − B（正数表示 B 更省）\n1 | 150 | 105 | -45\n2 | 180 | 150 | -30\n3 | 210 | 195 | -15\n4 | 240 | 240 | 0\n5 | 270 | 285 | 15\n6 | 300 | 330 | 30"
+          },
+          {
+            "value": 1,
+            "text": "周末出游 A/B 方案费用对比\n改成你的人数和票价规则\n人数 (人): 1\n两个方案的总费用\nA 方案\nA 方案总费用（门票 30/人 + 车费 120） (元): 150\nB 方案\nB 方案总费用（门票 45/人 + 车费 60） (元): 105\n哪个更省\n当前 1 人：A 方案 150 元，B 方案 105 元，所以B 更省钱。\n选 B 比 A 省下 (元): 45\n选 A 比 B 省下 (元): 0\n计算规则：A = 30 × 人数 + 120；B = 45 × 人数 + 60。两方案相等时 30N + 120 = 45N + 60，即 N = 4：1–3 人 B 更省，4 人打平，5 人及以上 A 更省（每多 1 人 A 多省 15 元）。\n图形与人数对照表\nA 方案: 150\nB 方案: 105\n人数 | A 总价（元） | B 总价（元） | A − B（正数表示 B 更省）\n1 | 150 | 105 | -45\n2 | 180 | 150 | -30\n3 | 210 | 195 | -15\n4 | 240 | 240 | 0\n5 | 270 | 285 | 15\n6 | 300 | 330 | 30"
+          }
+        ],
+        "boundaryStatus": "no-error-in-sampled-values"
+      },
+      {
+        "id": "discount-2",
+        "status": "completed",
+        "source": ".verification\\mini-app-live-1R20ZX\\result.json",
+        "numeric": {
+          "status": "matched",
+          "matches": [
+            [
+              "totalMetric.value",
+              "explain.parts[6]"
+            ]
+          ],
+          "trajectories": [
+            {
+              "path": "subtotalMetric.value",
+              "values": [
+                90,
+                108,
+                144
+              ]
+            },
+            {
+              "path": "discountMetric.value",
+              "values": [
+                0,
+                20,
+                20
+              ]
+            },
+            {
+              "path": "totalMetric.value",
+              "values": [
+                90,
+                88,
+                124
+              ]
+            },
+            {
+              "path": "avgMetric.value",
+              "values": [
+                18,
+                14.67,
+                15.5
+              ]
+            },
+            {
+              "path": "explain.parts[0]",
+              "values": [
+                5,
+                6,
+                8
+              ]
+            },
+            {
+              "path": "explain.parts[1]",
+              "values": [
+                " 杯共 ",
+                " 杯共 ",
+                " 杯共 "
+              ]
+            },
+            {
+              "path": "explain.parts[2]",
+              "values": [
+                90,
+                108,
+                144
+              ]
+            },
+            {
+              "path": "explain.parts[3]",
+              "values": [
+                " 元，",
+                " 元，",
+                " 元，"
+              ]
+            },
+            {
+              "path": "explain.parts[4]",
+              "values": [
+                "本单未满 100 元，不享受满减。",
+                "本单已满 100 元，减 20 元（每单只减一次）。",
+                "本单已满 100 元，减 20 元（每单只减一次）。"
+              ]
+            },
+            {
+              "path": "explain.parts[5]",
+              "values": [
+                "实付 ",
+                "实付 ",
+                "实付 "
+              ]
+            },
+            {
+              "path": "explain.parts[6]",
+              "values": [
+                90,
+                88,
+                124
+              ]
+            },
+            {
+              "path": "explain.parts[7]",
+              "values": [
+                " 元，平均每杯 ",
+                " 元，平均每杯 ",
+                " 元，平均每杯 "
+              ]
+            },
+            {
+              "path": "explain.parts[8]",
+              "values": [
+                18,
+                14.67,
+                15.5
+              ]
+            },
+            {
+              "path": "explain.parts[9]",
+              "values": [
+                " 元。",
+                " 元。",
+                " 元。"
+              ]
+            }
+          ]
+        },
+        "averageMatches": [
+          "avgMetric.value",
+          "explain.parts[8]"
+        ],
+        "controlCount": 1,
+        "boundaryErrors": [],
+        "snapshots": [
+          {
+            "value": 6,
+            "text": "奶茶订单实付与每杯均价\n订单设置\n杯数 (杯): 6\n金额结果\n原价小计（18 元/杯） (元): 108\n满减优惠 (元): 20\n实付金额 (元): 88\n平均每杯 (元): 14.67\n说明\n6 杯共 108 元，本单已满 100 元，减 20 元（每单只减一次）。实付 88 元，平均每杯 14.67 元。\n规则：18 元/杯；原价小计满 100 元减 20 元，每单限减一次，不可叠加。"
+          },
+          {
+            "value": 1,
+            "text": "奶茶订单实付与每杯均价\n订单设置\n杯数 (杯): 1\n金额结果\n原价小计（18 元/杯） (元): 18\n满减优惠 (元): 0\n实付金额 (元): 18\n平均每杯 (元): 18\n说明\n1 杯共 18 元，本单未满 100 元，不享受满减。实付 18 元，平均每杯 18 元。\n规则：18 元/杯；原价小计满 100 元减 20 元，每单限减一次，不可叠加。"
+          }
+        ],
+        "boundaryStatus": "no-error-in-sampled-values"
+      },
+      {
+        "id": "outing-3",
+        "status": "completed",
+        "source": ".verification\\mini-app-live-Y8uSYu\\result.json",
+        "numeric": {
+          "status": "matched",
+          "matches": [
+            [
+              "summary.parts[3]",
+              "metricA.value",
+              "chart.values[0]",
+              "table.rows[2][1]"
+            ],
+            [
+              "summary.parts[5]",
+              "metricB.value",
+              "chart.values[1]",
+              "table.rows[2][2]"
+            ]
+          ],
+          "trajectories": [
+            {
+              "path": "summary.parts[0]",
+              "values": [
+                "按 ",
+                "按 ",
+                "按 "
+              ]
+            },
+            {
+              "path": "summary.parts[1]",
+              "values": [
+                2,
+                4,
+                6
+              ]
+            },
+            {
+              "path": "summary.parts[2]",
+              "values": [
+                " 人计算：A 合计 ",
+                " 人计算：A 合计 ",
+                " 人计算：A 合计 "
+              ]
+            },
+            {
+              "path": "summary.parts[3]",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "summary.parts[4]",
+              "values": [
+                " 元，B 合计 ",
+                " 元，B 合计 ",
+                " 元，B 合计 "
+              ]
+            },
+            {
+              "path": "summary.parts[5]",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "summary.parts[6]",
+              "values": [
+                " 元。",
+                " 元。",
+                " 元。"
+              ]
+            },
+            {
+              "path": "summary.parts[7]",
+              "values": [
+                "B 方案更省",
+                "两家费用相同",
+                "A 方案更省"
+              ]
+            },
+            {
+              "path": "summary.parts[8]",
+              "values": [
+                "，两者相差 ",
+                "，两者相差 ",
+                "，两者相差 "
+              ]
+            },
+            {
+              "path": "summary.parts[9]",
+              "values": [
+                30,
+                0,
+                30
+              ]
+            },
+            {
+              "path": "summary.parts[10]",
+              "values": [
+                " 元。",
+                " 元。",
+                " 元。"
+              ]
+            },
+            {
+              "path": "metricA.value",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "metricB.value",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "metricDiff.value",
+              "values": [
+                30,
+                0,
+                30
+              ]
+            },
+            {
+              "path": "chart.values[0]",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "chart.values[1]",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            },
+            {
+              "path": "table.rows[0][0]",
+              "values": [
+                "门票合计",
+                "门票合计",
+                "门票合计"
+              ]
+            },
+            {
+              "path": "table.rows[0][1]",
+              "values": [
+                60,
+                120,
+                180
+              ]
+            },
+            {
+              "path": "table.rows[0][2]",
+              "values": [
+                90,
+                180,
+                270
+              ]
+            },
+            {
+              "path": "table.rows[1][0]",
+              "values": [
+                "车费（固定）",
+                "车费（固定）",
+                "车费（固定）"
+              ]
+            },
+            {
+              "path": "table.rows[1][1]",
+              "values": [
+                120,
+                120,
+                120
+              ]
+            },
+            {
+              "path": "table.rows[1][2]",
+              "values": [
+                60,
+                60,
+                60
+              ]
+            },
+            {
+              "path": "table.rows[2][0]",
+              "values": [
+                "合计",
+                "合计",
+                "合计"
+              ]
+            },
+            {
+              "path": "table.rows[2][1]",
+              "values": [
+                180,
+                240,
+                300
+              ]
+            },
+            {
+              "path": "table.rows[2][2]",
+              "values": [
+                150,
+                240,
+                330
+              ]
+            }
+          ]
+        },
+        "controlCount": 1,
+        "boundaryErrors": [],
+        "snapshots": [
+          {
+            "value": 2,
+            "text": "周末出行 A/B 方案费用对比\n调整人数\n出行人数 (人): 2\n按 2 人计算：A 合计 180 元，B 合计 150 元。B 方案更省，两者相差 30 元。\n两家总花费\nA 方案\nA 方案合计 (元): 180\nB 方案\nB 方案合计 (元): 150\n差多少\n差额（绝对值） (元): 30\n费用拆分与直观对比\n项目 | A 方案 | B 方案\n门票合计 | 60 | 90\n车费（固定） | 120 | 60\n合计 | 180 | 150\nA 方案: 180\nB 方案: 150\n计算规则\n规则说明：A 每人 30 元门票 + 120 元固定车费；B 每人 45 元门票 + 60 元固定车费。A 的车费多 60 元，但每人省 15 元门票，所以人数越多 A 越划算。"
+          },
+          {
+            "value": 1,
+            "text": "周末出行 A/B 方案费用对比\n调整人数\n出行人数 (人): 1\n按 1 人计算：A 合计 150 元，B 合计 105 元。B 方案更省，两者相差 45 元。\n两家总花费\nA 方案\nA 方案合计 (元): 150\nB 方案\nB 方案合计 (元): 105\n差多少\n差额（绝对值） (元): 45\n费用拆分与直观对比\n项目 | A 方案 | B 方案\n门票合计 | 30 | 45\n车费（固定） | 120 | 60\n合计 | 150 | 105\nA 方案: 150\nB 方案: 105\n计算规则\n规则说明：A 每人 30 元门票 + 120 元固定车费；B 每人 45 元门票 + 60 元固定车费。A 的车费多 60 元，但每人省 15 元门票，所以人数越多 A 越划算。"
+          }
+        ],
+        "boundaryStatus": "no-error-in-sampled-values"
+      },
+      {
+        "id": "discount-3",
+        "status": "completed",
+        "source": ".verification\\mini-app-live-VUSCpb\\result.json",
+        "numericStatus": "no-published-component"
+      }
+    ]
+  },
+  "verification": {
+    "unit": {
+      "passed": 4,
+      "failed": 0
+    },
+    "scriptLint": "passed",
+    "browserInteractionsForThisBatch": "not-run",
+    "fullTaskAcceptance": "pending",
+    "fullCI": "deferred",
+    "humanSemanticReview": "deferred",
+    "releasePackage": "not-run"
+  },
+  "limitations": [
+    "Configured V4.1 Flash, provider only confirms deepseek-flash identity",
+    "Publication is not task correctness",
+    "Development samples only; sealed evaluation pending",
+    "Design review is author self-review, not independent human acceptance"
+  ],
+  "evidenceFiles": [
+    {
+      "path": "tests/fixtures/intelligent-ui/phase3-first-tasks.json",
+      "sha256": "70f638b803375488866902ca0090f21a5ed6b7374ff12905018dcdea1a9474f6"
+    },
+    {
+      "path": ".verification/check-phase3-components.mjs",
+      "sha256": "a540e81f515a439638e0ca9f383c75c71719cf59ef62f7ce2b4421ac6bc332c9"
+    },
+    {
+      "path": ".verification/phase3-first-tasks-components-final.json",
+      "sha256": "35702fa2b0fc569c426816e346c37e583abebdde62037d9e6b9cd4ff9d1e5a39"
+    },
+    {
+      "path": ".verification/phase3-first-tasks-unit-current.log",
+      "sha256": "db15e4d07fba097cb7fc1d7ecc2b1c727d6c5e96e05c96d22bb1be1c9b54d2bd"
+    },
+    {
+      "path": ".verification/phase3-first-tasks-lint.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "docs/intelligent-ui-phase3-design-v3.6.md",
+      "sha256": "c4ff506b47d4a5e66f9f5ae2f2a01495042aaf82045e0426e50431cb4bcdd0da"
+    },
+    {
+      "path": "docs/verification/intelligent-ui-phase3-first-tasks-2026-10-31.md",
+      "sha256": "d461fab8e28ec5fa29628b0ec30fd5071613f1e8fc69b5bce526d948c789beb2"
+    }
+  ],
+  "designPdf": {
+    "source": "docs\\intelligent-ui-phase3-design-v3.6.md",
+    "sourceSha256": "c4ff506b47d4a5e66f9f5ae2f2a01495042aaf82045e0426e50431cb4bcdd0da",
+    "output": "output\\pdf\\piora-intelligent-ui-phase3-design-v3.6.pdf",
+    "pdfSha256": "f7773e9d033ab6f4a74db26f3719e1cd2ab122f3e4e7f5ecf1f38757f3def8e0",
+    "pages": 7,
+    "pageTextLengths": [
+      1116,
+      1058,
+      1167,
+      984,
+      992,
+      1108,
+      1390
+    ],
+    "textChecks": "passed",
+    "visualReview": "passed",
+    "visuallyReviewedPages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7
+    ],
+    "visualFindings": "Seven rendered pages inspected: no clipping, overlap, missing glyphs or broken tables."
+  },
+  "reportConsistency": "passed"
+}

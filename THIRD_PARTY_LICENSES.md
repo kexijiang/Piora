@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `896a64a874a058b834f53dabf44da4fcd8bbe2f7e730a62b20aef5e474476ff3`
+Lockfile SHA-256: `355f98fb5f252c6635dd6d6d17d37e56e6e43cd6802ab67046cc2943011b4eeb`
 
-Unique locked packages: **1268**. Runtime packages: **768**. Build/development-only packages: **500**.
+Unique locked packages: **1280**. Runtime packages: **781**. Build/development-only packages: **499**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -14,6 +14,7 @@ Every locked package declares a license.
 
 | Package | Version | Declared license | Optional |
 | --- | --- | --- | --- |
+| `@a2ui/web_core` | `0.15.0` | Apache-2.0 | No |
 | `@antfu/install-pkg` | `1.1.0` | MIT | No |
 | `@anthropic-ai/sdk` | `0.129.0` | MIT | No |
 | `@aws-sdk/client-bedrock-runtime` | `3.1127.0` | Apache-2.0 | No |
@@ -157,6 +158,9 @@ Every locked package declares a license.
 | `@lezer/sass` | `1.1.0` | MIT | No |
 | `@lezer/xml` | `1.0.6` | MIT | No |
 | `@lezer/yaml` | `1.0.4` | MIT | No |
+| `@lit-labs/ssr-dom-shim` | `1.6.0` | BSD-3-Clause | No |
+| `@lit/context` | `1.1.6` | BSD-3-Clause | No |
+| `@lit/reactive-element` | `2.1.2` | BSD-3-Clause | No |
 | `@lobehub/icons` | `6.15.0` | MIT | No |
 | `@marijn/find-cluster-break` | `1.0.4` | MIT | No |
 | `@mermaid-js/parser` | `2.0.1` | MIT | No |
@@ -177,6 +181,7 @@ Every locked package declares a license.
 | `@oozcitak/url` | `1.0.4` | MIT | No |
 | `@oozcitak/util` | `8.3.8` | MIT | No |
 | `@pkgjs/parseargs` | `0.11.0` | MIT | Yes |
+| `@preact/signals-core` | `1.14.5` | MIT | No |
 | `@protobufjs/aspromise` | `1.1.2` | BSD-3-Clause | No |
 | `@protobufjs/base64` | `1.1.2` | BSD-3-Clause | No |
 | `@protobufjs/codegen` | `2.0.5` | BSD-3-Clause | No |
@@ -242,7 +247,7 @@ Every locked package declares a license.
 | `@types/prismjs` | `1.26.6` | MIT | No |
 | `@types/retry` | `0.12.0` | MIT | No |
 | `@types/ssh2` | `1.15.6` | MIT | No |
-| `@types/trusted-types` | `2.0.7` | MIT | Yes |
+| `@types/trusted-types` | `2.0.7` | MIT | No |
 | `@types/unist` | `2.0.11` | MIT | No |
 | `@types/unist` | `3.0.3` | MIT | No |
 | `@typescript/old` | `6.0.3` | Apache-2.0 | No |
@@ -502,6 +507,7 @@ Every locked package declares a license.
 | `jiti` | `2.7.0` | MIT | No |
 | `jose` | `6.2.12` | MIT | No |
 | `js-yaml` | `4.3.2` | MIT | No |
+| `jsesc` | `3.1.0` | MIT | No |
 | `json-bigint` | `1.0.0` | MIT | No |
 | `json-schema-to-ts` | `3.1.1` | MIT | No |
 | `json-schema-traverse` | `1.0.0` | MIT | No |
@@ -519,6 +525,9 @@ Every locked package declares a license.
 | `lazy-val` | `1.0.5` | MIT | No |
 | `lazystream` | `1.0.1` | MIT | No |
 | `lie` | `3.3.0` | MIT | No |
+| `lit` | `3.3.3` | BSD-3-Clause | No |
+| `lit-element` | `4.2.2` | BSD-3-Clause | No |
+| `lit-html` | `3.3.3` | BSD-3-Clause | No |
 | `lodash` | `4.18.1` | MIT | No |
 | `lodash-es` | `4.18.1` | MIT | No |
 | `lodash.camelcase` | `4.3.0` | MIT | No |
@@ -634,7 +643,8 @@ Every locked package declares a license.
 | `points-on-path` | `0.2.1` | MIT | No |
 | `polished` | `4.3.1` | MIT | No |
 | `portfinder` | `1.0.38` | MIT | No |
-| `postcss` | `8.5.32` | MIT | No |
+| `postcss` | `8.5.31` | MIT | No |
+| `postcss-value-parser` | `4.2.0` | MIT | No |
 | `prismjs` | `1.30.0` | MIT | No |
 | `process` | `0.11.10` | MIT | No |
 | `process-nextick-args` | `2.0.1` | MIT | No |
@@ -655,7 +665,9 @@ Every locked package declares a license.
 | `readable-stream` | `2.3.8` | MIT | No |
 | `readable-stream` | `4.7.0` | MIT | No |
 | `readdir-glob` | `1.1.3` | Apache-2.0 | No |
+| `redos-detector` | `6.1.4` | MIT | No |
 | `refractor` | `5.0.0` | MIT | No |
+| `regjsparser` | `0.13.0` | BSD-2-Clause | No |
 | `rehype-katex` | `7.0.1` | MIT | No |
 | `rehype-raw` | `7.0.0` | MIT | No |
 | `rehype-sanitize` | `6.0.0` | MIT | No |
@@ -756,6 +768,7 @@ Every locked package declares a license.
 | `universalify` | `2.0.1` | MIT | No |
 | `unpipe` | `1.0.0` | MIT | No |
 | `util-deprecate` | `1.0.2` | MIT | No |
+| `validate-color` | `2.2.4` | MIT | No |
 | `vary` | `1.1.2` | MIT | No |
 | `vfile` | `6.0.3` | MIT | No |
 | `vfile-location` | `5.0.3` | MIT | No |
@@ -779,7 +792,7 @@ Every locked package declares a license.
 | `yargs` | `17.7.3` | MIT | No |
 | `yargs-parser` | `21.1.1` | ISC | No |
 | `zip-stream` | `6.0.1` | MIT | No |
-| `zod` | `4.6.7` | MIT | No |
+| `zod` | `3.25.76` | MIT | No |
 | `zod-to-json-schema` | `3.25.2` | ISC | No |
 | `zwitch` | `2.0.4` | MIT | No |
 
@@ -1128,7 +1141,6 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `iterator.prototype` | `1.1.5` | MIT | No |
 | `jake` | `10.9.4` | Apache-2.0 | No |
 | `js-tokens` | `4.0.0` | MIT | No |
-| `jsesc` | `3.1.0` | MIT | No |
 | `json-buffer` | `3.0.1` | MIT | No |
 | `json-schema-traverse` | `0.4.1` | MIT | No |
 | `json-stable-stringify-without-jsonify` | `1.0.1` | MIT | No |

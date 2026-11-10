@@ -12,9 +12,21 @@ export interface FirstPartyExtensionDescriptor {
   required?: boolean;
   /** Optional first-party extensions may stay unloaded until the user enables them. */
   defaultEnabled?: boolean;
+  /** Controlled exclusively by the persisted Beta Features registry. */
+  betaFeature?: "intelligentUi";
 }
 
 export const FIRST_PARTY_EXTENSIONS: readonly FirstPartyExtensionDescriptor[] = [
+  {
+    id: "piora:intelligent-ui", fileName: "piora-intelligent-ui.ts", name: `${APP_DISPLAY_NAME} Intelligent UI`,
+    description: "Interactive answers. Enable in Settings > Beta Features.",
+    profiles: ["normal"], betaFeature: "intelligentUi",
+  },
+  {
+    id: "piora:mini-app", fileName: "piora-mini-app.ts", name: `${APP_DISPLAY_NAME} Intelligent UI Mini Apps`,
+    description: "Interactive simulations and spatial answers. Enable in Settings > Beta Features.",
+    profiles: ["normal"], betaFeature: "intelligentUi",
+  },
   {
     id: "piora:meme", fileName: "piora-meme.ts", name: `${APP_DISPLAY_NAME} Memes`,
     description: "Bridge the pinned DSH Meme desktop plugin for search, sending, learning and library maintenance.",

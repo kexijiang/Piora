@@ -65,6 +65,7 @@
     "!.next/**/*.js.map",
     "public",
     "extensions",
+    ".mini-app-runtime",
     "next.config.ts",
     "package.json"
   ],
@@ -76,8 +77,8 @@
     "predev": "node scripts/prepare-development.mjs",
     "predev:desktop": "node scripts/prepare-development.mjs",
     "predev:lan": "node scripts/prepare-development.mjs",
-    "prebuild": "npm run brand:prepare && npm run build:harmony-worker",
-    "prebuild:web": "npm run brand:prepare && npm run build:harmony-worker",
+    "prebuild": "npm run brand:prepare && npm run build:harmony-worker && npm run mini-app:prepare",
+    "prebuild:web": "npm run brand:prepare && npm run build:harmony-worker && npm run mini-app:prepare",
     "pretypecheck": "npm run brand:prepare",
     "brand:icons": "node scripts/build-brand-icon.mjs",
     "dev": "next dev -H 127.0.0.1 -p 30141 --turbopack",
@@ -97,6 +98,7 @@
     "test:team:acceptance": "node scripts/run-team-acceptance.mjs",
     "test:team:soak": "node scripts/run-team-soak.mjs",
     "build:harmony-worker": "tsc -p tsconfig.harmony-worker.json",
+    "mini-app:prepare": "node scripts/prepare-mini-app-runtime.mjs",
     "perf:check": "node scripts/check-performance-budgets.mjs",
     "pack:win": "npm run build:app && npm run pack --workspace @piora/desktop",
     "dist:win": "npm run build:app && npm run dist --workspace @piora/desktop",
@@ -125,6 +127,7 @@
     "harmony:fixture:verify-hap": "node scripts/verify-harmony-fixture-hap.mjs"
   },
   "dependencies": {
+    "@a2ui/web_core": "0.15.0",
     "@codemirror/autocomplete": "6.20.4",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-json": "^6.0.2",
@@ -148,6 +151,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/xterm": "^6.0.0",
+    "acorn": "8.16.0",
     "brace-expansion": "5.0.12",
     "codemirror": "^6.0.2",
     "diff": "^9.0.0",
@@ -163,8 +167,12 @@
     "next": "^16.4.2",
     "node-pty": "1.1.0",
     "opencc-js": "^1.4.2",
+    "parse5": "7.3.0",
     "playwright-core": "^1.64.1",
+    "postcss": "8.5.31",
+    "postcss-value-parser": "4.2.0",
     "proper-lockfile": "4.1.2",
+    "quickjs-wasi": "3.6.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-markdown": "^10.1.0",
@@ -188,7 +196,8 @@
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.4",
     "unified": "^11.0.5",
-    "ws": "^8.22.0"
+    "ws": "^8.22.0",
+    "zod": "3.25.76"
   },
   "devDependencies": {
     "@electron/asar": "4.3.1",
@@ -202,13 +211,12 @@
     "@types/three": "^0.187.0",
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.2",
+    "@typescript/native": "npm:typescript@7.0.2",
     "eslint": "^10.13.0",
     "eslint-config-next": "16.4.5",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jiti": "^2.7.0",
-    "postcss": "^8.5.30",
-    "tailwindcss": "^4.3.3",
-    "@typescript/native": "npm:typescript@7.0.2"
+    "tailwindcss": "^4.3.3"
   },
   "optionalDependencies": {
     "@microsoft/winappcli": "0.7.1"

@@ -1,0 +1,5481 @@
+{
+  "version": 1,
+  "scope": "isolated-model-generation",
+  "recordedAt": "2026-10-29T12:46:23.507Z",
+  "developmentOnly": true,
+  "heldoutUsed": false,
+  "groups": [
+    {
+      "model": "deepseek/deepseek-flash",
+      "policyVersion": "phase1",
+      "runCount": 120,
+      "taskCount": 40,
+      "familyCount": 40,
+      "modelSettings": {
+        "reasoning": "low",
+        "maxRequestsPerTurn": 4,
+        "timeoutMs": 120000,
+        "maxToolAttemptsPerTurn": 3,
+        "maxRetries": 0,
+        "maxTokens": 6000
+      },
+      "sourceHashes": {
+        "manifest.json": "e027e7cab01453a009fe1f5bd14898e922d86808e4269382118fdeb894006aab",
+        "adapter.json": "f335a373be5f53a5316e0801910c029d38e9e56601c336d60d400e449c082492",
+        "runs.jsonl": "6d2ea6133e2352358a1a95eddef976f6ab4682c9c92e6a9810cf5f9f5c4f37fe",
+        "summary.json": "d8d302305116ba2b2353c8bde89e99fc32c39f5a8bfcdd362a08adbd2ca64e36"
+      },
+      "outcomes": {
+        "completed": 73,
+        "provider-error": 34,
+        "timeout": 13,
+        "cancelled": 0
+      },
+      "selectionMiss": {
+        "numerator": 3,
+        "denominator": 60,
+        "pending": 0,
+        "value": 0.05
+      },
+      "falseTrigger": {
+        "numerator": 3,
+        "denominator": 45,
+        "pending": 0,
+        "value": 0.06666666666666667
+      },
+      "turnSelection": {
+        "knownLabelsOnly": true,
+        "labelCoverageComplete": true,
+        "unlabeledTurns": 0,
+        "unobservedTurns": 0,
+        "selectionMiss": {
+          "numerator": 3,
+          "denominator": 60,
+          "pending": 0,
+          "value": 0.05
+        },
+        "falseTrigger": {
+          "numerator": 3,
+          "denominator": 48,
+          "pending": 0,
+          "value": 0.0625
+        }
+      },
+      "structurallyValidGeneration": {
+        "numerator": 44,
+        "denominator": 60,
+        "pending": 11,
+        "value": null
+      },
+      "strictCompletedFirstValid": {
+        "numerator": 20,
+        "denominator": 60
+      },
+      "strictCompletedAnyValid": {
+        "numerator": 35,
+        "denominator": 60
+      },
+      "humanSemanticAcceptance": "pending",
+      "firstUsable": {
+        "numerator": 0,
+        "denominator": 60,
+        "pending": 60,
+        "value": null
+      },
+      "finalUsable": {
+        "numerator": 0,
+        "denominator": 60,
+        "pending": 60,
+        "value": null
+      },
+      "errorCounts": {
+        "UI_SURFACE_INVALID": 44,
+        "evaluation-tool-limit": 11,
+        "UI_SCHEMA_INVALID": 6,
+        "provider-error": 12
+      },
+      "tasks": [
+        {
+          "taskId": "d01",
+          "family": "meal-sharing",
+          "domain": "meal-sharing",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 20113.5971,
+          "attemptCount": 2,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d01",
+          "family": "meal-sharing",
+          "domain": "meal-sharing",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 22032.890499999998,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d01",
+          "family": "meal-sharing",
+          "domain": "meal-sharing",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 17325.9841,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d02",
+          "family": "bakery-batches",
+          "domain": "bakery-batches",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "timeout",
+          "durationMs": 11556.640999999996,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d02",
+          "family": "bakery-batches",
+          "domain": "bakery-batches",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 8639.233200000002,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d02",
+          "family": "bakery-batches",
+          "domain": "bakery-batches",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 11303.411500000002,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d03",
+          "family": "freight-choice",
+          "domain": "freight-choice",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 17332.3168,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d03",
+          "family": "freight-choice",
+          "domain": "freight-choice",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 19168.3958,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d03",
+          "family": "freight-choice",
+          "domain": "freight-choice",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 11625.420500000007,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d04",
+          "family": "room-decoration",
+          "domain": "room-decoration",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 11678.41929999998,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d04",
+          "family": "room-decoration",
+          "domain": "room-decoration",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 9511.270900000003,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d04",
+          "family": "room-decoration",
+          "domain": "room-decoration",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 5004.493699999992,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d05",
+          "family": "mobile-plans",
+          "domain": "mobile-plans",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 32116.268500000006,
+          "attemptCount": 3,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 3,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d05",
+          "family": "mobile-plans",
+          "domain": "mobile-plans",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 36753.1532,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d05",
+          "family": "mobile-plans",
+          "domain": "mobile-plans",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 14341.104700000025,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d06",
+          "family": "gift-budget",
+          "domain": "gift-budget",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "timeout",
+          "durationMs": 15650.710499999986,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d06",
+          "family": "gift-budget",
+          "domain": "gift-budget",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 19564.63949999999,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d06",
+          "family": "gift-budget",
+          "domain": "gift-budget",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "timeout",
+          "durationMs": 19212.37759999995,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d07",
+          "family": "distance-conversion",
+          "domain": "distance-conversion",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 10388.430099999998,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d07",
+          "family": "distance-conversion",
+          "domain": "distance-conversion",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 15077.315599999973,
+          "attemptCount": 2,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d07",
+          "family": "distance-conversion",
+          "domain": "distance-conversion",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 21847.929399999965,
+          "attemptCount": 3,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 3,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d08",
+          "family": "subscription-duration",
+          "domain": "subscription-duration",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 13049.78489999997,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d08",
+          "family": "subscription-duration",
+          "domain": "subscription-duration",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 12115.94630000001,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d08",
+          "family": "subscription-duration",
+          "domain": "subscription-duration",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 97487.5907,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d09",
+          "family": "party-drinks",
+          "domain": "party-drinks",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 40991.31310000003,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d09",
+          "family": "party-drinks",
+          "domain": "party-drinks",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 34263.63749999995,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d09",
+          "family": "party-drinks",
+          "domain": "party-drinks",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 58728.580000000075,
+          "attemptCount": 3,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 3,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d10",
+          "family": "storage-unit",
+          "domain": "storage-unit",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 16837.35149999999,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d10",
+          "family": "storage-unit",
+          "domain": "storage-unit",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 16052.310300000012,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d10",
+          "family": "storage-unit",
+          "domain": "storage-unit",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 26495.41220000002,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d11",
+          "family": "running-pace",
+          "domain": "running-pace",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 31932.099600000074,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d11",
+          "family": "running-pace",
+          "domain": "running-pace",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 30787.680700000026,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d11",
+          "family": "running-pace",
+          "domain": "running-pace",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "timeout",
+          "durationMs": 51266.30890000006,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d12",
+          "family": "school-trip",
+          "domain": "school-trip",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "timeout",
+          "durationMs": 120005.01579999994,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d12",
+          "family": "school-trip",
+          "domain": "school-trip",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 10476.700300000026,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d12",
+          "family": "school-trip",
+          "domain": "school-trip",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 22751.168299999903,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d13",
+          "family": "printing-tier",
+          "domain": "printing-tier",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 60590.64439999999,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d13",
+          "family": "printing-tier",
+          "domain": "printing-tier",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 113661.7599999999,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID",
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d13",
+          "family": "printing-tier",
+          "domain": "printing-tier",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 19026.068200000096,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d14",
+          "family": "rent-utilities",
+          "domain": "rent-utilities",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 25075.080499999924,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d14",
+          "family": "rent-utilities",
+          "domain": "rent-utilities",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 30694.732800000114,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d14",
+          "family": "rent-utilities",
+          "domain": "rent-utilities",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 17060.833500000183,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d15",
+          "family": "recipe-scaling",
+          "domain": "recipe-scaling",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 18929.780700000003,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d15",
+          "family": "recipe-scaling",
+          "domain": "recipe-scaling",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 9950.057500000112,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d15",
+          "family": "recipe-scaling",
+          "domain": "recipe-scaling",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 33119.47640000004,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d16",
+          "family": "ticket-addons",
+          "domain": "ticket-addons",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 6388.881099999882,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d16",
+          "family": "ticket-addons",
+          "domain": "ticket-addons",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 42635.566899999976,
+          "attemptCount": 1,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d16",
+          "family": "ticket-addons",
+          "domain": "ticket-addons",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 44775.22450000001,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d17",
+          "family": "work-hours",
+          "domain": "work-hours",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 53288.521600000095,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d17",
+          "family": "work-hours",
+          "domain": "work-hours",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 39934.81790000014,
+          "attemptCount": 3,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 3,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d17",
+          "family": "work-hours",
+          "domain": "work-hours",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "timeout",
+          "durationMs": 40740.75609999988,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d18",
+          "family": "event-seating",
+          "domain": "event-seating",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 7550.104400000069,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d18",
+          "family": "event-seating",
+          "domain": "event-seating",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 46259.574100000085,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d18",
+          "family": "event-seating",
+          "domain": "event-seating",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 23861.524399999995,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d19",
+          "family": "discount-coupon",
+          "domain": "discount-coupon",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 43792.591999999946,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d19",
+          "family": "discount-coupon",
+          "domain": "discount-coupon",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 10465.849099999992,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d19",
+          "family": "discount-coupon",
+          "domain": "discount-coupon",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 10602.817500000121,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d20",
+          "family": "room-temperature",
+          "domain": "room-temperature",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 35250.14720000001,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d20",
+          "family": "room-temperature",
+          "domain": "room-temperature",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 14078.820400000084,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d20",
+          "family": "room-temperature",
+          "domain": "room-temperature",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 10148.125900000101,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d21",
+          "family": "historical-fact",
+          "domain": "historical-fact",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 5576.330699999817,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d21",
+          "family": "historical-fact",
+          "domain": "historical-fact",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 6836.876699999906,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d21",
+          "family": "historical-fact",
+          "domain": "historical-fact",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 10036.471900000004,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d22",
+          "family": "email-writing",
+          "domain": "email-writing",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 13430.856400000164,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d22",
+          "family": "email-writing",
+          "domain": "email-writing",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 2100.5176999999676,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d22",
+          "family": "email-writing",
+          "domain": "email-writing",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 5220.531699999934,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d23",
+          "family": "word-definition",
+          "domain": "word-definition",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 11249.59260000009,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d23",
+          "family": "word-definition",
+          "domain": "word-definition",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 19125.845900000073,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d23",
+          "family": "word-definition",
+          "domain": "word-definition",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 20798.301699999953,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d24",
+          "family": "static-comparison",
+          "domain": "static-comparison",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 22199.573199999984,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d24",
+          "family": "static-comparison",
+          "domain": "static-comparison",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 87371.56079999986,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d24",
+          "family": "static-comparison",
+          "domain": "static-comparison",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 19515.416700000176,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d25",
+          "family": "one-off-percent",
+          "domain": "one-off-percent",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 4944.408999999985,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d25",
+          "family": "one-off-percent",
+          "domain": "one-off-percent",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 1579.4433999999892,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d25",
+          "family": "one-off-percent",
+          "domain": "one-off-percent",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 1555.9447000001092,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d26",
+          "family": "text-checklist",
+          "domain": "text-checklist",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 13928.627199999988,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d26",
+          "family": "text-checklist",
+          "domain": "text-checklist",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 6849.131399999838,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d26",
+          "family": "text-checklist",
+          "domain": "text-checklist",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 11845.488099999959,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d27",
+          "family": "code-explanation",
+          "domain": "code-explanation",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 21413.949100000085,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d27",
+          "family": "code-explanation",
+          "domain": "code-explanation",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 10503.246199999936,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d27",
+          "family": "code-explanation",
+          "domain": "code-explanation",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 34968.22899999982,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d28",
+          "family": "translation",
+          "domain": "translation",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 4135.4191999998875,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d28",
+          "family": "translation",
+          "domain": "translation",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 24402.674099999946,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d28",
+          "family": "translation",
+          "domain": "translation",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 3664.5113999999594,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d29",
+          "family": "summary",
+          "domain": "summary",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 10539.975799999898,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d29",
+          "family": "summary",
+          "domain": "summary",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 581.0742999999784,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d29",
+          "family": "summary",
+          "domain": "summary",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 10605.163800000213,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d30",
+          "family": "fixed-table",
+          "domain": "fixed-table",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 41850.31920000026,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": true
+            }
+          ]
+        },
+        {
+          "taskId": "d30",
+          "family": "fixed-table",
+          "domain": "fixed-table",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 28807.59009999968,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": true
+            }
+          ]
+        },
+        {
+          "taskId": "d30",
+          "family": "fixed-table",
+          "domain": "fixed-table",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 46860.046300000045,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": true
+            }
+          ]
+        },
+        {
+          "taskId": "d31",
+          "family": "correction-only",
+          "domain": "correction-only",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 12661.642599999905,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d31",
+          "family": "correction-only",
+          "domain": "correction-only",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 5479.309000000358,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d31",
+          "family": "correction-only",
+          "domain": "correction-only",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 10807.514899999835,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d32",
+          "family": "ui-not-authorized-by-word",
+          "domain": "ui-not-authorized-by-word",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 16884.82079999987,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d32",
+          "family": "ui-not-authorized-by-word",
+          "domain": "ui-not-authorized-by-word",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 2411.62770000007,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d32",
+          "family": "ui-not-authorized-by-word",
+          "domain": "ui-not-authorized-by-word",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 23067.358800000045,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d33",
+          "family": "complex-static-reasoning",
+          "domain": "complex-static-reasoning",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 23044.34539999999,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d33",
+          "family": "complex-static-reasoning",
+          "domain": "complex-static-reasoning",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 40858.15559999971,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d33",
+          "family": "complex-static-reasoning",
+          "domain": "complex-static-reasoning",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 40928.497199999634,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d34",
+          "family": "explicit-text-preference",
+          "domain": "explicit-text-preference",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 11357.325799999759,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d34",
+          "family": "explicit-text-preference",
+          "domain": "explicit-text-preference",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 16277.800800000317,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d34",
+          "family": "explicit-text-preference",
+          "domain": "explicit-text-preference",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 31584.225099999923,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d35",
+          "family": "unknown-company-rule",
+          "domain": "unknown-company-rule",
+          "label": "clarify",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 12684.621900000144,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d35",
+          "family": "unknown-company-rule",
+          "domain": "unknown-company-rule",
+          "label": "clarify",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 83069.2341,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d35",
+          "family": "unknown-company-rule",
+          "domain": "unknown-company-rule",
+          "label": "clarify",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 12748.531399999745,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d36",
+          "family": "unknown-commission",
+          "domain": "unknown-commission",
+          "label": "clarify",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 50906.45599999977,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d36",
+          "family": "unknown-commission",
+          "domain": "unknown-commission",
+          "label": "clarify",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 31313.018399999943,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d36",
+          "family": "unknown-commission",
+          "domain": "unknown-commission",
+          "label": "clarify",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 25374.623900000006,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d37",
+          "family": "unknown-shared-rule",
+          "domain": "unknown-shared-rule",
+          "label": "clarify",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 54679.194600000046,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d37",
+          "family": "unknown-shared-rule",
+          "domain": "unknown-shared-rule",
+          "label": "clarify",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 18028.0652999999,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d37",
+          "family": "unknown-shared-rule",
+          "domain": "unknown-shared-rule",
+          "label": "clarify",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 85489.94829999981,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d38",
+          "family": "physics-animation",
+          "domain": "physics-animation",
+          "label": "unsupported",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 48091.03420000011,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d38",
+          "family": "physics-animation",
+          "domain": "physics-animation",
+          "label": "unsupported",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 120013.40789999999,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d38",
+          "family": "physics-animation",
+          "domain": "physics-animation",
+          "label": "unsupported",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 40544.11100000003,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d39",
+          "family": "arbitrary-html",
+          "domain": "arbitrary-html",
+          "label": "unsupported",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 3728.5224000001326,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d39",
+          "family": "arbitrary-html",
+          "domain": "arbitrary-html",
+          "label": "unsupported",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 5361.831299999729,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d39",
+          "family": "arbitrary-html",
+          "domain": "arbitrary-html",
+          "label": "unsupported",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 20708.288800000213,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d40",
+          "family": "live-remote-sync",
+          "domain": "live-remote-sync",
+          "label": "unsupported",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 34541.21150000021,
+          "attemptCount": 3,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SCHEMA_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 3,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d40",
+          "family": "live-remote-sync",
+          "domain": "live-remote-sync",
+          "label": "unsupported",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 26239.97250000015,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d40",
+          "family": "live-remote-sync",
+          "domain": "live-remote-sync",
+          "label": "unsupported",
+          "repetition": 3,
+          "outcome": "timeout",
+          "durationMs": 35668.67079999996,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "UI_SURFACE_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "model": "deepseek/deepseek-v4-pro",
+      "policyVersion": "phase1",
+      "runCount": 120,
+      "taskCount": 40,
+      "familyCount": 40,
+      "modelSettings": {
+        "reasoning": "low",
+        "maxRequestsPerTurn": 4,
+        "timeoutMs": 120000,
+        "maxToolAttemptsPerTurn": 3,
+        "maxRetries": 0,
+        "maxTokens": 6000
+      },
+      "sourceHashes": {
+        "manifest.json": "2bff6475e73d3beddb0f74e02d997e78b95cf86a70ab7aec815801a4a5034222",
+        "adapter.json": "f335a373be5f53a5316e0801910c029d38e9e56601c336d60d400e449c082492",
+        "runs.jsonl": "e2f21bd2aada2f07f7a11821ab4fbbde19de5d5bdba8b3d6adedf91059bbef0d",
+        "summary.json": "cee80a6e052743e0317970992b7555b0f8997d9fa72c0de9b29da437e28f3775"
+      },
+      "outcomes": {
+        "completed": 95,
+        "provider-error": 22,
+        "timeout": 3,
+        "cancelled": 0
+      },
+      "selectionMiss": {
+        "numerator": 6,
+        "denominator": 60,
+        "pending": 0,
+        "value": 0.1
+      },
+      "falseTrigger": {
+        "numerator": 3,
+        "denominator": 45,
+        "pending": 0,
+        "value": 0.06666666666666667
+      },
+      "turnSelection": {
+        "knownLabelsOnly": true,
+        "labelCoverageComplete": true,
+        "unlabeledTurns": 0,
+        "unobservedTurns": 0,
+        "selectionMiss": {
+          "numerator": 6,
+          "denominator": 60,
+          "pending": 0,
+          "value": 0.1
+        },
+        "falseTrigger": {
+          "numerator": 3,
+          "denominator": 48,
+          "pending": 0,
+          "value": 0.0625
+        }
+      },
+      "structurallyValidGeneration": {
+        "numerator": 45,
+        "denominator": 60,
+        "pending": 7,
+        "value": null
+      },
+      "strictCompletedFirstValid": {
+        "numerator": 38,
+        "denominator": 60
+      },
+      "strictCompletedAnyValid": {
+        "numerator": 45,
+        "denominator": 60
+      },
+      "humanSemanticAcceptance": "pending",
+      "firstUsable": {
+        "numerator": 0,
+        "denominator": 60,
+        "pending": 60,
+        "value": null
+      },
+      "finalUsable": {
+        "numerator": 0,
+        "denominator": 60,
+        "pending": 60,
+        "value": null
+      },
+      "errorCounts": {
+        "UI_SCHEMA_INVALID": 5,
+        "UI_SURFACE_INVALID": 8,
+        "provider-error": 7,
+        "evaluation-tool-limit": 1
+      },
+      "tasks": [
+        {
+          "taskId": "d01",
+          "family": "meal-sharing",
+          "domain": "meal-sharing",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 18569.5049,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d01",
+          "family": "meal-sharing",
+          "domain": "meal-sharing",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 12692.645700000001,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d01",
+          "family": "meal-sharing",
+          "domain": "meal-sharing",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 9854.800700000003,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d02",
+          "family": "bakery-batches",
+          "domain": "bakery-batches",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 7054.362700000005,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d02",
+          "family": "bakery-batches",
+          "domain": "bakery-batches",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 12640.761600000005,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d02",
+          "family": "bakery-batches",
+          "domain": "bakery-batches",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 7602.065600000002,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d03",
+          "family": "freight-choice",
+          "domain": "freight-choice",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 15521.144199999995,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d03",
+          "family": "freight-choice",
+          "domain": "freight-choice",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 14195.555100000012,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d03",
+          "family": "freight-choice",
+          "domain": "freight-choice",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 10411.651800000007,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d04",
+          "family": "room-decoration",
+          "domain": "room-decoration",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 8473.857900000003,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d04",
+          "family": "room-decoration",
+          "domain": "room-decoration",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 14128.421600000016,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d04",
+          "family": "room-decoration",
+          "domain": "room-decoration",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 14321.901600000012,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d05",
+          "family": "mobile-plans",
+          "domain": "mobile-plans",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 45776.44070000001,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d05",
+          "family": "mobile-plans",
+          "domain": "mobile-plans",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 41533.537899999996,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d05",
+          "family": "mobile-plans",
+          "domain": "mobile-plans",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 62220.37140000003,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d06",
+          "family": "gift-budget",
+          "domain": "gift-budget",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 26619.405800000008,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d06",
+          "family": "gift-budget",
+          "domain": "gift-budget",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 17557.090599999996,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d06",
+          "family": "gift-budget",
+          "domain": "gift-budget",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 10002.834900000016,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d07",
+          "family": "distance-conversion",
+          "domain": "distance-conversion",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 9953.005500000028,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d07",
+          "family": "distance-conversion",
+          "domain": "distance-conversion",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 14114.954700000002,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d07",
+          "family": "distance-conversion",
+          "domain": "distance-conversion",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 13947.387099999993,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d08",
+          "family": "subscription-duration",
+          "domain": "subscription-duration",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 19409.427000000025,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d08",
+          "family": "subscription-duration",
+          "domain": "subscription-duration",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 24802.117599999998,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d08",
+          "family": "subscription-duration",
+          "domain": "subscription-duration",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 19255.40909999999,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d09",
+          "family": "party-drinks",
+          "domain": "party-drinks",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 50089.082599999965,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d09",
+          "family": "party-drinks",
+          "domain": "party-drinks",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 75374.26870000002,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d09",
+          "family": "party-drinks",
+          "domain": "party-drinks",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 31829.66610000003,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d10",
+          "family": "storage-unit",
+          "domain": "storage-unit",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 32146.990500000073,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d10",
+          "family": "storage-unit",
+          "domain": "storage-unit",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 22036.00199999998,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d10",
+          "family": "storage-unit",
+          "domain": "storage-unit",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 28827.49729999993,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d11",
+          "family": "running-pace",
+          "domain": "running-pace",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 23835.90419999999,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d11",
+          "family": "running-pace",
+          "domain": "running-pace",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 14396.782200000016,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d11",
+          "family": "running-pace",
+          "domain": "running-pace",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 41321.55330000003,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d12",
+          "family": "school-trip",
+          "domain": "school-trip",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 12766.08739999996,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d12",
+          "family": "school-trip",
+          "domain": "school-trip",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 66385.65170000005,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d12",
+          "family": "school-trip",
+          "domain": "school-trip",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 20501.391999999993,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d13",
+          "family": "printing-tier",
+          "domain": "printing-tier",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 38897.24609999999,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d13",
+          "family": "printing-tier",
+          "domain": "printing-tier",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 38569.21979999996,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d13",
+          "family": "printing-tier",
+          "domain": "printing-tier",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 99352.47480000008,
+          "attemptCount": 1,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d14",
+          "family": "rent-utilities",
+          "domain": "rent-utilities",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 31782.589999999967,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID",
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d14",
+          "family": "rent-utilities",
+          "domain": "rent-utilities",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 107503.89870000002,
+          "attemptCount": 4,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID",
+            "UI_SCHEMA_INVALID",
+            "UI_SCHEMA_INVALID",
+            "evaluation-tool-limit"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 4,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d14",
+          "family": "rent-utilities",
+          "domain": "rent-utilities",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 47309.64049999998,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SCHEMA_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d15",
+          "family": "recipe-scaling",
+          "domain": "recipe-scaling",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 11611.311400000006,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d15",
+          "family": "recipe-scaling",
+          "domain": "recipe-scaling",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 10672.406799999997,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d15",
+          "family": "recipe-scaling",
+          "domain": "recipe-scaling",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 9993.350099999923,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d16",
+          "family": "ticket-addons",
+          "domain": "ticket-addons",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 46620.86599999992,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d16",
+          "family": "ticket-addons",
+          "domain": "ticket-addons",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 26971.72589999996,
+          "attemptCount": 1,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d16",
+          "family": "ticket-addons",
+          "domain": "ticket-addons",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 57665.72580000013,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d17",
+          "family": "work-hours",
+          "domain": "work-hours",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 83097.6621999999,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d17",
+          "family": "work-hours",
+          "domain": "work-hours",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 10096.07669999986,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d17",
+          "family": "work-hours",
+          "domain": "work-hours",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 13278.916499999817,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d18",
+          "family": "event-seating",
+          "domain": "event-seating",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 15180.93610000005,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d18",
+          "family": "event-seating",
+          "domain": "event-seating",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 16273.99729999993,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d18",
+          "family": "event-seating",
+          "domain": "event-seating",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 12510.946800000034,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d19",
+          "family": "discount-coupon",
+          "domain": "discount-coupon",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 54932.89379999996,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d19",
+          "family": "discount-coupon",
+          "domain": "discount-coupon",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 60571.309099999955,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d19",
+          "family": "discount-coupon",
+          "domain": "discount-coupon",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 67776.09819999989,
+          "attemptCount": 2,
+          "errorCodes": [
+            "UI_SURFACE_INVALID"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 2,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d20",
+          "family": "room-temperature",
+          "domain": "room-temperature",
+          "label": "ui",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 31045.832999999868,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": false,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d20",
+          "family": "room-temperature",
+          "domain": "room-temperature",
+          "label": "ui",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 35190.107800000114,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d20",
+          "family": "room-temperature",
+          "domain": "room-temperature",
+          "label": "ui",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 10120.183500000043,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "ui",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": true,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d21",
+          "family": "historical-fact",
+          "domain": "historical-fact",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 12099.831599999918,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d21",
+          "family": "historical-fact",
+          "domain": "historical-fact",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 7458.313799999887,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d21",
+          "family": "historical-fact",
+          "domain": "historical-fact",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 11582.65280000004,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d22",
+          "family": "email-writing",
+          "domain": "email-writing",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 2100.380000000121,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d22",
+          "family": "email-writing",
+          "domain": "email-writing",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 4303.354999999981,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d22",
+          "family": "email-writing",
+          "domain": "email-writing",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 3313.6657000000123,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d23",
+          "family": "word-definition",
+          "domain": "word-definition",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 21344.55050000013,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d23",
+          "family": "word-definition",
+          "domain": "word-definition",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 9418.488799999934,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d23",
+          "family": "word-definition",
+          "domain": "word-definition",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 17012.176399999997,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d24",
+          "family": "static-comparison",
+          "domain": "static-comparison",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 13001.050999999978,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d24",
+          "family": "static-comparison",
+          "domain": "static-comparison",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 12849.782000000123,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d24",
+          "family": "static-comparison",
+          "domain": "static-comparison",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 17346.115199999884,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d25",
+          "family": "one-off-percent",
+          "domain": "one-off-percent",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 3206.622100000037,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d25",
+          "family": "one-off-percent",
+          "domain": "one-off-percent",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 5061.033099999884,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d25",
+          "family": "one-off-percent",
+          "domain": "one-off-percent",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 5820.607199999969,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d26",
+          "family": "text-checklist",
+          "domain": "text-checklist",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 12325.312399999937,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d26",
+          "family": "text-checklist",
+          "domain": "text-checklist",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 20888.106600000057,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d26",
+          "family": "text-checklist",
+          "domain": "text-checklist",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 10384.571699999971,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d27",
+          "family": "code-explanation",
+          "domain": "code-explanation",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 28310.88870000001,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d27",
+          "family": "code-explanation",
+          "domain": "code-explanation",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 8198.998900000006,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d27",
+          "family": "code-explanation",
+          "domain": "code-explanation",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 44607.55899999989,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d28",
+          "family": "translation",
+          "domain": "translation",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 10156.708700000076,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d28",
+          "family": "translation",
+          "domain": "translation",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 14021.132500000065,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d28",
+          "family": "translation",
+          "domain": "translation",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 11823.165800000075,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d29",
+          "family": "summary",
+          "domain": "summary",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 12379.789700000081,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d29",
+          "family": "summary",
+          "domain": "summary",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 27357.82470000023,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d29",
+          "family": "summary",
+          "domain": "summary",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 14960.778699999675,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d30",
+          "family": "fixed-table",
+          "domain": "fixed-table",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 21012.502100000158,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": true
+            }
+          ]
+        },
+        {
+          "taskId": "d30",
+          "family": "fixed-table",
+          "domain": "fixed-table",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 16105.593799999915,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": true
+            }
+          ]
+        },
+        {
+          "taskId": "d30",
+          "family": "fixed-table",
+          "domain": "fixed-table",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 18828.592800000217,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": true
+            }
+          ]
+        },
+        {
+          "taskId": "d31",
+          "family": "correction-only",
+          "domain": "correction-only",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 15075.971499999985,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d31",
+          "family": "correction-only",
+          "domain": "correction-only",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 14445.195100000128,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d31",
+          "family": "correction-only",
+          "domain": "correction-only",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 7296.941099999938,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            },
+            {
+              "turnIndex": 1,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d32",
+          "family": "ui-not-authorized-by-word",
+          "domain": "ui-not-authorized-by-word",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 6265.441000000108,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d32",
+          "family": "ui-not-authorized-by-word",
+          "domain": "ui-not-authorized-by-word",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 11947.078399999999,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d32",
+          "family": "ui-not-authorized-by-word",
+          "domain": "ui-not-authorized-by-word",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 6073.409299999941,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d33",
+          "family": "complex-static-reasoning",
+          "domain": "complex-static-reasoning",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 25004.169100000057,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d33",
+          "family": "complex-static-reasoning",
+          "domain": "complex-static-reasoning",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 13100.483899999876,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d33",
+          "family": "complex-static-reasoning",
+          "domain": "complex-static-reasoning",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 17219.03280000016,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d34",
+          "family": "explicit-text-preference",
+          "domain": "explicit-text-preference",
+          "label": "text",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 18058.160900000017,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d34",
+          "family": "explicit-text-preference",
+          "domain": "explicit-text-preference",
+          "label": "text",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 18949.147300000302,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d34",
+          "family": "explicit-text-preference",
+          "domain": "explicit-text-preference",
+          "label": "text",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 23659.733099999838,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "text",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": false
+            }
+          ]
+        },
+        {
+          "taskId": "d35",
+          "family": "unknown-company-rule",
+          "domain": "unknown-company-rule",
+          "label": "clarify",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 7093.348999999929,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d35",
+          "family": "unknown-company-rule",
+          "domain": "unknown-company-rule",
+          "label": "clarify",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 8509.2947999998,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d35",
+          "family": "unknown-company-rule",
+          "domain": "unknown-company-rule",
+          "label": "clarify",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 11924.458999999799,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d36",
+          "family": "unknown-commission",
+          "domain": "unknown-commission",
+          "label": "clarify",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 30482.91339999996,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d36",
+          "family": "unknown-commission",
+          "domain": "unknown-commission",
+          "label": "clarify",
+          "repetition": 2,
+          "outcome": "timeout",
+          "durationMs": 120010.2818,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d36",
+          "family": "unknown-commission",
+          "domain": "unknown-commission",
+          "label": "clarify",
+          "repetition": 3,
+          "outcome": "timeout",
+          "durationMs": 120016.9561999999,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d37",
+          "family": "unknown-shared-rule",
+          "domain": "unknown-shared-rule",
+          "label": "clarify",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 34771.95959999971,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d37",
+          "family": "unknown-shared-rule",
+          "domain": "unknown-shared-rule",
+          "label": "clarify",
+          "repetition": 2,
+          "outcome": "provider-error",
+          "durationMs": 33302.67379999999,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d37",
+          "family": "unknown-shared-rule",
+          "domain": "unknown-shared-rule",
+          "label": "clarify",
+          "repetition": 3,
+          "outcome": "provider-error",
+          "durationMs": 87094.77529999986,
+          "attemptCount": 1,
+          "errorCodes": [
+            "provider-error"
+          ],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "clarify",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d38",
+          "family": "physics-animation",
+          "domain": "physics-animation",
+          "label": "unsupported",
+          "repetition": 1,
+          "outcome": "provider-error",
+          "durationMs": 24839.501600000076,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d38",
+          "family": "physics-animation",
+          "domain": "physics-animation",
+          "label": "unsupported",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 13718.022600000259,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d38",
+          "family": "physics-animation",
+          "domain": "physics-animation",
+          "label": "unsupported",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 8219.91849999968,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d39",
+          "family": "arbitrary-html",
+          "domain": "arbitrary-html",
+          "label": "unsupported",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 6175.935599999968,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d39",
+          "family": "arbitrary-html",
+          "domain": "arbitrary-html",
+          "label": "unsupported",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 13728.582200000063,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d39",
+          "family": "arbitrary-html",
+          "domain": "arbitrary-html",
+          "label": "unsupported",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 6889.675700000022,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d40",
+          "family": "live-remote-sync",
+          "domain": "live-remote-sync",
+          "label": "unsupported",
+          "repetition": 1,
+          "outcome": "completed",
+          "durationMs": 11548.040000000037,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d40",
+          "family": "live-remote-sync",
+          "domain": "live-remote-sync",
+          "label": "unsupported",
+          "repetition": 2,
+          "outcome": "completed",
+          "durationMs": 18710.44160000002,
+          "attemptCount": 0,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 0,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        },
+        {
+          "taskId": "d40",
+          "family": "live-remote-sync",
+          "domain": "live-remote-sync",
+          "label": "unsupported",
+          "repetition": 3,
+          "outcome": "completed",
+          "durationMs": 28037.14000000013,
+          "attemptCount": 1,
+          "errorCodes": [],
+          "turns": [
+            {
+              "turnIndex": 0,
+              "expectedLabel": "unsupported",
+              "observed": true,
+              "attemptCount": 1,
+              "selectionMiss": null,
+              "falseTrigger": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
