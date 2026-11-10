@@ -179,6 +179,16 @@
 .empty {
   margin-bottom: 14px;
   font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.notice button {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--bg-panel);
+  color: var(--text);
+  cursor: pointer;
 }
 
 .notice,

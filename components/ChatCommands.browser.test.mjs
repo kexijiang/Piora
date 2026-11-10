@@ -172,6 +172,15 @@ window.submissions=[];window.queueActions=[];createRoot(document.getElementById(
     await composer.fill("已有新输入");
     assert.equal(await page.evaluate(() => window.restoreDraft({ value: "/reload", images: [], files: [] })), false);
     assert.equal(await composer.inputValue(), "已有新输入");
+    for (const text of ["/api/agent/cashier/querySkuInfo再新增一个字段，Boolean", "/usr/bin/env", "/etc/nginx/nginx.conf", "/pattern/gi"]) {
+      await composer.fill(text);
+      await composer.press("Escape");
+      assert.equal(await page.getByRole("button", { name: "作为普通消息发送", exact: true }).count(), 0);
+      await page.getByRole("button", { name: "发送", exact: true }).click();
+      assert.equal(await page.evaluate(() => window.submissions.at(-1).text), text);
+      assert.equal(await page.evaluate(() => window.submissions.at(-1).options.inputMode), "text");
+    }
+    await composer.fill("已有新输入");
     for (const scheme of ["light", "dark"]) {
       await page.emulateMedia({ colorScheme: scheme });
       for (const width of [340, 390, 768, 1060]) {

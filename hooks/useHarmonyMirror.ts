@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MirrorStatistics, MirrorWorkerCommand, MirrorWorkerEvent } from "@/lib/harmony/mirror/messages";
+import { HarmonyRequestError } from "@/lib/harmony/request-error";
+import { useI18n } from "@/hooks/useI18n";
 
 export interface MirrorFrame { serial: string; generation: number; width: number; height: number; revision: number }
 export function useHarmonyMirror({ active, serial, generation, label }: { active: boolean; serial: string; generation?: number; label: string }) {
+  const { locale } = useI18n();
   const surfaceRef = useRef<HTMLDivElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const [state, setState] = useState<"idle" | "connecting" | "live" | "recovering" | "error">("idle");
@@ -36,7 +39,7 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
       worker.onmessage = ({ data }: MessageEvent<MirrorWorkerEvent>) => {
         if (disposed || workerRef.current !== worker) return;
         if (data.type === "state") {
-          setState(data.state); setError(data.error ?? null);
+          setState(data.state); setError(data.requestError ? new HarmonyRequestError(data.requestError, 503).messageFor(locale === "zh-CN") : data.error ?? null);
           // Fatal initialization failures need a new canvas and worker on retry.
           if (data.state === "error") { worker?.terminate(); workerRef.current = null; }
         }
@@ -62,7 +65,7 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
       if (workerRef.current === worker) workerRef.current = null;
       canvas.remove();
     };
-  }, [active, serial, generation, label, retry]);
+  }, [active, serial, generation, label, retry, locale]);
 
   return { surfaceRef, state, error, frame, statistics, refresh };
 }

@@ -1537,6 +1537,7 @@ function ModelDetail({
       <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
         <Check label={t("models.form.imageInput")} checked={model.input?.includes("image") ?? false}
           onChange={(v) => set("input", v ? ["text", "image"] : undefined)} />
+        <Check label={t("models.form.reasoning")} checked={model.reasoning ?? false} onChange={(v) => set("reasoning", v || undefined)} />
       </div>
       <p style={{ margin: "-8px 0 0", color: "var(--text-dim)", fontSize: "var(--text-xs)", lineHeight: 1.5 }}>
         {t("models.form.customImageHint")}
@@ -1548,8 +1549,6 @@ function ModelDetail({
           <Field label={t("models.form.apiOverride")}>
             <Select value={model.api ?? ""} onChange={(v) => set("api", v || undefined)} options={API_OPTIONS} />
           </Field>
-
-          <Check label={t("models.form.reasoning")} checked={model.reasoning ?? false} onChange={(v) => set("reasoning", v || undefined)} />
 
           <ModelSamplingEditor providerName={providerName} provider={provider} model={model} onChange={onChange} />
 

@@ -58,7 +58,9 @@ export async function dispatchChatInput(sessionId: string, body: Record<string, 
     return router.dispatchSessionMessage({ ...input, delivery: "next_turn", operation });
   }
   if (!input.content.trim() && !input.images?.length && !input.materials?.length) throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "Message cannot be empty");
+  // Classification is complete. Keep literal input literal for every delivery mode.
+  input.inputMode = "text";
   if (body.delivery === "steer") return router.steerSession(input);
   if (body.delivery === "followUp") return router.followUpSession(input);
-  return router.dispatchSessionMessage({ ...input, delivery: "next_turn", ...(body.inputMode === "text" ? { inputMode: "text" } : {}) });
+  return router.dispatchSessionMessage({ ...input, delivery: "next_turn" });
 }

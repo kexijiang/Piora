@@ -1,7 +1,11 @@
 import { VideoPacketReader, VIDEO_CONFIG, VIDEO_FRAME, parseVideoConfiguration, avcCodec, avcKeyframe, annexB, type VideoConfiguration } from "./protocol";
 import type { MirrorStatistics, MirrorWorkerEvent } from "./messages";
+import { HarmonyRequestError } from "../request-error";
 
 type Attempt = { id: number; abort: AbortController; reader?: ReadableStreamDefaultReader<Uint8Array>; watchdog?: ReturnType<typeof setTimeout>; failure?: Error; submitted: number; decoded: number };
+class VideoRequestError extends HarmonyRequestError {
+  constructor(readonly value: unknown, status: number) { super(value, status); }
+}
 function pause(ms: number, signal: AbortSignal): Promise<void> {
   if (signal.aborted) return Promise.resolve();
   return new Promise(resolve => {
@@ -61,10 +65,10 @@ export class MirrorVideoEngine {
 
   reconnect(): void { this.abortAttempt(new Error("Reconnecting video")); }
 
-  private status(state: "connecting" | "live" | "recovering" | "error", error?: string): void {
+  private status(state: "connecting" | "live" | "recovering" | "error", error?: string, requestError?: unknown): void {
     const key = `${state}:${error ?? ""}`;
     if (this.state === key || this.lifetime.signal.aborted) return;
-    this.state = key; this.emit({ type: "state", state, ...(error ? { error } : {}) });
+    this.state = key; this.emit({ type: "state", state, ...(error ? { error } : {}), ...(requestError ? { requestError } : {}) });
   }
 
   private current(attempt: Attempt): boolean { return this.attempt === attempt && !attempt.abort.signal.aborted && !this.lifetime.signal.aborted; }
@@ -99,7 +103,7 @@ export class MirrorVideoEngine {
         if (!this.current(attempt)) { await response.body?.cancel(); throw new Error("Video connection was cancelled"); }
         if (!response.ok) {
           const value = await response.json().catch(() => ({}));
-          throw new Error(value.error?.message || (typeof value.error === "string" ? value.error : `Video connection failed (${response.status})`));
+          throw new VideoRequestError(value.error, response.status);
         }
         if (Number(response.headers.get("X-Harmony-Generation")) !== this.generation) {
           await response.body?.cancel(); throw new Error("Video belongs to an expired device connection");
@@ -127,8 +131,14 @@ export class MirrorVideoEngine {
         if (!this.lifetime.signal.aborted) throw attempt.failure ?? new Error("Video connection interrupted");
       } catch (error) {
         if (this.lifetime.signal.aborted) break;
+        if (error instanceof VideoRequestError && error.controlStatus === "recovering") {
+          // Reconnecting transport cannot confirm that physical input was released.
+          // Stop the retry loop and let the user follow the recovery instructions.
+          this.status("error", error.message, error.value);
+          return;
+        }
         this.reconnects++; failures++;
-        this.status("recovering", attempt.failure?.message ?? (error instanceof Error ? error.message : String(error)));
+        this.status("recovering", attempt.failure?.message ?? (error instanceof Error ? error.message : String(error)), error instanceof VideoRequestError ? error.value : undefined);
       } finally {
         clearTimeout(attempt.watchdog); attempt.abort.abort();
         await attempt.reader?.cancel().catch(() => undefined); attempt.reader?.releaseLock();

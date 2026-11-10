@@ -185,6 +185,9 @@ export function ProjectToolsConfig({ cwd, onChanged, mcpFocus, onClearMcpFocus }
     void save({ preset: "custom", enabledCapabilityIds: [...enabled] });
   };
 
+  const disabledTools = data?.managed && data.capabilities.policy.preset === "custom"
+    ? data.capabilities.items.filter(item => item.available && !item.enabled) : [];
+
   const setHarmonyToolsEnabled = (enabled: boolean) => {
     if (!data || loading || saving) return;
     const selected = new Set(data.capabilities.policy.enabledCapabilityIds);
@@ -250,6 +253,18 @@ export function ProjectToolsConfig({ cwd, onChanged, mcpFocus, onClearMcpFocus }
 
     {error ? <div className={styles.error} role="alert">{error}</div> : null}
     {message ? <div className={styles.notice} role="status">{message}</div> : null}
+
+    {disabledTools.length > 0 ? <div className={styles.notice} role="status">
+      <p>{t("projectTools.customSelectionHint", { count: disabledTools.length })}</p>
+      <p>{disabledTools.map(item => item.toolNames[0] ?? item.label).join(", ")}</p>
+      <button type="button" disabled={loading || saving} onClick={() => void save({ preset: "coding" })}>
+        {t("sessionTools.useCodingDefaults")}
+      </button>
+    </div> : null}
+    {data?.diagnostics.length ? <div className={styles.error} role="alert">
+      <strong>{t("projectTools.extensionLoadFailed")}</strong>
+      {data.diagnostics.map((diagnostic, index) => <p key={`${diagnostic.path}:${index}`}>{diagnostic.path}: {diagnostic.error}</p>)}
+    </div> : null}
 
     {mcpFocus ? <p>{t("nativeMcp.focusedTools", { server: mcpFocus.name })} <button type="button" onClick={onClearMcpFocus}>{t("nativeMcp.showAllTools")}</button></p> : null}
     {loading && !data ? <div className={styles.empty}>{t("projectTools.loading")}</div> : groups.length === 0 ? (

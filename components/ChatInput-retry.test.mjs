@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
+import { createJiti } from "jiti";
+
+const { createChatCommandCatalog, parseChatInput } = await createJiti(import.meta.url).import("../lib/chat-command-input.ts");
 
 const source = readFileSync(new URL("./ChatInput.tsx", import.meta.url), "utf8");
 const start = source.indexOf("  const handleSend = useCallback");
@@ -19,6 +22,8 @@ function composer(onSend) {
     pendingFileCountRef: { current: 0 },
     onBuiltinCommand: undefined, onQueueInput: undefined, contextUsage: null,
     commandInputOptions: {},
+    commandCatalog: createChatCommandCatalog([]), slashCommands: undefined,
+    createChatCommandCatalog, parseChatInput,
     setCommandInputOptions: value => { env.commandInputOptions = value; },
     shouldMaterializeDirectPrompt: () => false, t: (key) => key,
     sendingRef: { current: false }, draftKeyRef: { current: "session" },
@@ -73,6 +78,21 @@ test("workspace readiness blocks submission without clearing text, attachments o
   assert.equal(submissions[0][0], " original\nmessage ");
   assert.equal(submissions[0][1][0].data, "YWJj");
   assert.equal(submissions[0][2][0].text, "full attachment");
+});
+
+test("a slash path submits as literal text with attachments and its original draft", async () => {
+  const submissions = [];
+  const { env, send } = composer(async (...args) => { submissions.push(args); return true; });
+  const text = "/api/agent/querySkuInfo再新增一个字段，Boolean";
+  env.setValue(text);
+  env.replyDraftRef.current = { value: text, spans: [] };
+  await send();
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0][0], text);
+  assert.equal(submissions[0][1][0].data, "YWJj");
+  assert.equal(submissions[0][2][0].text, "full attachment");
+  assert.equal(submissions[0][5].inputMode, "text");
+  assert.equal(submissions[0][5].delivery, "next_turn");
 });
 
 test("permission saving keeps the draft and prevents submission until the selected mode is saved", async () => {

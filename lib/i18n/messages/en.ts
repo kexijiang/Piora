@@ -245,6 +245,8 @@ export const enLocale: LocalePlugin = {
     "projectTools.enabledCount": "{count} / {total} enabled",
     "projectTools.on": "On",
     "projectTools.off": "Off",
+    "projectTools.customSelectionHint": "This project's custom selection disables {count} loaded tools in existing and new sessions. Enable them individually below or restore coding defaults; restoring replaces the custom selection.",
+    "projectTools.extensionLoadFailed": "Some extensions failed to load. Check their configuration and refresh:",
     "projectTools.saved": "Project tool settings were applied to this project's sessions.",
     "projectTools.savedDeferred": "Settings saved; {count} running sessions will apply them after the current run.",
     "projectTools.budget": "Tool definition prompt: about {used} tokens",

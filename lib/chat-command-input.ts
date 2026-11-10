@@ -53,6 +53,10 @@ export function parseChatInput(text: string, catalog: ChatCommandCatalog, option
   const match = text.trimStart().match(/^\/([^\s]+)(?:\s([\s\S]*))?$/);
   const name = match?.[1] ?? "";
   const command = catalog.commands.find(item => item.name === name && (!options.commandKey || item.key === options.commandKey));
+  // Exact registered names (including skill namespaces and extension names)
+  // take precedence. Paths, regexes and prose are ordinary user content;
+  // retain typo feedback for unknown single-word commands.
+  if (!command && !options.commandKey && name && !/^[a-zA-Z][\w:-]*$/.test(name)) return { kind: "message", text };
   if (!command) return { kind: "invalid", code: "UNKNOWN_COMMAND", name };
   if (!command.supported) return { kind: "invalid", code: "UNSUPPORTED_COMMAND", name };
   const argumentsText = match?.[2] ?? "";

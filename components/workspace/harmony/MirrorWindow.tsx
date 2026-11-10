@@ -113,7 +113,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
     <main ref={screenRef} className={styles.screen} data-zoomed={zoom !== "fit"}>
       <div ref={live.surfaceRef} className={styles.surface} tabIndex={controlEnabled ? 0 : -1} aria-label={copy("投屏交互区域", "Mirror interaction area")} data-interactive={controlEnabled}
         style={zoom !== "fit" && width && height ? { width: width * Number(zoom), height: height * Number(zoom), flex: "none" } : undefined} {...input.handlers} />
-      {!live.frame || device?.state !== "online" ? <div className={styles.placeholder} role="status">{deviceError || (device?.state !== "online" ? copy("等待设备连接", "Waiting for device") : live.state === "recovering" || live.state === "error" ? copy("正在重新连接…", "Reconnecting…") : copy("正在连接画面…", "Connecting…"))}</div> : null}
+      {!live.frame || device?.state !== "online" ? <div className={styles.placeholder} role="status">{deviceError || (device?.state !== "online" ? copy("等待设备连接", "Waiting for device") : live.state === "error" ? copy("连接已暂停，请按上方提示处理后重新连接", "Connection paused. Follow the guidance above, then reconnect") : live.state === "recovering" ? copy("正在重新连接…", "Reconnecting…") : copy("正在连接画面…", "Connecting…"))}</div> : null}
     </main>
     {controlEnabled ? <footer className={styles.controls} aria-label={copy("手机控制", "Device controls")}>
       <div className={styles.controlRow}>

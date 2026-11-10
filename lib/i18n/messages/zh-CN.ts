@@ -245,6 +245,8 @@ export const zhCNLocale: LocalePlugin = {
     "projectTools.enabledCount": "已开启 {count} / {total}",
     "projectTools.on": "已开启",
     "projectTools.off": "已关闭",
+    "projectTools.customSelectionHint": "项目自定义选择关闭了 {count} 项已加载的工具，现有和新会话都会继承。可在下方逐项开启，或恢复编程默认工具；恢复会替换当前自定义选择。",
+    "projectTools.extensionLoadFailed": "部分扩展加载失败，请检查扩展配置后刷新：",
     "projectTools.saved": "项目工具设置已应用到该项目的会话。",
     "projectTools.savedDeferred": "设置已保存；{count} 个运行中的会话将在本轮结束后应用。",
     "projectTools.budget": "工具定义提示词：约 {used} tokens",
