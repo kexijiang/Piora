@@ -4,6 +4,7 @@ import { lazy, memo, Suspense, useDeferredValue, useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import { resolveLocalFileHref } from "@/lib/file-links";
 import { createLocalFileLinkClickHandler } from "@/lib/file-link-click";
+import { FILE_REFERENCE_HREF, formatFileReference, parseFileReference, remarkFileReferences } from "@/lib/file-references";
 import { encodeFilePathForApi } from "@/lib/file-paths";
 import { parseAnsiLine } from "@/lib/ansi";
 import { markdownRemarkPlugins, normalizeDisplayMath, normalizeTextHighlights } from "@/lib/markdown";
@@ -70,6 +71,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
   const baseRehypePlugins = useMarkdownRehypePlugins(normalizedMarkdown);
   const isAssistantMessage = className?.split(/\s+/).includes("markdown-assistant-message") ?? false;
   const answerLinks = useAnswerLinks();
+  const remarkPlugins = useMemo(() => onOpenFile && isAssistantMessage ? [...markdownRemarkPlugins, remarkFileReferences] : markdownRemarkPlugins, [onOpenFile, isAssistantMessage]);
   const rehypePlugins = useMemo(() => isAssistantMessage
     ? [...(baseRehypePlugins ?? []), rehypeAssistantEmphasis]
     : baseRehypePlugins, [baseRehypePlugins, isAssistantMessage]);
@@ -124,7 +126,12 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
     a({ href, children, ...props }) {
       // `node` is react-markdown metadata, not a DOM attribute.
       delete props.node;
-      const filePath = onOpenFile ? resolveLocalFileHref(href, cwd) : null;
+      let reference = null;
+      if (href?.startsWith(FILE_REFERENCE_HREF)) {
+        try { reference = parseFileReference(decodeURIComponent(href.slice(FILE_REFERENCE_HREF.length))); } catch { /* Invalid reference remains inert. */ }
+      } else if (href && resolveLocalFileHref(href, cwd)) reference = parseFileReference(href);
+      const resolved = reference ? resolveLocalFileHref(reference.path, cwd) : null;
+      const filePath = onOpenFile ? reference ? formatFileReference({ ...reference, path: resolved ?? reference.path }) : resolveLocalFileHref(href, cwd) : null;
       const openFile = onOpenFile;
       if (!filePath || !openFile) {
         const webUrl = isAssistantMessage && answerLinks ? normalizeAnswerLink(href) : null;
@@ -144,7 +151,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
       const handleClick = createLocalFileLinkClickHandler(filePath, openFile);
 
       return (
-        <a href={href} {...props} onClick={handleClick}>
+        <a href={href} {...props} title={filePath} onClick={handleClick}>
           {children}
         </a>
       );
@@ -171,7 +178,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
   return (
     <div className={["markdown-body", className].filter(Boolean).join(" ")}>
       <ReactMarkdown
-        remarkPlugins={markdownRemarkPlugins}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={rehypePlugins}
         components={components}
       >

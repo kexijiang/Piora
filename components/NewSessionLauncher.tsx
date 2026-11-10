@@ -17,7 +17,7 @@ export function NewSessionLauncher({
   const { t } = useI18n();
   return (
     <main className={styles.root} aria-label={t("newSession.ariaLabel")}>
-      <section className={styles.launcher}>
+      <section className={`${styles.launcher} chat-column`}>
         <header className={styles.header}>
           <span className={styles.eyebrow}>{t("newSession.eyebrow")}</span>
           <h1>{t("newSession.title")}</h1>

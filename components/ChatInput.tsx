@@ -2495,7 +2495,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                   <span className="model-settings-trigger-label">
                     {currentName ?? (modelOptions.length > 0 ? t("chat.selectModel") : t("chat.noModels"))}
                   </span>
-                  {!isAutoModelSelection && modelOptions.some(option => option.isDefault && option.provider === model?.provider && option.modelId === model?.modelId) && <span className="model-default-badge">{t("models.defaultBadge")}</span>}
                   {onThinkingLevelChange && !isAutoModelSelection ? <span className="model-settings-trigger-reasoning">{thinkingLevelLabel}</span> : null}
                 </button>
                 {modelDropdownOpen && modelDropdownRect && (() => {
@@ -2565,7 +2564,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                                 >
                                   <ModelProviderIcon className="model-settings-choice-icon" provider={option.provider} modelId={option.modelId} modelName={option.name} size={15} />
                                   <span className="model-settings-choice-label">{option.name}</span>
-                                  {option.isDefault && <span className="model-default-badge">{t("models.defaultBadge")}</span>}
                                   {isActive ? <AliIcon name="check" size={11} /> : null}
                                 </button>
                               );

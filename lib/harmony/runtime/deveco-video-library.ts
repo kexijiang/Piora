@@ -1,12 +1,19 @@
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
 import { getRuntimeUserHomeDirectory as homedir } from "../../runtime-home";
+import { createHash } from "node:crypto";
 import JSZip from "jszip";
+import videoBundle from "../../../third_party/harmony-video/manifest.json";
 import { readBoundedRegularFile } from "./bounded-file";
 import { harmonyRuntimeAsset } from "./asset-path";
 
 const bundledDirectory = () => harmonyRuntimeAsset("node_modules", "hypium-driver", "build", "lib", "resource");
 const bundledName = /^libscrcpy_server-(\d+\.\d+(?:\.\d+)?)-\d+\.so$/;
+const modernDirectory = () => harmonyRuntimeAsset("third_party", "harmony-video");
+export interface DebugVideoLibrary { bytes: Buffer; name: string; sha256: string; source: "bundled" | "installed" }
+const selection = (bytes: Buffer, name: string, source: DebugVideoLibrary["source"]): DebugVideoLibrary => ({
+  bytes: validateVideoLibrary(bytes), name, sha256: createHash("sha256").update(bytes).digest("hex"), source,
+});
 
 /** Only versioned Unix-socket libraries; legacy numbered libraries use another transport. */
 export function selectBundledVideoLibrary(names: string[], deviceVersion: string): string | undefined {
@@ -20,7 +27,8 @@ export async function findDebugVideoSource(hdcPath: string, findInstalled = find
   const jar = await findInstalled(hdcPath).catch(() => undefined);
   if (jar) return jar;
   const names = await readdir(resources).catch(() => []);
-  return names.some(name => bundledName.test(name)) ? resources : undefined;
+  if (names.some(name => bundledName.test(name))) return resources;
+  return (await lstat(modernDirectory()).catch(() => undefined))?.isDirectory() ? modernDirectory() : undefined;
 }
 
 function validateVideoLibrary(bytes: Buffer): Buffer {
@@ -30,30 +38,59 @@ function validateVideoLibrary(bytes: Buffer): Buffer {
   return bytes;
 }
 
-async function readBundledVideoLibrary(resources: string, deviceVersion: string): Promise<Buffer> {
+async function readBundledVideoLibrary(resources: string, deviceVersion: string): Promise<DebugVideoLibrary> {
   const name = selectBundledVideoLibrary(await readdir(resources), deviceVersion);
   if (!name) throw new Error("The bundled runtime has no compatible debug video library");
-  return validateVideoLibrary(await readBoundedRegularFile(join(resources, name), 4 * 1024 * 1024));
+  return selection(await readBoundedRegularFile(join(resources, name), 4 * 1024 * 1024), name, "bundled");
 }
 
 export async function readDebugVideoLibrary(source: string, deviceVersion: string): Promise<Buffer> {
-  const info = await lstat(source).catch(() => undefined);
-  if (info?.isDirectory() && !info.isSymbolicLink()) return readBundledVideoLibrary(source, deviceVersion);
-  // A stale/older IDE installation must not hide a usable bundled runtime.
-  try { return await readDevEcoVideoLibrary(source, deviceVersion); }
-  catch { return readBundledVideoLibrary(bundledDirectory(), deviceVersion); }
+  return (await readDebugVideoLibrarySelection(source, deviceVersion)).bytes;
+}
+
+export async function readDebugVideoLibrarySelection(source: string, deviceVersion: string): Promise<DebugVideoLibrary> {
+  // Select across both sources: an older installed IDE must not hide the newer bundled library.
+  const modernName = selectVideoLibrary(videoBundle.assets.map(asset => `libscrcpy/${asset.name}`), deviceVersion)?.split("/").pop();
+  const modern = videoBundle.assets.find(asset => asset.name === modernName);
+  let primary: DebugVideoLibrary | undefined;
+  let primaryError: unknown;
+  let directorySource = false;
+  try {
+    const info = await lstat(source);
+    if (info.isDirectory() && !info.isSymbolicLink()) {
+      directorySource = true;
+      if (source !== modernDirectory()) primary = await readBundledVideoLibrary(source, deviceVersion);
+    } else primary = await readDevEcoVideoSelection(source, deviceVersion);
+  } catch (error) { primaryError = error; }
+  if (primary && (!modern || compareLibraryNames(primary.name, modern.name) >= 0)) return primary;
+  if (modern) {
+    const result = selection(await readBoundedRegularFile(join(modernDirectory(), modern.name), 4 * 1024 * 1024), modern.name, "bundled");
+    if (result.bytes.length !== modern.size || result.sha256 !== modern.sha256) throw new Error("The bundled debug video library failed integrity verification; repair Piora");
+    return result;
+  }
+  if (primary) return primary;
+  if (directorySource && primaryError) throw primaryError;
+  // Preserve older device support when the selected IDE is missing or unreadable.
+  try { return await readBundledVideoLibrary(bundledDirectory(), deviceVersion); }
+  catch { throw primaryError ?? new Error("No compatible debug video library is available"); }
 }
 
 const version = (name: string) => /(?:unix_|server-)(\d+\.\d+(?:\.\d+)?)-/.exec(name)?.[1];
+function compareLibraryNames(a: string, b: string): number {
+  return version(a)!.localeCompare(version(b)!, undefined, { numeric: true })
+    || (/-([0-9]{8})\./.exec(a)?.[1] ?? "").localeCompare(/-([0-9]{8})\./.exec(b)?.[1] ?? "");
+}
 export function selectVideoLibrary(names: string[], deviceVersion: string): string | undefined {
   const device = /\d+\.\d+(?:\.\d+)?/.exec(deviceVersion)?.[0];
   if (!device) return;
   return names.filter(name => /^libscrcpy\/libscrcpy_server_unix_\d+\.\d+(?:\.\d+)?-\d+\.z\.so$/.test(name))
     .filter(name => version(name)!.localeCompare(device, undefined, { numeric: true }) <= 0)
-    .sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0];
+    // UiTest 7 requires the newer ABI family; do not silently call 6.4 compatible.
+    .filter(name => Number(device.split(".")[0]) < 7 || version(name)!.localeCompare("6.6", undefined, { numeric: true }) >= 0)
+    .sort((a, b) => compareLibraryNames(b, a))[0];
 }
 
-/** Use the user's installed SDK. Never download or redistribute its native library. */
+/** Optional local SDK candidate; the pinned redistributable bundle is independent. */
 export async function findDevEcoVideoJar(hdcPath: string): Promise<string | undefined> {
   if (!isAbsolute(hdcPath) || !(await lstat(hdcPath).catch(() => undefined))?.isFile()) return;
   const roots: string[] = [];
@@ -76,6 +113,10 @@ export async function findDevEcoVideoJar(hdcPath: string): Promise<string | unde
 }
 
 export async function readDevEcoVideoLibrary(jar: string, deviceVersion: string): Promise<Buffer> {
+  return (await readDevEcoVideoSelection(jar, deviceVersion)).bytes;
+}
+
+async function readDevEcoVideoSelection(jar: string, deviceVersion: string): Promise<DebugVideoLibrary> {
   const zip = await JSZip.loadAsync(await readBoundedRegularFile(jar, 128 * 1024 * 1024));
   const name = selectVideoLibrary(Object.keys(zip.files), deviceVersion);
   const entry = name && zip.file(name);
@@ -90,5 +131,5 @@ export async function readDevEcoVideoLibrary(jar: string, deviceVersion: string)
     });
     stream.on("error", reject); stream.on("end", () => { if (!failed) resolve(Buffer.concat(chunks)); }); stream.resume();
   });
-  return validateVideoLibrary(bytes);
+  return selection(bytes, name!, "installed");
 }

@@ -140,6 +140,7 @@ export function renderLicenseInventory(records, lockfileSha256) {
     "## File and folder icons",
     "",
     "Selected Material Icon Theme SVGs, MIT, Copyright (c) 2025 Material Extensions. The pinned commit, source hashes, transformations and complete license are bundled in [public/file-icons](public/file-icons/SOURCE.md). The app uses only the selected local sprite, not the VS Code extension.",
+    "Selected unmodified HOScrcpy 1.0.18-beta native Unix video libraries use the upstream MIT license. The upstream unfilled copyright template is retained verbatim. Fixed distribution, source and binary hashes are in [video provenance](third_party/harmony-video/SOURCE.md); the complete license and manifest ship in resources/licenses/harmony-video.",
     "",
     "## Optional offline speech",
     "",

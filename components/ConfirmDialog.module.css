@@ -45,6 +45,7 @@
   font-size: var(--text-sm);
   line-height: 1.55;
   white-space: pre-line;
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -73,13 +74,20 @@
 /* Native message windows must remain legible even with translucent theme surfaces. */
 .standalone { --dialog-background: #ffffff; --text: #18181b; --text-muted: #454550; --btn-primary-bg: #27272a; --btn-primary-bg-hover: #3f3f46; --btn-primary-fg: #ffffff; --floating-section: #f4f4f5; --border-soft: #d4d4d8; --bg-hover: #e4e4e7; }
 .standalone[data-dark="true"] { --dialog-background: #202127; --text: #fafafa; --text-muted: #d4d4d8; --btn-primary-bg: #f4f4f5; --btn-primary-bg-hover: #d4d4d8; --btn-primary-fg: #18181b; --floating-section: #292a30; --border-soft: #52525b; --bg-hover: #3f3f46; }
-.noticeHost { position: fixed; z-index: 3500; top: 24px; right: 24px; pointer-events: none; }
-.notice { pointer-events: auto; width: min(340px, calc(100vw - 32px)); }
-.notice.standalone { width: 100vw; }
-.notice .body { padding: 12px 14px 6px; gap: 4px; }
-.notice .body h2 { font-size: var(--text-sm); }
-.notice .body p { font-size: var(--text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.notice .actions { border: 0; background: transparent; padding: 2px 10px 8px; }
+.noticeHost { position: fixed; z-index: 3500; top: 16px; right: 16px; pointer-events: none; }
+.notice { pointer-events: auto; box-sizing: border-box; width: min(300px, calc(100vw - 32px)); min-height: 64px; display: flex; align-items: center; gap: 9px; padding: 10px 12px; border: 1px solid var(--floating-border); border-radius: 12px; color: var(--text); background: var(--dialog-background); box-shadow: 0 4px 18px #0002; }
+.notice.standalone { width: 100vw; min-height: 100dvh; border-radius: 0; display: flex; flex-direction: row; }
+.noticeIcon { flex: 0 0 18px; color: var(--accent); }
+.notice[data-tone="error"] .noticeIcon { color: var(--status-failed); }
+.noticeCopy { flex: 1; min-width: 0; }
+.noticeCopy strong, .noticeCopy p { display: block; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.noticeCopy strong { font-size: var(--text-sm); font-weight: 550; line-height: 1.5; }
+.noticeCopy p { margin-top: 2px; color: var(--text-muted); font-size: var(--text-xs); line-height: 1.5; }
+.noticeActions { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; }
+.noticeActions button { border: 0; border-radius: 5px; padding: 4px 0; color: var(--accent); background: transparent; font: inherit; font-size: var(--text-xs); cursor: pointer; white-space: nowrap; }
+.noticeActions button.noticeClose { display: grid; place-items: center; width: 20px; height: 24px; padding: 0; color: var(--text-muted); }
+.noticeActions button:hover { color: var(--text); }
+.noticeActions button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .standalone .body { flex: 1; min-height: 0; overflow: auto; align-content: start; }
 .preview { display: block; max-height: 220px; max-width: 100%; object-fit: contain; margin: auto; }
 

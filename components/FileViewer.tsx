@@ -745,7 +745,7 @@ function TextFileViewer({
   const [editorScrollTop, setEditorScrollTop] = useState(0);
   const [changeLine, setChangeLine] = useState<number | null>(null);
   const [diffChange, setDiffChange] = useState<{ patch: string; line: number; key: number } | null>(null);
-  const [changeReveal, setChangeReveal] = useState<{ line: number } | null>(null);
+  const [changeReveal, setChangeReveal] = useState<{ line: number; column?: number } | null>(null);
   const appliedChangeRevealRef = useRef<typeof changeReveal>(null);
   const [sourceHighlight, setSourceHighlight] = useState<typeof changeReveal>(null);
   const esRef = useRef<EventSource | null>(null);
@@ -793,17 +793,11 @@ function TextFileViewer({
 
   useEffect(() => {
     if (!active || !revealLine || loading || !data) return;
-    const timer = window.setTimeout(() => {
-      if (displayMode === "edit" && editorRef.current) {
-        editorRef.current.revealLine(revealLine, revealColumn);
-      } else {
-        const line = contentRef.current?.querySelector<HTMLElement>(`.file-source-line[data-line-number="${revealLine}"]`);
-        line?.scrollIntoView({ block: "center" });
-        line?.classList.add("search-reveal-line");
-        window.setTimeout(() => line?.classList.remove("search-reveal-line"), 1_600);
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
+    // Reuse the reveal observer: lazy syntax grammars may replace source rows
+    // after the initial file render. State keeps both scrolling and highlight.
+    setChangeReveal({ line: revealLine, column: revealColumn });
+    if (displayMode === "preview" || displayMode === "diff") setDisplayMode("source");
+    if (displayMode === "split") setCompactSplitSide("edit");
   }, [active, data, displayMode, loading, revealColumn, revealKey, revealLine]);
   const [selectedLineRange, setSelectedLineRange] = useState<SelectedLineRange | null>(null);
 
@@ -1035,7 +1029,7 @@ function TextFileViewer({
     let highlightTimer: ReturnType<typeof setTimeout> | undefined;
     let observer: MutationObserver | undefined;
     const reveal = () => {
-      if (editorRef.current) editorRef.current.revealLine(changeReveal.line);
+      if (editorRef.current) editorRef.current.revealLine(changeReveal.line, changeReveal.column);
       else {
         const line = contentRef.current?.querySelector<HTMLElement>(`.file-source-line[data-line-number="${changeReveal.line}"]`);
         if (!line) return false;

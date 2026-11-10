@@ -18,7 +18,7 @@ export const BROWSER_LOGIN_STATE_SCRIPT = String.raw`(() => {
   const loginVisible = password || form || (authRoute && controls.some(el => loginWords.test(label(el))));
   const logout = controls.some(el => /^(?:log[ -]?out|sign[ -]?out|退出登录|退出登入|注销)(?:\s|$)/i.test(label(el)) || /(?:^|\/)(?:logout|signout|sign-out)(?:\/|$|\?)/i.test(el.getAttribute('href') || ''));
   const userMenu = all('[data-testid="user-menu"], [data-testid="user-avatar"], [data-testid="account-menu"], [aria-label="User menu" i], [aria-label="Account menu" i], [aria-label="用户菜单"], [aria-label="个人头像"]').length > 0;
-  return { ready: document.readyState === 'complete', loginVisible, authenticated: logout || userMenu, url: location.href };
+  return { ready: document.readyState !== 'loading', loginVisible, authenticated: logout || userMenu, url: location.href };
 })()`;
 
 export interface BrowserLoginState { ready: boolean; loginVisible: boolean; authenticated: boolean; url: string }
@@ -27,11 +27,18 @@ export function readBrowserLoginState(value: unknown): BrowserLoginState | null 
   if (!value || typeof value !== "object") return null;
   const row = value as Partial<BrowserLoginState>;
   if (typeof row.ready !== "boolean" || typeof row.loginVisible !== "boolean" || typeof row.authenticated !== "boolean" || typeof row.url !== "string") return null;
-  if (!/^https?:\/\//i.test(row.url)) return null;
+  try { if (!["http:", "https:"].includes(new URL(row.url).protocol)) return null; } catch { return null; }
   return row as BrowserLoginState;
 }
 
-/** Closing a login dialog or navigating away alone is never evidence of sign-in. */
+export const LOGIN_VERIFICATION_DELAY_MS = 1500;
+export function loginPageStillVisible(state: BrowserLoginState): boolean {
+  return state.loginVisible || /(?:^|\/)(?:login|signin|sign-in|auth|oauth|sso|verify|2fa)(?:\/|$)/i.test(new URL(state.url).pathname);
+}
+
+/** Resume to a fresh snapshot for verification; this does not attest authentication. */
 export function browserLoginCompleted(before: BrowserLoginState | null, after: BrowserLoginState | null): boolean {
-  return Boolean(before && !before.authenticated && after?.ready && !after.loginVisible && after.authenticated);
+  if (!after?.ready || after.loginVisible) return false;
+  if (after.authenticated) return true;
+  return Boolean(before && loginPageStillVisible(before) && !loginPageStillVisible(after));
 }

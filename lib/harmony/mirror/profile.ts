@@ -11,6 +11,8 @@ export const MIRROR_PROFILE = Object.freeze({
   maxViewerBytes: 8 * 1024 * 1024,
   maxViewerAgeMs: 80,
   keyframeRequestIntervalMs: 250,
+  // Ask for a new frame before a quiet encoder forces a client reconnect.
+  idleKeyframeIntervalMs: 2000,
   reconnectGraceMs: 5000,
 });
 

@@ -460,3 +460,18 @@ test("login handoffs render no active or successful confirmation card", () => {
   assert.doesNotMatch(unsupported, /<section class="browser-user-wait"|我已完成，继续/);
 
 });
+
+test("write cards distinguish streamed parameters, execution, interruption and a confirmed empty file", () => {
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "write-state", toolName: "write", input: {} }] };
+  const preparing = renderMessage(message, { isStreaming: true, toolRunActive: true });
+  assert.match(preparing, /准备参数/);
+  assert.doesNotMatch(preparing, /\{path\}|0 (?:chars|字符)/);
+  const running = renderMessage(message, { isStreaming: false, toolRunActive: true });
+  assert.match(running, /运行中/);
+  const unfinished = renderMessage(message, { isStreaming: false, toolRunActive: false });
+  assert.match(unfinished, /未返回结果/);
+  assert.doesNotMatch(unfinished, /is-running|is-ok/);
+  const result = { role: "toolResult", toolCallId: "write-state", content: [{ type: "text", text: "Successfully wrote 0 bytes to empty.txt" }] };
+  const completed = renderMessage({ ...message, content: [{ ...message.content[0], input: { path: "empty.txt", content: "" } }] }, { toolResults: new Map([["write-state", result]]) });
+  assert.match(completed, /empty\.txt/); assert.doesNotMatch(completed, /未完成|准备参数/);
+});

@@ -23,6 +23,10 @@
 .surface:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .screen canvas { width: 100%; height: 100%; object-fit: contain; display: block; }
 .screen[data-zoomed="true"] { overflow: auto; display: block; }
+.connectionNotice { position: absolute; z-index: 3; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg-panel); color: var(--text-muted); box-shadow: 0 2px 12px #0001; font-size: var(--text-xs); }
+.connectionNotice span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.connectionNotice button { flex: 0 0 auto; padding: 2px 0; border: 0; background: transparent; color: var(--accent); font: inherit; cursor: pointer; }
+.connectionNotice button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .controls { --control-bg: #f8f9fb; --control-fg: #30343b; --control-hover: #e9ecf1; --control-field: #fff; --control-border: #dfe3e9; --control-focus: #185abc; position: relative; flex: 0 0 auto; padding: 6px 10px; background: var(--control-bg); color: var(--control-fg); border-top: 1px solid var(--control-border); }
 .root[data-dark="true"] .controls { --control-bg: #202124; --control-fg: #eceef2; --control-hover: #34373c; --control-field: #282a2f; --control-border: #42454c; --control-focus: #a8c7fa; color-scheme: dark; }
 .controlRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

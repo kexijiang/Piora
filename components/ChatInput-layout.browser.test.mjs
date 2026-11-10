@@ -22,7 +22,7 @@ test("composer shrinks within a wide window and keeps menus and actions usable",
       return "const s=document.createElement('style');s.textContent="+JSON.stringify(root.toString())+";document.head.append(s);export default "+JSON.stringify(names);
     }`);
     await writeFile(path.join(directory, "entry.tsx"), `
-import {useState} from "react";
+import {useState,useRef} from "react";
 import {createRoot} from "react-dom/client";
 import {I18nProvider} from "@/hooks/useI18n";
 import {ChatInput} from "@/components/ChatInput";
@@ -32,9 +32,15 @@ import {useSendShortcut} from "@/hooks/useSendShortcut";
 import {NewSessionProjectPicker} from "@/components/NewSessionProjectPicker";
 import {SystemPromptSelector} from "@/components/SystemPromptSelector";
 import {ChatCommandCard,ChatCommandQueue} from "@/components/ChatCommandCard";
+import {useResizablePanel} from "@/hooks/useResizablePanel";
 import {createChatCommandCatalog} from "@/lib/chat-command-input";
 const catalog=createChatCommandCatalog([{name:"workflow",source:"extension",description:"Start a workflow and continue until complete"}]);
 const record={commandId:"sample-command",idempotencyKey:"sample",targetSessionId:"sample",acceptedAt:1792483200000,status:"completed",operation:{version:1,rawText:"/name 项目检查",catalogRevision:catalog.revision,command:catalog.commands.find(c=>c.name==="name"),arguments:"项目检查",phase:"settling",steps:[{id:"command",kind:"command",status:"completed",startedAt:1792483200000,completedAt:1792483200200}],result:{title:"chatCommands.renameCompleted",rename:{before:"新会话",after:"项目检查"}}}};
+function ResizableLauncher(){
+  const panelRef=useRef(null),widthRef=useRef(820);
+  const resize=useResizablePanel({ariaLabel:"Resize new chat",cssVariable:"--chat-column-width",defaultWidth:820,getCurrentWidth:()=>panelRef.current?.querySelector(".chat-column")?.getBoundingClientRect().width??820,getMaxWidth:()=>panelRef.current?.clientWidth-48,growthDirection:"left",dragScale:2,followDefaultWidth:true,proportional:true,minWidth:240,maxWidth:2000,panelRef,widthRef,storageKey:"fixture-chat-width"});
+  return <section id="launcher" ref={panelRef} style={{position:"relative"}}><NewSessionProjectPicker activeCwd="/workspace/a-very-long-project-name-for-layout-checks" onLaunch={request=>{window.launched=true;window.launchRequest=request}}/><div {...resize.separatorProps} id="new-chat-resizer" style={{position:"absolute",left:0,top:80,width:12,height:400,touchAction:"none"}}/></section>;
+}
 function App(){
   const {shortcut,setShortcut}=useSendShortcut();window.setSendShortcut=setShortcut;
   const [busy,setBusy]=useState(false);window.setBusy=setBusy;
@@ -42,7 +48,7 @@ function App(){
   const [runtimeQueue,setRuntimeQueue]=useState(null);window.setRuntimeQueue=setRuntimeQueue;
   return <I18nProvider><main>
     <section id="command-results"><ChatCommandCard record={record} actions={{retry:async()=>{},restore:async()=>{},cancel:async()=>{},copy:async()=>{}}}/></section>
-    <section id="launcher"><NewSessionProjectPicker activeCwd="/workspace/a-very-long-project-name-for-layout-checks" onLaunch={request=>{window.launched=true;window.launchRequest=request}}/></section>
+    <ResizableLauncher/>
     <section id="conversation"><ChatInput ref={value=>{window.composer=value}} onSend={(text,...args)=>{window.sent=true;window.submission={text,args};return true}} onAbort={()=>{window.stopped=true;setBusy(false)}}
       queueContent={<ChatCommandQueue records={queued} pendingMessages={runtimeQueue} onPendingAction={async(id,action)=>{window.pendingAction={id,action};if(window.failPendingAction)throw new Error("Pending action failed");setRuntimeQueue(current=>{const pendingInputs=current.pendingInputs.filter(item=>item.id!==id);return {pendingInputs,steering:pendingInputs.filter(item=>item.kind==="steer").map(item=>item.text),followUp:pendingInputs.filter(item=>item.kind==="followUp").map(item=>item.text)}})}} actions={{cancel:async record=>{window.cancelled=record.commandId;if(window.failQueueCancel)throw new Error("Queue cancellation failed");setQueued(current=>current.filter(item=>item.commandId!==record.commandId))},steer:async record=>{window.steered=record.commandId;setQueued(current=>current.filter(item=>item.commandId!==record.commandId))},edit:async record=>{window.editing=record.commandId;return record.preview},save:async(record,text)=>{if(window.failQueueEdit)throw new Error("Queue edit failed");window.edited={id:record.commandId,text};setQueued(current=>current.map(item=>item.commandId===record.commandId?{...item,preview:text}:item))},resume:async record=>{window.resumed=record.commandId;setQueued(current=>current.map(item=>item.commandId===record.commandId?{...item,queuePaused:false}:item))}}}/>}
       commandCatalog={catalog} onLoadSlashCommands={()=>{}} onQueueInput={async(text,images,files,onDurable,options)=>{(window.queuedInputs??=[]).push({text,delivery:options?.delivery});return true}}
@@ -86,6 +92,17 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await page.goto("http://localhost:43191/");
       await page.locator("#launcher .model-settings-trigger:not([data-permission-trigger])").waitFor();
       await page.waitForFunction(() => [...document.querySelectorAll('[aria-haspopup="listbox"]')].some(el => el.textContent.includes("Very long system")));
+      const column = page.locator("#launcher .chat-column");
+      const initialWidth = await column.evaluate(el => el.getBoundingClientRect().width);
+      const handle = await page.locator("#new-chat-resizer").boundingBox();
+      await page.mouse.move(handle.x + 5, handle.y + 80);
+      await page.mouse.down(); await page.mouse.move(handle.x + 65, handle.y + 80, { steps: 5 }); await page.mouse.up();
+      const draggedWidth = await column.evaluate(el => el.getBoundingClientRect().width);
+      assert.ok(initialWidth - draggedWidth >= 100, `new chat follows the drag: ${initialWidth} -> ${draggedWidth}`);
+      await page.reload(); await page.locator("#launcher .model-settings-trigger").waitFor();
+      assert.ok(Math.abs(await column.evaluate(el => el.getBoundingClientRect().width) - draggedWidth) < 2, "new-chat width survives reload");
+      assert.equal(await page.locator('[data-testid="new-session-mark"]').count(), 0);
+      assert.equal(await page.getByRole("heading", { name: locale === "zh-CN" ? "接下来想让 Piora 做什么？" : "What should Piora work on next?", exact: true }).count(), 1);
       // Select a real project so its production chip must also truncate.
       await page.locator('#launcher button[aria-haspopup="listbox"]').first().click();
       await page.getByRole("option").filter({ hasText: "a-very-long-project-name" }).click();
@@ -118,13 +135,13 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       }
       await page.locator("#launcher, #conversation").evaluateAll(sections => sections.forEach(section => { section.style.width = "590px"; }));
       const conversation = page.locator("#conversation");
-      assert.equal(await conversation.locator(".model-settings-trigger .model-default-badge").textContent(), locale === "zh-CN" ? "默认" : "Default");
+      assert.equal(await conversation.locator(".model-settings-trigger .model-default-badge").count(), 0, "the default model has no extra composer badge");
       assert.equal(await page.locator("[data-permission-trigger]").count(), 0, "neither composer exposes a retired approval control");
       await conversation.locator(".model-settings-trigger:not([data-permission-trigger])").click();
       await page.locator(".model-settings-popover").waitFor();
       await page.getByRole("menuitem", { name: locale === "zh-CN" ? /^模型/ : /^Model/ }).click();
-      await page.locator(".model-settings-choice .model-default-badge").waitFor();
-      assert.equal(await page.locator(".model-settings-choice .model-default-badge").textContent(), locale === "zh-CN" ? "默认" : "Default");
+      await page.locator(".model-settings-choice").first().waitFor();
+      assert.equal(await page.locator(".model-settings-choice .model-default-badge").count(), 0, "model choices also omit the redundant badge");
       await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
       await conversation.locator('button[aria-haspopup="listbox"]').click();

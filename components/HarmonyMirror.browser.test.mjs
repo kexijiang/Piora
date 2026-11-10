@@ -16,7 +16,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
   try {
     await writeFile(path.join(root,"loader.cjs"),`const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root,"css.cjs"),'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
-    await writeFile(path.join(root,"stub.tsx"),`import {useEffect,useRef} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyMirror=o=>{const surfaceRef=useRef(null);window.frameOptions={active:o.active,serial:o.serial,worker:true};useEffect(()=>{const c=document.createElement("canvas");surfaceRef.current.appendChild(c);c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});return()=>c.remove();},[surfaceRef]);return {surfaceRef,state:"live",frame:{serial:o.serial,generation:1,width:360,height:720},refresh:()=>{window.reconnected=true;}};};`);
+    await writeFile(path.join(root,"stub.tsx"),`import {useEffect,useRef,useState} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyMirror=o=>{const surfaceRef=useRef(null);const [failure,setFailure]=useState(null);window.setVideoFailure=setFailure;window.frameOptions={active:o.active,serial:o.serial,worker:true};useEffect(()=>{const c=document.createElement("canvas");surfaceRef.current.appendChild(c);c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});return()=>c.remove();},[surfaceRef]);return {surfaceRef,state:failure?"recovering":"live",error:failure,frame:{serial:o.serial,generation:1,width:360,height:720},refresh:()=>{window.reconnected=true;}};};`);
     await writeFile(path.join(root,"entry.tsx"),`import React,{useState} from "react";import {createRoot} from "react-dom/client";import {MirrorWindow} from "@/components/workspace/harmony/MirrorWindow";import {PioraMessageHost,showPioraMessage} from "@/components/PioraMessage";import {useTheme} from "@/hooks/useTheme";window.showMessage=showPioraMessage;function Fixture(){const[embedded,setEmbedded]=useState(false);window.setEmbedded=setEmbedded;const {setTheme,themes}=useTheme();window.setMirrorTheme=setTheme;window.mirrorThemes=themes;return <><MirrorWindow embedded={embedded} serial={embedded?"phone":undefined}/><PioraMessageHost/></>;}createRoot(document.getElementById("root")).render(<Fixture/>);`);
     const aliases=Object.fromEntries(["@/hooks/useI18n","@/hooks/useHarmonyMirror"].map(k=>[k,path.join(root,"stub.tsx")]));
     const compiler=webpack({mode:"development",target:"web",devtool:false,entry:path.join(root,"entry.tsx"),output:{path:root,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],modules:[path.join(repo,"node_modules")],alias:{...aliases,"@":repo}},module:{rules:[{test:/\.tsx?$/,exclude:/node_modules/,use:path.join(root,"loader.cjs")},{test:/\.css$/,use:path.join(root,"css.cjs")}]}});
@@ -178,11 +178,24 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.waitForFunction(()=>window.frameOptions.active===true);
     assert.equal(await page.evaluate(()=>window.frameOptions.worker),true,"floating view uses the same dedicated video worker");
     const screen=await page.locator("canvas").boundingBox();assert.ok(screen.y<=38&&screen.y+screen.height>=757);
+    const controlWasEnabled = await page.getByRole("button", {name:"操控手机"}).getAttribute("aria-pressed");
+    await page.evaluate(() => { window.retainedCanvas = document.querySelector("canvas"); window.setVideoFailure("The device stopped producing decoded video (0 submitted, 0 decoded)"); });
+    await page.getByRole("status").filter({hasText:"正在恢复连接"}).waitFor();
+    const recoveringScreen = await page.locator("canvas").boundingBox();
+    assert.deepEqual(recoveringScreen, screen, "a transient error cannot resize the phone image");
+    assert.equal(await page.evaluate(() => document.querySelector("canvas") === window.retainedCanvas), true);
+    assert.equal(await page.locator(".placeholder").count(), 0, "the error never covers a previously rendered frame");
+    await page.getByRole("button", {name:"重连",exact:true}).click();
+    assert.equal(await page.evaluate(() => window.reconnected), true);
+    await page.evaluate(() => window.setVideoFailure(null));
+    if (await page.getByRole("button", {name:"操控手机"}).getAttribute("aria-pressed") !== controlWasEnabled) await page.getByRole("button", {name:"操控手机"}).click();
     recording={serial:"phone",ownerId:"desktop-media",recordingId:"recording-limit",startedAt:new Date().toISOString(),phase:"recording"};
     await page.getByRole("button",{name:"停止录屏",exact:true}).waitFor();
     recording=null;completion={stopReason:"duration-limit",artifact:{kind:"recording",serial:"phone",path:"C:/media/video.mp4",filename:"video.mp4"}};
     await page.getByRole("status").filter({hasText:"录屏已保存"}).waitFor();assert.match(await page.getByRole("status").innerText(),/30分钟上限/);
     assert.equal(await page.getByRole("dialog").count(),0);
+    const noticeBounds = await page.getByRole("status").filter({hasText:"录屏已保存"}).boundingBox();
+    assert.ok(noticeBounds.width <= 300 && noticeBounds.height <= 76, `compact media result: ${JSON.stringify(noticeBounds)}`);
     if(process.env.PIORA_HARMONY_SCREENSHOT_DIR){await mkdir(process.env.PIORA_HARMONY_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"media-notice.png")});}
     await page.getByRole("status").getByRole("button",{name:"关闭",exact:true}).click();completion=null;
     assert.equal(await page.getByRole("combobox",{name:"画面缩放"}).count(),0);
