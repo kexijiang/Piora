@@ -12,9 +12,9 @@ export const CDP_TIMEOUT_MS = 10_000;
 export const REQUEST_TIMEOUT_MS = 40_000;
 
 export const PAUSED_BY_USER_ERROR = "Browser agent is paused by user.";
-export const EVALUATE_DISABLED_ERROR = "evaluate is disabled on the desktop browser and needs user confirmation.";
+export const EVALUATE_DISABLED_ERROR = "evaluate requires a matching inspected document token.";
 export const EVALUATE_SENSITIVE_REFUSAL = "evaluate is refused on pages with password fields, login, payment, or account-security content. Use snapshot/click/type, or call wait_for_user.";
-export const EVALUATE_PAGE_CHANGED_ERROR = "The page changed while waiting for confirmation. evaluate was not run; take a new snapshot and try again.";
+export const EVALUATE_PAGE_CHANGED_ERROR = "The page changed after inspection. evaluate was not run; take a new snapshot and try again.";
 export const MAX_AGENT_TABS_ERROR = "This session already has 5 agent browser tabs. Close unused tabs before opening another.";
 export const REFS_INVALID_ERROR = "Element refs are invalid after the tab was reloaded. Take a new snapshot before interacting.";
 export const RENDERER_CRASHED_ERROR = "Browser tab renderer crashed.";

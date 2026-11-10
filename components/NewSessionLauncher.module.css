@@ -43,14 +43,6 @@
   letter-spacing: -.035em;
 }
 
-.header p {
-  margin: 0;
-  max-width: 620px;
-  color: var(--text-muted);
-  font-size: var(--text-base);
-  line-height: 1.6;
-}
-
 .projectPath {
   max-width: 100%;
   display: inline-flex;

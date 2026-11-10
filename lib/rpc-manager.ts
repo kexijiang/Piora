@@ -1,12 +1,5 @@
 import { createConversationFork } from "./session-fork";
 import { recordAgentTerminalEvent } from "./agent-terminal-registry";
-import { ToolReviewController } from "./tool-permission-gate";
-import { collectReviewEvidence } from "./tool-review-evidence";
-import { runToolReviewModel } from "./tool-review-model";
-import { readBrowserReviewTarget } from "./tool-review-browser";
-import type { ToolReviewModel } from "./tool-review-types";
-import { isPermissionMode } from "./tool-permission-policy";
-import { readToolPermission, writeToolPermission, selectToolPermission, readDefaultToolPermission } from "./tool-permission-store";
 import { StreamingMetricsTracker } from "./streaming-metrics";
 import { PromptInputEnrichment } from "./prompt-input-enrichment";
 import { reduceAgentPhase, type AgentPhase } from "./agent-phase";
@@ -193,65 +186,6 @@ const DEVICE_CONTROL_DENIED_RPC_COMMANDS = new Set(["bash", "abort_bash"]);
 // ============================================================================
 
 export class AgentSessionWrapper {
-  private permissionRunners = new WeakSet<object>();
-  private toolReviews: ToolReviewController | undefined;
-  private reviewModel: { provider: string; id: string } | undefined;
-  private reviewInvoker: ToolReviewModel = runToolReviewModel;
-
-  private reviews(): ToolReviewController {
-    return this.toolReviews ??= new ToolReviewController({
-      root: getAgentDir(), sessionId: this.sessionId, reviewer: input => this.reviewInvoker(input),
-      emit: review => this.emit({ type: "tool_review", review }),
-      stop: () => { void this.send({ type: "abort" }).catch(() => undefined); },
-    });
-  }
-
-  private releaseToolApprovals(): void {
-    for (const [id, event] of this.pendingUiRequests) {
-      if (event.method === "confirm" && event.toolApproval === true) {
-        this.pendingUiResponses.get(id)?.resolve({ type: "extension_ui_response", id, confirmed: true });
-      }
-    }
-  }
-
-  private installToolPermissions(): void {
-    const runner = this.inner.extensionRunner;
-    if (this.permissionRunners.has(runner) || !runner.emitToolCall || !runner.hasHandlers) return;
-    this.permissionRunners.add(runner);
-    const hasHandlers = runner.hasHandlers.bind(runner);
-    const emitToolCall = runner.emitToolCall.bind(runner);
-    runner.hasHandlers = event => event === "tool_call" || hasHandlers(event);
-    runner.emitToolCall = async event => {
-      const generation = this.abortGeneration;
-      const runId = this.activePromptRun?.runId;
-      const active = () => this._alive && !this.stopping && generation === this.abortGeneration
-        && this.activePromptRun?.runId === runId;
-      const result = await emitToolCall(event);
-      if (result?.block) return result;
-      const reviews = this.reviews();
-      const allowed = await reviews.authorize({
-        name: event.toolName, args: event.input, toolCallId: event.toolCallId,
-        runId: runId ?? `runtime-${generation}`,
-        model: this.reviewModel,
-        read: () => readToolPermission(this.sessionId, getAgentDir()), active,
-        evidence: async signal => collectReviewEvidence({ name: event.toolName, args: event.input, cwd: this.cwd,
-          tool: this.inner.getAllTools().find(tool => tool.name === event.toolName),
-          browser: event.toolName === "browser" ? await readBrowserReviewTarget(this.sessionId, event.input, signal) : undefined,
-        }),
-        ask: (message, signal) => this.requestExtensionUi<"once" | "full" | "deny">({
-          method: "confirm", toolApproval: true, title: event.toolName,
-          message,
-        }, "deny", response => "value" in response && response.value === "full" ? "full"
-          : "confirmed" in response && response.confirmed ? "once" : "deny", 10 * 60_000, signal),
-        grantFull: () => {
-          const permission = selectToolPermission(this.sessionId, "full", getAgentDir());
-          this.emit({ type: "tool_permission_changed", permission });
-          this.releaseToolApprovals();
-        },
-      });
-      return allowed ? result : { block: true, ...(reviews.stopped ? { terminate: true } : {}), reason: "Tool operation was declined, invalidated or cancelled. Do not retry through another tool." };
-    };
-  }
   readonly remotePolicy: RemoteSessionPolicy;
   private remoteContent = new RemoteContentProjection();
   private listeners: EventListener[] = [];
@@ -367,17 +301,8 @@ export class AgentSessionWrapper {
       projectRoot?: string;
       projectManaged?: boolean;
       nativeMcp?: NativeMcpController;
-      /** Host-only dependency injection for deterministic integration tests. Never a model/API option. */
-      reviewInvoker?: ToolReviewModel;
     } = {},
   ) {
-    this.reviewInvoker = capabilityOptions.reviewInvoker ?? runToolReviewModel;
-    this.installToolPermissions();
-    const reload = inner.reload.bind(inner);
-    inner.reload = options => reload({ ...options, beforeSessionStart: async () => {
-      this.installToolPermissions();
-      await options?.beforeSessionStart?.();
-    } });
     // Fence late starts inside the SDK's agent.prompt try/finally, so its
     // active-run state and idle waiters also settle after preflight cancellation.
     const agentPrompt = inner.agent.prompt;
@@ -471,8 +396,6 @@ export class AgentSessionWrapper {
     await this.waitForExtensionsBound();
     if (!this._alive || this.stopping) throw new Error("Command cancelled");
     const abortGeneration = this.abortGeneration;
-    this.reviews().admit({ id: commandId, source: activity?.source ?? "unknown", text: message, timestamp: Date.now() }, !this.activePromptRun);
-    if (!this.activePromptRun) this.reviewModel = this.inner.model ? { provider: this.inner.model.provider, id: this.inner.model.id } : undefined;
     let ownedRun: PromptRunIdentity | undefined;
     let fileChangeCapture: ReturnType<typeof beginPromptFileChanges> | undefined;
     let failed = false;
@@ -886,7 +809,6 @@ export class AgentSessionWrapper {
 
   start(): void {
     this.unsubscribe = this.inner.subscribe((event: AgentEvent) => {
-      if (event.type === "tool_execution_end" && typeof event.toolCallId === "string") this.toolReviews?.finish(event.toolCallId, event.isError === true);
       // Pi 1.0 emits structured system/loadout messages as transcript events.
       // They remain canonical SDK/provider history but are not chat rows or
       // streaming assistant content, matching session-reader's projection.
@@ -1184,7 +1106,6 @@ export class AgentSessionWrapper {
 
   onEvent(listener: EventListener): () => void {
     this.listeners.push(listener);
-    for (const review of this.reviews().list()) listener({ type: "tool_review", review });
     for (const event of this.pendingUiRequests.values()) listener(event);
     return () => {
       const i = this.listeners.indexOf(listener);
@@ -1317,8 +1238,6 @@ export class AgentSessionWrapper {
         if (ownsPromptRun) {
           this.activePromptRun = promptRun;
           this.activeCommandId = commandId;
-          this.reviewModel = undefined;
-          this.reviews().admit({ id: commandId, source: promptSource ?? "unknown", text: originalPromptMessage, timestamp: Date.now() }, true);
           this.emit({
             type: "prompt_started",
             sessionId: this.sessionId,
@@ -1327,7 +1246,6 @@ export class AgentSessionWrapper {
             timestamp: Date.now(),
           });
         }
-        if (!ownsPromptRun) this.reviews().admit({ id: commandId, source: streamingBehavior === "followUp" ? "queued" : promptSource ?? "unknown", text: originalPromptMessage, timestamp: Date.now() }, false);
         if (teamExecution) {
           if (!ownsPromptRun) throw new Error("Team execution requires a new PromptRun.");
           bindTeamPromptContext(promptRun, teamExecution);
@@ -1372,7 +1290,6 @@ export class AgentSessionWrapper {
           }
           const prompt = (admitted: () => void) => {
             assertNotAborted();
-            if (!streamingBehavior) this.reviewModel ??= this.inner.model ? { provider: this.inner.model.provider, id: this.inner.model.id } : undefined;
             return this.promptInputEnrichment.run(text => {
               const enriched = typeof command.promptSuffix === "string" && command.promptSuffix ? `${text}\n\n${command.promptSuffix}` : text;
               return resolvedPromptMaterials.length ? buildPromptWithMaterials(enriched, resolvedPromptMaterials) : enriched;
@@ -1464,7 +1381,6 @@ export class AgentSessionWrapper {
       }
 
       case "abort": {
-        this.toolReviews?.cancel();
         const receipt = () => ({
           accepted: true,
           ...(this.abortedQueuedMessages ? { queuedMessages: this.abortedQueuedMessages } : {}),
@@ -1585,8 +1501,6 @@ export class AgentSessionWrapper {
           extensionStatuses: this.getExtensionStatuses(),
           extensionWidgets: this.getExtensionWidgets(),
           capabilities: this.getSessionCapabilities(),
-          toolPermission: readToolPermission(this.sessionId, getAgentDir()),
-          toolReviews: this.reviews().list(),
         };
       }
 
@@ -1676,7 +1590,6 @@ export class AgentSessionWrapper {
         const newSessionFile = createConversationFork(currentSessionFile, sessionDir, entryId, command.includeEntry === true);
 
         const newSessionId = SessionManager.open(newSessionFile, sessionDir).getSessionId();
-        writeToolPermission(newSessionId, readDefaultToolPermission(getAgentDir()), getAgentDir());
         const forkedManager = SessionManager.open(newSessionFile, sessionDir);
         appendSessionCapabilityPolicy(forkedManager, copySessionCapabilityPolicy(this.capabilityPolicy));
         const sourceSystemPromptBinding = this.getSystemPromptBinding()
@@ -1769,9 +1682,6 @@ export class AgentSessionWrapper {
             cancelled: command.onQueueCancelled as () => Promise<void>,
           });
         }
-        this.reviews().admit({ id: typeof command.commandId === "string" ? command.commandId : randomUUID(),
-          source: type === "follow_up" ? "queued" : typeof command.source === "string" ? command.source : "unknown",
-          text: String(command.message ?? ""), timestamp: Date.now() }, false);
         const images = command.images as Array<{ type: "image"; data: string; mimeType: string }> | undefined;
         this.inputAdmissions++;
         notifyRunningChange();
@@ -1957,18 +1867,6 @@ export class AgentSessionWrapper {
         return null;
       }
 
-      case "get_tool_permission": return readToolPermission(this.sessionId, getAgentDir());
-      case "set_tool_permission": {
-        if (!isPermissionMode(command.mode)) throw new Error("Invalid permission mode");
-        const permission = command.rememberDefault === true
-          ? selectToolPermission(this.sessionId, command.mode, getAgentDir())
-          : writeToolPermission(this.sessionId, command.mode, getAgentDir());
-        this.emit({ type: "tool_permission_changed", permission });
-        this.toolReviews?.invalidate();
-        if (permission.mode === "full") this.releaseToolApprovals();
-        return permission;
-      }
-
       case "extension_ui_input": {
         this.handleExtensionUiInput(command.id as string, command.data as string);
         return null;
@@ -2032,7 +1930,6 @@ export class AgentSessionWrapper {
   destroy(): void {
     if (!this._alive) return;
     this._alive = false;
-    this.toolReviews?.cancel();
     const writers: Promise<unknown>[] = [this.abortCleanupTask, ...this.promptTasks];
     if (this.promptRunning || this.inner.isStreaming) {
       writers.push(this.inner.abort());
@@ -3027,9 +2924,6 @@ export async function startRpcSession(
     if (!sessionFile && !projectToolRecord) appendSessionCapabilityPolicy(inner.sessionManager, restoredPolicy);
 
     const realSessionId = inner.sessionId as string;
-    // Existing chats retain their previous behavior until explicitly changed.
-    // Forks get a new id and never inherit their parent's grant.
-    if (!sessionFile) writeToolPermission(realSessionId, readDefaultToolPermission(getAgentDir()), getAgentDir());
     if (!sessionFile && initialModel && inner.model
       && (initialModel.provider !== inner.model.provider || initialModel.modelId !== inner.model.id)) {
       await inner.sendCustomMessage({

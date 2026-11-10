@@ -4,7 +4,6 @@ import type { SystemPromptSelection } from "@/lib/system-prompt-types";
 import type { ChatInputOptions } from "@/lib/chat-command-types";
 
 export interface NewSessionInitialPrompt {
-  permissionMode?: import("@/lib/tool-permission-policy").PermissionMode;
   id: string;
   message: string;
   images?: AttachedImage[];

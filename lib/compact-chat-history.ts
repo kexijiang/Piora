@@ -3,6 +3,7 @@ import type { ChatHistoryRow } from "./chat-history";
 import { isEmptyThinkingBlock, hasAssistantNotice } from "./message-display";
 import { isCommandToolName, toolResultText } from "./command-execution";
 import { toolActivityKind, type ToolActivityKind } from "./tool-activity";
+import { browserWaitPurpose } from "./browser-wait-policy";
 
 export interface ProcessStep {
   key: string;
@@ -37,6 +38,7 @@ function needsAttention(block: AssistantContentBlock, results: Map<string, ToolR
   if (!active && (!result || result.isStreaming)) return true;
   // User handoff remains actionable even while the surrounding process is folded.
   return block.toolName === "browser" && block.input?.action === "wait_for_user"
+    && browserWaitPurpose(String(block.input.reason ?? ""), block.input.purpose) !== "login"
     && (!result || result.isStreaming === true || (result.details as { status?: string } | undefined)?.status === "unsupported");
 }
 
@@ -60,6 +62,8 @@ export function buildCompactChatHistoryRows(
     const anchor = messages[start];
     const key = `compact-process:${entryIds[start] || (anchor.role === "user" ? anchor.clientPromptId : undefined) || start}`;
     const turnRows: ChatHistoryRow[] = [];
+    let lastAssistant = -1;
+    for (let index = start; index < end; index++) if (messages[index].role === "assistant") lastAssistant = index;
     const steps: ProcessStep[] = [];
     const activities: CompactProcessGroup["activities"] = {};
     let attention = false;
@@ -73,12 +77,13 @@ export function buildCompactChatHistoryRows(
       }
       attention ||= i !== streamingIndex && hasAssistantNotice(message);
       const content = Array.isArray(message.content) ? message.content : [];
+      const progressText = compact && (i !== lastAssistant || content.some(block => block.type === "toolCall"));
       const segments: Array<{ offset: number; process: boolean; activity?: ToolActivityKind; blocks: AssistantContentBlock[] }> = [];
       for (const [b, original] of content.entries()) {
         if (Boolean(isEmptyThinkingBlock(original, { isStreaming: i === streamingIndex }))) continue;
         // Splitting rows must not change deferred lookup or disclosure identities.
         const block = original.type === "thinking" ? { ...original, deferredBlockIndex: original.deferredBlockIndex ?? b } : original;
-        const process = block.type === "thinking" || block.type === "toolCall";
+        const process = block.type === "thinking" || block.type === "toolCall" || (progressText && block.type === "text");
         const activity = block.type === "toolCall" ? toolActivityKind(block.toolName) : undefined;
         const previous = segments.at(-1);
         if (previous?.process === process && previous.activity === activity) previous.blocks.push(block);
@@ -106,9 +111,9 @@ export function buildCompactChatHistoryRows(
         if (segment.process && entryIds[i] && !direct) entryGroups.set(entryIds[i], key);
       }
     }
-    // Latest completed turn stays open until another input; exceptional turns
-    // never hide their evidence, even after a previous manual collapse.
-    const open = direct || attention || (choices.get(key) ?? (end === messages.length && (!active || !compact)));
+    // The final answer stays outside the turn's single process disclosure.
+    const open = direct || (attention && (active || !compact))
+      || (choices.get(key) ?? (compact ? active : end === messages.length));
     // Secondary rows stay individually virtualized under the process heading.
     // Thinking, prose and custom notices still split the assistant message.
     let headingAdded = false;

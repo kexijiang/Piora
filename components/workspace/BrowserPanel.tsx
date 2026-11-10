@@ -4,6 +4,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { browserWaitPurpose } from "@/lib/browser-wait-policy";
 import type {
   DesktopBrowserAction,
   DesktopBrowserAgentActivity,
@@ -529,6 +530,7 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
   const agentPaused = agentActivity?.sessionId === sessionId ? agentActivity.paused : Boolean(state?.agentPaused);
   const agentWaiting = agentActivity?.sessionId === sessionId ? agentActivity.waiting === true : Boolean(state?.agentWaiting);
   const agentWaitReason = agentActivity?.sessionId === sessionId ? (agentActivity.reason || "") : (state?.agentWaitReason || "");
+  const loginWaiting = browserWaitPurpose(agentWaitReason, agentActivity?.sessionId === sessionId ? agentActivity.purpose : state?.agentWaitPurpose) === "login";
   const decideWait = async (decision: "continue" | "cancel") => {
     if (!sessionId) return;
     try {
@@ -562,9 +564,9 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
     </div> : null}
     {linkAgent && !state?.vaultProtected && (agentOperating || agentPaused || agentWaiting) ? <div className={styles.browserAgentOperating} role="status">
       {agentWaiting ? <>
-        <span>{agentWaitReason || t("browser.waitTitle")}</span>
+        <span>{loginWaiting ? t("browser.loginWaiting") : (agentWaitReason || t("browser.waitTitle"))}</span>
         <span className={styles.browserAgentActions}>
-          <button type="button" onClick={() => void decideWait("continue")}>{t("browser.waitContinue")}</button>
+          {!loginWaiting && <button type="button" onClick={() => void decideWait("continue")}>{t("browser.waitContinue")}</button>}
           <button type="button" onClick={() => void decideWait("cancel")}>{t("browser.waitCancel")}</button>
         </span>
       </> : <>

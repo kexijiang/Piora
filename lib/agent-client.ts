@@ -19,7 +19,6 @@ export class AgentCommandError extends Error {
 }
 
 export interface CreateAgentSessionRequest {
-  permissionMode?: import("./tool-permission-policy").PermissionMode;
   cwd: string;
   type: "ensure_session";
   capabilitySelection?: {
@@ -33,7 +32,6 @@ export interface CreateAgentSessionRequest {
 }
 
 export interface CreateAgentSessionResponse {
-  toolPermission?: import("./tool-permission-policy").ToolPermissionState;
   sessionId: string;
   model?: { provider: string; modelId: string } | null;
   thinkingLevel?: "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";

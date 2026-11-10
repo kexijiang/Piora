@@ -42,3 +42,9 @@ stored in the previous Playwright profile are not copied into the desktop
 built-in browser. Sign in once in the right-side browser when a site asks for
 it. Login, captcha, two-factor, payment, and account-security pages ask the
 user to take over with `wait_for_user` instead of the agent typing secrets.
+
+## Desktop sign-in handoff
+
+In the built-in desktop browser, `wait_for_user` with `purpose: "login"` reveals the current session browser and waits silently. A fixed read-only probe checks visible login controls and newly visible signed-in controls (such as Log out or a user menu). Two stable observations are required. Navigation or a dismissed login dialog alone cannot resume the task. The probe never returns passwords, cookie values, storage or page text. After five minutes without a recognized signed-in state, a small inline hint offers manual continuation after checking the browser. Pages without recognizable signed-in controls remain waiting and may time out; real provider/SSO flows still require site-specific acceptance.
+
+Stopping, cancellation, timeout and superseding waits invalidate pending checks. `purpose: "confirmation"` retains explicit completion for non-login handoffs. Background Playwright mode retains its unsupported-handoff response; this change does not expose an interactive headless window.

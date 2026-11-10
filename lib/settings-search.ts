@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "capabilityBundles" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
+export type SettingsKey = "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
 
 export interface SettingsPage {
   key: SettingsKey;
@@ -26,7 +26,6 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
   ] },
   { labelKey: "settings.group.capabilities", pages: [
     { key: "tools", labelKey: "projectTools.title", descriptionKey: "projectTools.description", icon: "build" },
-    { key: "capabilityBundles", labelKey: "capabilityBundles.title", descriptionKey: "capabilityBundles.description", icon: "package" },
     { key: "extensions", labelKey: "settings.extensions", descriptionKey: "settings.manageExtensionsDescription", icon: "package" },
     { key: "desktopExtensions", labelKey: "desktopExtensions.title", descriptionKey: "desktopExtensions.description", icon: "robot" },
     { key: "plugins", labelKey: "common.plugins", descriptionKey: "settings.pluginsDescription", icon: "package" },
@@ -115,7 +114,6 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "models", section: "models", labelKey: "common.models", descriptionKey: "settings.modelsDescription", keywords: ["provider", "api key", "oauth", "模型", "登录", "密钥"] },
   { id: "models.fallback", section: "modelRuntime", labelKey: "models.fallback.title", descriptionKey: "models.fallback.description", keywords: ["fallback", "回退", "备用模型"] },
   { id: "tools", section: "tools", labelKey: "projectTools.title", descriptionKey: "projectTools.description", keywords: ["tools", "project", "harmony", "工具", "项目", "鸿蒙"], requiresProject: true },
-  { id: "capabilityBundles", section: "capabilityBundles", labelKey: "capabilityBundles.title", descriptionKey: "capabilityBundles.description", keywords: ["tools", "profile", "能力包", "工具"], requiresProject: true },
   { id: "extensions", section: "extensions", labelKey: "settings.extensions", descriptionKey: "settings.manageExtensionsDescription", keywords: ["extension", "tools", "扩展", "工具"], requiresProject: true },
   { id: "skills", section: "skills", labelKey: "common.skills", descriptionKey: "settings.skillsDescription", keywords: ["skill", "instruction", "技能", "说明"], requiresProject: true },
   { id: "plugins", section: "plugins", labelKey: "common.plugins", descriptionKey: "settings.pluginsDescription", keywords: ["plugin", "package", "marketplace", "插件", "包"], requiresProject: true },

@@ -26,7 +26,6 @@ import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
 import { TaskDuration } from "./TaskDuration";
 import { responseTaskTimings } from "@/lib/response-task-timing";
-import { ToolReviewStatus } from "./ToolReviewStatus";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -165,7 +164,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
   // drafts: two new chats in the same project must never restore each other.
   const [newChatDraftKey] = useState(() => `new:${crypto.randomUUID()}`);
   const { t } = useI18n();
-  const compactProcess = false;
+  const compactProcess = true;
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
   const chatColumnWidthRef = useRef(CHAT_COLUMN_DEFAULT_WIDTH);
@@ -208,7 +207,6 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
   const {
     nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
-    toolPermission, permissionSaving, handleToolPermission, toolReviews,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactionStartedAt, compactError, compactResult, displayModel: displayModelValue, sessionStats,
@@ -229,7 +227,6 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
     viewVisible: visible,
     session, newSessionCwd, newSessionInitialModel,
     newSessionInitialSystemPromptSelection: initialPrompt?.systemPromptSelection ?? null,
-    newSessionInitialPermissionMode: initialPrompt?.permissionMode,
     onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   });
@@ -662,7 +659,6 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
   const chatInputElement = (
     <>
-    <ToolReviewStatus reviews={toolReviews} />
     {chatCommands.connectionError && <div role="status" style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "6px 10px" }}>{chatCommands.connectionError}</div>}
     <ChatInput
       ref={chatInputRef}
@@ -695,9 +691,6 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
       compactResult={compactResult}
       onDismissCompactResult={handleDismissCompactResult}
       thinkingLevel={thinkingLevel}
-      toolPermission={toolPermission}
-      permissionSaving={permissionSaving}
-      onToolPermissionChange={handleToolPermission}
       onThinkingLevelChange={session || isNew ? handleThinkingLevelChange : undefined}
       availableThinkingLevels={availableThinkingLevels}
       thinkingLevelMap={currentThinkingLevelMap}
@@ -805,10 +798,8 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
       {isEmptyNew ? (
         <NewSessionLauncher
-          cwd={messageCwd}
           projectLabel={newSessionProjectLabel}
           projectPath={isProjectlessChat ? null : messageCwd}
-          onStarterSelect={handleEditContent}
         >
           <div>
             <NoticeShelf notices={notices} align="right" />
@@ -845,7 +836,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
               operations={chatCommands.records} commandActions={commandActions}
               responseTimings={responseTimings}
               modelChanges={modelChanges}
-              messages={messages} directProcess compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
+              messages={messages} compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}

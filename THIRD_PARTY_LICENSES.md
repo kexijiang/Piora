@@ -1294,6 +1294,10 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `yocto-queue` | `0.1.0` | MIT | No |
 | `zod-validation-error` | `4.0.2` | MIT | No |
 
+## File and folder icons
+
+Selected Material Icon Theme SVGs, MIT, Copyright (c) 2025 Material Extensions. The pinned commit, source hashes, transformations and complete license are bundled in [public/file-icons](public/file-icons/SOURCE.md). The app uses only the selected local sprite, not the VS Code extension.
+
 ## Optional offline speech
 
 SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sherpa-onnx 1.13.6. Model weights use the FunASR Model Open Source License Agreement; the toolkit uses MIT and sherpa-onnx uses Apache-2.0. Exact model hashes, upstream attribution, and separate license texts are recorded in [speech provenance](third_party/sensevoice/SOURCE.md) and copied into resources/licenses/sensevoice.
