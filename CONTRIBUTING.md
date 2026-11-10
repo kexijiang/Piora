@@ -45,7 +45,7 @@ npm test
 npm run verify:backgrounds
 ```
 
-CI is configured to run the source checks on Windows and Linux, including deterministic license-inventory freshness, then build and verify the unpacked application on Windows. Release changes should additionally complete the artifact, extension-fixture, license, secret, and clean-machine checks in the [public launch checklist](docs/open-source/LAUNCH_CHECKLIST.md). A workflow configuration is not evidence that a public run has passed.
+CI is configured to run the source checks on Windows and Linux, including deterministic license-inventory freshness, then build and verify the unpacked application on Windows. Release changes should additionally complete the artifact, extension-fixture, license, secret, and clean-machine checks in the [release guide](docs/release.md). A workflow configuration is not evidence that a public run has passed.
 
 The test shards and `Quality validation` jobs run concurrently on separate
 runners. The existing `Quality checks (ubuntu-latest)` and

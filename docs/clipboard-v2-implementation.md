@@ -10,7 +10,7 @@ Product and interaction specification: [随身仓剪贴板完整修改方案](./
 
 - Final isolated desktop compile, electron-builder packaging and packaged runtime checks all exited 0. Authoritative final state: `X:/release-workspaces/clipboard-2D11wt/verification-final-state.json`. All 11 clipboard modules match the compiled snapshot, including the final database change; native FFI loads, the SQLite worker runs from ASAR with isolated dependencies, and authenticated clipboard pages return 200.
 - Ready-to-run Windows directory package: `X:/release-workspaces/clipboard-2D11wt/desktop/release/win-unpacked/Piora.exe`. Keep its surrounding directory intact. No deployment, installation over the user's current app, or git commit was performed.
-- Product implementation and the user's revised acceptance are complete. Existing packaged UI/restart, native paste/drag/IME, database and recovery evidence is retained; no new performance campaign or exhaustive matrix was run. [User delivery notes](./clipboard-v2-delivery.md) summarize the result. Chronological pending statements below describe earlier snapshots, not current blockers.
+- Product implementation and the user's revised acceptance are complete. Existing packaged UI/restart, native paste/drag/IME, database and recovery evidence is retained; no new performance campaign or exhaustive matrix was run. [Clipboard usage](./clipboard-history.md) describes the behavior. Chronological pending statements below describe earlier snapshots, not current blockers.
 
 ### User-directed acceptance adjustment and final source-read change
 
