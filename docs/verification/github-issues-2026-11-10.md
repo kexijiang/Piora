@@ -35,3 +35,7 @@ Web TypeScript `tsc --noEmit`、12 个改动生产 TypeScript 文件的定向 ES
 ## 提交前验证快照
 
 本报告记录提交前的开发验证结果。后续提交、PR 与远端 CI 状态以关联 PR 当前 head 和 GitHub Actions 为准；本地测试通过不代表远端 CI、实机验收或发布完成。仍需实际部署信息的事项保留其验证边界。
+
+## PR #375 首轮 CI 跟进
+
+[首轮 CI](https://github.com/kexijiang/Piora/actions/runs/42744530494) 的 Windows 第 5 分片出现 13 个失败，全部来自 `ChatInput-retry.test.mjs` 和 `composer-acknowledgement.test.mjs`：两者抽取生产发送回调执行，但没有同步新增的命令目录及解析依赖，报 `commandCatalog is not defined`。补入真实命令解析模块及目录，并新增带附件斜杠正文发送的回归；保留原有恢复、权限、语音、会话切换及迟到回执断言。首轮失败记录保留，后续通过与否以修复提交对应 CI 为准。
