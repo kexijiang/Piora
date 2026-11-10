@@ -1,6 +1,6 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../runtime-home";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { getAllowedFileRoots, isExistingFilePathAllowed } from "../file-access";
