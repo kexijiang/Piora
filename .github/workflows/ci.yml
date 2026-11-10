@@ -34,7 +34,7 @@ concurrency:
 jobs:
   changelog:
     name: Changelog fragments
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -51,11 +51,11 @@ jobs:
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: npm run changelog:check-pr -- "$BASE_SHA" "$HEAD_SHA"
+        run: npm run changelog:check-pr -- "$env:BASE_SHA" "$env:HEAD_SHA"
 
   website:
     name: Website checks
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 20
     defaults:
       run:
@@ -90,7 +90,6 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
           - windows-latest
 
     steps:
@@ -105,80 +104,57 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.19.0
-          cache: ${{ runner.os == 'Linux' && 'npm' || '' }}
           package-manager-cache: false
 
-      - name: Restore npm downloads from an earlier lockfile
-        if: runner.os == 'Linux' && steps.node-setup.outputs.cache-hit != 'true'
-        uses: ./.github/actions/restore-npm-cache
-
-      - name: Install Linux native image patch tools
-        if: runner.os == 'Linux'
-        uses: ./.github/actions/setup-linux-native-image-tools
-
-      - name: Install dependencies
-        if: runner.os == 'Linux'
-        run: npm ci
-
       - name: Install exact Windows dependencies
-        if: runner.os == 'Windows'
         uses: ./.github/actions/install-ci-dependencies
 
       - name: Audit production dependencies
-        if: runner.os == 'Linux'
         run: npm run audit:runtime
 
       - name: Verify Harmony schemas and documentation
-        if: runner.os == 'Linux'
         run: npm run harmony:docs:check
 
       - name: Verify release-tree hygiene
-        if: runner.os == 'Linux'
         run: npm run verify:hygiene
 
       - name: Verify license inventory freshness
-        if: runner.os == 'Linux'
         run: npm run licenses:check
 
       - name: Lint
-        if: runner.os == 'Linux'
         run: npm run lint
 
+      - name: Generate Next.js route types
+        run: npx --no-install next typegen
+
       - name: Typecheck
-        if: runner.os == 'Linux'
         run: npm run typecheck
 
       - name: Check performance budgets
-        if: runner.os == 'Linux'
         run: npm run perf:check
 
       - name: Verify bundled backgrounds
-        if: runner.os == 'Linux'
         run: npm run verify:backgrounds
 
       - name: Prepare verified Electron download
-        if: runner.os == 'Windows'
         run: node scripts/prepare-electron-download.mjs
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Build unpacked Windows application
-        if: runner.os == 'Windows'
         run: npm run pack:win
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Verify packaged standalone service in isolation
-        if: runner.os == 'Windows'
         run: npm run verify:package
 
       - name: Verify physical portable payload with packaged Electron
-        if: runner.os == 'Windows'
         shell: pwsh
         run: node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked (Get-Content package.json | ConvertFrom-Json).version
 
       - name: Publish standalone trace diagnostics
-        if: runner.os == 'Windows' && always()
+        if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: standalone-traces-${{ github.run_id }}
@@ -283,13 +259,12 @@ jobs:
     name: Quality checks (${{ matrix.os }})
     needs: [tests, quality-validation, changelog]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
           - windows-latest
     steps:
       - name: Require complete tests and quality validation

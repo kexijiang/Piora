@@ -16,7 +16,7 @@ concurrency:
 jobs:
   main-tests:
     name: Reuse matching main CI tests when available
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 30
     outputs:
       reuse: ${{ steps.lookup.outputs.reuse }}
@@ -46,7 +46,7 @@ jobs:
     name: Require complete tests for the tagged commit
     needs: [main-tests, tests]
     if: ${{ always() }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

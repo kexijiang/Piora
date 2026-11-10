@@ -167,6 +167,8 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
       return route.fulfill({ json: data });
     });
     await page.goto("https://harmony-panel.test/");
+    await page.locator(".workbenchTabs").waitFor({ state: "attached" });
+    await page.locator(".workbenchContent").waitFor({ state: "attached" });
     assert.equal(await page.locator(".workbenchTabs").isHidden(), true);
     assert.equal(await page.locator(".workbenchContent").isHidden(), true);
     // Exercise retained workbench components in isolation, outside the normal UI.

@@ -600,7 +600,7 @@ export async function findForbiddenPackagedDependencies(
   return matches;
 }
 
-async function inspectElectronShell(webRoot, required) {
+async function inspectElectronShell(webRoot, required, runtimeWebRoot) {
   // Supplying a web root explicitly verifies the standalone payload only.
   // Pass --require-electron-shell (or use the default path) to also require
   // app.asar, the platform executable, and bundled license notices.
@@ -696,7 +696,9 @@ async function inspectElectronShell(webRoot, required) {
   }
 
   const packageLicenses = await generatePackageLicenseBundle({
-    webRoot,
+    // The full physical ASAR was already extracted for the checks above. Reuse
+    // those exact bytes instead of extracting the same archive a second time.
+    webRoot: runtimeWebRoot,
     outputRoot: join(resourcesRoot, "licenses"),
     check: true,
   });
@@ -1012,7 +1014,7 @@ async function main() {
   const packagedBackgrounds = await verifyPackagedBackgroundAssets(runtimeWebRoot);
   const packagedCompanion = await verifyPackagedCompanionAssets(runtimeWebRoot);
 
-  const electronShell = await timings.measure("electron-shell-and-licenses", () => inspectElectronShell(packagedWebRoot, requireElectronShell));
+  const electronShell = await timings.measure("electron-shell-and-licenses", () => inspectElectronShell(packagedWebRoot, requireElectronShell, runtimeWebRoot));
   const forbiddenDependencyCopies = await findForbiddenPackagedDependencies(runtimeWebRoot);
   if (forbiddenDependencyCopies.length > 0) {
     throw new Error(
