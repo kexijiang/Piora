@@ -2,6 +2,7 @@
 import { CredentialVaultSettings } from "./CredentialVaultSettings";
 import { RunningStatusSettings } from "./RunningStatusSettings";
 import { AnswerLinkSettings } from "./AnswerLinkSettings";
+import { LaboratorySettings } from "./LaboratorySettings";
 import { useRunningSendMode } from "@/hooks/useRunningSendMode";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -185,7 +186,7 @@ export function SettingsDialog({
   }))), []);
 
   const availableEntries = useMemo(() => detailEntries.filter((entry) => (
-    ["general", "data", "network", "conversation"].includes(entry.key)
+    ["general", "data", "network", "conversation", "laboratory"].includes(entry.key)
     || sections[entry.key] !== undefined
   )), [detailEntries, sections]);
 
@@ -427,6 +428,7 @@ export function SettingsDialog({
                     className={styles.navItem}
                     type="button"
                     key={entry.key}
+                    data-testid={`settings-${entry.key}`}
                     aria-current={activeEntry.key === entry.key ? "page" : undefined}
                     onClick={() => selectEntry(entry)}
                   >
@@ -493,7 +495,7 @@ export function SettingsDialog({
                   <span>{t("settings.localNote")}</span>
                 </div>
               </>
-              ) : activeKey === "data" ? (
+              ) : activeKey === "laboratory" ? <LaboratorySettings /> : activeKey === "data" ? (
               <>
                 <div className={styles.contentHeading}><h2>{t("settings.page.data")}</h2><p>{t("settings.page.dataDescription")}</p></div>
                 <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>

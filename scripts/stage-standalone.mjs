@@ -68,6 +68,7 @@ const assets = [
     ["Optional Piora computer-control extension", "extensions/piora-computer.ts"],
     ["Piora visual-agent extension", "extensions/piora-vision-agent.ts"],
     ["Piora scheduled-task extension", "extensions/piora-automations.ts"],
+    ["Piora Plan and Goal workflows", "extensions/piora-workflows.ts"],
     ["Piora user-input extension", "extensions/piora-user-input.ts"],
     ["Piora collaboration-room extension", "extensions/piora-room.ts"],
     ["Piora meme extension", "extensions/piora-meme.ts"],

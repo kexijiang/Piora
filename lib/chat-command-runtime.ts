@@ -5,6 +5,7 @@ import { summarizeSessionStats } from "./session-stats";
 import { persistLazySessionManager } from "./session-persistence";
 import type { SessionCommandRecord } from "./session-message-types";
 import type { ChatCommandCatalog, ChatCommandPhase, ChatCommandResult } from "./chat-command-types";
+import { readWorkflowSnapshot, WorkflowError } from "./workflow-runtime";
 
 export interface ChatCommandExecutionContext {
   session?: AgentSessionWrapper;
@@ -21,6 +22,12 @@ export async function executeChatCommandOperation(record: SessionCommandRecord, 
   context.assertActive();
   if (descriptor.source === "extension") {
     if (!session) throw new Error("Session runtime is unavailable");
+    const workflow = readWorkflowSnapshot(session.sessionId);
+    if ((record.workflow?.mode ?? workflow.mode) !== "agent") throw new WorkflowError("Switch to Agent mode before running an extension command.", "WORKFLOW_EXTENSION_COMMAND", 409);
+    if (workflow.mode !== "agent") {
+      await session.send({ type: "workflow_configure", workflow: { mode: "agent" }, expectedRevision: workflow.revision });
+      context.assertActive();
+    }
     const details: string[] = [], warnings: string[] = [];
     const unsubscribe = session.onEvent(event => {
       if (event.type !== "extension_ui_request" || event.method !== "notify" || event.commandId !== record.commandId || typeof event.message !== "string") return;

@@ -8,6 +8,9 @@ import type { ChatCommandCatalog, ChatInputOptions } from "./chat-command-types"
 import type { SessionMessageImage } from "./session-message-types";
 import type { PromptMaterialReference } from "./prompt-material-format";
 import { buildLocalFilePrompt } from "./file-attachments";
+import { parseWorkflowPromptOptions } from "./workflow-input";
+import { readWorkflowSnapshot, WorkflowError } from "./workflow-runtime";
+import { readLaboratorySettings } from "./laboratory-settings";
 
 export class ChatInputDispatchError extends Error {
   constructor(readonly code: string, readonly commandName: string, readonly status = 400) {
@@ -16,6 +19,7 @@ export class ChatInputDispatchError extends Error {
 }
 
 export async function dispatchChatInput(sessionId: string, body: Record<string, unknown>) {
+  const workflow = parseWorkflowPromptOptions(body.workflow);
   if (typeof body.message !== "string" || typeof body.idempotencyKey !== "string" || !body.idempotencyKey.trim() || body.idempotencyKey.length > 512) throw new ChatInputDispatchError("INVALID_SESSION_MESSAGE", "");
   if (body.inputMode !== undefined && body.inputMode !== "auto" && body.inputMode !== "text") throw new ChatInputDispatchError("INVALID_INPUT_MODE", "");
   if (body.delivery !== undefined && !["next_turn", "steer", "followUp"].includes(body.delivery as string)) throw new ChatInputDispatchError("INVALID_SESSION_MESSAGE", "");
@@ -33,8 +37,10 @@ export async function dispatchChatInput(sessionId: string, body: Record<string, 
   const router = getSessionMessageRouter();
   const previous = await router.findSubmissionReceipt(sessionId, body.idempotencyKey);
   if (previous) return previous;
+  if (workflow && workflow.mode !== "agent" && !readLaboratorySettings().planGoalEnabled) throw new WorkflowError("Enable Plan and Goal in Settings > Laboratory before continuing.", "WORKFLOW_LABORATORY_DISABLED", 409);
   const input = { targetSessionId: sessionId, source: "ui" as const, idempotencyKey: body.idempotencyKey,
     content: body.message,
+    ...(workflow ? { workflow } : {}),
     ...(promptSuffix ? { promptSuffix } : {}),
     ...(localFiles?.length ? { localFiles } : {}),
     ...(body.inputMode === "text" ? { inputMode: "text" as const } : {}),
@@ -54,6 +60,9 @@ export async function dispatchChatInput(sessionId: string, body: Record<string, 
     afterPrompt: body.afterPrompt as string | undefined, hasAttachments: Boolean(input.images?.length || input.materials?.length || input.promptSuffix) });
   if (parsed.kind === "invalid") throw new ChatInputDispatchError(parsed.code, parsed.name);
   if (parsed.kind === "command") {
+    if (parsed.command.source === "extension" && (workflow?.mode ?? readWorkflowSnapshot(sessionId).mode) !== "agent") {
+      throw new WorkflowError("Switch to Agent mode before using an extension command. Plan and Goal apply to ordinary prompts; installed extensions keep their own workflows.", "WORKFLOW_EXTENSION_COMMAND", 409);
+    }
     const operation = createChatCommandOperation(typeof body.rawText === "string" ? body.rawText : body.message, catalog, parsed, { ...(typeof body.afterPrompt === "string" ? { afterPrompt: body.afterPrompt } : {}), ...(body.delivery ? { delivery: body.delivery as ChatInputOptions["delivery"] } : {}) });
     return router.dispatchSessionMessage({ ...input, delivery: "next_turn", operation });
   }

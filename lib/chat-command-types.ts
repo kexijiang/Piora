@@ -66,6 +66,8 @@ export type ParsedChatInput =
   | { kind: "invalid"; code: "UNKNOWN_COMMAND" | "UNSUPPORTED_COMMAND" | "COMMAND_ARGUMENT_REQUIRED" | "UNUSED_TEMPLATE_ARGUMENTS" | "COMMAND_ATTACHMENTS_UNSUPPORTED" | "AMBIGUOUS_AFTER_PROMPT"; name: string };
 
 export interface ChatInputOptions {
+  /** The selected workflow travels with this durable submission, including retries. */
+  workflow?: import("./workflow-types").WorkflowPromptOptions;
   submissionId?: string;
   delivery?: "next_turn" | "steer" | "followUp";
   inputMode?: "auto" | "text";

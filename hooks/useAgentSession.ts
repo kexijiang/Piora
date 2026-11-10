@@ -28,6 +28,7 @@ import { useExtensionDialog } from "@/hooks/useExtensionDialog";
 import { useChatCommandOperations } from "@/hooks/useChatCommandOperations";
 import { createChatCommandCatalog, persistentChatInputOptions } from "@/lib/chat-command-input";
 import type { ChatCommandCatalog, ChatCommandView, ChatInputOptions } from "@/lib/chat-command-types";
+import type { WorkflowAction, WorkflowPromptOptions, WorkflowSnapshot } from "@/lib/workflow-types";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import { estimateSessionContextUsage, mergeContextUsageWithEstimate } from "@/lib/context-usage";
 import { isPromptMaterialRuntimeMessage, type PromptMaterialReference } from "@/lib/prompt-material-format";
@@ -201,6 +202,8 @@ export type BuiltinSlashCommandResult =
 
 export interface UseAgentSessionOptions {
   viewVisible?: boolean;
+  workflowEnabled?: boolean;
+  workflowReady?: boolean;
   session: SessionInfo | null;
   newSessionCwd: string | null;
   newSessionInitialModel?: { provider: string; modelId: string } | null;
@@ -438,6 +441,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   translateRef.current = t;
   const {
     viewVisible = true,
+    workflowEnabled = true,
+    workflowReady = true,
     session, newSessionCwd, newSessionInitialModel, newSessionInitialSystemPromptSelection, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   } = opts;
@@ -546,7 +551,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const pendingScrollToUserRef = useRef(false);
   const completionScrollAllowedRef = useRef(true);
   const liveOutputFollowRef = useRef(true);
-  const executeBashRef = useRef<(command: string, excludeFromContext: boolean) => Promise<void> | undefined>(undefined);
+  const executeBashRef = useRef<(command: string, excludeFromContext: boolean, workflow?: WorkflowPromptOptions) => Promise<void> | undefined>(undefined);
   const userScrollIntentUntilRef = useRef(0);
   const ignoreProgrammaticScrollUntilRef = useRef(0);
   const liveTailPinnedScrollTopRef = useRef<number | null>(null);
@@ -1760,7 +1765,9 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     inputOptions?: ChatInputOptions,
     resumedQueuePromptId?: string,
   ) => {
+    if (!workflowReady) { addNotice({ type: "error", message: t("laboratory.error") }); return false; }
     inputOptions = resumedQueuePromptId && message.trimStart().startsWith("/") ? { ...inputOptions, inputMode: "text" } : inputOptions;
+    if (!workflowEnabled) inputOptions = { ...inputOptions, workflow: { mode: "agent" } };
     const trimmedMessage = message.trim();
     if (!trimmedMessage && !images?.length && !files?.length) return false;
     if (files?.some((file) => !file.path && file.text == null)) {
@@ -1778,7 +1785,32 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const isExcluded = trimmedMessage.startsWith("!!");
       const bashCmd = (isExcluded ? trimmedMessage.slice(2) : trimmedMessage.slice(1)).trim();
       if (!bashCmd) return false;
-      await executeBashRef.current?.(bashCmd, isExcluded);
+      let selectedMode = inputOptions?.workflow?.mode;
+      const shellSessionId = sessionIdRef.current;
+      const shellRunId = promptRunIdRef.current;
+      if (!selectedMode && shellSessionId) {
+        // Shortcuts and restored older drafts may omit options. Inspect the
+        // persisted mode rather than treating omission as permission to execute.
+        try {
+          const response = await fetch(`/api/agent/${encodeURIComponent(shellSessionId)}/workflow`, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+          if (!response.ok) throw new Error(t("workflow.loadError"));
+          const snapshot = await response.json() as WorkflowSnapshot;
+          if (snapshot.sessionId !== shellSessionId || !["agent", "plan", "goal"].includes(snapshot.mode)) throw new Error(t("workflow.loadError"));
+          selectedMode = snapshot.mode;
+        } catch {
+          if (sessionIdRef.current === shellSessionId && promptRunIdRef.current === shellRunId) {
+            addNotice({ type: "error", message: t("workflow.loadError") });
+          }
+          return false;
+        }
+      }
+      if (sessionIdRef.current !== shellSessionId || promptRunIdRef.current !== shellRunId
+        || agentRunningRef.current || bashRunningRef.current || messageMutationRef.current) return false;
+      if (selectedMode && selectedMode !== "agent") {
+        addNotice({ type: "error", message: t("workflow.shellRequiresAgent") });
+        return false;
+      }
+      await executeBashRef.current?.(bashCmd, isExcluded, inputOptions?.workflow);
       return true;
     }
 
@@ -1858,6 +1890,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           ...(inputOptions?.inputMode === "text" ? { type: "submit_input", inputMode: "text" } : {}),
           idempotencyKey: clientPromptId,
           message: effectiveMessage,
+          ...(inputOptions?.workflow ? { workflow: inputOptions.workflow } : {}),
           ...(promptMaterials.length ? { materials: promptMaterials } : {}),
           ...(piImages?.length ? { images: piImages } : {}),
         });
@@ -1947,9 +1980,67 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         cancelPreparedPromptRef.current = null;
       }
     }
-  }, [messages, entryIds, isNew, newSessionCwd, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, closeEvents, t, submitChatCommand]);
+  }, [messages, entryIds, isNew, newSessionCwd, session, ensureNewSession, ensureEventsConnected, promoteNewSession, waitForPromptSettlement, addNotice, closeEvents, t, submitChatCommand, workflowEnabled, workflowReady]);
 
-  const executeBash = useCallback(async (command: string, excludeFromContext: boolean) => {
+  const handleWorkflowAction = useCallback(async (action: WorkflowAction): Promise<WorkflowSnapshot> => {
+    const sid = sessionIdRef.current;
+    if (!sid) throw new Error(t("workflow.actionError"));
+    const startsRun = action.action === "approve" || action.action === "resume";
+    if (startsRun && (agentRunningRef.current || bashRunningRef.current)) throw new Error(t("workflow.stale"));
+    let runId = promptRunIdRef.current;
+    let submission: typeof promptSubmissionRef.current = null;
+    let requestStarted = false;
+    let definitivelyNotStarted = false;
+    if (startsRun) {
+      sessionLoadAbortRef.current?.abort();
+      closeEvents();
+      runId = ++promptRunIdRef.current;
+      cancelledPromptRunIdRef.current = null;
+      promptSettlementByRunRef.current.clear();
+      promptSettlementPollByRunRef.current.clear();
+      submission = { runId, sid, idempotencyKey: `workflow:${sid}:${action.runId}:${action.expectedRevision}:${action.action}`, pending: true, commandId: null };
+      promptSubmissionRef.current = submission;
+      preparingPromptRunIdRef.current = runId;
+      optimisticUserMessageKeyRef.current = null;
+      agentRunningRef.current = true;
+      setAgentRunning(true);
+      setAgentPhase({ kind: "waiting_model" });
+      setReplyHistorySettling(false);
+      setStatusClock(null);
+      activityClockRef.current = Date.now();
+      suppressCompletionNotificationRef.current = false;
+      dispatch({ type: "start" });
+    }
+    try {
+      if (startsRun) await ensureEventsConnected(sid);
+      if (sessionIdRef.current !== sid || promptRunIdRef.current !== runId || (startsRun && cancelledPromptRunIdRef.current === runId)) throw new Error(t("chat.sendCancelled"));
+      if (startsRun) preparingPromptRunIdRef.current = null;
+      requestStarted = true;
+      const response = await fetch(`/api/agent/${encodeURIComponent(sid)}/workflow`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(action),
+      });
+      definitivelyNotStarted = response.status >= 400 && response.status < 500;
+      const result = await response.json() as { snapshot?: WorkflowSnapshot; promptStarted?: boolean; commandId?: string; idempotencyKey?: string; error?: string };
+      if (!response.ok || !result.snapshot) throw new Error(result.error ?? (response.status === 409 ? t("workflow.stale") : t("workflow.actionError")));
+      definitivelyNotStarted = result.promptStarted === false;
+      if (submission) {
+        submission.commandId = result.commandId ?? null;
+        if (result.idempotencyKey) submission.idempotencyKey = result.idempotencyKey;
+      }
+      return result.snapshot;
+    } finally {
+      if (submission) submission.pending = false;
+      if (startsRun && preparingPromptRunIdRef.current === runId) preparingPromptRunIdRef.current = null;
+      if (startsRun && sessionIdRef.current === sid && promptRunIdRef.current === runId && agentRunningRef.current) {
+        if (!requestStarted || definitivelyNotStarted) {
+          suppressCompletionNotificationRef.current = true;
+          void finishPromptWithoutStream(sid, runId);
+        } else void waitForPromptSettlement(sid, runId);
+      }
+    }
+  }, [closeEvents, ensureEventsConnected, finishPromptWithoutStream, t, waitForPromptSettlement]);
+
+  const executeBash = useCallback(async (command: string, excludeFromContext: boolean, workflow?: WorkflowPromptOptions) => {
     if (agentRunningRef.current || bashRunningRef.current) return;
     const inputText = `${excludeFromContext ? "!!" : "!"}${command}`;
     bashRunningRef.current = true;
@@ -1965,6 +2056,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         type: "bash",
         command,
         excludeFromContext,
+        ...(workflow ? { workflow } : {}),
       });
       await loadSession(sid);
       promoteNewSession(1, inputText);
@@ -2903,7 +2995,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef, activityClockRef, statusClock,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
-    handleSend, handleAbort, handleFork, handleBranch, handleNavigate, handleRewindRecovery, handleModelChange, handleDeleteMessage, deletingMessage,
+    handleSend, handleAbort, handleWorkflowAction, handleFork, handleBranch, handleNavigate, handleRewindRecovery, handleModelChange, handleDeleteMessage, deletingMessage,
     handleScrollToBottom, pauseHistoryFollow,
     switchHistoryBranch, forkHistoryQuestion,
     handleCompact, handleDismissCompactError, handleDismissCompactResult, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,

@@ -16,6 +16,11 @@ export interface FirstPartyExtensionDescriptor {
 
 export const FIRST_PARTY_EXTENSIONS: readonly FirstPartyExtensionDescriptor[] = [
   {
+    id: "piora:workflows", fileName: "piora-workflows.ts", name: `${APP_DISPLAY_NAME} Plan and Goal`,
+    description: "Explicit planning and goal workflows with durable review, progress and bounded continuation.",
+    profiles: ["normal"], required: true,
+  },
+  {
     id: "piora:meme", fileName: "piora-meme.ts", name: `${APP_DISPLAY_NAME} Memes`,
     description: "Bridge the pinned DSH Meme desktop plugin for search, sending, learning and library maintenance.",
     profiles: ["normal"],

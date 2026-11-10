@@ -1,6 +1,7 @@
 import { transitionTaskTiming } from "./task-timing";
 import { buildPromptWithMaterials, resolvePromptMaterialReferences } from "./prompt-materials";
 import { createChatCommandOperation, parseChatInput } from "./chat-command-input";
+import { parseWorkflowAction, parseWorkflowPromptOptions } from "./workflow-input";
 import { randomUUID } from "node:crypto";
 import { validateAgentImages } from "./image-attachments";
 import { getSessionCommandEventHub, SessionCommandEventHub } from "./session-command-events";
@@ -87,6 +88,15 @@ function errorCode(error: unknown): SessionMessageRouterErrorCode {
 }
 
 function validateInput(input: SessionMessageInput, maxMessageBytes: number): void {
+  if (input.workflowAction !== undefined) {
+    parseWorkflowAction(input.workflowAction);
+    if (input.source !== "ui" || input.delivery === "steer" || input.workflow || input.operation || input.roomContext || input.teamExecution
+      || !["approve", "resume"].includes(input.workflowAction.action)) throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "Invalid workflow execution request.");
+  }
+  if (input.workflow !== undefined) {
+    parseWorkflowPromptOptions(input.workflow);
+    if (input.source !== "ui" || input.teamExecution || input.roomContext) throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "Workflow selection is available for ordinary chat submissions.");
+  }
   if (!input.targetSessionId || typeof input.targetSessionId !== "string") throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "targetSessionId is required.");
   if (!input.idempotencyKey || typeof input.idempotencyKey !== "string" || input.idempotencyKey.length > 512) throw new SessionMessageRouterError("INVALID_SESSION_MESSAGE", "A bounded idempotency key is required.");
   if (typeof input.content !== "string" || (!input.content.trim() && !input.materials?.length && !input.images?.length)) {
@@ -174,6 +184,21 @@ export class SessionMessageRouter {
     for (const command of this.store.loadCommands(sessionId)) {
       this.knownCommands.set(command.commandId, command);
       if (TERMINAL_STATUSES.has(command.status)) continue;
+      if (command.workflowAction) {
+        const live = getRpcSession(sessionId);
+        if (command.runId && live?.isAlive() && live.getActivePromptRunId() === command.runId) {
+          this.activeCommands.set(sessionId, command);
+          continue;
+        }
+        // An execution decision belongs to the host process that accepted it.
+        // Unlike ordinary queued user text, a prior approval/resume must never
+        // acquire new execution authority just because the command journal reloads.
+        await this.transition(command, "interrupted", {
+          errorCode: "RUN_INTERRUPTED",
+          errorMessage: "The process stopped before this workflow decision completed. Review its current state and explicitly continue.",
+        });
+        continue;
+      }
       if (command.operation && ["dispatching", "delivered", "running"].includes(command.status)) {
         command.operation = { ...command.operation, completedAt: Date.now(), steps: command.operation.steps.map(step => step.status === "running" ? { ...step, status: "failed", error: "RUN_INTERRUPTED" } : step.status === "pending" ? { ...step, status: "blocked" } : step) };
         await this.transition(command, "interrupted", { operation: command.operation, errorCode: "RUN_INTERRUPTED", errorMessage: "The process stopped before this operation could be proven complete." });
@@ -263,6 +288,8 @@ export class SessionMessageRouter {
     return {
       commandId: `cmd_${randomUUID()}`,
       revision: 0,
+      ...(input.workflowAction ? { workflowAction: structuredClone(input.workflowAction) } : {}),
+      ...(input.workflow ? { workflow: structuredClone(input.workflow) } : {}),
       ...(input.inputMode ? { inputMode: input.inputMode } : {}),
       ...(input.promptSuffix ? { promptSuffix: input.promptSuffix } : {}),
       ...(input.localFiles?.length ? { localFiles: structuredClone(input.localFiles) } : {}),
@@ -501,6 +528,7 @@ export class SessionMessageRouter {
       }
       const input: SessionMessageInput = { targetSessionId: sessionId, source: "ui", idempotencyKey: mutationKey ?? randomUUID(), delivery: "next_turn", inputMode: "text", content, images,
         ...(original?.materials ? { materials: original.materials } : {}),
+        ...(original?.workflow ? { workflow: original.workflow } : {}),
         ...(original?.localFiles ? { localFiles: original.localFiles } : {}),
         ...(original?.promptSuffix ? { promptSuffix: original.promptSuffix } : {}) };
       validateInput(input, this.maxMessageBytes);
@@ -749,6 +777,8 @@ export class SessionMessageRouter {
             source: command.source,
             roomContext: command.roomContext,
             message: command.content,
+            ...(command.workflowAction ? { workflowAction: command.workflowAction } : {}),
+            ...(command.workflow ? { workflow: command.workflow } : {}),
             ...(command.inputMode ? { inputMode: command.inputMode } : {}),
             ...(command.promptSuffix ? { promptSuffix: command.promptSuffix } : {}),
             images: command.images,
@@ -890,6 +920,7 @@ export class SessionMessageRouter {
       });
       try {
         const started = await session.startTrackedPrompt({ commandId: runtimeCommand.commandId, source: command.source, message,
+          ...(command.workflow ? { workflow: command.workflow } : {}),
           ...(!operation.afterPrompt || commandStep.status === "completed" ? { images: command.images, materials: command.materials, promptSuffix: command.promptSuffix } : {}),
         });
         command.runId = started.runId;
