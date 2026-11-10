@@ -444,7 +444,7 @@ export class HarmonyDeviceManager {
   private requireAdmission(serial: string, passive = false): void {
     if (this.stoppingAll || (this.stoppingDevices.has(serial) && !(passive && this.inputOnlyStops.has(serial)))) {
       throw new HarmonyError("DEVICE_BUSY", "Device dispatch is blocked while stopping or awaiting cleanup confirmation", {
-        details: { state: this.stoppingDevices.get(serial) ?? "stopping", dispatchState: "not-sent" },
+        details: { serial, state: this.stoppingDevices.get(serial) ?? "stopping", dispatchState: "not-sent" },
       });
     }
   }

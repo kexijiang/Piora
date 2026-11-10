@@ -404,7 +404,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   const commandInputOptionsRef = useRef(commandInputOptions);
   commandInputOptionsRef.current = commandInputOptions;
   const parsedCommandInput = parseChatInput(value, commandCatalog ?? createChatCommandCatalog(slashCommands ?? []), commandInputOptions);
-  const isCommandInput = commandInputOptions.inputMode !== "text" && value.trimStart().startsWith("/");
+  const isCommandInput = parsedCommandInput.kind !== "message";
   const prediction = useInputPrediction(isStreaming || isCompacting ? null : replySource, cwd, locale, value.length > 0);
   const suggestions = useReplySuggestions(isStreaming || isCompacting ? null : replySource, locale);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | undefined>(undefined);
@@ -865,7 +865,9 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     const value = valueRef.current;
     const msg = value.trim();
     const sentCommandOptions = { ...commandInputOptions, ...overrideOptions };
-    const commandSubmission = sentCommandOptions.inputMode !== "text" && msg.startsWith("/");
+    const parsed = parseChatInput(value, commandCatalog ?? createChatCommandCatalog(slashCommands ?? []), sentCommandOptions);
+    const commandSubmission = parsed.kind !== "message";
+    if (!commandSubmission && msg.startsWith("/")) sentCommandOptions.inputMode = "text";
     // Delivery from a recovered draft must never turn an ordinary send into steering.
     if (!commandSubmission) sentCommandOptions.delivery = overrideOptions?.delivery ?? (isStreaming ? runningSendMode : "next_turn");
     if (!msg && !attachedImages.length && !attachedFiles.length) return;
@@ -964,7 +966,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
-  }, [attachedImages, attachedFiles, sendDisabled, permissionSaving, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode]);
+  }, [attachedImages, attachedFiles, sendDisabled, permissionSaving, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode, commandCatalog, slashCommands]);
 
   useEffect(() => {
     submitRef.current = () => { void handleSend(); };
