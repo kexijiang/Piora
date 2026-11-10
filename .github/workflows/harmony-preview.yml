@@ -79,10 +79,9 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.19.0
-      - name: Restore npm downloads from an earlier lockfile
-        uses: ./.github/actions/restore-npm-cache
+          package-manager-cache: false
       - name: Install dependencies
-        run: npm ci
+        uses: ./.github/actions/install-ci-dependencies
       - name: Audit production dependencies
         run: npm run audit:runtime
       - name: Verify Harmony schemas and documentation
@@ -119,6 +118,7 @@ jobs:
       PIORA_BRAND: ${{ matrix.brand }}
       BRAND_PREFIX: ${{ matrix.prefix }}
       BRAND_CHANNEL: ${{ matrix.channel }}
+      PIORA_VERIFICATION_TIMINGS: .verification/packaging-timings
 
     steps:
       - name: Check out tagged source
@@ -132,9 +132,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.19.0
-
-      - name: Restore npm downloads from an earlier lockfile
-        uses: ./.github/actions/restore-npm-cache
+          package-manager-cache: false
 
       - name: Verify preview tag and package metadata
         shell: pwsh
@@ -143,7 +141,7 @@ jobs:
           node scripts/verify-release-metadata.mjs $env:GITHUB_REF_NAME --prerelease --require-origin-main
 
       - name: Install dependencies
-        run: npm ci
+        uses: ./.github/actions/install-ci-dependencies
 
       - name: Prepare verified Electron download
         run: node scripts/prepare-electron-download.mjs
@@ -213,3 +211,12 @@ jobs:
           path: scripts/assemble-brand-release.mjs
           if-no-files-found: error
           retention-days: 14
+
+      - name: Upload packaging phase timings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: verification-timings-${{ matrix.brand }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .verification/packaging-timings
+          if-no-files-found: warn
+          retention-days: 7

@@ -202,6 +202,7 @@ jobs:
       PIORA_BRAND: piora
       BRAND_PREFIX: Piora
       ELECTRON_BUILDER_COMPRESSION_LEVEL: '3'
+      PIORA_VERIFICATION_TIMINGS: .verification/packaging-timings
     steps:
       - name: Validate baseline commit
         shell: pwsh
@@ -267,6 +268,14 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           compression-level: 0
+      - name: Upload packaging phase timings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: packaging-timings-${{ matrix.variant }}-${{ github.run_attempt }}
+          path: .verification/packaging-timings
+          if-no-files-found: warn
+          retention-days: 7
 
   quality:
     # Preserve branch-protection check names. This gate needs neither checkout

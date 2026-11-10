@@ -2,7 +2,6 @@
 
 import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawn, execFile } from "node:child_process";
 import { createRequire } from "node:module";
@@ -17,6 +16,7 @@ import { verifyBrandStartupAssets } from "./verify-brand-startup-assets.mjs";
 import { verifyPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
 import { piNativeRuntimeProbe } from "./pi-native-runtime-probe.mjs";
 import { createVerificationTimings } from "./verification-timing.mjs";
+import { assertVerificationDirectory, verificationTempRoot } from "./verification-temp.mjs";
 
 const timings = createVerificationTimings("packaged-web");
 import {
@@ -964,7 +964,8 @@ async function main() {
   ) {
     throw new Error("Packaged web launcher does not point Next and Piora capabilities at runtime.asar");
   }
-  const inspectionDirectory = await mkdtemp(join(tmpdir(), "piora-runtime-inspection-"));
+  const inspectionDirectory = await mkdtemp(join(verificationTempRoot(), "piora-runtime-inspection-"));
+  assertVerificationDirectory(inspectionDirectory);
   const runtimeWebRoot = join(inspectionDirectory, "web");
   await timings.measure("extract-runtime-asar", () => extractAll(packagedRuntimeArchive, runtimeWebRoot), { runtimeWebRoot });
   try {
@@ -1021,7 +1022,7 @@ async function main() {
     );
   }
 
-  const temporaryRoot = resolve(tmpdir());
+  const temporaryRoot = verificationTempRoot();
   const temporaryDirectory = await mkdtemp(join(temporaryRoot, "piora-package-"));
   const temporaryRelativePath = relative(temporaryRoot, temporaryDirectory);
   if (

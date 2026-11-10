@@ -1,11 +1,16 @@
 import { spawn } from "node:child_process";
 import { access, mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createVerificationTimings } from "./verification-timing.mjs";
+import { verificationTempRoot } from "./verification-temp.mjs";
 
 const timings = createVerificationTimings("windows-artifacts");
+
+export function isWindowsVerificationContext(platform, tag, brand, prefix) {
+  return platform === "win32" && /^v\d+\.\d+\.\d+(?:-beta\.\d+)?$/.test(tag ?? "")
+    && /^[a-z0-9-]+$/.test(brand ?? "") && /^[A-Za-z0-9_-]+$/.test(prefix ?? "");
+}
 
 export async function runInParallel(tasks) {
   const results = await Promise.allSettled(tasks.map(task => Promise.resolve().then(task)));
@@ -23,8 +28,7 @@ function run(executable, args, options = {}) {
 
 async function main() {
   const { GITHUB_REF_NAME: tag, PIORA_BRAND: brand, BRAND_PREFIX: prefix } = process.env;
-  if (process.platform !== "win32" || !/^v\d+\.\d+\.\d+-(?:beta)\.\d+$/.test(tag ?? "")
-    || !/^[a-z0-9-]+$/.test(brand ?? "") || !/^[A-Za-z0-9_-]+$/.test(prefix ?? "")) {
+  if (!isWindowsVerificationContext(process.platform, tag, brand, prefix)) {
     throw new Error("Invalid Windows preview verification context");
   }
   const version = tag.slice(1);
@@ -33,7 +37,7 @@ async function main() {
   const installer = join(releaseRoot, `${prefix}-${version}-win-x64-setup.exe`);
   const extractor = resolve("desktop/build/portable-extractor/7za.exe");
   await Promise.all([access(unpacked), access(installer), access(extractor)]);
-  const tempRoot = resolve(tmpdir());
+  const tempRoot = verificationTempRoot();
   const installDirectory = await mkdtemp(join(tempRoot, "piora-preview-install-"));
   const tempRelative = relative(tempRoot, installDirectory);
   if (!tempRelative || tempRelative.startsWith("..") || isAbsolute(tempRelative)) throw new Error("Unsafe preview install directory");

@@ -1,4 +1,4 @@
-name: Install exact Windows CI dependencies
+name: Install exact Windows dependencies
 description: Reuse an exact locked host install; regenerate source-owned patches and branding on every cache hit.
 outputs:
   cache-hit:
@@ -39,7 +39,8 @@ runs:
       shell: pwsh
       run: node scripts/ci-dependency-cache.mjs record
     # Save before Electron's packager can rebuild any native module for its ABI.
-    # Tag/release workflows deliberately keep their verified clean npm ci.
+    # Release builders have read-only repository permissions. Publishing remains
+    # artifact-only and never restores this cache or runs dependency scripts.
     - name: Save exact installed dependencies
       if: steps.modules.outputs.cache-hit != 'true'
       uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830

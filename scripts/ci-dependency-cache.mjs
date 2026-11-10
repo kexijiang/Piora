@@ -3,6 +3,39 @@ import { appendFile, readFile, readdir, realpath, writeFile } from "node:fs/prom
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
+export function normalizeInstallManifest(file, text) {
+  const value = JSON.parse(text);
+  // Only the two local workspace versions are metadata. Every installed
+  // dependency's version, URL, integrity and lifecycle input remain in the key.
+  delete value.version;
+  if (file === "package-lock.json") {
+    if (value.packages?.[""]) delete value.packages[""].version;
+    if (value.packages?.desktop) delete value.packages.desktop.version;
+  }
+  return JSON.stringify(value);
+}
+
+export async function verifyInstalledCacheManifest(root) {
+  const lock = JSON.parse(await readFile(resolve(root, "package-lock.json"), "utf8"));
+  const installedPath = resolve(root, "node_modules/.package-lock.json");
+  const installed = JSON.parse(await readFile(installedPath, "utf8"));
+  if (!lock.packages || !installed.packages || !Object.keys(installed.packages).some(path => path.includes("node_modules/"))) {
+    throw new Error("Cached installation has no verifiable dependency graph");
+  }
+  for (const [path, entry] of Object.entries(installed.packages ?? {})) {
+    if (!path.includes("node_modules/")) continue;
+    const expected = lock.packages?.[path];
+    for (const field of ["version", "resolved", "integrity", "link"]) {
+      if (!expected || entry[field] !== expected[field]) throw new Error(`Cached dependency does not match the lockfile: ${path} (${field})`);
+    }
+  }
+  installed.version = lock.version;
+  for (const workspace of ["", "desktop"]) {
+    if (installed.packages?.[workspace] && lock.packages?.[workspace]) installed.packages[workspace].version = lock.packages[workspace].version;
+  }
+  await writeFile(installedPath, JSON.stringify(installed));
+}
+
 export async function dependencyCacheKey(root, runtime = process) {
   const hash = createHash("sha256");
   // Include the workspace path: npm's desktop workspace link is absolute on Windows.
@@ -15,10 +48,14 @@ export async function dependencyCacheKey(root, runtime = process) {
   }
   for (const file of inputs) {
     hash.update(file);
-    try { hash.update(await readFile(resolve(root, file))); }
+    try {
+      const bytes = await readFile(resolve(root, file));
+      hash.update(["package.json", "package-lock.json", "desktop/package.json"].includes(file)
+        ? normalizeInstallManifest(file, bytes.toString("utf8")) : bytes);
+    }
     catch (error) { if (error.code !== "ENOENT" || !file.startsWith(".")) throw error; }
   }
-  return `piora-installed-v1-${runtime.platform}-${runtime.arch}-${hash.digest("hex")}`;
+  return `piora-installed-v2-${runtime.platform}-${runtime.arch}-${hash.digest("hex")}`;
 }
 
 async function main() {
@@ -33,7 +70,7 @@ async function main() {
     await writeFile(stamp, JSON.stringify({ key }));
   } else if (mode === "verify") {
     if (JSON.parse(await readFile(stamp, "utf8")).key !== key) throw new Error("Installed dependency cache identity mismatch");
-    await readFile(resolve(root, "node_modules/.package-lock.json"));
+    await verifyInstalledCacheManifest(root);
     if (await realpath(resolve(root, "node_modules/@piora/desktop")) !== await realpath(resolve(root, "desktop"))) {
       throw new Error("Cached desktop workspace link points outside this checkout");
     }
