@@ -2355,13 +2355,25 @@ export class HarmonyDeviceManager {
 
   async confirmCleanup(serial: string, signal?: AbortSignal) {
     validateSerial(serial);
-    if (this.cleanupUnsettled.has(serial) || this.stopPromises.has(serial) || this.operationLanes.get(`device:${serial}`)?.active || this.operationLanes.get(`device:${serial}`)?.pending || this.operationLanes.get(`media:${serial}`)?.active || this.operationLanes.get(`media:${serial}`)?.pending || this.recordings.has(serial)) throw new HarmonyError("DEVICE_BUSY", "Wait for owned operations and recording cleanup to settle before confirming", {
-      details: { serial, state: "stopping", dispatchState: "not-sent" },
-    });
+    const requireSettled = () => {
+      if (this.cleanupUnsettled.has(serial) || this.stopPromises.has(serial) || this.operationLanes.get(`device:${serial}`)?.active || this.operationLanes.get(`device:${serial}`)?.pending || this.operationLanes.get(`media:${serial}`)?.active || this.operationLanes.get(`media:${serial}`)?.pending || this.recordings.has(serial)) throw new HarmonyError("DEVICE_BUSY", "Wait for owned operations and recording cleanup to settle before confirming", {
+        details: { serial, state: "stopping", dispatchState: "not-sent" },
+      });
+    };
+    requireSettled();
     if (!this.stoppingDevices.has(serial)) return { cleanup: "complete" as const };
-    await this.onlineDevice(serial, signal);
+    const cleanupWork = this.cleanupWork.get(serial), generation = this.generations.get(serial);
+    const device = await this.onlineDevice(serial, signal);
     const observation = await this.requireBackend().snapshot(serial, { includeTree: true, includeScreenshot: false, signal });
     requireValidObservation(observation);
+    // Another window can retry cleanup while the observation is pending. An old
+    // confirmation must never release that newer cleanup or a newly acquired owner.
+    if (!this.stoppingDevices.has(serial)) return { cleanup: "complete" as const };
+    requireSettled();
+    if (this.cleanupWork.get(serial) !== cleanupWork || this.generations.get(serial) !== device.generation
+      || generation !== undefined && generation !== device.generation) throw new HarmonyError("DEVICE_BUSY", "Device cleanup changed while confirming; retry recovery", {
+      details: { serial, state: this.stoppingDevices.get(serial), dispatchState: "not-sent" },
+    });
     // Human confirmation is distinct from a driver-verified release.
     this.uncertainInput.delete(serial); this.cleanupWork.delete(serial);
     this.recoveryStore?.clear(serial);
