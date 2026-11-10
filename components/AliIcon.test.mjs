@@ -57,3 +57,15 @@ test("scales custom file icon strokes to the same optical weight", () => {
   assert.equal(getFileIconStrokeWidth(16), 1.75 * (14 / 24));
   assert.equal(getFileIconStrokeWidth(20), 1.6 * (14 / 24));
 });
+
+test("Git branch, fork and commit nodes fit inside the shared viewBox", () => {
+  for (const [name, count] of [["branches", 2], ["fork", 3], ["git-commit", 1]]) {
+    const markup = renderToStaticMarkup(React.createElement(AliIcon, { name, size: 15 }));
+    const nodes = [...markup.matchAll(/<circle cx="(\d+)" cy="(\d+)" r="(\d+)"/g)];
+    assert.equal(nodes.length, count, `${name} uses canonical circular Git nodes`);
+    for (const [, x, y, radius] of nodes) {
+      assert.ok(+x - +radius >= 3 && +y - +radius >= 3);
+      assert.ok(+x + +radius <= 21 && +y + +radius <= 21, `${name} leaves room for strokes without clipping`);
+    }
+  }
+});

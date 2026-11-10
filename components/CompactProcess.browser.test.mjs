@@ -362,6 +362,25 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       assert.equal(await check.locator(".command-execution-card").count(), shouldExpand ? 3 : 0, scenario);
       if (scenario === "success") {
         assert.match(await heading.innerText(), /处理结束.*思考 1 段.*执行 3 条命令/s);
+        for (const width of [1200, 640, 390]) {
+          await check.setViewportSize({ width, height: 900 });
+          for (const size of [14, 16, 18]) {
+            await check.evaluate(size => document.documentElement.style.setProperty('--ui-font-size', `${size}px`), size);
+            const row = await heading.evaluate(el => {
+              const children = [...el.children].map(child => {
+                const box = child.getBoundingClientRect();
+                return { center: box.y + box.height / 2, height: box.height, width: box.width };
+              });
+              return { children, height: el.getBoundingClientRect().height };
+            });
+            assert.ok(row.children.every(child => child.width > 0), 'arrow, activity icon, title, counts and elapsed time each keep a column');
+            const centers = row.children.map(child => child.center);
+            assert.ok(Math.max(...centers) - Math.min(...centers) <= 1, `${width}px/${size}px process row shares one center line: ${JSON.stringify(row)}`);
+            assert.ok(row.height <= 40, 'long counters truncate within the row instead of pushing elapsed time onto a second line');
+          }
+        }
+        await check.setViewportSize({ width: 1200, height: 900 });
+        await check.evaluate(() => document.documentElement.style.removeProperty('--ui-font-size'));
         if (process.env.PIORA_COMPACT_SCREENSHOTS) await check.screenshot({ path: path.join(repo, "test-results", "compact-process", "auto-completed.png") });
       }
       if (scenario === "attention") {
@@ -488,7 +507,11 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     await mixed.setViewportSize({ width: 1200, height: 900 });
     const mixedHeading = mixed.locator(".compact-process-toggle");
     await mixed.locator(".thinking-block-trigger").click();
-    await mixed.getByText("历史完整思考内容", {exact:true}).waitFor();
+    await mixed.getByText("历史完整思考内容", {exact:true}).waitFor().catch(async error => {
+      await mkdir(path.join(repo, '.verification/compact-process'), { recursive: true });
+      await mixed.screenshot({ path: path.join(repo, '.verification/compact-process/deferred-failure.png') });
+      throw new Error(`${error.message}; expanded=${await mixed.locator('.thinking-block-trigger').getAttribute('aria-expanded')}; requests=${JSON.stringify(thinkingRequests)}; errors=${errors.join('; ')}; visible=${(await mixed.locator('body').innerText()).slice(0, 1800)}`);
+    });
     assert.equal(new URL(thinkingRequests.at(-1)).searchParams.get("blockIndex"), "3");
     const toggleAtReadingPosition = async (partiallyClipped) => {
       await mixedHeading.evaluate((element, partiallyClipped) => {

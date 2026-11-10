@@ -19,7 +19,6 @@ import { NetworkProxySettings } from "./NetworkProxySettings";
 import { ModelRetrySettings } from "./ModelRetrySettings";
 import { ModelCompactionSettings } from "./ModelCompactionSettings";
 import { ModelFallbackSetting } from "./ModelFallbackSetting";
-import { InputPredictionSettings } from "./InputPredictionSettings";
 import { ReplySuggestionsSettings } from "./ReplySuggestionsSettings";
 import { SystemPromptEditor } from "./SystemPromptEditor";
 import { PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH, PROMPT_OPTIMIZER_SYSTEM_PROMPT } from "@/lib/prompt-optimizer";
@@ -31,7 +30,7 @@ import {
   writePromptOptimizerSystemPrompt,
 } from "@/lib/prompt-optimizer-settings";
 import { SESSION_TITLE_PROMPT_MAX_LENGTH } from "@/lib/session-title-prompt";
-import { filterSettingsSearchItems, SETTINGS_GROUPS, type SettingsKey } from "@/lib/settings-search";
+import { filterSettingsSearchItems, normalizeSettingsKey, SETTINGS_GROUPS, type SettingsKey } from "@/lib/settings-search";
 import {
   SESSION_TITLE_PROMPT,
   readSessionTitleModel,
@@ -99,7 +98,7 @@ function entryInGroup(entry: SettingsEntry, group: typeof SETTINGS_GROUPS[number
 export function SettingsDialog({
   open,
   onClose,
-  activeKey,
+  activeKey: requestedKey,
   focusedItemId,
   onActiveKeyChange,
   onOpenOnboarding,
@@ -109,6 +108,7 @@ export function SettingsDialog({
   desktop,
 }: Props) {
   const { t } = useI18n();
+  const activeKey = normalizeSettingsKey(requestedKey);
   const { mode: runningSendMode, setMode: setRunningSendMode } = useRunningSendMode();
   const {
     enabled: liveOutputAutoScrollEnabled,
@@ -157,7 +157,7 @@ export function SettingsDialog({
   const [optimizerModels, setOptimizerModels] = useState<Array<{ provider: string; id: string; name: string }>>([]);
   const [optimizerModelValue, setOptimizerModelValue] = useState("");
   useEffect(() => {
-    if (!open || activeKey !== "prompts") return;
+    if (!open || activeKey !== "conversation") return;
     const selected = readPromptOptimizerModel(window.localStorage);
     setOptimizerModelValue(selected ? JSON.stringify(selected) : "");
   }, [open, activeKey]);
@@ -185,7 +185,7 @@ export function SettingsDialog({
   }))), []);
 
   const availableEntries = useMemo(() => detailEntries.filter((entry) => (
-    ["general", "data", "network", "conversation", "prompts", "modelRuntime"].includes(entry.key)
+    ["general", "data", "network", "conversation"].includes(entry.key)
     || sections[entry.key] !== undefined
   )), [detailEntries, sections]);
 
@@ -209,7 +209,7 @@ export function SettingsDialog({
   }, [open]);
 
   useEffect(() => {
-    if (!open || activeKey !== "prompts") return;
+    if (!open || activeKey !== "conversation") return;
     const controller = new AbortController();
     void fetch("/api/models", { cache: "no-store", signal: controller.signal })
       .then((response) => response.ok ? response.json() : null)
@@ -221,7 +221,7 @@ export function SettingsDialog({
   }, [open, activeKey]);
 
   useEffect(() => {
-    if (!open || activeKey !== "prompts") return;
+    if (!open || activeKey !== "conversation") return;
     const controller = new AbortController();
     setTitleModelsLoading(true);
     setTitleModelsError(null);
@@ -566,16 +566,6 @@ export function SettingsDialog({
                 <div className={styles.contentHeading}><h2>{t("networkProxy.title")}</h2><p>{t("networkProxy.description")}</p></div>
                 <div data-settings-id="general.proxy"><NetworkProxySettings /></div>
               </>
-              ) : activeKey === "modelRuntime" ? (
-              <>
-                <div className={styles.contentHeading}><h2>{t("settings.tab.modelRuntime")}</h2><p>{t("settings.page.modelRuntimeDescription")}</p></div>
-                <div className={styles.runtimeCards}>
-                <ModelFallbackSetting />
-                <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
-                <div data-settings-id="general.runningStatusLabel"><RunningStatusSettings /></div>
-                <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
-                </div>
-              </>
               ) : activeKey === "conversation" ? (
               <>
                 <div className={styles.contentHeading}>
@@ -583,6 +573,7 @@ export function SettingsDialog({
                   <p>{t("settings.conversationDescription")}</p>
                 </div>
 
+                <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.inputSection")}</h3>
                 <section className={styles.conversationSection}>
                   <div className={styles.conversationRow}>
                     <div className={styles.conversationCopy}>
@@ -640,12 +631,82 @@ export function SettingsDialog({
                   </div>
                 </section>
                 <AnswerLinkSettings />
+                <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.assistSection")}</h3>
                 <ReplySuggestionsSettings cwd={modelCwd} />
-                <InputPredictionSettings cwd={modelCwd} />
-              </>
-              ) : activeKey === "prompts" ? (
-              <>
-                <div className={styles.contentHeading}><h2>{t("settings.page.prompts")}</h2><p>{t("settings.page.promptsDescription")}</p></div>
+                <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.runtimeSection")}</h3>
+                <div className={styles.runtimeCards}>
+                  <div data-settings-id="general.runningStatusLabel"><RunningStatusSettings /></div>
+                  <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
+                  <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
+                  <ModelFallbackSetting />
+                </div>
+                <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.promptSection")}</h3>
+                <section className={styles.promptCard} aria-labelledby="system-prompt-heading">
+                  <header className={styles.promptCardHeader}>
+                    <h3 data-settings-id="conversation.systemPrompt" id="system-prompt-heading">{t("system.prompt")}</h3>
+                    <p>{t("system.description")}</p>
+                  </header>
+                  <div className={styles.promptCardBody}>
+                    <SystemPromptEditor
+                      effectivePrompt={conversation.systemPrompt}
+                      onSaved={conversation.onSystemPromptSaved}
+                    />
+                  </div>
+                </section>
+                <section className={styles.promptCard} aria-labelledby="prompt-optimizer-heading">
+                  <header className={styles.promptCardHeader}>
+                    <h3 data-settings-id="conversation.promptOptimizer" id="prompt-optimizer-heading">{t("settings.promptOptimizerTitle")}</h3>
+                    <p>{t("settings.promptOptimizerDescription")}</p>
+                  </header>
+                  <div className={styles.promptCardBody}>
+                    <label className={styles.optimizerModelField}>
+                      <span>{t("settings.promptOptimizerModel")}</span>
+                      <select value={optimizerModelValue} onChange={(event) => saveOptimizerModel(event.target.value)}>
+                        <option value="">{t("settings.promptOptimizerModelDefault")}</option>
+                        {optimizerModels.map((candidate) => {
+                          const value = JSON.stringify({ provider: candidate.provider, modelId: candidate.id });
+                          return <option key={`${candidate.provider}/${candidate.id}`} value={value}>{candidate.name} · {candidate.provider}</option>;
+                        })}
+                      </select>
+                      <small>{t("settings.promptOptimizerModelDescription")}</small>
+                    </label>
+                    <label className={styles.promptTextField}>
+                      <span>{t("settings.promptOptimizerInstructionLabel")}</span>
+                      <small>{t("settings.promptOptimizerInstructionDescription")}</small>
+                      <textarea
+                        className={styles.promptEditor}
+                        value={optimizerPromptDraft}
+                        maxLength={PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH}
+                        aria-label={t("settings.promptOptimizerInstructionLabel")}
+                        onChange={(event) => {
+                          setOptimizerPromptDraft(event.target.value);
+                          setOptimizerPromptStatus("idle");
+                        }}
+                      />
+                    </label>
+                    <div className={styles.promptEditorFooter}>
+                      <span role="status">
+                        {optimizerPromptStatus === "saved"
+                          ? t("settings.promptOptimizerSaved")
+                          : optimizerPromptStatus === "error"
+                            ? t("settings.promptOptimizerSaveFailed")
+                            : `${Array.from(optimizerPromptDraft).length.toLocaleString()} / ${PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH.toLocaleString()}`}
+                      </span>
+                      <div>
+                        <button className={styles.secondaryButton} type="button" onClick={restoreOptimizerPrompt}>{t("settings.promptOptimizerRestore")}</button>
+                        <button
+                          className={styles.primaryButton}
+                          type="button"
+                          disabled={!optimizerPromptDraft.trim() || optimizerPromptDraft.trim() === optimizerPromptSaved}
+                          onClick={saveOptimizerPrompt}
+                        >
+                          {t("settings.promptOptimizerSave")}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+                <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.titleSection")}</h3>
                 <section className={styles.promptCard} aria-labelledby="session-title-prompt-heading">
                   <header className={styles.promptCardHeader}>
                     <h3 id="session-title-prompt-heading">{t("settings.sessionTitlePromptTitle")}</h3>
@@ -713,73 +774,6 @@ export function SettingsDialog({
                         </button>
                       </div>
                     </div>
-                  </div>
-                </section>
-
-                <section className={styles.promptCard} aria-labelledby="prompt-optimizer-heading">
-                  <header className={styles.promptCardHeader}>
-                    <h3 data-settings-id="conversation.promptOptimizer" id="prompt-optimizer-heading">{t("settings.promptOptimizerTitle")}</h3>
-                    <p>{t("settings.promptOptimizerDescription")}</p>
-                  </header>
-                  <div className={styles.promptCardBody}>
-                    <label className={styles.optimizerModelField}>
-                      <span>{t("settings.promptOptimizerModel")}</span>
-                      <select value={optimizerModelValue} onChange={(event) => saveOptimizerModel(event.target.value)}>
-                        <option value="">{t("settings.promptOptimizerModelDefault")}</option>
-                        {optimizerModels.map((candidate) => {
-                          const value = JSON.stringify({ provider: candidate.provider, modelId: candidate.id });
-                          return <option key={`${candidate.provider}/${candidate.id}`} value={value}>{candidate.name} · {candidate.provider}</option>;
-                        })}
-                      </select>
-                      <small>{t("settings.promptOptimizerModelDescription")}</small>
-                    </label>
-                    <label className={styles.promptTextField}>
-                      <span>{t("settings.promptOptimizerInstructionLabel")}</span>
-                      <small>{t("settings.promptOptimizerInstructionDescription")}</small>
-                      <textarea
-                        className={styles.promptEditor}
-                        value={optimizerPromptDraft}
-                        maxLength={PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH}
-                        aria-label={t("settings.promptOptimizerInstructionLabel")}
-                        onChange={(event) => {
-                          setOptimizerPromptDraft(event.target.value);
-                          setOptimizerPromptStatus("idle");
-                        }}
-                      />
-                    </label>
-                    <div className={styles.promptEditorFooter}>
-                      <span role="status">
-                        {optimizerPromptStatus === "saved"
-                          ? t("settings.promptOptimizerSaved")
-                          : optimizerPromptStatus === "error"
-                            ? t("settings.promptOptimizerSaveFailed")
-                            : `${Array.from(optimizerPromptDraft).length.toLocaleString()} / ${PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH.toLocaleString()}`}
-                      </span>
-                      <div>
-                        <button className={styles.secondaryButton} type="button" onClick={restoreOptimizerPrompt}>{t("settings.promptOptimizerRestore")}</button>
-                        <button
-                          className={styles.primaryButton}
-                          type="button"
-                          disabled={!optimizerPromptDraft.trim() || optimizerPromptDraft.trim() === optimizerPromptSaved}
-                          onClick={saveOptimizerPrompt}
-                        >
-                          {t("settings.promptOptimizerSave")}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </section>
-
-                <section className={styles.promptCard} aria-labelledby="system-prompt-heading">
-                  <header className={styles.promptCardHeader}>
-                    <h3 data-settings-id="conversation.systemPrompt" id="system-prompt-heading">{t("system.prompt")}</h3>
-                    <p>{t("system.description")}</p>
-                  </header>
-                  <div className={styles.promptCardBody}>
-                    <SystemPromptEditor
-                      effectivePrompt={conversation.systemPrompt}
-                      onSaved={conversation.onSystemPromptSaved}
-                    />
                   </div>
                 </section>
               </>

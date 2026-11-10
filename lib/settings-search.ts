@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "extensions" | "skills" | "plugins" | "harmony" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
+export type SettingsKey = "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "extensions" | "skills" | "plugins" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
 
 export interface SettingsPage {
   key: SettingsKey;
@@ -19,8 +19,6 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
   ] },
   { labelKey: "settings.group.modelWorkflow", pages: [
     { key: "models", labelKey: "settings.page.models", descriptionKey: "settings.modelsDescription", icon: "api" },
-    { key: "modelRuntime", labelKey: "settings.tab.modelRuntime", descriptionKey: "settings.page.modelRuntimeDescription", icon: "timer" },
-    { key: "prompts", labelKey: "settings.page.prompts", descriptionKey: "settings.page.promptsDescription", icon: "edit" },
     { key: "automations", labelKey: "automations.title", descriptionKey: "automations.description", icon: "calendar" },
     { key: "shell", labelKey: "shell.title", descriptionKey: "shell.description", icon: "code" },
   ] },
@@ -34,7 +32,6 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
   { labelKey: "settings.group.connections", pages: [
     { key: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", icon: "link" },
     { key: "remote", labelKey: "remote.title", descriptionKey: "remote.description", icon: "external-link" },
-    { key: "harmony", labelKey: "harmonyStorage.title", descriptionKey: "harmonyStorage.description", icon: "mobile" },
   ] },
   { labelKey: "settings.group.appData", pages: [
     { key: "general", labelKey: "settings.page.app", descriptionKey: "settings.page.appDescription", icon: "layout" },
@@ -45,9 +42,13 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
   ] },
 ];
 
+export function normalizeSettingsKey(key: SettingsKey): SettingsKey {
+  return key === "prompts" || key === "modelRuntime" ? "conversation" : key;
+}
+
 export function resolveSettingsPage(key: SettingsKey): SettingsPage {
   return SETTINGS_GROUPS.flatMap((group) => group.pages)
-    .find((page) => page.key === key)!;
+    .find((page) => page.key === normalizeSettingsKey(key))!;
 }
 
 export interface SettingsSearchItem {
@@ -77,10 +78,9 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "general.onboarding", section: "general", labelKey: "settings.firstRunGuideTitle", descriptionKey: "settings.firstRunGuideDescription", keywords: ["welcome", "guide", "新手", "引导"] },
   { id: "network", section: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", keywords: ["http", "https", "network", "代理", "网络"] },
   { id: "general.proxy", section: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", keywords: ["http", "https", "network", "代理", "网络"] },
-  { id: "general.runningStatusLabel", section: "modelRuntime", labelKey: "settings.runningStatusLabel", descriptionKey: "settings.runningStatusLabelHint", keywords: ["thinking", "凝思求解中", "文案"] },
-  { id: "general.modelRetry", section: "modelRuntime", labelKey: "modelRetry.title", descriptionKey: "modelRetry.description", keywords: ["retry", "timeout", "backoff", "retries", "重试", "超时", "退避", "卡住"] },
-  { id: "modelRuntime", section: "modelRuntime", labelKey: "settings.tab.modelRuntime", descriptionKey: "settings.page.modelRuntimeDescription", keywords: ["model runtime", "strategy", "模型", "运行策略"] },
-  { id: "models.compaction", section: "modelRuntime", labelKey: "modelCompaction.title", descriptionKey: "modelCompaction.description", keywords: ["context", "compaction", "compression", "threshold", "reserve tokens", "上下文", "压缩", "阈值", "预留"] },
+  { id: "general.runningStatusLabel", section: "conversation", labelKey: "settings.runningStatusLabel", descriptionKey: "settings.runningStatusLabelHint", keywords: ["thinking", "凝思求解中", "文案"] },
+  { id: "general.modelRetry", section: "conversation", labelKey: "modelRetry.title", descriptionKey: "modelRetry.description", keywords: ["retry", "timeout", "backoff", "retries", "重试", "超时", "退避", "卡住"] },
+  { id: "models.compaction", section: "conversation", labelKey: "modelCompaction.title", descriptionKey: "modelCompaction.description", keywords: ["context", "compaction", "compression", "threshold", "reserve tokens", "上下文", "压缩", "阈值", "预留"] },
   { id: "general.autoLaunch", section: "general", requiresDesktop: true, labelKey: "settings.autoLaunch", descriptionKey: "settings.autoLaunchDescription", keywords: ["startup", "boot", "login", "开机", "启动"] },
   { id: "general.runtimeLog", section: "data", requiresDesktop: true, labelKey: "settings.runtimeLog.title", descriptionKey: "settings.runtimeLog.description", keywords: ["log", "logs", "diagnostics", "path", "日志", "诊断", "路径", "文件夹"] },
   { id: "general.globalShortcut", section: "shortcuts", requiresDesktop: true, labelKey: "settings.globalShortcut", descriptionKey: "settings.globalShortcutDescription", keywords: ["hotkey", "keyboard", "快捷键"] },
@@ -92,10 +92,9 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "conversation.newlineShortcut", section: "shortcuts", labelKey: "settings.newlineShortcut", descriptionKey: "settings.newlineShortcutDescription", keywords: ["newline", "shift enter", "换行", "快捷键"] },
   { id: "conversation.autoScroll", section: "conversation", labelKey: "settings.liveOutputAutoScroll", descriptionKey: "settings.liveOutputAutoScrollDescription", keywords: ["scroll", "follow", "滚动", "跟随"] },
   { id: "conversation.notifications", section: "conversation", labelKey: "taskControls.notifications", descriptionKey: "taskControls.notificationsDescription", keywords: ["notify", "notification", "通知", "完成"] },
-  { id: "prompts", section: "prompts", labelKey: "settings.page.prompts", descriptionKey: "settings.page.promptsDescription", keywords: ["prompt", "title", "提示词", "标题"] },
-  { id: "conversation.promptOptimizer", section: "prompts", labelKey: "settings.promptOptimizerTitle", descriptionKey: "settings.promptOptimizerDescription", keywords: ["prompt", "rewrite", "提示词", "优化"] },
-  { id: "conversation.titleModel", section: "prompts", labelKey: "settings.sessionTitleModelTitle", descriptionKey: "settings.sessionTitleModelDescription", keywords: ["title", "model", "标题", "模型"] },
-  { id: "conversation.systemPrompt", section: "prompts", labelKey: "system.prompt", descriptionKey: "system.description", keywords: ["system prompt", "instruction", "系统提示词", "指令"] },
+  { id: "conversation.promptOptimizer", section: "conversation", labelKey: "settings.promptOptimizerTitle", descriptionKey: "settings.promptOptimizerDescription", keywords: ["prompt", "rewrite", "提示词", "优化"] },
+  { id: "conversation.titleModel", section: "conversation", labelKey: "settings.sessionTitleModelTitle", descriptionKey: "settings.sessionTitleModelDescription", keywords: ["title", "model", "标题", "模型"] },
+  { id: "conversation.systemPrompt", section: "conversation", labelKey: "system.prompt", descriptionKey: "system.description", keywords: ["system prompt", "instruction", "系统提示词", "指令"] },
 
   { id: "shortcuts", section: "shortcuts", labelKey: "settings.shortcuts", descriptionKey: "settings.shortcutsDescription", keywords: ["keyboard", "hotkey", "键盘", "快捷键"] },
   { id: "shortcuts.palette", section: "shortcuts", labelKey: "shortcuts.commandPalette", descriptionKey: "shortcuts.commandPaletteDescription", keywords: ["ctrl k", "command", "命令面板"] },
@@ -112,7 +111,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "automations.notifications", section: "automations", labelKey: "automations.notifications", descriptionKey: "automations.description", keywords: ["notify", "failed", "通知", "失败"] },
 
   { id: "models", section: "models", labelKey: "common.models", descriptionKey: "settings.modelsDescription", keywords: ["provider", "api key", "oauth", "模型", "登录", "密钥"] },
-  { id: "models.fallback", section: "modelRuntime", labelKey: "models.fallback.title", descriptionKey: "models.fallback.description", keywords: ["fallback", "回退", "备用模型"] },
+  { id: "models.fallback", section: "conversation", labelKey: "models.fallback.title", descriptionKey: "models.fallback.description", keywords: ["fallback", "回退", "备用模型"] },
   { id: "tools", section: "tools", labelKey: "projectTools.title", descriptionKey: "projectTools.description", keywords: ["tools", "project", "harmony", "工具", "项目", "鸿蒙"], requiresProject: true },
   { id: "extensions", section: "extensions", labelKey: "settings.extensions", descriptionKey: "settings.manageExtensionsDescription", keywords: ["extension", "tools", "扩展", "工具"], requiresProject: true },
   { id: "skills", section: "skills", labelKey: "common.skills", descriptionKey: "settings.skillsDescription", keywords: ["skill", "instruction", "技能", "说明"], requiresProject: true },
@@ -135,9 +134,6 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "companion.model", section: "companion", labelKey: "companion.model.title", descriptionKey: "companion.model.description", keywords: ["interaction", "model", "互动", "模型"] },
 
   { id: "remote", section: "remote", labelKey: "remote.title", descriptionKey: "remote.description", keywords: ["http", "sse", "token", "远程", "令牌"] },
-  { id: "harmony", section: "harmony", labelKey: "harmonyStorage.title", descriptionKey: "harmonyStorage.description", keywords: ["openharmony", "deveco", "screenshot", "recording", "鸿蒙", "截图", "录屏"] },
-  { id: "harmony.screenshots", section: "harmony", requiresDesktop: true, labelKey: "harmonyStorage.screenshotDirectory", descriptionKey: "harmonyStorage.screenshotDescription", keywords: ["png", "folder", "截图", "文件夹"] },
-  { id: "harmony.recordings", section: "harmony", requiresDesktop: true, labelKey: "harmonyStorage.recordingDirectory", descriptionKey: "harmonyStorage.recordingDescription", keywords: ["mp4", "folder", "录屏", "文件夹"] },
   { id: "usage", section: "usage", labelKey: "usage.title", descriptionKey: "usage.description", keywords: ["token", "statistics", "usage", "用量", "统计"] },
   { id: "trash", section: "trash", labelKey: "trash.title", descriptionKey: "trash.description", keywords: ["deleted", "restore", "回收站", "删除", "恢复"] },
   { id: "archived", section: "archived", labelKey: "archive.title", descriptionKey: "archive.description", keywords: ["history", "restore", "archive", "归档", "恢复"] },

@@ -964,3 +964,4 @@
   gap: 16px;
   min-width: 0;
 }
+.settingsSectionHeading { margin: 28px 0 12px; color: var(--text); font-size: var(--text-base); font-weight: 600; line-height: 1.5; }

@@ -148,7 +148,6 @@ const ProjectToolsConfig = dynamic(() => import("./ProjectToolsConfig").then((mo
 const AppearanceSettings = dynamic(() => import("./AppearanceSettings").then((module) => module.AppearanceSettings), { ssr: false });
 const CompanionSettingsDialog = dynamic(() => import("./CompanionSettingsDialog").then((module) => module.CompanionSettingsDialog), { ssr: false });
 const RemoteControlSettings = dynamic(() => import("./RemoteControlSettings").then((module) => module.RemoteControlSettings), { ssr: false });
-const HarmonyStorageSettings = dynamic(() => import("./HarmonyStorageSettings").then((module) => module.HarmonyStorageSettings), { ssr: false });
 const SpeechSettings = dynamic(() => import("./SpeechSettings").then((module) => module.SpeechSettings), { ssr: false });
 const UsageStatsPanel = dynamic(() => import("./UsageStatsPanel").then((module) => module.UsageStatsPanel), { ssr: false });
 const TrashSettings = dynamic(() => import("./TrashSettings").then((module) => module.TrashSettings), { ssr: false });
@@ -2007,9 +2006,6 @@ export function AppShell() {
         appearance: <AppearanceSettings />,
         remote: (
           <RemoteControlSettings sessionId={selectedSession?.id ?? null} />
-        ),
-        harmony: (
-          <HarmonyStorageSettings />
         ),
         speech: (
           <SpeechSettings />

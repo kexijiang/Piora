@@ -622,7 +622,7 @@ function ReviewTopBar({ status, mode, setMode, busy, onRefresh, branches, curren
         <button type="button" aria-pressed={mode === "split"} onClick={() => setMode("split")}>{t("review.view.split")}</button>
       </div>
       <button type="button" className={styles.iconAction} onClick={() => void onRefresh()} disabled={busy} title={t("review.refresh")} aria-label={t("review.refresh")}><AliIcon name="reload" size={14} /></button>
-      <button type="button" className={styles.commitTrigger} disabled={busy} onClick={onOpenCommit}><AliIcon name="branches" size={13} />{t("review.commitOrPush")}</button>
+      <button type="button" className={styles.commitTrigger} disabled={busy} onClick={onOpenCommit}><AliIcon name="git-commit" size={13} />{t("review.commitOrPush")}</button>
     </div>
   </header>;
 }

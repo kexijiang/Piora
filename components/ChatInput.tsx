@@ -3,7 +3,6 @@
 import React, { useId, useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useReplyDraft } from "@/hooks/useReplyDraft";
-import { useInputPrediction } from "@/hooks/useInputPrediction";
 import { useReplySuggestions } from "@/hooks/useReplySuggestions";
 import { ReplySuggestionBar } from "./ReplySuggestionBar";
 import { CompactionProgress, CompactionResult } from "./CompactionProgress";
@@ -399,7 +398,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   commandInputOptionsRef.current = commandInputOptions;
   const parsedCommandInput = parseChatInput(value, commandCatalog ?? createChatCommandCatalog(slashCommands ?? []), commandInputOptions);
   const isCommandInput = parsedCommandInput.kind !== "message";
-  const prediction = useInputPrediction(isStreaming || isCompacting ? null : replySource, cwd, locale, value.length > 0);
   const suggestions = useReplySuggestions(isStreaming || isCompacting ? null : replySource, locale);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | undefined>(undefined);
   const [draftStorageError, setDraftStorageError] = useState(false);
@@ -1430,10 +1428,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
         return;
       }
 
-      if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !value && prediction) {
-        e.preventDefault(); setValue(prediction); return;
-      }
-
       // Hover opens the popover without moving focus out of the composer.
       // Escape must dismiss that popover before it can stop the current run.
       if (e.key === "Escape" && sendModeMenuRef.current?.matches(":popover-open")) {
@@ -1580,7 +1574,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       // Only the configured newline binding inserts a line break.
       if (e.key === "Enter") e.preventDefault();
     },
-    [prediction, isStreaming, isCommandInput, onQueueInput, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, submitStreamingMessage, undoReplyDraft, sendShortcut, newlineShortcut, setValue, updateAtQuery, closeSendModeMenu]
+    [isStreaming, isCommandInput, onQueueInput, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, submitStreamingMessage, undoReplyDraft, sendShortcut, newlineShortcut, setValue, updateAtQuery, closeSendModeMenu]
   );
 
   const handleInput = useCallback(() => {
@@ -2259,10 +2253,10 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
             onInput={handleInput}
             onPaste={handlePaste}
             placeholder={
-              prediction || (placeholder ?? (isStreaming && (onSteer || onFollowUp)
+              placeholder ?? (isStreaming && (onSteer || onFollowUp)
                 ? t("chat.steerPlaceholder")
                 : isStreaming ? t("chat.agentPlaceholder")
-                : t("chat.messagePlaceholder")))
+                : t("chat.messagePlaceholder"))
             }
             rows={1}
             style={{

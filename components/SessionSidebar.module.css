@@ -99,11 +99,12 @@
 .sectionLabel {
   display: flex;
   align-items: center;
-  min-height: 28px;
+  min-height: 30px;
   padding: 7px 15px 4px;
   color: var(--text-dim);
   font-size: var(--text-xs);
   font-weight: 500;
+  line-height: 1.5;
 }
 
 .sectionLabelActions {
@@ -171,6 +172,9 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+.projectAreaCollapsed { min-height: 0; flex-shrink: 0; }
+.projectScroll[hidden] { display: none; }
 
 .projectsHeader {
   flex: 0 0 auto;
@@ -296,6 +300,11 @@
   background: transparent;
 }
 
+.projectRow:hover,
+.projectRow:has(:focus-visible) {
+  background: var(--bg-hover);
+}
+
 .projectRowSelected .projectName {
   font-weight: 620;
 }
@@ -320,6 +329,11 @@
 }
 
 .projectRow .projectMain { cursor: grab; }
+.projectRow .projectMain:hover,
+.projectRow .projectMain:active {
+  background: transparent;
+  transform: none;
+}
 .projectGroupDragging .projectRow,
 .projectGroupDragging .projectMain { cursor: grabbing; }
 

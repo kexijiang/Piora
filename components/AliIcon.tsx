@@ -14,6 +14,8 @@ interface IconDef {
   stroke?: readonly string[];
   /** Filled paths — solid `currentColor`, no stroke. */
   fill?: readonly string[];
+  /** Native circles keep Git nodes centered inside the 24×24 viewBox. */
+  circles?: readonly (readonly [cx: number, cy: number, r: number])[];
 }
 
 const ICONS = {
@@ -49,7 +51,12 @@ const ICONS = {
   },
   "bell": { stroke: ["M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9", "M10.3 21a1.94 1.94 0 0 0 3.4 0"] },
   "branches": {
-    stroke: ["M6 3v12", "M18 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "M6 18a3 3 0 1 0 0 6 3 3 0 0 0 0-6z", "M18 9a9 9 0 0 1-9 9"],
+    stroke: ["M15 6a9 9 0 0 0-9 9V3"],
+    circles: [[18, 6, 3], [6, 18, 3]],
+  },
+  "git-commit": {
+    stroke: ["M3 12h6", "M15 12h6"],
+    circles: [[12, 12, 3]],
   },
   "bug": {
     stroke: [
@@ -173,12 +180,10 @@ const ICONS = {
   },
   "fork": {
     stroke: [
-      "M12 18a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
-      "M6 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
-      "M18 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
-      "M18 9v2a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2V9",
+      "M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9",
       "M12 12v3",
     ],
+    circles: [[12, 18, 3], [6, 6, 3], [18, 6, 3]],
   },
   "fullscreen": { stroke: ["M8 3H5a2 2 0 0 0-2 2v3", "M21 8V5a2 2 0 0 0-2-2h-3", "M3 16v3a2 2 0 0 0 2 2h3", "M16 21h3a2 2 0 0 0 2-2v-3"] },
   "fullscreen-exit": { stroke: ["M8 3v3a2 2 0 0 1-2 2H3", "M21 8h-3a2 2 0 0 1-2-2V3", "M3 16h3a2 2 0 0 1 2 2v3", "M16 21v-3a2 2 0 0 1 2-2h3"] },
@@ -469,6 +474,9 @@ export function AliIcon({ name, size = "1em", strokeWidth, style, ...props }: Al
     >
       {(def.stroke ?? []).map((d, index) => (
         <path key={`s${index}`} d={d} />
+      ))}
+      {(def.circles ?? []).map(([cx, cy, r], index) => (
+        <circle key={`c${index}`} cx={cx} cy={cy} r={r} />
       ))}
       {(def.fill ?? []).map((d, index) => (
         <path key={`f${index}`} d={d} fill="currentColor" stroke="none" />
