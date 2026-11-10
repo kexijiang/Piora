@@ -40,7 +40,7 @@ export function DatabaseExportJobs({ serial, chinese }: { serial: string; chines
     const filename = `harmony-database-${job.id.slice(0, 8)}.${job.format}`;
     try {
       const picker = (window as Window & { showSaveFilePicker?: (options: { suggestedName: string }) => Promise<{ createWritable: () => Promise<WritableStream<Uint8Array>> }> }).showSaveFilePicker;
-      if (picker) {
+      if (picker && !window.piDesktop) {
         const handle = await picker.call(window, { suggestedName: filename });
         const response = await fetch(url, { cache: "no-store" });
         if (!response.ok || !response.body) {

@@ -1,6 +1,7 @@
 // Adapted from Alentaoker/dsh-harmoneydev-tools @ 8b178a755d33cee9899160a7be283af2b23eb85d.
 // SPDX-License-Identifier: MIT; see third_party/harmony-log-workbench/SOURCE.md.
 "use client";
+import { saveLogSnapshot } from "@/lib/harmony-log-download";
 
 import { useContext, useDeferredValue, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { LogSessionContext, saveSessionLog } from './log-session';
@@ -298,10 +299,10 @@ export function RealtimeLogs({ active, visible = true, serial, online, copy, onS
         const saved = await saveSessionLog(file, targetSession!, snapshot, abort.signal);
         if (sessionRef.current === targetSession && serialRef.current === targetSerial) { setSavedFile({ id: saved.id, sessionId: targetSession! }); setNotice(copy(`已保存到当前会话 · ${rows.length} 行`, `Saved ${rows.length} lines to this session`)); }
       } else {
-        const picker = (window as Window & { showSaveFilePicker?: (options: unknown) => Promise<FileSystemFileHandle> }).showSaveFilePicker;
-        if (picker) { const handle = await picker({ suggestedName: name, types: [{ description: 'HiLog', accept: { 'text/plain': ['.log', '.txt'] } }] }); const output = await handle.createWritable(); try { await output.write(file); await output.close(); } catch (failure) { await output.abort().catch(() => {}); throw failure; } }
-        else { const url = URL.createObjectURL(file), link = document.createElement('a'); link.href = url; link.download = name; link.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); }
-        if (sessionRef.current === targetSession && serialRef.current === targetSerial) setNotice(copy(`已保存 ${rows.length} 行；仅包含当前保留的筛选日志`, `Saved ${rows.length} retained filtered lines`));
+        const mode = await saveLogSnapshot(file);
+        if (sessionRef.current === targetSession && serialRef.current === targetSerial) setNotice(mode === 'saved'
+          ? copy(`已保存 ${rows.length} 行；仅包含当前保留的筛选日志`, `Saved ${rows.length} retained filtered lines`)
+          : copy(`已发起 ${rows.length} 行日志下载，请核对保存结果`, `Started download of ${rows.length} log lines; check the saved file`));
       }
     } catch (failure) { if (sessionRef.current === targetSession && serialRef.current === targetSerial && (failure as Error).name !== 'AbortError') setError((failure as Error).message); }
     finally { savingRef.current = false; setSaving(false); saveController.current = undefined; }

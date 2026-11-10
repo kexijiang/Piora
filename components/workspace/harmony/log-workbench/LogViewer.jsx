@@ -13,6 +13,7 @@ import { compilePattern, regexHelp } from '@/lib/harmony/log-library/vendor/log-
 import { LogApplicationFilter } from './LogApplicationFilter.jsx';
 import { useLogSearchHistory, LogSearchHistoryMenu } from './LogSearchHistory.jsx';
 import { historyKeyAction, isComposingKey, nextCursor } from '@/lib/harmony/log-library/vendor/log-search-menu.mjs';
+import { exportFilteredLogs } from '@/lib/harmony-log-download';
 const viewerCache = new Map();
 const columnNames = { timestamp: '时间', pid: 'PID:TID', level: '级别', domain: 'DOMAIN', process: '包名 / 进程', tag: 'TAG', message: '消息' };
 
@@ -35,7 +36,7 @@ export function LogViewer({ url, exportUrl, visible = true, live = false, initia
   const queryHistory = useLogSearchHistory('filter'), findHistory = useLogSearchHistory('find');
   const [queryHistoryOpen, setQueryHistoryOpen] = useState(false), [queryCursor, setQueryCursor] = useState(0), [querySelected, setQuerySelected] = useState(false);
   const [findHistoryOpen, setFindHistoryOpen] = useState(false), [findCursor, setFindCursor] = useState(0), [findSelected, setFindSelected] = useState(false);
-  const [fullRow, setFullRow] = useState(), [exporting, setExporting] = useState(false), [exportError, setExportError] = useState('');
+  const [fullRow, setFullRow] = useState(), [exporting, setExporting] = useState(false), [exportError, setExportError] = useState(''), [exportNotice, setExportNotice] = useState('');
   const [pageSize, setPageSize] = useState(saved?.pageSize || 500), [scrollTop, setScrollTop] = useState(saved?.scrollTop || 0), [viewportHeight, setViewportHeight] = useState(420), [detailHeight, setDetailHeight] = useState(220);
   const [columns, setColumns] = useState(saved?.columns || { timestamp: true, pid: true, level: true, domain: false, process: false, tag: true, message: true });
   const [compact, setCompact] = useState(saved?.compact ?? true);
@@ -96,16 +97,11 @@ export function LogViewer({ url, exportUrl, visible = true, live = false, initia
     try { const response = await fetch(url + '&' + new URLSearchParams({ ...debounced, offset: offset + index, limit: 1, fullMessage: true }), { signal: controller.signal }), value = await response.json(); if (!response.ok || value.error) throw Error(value.error || '完整行读取失败'); if (!controller.signal.aborted) setFullRow(value.entries?.[0]); } catch (e) { if (!controller.signal.aborted) setError(e.message); }
   }
   async function exportFiltered() {
-    if (exporting) return; setExporting(true); setExportError(''); let destination;
+    if (exporting) return; setExporting(true); setExportError(''); setExportNotice('');
     try {
-      if (window.showSaveFilePicker) { const handle = await window.showSaveFilePicker({ suggestedName: 'filtered-logs.jsonl' }); destination = await handle.createWritable(); }
-      const response = await fetch(exportUrl + '&' + new URLSearchParams(debounced)); if (!response.ok) throw Error((await response.json()).error || '日志导出失败');
-      const reader = response.body.getReader(), chunks = []; let bytes = 0;
-      try { while (true) { const { done, value } = await reader.read(); if (done) break; if (destination) await destination.write(value); else { bytes += value.length; if (bytes > 8 * 1024 * 1024) throw Error('浏览器不支持流式保存，筛选结果超过 8 MiB；请收窄过滤，或从本机目录读取完整文件。'); chunks.push(value); } } }
-      finally { await reader.cancel().catch(() => {}); }
-      if (destination) { await destination.close(); destination = undefined; }
-      else { const objectURL = URL.createObjectURL(new Blob(chunks, { type: 'application/x-ndjson' })), link = document.createElement('a'); link.href = objectURL; link.download = 'filtered-logs.jsonl'; document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(objectURL), 10000); }
-    } catch (e) { await destination?.abort().catch(() => {}); if (e.name !== 'AbortError') setExportError(e.message); }
+      const mode = await exportFilteredLogs(exportUrl + '&' + new URLSearchParams(debounced));
+      setExportNotice(mode === 'saved' ? '筛选结果已保存' : '已发起下载，请在保存窗口中确认并核对文件。');
+    } catch (e) { if (e.name !== 'AbortError') setExportError(e.message); }
     finally { setExporting(false); }
   }
   function move(delta) { const next = (cursor + delta + matches.length) % matches.length; setCursor(next); const top = matches[next] * rowHeight; if (viewport.current) viewport.current.scrollTop = top; setScrollTop(top); }
@@ -168,7 +164,7 @@ export function LogViewer({ url, exportUrl, visible = true, live = false, initia
       <details className="offline-advanced"><summary>更多筛选{[filters.domain, filters.pid, filters.tid, filters.from, filters.until].filter(Boolean).length ? ' · 已启用' : ''}</summary><div className="offline-advanced-panel"><div className="log-filter-grid">{['domain', 'pid', 'tid'].map(key => <input key={key} aria-label={'过滤 ' + key.toUpperCase()} placeholder={key.toUpperCase()} value={filters[key]} onChange={e => change(key, e.target.value)} maxLength={256}/>)}</div><small className="muted">{timeBasis}</small><div className="log-filter-grid">{['from', 'until'].map(key => <label key={key}>{key === 'from' ? '开始' : '结束'}<input aria-label={key === 'from' ? '日志开始时间' : '日志结束时间'} type="datetime-local" value={filters[key] ? (() => { const date = new Date(filters[key]); return Number.isFinite(+date) ? new Date(+date - date.getTimezoneOffset() * 60000).toISOString().slice(0, 19) : ''; })() : ''} onChange={e => change(key, e.target.value ? new Date(e.target.value).toISOString() : '')}/></label>)}</div><p className="muted">包名取自日志的明确归属；只有 PID 的历史日志归属未知。{regexHelp}</p></div></details>
       <button aria-label="清除过滤" title="清除全部过滤条件" onClick={() => setFilters({ bundle: '', query: '', tag: '', domain: '', pid: '', tid: '', level: '', regex: false, caseSensitive: false, from: '', until: '' })}>重置</button>
     </div>
-    </div>{exportError && <p role="alert" className="notice error">{exportError}</p>}
+    </div>{exportError && <p role="alert" className="notice error">{exportError}</p>}{exportNotice && <p role="status" className="notice">{exportNotice}</p>}
     {findOpen && <div className="log-find" role="search"><div className="row"><div className="log-search-anchor" data-history-anchor="find" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFindHistoryOpen(false); }}><input ref={findInput} aria-label="查找本页日志" placeholder="本页查找，不改变过滤结果" value={find} maxLength={256}
       onChange={e => { setFindSelected(false); setFind(e.target.value); }}
       onFocus={() => openFindHistory()}
