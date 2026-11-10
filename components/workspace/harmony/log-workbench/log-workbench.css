@@ -253,4 +253,8 @@
 .piora-log-workbench .log-table,
 .piora-log-workbench pre { color: #dce3ec; }
 .piora-log-workbench .log-virtual .log-detail-button { color: #9fc2ff; background-color: #202b39; }
+.piora-log-workbench .log-virtual .log-detail-button:is(:hover, :focus-visible, :active) {
+  color: #dbe8ff;
+  background: #30435e;
+}
 .piora-log-workbench .log-find { background: var(--bg-panel); }
