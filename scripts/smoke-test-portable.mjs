@@ -7,6 +7,9 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 import { randomUUID } from "node:crypto";
+import { createVerificationTimings } from "./verification-timing.mjs";
+
+const timings = createVerificationTimings("application-smoke");
 import {
   createIsolatedProcessEnvironment,
   prepareIsolatedEnvironment,
@@ -220,8 +223,8 @@ async function preparePortableRuntimeCache({
     validatePortableSmokeMarker(markerText, expectedVersion);
   } finally {
     markerAbort.abort();
-    if (child) await terminateChild(child);
-    await terminateExtractedPortableProcesses(temporaryDirectory);
+    if (child) await timings.measure("stop-primary-process", () => terminateChild(child));
+    await timings.measure("stop-process-tree", () => terminateExtractedPortableProcesses(temporaryDirectory));
   }
 }
 
@@ -317,7 +320,7 @@ export async function smokeTestPortableExecutable(
     // it is written only after the bundled service, preload bridge, renderer,
     // and app shell are all ready. Once validated, the test owns cleanup of
     // both the wrapper and every extracted process under its isolated root.
-    const markerText = await waitForMarker(markerPath, timeoutMs, markerAbort.signal);
+    const markerText = await timings.measure("wait-for-healthy-app", () => waitForMarker(markerPath, timeoutMs, markerAbort.signal), { executable });
     const marker = validatePortableSmokeMarker(markerText, expectedVersion);
     validateBrandSmokeMarker(marker, expectedBrand, paths, join(temporaryDirectory, "agent"));
     if (expectedSession && (marker.preservedSession?.sessionId !== expectedSession.id
@@ -382,8 +385,8 @@ export async function smokeTestPortableExecutable(
     );
   } finally {
     markerAbort.abort();
-    if (child) await terminateChild(child);
-    await terminateExtractedPortableProcesses(temporaryDirectory);
+    if (child) await timings.measure("stop-primary-process", () => terminateChild(child));
+    await timings.measure("stop-process-tree", () => terminateExtractedPortableProcesses(temporaryDirectory));
     if (profileRoot) {
       await rm(markerPath, { force: true });
       await rm(startupMarkerPath, { force: true });

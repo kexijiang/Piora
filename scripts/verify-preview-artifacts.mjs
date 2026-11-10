@@ -3,6 +3,9 @@ import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, relative, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { createVerificationTimings } from "./verification-timing.mjs";
+
+const timings = createVerificationTimings("windows-artifacts");
 
 export async function runInParallel(tasks) {
   const results = await Promise.allSettled(tasks.map(task => Promise.resolve().then(task)));
@@ -38,19 +41,19 @@ async function main() {
   const script = (...args) => run(node, args);
   try {
     await runInParallel([
-      () => script("scripts/verify-packaged-web.mjs"),
+      () => timings.measure("packaged-web-total", () => script("scripts/verify-packaged-web.mjs")),
       async () => {
-        await run(node, ["--test", "lib/portable-payload.test.mjs"], { env: { ...process.env, PIORA_TEST_7ZA: extractor } });
-        await script("scripts/smoke-test-portable.mjs", unpacked, "--expected-version", tag, "--packaged-runtime", "--expected-brand", brand);
-        await run(installer, ["/S", `/D=${installDirectory}`], { windowsVerbatimArguments: true });
+        await timings.measure("payload-regressions", () => run(node, ["--test", "lib/portable-payload.test.mjs"], { env: { ...process.env, PIORA_TEST_7ZA: extractor } }));
+        await timings.measure("unpacked-smoke", () => script("scripts/smoke-test-portable.mjs", unpacked, "--expected-version", tag, "--packaged-runtime", "--expected-brand", brand));
+        await timings.measure("nsis-install", () => run(installer, ["/S", `/D=${installDirectory}`], { windowsVerbatimArguments: true }), { installDirectory });
         const installed = join(installDirectory, "Piora.exe");
         await access(installed);
-        await script("scripts/smoke-test-portable.mjs", installed, "--expected-version", tag, "--packaged-runtime", "--expected-brand", brand);
-        await script("scripts/verify-portable-runtime.mjs", join(releaseRoot, "win-unpacked"), tag);
+        await timings.measure("installed-smoke", () => script("scripts/smoke-test-portable.mjs", installed, "--expected-version", tag, "--packaged-runtime", "--expected-brand", brand));
+        await timings.measure("electron-payload-integrity", () => script("scripts/verify-portable-runtime.mjs", join(releaseRoot, "win-unpacked"), tag));
       },
     ]);
   } finally {
-    await rm(installDirectory, { recursive: true, force: true, maxRetries: 3 });
+    await timings.measure("cleanup-installed-app", () => rm(installDirectory, { recursive: true, force: true, maxRetries: 3 }));
   }
 }
 
