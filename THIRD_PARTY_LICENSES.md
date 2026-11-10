@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `d07d9a90871ce8959ff901fb91455a79f8ab8c1318e54ddce67a6071f6a1341b`
+Lockfile SHA-256: `f2a8f48c7e67d604abcf0bcbddbe8a6ec8f70800839e6454eb3837d36cacafbf`
 
 Unique locked packages: **1268**. Runtime packages: **768**. Build/development-only packages: **500**.
 
@@ -738,7 +738,7 @@ Every locked package declares a license.
 | `tweetnacl` | `0.14.5` | Unlicense | No |
 | `type-is` | `2.1.0` | MIT | No |
 | `typebox` | `1.3.27` | MIT | No |
-| `typebox` | `1.4.4` | MIT | No |
+| `typebox` | `1.4.5` | MIT | No |
 | `typescript` | `6.0.2` | Apache-2.0 | No |
 | `ufo` | `1.6.4` | MIT | No |
 | `underscore` | `1.13.8` | MIT | No |
@@ -864,21 +864,21 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@rtsao/scc` | `1.1.0` | MIT | No |
 | `@sindresorhus/is` | `4.6.0` | MIT | No |
 | `@szmarczak/http-timer` | `4.0.6` | MIT | No |
-| `@tailwindcss/node` | `4.3.4` | MIT | No |
-| `@tailwindcss/oxide` | `4.3.4` | MIT | No |
-| `@tailwindcss/oxide-android-arm64` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-darwin-arm64` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-darwin-x64` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-freebsd-x64` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-linux-arm-gnueabihf` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-linux-arm64-gnu` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-linux-arm64-musl` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-linux-x64-gnu` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-linux-x64-musl` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-wasm32-wasi` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-win32-arm64-msvc` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/oxide-win32-x64-msvc` | `4.3.4` | MIT | Yes |
-| `@tailwindcss/postcss` | `4.3.4` | MIT | No |
+| `@tailwindcss/node` | `4.3.5` | MIT | No |
+| `@tailwindcss/oxide` | `4.3.5` | MIT | No |
+| `@tailwindcss/oxide-android-arm64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-darwin-arm64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-darwin-x64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-freebsd-x64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-arm-gnueabihf` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-arm64-gnu` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-arm64-musl` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-x64-gnu` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-x64-musl` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-wasm32-wasi` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-win32-arm64-msvc` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-win32-x64-msvc` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/postcss` | `4.3.5` | MIT | No |
 | `@tweenjs/tween.js` | `23.1.3` | MIT | No |
 | `@tybys/wasm-util` | `0.10.1` | MIT | Yes |
 | `@tybys/wasm-util` | `0.10.3` | MIT | Yes |
@@ -1015,7 +1015,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `electron-publish` | `26.18.0` | MIT | No |
 | `electron-to-chromium` | `1.5.399` | ISC | No |
 | `end-of-stream` | `1.4.5` | MIT | No |
-| `enhanced-resolve` | `5.26.0` | MIT | No |
+| `enhanced-resolve` | `5.26.1` | MIT | No |
 | `env-paths` | `2.2.1` | MIT | No |
 | `env-paths` | `3.0.0` | MIT | No |
 | `err-code` | `2.0.3` | MIT | No |
@@ -1254,7 +1254,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `sumchecker` | `3.0.1` | Apache-2.0 | No |
 | `supports-color` | `7.2.0` | MIT | No |
 | `supports-preserve-symlinks-flag` | `1.0.0` | MIT | No |
-| `tailwindcss` | `4.3.4` | MIT | No |
+| `tailwindcss` | `4.3.5` | MIT | No |
 | `tapable` | `2.3.3` | MIT | No |
 | `temp-file` | `3.4.0` | MIT | No |
 | `tiny-async-pool` | `1.3.0` | MIT | No |
