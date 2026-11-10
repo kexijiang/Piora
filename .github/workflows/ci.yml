@@ -177,6 +177,16 @@ jobs:
         shell: pwsh
         run: node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked (Get-Content package.json | ConvertFrom-Json).version
 
+      - name: Publish standalone trace diagnostics
+        if: runner.os == 'Windows' && always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: standalone-traces-${{ github.run_id }}
+          path: |
+            .next/next-server.js.nft.json
+            .next/server/**/*.nft.json
+          retention-days: 3
+
   installer-benchmark:
     name: Installer benchmark (${{ matrix.variant }})
     if: github.event_name == 'workflow_dispatch' && inputs.packaging_benchmark
@@ -239,9 +249,13 @@ jobs:
           EXPECTED_TAG: ${{ steps.metadata.outputs.tag }}
         run: node scripts/verify-windows-update-artifacts.mjs desktop/release $env:EXPECTED_TAG
       - name: Install and fully verify benchmark artifacts
-        run: node scripts/verify-preview-artifacts.mjs
+        shell: pwsh
+        run: |
+          $env:GITHUB_REF_NAME = $env:EXPECTED_TAG
+          node scripts/verify-preview-artifacts.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Benchmark installation/runtime verification failed' }
         env:
-          GITHUB_REF_NAME: ${{ steps.metadata.outputs.tag }}
+          EXPECTED_TAG: ${{ steps.metadata.outputs.tag }}
       - name: Upload verified benchmark installers
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:

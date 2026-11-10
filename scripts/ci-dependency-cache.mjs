@@ -10,7 +10,8 @@ export async function dependencyCacheKey(root, runtime = process) {
     runtime.versions.modules, runtime.env.ImageOS, runtime.env.ImageVersion]));
   const inputs = ["package.json", "package-lock.json", "desktop/package.json", ".npmrc", ".nvmrc"];
   for (const name of (await readdir(resolve(root, "scripts"))).sort()) {
-    if (/\.(?:mjs|cjs|json)$/.test(name)) inputs.push(`scripts/${name}`);
+    if (/^(?:patch-|pi-|branding|prepare-branding|build-brand-icon|brand-build-integrity|ci-dependency-cache)/.test(name)
+      && /\.(?:mjs|cjs|json)$/.test(name)) inputs.push(`scripts/${name}`);
   }
   for (const file of inputs) {
     hash.update(file);
