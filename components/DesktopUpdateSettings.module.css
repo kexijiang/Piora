@@ -1,0 +1,36 @@
+.setting {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  padding: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 68%, transparent);
+}
+
+.field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px 16px;
+  min-width: 0;
+}
+
+.copy {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.description,
+.note {
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.description { margin: 4px 0 0; }
+.note { margin: 0; }
+.status { display: grid; gap: 10px; min-width: 0; margin: 0; }
+.status p { margin: 0; }
+.versions { flex: 1 1 260px; }
+.control { flex: 0 0 auto; max-width: 100%; }
+.control:disabled { opacity: 0.48; cursor: not-allowed; }

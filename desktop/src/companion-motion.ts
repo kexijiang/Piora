@@ -21,6 +21,19 @@ export interface CompanionMotionPoint {
   y: number;
 }
 
+/** Electron's native window/screen bindings require signed 32-bit integers. */
+export function nativeCompanionPoint(point: CompanionMotionPoint): CompanionMotionPoint | null {
+  const { x, y } = point;
+  if (![x, y].every(value => Number.isFinite(value) && value >= -2147483648 && value <= 2147483647)) return null;
+  return { x: Math.round(x), y: Math.round(y) };
+}
+
+export function validCompanionRectangle(rect: CompanionMotionRectangle): boolean {
+  return nativeCompanionPoint(rect) !== null
+    && [rect.width, rect.height].every(value => Number.isFinite(value) && value >= 1 && value <= 2147483647)
+    && nativeCompanionPoint({ x: rect.x + rect.width, y: rect.y + rect.height }) !== null;
+}
+
 export interface CompanionMotionPlan {
   pattern: CompanionMotionPattern;
   direction: CompanionMotionDirection;
@@ -185,6 +198,8 @@ export function planCompanionMotion(
   workArea: CompanionMotionRectangle,
   request: CompanionMotionRequest,
 ): CompanionMotionPlan | null {
+  if (!validCompanionRectangle(bounds) || !validCompanionRectangle(workArea)
+    || !Number.isFinite(request.distance) || !Number.isFinite(request.durationMs)) return null;
   const clampedBounds = clampCompanionBounds(bounds, workArea);
   const range = allowedPositionRange(clampedBounds, workArea);
   const start = { x: clampedBounds.x, y: clampedBounds.y };

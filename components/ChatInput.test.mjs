@@ -10,6 +10,7 @@ const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
   alias: {
+    "./MemePicker.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ChatCommandCard.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ToolPermissionControl.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ReplySuggestionBar.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
@@ -415,13 +416,13 @@ test("renders compact errors above the input as a wrapping alert", () => {
 test("does not send text before an attached image finishes loading", () => {
   assert.match(chatInputSource, /const \[isProcessingImages, setIsProcessingImages\] = useState\(false\)/);
   assert.match(chatInputSource, /setIsProcessingImages\(true\)[\s\S]*?pendingImageCountRef\.current <= 0[\s\S]*?setIsProcessingImages\(false\)/);
-  assert.match(chatInputSource, /if \(permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
-  assert.match(chatInputSource, /const canSend = !permissionSaving && !isProcessingImages/);
+  assert.match(chatInputSource, /if \(sendDisabled \|\| permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
+  assert.match(chatInputSource, /const canSend = !sendDisabled && !permissionSaving && !isProcessingImages/);
 });
 
 test("new conversations wait only until a default or explicit model resolves", () => {
-  assert.match(chatInputSource, /if \(permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
-  assert.match(chatInputSource, /const canSend = !permissionSaving && !isProcessingImages[\s\S]*?&& !isAutoModelSelection/);
+  assert.match(chatInputSource, /if \(sendDisabled \|\| permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
+  assert.match(chatInputSource, /const canSend = !sendDisabled && !permissionSaving && !isProcessingImages[\s\S]*?&& !isAutoModelSelection/);
   assert.match(chatInputSource, /const displayModelName = model && !isAutoModelSelection/);
   assert.match(chatInputSource, /const canOptimizePrompt = hasInputText[\s\S]*?&& !isAutoModelSelection/);
   assert.match(chatInputSource, /onThinkingLevelChange && !isAutoModelSelection/);
@@ -443,15 +444,13 @@ test("compaction uses a quiet progress row and closes the model menu when starte
   assert.doesNotMatch(chatInputSource, /model-settings-row\$\{isCompacting \? " is-danger"/);
 });
 
-test("composer queue excludes terminal submissions and retains actual waiting messages and controls", () => {
+test("composer queue first paint excludes terminal and unconfirmed submissions", () => {
   const terminal = ["failed", "interrupted", "expired", "completed", "cancelled"].map(status => ({ commandId: status, status, preview: `terminal-${status}`, errorMessage: "old failure" }));
   const renderQueue = records => renderToStaticMarkup(React.createElement(I18nProvider, null, React.createElement(ChatCommandQueue, { records, actions: {} })));
   assert.equal(renderQueue(terminal), "");
   const html = renderQueue([...terminal, { commandId: "waiting", status: "queued", preview: "still waiting" }, { commandId: "accepted", status: "accepted", preview: "just accepted" }]);
-  assert.match(html, /still waiting/);
-  assert.match(html, /just accepted/);
+  assert.equal(html, "", "new queue entries wait for the stabilization interval; browser tests cover their controls");
   assert.doesNotMatch(html, /terminal-|old failure/);
-  assert.match(html, /取消/);
 });
 
 
@@ -460,7 +459,7 @@ test("queue keeps a single row across submission and runtime handoff", () => {
   const render = (status, pendingMessages) => renderToStaticMarkup(React.createElement(I18nProvider, null, React.createElement(ChatCommandQueue, { records: [{...record,status}], actions: {}, pendingMessages, onPendingAction: async()=>{} })));
   for (const status of ["accepted", "dispatching"]) {
     const before = render(status, {steering:[],followUp:[],pendingInputs:[]});
-    assert.match(before, /handoff-message/);
+    assert.equal(before, "", "admission alone must not render a queue placeholder");
     assert.doesNotMatch(before, /正在保存提交|Saving submission/);
     const after = render(status, {steering:["handoff-message"],followUp:[],pendingInputs:[{id:"runtime-id",commandId:"handoff",text:"handoff-message",kind:"steer"}]});
     assert.equal((after.match(/title="handoff-message"/g)??[]).length, 1, "runtime identity replaces rather than duplicates the placeholder");

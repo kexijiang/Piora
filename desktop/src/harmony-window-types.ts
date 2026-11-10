@@ -24,7 +24,7 @@ export interface HarmonyWindowBridge {
   setScale(scale: MirrorScale): Promise<HarmonyWindowState>;
   setAlwaysOnTop(value: boolean): Promise<HarmonyWindowState>;
   getState(): Promise<HarmonyWindowState>;
-  reportFrame(input: { serial: string; width: number; height: number; presentation?: "floating" | "sidebar"; transition?: string }): Promise<void>;
+  reportFrame(input: { serial: string; width: number; height: number; chromeHeight?: number; presentation?: "floating" | "sidebar"; transition?: string }): Promise<void>;
   showMenu(): Promise<void>;
   openWorkbench(): Promise<void>;
   onStateChange(listener: (state: HarmonyWindowState) => void): () => void;

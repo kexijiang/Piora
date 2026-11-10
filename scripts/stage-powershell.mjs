@@ -9,6 +9,7 @@ import extract from "@electron-internal/extract-zip";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { EnvHttpProxyAgent, fetch } from "undici";
+import { fetchReleaseAsset } from "./github-release-download.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 export const powershellManifest = JSON.parse(await readFile(join(projectRoot, "third_party/powershell/manifest.json"), "utf8"));
@@ -55,7 +56,7 @@ export async function stagePowerShell(root = projectRoot) {
   try {
     for (let attempt = 1; ; attempt++) {
       try {
-        const response = await fetch(powershellManifest.url, { signal: AbortSignal.timeout(300_000), dispatcher });
+        const response = await fetchReleaseAsset(powershellManifest.url, { signal: AbortSignal.timeout(300_000), dispatcher }, fetch);
         if (!response.ok || !response.body) { await response.body?.cancel(); throw new Error(`PowerShell download failed: HTTP ${response.status}`); }
         await pipeline(Readable.fromWeb(response.body), createWriteStream(archive, { flags: "w" }));
         break;

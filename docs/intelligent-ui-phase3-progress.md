@@ -1,3 +1,7 @@
+2026-11-10 提交同步：A2UI 迁移及阶段三体验文档通过本分支交付到 Draft PR #238；合并主线 `e26af48f`（包含首次同步的 `57e4511e`），适配 Pi 1.5.0 工具校验、包含回复的分叉与交互状态继承，更新说明迁入独立片段。合并后结果与本机 Electron 限制见[同步验证记录](verification/intelligent-ui-a2ui-sync-2026-11-10.md)。下方及 11 月 9 日 PDF 的“未提交、未推送”保留为历史快照；模型语义、通用复杂生成与人工验收继续列入第四阶段。
+
+2026-11-09 A2UI 迁移增补：按用户确认，将新生成的普通回答与复杂小程序界面切换为 A2UI 1.0 和本地受限组件目录；保留原有计算、隔离执行、发布回执及状态恢复，旧历史继续可读。组件 ID 与输入字段按绑定路径独立处理。迁移内容、自然语言试用方法见[迁移指南](intelligent-ui-a2ui-migration.md)，准确通过/失败和剩余范围见[验证记录](verification/intelligent-ui-a2ui-2026-11-09.md)及[PDF](../output/pdf/piora-intelligent-ui-a2ui-migration.pdf)。本批代码尚未提交或推送，完整 CI 与双人人工验收仍按第四阶段执行。以下保留历史记录。
+
 2026-11-03 交付更新：第三阶段可用性验证、重放工具与阶段资料已提交为 d33f6c79。本次另按阶段二格式补齐[第三阶段体验测试指南](intelligent-ui-phase3-testing.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-testing.pdf)，含 9 组自然语言用例、操作、预期和反馈表；只整理文档，未重新执行全部新生成手测。旧完成报告/JSON/PDF 的“未提交”及摘要是生成时快照，当前提交状态以本记录和 Git 为准。本轮仅本地提交，未推送。以下保留历史记录。
 
 2026-11-03 第三阶段按用户确认的 v3.9 范围完成：交付复杂功能可用的 Beta，系统性可靠性与泛化转入新增第四阶段。本批原始接球游戏一次发布，真实桌面复测 qlXUas 完成 16 个检查点、4 次刷新、终局/重置及当前状态追问；首次夹具错误和额外暂停/历史解释问题分别保留。复核 519 个桌面来源、178 个能力来源全部匹配，复用既有 538/538 相关检查，未重复全套测试。生产基线 6c59034c 已在 upstream Draft PR #238；本批重放工具和文档尚未提交或推送。详见[完成报告](verification/intelligent-ui-phase3-usable-2026-11-03.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-usable-2026-11-03.pdf)、[方案 v3.9](intelligent-ui-phase3-design-v3.9.md) / [PDF](../output/pdf/piora-intelligent-ui-phase3-design-v3.9.pdf)、[试用说明](intelligent-ui-phase3-testing.md)及[第四阶段计划](intelligent-ui-phase4-plan.md)。完整 CI、封存集、双人人工验收、完整视觉资源矩阵均未执行，不声称发布包或普遍生成可靠性通过。以下记录是旧阶段划分下的历史快照，历史“未通过”仍有效。

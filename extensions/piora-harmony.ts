@@ -8,7 +8,8 @@ import { assertScenarioHapsAllowed } from "../lib/harmony/runtime/allowed-hap.ts
 import { assertHarmonyLocalSourceAllowed, assertNewHarmonyLocalFileAllowed } from "../lib/harmony/runtime/local-file-access.ts";
 import { requireValidObservation } from "../lib/harmony/observation/quality.ts";
 import { APP_DISPLAY_NAME } from "../lib/branding.ts";
-import { Type, validateToolArguments } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
+import { validateToolArguments } from "@earendil-works/pi-ai";
 import { gestureCoordinates } from "../lib/harmony/scenario-executor.ts";
 import { defineTool, type ExtensionAPI, type ToolDefinition } from "@earendil-works/pi-coding-agent";
 import {

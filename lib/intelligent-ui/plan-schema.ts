@@ -1,4 +1,4 @@
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import type { TSchema } from "typebox";
 import { UI_PLAN_LIMITS } from "./plan-types";
 

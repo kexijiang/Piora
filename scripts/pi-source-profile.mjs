@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { bashFile, originalBashSource, patchWindowsBash } from "./pi-windows-bash-patch.mjs";
 import { codingAgentAdmissionTreeCommitment, verifyIntelligentUiAdmission } from "./patch-intelligent-ui-admission.mjs";
 
-const certificate = JSON.parse(await readFile(new URL("./pi-source-profile-1.4.0.json", import.meta.url), "utf8"));
+const certificate = JSON.parse(await readFile(new URL("./pi-source-profile-1.5.0.json", import.meta.url), "utf8"));
 export const piSourceLaunchers = Object.freeze({
   "cli.js": '#!/usr/bin/env node\n// Piora: official unbundled Pi; dependencies resolve through the reviewed lock.\nimport "../cli.js";\n',
   "rpc-entry.js": '#!/usr/bin/env node\n// Piora: official unbundled Pi; dependencies resolve through the reviewed lock.\nimport "../rpc-entry.js";\n',

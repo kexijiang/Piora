@@ -24,6 +24,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changelog:
+    name: Changelog fragments
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22.19.0
+      - run: node --test lib/changelog-fragments.test.mjs
+      - run: npm run changelog:check
+      - name: Require PR notes or a documented exemption
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: npm run changelog:check-pr -- "$BASE_SHA" "$HEAD_SHA"
+
   website:
     name: Website checks
     runs-on: ubuntu-latest
@@ -35,7 +56,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.19.0
           cache: npm
@@ -73,7 +94,7 @@ jobs:
 
       - name: Set up Node.js
         id: node-setup
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.19.0
           cache: npm
@@ -121,9 +142,17 @@ jobs:
         if: runner.os == 'Linux'
         run: npm run verify:backgrounds
 
+      - name: Prepare verified Electron download
+        if: runner.os == 'Windows'
+        run: node scripts/prepare-electron-download.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Build unpacked Windows application
         if: runner.os == 'Windows'
         run: npm run pack:win
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
 
       - name: Verify packaged standalone service in isolation
         if: runner.os == 'Windows'
@@ -138,7 +167,7 @@ jobs:
     # Preserve branch-protection check names. This gate needs neither checkout
     # nor dependencies, and must fail even when an upstream job was skipped.
     name: Quality checks (${{ matrix.os }})
-    needs: [tests, quality-validation]
+    needs: [tests, quality-validation, changelog]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -153,8 +182,9 @@ jobs:
         env:
           TEST_RESULT: ${{ needs.tests.result }}
           QUALITY_RESULT: ${{ needs.quality-validation.result }}
+          CHANGELOG_RESULT: ${{ needs.changelog.result }}
         run: >-
-          node -e "for (const name of ['TEST_RESULT', 'QUALITY_RESULT']) {
+          node -e "for (const name of ['TEST_RESULT', 'QUALITY_RESULT', 'CHANGELOG_RESULT']) {
           const result = process.env[name]; console.log(name + ': ' + result);
           if (result !== 'success') process.exitCode = 1; }"
 
@@ -168,7 +198,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
         with:
           node-version: 22.19.0
           cache: npm

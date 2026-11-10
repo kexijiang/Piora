@@ -2,6 +2,8 @@
 
 - [完整中文用户手册](user-manual.zh-CN.md)：从首次安装、模型配置到日常操作、备份迁移和故障排查；包含当前源码及未发布功能的适用范围说明
 - [项目介绍与使用](../README.md)
+- [README 截图清单](readme-screenshots.md)：12 个界面的拍摄步骤、文件名和占位替换方法
+- [桌面更新来源](desktop-update-sources.md)：GitHub / 内源的配置、镜像契约与版本行为
 - [桌面开发与启动](../desktop/README.md)
 - [桌面自动化测试](desktop-automated-testing.md)：隔离的真实 Electron 场景、结果报告、失败诊断与新增场景方式（#247 首批能力）
 - [发布与构建](release.md)

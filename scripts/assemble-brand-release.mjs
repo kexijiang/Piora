@@ -5,7 +5,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export function brandReleaseGroups(tag) {
-  if (!/^v\d+\.\d+\.\d+(?:-beta\.\d+)?$/.test(tag)) throw new Error("Invalid release tag");
+  if (!/^v\d+\.\d+\.\d+(?:-(?:beta)\.\d+)?$/.test(tag)) throw new Error("Invalid release tag");
   const version = tag.slice(1);
   const preview = version.includes("-beta.");
   return ["piora"].flatMap(id => {

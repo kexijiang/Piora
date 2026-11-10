@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import ts from "typescript";
+import { createJiti } from "jiti";
+
+const { createChatCommandCatalog, parseChatInput } = await createJiti(import.meta.url).import("../lib/chat-command-input.ts");
 
 const source = readFileSync(new URL("./ChatInput.tsx", import.meta.url), "utf8");
 const start = source.indexOf("  const handleSend = useCallback");
@@ -15,10 +18,12 @@ function composer(onSend) {
     value: " original\nmessage ",
     attachedImages: [{ data: "YWJj", mimeType: "image/png", previewUrl: "blob:preview" }],
     attachedFiles: [{ name: "notes.txt", text: "full attachment", size: 15 }],
-    permissionSaving: false, isStreaming: false, isProcessingImages: false, isAutoModelSelection: false, runningSendMode: "steer",
+    sendDisabled: false, permissionSaving: false, isStreaming: false, isProcessingImages: false, isAutoModelSelection: false, runningSendMode: "steer",
     pendingFileCountRef: { current: 0 },
     onBuiltinCommand: undefined, onQueueInput: undefined, contextUsage: null,
     commandInputOptions: {},
+    commandCatalog: createChatCommandCatalog([]), slashCommands: undefined,
+    createChatCommandCatalog, parseChatInput,
     setCommandInputOptions: value => { env.commandInputOptions = value; },
     shouldMaterializeDirectPrompt: () => false, t: (key) => key,
     sendingRef: { current: false }, draftKeyRef: { current: "session" },
@@ -54,6 +59,41 @@ function composer(onSend) {
   };
   return { env, send: new Function("env", `with (env) { ${js}; return handleSend; }`)(env) };
 }
+
+test("workspace readiness blocks submission without clearing text, attachments or reply ownership", async () => {
+  const submissions = [];
+  const { env, send } = composer(async (...args) => { submissions.push(args); return true; });
+  env.replyDraftRef.current.spans = [{ start: 1, end: 9, id: "reply" }];
+  env.sendDisabled = true;
+  await send();
+  assert.equal(submissions.length, 0);
+  assert.equal(env.value, " original\nmessage ");
+  assert.equal(env.attachedImages[0].data, "YWJj");
+  assert.equal(env.attachedFiles[0].text, "full attachment");
+  assert.deepEqual(env.replyDraftRef.current.spans, [{ start: 1, end: 9, id: "reply" }]);
+  assert.equal(env.persistenceReleased, undefined);
+  env.sendDisabled = false;
+  await send();
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0][0], " original\nmessage ");
+  assert.equal(submissions[0][1][0].data, "YWJj");
+  assert.equal(submissions[0][2][0].text, "full attachment");
+});
+
+test("a slash path submits as literal text with attachments and its original draft", async () => {
+  const submissions = [];
+  const { env, send } = composer(async (...args) => { submissions.push(args); return true; });
+  const text = "/api/agent/querySkuInfo再新增一个字段，Boolean";
+  env.setValue(text);
+  env.replyDraftRef.current = { value: text, spans: [] };
+  await send();
+  assert.equal(submissions.length, 1);
+  assert.equal(submissions[0][0], text);
+  assert.equal(submissions[0][1][0].data, "YWJj");
+  assert.equal(submissions[0][2][0].text, "full attachment");
+  assert.equal(submissions[0][5].inputMode, "text");
+  assert.equal(submissions[0][5].delivery, "next_turn");
+});
 
 test("permission saving keeps the draft and prevents submission until the selected mode is saved", async () => {
   let submissions = 0;

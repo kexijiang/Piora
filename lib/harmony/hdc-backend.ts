@@ -1,7 +1,8 @@
+import { allocatePioraPort } from "./runtime/local-port";
 import type { HarmonyRecordingContext } from "./types";
 import { existsSync } from "node:fs";
 import { link, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { createConnection, createServer, type Socket } from "node:net";
+import { createConnection, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -341,23 +342,7 @@ export function parseHarmonyForwardedPort(output: string): number | undefined {
   return Number.isSafeInteger(port) && port > 0 && port <= 65_535 ? port : undefined;
 }
 
-async function reserveLoopbackPort(): Promise<number> {
-  return await new Promise<number>((resolvePort, rejectPort) => {
-    const server = createServer();
-    server.unref();
-    server.once("error", rejectPort);
-    server.listen({ host: "127.0.0.1", port: 0, exclusive: true }, () => {
-      const address = server.address();
-      if (!address || typeof address === "string") {
-        server.close();
-        rejectPort(new Error("Unable to allocate a local Harmony video port"));
-        return;
-      }
-      const port = address.port;
-      server.close((error) => error ? rejectPort(error) : resolvePort(port));
-    });
-  });
-}
+const reserveLoopbackPort = allocatePioraPort;
 
 async function connectLoopback(port: number, signal?: AbortSignal): Promise<Socket> {
   return await new Promise<Socket>((resolveSocket, rejectSocket) => {
@@ -909,7 +894,12 @@ export class HdcBackend implements HarmonyAutomationBackend {
         return { serial, state, transport, transportEvidence, capabilities: { ...NO_UITEST_CAPABILITIES, launchApp: false } };
       }
       const cached = this.deviceInfoBySerial.get(serial);
-      if (cached && cached.expiresAt > Date.now() && cached.device.transport === transport) return { ...cached.device, state, transport, transportEvidence };
+      // Device enumeration still runs on every poll. Defer the nine metadata
+      // shell probes while native video owns the channel: a periodic burst of
+      // HDC sessions competes with the video stream. Retry partial identities,
+      // and refresh expired names/version data once capture ends.
+      const streamingIdentity = this.debugVideos.has(serial) && cached?.device.model && cached.device.product;
+      if (cached && (cached.expiresAt > Date.now() || streamingIdentity) && cached.device.transport === transport) return { ...cached.device, state, transport, transportEvidence };
       let responseSample: BackendDevice["responseSample"];
       let channelNotReady = false;
       const [model, product, userName, persistedName, deviceName, osVersion, apiVersion, uitestVersion, marketName] = await Promise.all([
@@ -1640,9 +1630,11 @@ export class HdcBackend implements HarmonyAutomationBackend {
       // Only the legacy HAP and system recorder paths require an unlocked phone.
       let opening = this.debugVideos.get(serial);
       if (!opening) {
+        const cached = this.deviceInfoBySerial.get(serial);
+        const knownVersion = cached && cached.expiresAt > Date.now() ? cached.device.uitestVersion : undefined;
         opening = DevEcoVideoSession.start(serial, source, (args, operation, abort, timeout) => this.run(args, operation, abort, timeout), () => {
           if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
-        });
+        }, undefined, knownVersion);
         this.debugVideos.set(serial, opening);
       }
       try {
@@ -1653,7 +1645,8 @@ export class HdcBackend implements HarmonyAutomationBackend {
         }
         const connection = session.subscribe(signal, recording);
         this.videoClosers.add(connection.close);
-        return { stream: connection.stream, close: async () => { try { await connection.close(); } finally { this.videoClosers.delete(connection.close); } } };
+        return { stream: connection.stream, requestKeyframe: connection.requestKeyframe,
+          close: async () => { try { await connection.close(); } finally { this.videoClosers.delete(connection.close); } } };
       } catch (error) {
         if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
         throw error;
@@ -1925,13 +1918,13 @@ export class HdcBackend implements HarmonyAutomationBackend {
 
   async pressKey(
     serial: string,
-    key: "back" | "home" | "recents" | "enter",
+    key: "back" | "home" | "recents" | "enter" | "volume_up" | "volume_down" | "power",
     signal?: AbortSignal,
   ): Promise<void> {
     if (this.capabilitiesBySerial.get(serial)?.keys === false) {
       throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Harmony UiTest key injection is unavailable on this device");
     }
-    const value = { back: "Back", home: "Home", recents: "2720", enter: "2054" }[key];
+    const value = { back: "Back", home: "Home", recents: "2720", enter: "2054", volume_up: "16", volume_down: "17", power: "18" }[key];
     if (!value) throw new HarmonyError("INVALID_ARGUMENT", "Unsupported key");
     await this.shell(serial, ["uitest", "uiInput", "keyEvent", value], "press_key", signal);
   }

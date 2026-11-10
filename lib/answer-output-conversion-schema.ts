@@ -1,4 +1,4 @@
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 
 export function answerConversionSchema(target: "mini-app" | "intelligent-ui") {
   return Type.Optional(Type.Object({

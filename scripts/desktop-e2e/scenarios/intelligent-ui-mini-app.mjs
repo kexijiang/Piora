@@ -3,6 +3,8 @@ import { createServer } from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { discreteCounterPlan } from '../../../lib/mini-app-fixtures.mjs';
+import {createJiti} from 'jiti';
+const {a2uiExplodedExample}=await createJiti(import.meta.url).import('../../../lib/a2ui/exploded-example.ts');
 
 const provider = 'desktop-mini-app-fixture', model = 'mini-app-fixture';
 function savedApp(messages) {
@@ -14,7 +16,7 @@ function savedApp(messages) {
 export const intelligentUiMiniApp = {
   id: 'intelligent-ui-mini-app',
   mode: 'local-model-fixture',
-  scope: 'real Electron and Next chat; production mini app extension, QuickJS/WASM, iframe and persistence; deterministic local model',
+  scope: 'real Electron and Next chat; A2UI 1.0 authoring, production mini app extension, QuickJS/WASM, iframe and persistence; deterministic local model',
   coverage: ['Beta switch through settings', 'chat tool publication and actual runtime assets', 'iframe input and click', 'shared discrete step and playback completion', 'event-only tools omit playback controls', 'save and reload', 'follow-up receives confirmed state', 'disable and restore saved interactive output'],
   limits: ['real model selection or generation quality', '3D and continuous simulations', 'multi-window recovery and migration', 'packaged builds', 'visual acceptance and other platforms'],
   async prepare({ paths, registerCleanup, report }) {
@@ -26,16 +28,36 @@ export const intelligentUiMiniApp = {
         const chunks = []; for await (const chunk of req) chunks.push(chunk);
         const body = JSON.parse(Buffer.concat(chunks).toString());
         const tools = (body.tools ?? []).map(tool => tool.function?.name), app = savedApp(body.messages ?? []);
-        const priorCall = body.messages?.some(message => message.role === 'tool' && message.tool_call_id === 'desktop-mini-app-create');
-        const create = tools.includes('piora_render_mini_app') && !priorCall;
+        // SDK context entries may follow the actual user as additional user-role
+        // messages. Classify only this fixture's explicit task markers.
+        const userTexts = (body.messages ?? []).filter(message => message.role === 'user').map(message => JSON.stringify(message.content ?? ''));
+        const componentTask = userTexts.some(text => text.includes('费用对比 fixture'));
+        const explodedTask = userTexts.some(text => text.includes('自行车拆解 fixture'));
+        const eventOnlyTask = userTexts.some(text => text.includes('Create an event-only fixture:'));
+        const selectedTool = componentTask ? 'piora_render_ui_plan' : 'piora_render_mini_app';
+        const callId = componentTask ? 'desktop-a2ui-create' : explodedTask ? 'desktop-bike-create' : 'desktop-mini-app-create';
+        const priorCall = body.messages?.some(message => message.role === 'tool' && message.tool_call_id === callId);
+        const create = tools.includes(selectedTool) && !priorCall;
         const plan = discreteCounterPlan();plan.program=plan.program.replace('state.count>=5','state.count>=12');
-        const lastUser=body.messages?.findLast(message=>message.role==='user');
-        if(JSON.stringify(lastUser?.content ?? '').includes('event-only fixture'))plan.playback={mode:'none'};
-        requests.push({ at: Date.now(), tools, create, savedState: app ?? null });
+        plan.document = {messages:[{version:'1.0',createSurface:{surfaceId:'counter',catalogId:'urn:piora:a2ui:interactive:1',dataModel:{inputs:{start:2}},components:[
+          {id:'root',component:'Column',children:['startControl','count','increment']},
+          {id:'startControl',component:'PioraNumber',label:'Starting value',value:{'@path':'/inputs/start'},min:0,max:20,step:1},
+          {id:'count',component:'Text',text:{'@path':'/frame/count'}},
+          {id:'increment',component:'Button',child:'incrementLabel',action:{functionCall:{'@call':'pioraEvent',args:{id:'increment'}}}},
+          {id:'incrementLabel',component:'Text',text:'Add one'},
+        ]}}]};
+        if(create&&!componentTask)assert.ok(body.tools.find(tool=>tool.function?.name==='piora_render_mini_app')?.function.parameters.properties.document.properties.messages,'The desktop must expose the A2UI authoring contract');
+        if(eventOnlyTask)plan.playback={mode:'none'};
+        const answer = componentTask ? {id:'cost',title:'费用比较',messages:[{version:'1.0',createSurface:{surfaceId:'cost',catalogId:'urn:piora:a2ui:interactive:1',dataModel:{inputs:{people:2}},components:[
+          {id:'root',component:'Row',children:['controls','results']},{id:'controls',component:'Card',child:'peopleControl'},
+          {id:'peopleControl',component:'PioraNumber',label:'人数',value:{'@path':'/inputs/people'},min:1,step:1},
+          {id:'results',component:'Card',child:'total'},{id:'total',component:'PioraMetric',label:'总费用',value:{'@call':'multiply',args:{values:[{'@path':'/inputs/people'},30]}}},
+        ]}}]} : explodedTask ? a2uiExplodedExample('bike') : plan;
+        requests.push({ at: Date.now(), tools, create, componentTask, eventOnlyTask, explodedTask, playback: componentTask ? null : answer.playback, savedState: app ?? null });
         assert.ok(requests.length < 20, 'Unexpected fixture model loop');
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' });
         const emit = (delta, finish_reason = null) => res.write(`data: ${JSON.stringify({ id: `mini-${requests.length}`, object: 'chat.completion.chunk', created: Math.floor(Date.now() / 1000), model, choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
-        emit({ role: 'assistant', ...(create ? { tool_calls: [{ index: 0, id: 'desktop-mini-app-create', type: 'function', function: { name: 'piora_render_mini_app', arguments: JSON.stringify(plan) } }] }
+        emit({ role: 'assistant', ...(create ? { tool_calls: [{ index: 0, id: callId, type: 'function', function: { name: selectedTool, arguments: JSON.stringify(answer) } }] }
           : { content: app ? `Observed saved count: ${app.summary}` : 'Mini app desktop fixture' }) });
         emit({}, create ? 'tool_calls' : 'stop'); res.end('data: [DONE]\n\n');
       } catch (error) {
@@ -76,6 +98,10 @@ export const intelligentUiMiniApp = {
     await step('generate-mini-app', async () => {
       await send('Create an interactive counter so I can change its starting value and add one.');
       await frame.getByRole('button', { name: 'Add one' }).waitFor(); await count(2); await saved.waitFor();
+      await page.getByText('Observed saved count: Count: 2', { exact: true }).waitFor();
+      // Publication can appear before the final assistant reply settles. The
+      // answer host intentionally pauses interaction during reconciliation.
+      await waitUntil(() => page.locator('[data-answer-output-interaction-paused="true"]').count().then(count => count === 0), 'conversation permits answer interaction');
       assert.equal(await surface.getByRole('button', { name: /^(Play|播放)$/ }).isVisible(), true);
       await screenshot('mini-app-created.png');
     });
@@ -146,6 +172,44 @@ export const intelligentUiMiniApp = {
       await reload();await count(3);
       assert.equal(await surface.getByRole('button',{name:/^(Play|播放|Step|单步)$/}).count(),0);
       await screenshot('mini-app-event-only.png');
+    });
+    await step('a2ui-component-edit-and-reload', async () => {
+      await page.getByRole('button',{name:/^(New chat|新对话)$/}).first().click();
+      await send('费用对比 fixture：每人 30 元，先按两人，给我一个可以改人数的计算器。');
+      const ui=page.locator('[data-a2ui-version="1.0"]');
+      await ui.getByRole('spinbutton',{name:'人数'}).waitFor();
+      await waitUntil(()=>ui.getByText('60',{exact:true}).isVisible(),'A2UI initial calculation');
+      assert.equal(await ui.locator('[data-a2ui-component="Card"]').count(),2);
+      await ui.getByRole('spinbutton',{name:'人数'}).fill('5');
+      await waitUntil(()=>ui.getByText('150',{exact:true}).isVisible(),'A2UI reactive result');
+      await page.getByText(/^(Saved · available to your next message|已保存 · 后续追问可读取当前参数)$/).waitFor();
+      await screenshot('a2ui-component-saved.png');
+      await reload();
+      await waitUntil(async()=>await ui.getByRole('spinbutton',{name:'人数'}).inputValue()==='5','A2UI restored control');
+      assert.equal(await ui.getByText('150',{exact:true}).isVisible(),true);
+      await screenshot('a2ui-component-restored.png');
+    });
+    await step('a2ui-svg-explode-select-and-reload', async () => {
+      await page.getByRole('button',{name:/^(New chat|新对话)$/}).first().click();
+      await send('自行车拆解 fixture：展开自行车，并选择一个部件查看。');
+      await frame.getByRole('button',{name:'完全展开'}).waitFor();
+      await page.getByText('Mini app desktop fixture',{exact:true}).last().waitFor();
+      await waitUntil(()=>page.locator('[data-answer-output-interaction-paused="true"]').count().then(count=>count===0),'SVG conversation settled');
+      await frame.getByRole('button',{name:'完全展开'}).click();
+      await waitUntil(async()=>await frame.locator('svg g').nth(1).getAttribute('transform')==='translate(70 25)','front wheel exploded geometry');
+      // selectOption dispatches synthetic events, intentionally rejected by the
+      // trusted renderer. Exercise the same native keyboard path as a person.
+      await frame.getByLabel('查看部件').focus();
+      await page.keyboard.press('Home');await page.keyboard.press('ArrowDown');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');
+      await waitUntil(async()=>await frame.locator('svg g').first().getAttribute('opacity')==='0.2','other parts dimmed');
+      assert.equal(await frame.locator('svg g').nth(1).getAttribute('opacity'),'1');
+      await surface.getByRole('button',{name:/^(Save|保存)$/}).click();await saved.waitFor();
+      await waitUntil(()=>surface.getByRole('button',{name:/^(Save|保存)$/}).isEnabled(),'SVG checkpoint saved');
+      await frame.locator('svg').scrollIntoViewIfNeeded();await screenshot('a2ui-bike-exploded.png');
+      await reload();await frame.getByRole('button',{name:'完全展开'}).waitFor();
+      await waitUntil(async()=>await frame.getByLabel('查看部件').inputValue()==='前轮','SVG selection restored');
+      await waitUntil(async()=>await frame.locator('svg g').nth(1).getAttribute('transform')==='translate(70 25)' && await frame.locator('svg g').first().getAttribute('opacity')==='0.2','SVG restored frame');
+      await frame.locator('svg').scrollIntoViewIfNeeded();await screenshot('a2ui-bike-restored.png');
     });
   },
 };

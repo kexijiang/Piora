@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { loadBranding } from "./branding-config.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const STRICT_VERSION = /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.(0|[1-9]\d*))?$/;
+const STRICT_VERSION = /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:beta)\.(0|[1-9]\d*))?$/;
 const MINIMUM_PORTABLE_BYTES = 50 * 1024 * 1024;
 
 export function normalizePortableVersion(value) {

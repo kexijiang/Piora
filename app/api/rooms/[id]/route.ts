@@ -1,3 +1,6 @@
+import { listRoomUiRequests } from "@/lib/room-activity-stream";
+import { ensureRoomSessionIsolation } from "@/lib/room-session-isolation";
+import { localRoomUserAuthor } from "@/lib/room-local-user";
 import { NextResponse } from "next/server";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -35,6 +38,10 @@ import { projectRoomTaskRun } from "@/lib/task-run";
 import { listAllSessions } from "@/lib/session-reader";
 import type { SessionInfo } from "@/lib/types";
 import { resolveProject } from "@/lib/worktree";
+
+function isolatedRoom(room: ReturnType<typeof getRoom>) {
+  return ensureRoomSessionIsolation(room.id);
+}
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +84,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const query = new URL(request.url).searchParams;
     const afterSeq = Number(query.get("afterSeq") ?? 0);
     const privateSessionId = query.get("privateSessionId");
-    const room = getRoom(id);
+    const room = ensureRoomSessionIsolation(id);
     if (privateSessionId) {
       const requesterSessionId = query.get("sessionId");
       const requester = room.members.find((member) => member.sessionId === requesterSessionId);
@@ -94,6 +101,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       taskRuns: tasks.map((task) => projectRoomTaskRun(task, artifacts)),
       artifacts,
       audit: listRoomAudit(id),
+      uiRequests: listRoomUiRequests(id),
       ...(privateSessionId ? { privateNotes: listPrivateNotes(id, privateSessionId) } : {}),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
@@ -150,7 +158,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!existing) return NextResponse.json({ error: "Use the coordinator-managed Add Agent flow to join this room." }, { status: 403 });
       const session = await resolveBinding(body.sessionId);
       const project = await resolveProject(session.cwd);
-      return NextResponse.json({ room: addRoomMember(id, {
+      return NextResponse.json({ room: isolatedRoom(addRoomMember(id, {
         sessionId: body.sessionId,
         name: body.sessionName,
         cwd: session.cwd,
@@ -159,14 +167,14 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         role: existing.role,
         instructions: existing.instructions,
         requestedBy: body.sessionId,
-      }) });
+      })) });
     }
     if (body.action === "add_member") {
       if (!body.targetSessionId) return NextResponse.json({ error: "targetSessionId is required" }, { status: 400 });
       requireCoordinator(id, body.sessionId);
       const session = await resolveBinding(body.targetSessionId);
       const project = await resolveProject(session.cwd);
-      return NextResponse.json({ room: addRoomMember(id, {
+      return NextResponse.json({ room: isolatedRoom(addRoomMember(id, {
         sessionId: body.targetSessionId,
         name: body.sessionName,
         instructions: body.instructions,
@@ -175,7 +183,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         worktreeBranch: project.isWorktree ? project.branch ?? undefined : undefined,
         role: body.role,
         requestedBy: body.sessionId,
-      }) });
+      })) });
     }
     if (body.action === "update_member") {
       if (!body.memberId) return NextResponse.json({ error: "memberId is required" }, { status: 400 });
@@ -185,7 +193,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const targetSessionId = body.targetSessionId ?? current.sessionId;
       const session = await resolveBinding(targetSessionId);
       const project = await resolveProject(session.cwd);
-      return NextResponse.json({ room: updateRoomMember(id, body.sessionId, body.memberId, {
+      return NextResponse.json({ room: isolatedRoom(updateRoomMember(id, body.sessionId, body.memberId, {
         sessionId: targetSessionId,
         name: body.sessionName,
         instructions: body.instructions,
@@ -193,7 +201,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         cwd: session.cwd,
         projectRoot: project.projectRoot,
         worktreeBranch: project.isWorktree ? project.branch ?? undefined : undefined,
-      }) });
+      })) });
     }
     if (body.action === "leave") {
       return NextResponse.json({ room: removeRoomMember(id, body.targetSessionId ?? body.sessionId, body.sessionId) });
@@ -281,9 +289,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       } });
     }
     const message = appendRoomMessage(id, {
-      authorKind: body.authorKind ?? "user",
-      authorId: body.sessionId,
-      authorName: body.sessionName ?? member.name,
+      ...(body.authorKind === "session" ? { authorKind: "session" as const, authorId: member.sessionId } : localRoomUserAuthor()),
       content: body.content,
       replyTo: body.replyTo,
       correlationId: body.correlationId,

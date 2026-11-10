@@ -18,11 +18,11 @@ export async function applyMirrorBounds(window: { setBounds(bounds: Bounds, anim
   return actual;
 }
 export function mirrorBounds(area: { x: number; y: number; width: number; height: number }, ratio: number,
-  scale: MirrorScale, position?: { x: number; y: number }) {
+  scale: MirrorScale, position?: { x: number; y: number }, chromeHeight = MIRROR_TITLE_HEIGHT + 2) {
   if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 20) ratio = 9 / 20;
-  const heightAtFit = Math.max(1, Math.min(area.height - 32 - MIRROR_TITLE_HEIGHT - 2, (area.width - 34) / ratio));
+  const heightAtFit = Math.max(1, Math.min(area.height - 32 - chromeHeight, (area.width - 34) / ratio));
   const width = Math.round(heightAtFit * ratio * scale / 100) + 2;
-  const height = Math.round(heightAtFit * scale / 100) + MIRROR_TITLE_HEIGHT + 2;
+  const height = Math.round(heightAtFit * scale / 100) + chromeHeight;
   return { width, height,
     x: Math.round(Math.max(area.x, Math.min(area.x + area.width - width, position?.x ?? area.x + area.width - width - 16))),
     y: Math.round(Math.max(area.y, Math.min(area.y + area.height - height, position?.y ?? area.y + 16))),

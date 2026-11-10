@@ -66,6 +66,11 @@ runtime.streamSimple = (selected, context, options) => {
     fetch: async (...args) => {
       if (typeof args[1]?.body === 'string') {
         const body = JSON.parse(args[1].body);
+        // Synthetic development prompts only. Retain the exact public tool
+        // contracts and streamed arguments to distinguish generation failures
+        // from provider/SDK JSON parsing failures; never record request headers.
+        request.toolSchemas = body.tools;
+        request.rawToolCalls = [];
         request.generationSettings = { model: body.model, max_tokens: body.max_tokens, max_completion_tokens: body.max_completion_tokens, thinking: body.thinking, reasoning_effort: body.reasoning_effort };
         if (body.model !== 'deepseek-flash' || body.thinking?.type !== thinking) throw new Error(`Evaluation requires deepseek-flash with thinking explicitly ${thinking}; no request was sent`);
       } else {
@@ -81,6 +86,12 @@ runtime.streamSimple = (selected, context, options) => {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           let value; try { value = JSON.parse(line.slice(6)); } catch { continue; }
+          for (const call of value.choices?.[0]?.delta?.tool_calls ?? []) {
+            const index = call.index ?? 0;
+            const entry = request.rawToolCalls[index] ??= { name: '', arguments: '' };
+            if (call.function?.name) entry.name += call.function.name;
+            if (call.function?.arguments && entry.arguments.length < 128_000) entry.arguments += call.function.arguments;
+          }
           if (typeof value.model === 'string' && !report.providerModelIds.includes(value.model)) {
             report.providerModelIds.push(value.model);
             if (/pro/i.test(value.model)) cancellation.abort();

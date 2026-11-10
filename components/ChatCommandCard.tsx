@@ -132,7 +132,7 @@ function QueuedCommandRow({ record, actions }: { record: ChatCommandView; action
       <span className={styles.queueIcon} aria-hidden="true"><AliIcon name="menu" size={13} /></span>
       <button type="button" className={styles.queuePreview} title={preview} disabled={pending || preparing} onClick={() => void edit()}>{record.queuePaused ? t(editing ? "chatCommands.editing" : "chatCommands.paused") + " · " : ""}{preview}</button>
       {record.queuePaused && value === null && <button type="button" className={styles.queueMode} disabled={pending || preparing} onClick={() => void run(() => actions.resume(record))}>{t("chatCommands.resumeQueue")}</button>}
-      <button type="button" className={styles.queueMode} disabled={pending || preparing || !!operation || !!record.queuePaused || value !== null} onClick={() => void run(() => actions.steer(record))}><AliIcon name="arrowup" size={12} />{t("chat.steer")}</button>
+      <button type="button" className={styles.queueMode} data-live-tooltip={record.commandId} title={t("chat.switchToSteerHelp")} aria-disabled={pending} disabled={preparing || !!operation || !!record.queuePaused || value !== null} onClick={() => void run(() => actions.steer(record))}><AliIcon name="arrowup" size={12} />{t("chat.switchToSteer")}</button>
       <button type="button" className={styles.queueAction} disabled={pending || preparing} title={t("chatCommands.cancel")} aria-label={t("chatCommands.cancel")} onClick={() => void run(() => actions.cancel(record))}><AliIcon name="delete" size={14} /></button>
 
     </div>
@@ -159,7 +159,7 @@ function PendingInputRow({ item, onAction }: { item: { id: string; commandId?: s
     <div className={styles.queueRow}>
       <span className={styles.queueIcon} aria-hidden="true"><AliIcon name="arrowright" size={13} /></span>
       <span className={styles.queuePreview} title={item.text}>{item.text}</span>
-      <button type="button" className={styles.queueMode} disabled={pending} title={t("chat.restoreQueue")} onClick={() => void run("queue")}><AliIcon name="arrowdown" size={12} />{t("chat.queueSend")}</button>
+      <button type="button" className={styles.queueMode} data-live-tooltip={item.commandId ?? item.id} aria-disabled={pending} title={t(item.kind === "steer" ? "chat.restoreQueueHelp" : "chat.restoreFollowUpQueueHelp")} onClick={() => void run("queue")}><AliIcon name="arrowdown" size={12} />{t("chat.restoreQueue")}</button>
       <button type="button" className={styles.queueAction} disabled={pending} aria-label={t("chatCommands.cancel")} title={t("chatCommands.cancel")} onClick={() => void run("delete")}><AliIcon name="delete" size={14} /></button>
     </div>
     {error && <p role="alert" className={styles.queueError}>{error}</p>}
@@ -169,11 +169,37 @@ function PendingInputRow({ item, onAction }: { item: { id: string; commandId?: s
 export function ChatCommandQueue({ records, actions, pendingMessages, onRecall, onPendingAction }: { records: ChatCommandView[]; actions: ChatCommandQueueActions; pendingMessages?: { steering: string[]; followUp: string[]; pendingInputs?: { id: string; commandId?: string; text: string; kind: "steer" | "followUp" }[] } | null; onRecall?: () => void | Promise<void>; onPendingAction?: (id: string, action: "queue" | "delete") => Promise<void> }) {
   const { t } = useI18n();
   const [recalling, setRecalling] = useState(false);
+  const [visibleQueueIds, setVisibleQueueIds] = useState<Set<string>>(() => new Set());
+  const queueTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const runtimeIds = new Set(pendingMessages?.pendingInputs?.map(item => item.commandId).filter(Boolean));
-  const waiting = records.filter(record => !runtimeIds.has(record.commandId) && (record.status === "queued" || record.status === "accepted" || !record.operation && record.status === "dispatching"));
+  // Accepted/dispatching submissions may run immediately. Only a confirmed
+  // queue entry belongs in this strip; local recovery remains in the journal.
+  const waiting = records.filter(record => !record.local && !runtimeIds.has(record.commandId) && record.status === "queued");
+  const waitingKey = JSON.stringify(waiting.map(record => record.commandId));
+  useEffect(() => {
+    const ids = new Set<string>(JSON.parse(waitingKey));
+    const timers = queueTimers.current;
+    for (const [id, timer] of timers) {
+      if (!ids.has(id)) { clearTimeout(timer); timers.delete(id); }
+    }
+    setVisibleQueueIds(current => [...current].some(id => !ids.has(id))
+      ? new Set([...current].filter(id => ids.has(id))) : current);
+    // The durable router briefly queues even idle submissions before dispatch.
+    // Wait per entry, so new arrivals cannot postpone an existing queue row.
+    for (const id of ids) if (!timers.has(id)) {
+      timers.set(id, setTimeout(() => {
+        setVisibleQueueIds(current => new Set([...current, id]));
+      }, 200));
+    }
+  }, [waitingKey]);
+  useEffect(() => {
+    const timers = queueTimers.current;
+    return () => { for (const timer of timers.values()) clearTimeout(timer); timers.clear(); };
+  }, []);
+  const visibleWaiting = waiting.filter(record => visibleQueueIds.has(record.commandId));
   const delivered = [...(pendingMessages?.steering ?? []).map(text => ({ text, label: t("chat.steer") })), ...(pendingMessages?.followUp ?? []).map(text => ({ text, label: t("chat.followUp") }))];
-  if (!waiting.length && !delivered.length) return null;
-  return <section className={styles.queue} aria-label={t("chatCommands.next")}>
+  if (!visibleWaiting.length && !delivered.length) return null;
+  return <section className={styles.queue} data-tooltip-scope aria-label={t("chatCommands.next")}>
     <div className={styles.queueList}>
       {pendingMessages?.pendingInputs && onPendingAction ? pendingMessages.pendingInputs.map(item => <PendingInputRow key={item.id} item={item} onAction={onPendingAction} />) : delivered.map(({ text, label }, index) => <div key={`delivered-${index}`} className={styles.queueItem} role="status">
         <div className={styles.queueRow}>
@@ -183,7 +209,7 @@ export function ChatCommandQueue({ records, actions, pendingMessages, onRecall, 
           {index === 0 && onRecall && <button type="button" className={styles.queueAction} disabled={recalling} onClick={() => { setRecalling(true); void Promise.resolve().then(onRecall).finally(() => setRecalling(false)); }} title={t("chat.recallTitle")} aria-label={t("chat.recall")}><AliIcon name="history" size={14} /></button>}
         </div>
       </div>)}
-      {waiting.map(record => <QueuedCommandRow key={record.commandId} record={record} actions={actions} />)}
+      {visibleWaiting.map(record => <QueuedCommandRow key={record.commandId} record={record} actions={actions} />)}
     </div>
   </section>;
 }

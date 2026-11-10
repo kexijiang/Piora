@@ -1,4 +1,5 @@
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
+import { localRoomUserAuthor } from "@/lib/room-local-user";
 import { getTeamCoordinatorService } from "@/lib/team-coordinator-service";
 import { teamApiError } from "@/lib/team-api";
 import { TeamError } from "@/lib/team-errors";
@@ -25,17 +26,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     if (typeof body.objective !== "string" || typeof body.sessionId !== "string") throw new TeamError("TEAM_INVALID_INPUT", "objective and sessionId are required.");
     if (Buffer.byteLength(body.objective, "utf8") > TEAM_DEFAULTS.maxInputBytes) throw new TeamError("TEAM_INPUT_TOO_LARGE", "Team objective exceeds 256 KiB.");
     const { room } = requireRoomMemberBySession(id, body.sessionId);
+    const author = localRoomUserAuthor();
     const state = await getTeamCoordinatorService().createRun({
       roomId: id,
       objective: body.objective,
       coordinatorMemberId: room.coordination.coordinatorMemberId,
-      createdBy: { kind: "user", id: body.sessionId },
+      createdBy: { kind: "user", id: author.authorId },
       correlationId: typeof body.idempotencyKey === "string" ? body.idempotencyKey : undefined,
     });
     appendRoomMessage(id, {
-      authorKind: "user",
-      authorId: body.sessionId,
-      authorName: "你",
+      ...author,
       content: body.objective,
       correlationId: `team:${state.id}:objective`,
     });

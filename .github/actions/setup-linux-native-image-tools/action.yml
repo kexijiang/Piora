@@ -4,6 +4,8 @@ runs:
   using: composite
   steps:
     - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         test "$(uname -m)" = x86_64
@@ -11,9 +13,9 @@ runs:
         sudo apt-get install -y binutils
         tool_dir="$RUNNER_TEMP/piora-patchelf-0.19.2"
         mkdir -p "$tool_dir"
-        curl --fail --location --retry 3 --silent --show-error \
-          https://github.com/NixOS/patchelf/releases/download/0.19.2/patchelf-0.19.2-x86_64.tar.gz \
-          --output "$tool_dir/archive.tar.gz"
+        asset_id=$(gh api repos/NixOS/patchelf/releases/tags/0.19.2 --jq '.assets[] | select(.name == "patchelf-0.19.2-x86_64.tar.gz") | .id')
+        test -n "$asset_id"
+        gh api "repos/NixOS/patchelf/releases/assets/$asset_id" -H 'Accept: application/octet-stream' > "$tool_dir/archive.tar.gz"
         echo "2abdc34fbe949c995a1baa4ec310896a085588a45a99cd0d726851bdfac2a4bb  $tool_dir/archive.tar.gz" | sha256sum --check
         tar -xzf "$tool_dir/archive.tar.gz" -C "$tool_dir"
         "$tool_dir/bin/patchelf" --version

@@ -11,6 +11,7 @@ const {MINI_APP_CAPABILITIES,MINI_APP_CAPABILITY_MANIFEST_VERSION}=await jiti.im
 const tests=['lib/mini-app-capabilities.test.mjs','lib/mini-app-contract.test.mjs','lib/mini-app-generation.test.mjs','lib/mini-app-generation-runtime.test.mjs','lib/mini-app-admission.test.mjs','lib/mini-app-controller-browser.test.mjs','lib/mini-app-renderer-browser.test.mjs','lib/mini-app-worker-browser.test.mjs','lib/mini-app-runtime.test.mjs','lib/mini-app-restore-budget.test.mjs','lib/mini-app-document.test.mjs','lib/mini-app-frame.test.mjs','lib/mini-app-server-trial.test.mjs','lib/mini-app-repeat.test.mjs','lib/mini-app-repeat-browser.test.mjs','lib/mini-app-state.test.mjs'];
 tests.push('lib/mini-app-scene.test.mjs','lib/mini-app-scene-browser.test.mjs');
 tests.push('lib/mini-app-action-preview.test.mjs');
+tests.push('lib/a2ui/a2ui.test.mjs','lib/a2ui/profiles.test.mjs');
 tests.push('lib/mini-app-save-history.test.mjs');
 tests.push('lib/mini-app-text-context.test.mjs','lib/mini-app-input-inspection.test.mjs');
 tests.push('lib/answer-output-client.test.mjs');

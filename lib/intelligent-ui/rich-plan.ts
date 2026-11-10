@@ -20,7 +20,7 @@ export interface UiPlanV2 extends Omit<UiPlanV1, "planVersion" | "derived" | "vi
   derived: Array<Omit<UiPlanDerived, "args" | "op"> & { op: UiPlanV2Operation; args: UiPlanV2Atom[] }>; views: UiPlanV2View[];
 }
 export interface CompiledUiRichPlan {
-  planVersion: 2; compilerVersion: typeof UI_RICH_PLAN_COMPILER_VERSION | "2.6.0" | "2.7.0"; surface: UiRichSurface;
+  planVersion: 2; compilerVersion: typeof UI_RICH_PLAN_COMPILER_VERSION | "2.6.0" | "2.7.0" | "a2ui-1.0/1"; surface: UiRichSurface;
   conversion?: AnswerConversionSpec;
   inputSemantics: CompiledUiPlan["inputSemantics"];
   actions?: UiActionDeclaration;

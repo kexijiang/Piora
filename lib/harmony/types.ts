@@ -205,6 +205,7 @@ export interface HarmonyRuntimeCandidate {
 }
 
 export interface HarmonyVideoConnection {
+  requestKeyframe?(): void;
   stream: ReadableStream<Uint8Array>;
   close(): Promise<void>;
 }
@@ -291,7 +292,7 @@ export interface HarmonyInputTextOptions {
 export interface HarmonyPressKeyOptions {
   serial: string;
   leaseToken: string;
-  key: "back" | "home" | "recents" | "enter";
+  key: "back" | "home" | "recents" | "enter" | "volume_up" | "volume_down" | "power";
   signal?: AbortSignal;
 }
 
@@ -353,7 +354,7 @@ export type HarmonyScenarioStep =
   | { id?: string; action: "clear_text"; selector: HarmonyUiSelector; waitFor?: HarmonyWaitCondition }
   | { id?: string; action: "scroll_find"; selector: HarmonyUiSelector; container?: HarmonyUiSelector; direction?: "up" | "down"; maxSwipes?: number; tap?: boolean; waitFor?: HarmonyWaitCondition }
   | { id?: string; action: "swipe" | "fling"; direction: "left" | "right" | "up" | "down"; durationMs?: number; waitFor?: HarmonyWaitCondition }
-  | { id?: string; action: "press_key"; key: "back" | "home" | "recents" | "enter"; waitFor?: HarmonyWaitCondition }
+  | { id?: string; action: "press_key"; key: "back" | "home" | "recents" | "enter" | "volume_up" | "volume_down" | "power"; waitFor?: HarmonyWaitCondition }
   | { id?: string; action: "launch_app"; bundleName: string; abilityName?: string; waitFor?: HarmonyWaitCondition }
   | { id?: string; action: "stop_app" | "clear_app_data" | "uninstall_app"; bundleName: string }
   | { id?: string; action: "install_app"; hapPath: string; replace?: boolean }
@@ -502,6 +503,7 @@ export interface HarmonyAutomationBackend {
   displayGeometry?(serial: string, signal?: AbortSignal): Promise<import("./observation/geometry").NativeDisplayGeometry>;
   initializeMirror?(serial: string, hapPath: string, signal?: AbortSignal): Promise<void>;
   tap(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
+  pointerPhase?(serial: string, phase: "down" | "move" | "up", gestureId: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   doubleTap?(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   longPress?(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   swipe(
@@ -534,7 +536,7 @@ export interface HarmonyAutomationBackend {
   inputText(serial: string, text: string, signal?: AbortSignal): Promise<void>;
   pressKey(
     serial: string,
-    key: "back" | "home" | "recents" | "enter",
+    key: "back" | "home" | "recents" | "enter" | "volume_up" | "volume_down" | "power",
     signal?: AbortSignal,
   ): Promise<void>;
   launchApp(

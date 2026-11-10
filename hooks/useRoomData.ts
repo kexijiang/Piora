@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CollaborationRoom, RoomArtifact, RoomMessage, RoomPresence, RoomSubmission, RoomTask } from "@/lib/room-types";
+import type { RoomUiRequest } from "@/lib/room-ui";
 import type { RoomActivity } from "@/lib/room-activity";
 import type { TeamRunState } from "@/lib/team-types";
 import { mergeRoomActivities } from "@/lib/room-conversation";
@@ -10,6 +11,7 @@ export const roomActor = (room: CollaborationRoom) => room.members.find((member)
 export const mergeRoomMessages = (current: RoomMessage[], incoming: RoomMessage[]) => [...new Map([...current, ...incoming].map((message) => [message.id, message])).values()].sort((a, b) => a.seq - b.seq);
 
 export function useRoomData(initialRoom: CollaborationRoom, onRoomChange?: (room: CollaborationRoom) => void) {
+  const [uiRequests, setUiRequests] = useState<RoomUiRequest[]>([]);
   const [room, setRoom] = useState(initialRoom);
   const [messages, setMessages] = useState<RoomMessage[]>([]);
   const [tasks, setTasks] = useState<RoomTask[]>([]);
@@ -35,7 +37,7 @@ export function useRoomData(initialRoom: CollaborationRoom, onRoomChange?: (room
     const epoch = ++epochRef.current;
     let disposed = false;
     const current = () => !disposed && epochRef.current === epoch;
-    setRoom(initialRoom); setMessages([]); setTasks([]); setRuns([]); setArtifacts([]); setActivities([]); setSubmissions([]); setPresence(new Map()); setConnection("connecting");
+    setUiRequests([]); setRoom(initialRoom); setMessages([]); setTasks([]); setRuns([]); setArtifacts([]); setActivities([]); setSubmissions([]); setPresence(new Map()); setConnection("connecting");
     const base = `/api/rooms/${encodeURIComponent(id)}`;
     const query = `sessionId=${encodeURIComponent(actor)}`;
     const refresh = async () => {
@@ -48,6 +50,7 @@ export function useRoomData(initialRoom: CollaborationRoom, onRoomChange?: (room
       const snapshot = results[0].status === "fulfilled" ? results[0].value : undefined;
       const team = results[1].status === "fulfilled" ? results[1].value : undefined;
       const deliveries = results[2].status === "fulfilled" ? results[2].value : undefined;
+      if (snapshot?.uiRequests) setUiRequests(snapshot.uiRequests);
       if (snapshot?.room) acceptRoom(snapshot.room);
       if (snapshot?.messages) setMessages((previous) => mergeRoomMessages(previous, snapshot.messages));
       if (snapshot?.tasks) setTasks(snapshot.tasks);
@@ -73,6 +76,7 @@ export function useRoomData(initialRoom: CollaborationRoom, onRoomChange?: (room
           if (data.messages) setMessages((previous) => mergeRoomMessages(previous, data.messages));
           setTasks(data.tasks ?? []); setArtifacts(data.artifacts ?? []);
         } else if (data.type === "message" && data.message) setMessages((previous) => mergeRoomMessages(previous, [data.message]));
+        else if (data.type === "ui_requests") setUiRequests(data.requests ?? []);
         else if (data.type === "activity") setActivities((previous) => mergeRoomActivities(previous, data.activities ?? []));
         else if (data.type === "presence" && data.presence) setPresence((previous) => {
           const next = new Map(previous);
@@ -111,6 +115,6 @@ export function useRoomData(initialRoom: CollaborationRoom, onRoomChange?: (room
     return () => { disposed = true; source.close(); };
   }, [id, actor, activeRunId, acceptRun]);
 
-  return { room, messages, setMessages, tasks, runs, artifacts, activities, submissions, setSubmissions, presence, connection, acceptRoom, acceptRun,
+  return { uiRequests, room, messages, setMessages, tasks, runs, artifacts, activities, submissions, setSubmissions, presence, connection, acceptRoom, acceptRun,
     refresh: useCallback(() => refreshRef.current(), []) };
 }

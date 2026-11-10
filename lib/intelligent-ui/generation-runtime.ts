@@ -5,6 +5,7 @@ import { isSessionOwnershipError } from "../session-file-ownership";
 import { UiGenerationError, UiGenerationPrototype, type UiGenerationRequestContext, type UiGenerationTurnReceipt } from "./generation-journal";
 import { compileUiPlan, UiPlanError } from "./plan";
 import { compileUiRichPlan } from "./rich-plan";
+import { compileA2uiUi } from "../a2ui/ui-compiler";
 import { trialUiInputBoundaries } from "./input-trial";
 import { formatSnapshot, type UiState } from "./surface-document";
 import { UiPreviewRuntime } from "./preview-runtime";
@@ -161,7 +162,7 @@ export class UiGenerationRuntime {
   }
 
   /** Await exactly in the SDK context hook, before the provider request. */
-  captureContext(planVersion: 1 | 2 = 1): Promise<UiGenerationContextSnapshot> {
+  captureContext(planVersion: 1 | 2 | "a2ui-1" = 1): Promise<UiGenerationContextSnapshot> {
     this.preview?.resetRequest();
     this.request = undefined;
     return this.enqueue(async () => {
@@ -190,13 +191,13 @@ export class UiGenerationRuntime {
   }
 
   /** Tool arguments contain only the authoring plan; all source credentials stay here. */
-  executePlan(toolCallId: string, plan: unknown, signal?: AbortSignal, planVersion: 1 | 2 = 1): Promise<UiGenerationToolResult> {
+  executePlan(toolCallId: string, plan: unknown, signal?: AbortSignal, planVersion: 1 | 2 | "a2ui-1" = 1): Promise<UiGenerationToolResult> {
     const request = this.request;
     return this.enqueue(async () => {
       if (!request || this.request !== request || !this.host) throw new UiGenerationError("IDENTITY", "A current host-captured model request is required");
       // The loaded extension supplies this version; model arguments cannot
       // switch the contract captured for the originating request.
-      const compile = planVersion === 2 ? compileUiRichPlan : compileUiPlan;
+      const compile = planVersion === "a2ui-1" ? compileA2uiUi : planVersion === 2 ? compileUiRichPlan : compileUiPlan;
       const preview = compile(plan, { revision: 1 });
       if (preview.conversion) {
         const { readMiniAppCapabilities } = await import("../mini-app/capability-host");

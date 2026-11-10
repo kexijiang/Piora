@@ -5908,6 +5908,18 @@
                 {
                   "type": "string",
                   "const": "enter"
+                },
+                {
+                  "type": "string",
+                  "const": "volume_up"
+                },
+                {
+                  "type": "string",
+                  "const": "volume_down"
+                },
+                {
+                  "type": "string",
+                  "const": "power"
                 }
               ]
             },
@@ -5952,6 +5964,18 @@
                 {
                   "type": "string",
                   "const": "enter"
+                },
+                {
+                  "type": "string",
+                  "const": "volume_up"
+                },
+                {
+                  "type": "string",
+                  "const": "volume_down"
+                },
+                {
+                  "type": "string",
+                  "const": "power"
                 }
               ]
             },

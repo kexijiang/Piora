@@ -21,11 +21,18 @@ import {useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {I18nProvider} from "@/hooks/useI18n";
 import {ChatInput} from "@/components/ChatInput";
-import {ChatCommandCard} from "@/components/ChatCommandCard";
+import {ChatCommandCard,ChatCommandQueue} from "@/components/ChatCommandCard";
+import {AppTooltip} from "@/components/AppTooltip";
 import {createChatCommandCatalog,parseChatInput,createChatCommandOperation} from "@/lib/chat-command-input";
 const catalog=createChatCommandCatalog([{name:"deploy",source:"extension"},{name:"review",source:"prompt",usesTemplateArguments:true}]);
 function App(){
  const input=useRef(null),[record,setRecord]=useState(null),[busy,setBusy]=useState(false);
+ const [queueMode,setQueueMode]=useState("queue");
+ window.setQueueMode=setQueueMode;
+ const queued={commandId:"queue-fixture",status:"queued",preview:"检查 Windows 状态",acceptedAt:0};
+ const changeQueue=async mode=>{window.queueActions.push(mode);await new Promise(resolve=>setTimeout(resolve,30));if(window.failQueue)throw new Error("切换失败");setQueueMode(mode);};
+ const queueActions={cancel:async()=>{},steer:()=>changeQueue("steer"),edit:async()=>"",save:async()=>{},resume:async()=>{}};
+ const pendingMessages=queueMode==="queue"?null:{steering:queueMode==="steer"?["检查 Windows 状态"]:[],followUp:queueMode==="followUp"?["检查 Windows 状态"]:[],pendingInputs:[{id:"pending-fixture",commandId:"queue-fixture",text:"检查 Windows 状态",kind:queueMode}]};
  window.setBusy=setBusy;
  window.restoreDraft=draft=>input.current.restoreCommandDraft(draft);
  const send=async(text,images,files,onDurable,...rest)=>{
@@ -40,9 +47,9 @@ function App(){
   }return true;
  };
  const actions={retry:async()=>{},restore:async()=>{window.restored=true;},cancel:async()=>{},copy:async()=>{}};
- return <I18nProvider><main>{record&&<ChatCommandCard record={record} actions={actions}/>}<ChatInput ref={input} onSend={send} onQueueInput={send} onAbort={()=>{}} isStreaming={busy} commandCatalog={catalog} model={{provider:"fixture",modelId:"model"}} placeholder="测试命令输入" /></main></I18nProvider>;
+ return <I18nProvider><AppTooltip/><main><ChatCommandQueue records={queueMode==="queue"?[queued]:[]} actions={queueActions} pendingMessages={pendingMessages} onPendingAction={()=>changeQueue("queue")}/>{record&&<ChatCommandCard record={record} actions={actions}/>}<ChatInput ref={input} onSend={send} onQueueInput={send} onAbort={()=>{}} isStreaming={busy} commandCatalog={catalog} model={{provider:"fixture",modelId:"model"}} placeholder="测试命令输入" /></main></I18nProvider>;
 }
-window.submissions=[];createRoot(document.getElementById("root")).render(<App/>);`);
+window.submissions=[];window.queueActions=[];createRoot(document.getElementById("root")).render(<App/>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
       entry: path.join(directory, "entry.tsx"), output: { path: directory, filename: "bundle.js", publicPath: "/" },
       resolve: { extensions: [".tsx", ".ts", ".js"], modules: [path.join(repo, "node_modules"), "node_modules"], alias: { "@": repo } },
@@ -62,6 +69,39 @@ window.submissions=[];createRoot(document.getElementById("root")).render(<App/>)
     const page = await context.newPage();
     page.on("pageerror", error => errors.push(error.message));
     await page.goto("http://commands.test/");
+    // Actual queue UI + global tooltip; only backend delivery is a fixture.
+    const toggle = page.locator('[data-live-tooltip="queue-fixture"]');
+    const tooltip = page.locator("#pi-app-tooltip");
+    await toggle.hover();
+    const queue = page.locator("section[data-tooltip-scope]");
+    assert.equal(await queue.getByText("检查 Windows 状态", { exact: true }).count(), 1, "a sustained confirmed queue entry becomes visible once");
+    assert.equal(await queue.getByRole("button", { name: "取消", exact: true }).isEnabled(), true, "confirmed entries retain their cancel control");
+    await page.waitForFunction(() => document.querySelector('[role="tooltip"]').textContent.includes("当前：排队中"));
+    assert.equal(await page.getByText("排队中", { exact: true }).count(), 0);
+    // Keep the mouse stationary through both row replacements.
+    await page.mouse.down(); await page.mouse.up();
+    await page.waitForFunction(() => document.querySelector('[role="tooltip"]').textContent.includes("当前：引导中"));
+    assert.match(await toggle.textContent(), /恢复排队/);
+    await page.mouse.down(); await page.mouse.up();
+    await page.waitForFunction(() => document.querySelector('[role="tooltip"]').textContent.includes("当前：排队中"));
+    assert.match(await toggle.textContent(), /切换引导/);
+    assert.deepEqual(await page.evaluate(() => window.queueActions), ["steer", "queue"]);
+    await page.evaluate(() => { window.failQueue=true; });
+    await page.mouse.down(); await page.mouse.up();
+    await page.getByText("切换失败", { exact: true }).waitFor();
+    assert.match(await tooltip.textContent(), /当前：排队中/);
+    assert.match(await toggle.textContent(), /切换引导/);
+    await page.evaluate(() => { window.failQueue=false; });
+    await page.mouse.move(5, 5);
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await page.waitForFunction(() => document.querySelector('[role="tooltip"]').textContent.includes("当前：引导中"));
+    assert.equal(await toggle.evaluate(el => el === document.activeElement), true);
+    // Same DOM node, different pending kind: refresh its title without re-hover.
+    await page.evaluate(() => window.setQueueMode("followUp"));
+    await page.waitForFunction(() => document.querySelector('[role="tooltip"]').textContent.includes("当前：等待后续处理"));
+    await page.keyboard.press("Escape");
+    await page.waitForFunction(() => document.querySelector('[role="tooltip"]').textContent === "");
     const composer = page.getByPlaceholder("测试命令输入");
     await composer.fill("/reload");
     await composer.press("Escape");
@@ -132,6 +172,15 @@ window.submissions=[];createRoot(document.getElementById("root")).render(<App/>)
     await composer.fill("已有新输入");
     assert.equal(await page.evaluate(() => window.restoreDraft({ value: "/reload", images: [], files: [] })), false);
     assert.equal(await composer.inputValue(), "已有新输入");
+    for (const text of ["/api/agent/cashier/querySkuInfo再新增一个字段，Boolean", "/usr/bin/env", "/etc/nginx/nginx.conf", "/pattern/gi"]) {
+      await composer.fill(text);
+      await composer.press("Escape");
+      assert.equal(await page.getByRole("button", { name: "作为普通消息发送", exact: true }).count(), 0);
+      await page.getByRole("button", { name: "发送", exact: true }).click();
+      assert.equal(await page.evaluate(() => window.submissions.at(-1).text), text);
+      assert.equal(await page.evaluate(() => window.submissions.at(-1).options.inputMode), "text");
+    }
+    await composer.fill("已有新输入");
     for (const scheme of ["light", "dark"]) {
       await page.emulateMedia({ colorScheme: scheme });
       for (const width of [340, 390, 768, 1060]) {

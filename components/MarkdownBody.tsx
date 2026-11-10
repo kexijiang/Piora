@@ -9,6 +9,8 @@ import { parseAnsiLine } from "@/lib/ansi";
 import { markdownRemarkPlugins, normalizeDisplayMath, normalizeTextHighlights } from "@/lib/markdown";
 import { useMarkdownRehypePlugins } from "@/hooks/useMarkdownRehypePlugins";
 import { rehypeAssistantEmphasis } from "@/lib/markdown-emphasis";
+import { answerLinkTargetForClick, normalizeAnswerLink } from "@/lib/answer-links";
+import { useAnswerLinks } from "./AnswerLinkProvider";
 
 export { preloadMarkdownMathRenderer, preloadMarkdownRawHtmlParser } from "@/hooks/useMarkdownRehypePlugins";
 
@@ -67,6 +69,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
   const normalizedMarkdown = useMemo(() => normalizeTextHighlights(normalizeDisplayMath(children)), [children]);
   const baseRehypePlugins = useMarkdownRehypePlugins(normalizedMarkdown);
   const isAssistantMessage = className?.split(/\s+/).includes("markdown-assistant-message") ?? false;
+  const answerLinks = useAnswerLinks();
   const rehypePlugins = useMemo(() => isAssistantMessage
     ? [...(baseRehypePlugins ?? []), rehypeAssistantEmphasis]
     : baseRehypePlugins, [baseRehypePlugins, isAssistantMessage]);
@@ -124,8 +127,15 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
       const filePath = onOpenFile ? resolveLocalFileHref(href, cwd) : null;
       const openFile = onOpenFile;
       if (!filePath || !openFile) {
+        const webUrl = isAssistantMessage && answerLinks ? normalizeAnswerLink(href) : null;
+        const handleWebLink = (event: React.MouseEvent<HTMLAnchorElement>) => {
+          if (!webUrl || !answerLinks || event.defaultPrevented || event.altKey || (event.button !== 0 && event.button !== 1)) return;
+          event.preventDefault();
+          if (answerLinkTargetForClick(answerLinks.target, event) === "builtin") answerLinks.openLink(webUrl);
+          else window.open(webUrl, "_blank", "noopener,noreferrer");
+        };
         return (
-          <a href={href} {...props} target="_blank" rel="noopener noreferrer">
+          <a href={href} {...props} target="_blank" rel="noopener noreferrer" onClick={handleWebLink} onAuxClick={handleWebLink}>
             {children}
           </a>
         );
@@ -156,7 +166,7 @@ const MarkdownRenderer = memo(function MarkdownRenderer({ children, className, i
         </div>
       );
     },
-  }), [cwd, isStreaming, onOpenFile]);
+  }), [cwd, isStreaming, onOpenFile, isAssistantMessage, answerLinks]);
 
   return (
     <div className={["markdown-body", className].filter(Boolean).join(" ")}>

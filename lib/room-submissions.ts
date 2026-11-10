@@ -1,4 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
+import { ensureRoomSessionIsolation } from "./room-session-isolation";
+import { localRoomUserAuthor } from "./room-local-user";
+import { roomMessageAttribution, ROOM_SENDER_AUTHORITY_NOTE } from "./room-sender";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import lockfile from "proper-lockfile";
@@ -19,7 +22,7 @@ export interface RoomSubmissionInput {
   attachments?: RoomAttachment[];
 }
 
-type SavedSubmission = RoomSubmission & { input: RoomSubmissionInput; requestHash: string };
+type SavedSubmission = RoomSubmission & { input: RoomSubmissionInput; requestHash: string; actorMemberId?: string };
 declare global {
   var __pioraRoomSubmissionFlights: Map<string, Promise<SavedSubmission>> | undefined;
 }
@@ -116,7 +119,7 @@ async function deliver(record: SavedSubmission): Promise<SavedSubmission> {
       return record;
     }
     const run = await service.createRun({ roomId: room.id, objective: contentForAgent,
-      coordinatorMemberId: coordinator.memberId, createdBy: { kind: "user", id: record.input.sessionId }, correlationId: `room:${record.messageId}` });
+      coordinatorMemberId: coordinator.memberId, createdBy: { kind: "user", id: message.author.id }, correlationId: `room:${record.messageId}` });
     record.teamRunId = run.id;
   } else if (current && !message.replyTo) {
     // A supplementary instruction is not an answer and cannot silently resume waiting_user.
@@ -133,14 +136,14 @@ async function deliver(record: SavedSubmission): Promise<SavedSubmission> {
       const { getActivePromptRun } = await import("./prompt-run-registry");
       const prompt = getActivePromptRun(sessionId);
       if (prompt?.roomContext?.roomId !== room.id || !targets.some((dispatch) => dispatch.sessionId === sessionId && (dispatch.promptRunId === prompt.runId || dispatch.dispatchId === prompt.roomContext?.messageId))) continue;
-      const receipt = await router.dispatchSessionMessage({ targetSessionId: sessionId, content: `用户对当前任务的补充（保持原任务与审查约束）：\n${contentForAgent}`,
+      const receipt = await router.dispatchSessionMessage({ targetSessionId: sessionId, content: `Sender: ${JSON.stringify(roomMessageAttribution(room, message, id => findRoomMessage(room.id, id)))}\n${ROOM_SENDER_AUTHORITY_NOTE}\n用户对当前任务的补充（保持原任务与审查约束）：\n${contentForAgent}`,
         source: "room", roomContext: { roomId: room.id, messageId: message.id }, delivery: "steer", idempotencyKey: `room:${message.id}:${sessionId}:supplement` });
       record.commandIds.push(receipt.commandId);
     }
   } else {
     let targetIds = record.targetMemberIds;
     if (!targetIds.length && parent?.author.kind === "session") {
-      const owner = room.members.find((member) => member.binding.sessionId === parent.author.id);
+      const owner = room.members.find((member) => member.binding.sessionId === parent.author.id || member.binding.previousSessionIds?.includes(parent.author.id));
       if (owner) targetIds = [owner.memberId];
     }
     const broadcast = isRoomBroadcast(message.content);
@@ -195,10 +198,10 @@ async function processSubmission(roomId: string, id: string, services?: RoomSele
       if (record.status === "queued" && await activeRun(roomId)) return record;
       if (record.status === "error") { record.status = "accepted"; delete record.error; writeRecord(record); }
       try {
-        const room = getRoom(roomId);
+        const room = ensureRoomSessionIsolation(roomId);
         const message = findRoomMessage(roomId, record.messageId)!;
         const parent = message.replyTo ? findRoomMessage(roomId, message.replyTo) : undefined;
-        const replyOwner = parent?.author.kind === "session" && room.members.some(member => member.binding.sessionId === parent.author.id);
+        const replyOwner = parent?.author.kind === "session" && room.members.some(member => member.binding.sessionId === parent.author.id || member.binding.previousSessionIds?.includes(parent.author.id));
         if (record.intent === "auto" && !record.targetMemberIds.length && !replyOwner && !isRoomBroadcast(message.content)
           && (!await activeRun(roomId) || Boolean(message.replyTo))) {
           record.memberSelection ??= { assessments: [] };
@@ -221,15 +224,21 @@ async function processSubmission(roomId: string, id: string, services?: RoomSele
   try { return await flight; } finally { if (flights.get(key) === flight) flights.delete(key); }
 }
 
-export async function submitRoomMessage(roomId: string, input: RoomSubmissionInput, services?: RoomSelectionServices) {
+export async function submitRoomMessage(roomId: string, input: RoomSubmissionInput, services?: RoomSelectionServices, background = false) {
   if (!input || typeof input !== "object" || Array.isArray(input)
     || (input.mentions !== undefined && (!Array.isArray(input.mentions) || input.mentions.some((item) => !item || typeof item.memberId !== "string")))
     || (input.attachments !== undefined && (!Array.isArray(input.attachments) || input.attachments.some((item) => !item)))
     || (input.replyTo !== undefined && typeof input.replyTo !== "string")) throw new TeamError("TEAM_INVALID_INPUT", "消息格式无效。");
   const room = getRoom(roomId);
-  if (!room.members.some((member) => member.binding.sessionId === input.sessionId)) throw new TeamError("TEAM_INVALID_CONTEXT", "你不在这个群聊中。");
   if (typeof input.content !== "string" || (!input.content.trim() && !input.attachments?.length)
     || typeof input.clientPromptId !== "string" || !/^[\w-]{8,160}$/u.test(input.clientPromptId)) throw new TeamError("TEAM_INVALID_INPUT", "消息内容与发送标识无效。");
+  const known = readRecord(roomId, input.clientPromptId);
+  const actor = room.members.find((member) => member.binding.sessionId === input.sessionId);
+  const receiptActor = known?.actorMemberId ? room.members.find((member) => member.memberId === known.actorMemberId) : undefined;
+  // Old execution ids can retry only their exact accepted receipt, while its
+  // stable member remains. They cannot authorize a new message after migration.
+  if ((!actor && !(receiptActor && known?.input.sessionId === input.sessionId))
+    || (known?.actorMemberId && actor && actor.memberId !== known.actorMemberId)) throw new TeamError("TEAM_INVALID_CONTEXT", "你不在这个群聊中。");
   if (Buffer.byteLength(input.content, "utf8") > 256 * 1024) throw new TeamError("TEAM_INPUT_TOO_LARGE", "消息超过 256 KiB。");
   if (input.intent && !["auto", "new_task", "answer", "share"].includes(input.intent)) throw new TeamError("TEAM_INVALID_INPUT", "消息意图无效。");
   if (input.attachments?.length) {
@@ -243,7 +252,7 @@ export async function submitRoomMessage(roomId: string, input: RoomSubmissionInp
     }
   }
   const prepared = await withSubmissionLock(roomId, async () => {
-    const requestHash = createHash("sha256").update(JSON.stringify({ sessionId: input.sessionId, clientPromptId: input.clientPromptId, content: input.content,
+    const requestHash = createHash("sha256").update(JSON.stringify({ sessionId: known?.input.sessionId ?? input.sessionId, clientPromptId: input.clientPromptId, content: input.content,
       intent: input.intent ?? "auto", mentions: (input.mentions ?? []).map(({ memberId, start, end }) => ({ memberId, start, end })),
       replyTo: input.replyTo ?? null, attachments: (input.attachments ?? []).map(({ name, path, mimeType }) => ({ name, path, mimeType: mimeType ?? null })) })).digest("hex");
     const saved = readRecord(roomId, input.clientPromptId);
@@ -254,17 +263,23 @@ export async function submitRoomMessage(roomId: string, input: RoomSubmissionInp
     const targetMemberIds = resolveRoomMentions(room, input.content, input.mentions);
     const content = input.content || "请查看附件。";
     const message = saved ? findRoomMessage(roomId, saved.messageId)! : appendRoomMessage(roomId, {
-      authorKind: "user", authorId: input.sessionId, authorName: "你", content,
+      ...localRoomUserAuthor(), content,
       clientPromptId: input.clientPromptId, correlationId: `room-prompt:${input.clientPromptId}`,
       replyTo: input.replyTo, threadRootId: parent ? parent.threadRootId ?? parent.id : undefined,
       targetMemberIds, attachments: input.attachments,
     });
     const record: SavedSubmission = saved ?? { clientPromptId: input.clientPromptId, roomId, messageId: message.id, status: "accepted",
-      intent: input.intent ?? "auto", targetMemberIds, commandIds: [], createdAt: message.createdAt, updatedAt: Date.now(), input, requestHash };
-    if (!saved) writeRecord(record);
+      intent: input.intent ?? "auto", targetMemberIds, commandIds: [], createdAt: message.createdAt, updatedAt: Date.now(), input, requestHash, actorMemberId: actor!.memberId };
+    if (!saved || record.status === "error") {
+      record.status = "accepted"; delete record.error; writeRecord(record);
+    }
     return { message, submission: record };
   });
   if (prepared.submission.status === "delivered" || prepared.submission.status === "queued") return prepared;
+  if (background) {
+    void processSubmission(roomId, input.clientPromptId, services).catch(() => {});
+    return prepared;
+  }
   return { message: prepared.message, submission: await processSubmission(roomId, input.clientPromptId, services) };
 }
 

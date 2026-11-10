@@ -11,11 +11,14 @@ export interface AnswerOutputAdmissionAgent {
 export function bindAnswerOutputAdmission(options: {
   agent: AnswerOutputAdmissionAgent;
   identity: PromptRunIdentity;
-  loadedTools: readonly { name: string }[];
+  loadedTools: readonly { name: string; parameters?: unknown }[];
   isActive(): boolean;
   onRepeatedDenial(): void;
 }) {
   const loaded = new Set(options.loadedTools.map(tool => tool.name));
+  const parameters = options.loadedTools.find(tool => tool.name === "piora_render_ui_plan")?.parameters;
+  const properties = parameters && typeof parameters === "object" && "properties" in parameters ? parameters.properties : undefined;
+  const a2uiAuthoring = !!properties && typeof properties === "object" && Object.hasOwn(properties, "messages");
   const toolNames = UI_TOOLS.filter(name => loaded.has(name));
   if (toolNames.length && options.agent.pioraToolAdmissionVersion !== 2) {
     throw new Error("Intelligent UI requires the verified tool admission runtime. Reinstall dependencies before enabling this feature.");
@@ -46,7 +49,7 @@ export function bindAnswerOutputAdmission(options: {
     const admission = await budget!.admit(context, signal);
     if (admission && !("immediate" in admission)) {
       const diagnostic = context.toolCall.name === "piora_render_ui_plan"
-        ? (await import("./intelligent-ui/plan-admission")).originalUiPlanDiagnostic(context.toolCall.arguments)
+        ? (await import("./intelligent-ui/plan-admission")).originalUiPlanDiagnostic(context.toolCall.arguments, a2uiAuthoring)
         : context.toolCall.name === "piora_render_mini_app"
           ? (await import("./mini-app/plan-admission")).originalMiniAppPlanDiagnostic(context.toolCall.arguments, identity)
           : undefined;

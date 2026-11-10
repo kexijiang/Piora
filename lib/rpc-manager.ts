@@ -1,3 +1,4 @@
+import { resolveConversationForkAnchor } from "./session-fork";
 import { recordAgentTerminalEvent } from "./agent-terminal-registry";
 import { ToolReviewController } from "./tool-permission-gate";
 import { collectReviewEvidence } from "./tool-review-evidence";
@@ -27,6 +28,7 @@ import { resolve } from "node:path";
 import { NativeMcpController, getNativeMcpController, setNativeMcpController, nativeMcpResourceCapabilityId } from "./native-mcp";
 import { validateAgentImages } from "./image-attachments";
 import { installImageContextPolicy } from "./image-context";
+import { installProviderPayloadValidation } from "./provider-payload";
 import { installModelStallGuard } from "./model-stall-guard";
 import { reloadModelRetrySettings } from "./retry-settings";
 import { invalidateModelsCache } from "./models-cache";
@@ -39,6 +41,7 @@ import { runPromptWithModelFallback } from "./model-fallback";
 import { readModelFallbackConfig } from "./model-fallback-config";
 import { applyConfiguredImageInput, modelSupportsImages } from "./model-capabilities";
 import { resolveDefaultModelPreference } from "./model-policy";
+import { readDefaultModel } from "./default-model-store";
 import {
   applyExtensionLoadPlan,
   installExtensionLoadPlanReload,
@@ -79,7 +82,7 @@ import { bindTeamPromptContext, validateTeamExecutionContext } from "./team-prom
 import type { TeamExecutionContext } from "./team-types";
 import type { SessionMessageSourceKind, SessionRoomContext } from "./session-message-types";
 import { captureTeamRuntimeToolResult } from "./team-runtime-evidence";
-import { getRoom } from "./room-store";
+import { assertRoomSessionIsolated, getRoom } from "./room-store";
 import { TeamError } from "./team-errors";
 import {
   DEVICE_CONTROL_AGENT_TOOLS,
@@ -1320,6 +1323,10 @@ export class AgentSessionWrapper {
     }
   }
 
+  getPendingUiRequests(): ExtensionUiRequest[] {
+    return this._alive ? [...this.pendingUiRequests.values()] as ExtensionUiRequest[] : [];
+  }
+
   onEvent(listener: EventListener): () => void {
     this.listeners.push(listener);
     for (const review of this.reviews().list()) listener({ type: "tool_review", review });
@@ -1420,6 +1427,11 @@ export class AgentSessionWrapper {
         }
         const teamExecution = command.teamExecution as TeamExecutionContext | undefined;
         const roomContext = command.roomContext as SessionRoomContext | undefined;
+        if (command.source === "room" || teamExecution || roomContext) {
+          const roomId = teamExecution?.roomId ?? roomContext?.roomId;
+          if (!roomId) throw new TeamError("TEAM_INVALID_CONTEXT", "Room context is required.");
+          assertRoomSessionIsolated(roomId, this.sessionId);
+        }
         if (teamExecution && streamingBehavior) throw new Error("Team execution context cannot be attached to a follow-up prompt.");
         if (!streamingBehavior && command.source === "room" && !this.inner.getActiveToolNames().includes("piora_room")) {
           if (teamExecution) validateTeamExecutionContext(teamExecution, this.sessionId);
@@ -1817,23 +1829,21 @@ export class AgentSessionWrapper {
         if (!sessionManager.isPersisted()) return { cancelled: true };
         if (!currentSessionFile) throw new Error("Persisted session is missing a session file");
 
-        const entry = sessionManager.getEntry(entryId);
-        if (!entry) throw new Error("Invalid entry ID for forking");
-
         const sessionDir = sessionManager.getSessionDir();
+        const anchor = resolveConversationForkAnchor(sessionManager, entryId, command.includeEntry === true);
         const publication = createSessionForkPublication(currentSessionFile, { sessionDir });
         let forked: OwnedSessionManager | undefined;
         try {
-        forked = entry.parentId
+        forked = anchor
           ? openOwnedSessionManager(currentSessionFile, publication.stagingDir)
           : createOwnedSessionManager(sessionManager.getCwd(), publication.stagingDir);
         const forkedManager = forked.manager;
-        if (!entry.parentId) {
+        if (!anchor) {
           // Fork before the first message: create an empty session linked to this one
           forkedManager.newSession({ parentSession: currentSessionFile });
         } else {
-          // Fork after some history: copy path up to (but not including) the fork point
-          const forkedPath = forkedManager.createBranchedSession(entry.parentId);
+          // Fork after some history: copy the path through the validated fork anchor
+          const forkedPath = forkedManager.createBranchedSession(anchor);
           if (!forkedPath) throw new Error("Failed to create forked session");
         }
         forked.assertOwned();
@@ -1843,7 +1853,7 @@ export class AgentSessionWrapper {
         writeToolPermission(newSessionId, readDefaultToolPermission(getAgentDir()), getAgentDir());
         try {
           await copyAnswerOutputState(this.sessionId, newSessionId, forkedManager.getBranch().map(entry => entry.id), {
-            sourceFile: currentSessionFile, targetFile: newSessionFile, sourceLeafId: entry.parentId,
+            sourceFile: currentSessionFile, targetFile: newSessionFile, sourceLeafId: anchor,
           });
         } catch (error) {
           forked.assertOwned();
@@ -3144,6 +3154,7 @@ export async function startRpcSession(
     // instance and idempotent across cached reuse.
     // Also cover sessions that were being constructed when global settings changed.
     await services.settingsManager.reload();
+    installProviderPayloadValidation(services.modelRuntime);
     installModelStallGuard(services.modelRuntime, process.env, services.settingsManager);
     const scope = await resolveVisibleModels(
       services.modelRuntime,
@@ -3154,6 +3165,7 @@ export async function startRpcSession(
     const defaultModelId = services.settingsManager.getDefaultModel();
     const preferredDefault = resolveDefaultModelPreference({
       models: scope.visible,
+      explicitDefault: readDefaultModel(),
       settingsProvider: defaultProvider,
       settingsModel: defaultModelId,
       environment: process.env,

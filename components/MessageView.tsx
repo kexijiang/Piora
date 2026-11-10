@@ -1,5 +1,7 @@
 "use client";
 
+import { summarizeProviderError } from "@/lib/provider-payload";
+import { modelTimeoutDisplay } from "@/lib/model-timeout-display";
 import { taskElapsedMs, type TaskTiming } from "@/lib/task-timing";
 import { formatStatusDuration } from "@/lib/status-duration";
 import { thinkingPreview } from "@/lib/thinking-preview";
@@ -154,6 +156,7 @@ interface Props {
   onEditContent?: (content: string) => void;
   onEditFailed?: (message: UserMessage) => Promise<void>;
   onRetry?: (message: UserMessage, entryId?: string) => Promise<void>;
+  retryPrompt?: { message: UserMessage; entryId?: string };
   retryDisabled?: boolean;
   showTimestamp?: boolean;
   prevTimestamp?: number;
@@ -216,12 +219,12 @@ export const MessageView = memo(function MessageView(props: Props) {
     onOpenAutomation={history ? undefined : props.onOpenAutomation} /></HistoryVersionContext.Provider></HistoryModeContext.Provider>;
 });
 
-const MessageContent = memo(function MessageContent({ mode, messageActions, message, isStreaming, intermediate, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditFailed, onRetry, retryDisabled, showTimestamp, prevTimestamp, taskTiming, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
+const MessageContent = memo(function MessageContent({ mode, messageActions, message, isStreaming, intermediate, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditFailed, onRetry, retryPrompt, retryDisabled, showTimestamp, prevTimestamp, taskTiming, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
   if (message.role === "user") {
     return <UserMessageView messageActions={messageActions} message={message as UserMessage} cwd={cwd} onOpenFile={onOpenFile} entryId={entryId} onFork={onFork} forking={forking} onNavigate={onNavigate} prevAssistantEntryId={prevAssistantEntryId} onEditContent={onEditContent} onEditFailed={onEditFailed} onRetry={onRetry} retryDisabled={retryDisabled} sessionId={sessionId} />;
   }
   if (message.role === "assistant") {
-    return <AssistantMessageView messageActions={messageActions} message={message as AssistantMessage} isStreaming={isStreaming} intermediate={intermediate} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} taskTiming={taskTiming} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
+    return <AssistantMessageView messageActions={messageActions} message={message as AssistantMessage} isStreaming={isStreaming} intermediate={intermediate} toolResults={toolResults} modelNames={modelNames} cwd={cwd} onOpenFile={onOpenFile} showTimestamp={showTimestamp} prevTimestamp={prevTimestamp} taskTiming={taskTiming} sessionId={sessionId} entryId={entryId} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} onRetry={onRetry} retryPrompt={retryPrompt} retryDisabled={retryDisabled} />;
   }
   if (message.role === "toolResult") {
     // Rendered inline under its toolCall — skip standalone rendering if paired
@@ -267,6 +270,7 @@ const MessageContent = memo(function MessageContent({ mode, messageActions, mess
     && prev.onEditContent === next.onEditContent
     && prev.onEditFailed === next.onEditFailed
     && prev.onRetry === next.onRetry
+    && prev.retryPrompt === next.retryPrompt
     && prev.retryDisabled === next.retryDisabled
     && prev.showTimestamp === next.showTimestamp
     && prev.prevTimestamp === next.prevTimestamp
@@ -586,6 +590,9 @@ export function assistantBlockKey(block: AssistantContentBlock, index: number, e
 }
 
 function AssistantMessageView({
+  onRetry,
+  retryPrompt,
+  retryDisabled,
   messageActions,
   message,
   isStreaming,
@@ -601,6 +608,9 @@ function AssistantMessageView({
   onOpenAutomation,
   onOpenCommandExecution,
 }: {
+  onRetry?: Props["onRetry"];
+  retryPrompt?: Props["retryPrompt"];
+  retryDisabled?: boolean;
   messageActions?: ReactNode;
   message: AssistantMessage;
   isStreaming?: boolean;
@@ -635,7 +645,14 @@ function AssistantMessageView({
   }
   const hideFooter = intermediate || isStreaming || blocks.some((block) => block.type === "toolCall");
   const providerError = getAssistantErrorMessage(message, { isStreaming });
+  const providerErrorDetail = providerError ? summarizeProviderError(providerError) : null;
+  const timeout = providerError ? modelTimeoutDisplay(providerError) : null;
+  const providerErrorSummary = timeout ? t(timeout.key, { seconds: timeout.seconds }) : providerErrorDetail?.code === "model_output_budget"
+    ? t("chat.modelOutputBudgetError") : providerErrorDetail?.summary ?? "";
   const stopped = isAssistantAborted(message, { isStreaming });
+  const retryInFlight = useRef(false);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState<string | null>(null);
   const [hovered, setHovered] = useState(false);
   const [copied, setCopied] = useState(false);
   const blockItemsRef = useRef(blockItems);
@@ -763,7 +780,22 @@ function AssistantMessageView({
             overflowWrap: "anywhere",
           }}
         >
-          {stopped ? t("chat.generationStopped") : t("chat.providerError", { reason: providerError ?? "" })}
+          {stopped ? t("chat.generationStopped") : t("chat.providerError", { reason: providerErrorSummary })}
+          {!stopped && (providerErrorDetail?.structured || timeout) && <details>
+            <summary>{t("chat.providerErrorDetails")}{providerErrorDetail?.code ? ` · ${providerErrorDetail.code}` : ""}</summary>
+            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", margin: "8px 0 0" }}>{providerError}</pre>
+          </details>}
+          {!stopped && onRetry && retryPrompt && <div style={{ marginTop: 8 }}>
+            <button type="button" className="message-delete-button" disabled={retryDisabled || retrying}
+              title={t("chat.retryMessageTitle")} onClick={() => {
+                if (retryDisabled || retryInFlight.current) return;
+                retryInFlight.current = true; setRetrying(true); setRetryError(null);
+                void onRetry(retryPrompt.message, retryPrompt.entryId)
+                  .catch(reason => setRetryError(reason instanceof Error ? reason.message : String(reason)))
+                  .finally(() => { retryInFlight.current = false; setRetrying(false); });
+              }}><AliIcon name="reload" size={12} />{t("chat.retryMessage")}</button>
+            {retryError && <span role="alert">{retryError}</span>}
+          </div>}
         </div>
       )}
 

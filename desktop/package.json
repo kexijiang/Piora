@@ -1,7 +1,7 @@
 {
   "name": "@piora/desktop",
   "productName": "Piora",
-  "version": "0.5.9-beta.4",
+  "version": "0.5.10-beta.15",
   "desktopName": "Piora",
   "private": true,
   "description": "Secure Electron desktop shell for Piora",
@@ -32,16 +32,16 @@
     "dist:preview": "node ../scripts/run-electron-builder.mjs --preview --win --x64"
   },
   "devDependencies": {
-    "@types/node": "26.6.5",
-    "electron": "45.0.0",
+    "@types/node": "26.6.6",
+    "electron": "45.2.3",
     "electron-builder": "26.18.0",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "@typescript/native": "npm:typescript@7.0.2"
   },
   "dependencies": {
     "tar": "7.5.22",
-    "undici": "8.12.3",
+    "undici": "8.12.4",
     "electron-updater": "6.8.11",
-    "koffi": "3.3.3"
+    "koffi": "3.3.7"
   }
 }

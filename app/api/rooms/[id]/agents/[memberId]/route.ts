@@ -1,3 +1,7 @@
+import { listAllSessions } from "@/lib/session-reader";
+import { ensureRoomSessionIsolation } from "@/lib/room-session-isolation";
+import { resolveProject } from "@/lib/worktree";
+import type { TeamAgentBinding } from "@/lib/team-types";
 import { parseJsonWithinLimit } from "@/lib/bounded-json";
 import { requireRoomCoordinatorBySession } from "@/lib/team-agent-api";
 import { disposeManagedTeamAgentSession } from "@/lib/team-agent-provisioner";
@@ -9,12 +13,22 @@ import type { TeamAgentProfile } from "@/lib/team-types";
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string; memberId: string }> }) {
   try {
     const { id, memberId } = await params;
-    const body = await parseJsonWithinLimit(request, 256 * 1024) as { sessionId?: unknown; expectedRevision?: unknown; patch?: unknown };
-    const { member } = requireRoomCoordinatorBySession(id, body.sessionId);
+    const body = await parseJsonWithinLimit(request, 256 * 1024) as { sessionId?: unknown; expectedRevision?: unknown; patch?: unknown; targetSessionId?: unknown };
+    const { room: currentRoom, member } = requireRoomCoordinatorBySession(id, body.sessionId);
     if (!Number.isInteger(body.expectedRevision) || !body.patch || typeof body.patch !== "object") {
       throw new TeamError("TEAM_INVALID_INPUT", "expectedRevision and profile patch are required.");
     }
-    const room = updateRoomAgentProfile(id, member.binding.sessionId, memberId, body.expectedRevision as number, body.patch as Partial<TeamAgentProfile>);
+    let binding: Pick<TeamAgentBinding, "sessionId" | "cwd" | "projectRoot" | "worktreeBranch"> | undefined;
+    const current = currentRoom.members.find(candidate => candidate.memberId === memberId);
+    if (body.targetSessionId !== undefined && body.targetSessionId !== current?.binding.sessionId) {
+      if (typeof body.targetSessionId !== "string" || !body.targetSessionId) throw new TeamError("TEAM_INVALID_INPUT", "Invalid target session.");
+      const session = (await listAllSessions()).find(candidate => candidate.id === body.targetSessionId);
+      if (!session) throw new TeamError("TEAM_INVALID_INPUT", "The selected session no longer exists.");
+      const project = await resolveProject(session.cwd);
+      binding = { sessionId: session.id, cwd: session.cwd, projectRoot: project.projectRoot, worktreeBranch: project.isWorktree ? project.branch ?? undefined : undefined };
+    }
+    updateRoomAgentProfile(id, member.binding.sessionId, memberId, body.expectedRevision as number, body.patch as Partial<TeamAgentProfile>, binding);
+    const room = ensureRoomSessionIsolation(id);
     return Response.json({ room, agent: room.members.find((candidate) => candidate.memberId === memberId) });
   } catch (error) { return teamApiError(error); }
 }

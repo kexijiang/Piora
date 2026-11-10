@@ -1,3 +1,4 @@
+import { isCommandToolName } from "./command-execution";
 /** Display-only command records. Never run an observed Agent command again. */
 export interface AgentTerminalCommand {
   id: string;
@@ -24,7 +25,7 @@ export function reduceAgentTerminal(commands: AgentTerminalCommand[], value: unk
   }
   const id = typeof event.toolCallId === "string" ? event.toolCallId : "";
   if (!id) return commands;
-  if (event.type === "tool_execution_start" && event.toolName === "bash") {
+  if (event.type === "tool_execution_start" && isCommandToolName(event.toolName)) {
     const command = record(event.args).command;
     if (typeof command !== "string") return commands;
     return [...commands.filter((item) => item.id !== id), { id, command: command.slice(0, 64_000), output: "", status: "running" as const }].slice(-60);

@@ -92,11 +92,11 @@ export function buildChatHistoryRows(messages: AgentMessage[], entryIds: string[
 }
 
 /** Only a settled turn's final reply gets a footer; tool steps share one continuous body. */
-export function layoutChatResponseRows(rows: ChatHistoryRow[], messages: AgentMessage[], busy: boolean): ChatHistoryRow[] {
+export function layoutChatResponseRows(rows: ChatHistoryRow[], messages: AgentMessage[], busy: boolean, start = 0): ChatHistoryRow[] {
   const responseEnds = new Set<number>();
   let laterAssistant = false;
   let active = busy;
-  for (let index = messages.length - 1; index >= 0; index--) {
+  for (let index = messages.length - 1; index >= start; index--) {
     const message = messages[index];
     // Compaction can happen inside one response; only a new user prompt ends it.
     if (message.role === "user") { laterAssistant = false; active = false; }

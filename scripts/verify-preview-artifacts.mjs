@@ -20,7 +20,7 @@ function run(executable, args, options = {}) {
 
 async function main() {
   const { GITHUB_REF_NAME: tag, PIORA_BRAND: brand, BRAND_PREFIX: prefix } = process.env;
-  if (process.platform !== "win32" || !/^v\d+\.\d+\.\d+-beta\.\d+$/.test(tag ?? "")
+  if (process.platform !== "win32" || !/^v\d+\.\d+\.\d+-(?:beta)\.\d+$/.test(tag ?? "")
     || !/^[a-z0-9-]+$/.test(brand ?? "") || !/^[A-Za-z0-9_-]+$/.test(prefix ?? "")) {
     throw new Error("Invalid Windows preview verification context");
   }

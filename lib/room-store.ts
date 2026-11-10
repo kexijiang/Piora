@@ -160,6 +160,67 @@ export function withRoomLockSync<T>(roomId: string, operation: () => T): T {
   }
 }
 
+/** Replace reused histories atomically; callers create a durable empty session first. */
+export function isolateRoomMemberSessions(roomId: string, options: {
+  isBusy: (room: CollaborationRoom, member: RoomMember) => boolean;
+  create: (room: CollaborationRoom, member: RoomMember) => TeamAgentBinding;
+}): CollaborationRoom {
+  let changed = false;
+  const saved = withRoomLockSync(roomId, () => {
+    const room = getRoom(roomId);
+    for (const member of room.members) {
+      if (member.binding.status === "provisioning") continue;
+      const shared = hasSharedRoomHistory(roomId, member.sessionId);
+      if (member.binding.managedByPiora && !shared) continue;
+      const tasks = listRoomTasks(roomId);
+      if (options.isBusy(room, member) || tasks.some((task) => task.assignedTo === member.sessionId
+        && ["leased", "running"].includes(task.status))) continue;
+      const previousSessionId = member.sessionId;
+      member.binding = options.create(room, member);
+      for (const task of tasks) {
+        if (task.status === "pending" && task.assignedTo === previousSessionId) {
+          task.assignedTo = member.sessionId;
+          task.updatedAt = Date.now();
+          writeTask(task);
+        }
+      }
+      changed = true;
+    }
+    if (changed) {
+      room.updatedAt = Date.now();
+      writeRoom(room);
+    }
+    return room;
+  });
+  if (changed) {
+    appendRoomAudit(roomId, "piora", "member.updated", "已为复用的成员创建独立群聊会话，原会话历史保留。");
+    emitRoomEvent({ type: "room", roomId, room: saved });
+  }
+  return saved;
+}
+
+// Remember contamination before moving the first binding: the remaining room
+// must also stop using the old shared history even after it becomes its sole owner.
+function hasSharedRoomHistory(roomId: string, sessionId: string): boolean {
+  const marker = join(getRoomsRoot(), ".shared-session-histories", createHash("sha256").update(sessionId).digest("hex"));
+  if (existsSync(marker)) return true;
+  if (!listRooms(sessionId).some((room) => room.id !== roomId)) return false;
+  mkdirSync(join(getRoomsRoot(), ".shared-session-histories"), { recursive: true });
+  writeFileSync(marker, "shared\n", { flush: true });
+  return true;
+}
+
+export function assertRoomSessionIsolated(roomId: string, sessionId: string): void {
+  const member = getRoom(roomId).members.find((candidate) => candidate.sessionId === sessionId);
+  if (!member?.binding.managedByPiora || member.binding.status === "provisioning"
+    || hasSharedRoomHistory(roomId, sessionId)) {
+    const error = new Error("群聊会话尚未隔离，请等待当前任务结束后刷新群聊重试。原会话历史会保留。") as Error & { code: string; status: number };
+    error.code = "TEAM_REVISION_CONFLICT";
+    error.status = 409;
+    throw error;
+  }
+}
+
 function writeRoom(room: CollaborationRoom): void {
   const paths = roomPaths(room.id);
   mkdirSync(paths.root, { recursive: true });
@@ -713,6 +774,7 @@ export function updateRoomAgentProfile(
   memberId: string,
   expectedRevision: number,
   patch: Partial<Omit<TeamAgentProfile, "schemaVersion" | "revision">>,
+  binding?: Pick<TeamAgentBinding, "sessionId" | "cwd" | "projectRoot" | "worktreeBranch">,
 ): CollaborationRoom {
   let room!: CollaborationRoom;
   withRoomLockSync(roomId, () => {
@@ -729,12 +791,21 @@ export function updateRoomAgentProfile(
     if (member.memberId === room.coordination.coordinatorMemberId && patch.role && patch.role !== "coordinator") {
       throw new Error("Transfer coordination before changing the coordinator role.");
     }
+    const nextSessionId = binding?.sessionId ?? member.binding.sessionId;
+    const rebinding = nextSessionId !== member.binding.sessionId;
+    if (rebinding) {
+      if (room.members.some(candidate => candidate.memberId !== memberId && candidate.binding.sessionId === nextSessionId)) throw new Error("该会话已绑定到其他智能体。");
+      if (binding?.projectRoot && room.projectRoot && resolve(binding.projectRoot) !== resolve(room.projectRoot)) throw new Error("该会话属于其他项目。");
+      // Pending tasks must retain their original assignee. Rebind only an idle member.
+      if (listRoomTasks(roomId).some(task => task.assignedTo === member.binding.sessionId && ["pending", "leased", "running"].includes(task.status))) throw new Error("更换会话前，请先完成或释放该智能体的任务。");
+    }
     member.profile = validateTeamAgentProfile({
       ...member.profile,
       ...structuredClone(patch),
       schemaVersion: 1,
       revision: member.profile.revision + 1,
     });
+    if (rebinding && binding) member.binding = { ...member.binding, ...binding, managedByPiora: false, boundAt: Date.now(), status: "ready" };
     if (member.binding.managedByPiora) member.binding.status = "needs_restart";
     attachMemberAliases(member);
     if (member.profile.role === "coordinator") {
@@ -816,6 +887,7 @@ export function appendRoomMessage(roomId: string, input: {
   authorKind: RoomMessageAuthorKind;
   authorId: string;
   authorName?: string;
+  authorIdentitySource?: "local_account";
   content: string;
   replyTo?: string;
   correlationId?: string;
@@ -863,7 +935,11 @@ export function appendRoomMessage(roomId: string, input: {
       id,
       roomId,
       seq: room.nextSeq,
-      author: { kind: input.authorKind, id: input.authorId, ...(input.authorName ? { name: input.authorName } : {}) },
+      author: input.authorKind === "session" ? {
+        kind: "session", id: input.authorId, memberId: requireMember(room, input.authorId).memberId,
+        name: requireMember(room, input.authorId).name, identitySource: "room_member",
+      } : { kind: input.authorKind, id: input.authorId, ...(input.authorName ? { name: input.authorName } : {}),
+        ...(input.authorIdentitySource ? { identitySource: input.authorIdentitySource } : input.authorKind === "system" ? { identitySource: "system" as const } : {}) },
       content: preview,
       payload: {
         byteLength,

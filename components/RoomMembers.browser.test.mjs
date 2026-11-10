@@ -24,14 +24,20 @@ import {RoomSidebarSection} from "@/components/RoomSidebarSection";
 import {RoomSettingsDialog} from "@/components/RoomSettingsDialog";
 import {createRoomChatProfile} from "@/lib/team-agent-templates";
 const member={memberId:"member",profile:createRoomChatProfile({name:"小林",role:"coordinator"}),binding:{sessionId:"hidden",cwd:"F:/fixture",managedByPiora:true,status:"ready"}};
-const room={id:"room",name:"写作群",projectRoot:"F:/fixture",workspace:{mode:"managed",path:"F:/fixture/shared",label:"共享"},coordination:{mode:"manual",coordinatorMemberId:"member",maxConcurrency:1,leaseDurationMs:60000},members:[member]};
+let room={id:"room",name:"写作群",projectRoot:"F:/fixture",workspace:{mode:"managed",path:"F:/fixture/shared",label:"共享"},coordination:{mode:"manual",coordinatorMemberId:"member",maxConcurrency:1,leaseDurationMs:60000},members:[member]};
 window.requests=[];
 window.fetch=async(url,options={})=>{
   const body=options.body ? JSON.parse(options.body) : null;
   if(body) window.requests.push({url,body});
+  if(options.method === "PATCH") {
+    if(window.failSave) return new Response(JSON.stringify({error:{message:"保存失败，请重试"}}),{status:500});
+    if(body.expectedRevision !== room.members[0].profile.revision) return new Response(JSON.stringify({error:{message:"配置已变化，请取消编辑后重试"}}),{status:409});
+    room={...room,members:room.members.map(m=>({...m,profile:{...m.profile,...body.patch,revision:m.profile.revision+1}}))};
+    return new Response(JSON.stringify({room}));
+  }
   return new Response(JSON.stringify(options.method==="POST"?{room}:url==="/api/sessions"?{sessions:[]}:{rooms:[],audit:[]}),{headers:{"Content-Type":"application/json"}});
 };
-function App(){const[settings,setSettings]=useState(false);return <I18nProvider>{settings?<RoomSettingsDialog initialSection="agents" room={room} onClose={()=>setSettings(false)} onRoomChange={()=>{}} onRoomDeleted={()=>{}}/>:<RoomSidebarSection sessions={[]} selectedSessionId={null} selectedRoomId={null} activeProjectRoot="F:/fixture" onSelectRoom={()=>setSettings(true)}/>}</I18nProvider>}
+function App(){const[settings,setSettings]=useState(false);const[current,setCurrent]=useState(room);window.refreshRoom=(rename)=>{room={...room,members:room.members.map(m=>({...m,profile:{...m.profile,...(rename?{name:rename,revision:m.profile.revision+1}:{})}}))};setCurrent(room)};return <I18nProvider>{settings?<RoomSettingsDialog initialSection="agents" room={current} onClose={()=>setSettings(false)} onRoomChange={setCurrent} onRoomDeleted={()=>{}}/>:<RoomSidebarSection sessions={[]} selectedSessionId={null} selectedRoomId={null} activeProjectRoot="F:/fixture" onSelectRoom={()=>setSettings(true)}/>}</I18nProvider>}
 createRoot(document.getElementById("root")).render(<App/>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
       entry: path.join(directory, "entry.tsx"), output: { path: directory, filename: "bundle.js" },
@@ -67,6 +73,29 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     await page.getByRole("button", { name: "显示高级设置" }).click();
     assert.equal(await page.getByLabel("绑定会话", { exact: true }).inputValue(), "hidden");
     await page.getByRole("button", { name: "收起高级设置" }).click();
+    const memberName = page.getByLabel("显示名称", { exact: true }).first();
+    await memberName.fill("编辑中的名字");
+    for (let i = 0; i < 3; i++) await page.evaluate(() => window.refreshRoom());
+    assert.equal(await memberName.inputValue(), "编辑中的名字");
+    await page.evaluate(() => { window.failSave = true; });
+    await page.getByRole("button", { name: "保存智能体", exact: true }).click();
+    await page.getByRole("alert").filter({ hasText: "保存失败" }).waitFor();
+    assert.equal(await memberName.inputValue(), "编辑中的名字");
+    await page.evaluate(() => { window.failSave = false; window.refreshRoom("外部的新名字"); });
+    assert.equal(await memberName.inputValue(), "编辑中的名字");
+    await page.getByRole("button", { name: "保存智能体", exact: true }).click();
+    await page.getByRole("alert").filter({ hasText: "配置已变化" }).waitFor();
+    assert.equal(await memberName.inputValue(), "编辑中的名字");
+    await page.getByRole("button", { name: "取消编辑", exact: true }).click();
+    assert.equal(await memberName.inputValue(), "外部的新名字");
+    await memberName.fill("成功保存的名字");
+    const beforeSave = await page.evaluate(() => window.requests.length);
+    await page.getByRole("button", { name: "保存智能体", exact: true }).click();
+    await page.getByRole("status").filter({ hasText: "完整配置已保存" }).waitFor();
+    assert.equal((await page.evaluate(() => window.requests.slice(-1)))[0].body.patch.name, "成功保存的名字");
+    assert.equal(await page.evaluate(() => window.requests.length), beforeSave + 1);
+    await page.evaluate(() => window.refreshRoom());
+    assert.equal(await memberName.inputValue(), "成功保存的名字");
     await page.getByLabel("显示名称", { exact: true }).last().fill("小周");
     await page.locator(".addAgent textarea").fill("提供不同观点");
     await page.getByRole("button", { name: "添加成员", exact: true }).click();

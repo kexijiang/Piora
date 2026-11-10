@@ -1,4 +1,4 @@
-import { Type, type TSchema } from "@earendil-works/pi-ai";
+import { Type, type TSchema } from "typebox";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { intelligentUiPlanPrompt, intelligentUiRichPlanPrompt, intelligentUiSurfacePrompt } from "../lib/intelligent-ui/decision-policy.ts";
 import { readBetaFeatures } from "../lib/beta-features.ts";
@@ -11,18 +11,19 @@ import { uiPlanSchema } from "../lib/intelligent-ui/plan-schema.ts";
 import { uiRichPlanSchema } from "../lib/intelligent-ui/rich-plan-schema.ts";
 import { getUiGenerationRuntime } from "../lib/intelligent-ui/generation-runtime.ts";
 import { uiInputProtocol } from "../lib/intelligent-ui/input-protocol.ts";
+import { a2uiUiPrompt, a2uiUiSchema } from "../lib/a2ui/authoring.ts";
 
 function unavailableResult() {
   const diagnostic = { code: "UI_RUN_UNAVAILABLE", repairable: false };
   return { content: [{ type: "text" as const, text: JSON.stringify(diagnostic) }], isError: true, details: { intelligentUiDiagnostic: diagnostic } };
 }
 
-function registerPlan(api: ExtensionAPI, planVersion: 1 | 2): void {
+function registerPlan(api: ExtensionAPI, planVersion: 1 | 2 | "a2ui-1"): void {
   api.registerTool(defineTool({
     name: "piora_render_ui_plan", label: "Intelligent UI",
-    ...(planVersion === 2 ? intelligentUiRichPlanPrompt() : intelligentUiPlanPrompt()),
+    ...(planVersion === "a2ui-1" ? a2uiUiPrompt() : planVersion === 2 ? intelligentUiRichPlanPrompt() : intelligentUiPlanPrompt()),
     executionMode: "sequential",
-    parameters: planVersion === 2 ? uiRichPlanSchema : uiPlanSchema,
+    parameters: planVersion === "a2ui-1" ? a2uiUiSchema : planVersion === 2 ? uiRichPlanSchema : uiPlanSchema,
     async execute(toolCallId, params, signal, onUpdate, ctx) {
       const runtime = getUiGenerationRuntime(ctx.sessionManager);
       if (!runtime || signal?.aborted) return unavailableResult();
@@ -72,9 +73,10 @@ export default function intelligentUi(api: ExtensionAPI) {
   // Both the load plan and this entry point fail closed. The loaded instance is
   // the per-run capability snapshot; toggling settings must not mutate a run.
   if (!readBetaFeatures().intelligentUi) return;
-  // Beta uses Plan2 by default; the internal switch retains explicit older
+  // Beta uses A2UI by default; the internal switch retains explicit older
   // protocols. An instance exposes exactly one authoring contract.
   const protocol = uiInputProtocol();
+  if (protocol === "a2ui-1") { registerPlan(api, protocol); return; }
   if (protocol === "plan-1" || protocol === "plan-2") {
     registerPlan(api, protocol === "plan-2" ? 2 : 1); return;
   }

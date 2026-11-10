@@ -11,6 +11,8 @@ import { MINI_APP_REPEAT_RUNTIME_VERSION, MINI_APP_SCENE_RUNTIME_VERSION, MINI_A
 import { validateMiniAppViewState, reconcileMiniAppView } from "./scene-state";
 import { parseAnswerConversionSpec, type AnswerConversionSpec } from "../answer-output-conversion-types";
 import { MINI_APP_CONVERSION_RUNTIME_VERSION } from "./limits";
+import { compileA2uiMiniDocument, recompileA2uiMiniDocument } from "../a2ui/mini-document";
+import type { A2uiDocument } from "../a2ui/document";
 
 interface InputBase { id: string; label: string; meaning: string }
 export type MiniAppInput = InputBase & (
@@ -24,7 +26,7 @@ export interface MiniAppProgressMigration { fromPlanDigest: string; description:
 export interface MiniAppPlan1 {
   planVersion: 1; id: string; title: string; purpose: string; assumptions: string[];
   inputs: MiniAppInput[]; stateSchema: MiniAppStateSchema;
-  document: { html: string; css: string }; viewports: MiniAppViewport[];
+  document: { html: string; css: string; a2ui?: A2uiDocument }; viewports: MiniAppViewport[];
   program: string; initialSnapshot: string; actions?: UiActionDeclaration;
   playback?: MiniAppPlayback;
   inputPresets?: MiniAppInputPreset[];
@@ -173,7 +175,16 @@ export function compileMiniAppPlan(value: unknown): CompiledMiniApp {
     return parsed;
   });
   const documentSource = check(() => {
-    const source = jsonRecord(v.document, "document"); exactKeys(source, ["html", "css"], "document");
+    const source = jsonRecord(v.document, "document");
+    if ("messages" in source || "a2ui" in source) {
+      exactKeys(source, "messages" in source ? ["messages"] : ["html", "css", "a2ui"], "document");
+      if (!id || !inputs || !viewports) miniAppError("BINDING", "document", "Valid identity, inputs and viewports are required before compiling A2UI");
+      const options = { id, inputs, viewports, presets: inputPresets };
+      const compiled = "messages" in source ? compileA2uiMiniDocument(source.messages, options) : recompileA2uiMiniDocument(source.a2ui as A2uiDocument, options);
+      if ("a2ui" in source && (source.html !== compiled.html || source.css !== compiled.css)) miniAppError("BINDING", "document", "Saved A2UI does not match its native projection");
+      return compiled;
+    }
+    exactKeys(source, ["html", "css"], "document");
     return { html: text(source.html, "document/html", 64_000), css: text(source.css, "document/css", 24_000, true) };
   });
   const document = inputs && viewports && documentSource ? check(() => {

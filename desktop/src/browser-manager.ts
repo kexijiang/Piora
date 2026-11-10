@@ -20,6 +20,8 @@ import {
   type MenuItemConstructorOptions,
 } from "electron";
 import { BrowserCookieStore } from "./browser-cookie-store.js";
+import { getCredentialVault } from "./credential-vault-ipc.js";
+import { credentialFillScript } from "./credential-fill.js";
 import type { Logger } from "./logger.js";
 import {
   NAVIGATION_TIMEOUT_MS,
@@ -45,6 +47,11 @@ const MAX_TABS = 20;
 const MANUAL_BROWSER_SESSION_ID = "__piora_browser_manual__";
 
 export interface DesktopBrowserState {
+  tabCount?: number;
+  tabLimit?: number;
+  idleTabCount?: number;
+  vaultProtected?: boolean;
+  vaultMatches?: number;
   sessionId: string;
   activeTabId: string;
   canGoBack: boolean;
@@ -88,7 +95,7 @@ export interface ChromeBookmarkImportResult {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
+  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;
@@ -107,6 +114,9 @@ interface BrowserAgentBinding {
   agentTabId(sessionId: string): string | null;
   status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string };
   noteUsed(tabId: string): void;
+  idleTabIds(): string[];
+  closeIdleTabs(): void;
+  reclaimIdleTab(): void;
 }
 
 export interface DesktopBrowserDownload {
@@ -117,6 +127,7 @@ export interface DesktopBrowserDownload {
 }
 
 type BrowserTab = {
+  vaultProtected?: boolean;
   initialLoad?: Promise<void>;
   authHost?: string;
   attached: boolean;
@@ -303,7 +314,7 @@ export class DesktopBrowserManager {
     private readonly window: BrowserWindow,
     private readonly log: Logger,
     private readonly isTrustedSender: (event: IpcMainInvokeEvent) => boolean,
-    private readonly startup: { agentDirectory?: () => string | undefined } = {},
+    private readonly startup: { agentDirectory?: () => string | undefined; credentialVault?: typeof getCredentialVault } = {},
   ) {
     this.browserSession = session.fromPartition(BROWSER_PARTITION, { cache: true });
     this.cookieStore = new BrowserCookieStore(join(app.getPath("userData"), "browser-session-cookies.enc"), this.browserSession.cookies, safeStorage);
@@ -469,10 +480,13 @@ export class DesktopBrowserManager {
     ipcMain.removeHandler(BROWSER_AGENT_BACKEND_GET_CHANNEL);
   }
 
+  private canCreateTab(): boolean {
+    return this.tabs.length < MAX_TABS || (this.agentControl?.idleTabIds().length ?? 0) > 0;
+  }
+
   private createTab(rawUrl: string, activate = true, sessionId = this.displayedSessionId, popupOptions?: BrowserWindowConstructorOptions & { webContents?: WebContents }, deferLoad = false): BrowserTab {
+    if (this.tabs.length >= MAX_TABS) this.agentControl?.reclaimIdleTab();
     if (this.tabs.length >= MAX_TABS) {
-      const existing = this.activeTab(sessionId);
-      if (existing) return existing;
       throw new Error(`The browser tab limit of ${MAX_TABS} has been reached.`);
     }
     const id = `tab-${this.nextTabId++}`;
@@ -558,7 +572,7 @@ export class DesktopBrowserManager {
       if (isMainFrame && !isInPlace) delete tab.authHost;
     });
     contents.setWindowOpenHandler(({ url }) => {
-      if (isBrowserUrl(url) && this.tabs.length < MAX_TABS) {
+      if (isBrowserUrl(url) && this.canCreateTab()) {
         return {
           action: "allow",
           createWindow: (options) => this.createTab((options as { webContents?: WebContents }).webContents ? "about:blank" : url, true, tab.sessionId, options).view.webContents,
@@ -595,6 +609,7 @@ export class DesktopBrowserManager {
       this.settleNavigation(tab);
       this.scheduleStorageFlush();
       this.sendState();
+      void this.autoFillCredential(tab);
     });
     contents.on("did-navigate", () => {
       this.noteMainFrameNavigation(tab);
@@ -623,7 +638,10 @@ export class DesktopBrowserManager {
     contents.on("context-menu", (_event, params) => {
       const template: Electron.MenuItemConstructorOptions[] = [];
       if (params.linkURL && isBrowserUrl(params.linkURL)) {
-        template.push({ label: "在新标签页中打开链接", click: () => this.createTab(params.linkURL, true, tab.sessionId) });
+        template.push({ label: "在新标签页中打开链接", enabled: this.canCreateTab(), click: () => {
+          // A menu can stay open while another session consumes the final slot.
+          if (this.canCreateTab()) this.createTab(params.linkURL, true, tab.sessionId);
+        } });
         template.push({ type: "separator" });
       }
       if (params.selectionText) template.push({ role: "copy", label: "复制" });
@@ -656,22 +674,25 @@ export class DesktopBrowserManager {
   }
 
   private getState(sessionId = this.displayedSessionId): DesktopBrowserState {
-    const active = this.ensureSession(sessionId);
-    const contents = this.liveContents(active);
-    const url = this.tabUrl(active);
+    const active = this.activeTab(sessionId);
+    const contents = active ? this.liveContents(active) : undefined;
+    const url = active ? this.tabUrl(active) : "about:blank";
     const agent = this.agentControl?.status(sessionId);
     return {
       sessionId,
-      activeTabId: active.id,
+      tabCount: this.tabs.length,
+      tabLimit: MAX_TABS,
+      idleTabCount: this.agentControl?.idleTabIds().length ?? 0,
+      activeTabId: active?.id ?? "",
       canGoBack: contents ? contents.navigationHistory.canGoBack() : false,
       canGoForward: contents ? contents.navigationHistory.canGoForward() : false,
-      loading: active.loading,
+      loading: active?.loading ?? false,
       tabs: this.tabs.filter((tab) => tab.sessionId === sessionId).map((tab) => ({
         id: tab.id,
         title: this.tabTitle(tab),
         url: this.tabUrl(tab),
       })),
-      title: this.tabTitle(active),
+      title: active ? this.tabTitle(active) : "",
       url,
       ...(agent ? {
         agentTabId: agent.tabId,
@@ -680,6 +701,8 @@ export class DesktopBrowserManager {
         agentWaiting: agent.waiting,
         ...(agent.waiting && agent.reason ? { agentWaitReason: agent.reason } : {}),
       } : {}),
+      vaultProtected: Boolean(active?.vaultProtected),
+      vaultMatches: this.credentialVault().candidates(url, false).length,
     };
   }
 
@@ -759,7 +782,7 @@ export class DesktopBrowserManager {
     const input = value as DesktopBrowserAction;
     if (input.action === "set_session") {
       this.displayedSessionId = normalizeBrowserSessionId(input.sessionId);
-      this.ensureSession(this.displayedSessionId);
+      if (this.tabs.length < MAX_TABS) this.ensureSession(this.displayedSessionId);
       this.updateVisibility();
       this.sendState();
       return;
@@ -770,6 +793,7 @@ export class DesktopBrowserManager {
       return;
     }
     if (input.action === "resume_agent") {
+      if (this.tabs.some(tab => tab.sessionId === this.displayedSessionId && tab.vaultProtected)) return;
       this.agentControl?.resumeSession(this.displayedSessionId);
       this.updateVisibility();
       this.sendState();
@@ -785,11 +809,32 @@ export class DesktopBrowserManager {
       this.sendState();
       return;
     }
-    const active = this.activeTab(this.displayedSessionId);
-    if (!active || active.unloaded) {
-      if (input.action === "new_tab") this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
+    if (input.action === "close_idle_tabs") {
+      this.agentControl?.closeIdleTabs();
+      this.updateVisibility();
+      this.sendState();
       return;
     }
+    if (input.action === "close_tab" && typeof input.tabId === "string") {
+      this.closeTab(input.tabId, this.displayedSessionId, true);
+      return;
+    }
+    if (input.action === "switch_tab" && typeof input.tabId === "string") {
+      const tab = this.tabs.find(tab => tab.id === input.tabId && tab.sessionId === this.displayedSessionId);
+      if (!tab) return;
+      await this.restoreTab(tab.id);
+      this.activeTabIds.set(this.displayedSessionId, tab.id);
+      this.noteTabUsed(tab);
+      this.updateVisibility();
+      this.sendState();
+      return;
+    }
+    const active = this.activeTab(this.displayedSessionId);
+    if (!active) {
+      if (input.action === "new_tab" || input.action === "navigate") this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
+      return;
+    }
+    if (active.unloaded) await this.restoreTab(active.id);
     if (input.action === "configure_login") { this.showLoginMenu(active); return; }
     if (input.action === "navigate" && typeof input.url === "string") {
       await this.storageReady;
@@ -806,13 +851,6 @@ export class DesktopBrowserManager {
       this.noteTabUsed(active);
     } else if (input.action === "new_tab") {
       this.noteTabUsed(this.createTab(typeof input.url === "string" ? input.url : "about:blank", true, this.displayedSessionId));
-    } else if (input.action === "switch_tab" && typeof input.tabId === "string" && this.tabs.some((tab) => tab.id === input.tabId && tab.sessionId === this.displayedSessionId)) {
-      this.activeTabIds.set(this.displayedSessionId, input.tabId);
-      this.noteTabUsed(this.tabs.find((tab) => tab.id === input.tabId));
-      this.updateVisibility();
-      this.sendState();
-    } else if (input.action === "close_tab" && typeof input.tabId === "string") {
-      this.closeTab(input.tabId, this.displayedSessionId);
     }
   }
 
@@ -830,6 +868,13 @@ export class DesktopBrowserManager {
     const targetHost = host;
     const checked = Boolean(targetHost && hosts.includes(targetHost));
     const menu = Menu.buildFromTemplate([
+      { label: "凭据库（设置 → 数据）", enabled: false },
+      ...this.credentialVault().candidates(tab.view.webContents.getURL(), false).map(candidate => ({
+        label: `填写：${candidate.name}`, enabled: !tab.vaultProtected,
+        click: () => { void this.fillCredential(candidate.id, tab).catch(() => {}); },
+      })),
+      { label: "关闭填写页并恢复智能体", enabled: Boolean(tab.vaultProtected), click: () => { void this.releaseCredentials(); } },
+      { type: "separator" as const },
       { label: targetHost ?? "请先打开需要登录的网站", enabled: false },
       { label: "允许此站点使用 Windows 免密登录", type: "checkbox", checked, enabled: process.platform === "win32" && Boolean(targetHost), click: () => {
         if (!targetHost || tab.view.webContents.isDestroyed()) return;
@@ -952,7 +997,56 @@ export class DesktopBrowserManager {
   private requireLiveTab(tabId: string): BrowserTab {
     const tab = this.findTab(tabId);
     if (!tab || tab.unloaded || tab.view.webContents.isDestroyed()) throw new Error("Browser tab is closed.");
+    if (tab.vaultProtected) throw new Error("Credential entry is private. Ask the user to finish login and close the protected tab.");
     return tab;
+  }
+
+  private async autoFillCredential(tab: BrowserTab): Promise<void> {
+    if (tab.vaultProtected || tab.unloaded || tab.view.webContents.isDestroyed()) return;
+    const matches = this.credentialVault().candidates(tab.view.webContents.getURL(), true);
+    if (matches.length === 1) await this.fillCredential(matches[0]!.id, tab).catch(() => {});
+  }
+
+  async fillCredential(id: string, tab = this.activeTab(this.displayedSessionId)): Promise<void> {
+    if (!tab || tab.unloaded || tab.vaultProtected || tab.view.webContents.isDestroyed()) throw new Error("No eligible login tab");
+    const contents = tab.view.webContents;
+    const store = this.credentialVault();
+    const credential = store.credential(id, contents.getURL());
+    const eligible = await contents.executeJavaScriptInIsolatedWorld(7332, [{ code: credentialFillScript(credential.url, "", "", true) }]);
+    if (eligible !== true || tab.vaultProtected) throw new Error("No eligible login form");
+    // Block both new operations and results from operations already in flight.
+    // Remain protected across redirects and SPA navigation: pages may copy field values.
+    tab.vaultProtected = true;
+    this.agentControl?.pauseSession(tab.sessionId);
+    if (contents.debugger.isAttached()) contents.debugger.detach();
+    this.sendState();
+    try {
+      const filled = await contents.executeJavaScriptInIsolatedWorld(7332, [{ code: credentialFillScript(credential.url, credential.username, credential.password) }]);
+      if (filled !== true) throw new Error("No eligible login form");
+      store.record(id, credential.url);
+    } catch { throw new Error("Credential fill not completed; close the protected tab to resume."); }
+  }
+
+  private credentialVault() { return this.startup.credentialVault?.() ?? getCredentialVault(); }
+
+  refreshCredentialState(): void {
+    this.sendState();
+    const tab = this.activeTab(this.displayedSessionId);
+    if (tab) void this.autoFillCredential(tab);
+  }
+
+  async releaseCredentials(): Promise<void> {
+    const sessionId = this.displayedSessionId;
+    for (const tab of [...this.tabs]) if (tab.sessionId === sessionId && tab.vaultProtected) this.closeTab(tab.id, sessionId, true);
+    this.agentControl?.resumeSession(sessionId);
+    this.updateVisibility();
+    this.sendState();
+  }
+
+  private async credentialGuardedRead<T>(tabId: string, read: (contents: WebContents) => Promise<T>): Promise<T> {
+    const tab = this.requireLiveTab(tabId);
+    try { return await read(tab.view.webContents); }
+    finally { this.requireLiveTab(tabId); }
   }
 
   private async ensureTabReady(tabId: string): Promise<void> {
@@ -976,9 +1070,10 @@ export class DesktopBrowserManager {
       sessionId: tab.sessionId,
       webContentsId: this.liveContents(tab)?.id ?? -1,
       closed: false,
-      url: this.tabUrl(tab),
-      title: this.tabTitle(tab),
+      url: tab.vaultProtected ? "about:blank" : this.tabUrl(tab),
+      title: tab.vaultProtected ? "Private credential entry" : this.tabTitle(tab),
       unloaded: Boolean(tab.unloaded),
+      vaultProtected: Boolean(tab.vaultProtected),
     };
   }
 
@@ -1034,6 +1129,7 @@ export class DesktopBrowserManager {
       listTabs: () => this.tabs.map((tab) => this.tabState(tab)),
       ensureReady: (tabId: string) => this.ensureTabReady(tabId),
       createTab: (sessionId: string, url: string) => {
+        if (this.tabs.length >= MAX_TABS) this.agentControl?.reclaimIdleTab();
         rejectAgentCreateAtCapacity(this.tabs.length, MAX_TABS);
         return this.tabState(this.createTab(url, false, sessionId, undefined, true));
       },
@@ -1081,21 +1177,21 @@ export class DesktopBrowserManager {
         this.requireLiveTab(tabId).view.webContents.setBackgroundThrottling(allowed);
       },
       capturePage: async (tabId: string, options: { stayHidden: boolean; stayAwake: boolean }) => {
-        const image = await this.requireLiveTab(tabId).view.webContents.capturePage(undefined, options);
+        const image = await this.credentialGuardedRead(tabId, contents => contents.capturePage(undefined, options));
         const png = image.toPNG();
         return { byteLength: png.length, base64: png.toString("base64") };
       },
       executeIsolated: (tabId: string, worldId: number, code: string) => (
-        this.requireLiveTab(tabId).view.webContents.executeJavaScriptInIsolatedWorld(worldId, [{ code }])
+        this.credentialGuardedRead(tabId, contents => contents.executeJavaScriptInIsolatedWorld(worldId, [{ code }]))
       ),
       executeMain: (tabId: string, code: string) => (
-        this.requireLiveTab(tabId).view.webContents.executeJavaScript(`globalThis.eval(${JSON.stringify(code)})`)
+        this.credentialGuardedRead(tabId, contents => contents.executeJavaScript(`globalThis.eval(${JSON.stringify(code)})`))
       ),
       hasFullToolAccess: (sessionId: string) => hasFullToolAccess(this.startup.agentDirectory?.(), sessionId),
       navigationToken: (tabId: string) => {
         const tab = this.findTab(tabId);
         if (!tab) return formatNavigationToken(tabId, 0, "");
-        return formatNavigationToken(tab.id, tab.navigationEpoch ?? 0, this.tabUrl(tab));
+        return formatNavigationToken(tab.id, tab.navigationEpoch ?? 0, tab.vaultProtected ? "about:blank" : this.tabUrl(tab));
       },
       activateSessionTab: (sessionId: string, tabId: string) => {
         const tab = this.findTab(tabId);
@@ -1118,7 +1214,7 @@ export class DesktopBrowserManager {
         return tab.view.webContents.debugger.isAttached();
       },
       debuggerSend: (tabId: string, method: string, params?: Record<string, unknown>) => (
-        this.requireLiveTab(tabId).view.webContents.debugger.sendCommand(method, params)
+        this.credentialGuardedRead(tabId, contents => contents.debugger.sendCommand(method, params))
       ),
       onTabEvent: (tabId: string, event: "render-process-gone" | "debugger-detach" | "input-event" | "destroyed", handler: (payload?: unknown) => void) => {
         const tab = this.findTab(tabId);

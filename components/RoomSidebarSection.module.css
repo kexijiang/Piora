@@ -1,5 +1,7 @@
 .section { flex-shrink: 0; padding: 8px 9px 12px; border-bottom: 1px solid var(--border); }
-.heading { display: flex; align-items: center; gap: 10px; min-height: 30px; padding: 2px 7px 7px; color: var(--text-muted); font-size: var(--text-xs, 12px); font-weight: 550; }
+.heading { display: flex; align-items: center; min-height: 30px; padding: 0; border-radius: 5px; color: var(--text-muted); font-size: var(--text-xs, 12px); font-weight: 550; }
+.heading:hover { background: var(--bg-hover); }
+.headingToggle { display: flex; flex: 1; align-self: stretch; align-items: center; gap: 4px; min-width: 0; padding: 7px; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .addButton, .closeButton, .pinButton { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 27px; height: 27px; padding: 0; border: 0; border-radius: 5px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .addButton { margin-left: auto; }
 .addButton:hover, .closeButton:hover, .pinButton:hover { background: var(--bg-hover); color: var(--text); }
@@ -82,6 +84,13 @@
 .dialogActions > button { padding: 9px 16px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); color: var(--text-muted); font-size: var(--text-sm); white-space: nowrap; }
 .dialogActions > .primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .error, .inlineError { margin: 13px 0 0; color: var(--status-error, #c44); font-size: var(--text-sm); line-height: 1.65; overflow-wrap: anywhere; }
+.inlineError { margin: 4px 7px 0; font-size: var(--text-xs, 12px); }
+.errorActions { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.errorActions .closeButton { margin-left: auto; }
+.retryButton { padding: 3px 7px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); color: var(--text); font: inherit; cursor: pointer; }
+.retryButton:hover { background: var(--bg-hover); }
+.retryButton:disabled { opacity: .5; cursor: default; }
+.loading { margin: 9px 7px; color: var(--text-dim); font-size: var(--text-xs, 12px); }
 .creating { display: flex; align-items: center; gap: 7px; margin: 15px 0 0; color: var(--accent); font-size: var(--text-sm); }
 .creating > span { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
 @media (max-width: 600px) {

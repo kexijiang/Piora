@@ -1,5 +1,7 @@
 "use client";
-import { useRunningStatusLabel } from "@/hooks/useRunningStatusLabel";
+import { CredentialVaultSettings } from "./CredentialVaultSettings";
+import { RunningStatusSettings } from "./RunningStatusSettings";
+import { AnswerLinkSettings } from "./AnswerLinkSettings";
 import { useRunningSendMode } from "@/hooks/useRunningSendMode";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -10,6 +12,7 @@ import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScro
 import { AliIcon, type AliIconName } from "./AliIcon";
 import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
 import { RuntimeLogSettings } from "./RuntimeLogSettings";
+import { DesktopUpdateSourceSetting } from "./DesktopUpdateSourceSetting";
 import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
 import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
@@ -17,6 +20,8 @@ import { ModelRetrySettings } from "./ModelRetrySettings";
 import { ModelCompactionSettings } from "./ModelCompactionSettings";
 import { ModelFallbackSetting } from "./ModelFallbackSetting";
 import { BetaFeaturesSettings } from "./BetaFeaturesSettings";
+
+import { InputPredictionSettings } from "./InputPredictionSettings";
 import { ReplySuggestionsSettings } from "./ReplySuggestionsSettings";
 import { SystemPromptEditor } from "./SystemPromptEditor";
 import { PROMPT_OPTIMIZER_MAX_SYSTEM_PROMPT_LENGTH, PROMPT_OPTIMIZER_SYSTEM_PROMPT } from "@/lib/prompt-optimizer";
@@ -106,7 +111,6 @@ export function SettingsDialog({
   desktop,
 }: Props) {
   const { t } = useI18n();
-  const { label: runningStatusLabel, setLabel: setRunningStatusLabel } = useRunningStatusLabel();
   const { mode: runningSendMode, setMode: setRunningSendMode } = useRunningSendMode();
   const {
     enabled: liveOutputAutoScrollEnabled,
@@ -199,16 +203,24 @@ export function SettingsDialog({
     setOptimizerPromptStatus("idle");
     const selectedModel = readPromptOptimizerModel(window.localStorage);
     setOptimizerModelValue(selectedModel ? JSON.stringify(selectedModel) : "");
-    void fetch("/api/models", { cache: "no-store" })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data: { modelList?: Array<{ provider: string; id: string; name: string }> } | null) => setOptimizerModels(data?.modelList ?? []))
-      .catch(() => setOptimizerModels([]));
     const savedTitlePrompt = readSessionTitlePrompt(window.localStorage);
     setTitlePromptDraft(savedTitlePrompt);
     setTitlePromptSaved(savedTitlePrompt);
     setTitlePromptStatus("idle");
     setTitleModel(readSessionTitleModel(window.localStorage));
   }, [open]);
+
+  useEffect(() => {
+    if (!open || activeKey !== "prompts") return;
+    const controller = new AbortController();
+    void fetch("/api/models", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { modelList?: Array<{ provider: string; id: string; name: string }> } | null) => {
+        if (!controller.signal.aborted) setOptimizerModels(data?.modelList ?? []);
+      })
+      .catch(() => { if (!controller.signal.aborted) setOptimizerModels([]); });
+    return () => controller.abort();
+  }, [open, activeKey]);
 
   useEffect(() => {
     if (!open || activeKey !== "prompts") return;
@@ -475,6 +487,7 @@ export function SettingsDialog({
                 </section> : null}
                 {desktop.available ? <section className={styles.conversationSection}>
                   <div data-settings-id="general.autoLaunch"><DesktopAutoLaunchSetting /></div>
+                  <DesktopUpdateSourceSetting />
                   <DesktopUpdateScheduleSetting />
                 </section> : null}
                 <div className={styles.localNote}>
@@ -486,6 +499,7 @@ export function SettingsDialog({
               <>
                 <div className={styles.contentHeading}><h2>{t("settings.page.data")}</h2><p>{t("settings.page.dataDescription")}</p></div>
                 <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>
+                <CredentialVaultSettings />
                 {desktop.available && window.piDesktop?.getAgentDataDirectory ? <section className={styles.conversationSection}>
                   <div className={styles.agentDataHeader}>
                     <div className={styles.conversationCopy}>
@@ -557,14 +571,12 @@ export function SettingsDialog({
               ) : activeKey === "modelRuntime" ? (
               <>
                 <div className={styles.contentHeading}><h2>{t("settings.tab.modelRuntime")}</h2><p>{t("settings.page.modelRuntimeDescription")}</p></div>
+                <div className={styles.runtimeCards}>
                 <ModelFallbackSetting />
-                  <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
-                <label className={styles.agentDataField} data-settings-id="general.runningStatusLabel">
-                  <span>{t("settings.runningStatusLabel")}</span>
-                  <input value={runningStatusLabel} maxLength={80} placeholder={t("chat.taskDuration.running")} onChange={(event) => setRunningStatusLabel(event.target.value)} />
-                  <span>{t("settings.runningStatusLabelHint")}</span>
-                </label>
+                <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
+                <div data-settings-id="general.runningStatusLabel"><RunningStatusSettings /></div>
                 <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
+                </div>
               </>
               ) : activeKey === "conversation" ? (
               <>
@@ -629,7 +641,9 @@ export function SettingsDialog({
                     </div>
                   </div>
                 </section>
+                <AnswerLinkSettings />
                 <ReplySuggestionsSettings cwd={modelCwd} />
+                <InputPredictionSettings cwd={modelCwd} />
               </>
               ) : activeKey === "prompts" ? (
               <>

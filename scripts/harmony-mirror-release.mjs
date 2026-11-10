@@ -396,7 +396,7 @@ export async function readAndVerifySourceNote(resourcesDirectory, manifest, rece
 
 /** Build/sign/verify/record in one GitHub Actions job on the dedicated runner. */
 export async function buildHarmonyMirrorRelease({ projectRoot, workspace, outputDirectory, environment = process.env, now = Date.now() }) {
-  if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-beta\.(?:0|[1-9]\d*)$/.test(environment.GITHUB_REF_NAME ?? '')) {
+  if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-(?:beta)\.(?:0|[1-9]\d*)$/.test(environment.GITHUB_REF_NAME ?? '')) {
     fail('device-bound DevEco signing is preview-only; stable releases require an AGC release certificate and profile');
   }
   const origin = readGitHubBuildOrigin(projectRoot, environment);

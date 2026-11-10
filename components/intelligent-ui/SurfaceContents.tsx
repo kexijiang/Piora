@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { evaluateExpression, type UiExpression, type UiNode, type UiState, type UiSurface } from "../../lib/intelligent-ui/surface-document";
 import { RichSurfaceLayout } from "./RichSurfaceLayout";
+import { A2uiLayout } from "./A2uiLayout";
 import styles from "./IntelligentUiSurface.module.css";
 
 export interface UiContentCopy { calculation: string; chart: string }
@@ -38,6 +39,8 @@ function NodeView({ node, state, disabled, change, prefix, copy }: {
 
 export function SurfaceContents({ surface, state, disabled, change, copy, locale }: { surface: UiSurface; state: UiState; disabled: boolean; change: (id: string, value: string | number | boolean) => void; copy: UiContentCopy; locale: "en" | "zh-CN" }) {
   const prefix = useId();
+  if (surface.version === 2 && surface.a2ui) return <A2uiLayout document={surface.a2ui} nodes={surface.nodes} disabled={disabled} change={change}
+    renderNode={node => <NodeView node={node} state={state} disabled={disabled} change={change} prefix={prefix} copy={copy} />} />;
   return <div className={styles.nodes}>{surface.version === 2
     ? <RichSurfaceLayout surface={surface} state={state} locale={locale} renderNode={node => <NodeView key={node.id} node={node} state={state} disabled={disabled} change={change} prefix={prefix} copy={copy} />} />
     : surface.nodes.map(node => <NodeView key={node.id} node={node} state={state} disabled={disabled} change={change} prefix={prefix} copy={copy} />)}</div>;

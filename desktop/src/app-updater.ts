@@ -1,6 +1,7 @@
+import { parseUpdateSource, type DesktopUpdateSource } from "./update-source.js";
 import type { AppUpdater } from "electron-updater";
 import type { Logger } from "./logger.js";
-import type { DesktopReleaseAudience } from "./release-audience.js";
+import { isStableDesktopVersion, type DesktopReleaseAudience } from "./release-audience.js";
 
 export type DesktopUpdateStatus =
   | "unsupported"
@@ -14,8 +15,11 @@ export type DesktopUpdateStatus =
 
 export interface DesktopUpdateState {
   status: DesktopUpdateStatus;
+  unsupportedReason?: "non-stable" | "installer-required";
   currentVersion: string;
   audience: DesktopReleaseAudience;
+  source?: DesktopUpdateSource;
+  latestVersion?: string;
   availableVersion?: string;
   releaseNotes?: string;
   progressPercent?: number;
@@ -29,6 +33,7 @@ export type DesktopUpdateListener = (state: Readonly<DesktopUpdateState>) => voi
 
 export interface DesktopUpdateControllerOptions {
   audience?: DesktopReleaseAudience;
+  source?: DesktopUpdateSource;
   prepareCheck?: () => Promise<boolean>;
   validateUpdateInfo?: (info: unknown) => void;
 }
@@ -84,18 +89,26 @@ export class DesktopUpdateController {
     private readonly logger: Logger,
     private readonly options: DesktopUpdateControllerOptions = {},
   ) {
-    const audience = options.audience ?? "stable";
+    // Gate every updater entry point by the running build, never a persisted audience.
+    const isStable = isStableDesktopVersion(currentVersion);
+    if (!isStable) {
+      this.updater = null;
+      updater = null;
+    }
+    const audience = isStable ? "stable" : options.audience ?? "preview";
     this.state = {
       status: updater ? "idle" : "unsupported",
+      ...(!updater ? { unsupportedReason: !isStable ? "non-stable" as const : "installer-required" as const } : {}),
       currentVersion: normalizedVersion(currentVersion) ?? currentVersion,
       audience,
+      source: options.source ?? "github",
     };
 
     if (!updater) return;
     updater.autoDownload = false;
     updater.autoInstallOnAppQuit = false;
     updater.autoRunAppAfterInstall = true;
-    updater.allowPrerelease = audience === "preview";
+    updater.allowPrerelease = false;
     updater.logger = logger;
 
     updater.on("checking-for-update", () => {
@@ -105,7 +118,10 @@ export class DesktopUpdateController {
       this.publish({ status: "up-to-date" });
     });
     updater.on("update-available", (info) => {
-      try { this.options.validateUpdateInfo?.(info); } catch (error) { this.fail(error); return; }
+      try {
+        if (!isStableDesktopVersion(info.version)) throw new Error("Only stable releases can be installed automatically");
+        this.options.validateUpdateInfo?.(info);
+      } catch (error) { this.fail(error); return; }
       const availableVersion = normalizedVersion(info.version);
       const releaseNotes = normalizedReleaseNotes(info.releaseNotes);
       this.publish({
@@ -127,7 +143,10 @@ export class DesktopUpdateController {
       });
     });
     updater.on("update-downloaded", (info) => {
-      try { this.options.validateUpdateInfo?.(info); } catch (error) { this.fail(error); return; }
+      try {
+        if (!isStableDesktopVersion(info.version)) throw new Error("Only stable releases can be installed automatically");
+        this.options.validateUpdateInfo?.(info);
+      } catch (error) { this.fail(error); return; }
       const availableVersion = normalizedVersion(info.version);
       const releaseNotes = normalizedReleaseNotes(info.releaseNotes);
       this.publish({
@@ -159,6 +178,21 @@ export class DesktopUpdateController {
     return () => this.listeners.delete(listener);
   }
 
+  selectSource(source: unknown, persist: (source: DesktopUpdateSource) => void): void {
+    const next = parseUpdateSource(source);
+    if (!this.updater) throw new Error("Updates are unsupported");
+    if (this.checkPromise || this.downloadPromise) throw new Error("Wait for the current update operation to finish");
+    if (next === this.state.source) return;
+    persist(next);
+    this.state = { status: "idle", currentVersion: this.state.currentVersion, audience: this.state.audience, source: next };
+    this.publish({ status: "idle" });
+  }
+
+  setLatestVersion(version: string | undefined): void {
+    if (version) this.state.latestVersion = version;
+    else delete this.state.latestVersion;
+  }
+
   async checkForUpdates(): Promise<void> {
     if (!this.updater || this.downloadPromise) return;
     return this.checkLatestVersion();
@@ -167,6 +201,7 @@ export class DesktopUpdateController {
   private async checkLatestVersion(): Promise<void> {
     if (this.checkPromise) return this.checkPromise;
 
+    delete this.state.latestVersion;
     this.publish({ status: "checking" });
     this.checkPromise = Promise.resolve()
       .then(async () => {
@@ -235,6 +270,8 @@ export class DesktopUpdateController {
       status: next.status,
       currentVersion: this.state.currentVersion,
       audience: this.state.audience,
+      ...(this.state.source ? { source: this.state.source } : {}),
+      ...(this.state.latestVersion ? { latestVersion: this.state.latestVersion } : {}),
       ...(availableVersion ? { availableVersion } : {}),
       ...(releaseNotes ? { releaseNotes } : {}),
       ...(next.progressPercent === undefined ? {} : { progressPercent: next.progressPercent }),

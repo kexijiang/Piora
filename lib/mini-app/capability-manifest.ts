@@ -2,6 +2,9 @@ import { MINI_APP_LIMITS } from "./limits";
 
 export const MINI_APP_CAPABILITY_MANIFEST_VERSION = 1;
 const common = ["lib/mini-app/capability-manifest.ts", "lib/mini-app/capabilities.ts", "lib/mini-app/capability-host.ts",
+  "lib/a2ui/catalog.ts", "lib/a2ui/document.ts", "lib/a2ui/ui-compiler.ts", "lib/a2ui/authoring.ts", "lib/a2ui/mini-document.ts", "lib/a2ui/mini-authoring.ts",
+  "lib/intelligent-ui/input-protocol.ts", "lib/intelligent-ui/plan-admission.ts", "lib/intelligent-ui/surface-document.ts", "extensions/piora-intelligent-ui.ts",
+  "components/intelligent-ui/A2uiLayout.tsx", "components/intelligent-ui/A2uiLayout.module.css", "components/intelligent-ui/SurfaceContents.tsx",
   "components/AnswerOutput.tsx", "components/AnswerOutputScope.tsx",
   "lib/answer-output-conversion-types.ts", "lib/answer-output-conversion-schema.ts", "lib/answer-output-conversion-data.ts",
   "lib/answer-output-conversion-receipts.ts", "lib/answer-output-conversion-service.ts", "components/AnswerConversion.tsx",

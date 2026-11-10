@@ -8,12 +8,12 @@ import { listPackage, extractFile } from "@electron/asar";
 import { extractVersionNotes } from "./create-release-notes.mjs";
 import { loadBranding, runtimeBranding } from "./branding-config.mjs";
 
-const VERSION_PATTERN = /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-beta\.(0|[1-9]\d*))?$/;
+const VERSION_PATTERN = /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(beta)\.(0|[1-9]\d*))?$/;
 
 function normalizeVersion(value) {
   const match = String(value ?? "").trim().match(VERSION_PATTERN);
   if (!match) throw new Error(`Expected a stable semantic version, received: ${value}`);
-  return `${match[1]}.${match[2]}.${match[3]}${match[4] === undefined ? "" : `-beta.${match[4]}`}`;
+  return `${match[1]}.${match[2]}.${match[3]}${match[4] === undefined ? "" : `-${match[4]}.${match[5]}`}`;
 }
 
 async function sha512Base64(path) {
@@ -50,7 +50,7 @@ export function verifyUpdateReleaseNotes(metadata, expected, label = "update met
 export async function verifyWindowsUpdateArtifacts(releaseRoot, requestedVersion, expectedReleaseNotes, brand) {
   const root = resolve(releaseRoot);
   const version = normalizeVersion(requestedVersion);
-  const audience = version.includes("-beta.") ? "preview" : "stable";
+  const audience = /-(?:beta)\./.test(version) ? "preview" : "stable";
   const channel = brand?.updateChannels[audience] ?? (audience === "preview" ? "beta" : "latest");
   const installerName = `${brand?.artifactPrefix ?? "Piora"}-${version}-win-x64-setup.exe`;
   const installerPath = join(root, installerName);

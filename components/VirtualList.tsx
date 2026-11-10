@@ -72,7 +72,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
 
   const rememberViewport = useCallback(() => {
     const scroller = parent.current;
-    if (!scroller || !root.current) return;
+    if (!scroller || !root.current || scroller.clientHeight === 0) return;
     viewportSnapshot.current = { width: root.current.getBoundingClientRect().width, height: scroller.clientHeight,
       atBottom: resizeBottomAnchor.current || Math.abs(scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop) <= 2 };
   }, []);
@@ -83,7 +83,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     const settle = () => {
       resizeSettleFrame.current = null;
       const scroller = parent.current;
-      if (!resizeBottomAnchor.current || !scroller || !root.current) return;
+      if (!resizeBottomAnchor.current || !scroller || !root.current || scroller.clientHeight === 0) return;
       if (navigation.current || isChatBottomFollowing(scroller) || scroller.querySelector("[data-chat-tail-spacer]")) { resizeBottomAnchor.current = false; rememberViewport(); return; }
       // Keep the tail anchored for the whole width transition and its queued
       // row measurements, rather than releasing after the first React commit.
@@ -161,7 +161,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
 
   const measureChangedLayout = useCallback(() => {
     const element = root.current;
-    if (!element || Math.abs(element.getBoundingClientRect().height - (current.current.offsets.at(-1) ?? 0)) < 1) return;
+    if (!element || !parent.current?.clientHeight || Math.abs(element.getBoundingClientRect().height - (current.current.offsets.at(-1) ?? 0)) < 1) return;
     // Scroll events may precede the row observers. Detect that gap before
     // choosing a window, not only after the observers queue their update.
     element.querySelectorAll<HTMLElement>(":scope > [data-virtual-key]").forEach((row) => {
@@ -181,6 +181,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     parent.current = element;
     if (!element) return;
     const onScroll = () => {
+      if (element.clientHeight === 0) return;
       // Reaching the bottom with the wheel needs the same stable tail window
       // as an explicit jump. Keep it through row recycling and deferred sizes;
       // otherwise the native clamp can look like a request for older rows.
@@ -199,6 +200,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
       syncRange();
     };
     const onInput = (event: Event) => {
+      if (element.clientHeight === 0) return;
       cancelNavigation();
       if (event.type === "wheel" || event.type === "touchstart") viewportSnapshot.current.atBottom = false;
     };
@@ -209,6 +211,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     document.addEventListener("pointerdown", onInput, { capture: true, passive: true });
     document.addEventListener("keydown", onInput);
     const observer = new ResizeObserver(() => {
+      if (element.clientHeight === 0) return;
       measureChangedLayout();
       const width = root.current?.getBoundingClientRect().width ?? 0;
       const viewportChanged = width > 0 && viewportSnapshot.current.width > 0
@@ -251,7 +254,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
 
   useLayoutEffect(() => {
     const scroller = parent.current;
-    if (!scroller) return;
+    if (!scroller || scroller.clientHeight === 0) return;
     if (!initialized.current && keys.length) {
       initialized.current = true;
       if (initialTail) scroller.scrollTop = listTop() + offsets[offsets.length - 1];
@@ -283,7 +286,7 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   // requested bottom aligned in the same commit, before the browser paints.
   useLayoutEffect(() => {
     const scroller = parent.current;
-    if (!scroller) return;
+    if (!scroller || scroller.clientHeight === 0) return;
     if (resizeBottomAnchor.current && !isChatBottomFollowing(scroller)) {
       scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
     } else pinChatBottom(scroller);

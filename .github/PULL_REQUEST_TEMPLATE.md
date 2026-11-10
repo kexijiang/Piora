@@ -27,5 +27,6 @@
 - [ ] This pull request is focused and does not contain unrelated formatting changes.
 - [ ] I added or updated tests where practical.
 - [ ] I updated documentation for user-visible behavior.
+- [ ] I added a unique `changelog.d` fragment (or a `.skip.md` with a concrete exemption reason); release PRs use the aggregation command.
 - [ ] I did not commit credentials, private prompts, session data, generated logs, or build artifacts.
 - [ ] I preserved applicable upstream license and copyright notices.

@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `aac28546f75f0f56d2227dcad155b224e5b43d6f3fd68f281c1b5f5f2d2d3e74`
+Lockfile SHA-256: `355f98fb5f252c6635dd6d6d17d37e56e6e43cd6802ab67046cc2943011b4eeb`
 
-Unique locked packages: **1268**. Runtime packages: **768**. Build/development-only packages: **500**.
+Unique locked packages: **1280**. Runtime packages: **781**. Build/development-only packages: **499**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -14,6 +14,7 @@ Every locked package declares a license.
 
 | Package | Version | Declared license | Optional |
 | --- | --- | --- | --- |
+| `@a2ui/web_core` | `0.15.0` | Apache-2.0 | No |
 | `@antfu/install-pkg` | `1.1.0` | MIT | No |
 | `@anthropic-ai/sdk` | `0.129.0` | MIT | No |
 | `@aws-sdk/client-bedrock-runtime` | `3.1127.0` | Apache-2.0 | No |
@@ -74,16 +75,17 @@ Every locked package declares a license.
 | `@codemirror/state` | `6.7.6` | MIT | No |
 | `@codemirror/streamparser` | `6.0.0` | MIT | No |
 | `@codemirror/view` | `6.43.15` | MIT | No |
-| `@earendil-works/pi-agent-core` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-ai` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-codemode` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-coding-agent` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-mcp` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-telemetry` | `1.4.0` | MIT | No |
-| `@earendil-works/pi-tui` | `1.4.0` | MIT | No |
+| `@earendil-works/pi-agent-core` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-ai` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-codemode` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-coding-agent` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-mcp` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-schema` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-telemetry` | `1.5.0` | MIT | No |
+| `@earendil-works/pi-tui` | `1.5.0` | MIT | No |
 | `@emnapi/runtime` | `1.11.3` | MIT | Yes |
 | `@google/genai` | `2.21.0` | Apache-2.0 | No |
-| `@grpc/grpc-js` | `1.14.6` | Apache-2.0 | No |
+| `@grpc/grpc-js` | `1.14.7` | Apache-2.0 | No |
 | `@grpc/proto-loader` | `0.8.1` | Apache-2.0 | No |
 | `@hono/node-server` | `2.1.5` | MIT | No |
 | `@iconify/types` | `2.0.0` | MIT | No |
@@ -117,27 +119,28 @@ Every locked package declares a license.
 | `@img/sharp-win32-x64` | `0.35.5` | Apache-2.0 AND LGPL-3.0-or-later | Yes |
 | `@isaacs/cliui` | `8.0.2` | ISC | No |
 | `@isaacs/fs-minipass` | `4.0.1` | ISC | No |
+| `@isaacs/nonrecursive-glob-match` | `1.0.3` | BlueOak-1.0.0 | No |
 | `@js-sdsl/ordered-map` | `4.4.2` | MIT | No |
-| `@koromix/koffi-android-arm64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-android-x64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-darwin-arm64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-darwin-x64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-freebsd-arm64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-freebsd-ia32` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-freebsd-x64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-linux-arm` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-linux-arm64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-linux-ia32` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-linux-loong64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-linux-ppc64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-linux-riscv64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-linux-x64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-openbsd-arm64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-openbsd-ia32` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-openbsd-x64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-win32-arm64` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-win32-ia32` | `3.3.3` | MIT | Yes |
-| `@koromix/koffi-win32-x64` | `3.3.3` | MIT | Yes |
+| `@koromix/koffi-android-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-android-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-darwin-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-darwin-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-freebsd-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-freebsd-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-freebsd-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-arm` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-loong64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-ppc64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-riscv64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-linux-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-openbsd-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-openbsd-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-openbsd-x64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-win32-arm64` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-win32-ia32` | `3.3.7` | MIT | Yes |
+| `@koromix/koffi-win32-x64` | `3.3.7` | MIT | Yes |
 | `@lezer/common` | `1.5.2` | MIT | No |
 | `@lezer/cpp` | `1.1.6` | MIT | No |
 | `@lezer/css` | `1.3.6` | MIT | No |
@@ -155,26 +158,30 @@ Every locked package declares a license.
 | `@lezer/sass` | `1.1.0` | MIT | No |
 | `@lezer/xml` | `1.0.6` | MIT | No |
 | `@lezer/yaml` | `1.0.4` | MIT | No |
-| `@lobehub/icons` | `6.9.0` | MIT | No |
+| `@lit-labs/ssr-dom-shim` | `1.6.0` | BSD-3-Clause | No |
+| `@lit/context` | `1.1.6` | BSD-3-Clause | No |
+| `@lit/reactive-element` | `2.1.2` | BSD-3-Clause | No |
+| `@lobehub/icons` | `6.15.0` | MIT | No |
 | `@marijn/find-cluster-break` | `1.0.4` | MIT | No |
 | `@mermaid-js/parser` | `2.0.1` | MIT | No |
 | `@microsoft/winappcli` | `0.7.1` | MIT | Yes |
 | `@mixmark-io/domino` | `2.2.0` | BSD-2-Clause | No |
 | `@modelcontextprotocol/sdk` | `1.32.2` | MIT | No |
-| `@next/env` | `16.4.3` | MIT | No |
-| `@next/swc-darwin-arm64` | `16.4.3` | MIT | Yes |
-| `@next/swc-darwin-x64` | `16.4.3` | MIT | Yes |
-| `@next/swc-linux-arm64-gnu` | `16.4.3` | MIT | Yes |
-| `@next/swc-linux-arm64-musl` | `16.4.3` | MIT | Yes |
-| `@next/swc-linux-x64-gnu` | `16.4.3` | MIT | Yes |
-| `@next/swc-linux-x64-musl` | `16.4.3` | MIT | Yes |
-| `@next/swc-win32-arm64-msvc` | `16.4.3` | MIT | Yes |
-| `@next/swc-win32-x64-msvc` | `16.4.3` | MIT | Yes |
+| `@next/env` | `16.4.5` | MIT | No |
+| `@next/swc-darwin-arm64` | `16.4.5` | MIT | Yes |
+| `@next/swc-darwin-x64` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-arm64-gnu` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-arm64-musl` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-x64-gnu` | `16.4.5` | MIT | Yes |
+| `@next/swc-linux-x64-musl` | `16.4.5` | MIT | Yes |
+| `@next/swc-win32-arm64-msvc` | `16.4.5` | MIT | Yes |
+| `@next/swc-win32-x64-msvc` | `16.4.5` | MIT | Yes |
 | `@oozcitak/dom` | `1.15.10` | MIT | No |
 | `@oozcitak/infra` | `1.0.8` | MIT | No |
 | `@oozcitak/url` | `1.0.4` | MIT | No |
 | `@oozcitak/util` | `8.3.8` | MIT | No |
 | `@pkgjs/parseargs` | `0.11.0` | MIT | Yes |
+| `@preact/signals-core` | `1.14.5` | MIT | No |
 | `@protobufjs/aspromise` | `1.1.2` | BSD-3-Clause | No |
 | `@protobufjs/base64` | `1.1.2` | BSD-3-Clause | No |
 | `@protobufjs/codegen` | `2.0.5` | BSD-3-Clause | No |
@@ -236,11 +243,11 @@ Every locked package declares a license.
 | `@types/mdast` | `4.0.4` | MIT | No |
 | `@types/ms` | `2.1.0` | MIT | No |
 | `@types/node` | `18.19.130` | MIT | No |
-| `@types/node` | `26.6.5` | MIT | No |
+| `@types/node` | `26.6.6` | MIT | No |
 | `@types/prismjs` | `1.26.6` | MIT | No |
 | `@types/retry` | `0.12.0` | MIT | No |
 | `@types/ssh2` | `1.15.6` | MIT | No |
-| `@types/trusted-types` | `2.0.7` | MIT | Yes |
+| `@types/trusted-types` | `2.0.7` | MIT | No |
 | `@types/unist` | `2.0.11` | MIT | No |
 | `@types/unist` | `3.0.3` | MIT | No |
 | `@typescript/old` | `6.0.3` | Apache-2.0 | No |
@@ -392,7 +399,7 @@ Every locked package declares a license.
 | `ecdsa-sig-formatter` | `1.0.11` | Apache-2.0 | No |
 | `ee-first` | `1.1.1` | MIT | No |
 | `electron-updater` | `6.8.11` | MIT | No |
-| `elkjs` | `0.9.3` | EPL-2.0 | No |
+| `elkjs` | `0.12.1` | EPL-2.0 OR GPL-3.0-or-later | No |
 | `emoji-regex` | `8.0.0` | MIT | No |
 | `emoji-regex` | `9.2.2` | MIT | No |
 | `encodeurl` | `2.0.0` | MIT | No |
@@ -500,6 +507,7 @@ Every locked package declares a license.
 | `jiti` | `2.7.0` | MIT | No |
 | `jose` | `6.2.12` | MIT | No |
 | `js-yaml` | `4.3.2` | MIT | No |
+| `jsesc` | `3.1.0` | MIT | No |
 | `json-bigint` | `1.0.0` | MIT | No |
 | `json-schema-to-ts` | `3.1.1` | MIT | No |
 | `json-schema-traverse` | `1.0.0` | MIT | No |
@@ -511,12 +519,15 @@ Every locked package declares a license.
 | `jws` | `4.0.1` | MIT | No |
 | `katex` | `0.19.1` | MIT | No |
 | `khroma` | `2.1.0` | MIT | No |
-| `koffi` | `3.3.3` | MIT | No |
+| `koffi` | `3.3.7` | MIT | No |
 | `layout-base` | `1.0.2` | MIT | No |
 | `layout-base` | `2.0.1` | MIT | No |
 | `lazy-val` | `1.0.5` | MIT | No |
 | `lazystream` | `1.0.1` | MIT | No |
 | `lie` | `3.3.0` | MIT | No |
+| `lit` | `3.3.3` | BSD-3-Clause | No |
+| `lit-element` | `4.2.2` | BSD-3-Clause | No |
+| `lit-html` | `3.3.3` | BSD-3-Clause | No |
 | `lodash` | `4.18.1` | MIT | No |
 | `lodash-es` | `4.18.1` | MIT | No |
 | `lodash.camelcase` | `4.3.0` | MIT | No |
@@ -528,7 +539,6 @@ Every locked package declares a license.
 | `lowlight` | `1.20.0` | MIT | No |
 | `lru-cache` | `10.4.3` | ISC | No |
 | `lru-cache` | `11.4.0` | BlueOak-1.0.0 | No |
-| `lucide-react` | `0.469.0` | ISC | No |
 | `mammoth` | `1.13.0` | BSD-2-Clause | No |
 | `markdown-table` | `3.0.4` | MIT | No |
 | `marked` | `16.4.2` | MIT | No |
@@ -552,9 +562,9 @@ Every locked package declares a license.
 | `mdast-util-to-markdown` | `2.1.2` | MIT | No |
 | `mdast-util-to-string` | `4.0.0` | MIT | No |
 | `media-typer` | `1.1.1` | MIT | No |
-| `mediabunny` | `1.62.1` | MPL-2.0 | No |
+| `mediabunny` | `1.65.2` | MPL-2.0 | No |
 | `merge-descriptors` | `2.0.0` | MIT | No |
-| `mermaid` | `12.2.0` | MIT | No |
+| `mermaid` | `12.3.0` | MIT | No |
 | `micromark` | `4.0.2` | MIT | No |
 | `micromark-core-commonmark` | `2.0.3` | MIT | No |
 | `micromark-extension-gfm` | `3.0.0` | MIT | No |
@@ -588,7 +598,7 @@ Every locked package declares a license.
 | `mime-db` | `1.54.0` | MIT | No |
 | `mime-types` | `2.1.35` | MIT | No |
 | `mime-types` | `3.0.2` | MIT | No |
-| `minimatch` | `10.2.6` | BlueOak-1.0.0 | No |
+| `minimatch` | `11.0.3` | BlueOak-1.0.0 | No |
 | `minimatch` | `5.1.9` | ISC | No |
 | `minimatch` | `9.0.9` | ISC | No |
 | `minipass` | `7.1.3` | BlueOak-1.0.0 | No |
@@ -599,7 +609,7 @@ Every locked package declares a license.
 | `nan` | `2.28.0` | MIT | Yes |
 | `nanoid` | `3.3.18` | MIT | No |
 | `negotiator` | `1.1.0` | MIT | No |
-| `next` | `16.4.3` | MIT | No |
+| `next` | `16.4.5` | MIT | No |
 | `node-addon-api` | `7.1.1` | MIT | No |
 | `node-domexception` | `1.0.0` | MIT | No |
 | `node-fetch` | `3.3.2` | MIT | No |
@@ -628,7 +638,7 @@ Every locked package declares a license.
 | `picocolors` | `1.1.1` | ISC | No |
 | `pkce-challenge` | `5.0.1` | MIT | No |
 | `pkg-types` | `1.3.1` | MIT | No |
-| `playwright-core` | `1.64.1` | Apache-2.0 | No |
+| `playwright-core` | `1.65.0` | Apache-2.0 | No |
 | `points-on-curve` | `0.2.0` | MIT | No |
 | `points-on-path` | `0.2.1` | MIT | No |
 | `polished` | `4.3.1` | MIT | No |
@@ -655,7 +665,9 @@ Every locked package declares a license.
 | `readable-stream` | `2.3.8` | MIT | No |
 | `readable-stream` | `4.7.0` | MIT | No |
 | `readdir-glob` | `1.1.3` | Apache-2.0 | No |
+| `redos-detector` | `6.1.4` | MIT | No |
 | `refractor` | `5.0.0` | MIT | No |
+| `regjsparser` | `0.13.0` | BSD-2-Clause | No |
 | `rehype-katex` | `7.0.1` | MIT | No |
 | `rehype-raw` | `7.0.0` | MIT | No |
 | `rehype-sanitize` | `6.0.0` | MIT | No |
@@ -724,7 +736,7 @@ Every locked package declares a license.
 | `teen_process` | `2.3.3` | Apache-2.0 | No |
 | `teex` | `1.0.1` | MIT | No |
 | `text-decoder` | `1.2.7` | Apache-2.0 | No |
-| `three` | `0.186.1` | MIT | No |
+| `three` | `0.187.0` | MIT | No |
 | `tiny-typed-emitter` | `2.1.0` | MIT | No |
 | `tinyexec` | `1.1.2` | MIT | No |
 | `toidentifier` | `1.0.1` | MIT | No |
@@ -733,15 +745,16 @@ Every locked package declares a license.
 | `ts-algebra` | `2.0.0` | MIT | No |
 | `ts-dedent` | `2.2.0` | MIT | No |
 | `tslib` | `2.8.1` | 0BSD | No |
-| `turndown` | `7.2.4` | MIT | No |
+| `turndown` | `7.2.5` | MIT | No |
 | `turndown-plugin-gfm` | `1.0.2` | MIT | No |
 | `tweetnacl` | `0.14.5` | Unlicense | No |
 | `type-is` | `2.1.0` | MIT | No |
 | `typebox` | `1.3.27` | MIT | No |
+| `typebox` | `1.4.5` | MIT | No |
 | `typescript` | `6.0.2` | Apache-2.0 | No |
 | `ufo` | `1.6.4` | MIT | No |
 | `underscore` | `1.13.8` | MIT | No |
-| `undici` | `8.12.3` | MIT | No |
+| `undici` | `8.12.4` | MIT | No |
 | `undici-types` | `5.26.5` | MIT | No |
 | `undici-types` | `8.9.0` | MIT | No |
 | `unified` | `11.0.5` | MIT | No |
@@ -755,7 +768,7 @@ Every locked package declares a license.
 | `universalify` | `2.0.1` | MIT | No |
 | `unpipe` | `1.0.0` | MIT | No |
 | `util-deprecate` | `1.0.2` | MIT | No |
-| `uuid` | `11.1.1` | MIT | No |
+| `validate-color` | `2.2.4` | MIT | No |
 | `vary` | `1.1.2` | MIT | No |
 | `vfile` | `6.0.3` | MIT | No |
 | `vfile-location` | `5.0.3` | MIT | No |
@@ -768,7 +781,7 @@ Every locked package declares a license.
 | `wrap-ansi` | `8.1.0` | MIT | No |
 | `wrap-ansi-cjs` | `7.0.0` | MIT | No |
 | `wrappy` | `1.0.2` | ISC | No |
-| `ws` | `8.22.0` | MIT | No |
+| `ws` | `8.22.1` | MIT | No |
 | `xmlbuilder` | `10.1.1` | MIT | No |
 | `xmlbuilder2` | `3.1.1` | MIT | No |
 | `xmldom` | `0.9.12` | MIT | No |
@@ -779,7 +792,7 @@ Every locked package declares a license.
 | `yargs` | `17.7.3` | MIT | No |
 | `yargs-parser` | `21.1.1` | ISC | No |
 | `zip-stream` | `6.0.1` | MIT | No |
-| `zod` | `4.6.7` | MIT | No |
+| `zod` | `3.25.76` | MIT | No |
 | `zod-to-json-schema` | `3.25.2` | ISC | No |
 | `zwitch` | `2.0.4` | MIT | No |
 
@@ -823,11 +836,10 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@electron/osx-sign` | `1.3.3` | BSD-2-Clause | No |
 | `@electron/rebuild` | `4.2.1` | MIT | No |
 | `@electron/universal` | `2.0.3` | MIT | No |
-| `@emnapi/core` | `1.11.1` | MIT | Yes |
+| `@emnapi/core` | `1.11.3` | MIT | Yes |
 | `@emnapi/core` | `1.9.1` | MIT | Yes |
-| `@emnapi/runtime` | `1.11.1` | MIT | Yes |
 | `@emnapi/wasi-threads` | `1.2.0` | MIT | Yes |
-| `@emnapi/wasi-threads` | `1.2.2` | MIT | Yes |
+| `@emnapi/wasi-threads` | `1.2.3` | MIT | Yes |
 | `@eslint-community/eslint-utils` | `4.9.1` | MIT | No |
 | `@eslint-community/regexpp` | `4.12.2` | MIT | No |
 | `@eslint/config-array` | `0.23.5` | Apache-2.0 | No |
@@ -843,15 +855,15 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@jridgewell/gen-mapping` | `0.3.13` | MIT | No |
 | `@jridgewell/remapping` | `2.3.5` | MIT | No |
 | `@jridgewell/resolve-uri` | `3.1.2` | MIT | No |
-| `@jridgewell/sourcemap-codec` | `1.5.5` | MIT | No |
+| `@jridgewell/sourcemap-codec` | `1.6.0` | MIT | No |
 | `@jridgewell/trace-mapping` | `0.3.31` | MIT | No |
 | `@keyv/bigmap` | `1.3.1` | MIT | No |
 | `@keyv/serialize` | `1.1.1` | MIT | No |
 | `@malept/cross-spawn-promise` | `2.0.0` | Apache-2.0 | No |
 | `@malept/flatpak-bundler` | `0.4.0` | MIT | No |
 | `@napi-rs/wasm-runtime` | `0.2.12` | MIT | Yes |
-| `@napi-rs/wasm-runtime` | `1.1.4` | MIT | Yes |
-| `@next/eslint-plugin-next` | `16.4.3` | MIT | No |
+| `@napi-rs/wasm-runtime` | `1.2.2` | MIT | Yes |
+| `@next/eslint-plugin-next` | `16.4.5` | MIT | No |
 | `@noble/hashes` | `1.4.0` | MIT | No |
 | `@noble/hashes` | `1.8.0` | MIT | No |
 | `@nodelib/fs.scandir` | `2.1.5` | MIT | No |
@@ -865,24 +877,24 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@rtsao/scc` | `1.1.0` | MIT | No |
 | `@sindresorhus/is` | `4.6.0` | MIT | No |
 | `@szmarczak/http-timer` | `4.0.6` | MIT | No |
-| `@tailwindcss/node` | `4.3.3` | MIT | No |
-| `@tailwindcss/oxide` | `4.3.3` | MIT | No |
-| `@tailwindcss/oxide-android-arm64` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-darwin-arm64` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-darwin-x64` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-freebsd-x64` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-linux-arm-gnueabihf` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-linux-arm64-gnu` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-linux-arm64-musl` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-linux-x64-gnu` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-linux-x64-musl` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-wasm32-wasi` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-win32-arm64-msvc` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/oxide-win32-x64-msvc` | `4.3.3` | MIT | Yes |
-| `@tailwindcss/postcss` | `4.3.3` | MIT | No |
+| `@tailwindcss/node` | `4.3.5` | MIT | No |
+| `@tailwindcss/oxide` | `4.3.5` | MIT | No |
+| `@tailwindcss/oxide-android-arm64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-darwin-arm64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-darwin-x64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-freebsd-x64` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-arm-gnueabihf` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-arm64-gnu` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-arm64-musl` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-x64-gnu` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-linux-x64-musl` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-wasm32-wasi` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-win32-arm64-msvc` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/oxide-win32-x64-msvc` | `4.3.5` | MIT | Yes |
+| `@tailwindcss/postcss` | `4.3.5` | MIT | No |
 | `@tweenjs/tween.js` | `23.1.3` | MIT | No |
 | `@tybys/wasm-util` | `0.10.1` | MIT | Yes |
-| `@tybys/wasm-util` | `0.10.2` | MIT | Yes |
+| `@tybys/wasm-util` | `0.10.3` | MIT | Yes |
 | `@types/cacheable-request` | `6.0.3` | MIT | No |
 | `@types/esrecurse` | `4.3.1` | MIT | No |
 | `@types/fs-extra` | `9.0.13` | MIT | No |
@@ -897,7 +909,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `@types/react-syntax-highlighter` | `15.5.13` | MIT | No |
 | `@types/responselike` | `1.0.3` | MIT | No |
 | `@types/stats.js` | `0.17.4` | MIT | No |
-| `@types/three` | `0.186.0` | MIT | No |
+| `@types/three` | `0.187.0` | MIT | No |
 | `@types/turndown` | `5.0.6` | MIT | No |
 | `@types/webxr` | `0.5.24` | MIT | No |
 | `@types/ws` | `8.18.2` | MIT | No |
@@ -1011,12 +1023,12 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `dotenv-expand` | `11.0.7` | BSD-2-Clause | No |
 | `duplexer2` | `0.1.4` | BSD-3-Clause | No |
 | `ejs` | `3.1.10` | Apache-2.0 | No |
-| `electron` | `45.0.0` | MIT | No |
+| `electron` | `45.2.3` | MIT | No |
 | `electron-builder` | `26.18.0` | MIT | No |
 | `electron-publish` | `26.18.0` | MIT | No |
 | `electron-to-chromium` | `1.5.399` | ISC | No |
 | `end-of-stream` | `1.4.5` | MIT | No |
-| `enhanced-resolve` | `5.24.5` | MIT | No |
+| `enhanced-resolve` | `5.26.1` | MIT | No |
 | `env-paths` | `2.2.1` | MIT | No |
 | `env-paths` | `3.0.0` | MIT | No |
 | `err-code` | `2.0.3` | MIT | No |
@@ -1026,8 +1038,8 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `es-to-primitive` | `1.3.0` | MIT | No |
 | `es6-error` | `4.1.1` | MIT | Yes |
 | `escape-string-regexp` | `4.0.0` | MIT | No |
-| `eslint` | `10.13.0` | MIT | No |
-| `eslint-config-next` | `16.4.3` | MIT | No |
+| `eslint` | `10.14.0` | MIT | No |
+| `eslint-config-next` | `16.4.5` | MIT | No |
 | `eslint-import-resolver-node` | `0.3.9` | MIT | No |
 | `eslint-import-resolver-typescript` | `3.10.1` | ISC | No |
 | `eslint-module-utils` | `2.12.1` | MIT | No |
@@ -1129,7 +1141,6 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `iterator.prototype` | `1.1.5` | MIT | No |
 | `jake` | `10.9.4` | Apache-2.0 | No |
 | `js-tokens` | `4.0.0` | MIT | No |
-| `jsesc` | `3.1.0` | MIT | No |
 | `json-buffer` | `3.0.1` | MIT | No |
 | `json-schema-traverse` | `0.4.1` | MIT | No |
 | `json-stable-stringify-without-jsonify` | `1.0.1` | MIT | No |
@@ -1142,25 +1153,25 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `language-subtag-registry` | `0.3.23` | CC0-1.0 | No |
 | `language-tags` | `1.0.9` | MIT | No |
 | `levn` | `0.4.1` | MIT | No |
-| `lightningcss` | `1.32.0` | MPL-2.0 | No |
-| `lightningcss-android-arm64` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-darwin-arm64` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-darwin-x64` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-freebsd-x64` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-linux-arm-gnueabihf` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-linux-arm64-gnu` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-linux-arm64-musl` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-linux-x64-gnu` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-linux-x64-musl` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-win32-arm64-msvc` | `1.32.0` | MPL-2.0 | Yes |
-| `lightningcss-win32-x64-msvc` | `1.32.0` | MPL-2.0 | Yes |
+| `lightningcss` | `1.33.0` | MPL-2.0 | No |
+| `lightningcss-android-arm64` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-darwin-arm64` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-darwin-x64` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-freebsd-x64` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-linux-arm-gnueabihf` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-linux-arm64-gnu` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-linux-arm64-musl` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-linux-x64-gnu` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-linux-x64-musl` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-win32-arm64-msvc` | `1.33.0` | MPL-2.0 | Yes |
+| `lightningcss-win32-x64-msvc` | `1.33.0` | MPL-2.0 | Yes |
 | `locate-path` | `6.0.0` | MIT | No |
 | `loose-envify` | `1.4.0` | MIT | No |
 | `lowercase-keys` | `2.0.0` | MIT | No |
 | `lru-cache` | `11.5.3` | BlueOak-1.0.0 | No |
 | `lru-cache` | `5.1.1` | ISC | No |
 | `lru-cache` | `6.0.0` | ISC | No |
-| `magic-string` | `0.30.21` | MIT | No |
+| `magic-string` | `1.4.5` | MIT | No |
 | `matcher` | `3.0.0` | MIT | Yes |
 | `merge2` | `1.4.1` | MIT | No |
 | `meshoptimizer` | `1.1.1` | MIT | No |
@@ -1169,6 +1180,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `mimic-response` | `1.0.1` | MIT | No |
 | `mimic-response` | `3.1.0` | MIT | No |
 | `minimatch` | `10.2.5` | BlueOak-1.0.0 | No |
+| `minimatch` | `10.2.6` | BlueOak-1.0.0 | No |
 | `minimatch` | `3.1.5` | ISC | No |
 | `minimist` | `1.2.8` | MIT | No |
 | `napi-postinstall` | `0.3.4` | MIT | No |
@@ -1176,7 +1188,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `node-abi` | `4.40.0` | MIT | No |
 | `node-api-version` | `0.2.1` | MIT | No |
 | `node-exports-info` | `1.6.0` | MIT | No |
-| `node-forge` | `1.4.0` | (BSD-3-Clause OR GPL-2.0) | No |
+| `node-forge` | `1.4.3` | (BSD-3-Clause OR GPL-2.0) | No |
 | `node-gyp` | `12.4.0` | MIT | No |
 | `node-int64` | `0.4.0` | MIT | No |
 | `node-releases` | `2.0.51` | MIT | No |
@@ -1254,7 +1266,7 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `sumchecker` | `3.0.1` | Apache-2.0 | No |
 | `supports-color` | `7.2.0` | MIT | No |
 | `supports-preserve-symlinks-flag` | `1.0.0` | MIT | No |
-| `tailwindcss` | `4.3.3` | MIT | No |
+| `tailwindcss` | `4.3.5` | MIT | No |
 | `tapable` | `2.3.3` | MIT | No |
 | `temp-file` | `3.4.0` | MIT | No |
 | `tiny-async-pool` | `1.3.0` | MIT | No |

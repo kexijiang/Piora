@@ -17,6 +17,12 @@ interface IconDef {
 }
 
 const ICONS = {
+  "camera": { stroke: ["M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3Z", "M16 13a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"] },
+  "record-circle": { stroke: ["M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"] },
+  "mouse-pointer": { stroke: ["m4 3 7 18 2.5-7.5L21 11 4 3Z", "m13.5 13.5 6 6"] },
+  "volume-minus": { stroke: ["M11 5 6 9H3v6h3l5 4V5Z", "M16 12h6"] },
+  "volume-plus": { stroke: ["M11 5 6 9H3v6h3l5 4V5Z", "M16 12h6", "M19 9v6"] },
+  "power": { stroke: ["M12 2v10", "M6.3 5.3a9 9 0 1 0 11.4 0"] },
   "terminal": { stroke: ["M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z", "m7 8 3 3-3 3", "M13 16h4"] },
   "brain": { stroke: ["M12 6a3 3 0 0 0-5.8-1A4 4 0 0 0 4 12a4 4 0 0 0 2 7 3 3 0 0 0 6 0Z", "M12 6a3 3 0 0 1 5.8-1A4 4 0 0 1 20 12a4 4 0 0 1-2 7 3 3 0 0 1-6 0", "M8 8a3 3 0 0 1-2 3", "M16 8a3 3 0 0 0 2 3", "M8 16a3 3 0 0 0 4-3", "M16 16a3 3 0 0 1-4-3"] },
   "timer": { stroke: ["M9 2h6", "M12 6a8 8 0 1 0 0 16 8 8 0 0 0 0-16Z", "M12 10v4", "m18 7 2-2"] },

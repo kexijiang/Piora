@@ -7,8 +7,8 @@ import { petNetwork, petDispatcher, preparePetNetwork, type PetNetwork } from ".
 import { fetch, type Dispatcher, type Response } from "undici";
 import { DSH_PET_VERSION, type DshPetProgress } from "./dsh-pet-types.js";
 
-const NPM_VERSION = "11.6.2";
-const NPM_INTEGRITY = "7iKzNfy8lWYs3zq4oFPa8EXZz5xt9gQNKJZau3B1ErLBb6bF7sBJ00x09485DOvRT2l5Gerbl3VlZNT57MxJVA==";
+export const NPM_VERSION = "11.6.2";
+export const NPM_INTEGRITY = "7iKzNfy8lWYs3zq4oFPa8EXZz5xt9gQNKJZau3B1ErLBb6bF7sBJ00x09485DOvRT2l5Gerbl3VlZNT57MxJVA==";
 const PET_INTEGRITY = "E1ymE0/a1k2MJco2JDcWeqwMttjWNZWt5yMEN+jjKwWD+H2XT5OMUDmazMLhNnN5grmL9+lbE94iyEQMn5p+JA==";
 
 export function verifyDownload(bytes: Uint8Array, integrity: string): void {

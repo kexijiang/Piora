@@ -52,7 +52,6 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
   const deletedSessionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     collapsedProjectKeys, setCollapsedProjectKeys,
-    expandedProjectSessionKeys, setExpandedProjectSessionKeys,
     pinnedProjectRoots, setPinnedProjectRoots,
     rememberedProjectRoots, setRememberedProjectRoots,
     hiddenProjectRoots, setHiddenProjectRoots,
@@ -385,11 +384,6 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
     });
     if (selectedProject === projectRoot) setSelectedCwd(fallback?.preferredCwd ?? null);
   }, [projectGroups, selectedProject, setHiddenProjectRoots, setPinnedProjectRoots, setProjectAliases, setRememberedProjectRoots]);
-  const attentionSessionIds = useMemo(() => {
-    const ids = new Set<string>([...runningSessionIds, ...unreadSessionIds]);
-    if (selectedSessionId) ids.add(selectedSessionId);
-    return ids;
-  }, [runningSessionIds, unreadSessionIds, selectedSessionId]);
 
   // Persist the first displayed order, including newly discovered projects.
   // Later session activity must not move projects that have never been dragged.
@@ -402,9 +396,8 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
       return next.size === previous.size ? previous : next;
     };
     setCollapsedProjectKeys(prune);
-    setExpandedProjectSessionKeys(prune);
     setProjectOrder((previous) => reconcileProjectOrder(previous, projectGroups.map((group) => group.projectRoot)));
-  }, [projectGroups, loading, error, setCollapsedProjectKeys, setExpandedProjectSessionKeys, setProjectOrder]);
+  }, [projectGroups, loading, error, setCollapsedProjectKeys, setProjectOrder]);
 
   useEffect(() => {
     if (loading || error) return;
@@ -469,10 +462,10 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
         loading={loading} error={error}
         handleDefaultCwd={handleDefaultCwd} handleCustomPathClick={handleCustomPathClick}
         projectGroups={projectGroups} selectedProject={selectedProject}
-        collapsedProjectKeys={collapsedProjectKeys} expandedProjectSessionKeys={expandedProjectSessionKeys}
-        setCollapsedProjectKeys={setCollapsedProjectKeys} setExpandedProjectSessionKeys={setExpandedProjectSessionKeys}
+        collapsedProjectKeys={collapsedProjectKeys}
+        setCollapsedProjectKeys={setCollapsedProjectKeys}
         selectedSessionId={selectedSessionId} runningSessionIds={runningSessionIds} unreadSessionIds={unreadSessionIds}
-        attentionSessionIds={attentionSessionIds} moveTargets={sessionMoveTargets} setSelectedCwd={setSelectedCwd} homeDir={homeDir}
+        moveTargets={sessionMoveTargets} setSelectedCwd={setSelectedCwd} homeDir={homeDir}
         handleSelectSessionFromList={handleSelectSessionFromList} handleNewSessionInProject={handleNewSessionInProject}
         loadSessions={loadSessions} handleSessionDeletedWithUndo={handleSessionDeletedWithUndo}
         sessionFlags={sessionFlags} patchSessionFlag={patchSessionFlag}

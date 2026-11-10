@@ -1,4 +1,4 @@
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { boundedJson, exactKeys, jsonRecord } from "./json";
 import { MiniAppError } from "./limits";
 import { parseMiniAppInputCases, type MiniAppInputCase } from "./input-inspection";

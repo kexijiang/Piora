@@ -28,6 +28,11 @@ export const FIRST_PARTY_EXTENSIONS: readonly FirstPartyExtensionDescriptor[] = 
     profiles: ["normal"], betaFeature: "intelligentUi",
   },
   {
+    id: "piora:meme", fileName: "piora-meme.ts", name: `${APP_DISPLAY_NAME} Memes`,
+    description: "Bridge the pinned DSH Meme desktop plugin for search, sending, learning and library maintenance.",
+    profiles: ["normal"],
+  },
+  {
     id: "piora:computer", fileName: "piora-computer.ts", name: `${APP_DISPLAY_NAME} Computer Control`,
     description: "Optional Windows desktop control with winapp CLI UIA pattern actions and Windows-MCP visual fallback. Requires uv; Windows-MCP downloads on first connection.",
     profiles: ["normal"], defaultEnabled: false,

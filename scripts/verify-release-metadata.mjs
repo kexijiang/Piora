@@ -4,10 +4,11 @@ import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { readFragments } from "./changelog-fragments.mjs";
 
 const defaultProjectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const STRICT_RELEASE_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-const STRICT_PREVIEW_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-beta\.(0|[1-9]\d*)$/;
+const STRICT_PREVIEW_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-(?:beta)\.(0|[1-9]\d*)$/;
 
 function escapeRegularExpression(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -45,6 +46,9 @@ export async function verifyReleaseMetadata({
       : `Release tag must exactly match vX.Y.Z with no prerelease suffix: ${tagName ?? ""}`);
   }
   const version = tagName.slice(1);
+  if ((await readFragments(projectRoot)).length) {
+    throw new Error("Unconsumed changelog.d fragments: aggregate release notes before tagging.");
+  }
   const [rootPackage, desktopPackage, packageLock, changelog] = await Promise.all([
     readJson(resolve(projectRoot, "package.json")),
     readJson(resolve(projectRoot, "desktop", "package.json")),

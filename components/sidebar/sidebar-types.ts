@@ -5,6 +5,7 @@ import type { SettingsKey } from "@/lib/settings-search";
 declare global {
   interface Window {
     piDesktop?: {
+      vault?: import("@/desktop/src/credential-vault-types").VaultBridge;
       dshPet?: import("@/desktop/src/dsh-pet-types").DshPetBridge;
       harmonyMirror?: import("@/desktop/src/harmony-window-types").HarmonyWindowBridge;
       messages?: import("@/desktop/src/harmony-window-types").PioraMessageBridge;
@@ -49,9 +50,10 @@ declare global {
       onNotificationSession?: (listener: (sessionId: string) => void) => () => void;
       openMenu?: (menu: "file" | "edit" | "view" | "help", x: number, y: number) => Promise<boolean>;
       setMenuLocale?: (locale: "en" | "zh-CN") => Promise<boolean>;
+      setUpdateSource?: (source: "github" | "internal") => Promise<DesktopUpdateState | null>;
       getUpdateState?: () => Promise<DesktopUpdateState | null>;
-      getUpdateSchedule?: () => Promise<{ enabled: boolean; time: string; supported: boolean } | null>;
-      setUpdateSchedule?: (input: { enabled: boolean; time: string }) => Promise<{ enabled: boolean; time: string; supported: boolean } | null>;
+      getUpdateSchedule?: () => Promise<{ enabled: boolean; time: string; supported: boolean; unsupportedReason?: DesktopUpdateState["unsupportedReason"] } | null>;
+      setUpdateSchedule?: (input: { enabled: boolean; time: string }) => Promise<{ enabled: boolean; time: string; supported: boolean; unsupportedReason?: DesktopUpdateState["unsupportedReason"] } | null>;
       setUpdateBlocker?: (key: string, blocked: boolean) => Promise<void>;
       checkForUpdates?: () => Promise<DesktopUpdateState | null>;
       downloadUpdate?: () => Promise<DesktopUpdateState | null>;
@@ -117,8 +119,11 @@ declare global {
 
 export interface DesktopUpdateState {
   status: "unsupported" | "idle" | "checking" | "up-to-date" | "available" | "downloading" | "downloaded" | "error";
+  unsupportedReason?: "non-stable" | "installer-required";
   currentVersion: string;
   audience: "stable" | "preview";
+  source?: "github" | "internal";
+  latestVersion?: string;
   availableVersion?: string;
   releaseNotes?: string;
   progressPercent?: number;
@@ -129,6 +134,11 @@ export interface DesktopUpdateState {
 }
 
 export interface DesktopBrowserState {
+  tabCount?: number;
+  tabLimit?: number;
+  idleTabCount?: number;
+  vaultProtected?: boolean;
+  vaultMatches?: number;
   sessionId: string;
   activeTabId: string;
   canGoBack: boolean;
@@ -156,7 +166,7 @@ export interface DesktopBrowserAgentActivity {
 export type DesktopBrowserAgentBackend = "desktop" | "playwright";
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
+  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;

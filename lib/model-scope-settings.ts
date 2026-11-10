@@ -5,6 +5,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { Api, Model } from "@earendil-works/pi-ai";
 import { resolveDefaultModelPreference } from "./model-policy";
+import { readDefaultModel } from "./default-model-store";
 import { orderByProvider } from "./provider-order";
 import { readProviderOrder } from "./provider-order-store";
 import { modelScopeWarnings } from "./model-scope";
@@ -110,17 +111,6 @@ function serializeScopedModel(scoped: ScopedModel): PersistenceEntry {
   };
 }
 
-function configuredDefault(
-  provider: string | undefined,
-  modelId: string | undefined,
-): ModelScopeDefault | null {
-  const normalizedProvider = provider?.trim();
-  const normalizedModelId = modelId?.trim();
-  return normalizedProvider && normalizedModelId
-    ? { provider: normalizedProvider, modelId: normalizedModelId }
-    : null;
-}
-
 /**
  * Resolve both the complete available catalogue and Pi's effective enabled
  * scope. The persistence entries deliberately expand matching globs to exact
@@ -133,6 +123,7 @@ export async function buildModelScopeSettingsState(options: {
   enabledPatterns: string[] | undefined;
   defaultProvider?: string;
   defaultModel?: string;
+  explicitDefault?: ModelScopeDefault | null;
   environment?: Record<string, string | undefined>;
   removedProviders?: string[];
 }): Promise<ModelScopeSettingsState> {
@@ -176,9 +167,10 @@ export async function buildModelScopeSettingsState(options: {
     }
   }
 
-  const rawDefault = configuredDefault(options.defaultProvider, options.defaultModel);
+  const rawDefault = options.explicitDefault === undefined ? readDefaultModel() : options.explicitDefault;
   const preferredDefault = resolveDefaultModelPreference({
     models: orderedAvailable.filter(model => enabledModelKeys.has(modelKey(model))),
+    explicitDefault: rawDefault,
     settingsProvider: rawDefault?.provider,
     settingsModel: rawDefault?.modelId,
     environment: options.environment ?? process.env,

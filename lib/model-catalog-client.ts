@@ -3,6 +3,7 @@ export interface ModelCatalogEntry {
   name: string;
   provider: string;
   contextWindow?: number;
+  isDefault?: boolean;
 }
 
 export interface ModelCatalogResponse {

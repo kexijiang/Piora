@@ -1,4 +1,4 @@
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { answerConversionSchema } from "../answer-output-conversion-schema";
 import { createUiPlanSchema, uiPlanAtomSchema, uiPlanOperationSchema } from "./plan-schema";
 import { UI_RICH_LIMITS } from "./rich-protocol";

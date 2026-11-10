@@ -71,6 +71,28 @@ npm run test:desktop:e2e -- --fail-at theme-dark
 
 报告记录固定模型请求摘要、步骤、截图和清理结果。三维、持续模拟、多窗口恢复、迁移、安装包和其他平台不在此场景内。开发编译可能在主界面挂载前重启 Electron；启动器此时重新连接 CDP，进入场景后的重启仍按失败处理，不重放已执行步骤。
 
+### Harmony 真机投屏
+
+在独立 worktree 连接已完成 USB 调试授权的鸿蒙手机：
+
+```powershell
+$env:PIORA_MIRROR_TEST_HDC = '实际 SDK 目录\toolchains\hdc.exe'
+$env:PIORA_MIRROR_TEST_SERIAL = '实际设备序列号'
+npm run test:desktop:e2e -- --scenario harmony-mirror --timeout-ms 1200000 --step-timeout-ms 150000
+```
+
+该场景通过真实 UI 打开浮窗、重新加载 Worker、保存截图、开始录屏、交接到侧栏、停止保存 MP4 和关闭投屏。使用独立 profile、媒体目录以及真实 Next、Electron、鉴权网关和 HDC；核对实际绘制统计、产物落盘，并断言观看和录屏没有请求手机控制权或发送输入。首次冷编译可能持续数分钟。不会复制模型凭据，也不会自动解锁手机。
+
+`worker-observations.json`、`media-evidence.json` 和截图保留诊断证据。此场景验证功能链路；它不替代持续 FPS / 延迟、触控注入或发布包验收。性能脚本和已知边界见 [投屏重写验收记录](harmony/mirror-rewrite-2026-11-07.md)。
+
+已授权操作手机时，额外设置 `$env:PIORA_MIRROR_TEST_INPUT = 'true'` 可启用真机输入验收。该模式在手机浏览器打开仅监听 loopback 的测试页面，经投屏 UI 点击、输入中文、滚轮与拖动，由手机页面的真实事件回传核对；同时检查缩放、置顶、返回浮窗后的交接和 30 个一秒左右统计窗口均至少绘制 60 FPS。滚轮惯性结束后再独立验证拖动，文字到达手机与服务端校验完成分别等待。不会自动解除机主锁屏。`phone-forward.json` 记录测试创建的反向转发，结束用 `fport rm` 删除并重新枚举确认；保留 `phone-input-observations.json`、`mirror-input-dispatch.json` 和 `application-video-statistics.json`，失败样本同样保留。未设置此选项时仍只验证被动观看和媒体操作。
+
+场景先通过 UI 分别打开浮窗和侧栏，让开发模式完成两种展示入口的编译，再测试录像交接；这不计入发布包冷启动验收。真实旋转和受控采集断流可另外运行 `node scripts/verify-harmony-mirror-lifecycle.mjs --hdc="实际路径" --serial=实际序列号`。它使用生产 Worker 与真实原生采集，在独立 Electron 中验证横竖屏与重连，恢复原方向并清理自己创建的资源，不代表物理拔插或 Next 鉴权链路测试。
+
+### 随身舱开发编译回归
+
+`node scripts/run-desktop-e2e.mjs --scenario companion-panel --step-timeout-ms 120000` 通过 `Ctrl+Space` 打开真实开发桌面随身舱，点击剪贴板并刷新，验证 Turbopack 下共享桌面模块的加载和页面渲染。使用独立 profile、端口与输出目录，不调用模型；不代表发布包、显示器热插拔或原生重启菜单验收。
+
 ### DSH Pet 桌面扩展
 
 `node scripts/run-desktop-e2e.mjs --scenario desktop-extensions` 验证独立设置入口、无项目时的安装入口、默认开关、受限 IPC 和桌面认证的任务快照接口，不下载插件、不调用模型。原版插件安装和原生窗口 smoke 使用 `node scripts/verify-dsh-pet.mjs`，详见 [DSH Pet](dsh-pet.md)。
@@ -194,3 +216,12 @@ node scripts/verify-recorded-ui-desktop.mjs --batch .verification/mini-app-evalu
 该入口保留本机 DeepSeek V4.1 Flash 模型的 reasoning/compat 元数据，默认 thinking level 为 off，记录实际请求的 thinking/maxTokens；仅更换为本地中继地址和临时令牌，测试输出上限为配置值与 32768 的较小者。把 reasoning 标为 false 不等于给供应方发送关闭思考参数，因此不要随意覆盖模型兼容配置。
 
 中继分别限制总流量与生成增量为 8 Mi / 2 Mi 字符（JavaScript 字符串长度），避免重复 SSE 元数据占满原内容额度；两种超限、没有终止事件及供应端失败仍会记录失败。该调整仅用于测试中继，不改变产品执行预算或 UI 纠错次数。
+
+
+### 浏览器跨对话与重启登录保持
+
+`npm run test:desktop:e2e -- --scenario browser-persistence --step-timeout-ms 180000` 使用两条独立准备的合成会话和仅监听 loopback 的测试站点。选中对话、打开浏览器、地址导航、登录及保存站点数据均通过真实 UI 执行；读取存储和会话绑定仅用于核对结果。测试不调用模型，也不复制真实浏览器 profile 或网站凭据。
+
+场景先在对话 A 登录并写入站点数据，然后在对话 B 核对 HttpOnly 会话 cookie、localStorage 和 IndexedDB。确认独立 profile 中的加密 cookie 快照已写入后，运行器终止本次拥有的开发进程树，保留隔离 profile 再启动，重新核对三个存储边界。该重启是受控进程终止，不代表正常菜单退出、系统注销或突然断电。
+
+`browser-persistence-evidence.json` 记录各阶段的合成数据核对；`result.json` 记录启动和重启 PID、每一步及清理结果。首个启动失败、重测和通过分别保留；没有运行到的阶段不能算通过。本场景不验证原 issue #275 的特定网站、企业 SSO、远端模型操控或发布包。特定网站复现需要单独记录是否为服务端过期、主动注销或身份策略导致。

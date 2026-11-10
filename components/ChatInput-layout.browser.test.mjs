@@ -53,7 +53,7 @@ function App(){
       queueContent={<ChatCommandQueue records={queued} pendingMessages={runtimeQueue} onPendingAction={async(id,action)=>{window.pendingAction={id,action};if(window.failPendingAction)throw new Error("Pending action failed");setRuntimeQueue(current=>{const pendingInputs=current.pendingInputs.filter(item=>item.id!==id);return {pendingInputs,steering:pendingInputs.filter(item=>item.kind==="steer").map(item=>item.text),followUp:pendingInputs.filter(item=>item.kind==="followUp").map(item=>item.text)}})}} actions={{cancel:async record=>{window.cancelled=record.commandId;if(window.failQueueCancel)throw new Error("Queue cancellation failed");setQueued(current=>current.filter(item=>item.commandId!==record.commandId))},steer:async record=>{window.steered=record.commandId;setQueued(current=>current.filter(item=>item.commandId!==record.commandId))},edit:async record=>{window.editing=record.commandId;return record.preview},save:async(record,text)=>{if(window.failQueueEdit)throw new Error("Queue edit failed");window.edited={id:record.commandId,text};setQueued(current=>current.map(item=>item.commandId===record.commandId?{...item,preview:text}:item))},resume:async record=>{window.resumed=record.commandId;setQueued(current=>current.map(item=>item.commandId===record.commandId?{...item,queuePaused:false}:item))}}}/>}
       commandCatalog={catalog} onLoadSlashCommands={()=>{}} onQueueInput={async(text,images,files,onDurable,options)=>{if(window.queueGate && !await window.queueGate)return false;(window.queuedInputs??=[]).push({text,delivery:options?.delivery});return true}}
       onSteer={()=>true} onFollowUp={()=>true} isStreaming={busy} onModelChange={async()=>true} onThinkingLevelChange={()=>{}}
-      model={{provider:"deepseek",modelId:"deepseek-v4.1-flash"}} modelList={[{provider:"deepseek",id:"deepseek-v4.1-flash",name:"DeepSeek V4.1 Flash Very Long Model Name"}]}
+      model={{provider:"deepseek",modelId:"deepseek-v4.1-flash"}} modelList={[{provider:"deepseek",id:"deepseek-v4.1-flash",name:"DeepSeek V4.1 Flash Very Long Model Name",isDefault:true}]}
       toolPermission={permission} onToolPermissionChange={mode=>{setPermission({mode,revision:permission.revision+1});window.permission=mode}}
       thinkingLevel="high" extensionStatuses={[{key:"fixture",text:"Ready"}]}
       contextControl={<SystemPromptSelector selection={{mode:"default"}} onChange={()=>{}}/>}/></section>
@@ -134,6 +134,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       }
       await page.locator("#launcher, #conversation").evaluateAll(sections => sections.forEach(section => { section.style.width = "590px"; }));
       const conversation = page.locator("#conversation");
+      assert.equal(await conversation.locator(".model-settings-trigger .model-default-badge").textContent(), locale === "zh-CN" ? "默认" : "Default");
       const permission = conversation.locator("[data-permission-trigger]");
       for (const mode of ["full", "review", "auto"]) {
         await permission.click();
@@ -147,6 +148,10 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       }
       await conversation.locator(".model-settings-trigger:not([data-permission-trigger])").click();
       await page.locator(".model-settings-popover").waitFor();
+      await page.getByRole("menuitem", { name: locale === "zh-CN" ? /^模型/ : /^Model/ }).click();
+      await page.locator(".model-settings-choice .model-default-badge").waitFor();
+      assert.equal(await page.locator(".model-settings-choice .model-default-badge").textContent(), locale === "zh-CN" ? "默认" : "Default");
+      await page.keyboard.press("Escape");
       await page.keyboard.press("Escape");
       await conversation.locator('button[aria-haspopup="listbox"]').click();
       await page.getByRole("listbox").waitFor();
@@ -189,7 +194,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       assert.match(chatWindowSource, /const composerQueueContent = useMemo\(\(\) => \(\s*<ChatCommandQueue records=\{chatCommands\.records\} actions=\{queueActions\} pendingMessages=\{queuedMessages\} onPendingAction=\{handlePendingInputAction\} \/>/);
       await page.evaluate(() => window.setRuntimeQueue({steering:['same <b>literal</b>','same <b>literal</b>'],followUp:[],pendingInputs:[{id:'first',text:'same <b>literal</b>',kind:'steer'},{id:'second',text:'same <b>literal</b>',kind:'steer'}]}));
       const runtimeRegion = conversation.getByRole('region', { name: locale === 'zh-CN' ? '接下来执行' : 'Up next' });
-      const restorePending = runtimeRegion.getByRole('button', { name: locale === 'zh-CN' ? '排队' : 'Queue', exact: true });
+      const restorePending = runtimeRegion.getByRole('button', { name: locale === 'zh-CN' ? '恢复排队' : 'Move to queue', exact: true });
       await restorePending.first().waitFor();
       assert.equal(await restorePending.count(), 2);
       await page.evaluate(() => window.setQueued([{commandId:'old-first',status:'delivered',preview:'same <b>literal</b>'},{commandId:'old-second',status:'delivered',preview:'same <b>literal</b>'}]));
@@ -219,6 +224,10 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       const pendingQueue = conversation.getByRole("region", { name: locale === "zh-CN" ? "接下来执行" : "Up next" });
       const cancelQueued = pendingQueue.getByRole("button", { name: locale === "zh-CN" ? "取消" : "Cancel", exact: true });
       await pendingQueue.waitFor();
+      assert.equal(await cancelQueued.count(), 1, "accepted submissions are not confirmed queue rows");
+      assert.equal(await pendingQueue.getByRole("button", { name: longPreview, exact: true }).count(), 0);
+      await page.evaluate(() => window.setQueued(current => current.map(item => item.commandId === "queued-second" ? { ...item, status: "queued" } : item)));
+      await cancelQueued.nth(1).waitFor();
       await conversation.evaluate(section => section.style.setProperty("--chat-column-width", "520px"));
       for (const width of [900, 590, 320]) {
         await conversation.evaluate((section, width) => { section.style.width = width + "px"; }, width);
@@ -271,6 +280,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await conversation.evaluate(section => { section.style.width = "590px"; section.style.removeProperty("--chat-column-width"); });
       // Reset the remaining fixture to capture a clean single-row preview.
       await page.evaluate(() => window.setQueued([{ commandId: "queue-preview", status: "queued", preview: "我想参考 chatgpt 的设计" }]));
+      await pendingQueue.locator('[data-live-tooltip="queue-preview"]').waitFor();
       if (process.env.PIORA_COMPOSER_SCREENSHOTS) {
         for (const dark of [false, true]) {
           await page.evaluate(dark => document.documentElement.classList.toggle("dark", dark), dark);
@@ -278,7 +288,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         }
         await page.evaluate(() => document.documentElement.classList.remove("dark"));
       }
-      await pendingQueue.getByRole("button", { name: locale === "zh-CN" ? "引导" : "Steer", exact: true }).click();
+      await pendingQueue.getByRole("button", { name: locale === "zh-CN" ? "切换引导" : "Switch to steering", exact: true }).click();
       assert.equal(await page.evaluate(() => window.steered), "queue-preview");
       await pendingQueue.waitFor({ state: "hidden" });
       assert.equal(await conversation.locator("textarea").count(), 1);

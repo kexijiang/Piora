@@ -1,3 +1,5 @@
+import { DshMemeManager } from "./dsh-meme-manager.js";
+import { memeNetwork } from "./dsh-meme-install.js";
 import { randomBytes } from "node:crypto";
 import { preparePetRoot } from "./dsh-pet-paths.js";
 import { petNetwork, type PetProxySettings } from "./dsh-pet-network.js";
@@ -5,6 +7,7 @@ import { DshPetManager } from "./dsh-pet-manager.js";
 import { createSmokeSessionProbe } from "./smoke-session-probe.js";
 import { SystemLauncher } from "./system-launcher";
 import { registerQuickAccessHandlers } from "./quick-access-ipc.js";
+import { registerVaultHandlers } from "./credential-vault-ipc.js";
 import { ClipboardController, ClipboardDraftFlushError } from "./clipboard-controller.js";
 import { copyHarmonyMedia } from "./harmony-media-clipboard.js";
 import { HarmonyWindows } from "./harmony-windows.js";
@@ -79,11 +82,13 @@ import { fitBoundsToVisibleDisplays } from "./window-bounds.js";
 import { configureWindowVisibility } from "./window-visibility.js";
 import { protectTransparentCompanion } from "./transparent-companion.js";
 import { guardCompanionWindow } from "./companion-window-guard.js";
+import { nativeCompanionPoint, validCompanionRectangle } from "./companion-motion.js";
 import {
   DesktopUpdateController,
   type DesktopUpdateState,
 } from "./app-updater.js";
-import { readOrCreateDesktopReleaseAudience } from "./release-audience.js";
+import { configuredUpdateFeed, readUpdateSource, writeUpdateSource } from "./update-source.js";
+import { validateBrandUpdateInfo } from "./update-brand-validation.js";
 import { preparePreviewUpdateFeed } from "./update-release-selector.js";
 import { APP_BRAND, APP_DISPLAY_NAME, brandText } from "./branding.js";
 import {
@@ -184,6 +189,8 @@ if (desktopDevelopmentRuntime) {
 let mainWindow: BrowserWindow | null = null;
 let dshPetProxy: PetProxySettings | undefined;
 let dshPet: DshPetManager | undefined;
+let dshMeme: DshMemeManager | undefined;
+let dshMemePanel: BrowserWindow | undefined;
 let dshPetSettings: BrowserWindow | undefined;
 let harmonyWindows: HarmonyWindows | undefined;
 let companionWindow: BrowserWindow | null = null;
@@ -212,6 +219,7 @@ let serverUrl: URL | undefined;
 let shutdownPromise: Promise<void> | undefined;
 let shutdownComplete = false;
 let restartRequested = false;
+let restartConfirmationPending = false;
 let applicationMenu: Menu | null = null;
 let applicationMenuLocale: "en" | "zh-CN" | undefined;
 let keyboardShortcutBindings: DesktopShortcutBindings = { ...DEFAULT_DESKTOP_SHORTCUT_BINDINGS };
@@ -270,6 +278,19 @@ async function handleStandaloneMessage(message: unknown): Promise<unknown> {
     action?: unknown;
     value?: unknown;
   };
+  if (candidate.type === "pi-desktop:meme-request" && typeof candidate.requestId === "string") {
+    try {
+      if (!dshMeme) throw new Error("DSH Meme desktop host unavailable");
+      const input = candidate.value as { action?: string; path?: string; method?: string; body?: string; autoStart?: boolean };
+      let value: unknown;
+      if (candidate.action === "status") value = dshMeme.status();
+      else if (candidate.action === "action" && typeof input?.action === "string") value = dshMeme.action(input.action);
+      else if (candidate.action === "preferences" && typeof input?.autoStart === "boolean") value = dshMeme.setAutoStart(input.autoStart);
+      else if (candidate.action === "http" && typeof input?.path === "string" && (!input.method || ["GET", "POST"].includes(input.method))) value = await dshMeme.http(input.path, input.method, input.body);
+      else throw new Error("Invalid meme bridge request");
+      return { type: "pi-desktop:meme-response", requestId: candidate.requestId, ok: true, value };
+    } catch (error) { return { type: "pi-desktop:meme-response", requestId: candidate.requestId, ok: false, error: error instanceof Error ? error.message : "Meme bridge failed" }; }
+  }
   if (candidate.type === "pi-desktop:network-request" && typeof candidate.requestId === "string" && /^[a-f0-9-]{36}$/.test(candidate.requestId)) {
     const requestId = candidate.requestId;
     try {
@@ -673,22 +694,28 @@ function publishDesktopUpdateState(state: Readonly<DesktopUpdateState>): void {
 }
 
 function registerDesktopUpdateStateHandler(): void {
+  ipcMain.removeHandler("pi:update-source-set");
+  ipcMain.handle("pi:update-source-set", (event, source: unknown) => {
+    if (!isTrustedMainWindowSender(event) || !desktopUpdateController) return null;
+    desktopUpdateController.selectSource(source, value => writeUpdateSource(app.getPath("userData"), value));
+    return desktopUpdateController.getState();
+  });
   ipcMain.removeHandler("pi:update-schedule-get");
   ipcMain.handle("pi:update-schedule-get", (event) => {
     if (!isTrustedMainWindowSender(event)) return null;
-    return { ...updateSchedule, supported: desktopUpdateState.status !== "unsupported" };
+    return { ...updateSchedule, supported: desktopUpdateState.status !== "unsupported", unsupportedReason: desktopUpdateState.unsupportedReason };
   });
   ipcMain.removeHandler("pi:update-schedule-set");
   ipcMain.handle("pi:update-schedule-set", (event, input: unknown) => {
     if (!isTrustedMainWindowSender(event) || !logger) return null;
     const next = parseUpdateSchedule(input);
-    if (next.enabled && desktopUpdateState.status === "unsupported") throw new Error("Scheduled updates require the Windows installer edition");
+    if (next.enabled && desktopUpdateState.status === "unsupported") throw new Error("Scheduled updates require the stable Windows installer edition");
     // A renderer cannot forge the scheduler's completion marker.
     const saved: UpdateSchedule = { enabled: next.enabled, time: next.time,
       ...(updateSchedule.lastCompletedDay ? { lastCompletedDay: updateSchedule.lastCompletedDay } : {}) };
     if (!writeUpdateSchedule(app.getPath("userData"), saved, logger)) throw new Error("Unable to save update schedule");
     updateSchedule = saved;
-    return { ...saved, supported: desktopUpdateState.status !== "unsupported" };
+    return { ...saved, supported: desktopUpdateState.status !== "unsupported", unsupportedReason: desktopUpdateState.unsupportedReason };
   });
   ipcMain.removeHandler("pi:update-blocker");
   ipcMain.handle("pi:update-blocker", (event, key: unknown, blocked: unknown) => {
@@ -826,31 +853,32 @@ function initializeDesktopUpdater(log: Logger): void {
     && !PORTABLE_SMOKE_TEST
     && !process.env.PORTABLE_EXECUTABLE_FILE;
   const currentVersion = app.getVersion();
-  const audience = readOrCreateDesktopReleaseAudience(app.getPath("userData"), currentVersion, log);
+  // Current stable installs must ignore legacy preview enrollment.
+  const audience = "stable";
   desktopUpdateController = new DesktopUpdateController(
     supported ? autoUpdater : null,
     currentVersion,
     log,
     {
       audience,
-      ...(supported && audience === "preview"
-        ? {
-            prepareCheck: () => preparePreviewUpdateFeed(
-              autoUpdater,
-              currentVersion,
-              (url) => net.fetch(url, {
-                cache: "no-store",
-                headers: { Accept: "application/atom+xml, application/xml;q=0.9, */*;q=0.8" },
-              }),
-              log,
-            ),
-          }
-        : {}),
+      source: readUpdateSource(app.getPath("userData")),
+      validateUpdateInfo: info => validateBrandUpdateInfo(info, APP_BRAND),
+      prepareCheck: async () => {
+        const source = desktopUpdateController?.getState().source ?? "github";
+        try {
+          return await preparePreviewUpdateFeed(autoUpdater, currentVersion,
+            url => net.fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30_000) }), log,
+            { audience, brand: APP_BRAND, feed: configuredUpdateFeed(source),
+              onLatestVersion: version => desktopUpdateController?.setLatestVersion(version) });
+        } catch (error) {
+          throw new Error(source + ": " + (error instanceof Error ? error.message : String(error)));
+        }
+      },
     },
   );
   desktopUpdateController.subscribe(publishDesktopUpdateState);
   registerDesktopUpdateStateHandler();
-  if (!supported) return;
+  if (desktopUpdateController.getState().status === "unsupported") return;
 
   const scheduler = new ScheduledDesktopUpdater({
     controller: desktopUpdateController,
@@ -900,7 +928,7 @@ function installApplicationMenu(): void {
   const zh = applicationMenuLocale ? applicationMenuLocale === "zh-CN" : app.getLocale().toLowerCase().startsWith("zh");
   const copy = zh ? {
     file: "文件", edit: "编辑", view: "视图", help: "帮助",
-    newSession: "新聊天", openFolder: "打开文件夹", close: "关闭", quit: brandText("退出 Piora"),
+    newSession: "新聊天", openFolder: "打开文件夹", close: "关闭", quit: brandText("退出 Piora"), restart: brandText("重启 Piora"),
     undo: "撤销", redo: "重做", cut: "剪切", copy: "复制", paste: "粘贴", delete: "删除", selectAll: "全选", settings: "设置",
     sidebar: "切换侧栏", files: "切换文件面板", commands: "打开命令面板", review: "打开审查面板", browser: "浏览器", companion: "显示/隐藏桌面宠物", find: "搜索聊天记录",
     actualSize: "实际大小", zoomIn: "放大", zoomOut: "缩小", fullscreen: "切换全屏",
@@ -910,7 +938,7 @@ function installApplicationMenu(): void {
     installAutoUpdateEdition: "获取支持自动更新的安装版…",
   } : {
     file: "File", edit: "Edit", view: "View", help: "Help",
-    newSession: "New chat", openFolder: "Open folder", close: "Close", quit: brandText("Quit Piora"),
+    newSession: "New chat", openFolder: "Open folder", close: "Close", quit: brandText("Quit Piora"), restart: brandText("Restart Piora"),
     undo: "Undo", redo: "Redo", cut: "Cut", copy: "Copy", paste: "Paste", delete: "Delete", selectAll: "Select all", settings: "Settings",
     sidebar: "Toggle sidebar", files: "Toggle Files panel", commands: "Open Commands panel", review: "Open Review panel", browser: "Browser", companion: "Show/hide desktop pet", find: "Search conversations",
     actualSize: "Actual size", zoomIn: "Zoom in", zoomOut: "Zoom out", fullscreen: "Toggle full screen",
@@ -971,6 +999,7 @@ function installApplicationMenu(): void {
         { type: "separator" },
         { role: "close", label: copy.close, accelerator: "CmdOrCtrl+W" },
         { type: "separator" },
+        { id: "app-menu-restart", label: copy.restart, enabled: !quitRequested && !restartConfirmationPending, click: () => { void requestDesktopRestart(); } },
         { role: "quit", label: copy.quit, accelerator: "CmdOrCtrl+Q" },
       ],
     },
@@ -1078,6 +1107,41 @@ function isTrustedMainWindowSender(event: IpcMainInvokeEvent): boolean {
   );
 }
 
+function initializeDshMeme(): void {
+  if (!piAgentDirectoryPath) throw new Error("Pi data directory is unavailable");
+  const closePanel = () => { dshMemePanel?.destroy(); dshMemePanel = undefined; };
+  dshMeme = new DshMemeManager({
+    root: join(piAgentDirectoryPath, "piora", "desktop-extensions", "dsh-meme"),
+    host: join(__dirname, "dsh-meme-host.js"),
+    network: () => memeNetwork(process.env, dshPetProxy),
+    closePanel,
+    model: async input => {
+      if (!serverUrl || !applicationToken) throw new Error("Piora is restarting");
+      const response = await fetch(new URL("/api/desktop/dsh-meme/model", serverUrl), { method: "POST", headers: { [DESKTOP_TOKEN_HEADER]: applicationToken, "Content-Type": "application/json" }, body: JSON.stringify(input), signal: AbortSignal.timeout(120000) });
+      const data = await response.json() as { value?: unknown; error?: string };
+      if (!response.ok) throw new Error(data.error || "Meme model request failed"); return data.value;
+    },
+    openPanel: async (url, token) => {
+      if (dshMemePanel && !dshMemePanel.isDestroyed()) { dshMemePanel.focus(); return; }
+      const window = new BrowserWindow({ width: 1000, height: 800, title: "DSH Meme 0.1.76", show: false,
+        webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, partition: "dsh-meme-panel" } });
+      dshMemePanel = window;
+      const origin = new URL(url).origin;
+      window.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+        const headers = { ...details.requestHeaders };
+        if (new URL(details.url).origin === origin) headers.Authorization = `Bearer ${token}`;
+        else delete headers.Authorization;
+        callback({ requestHeaders: headers });
+      });
+      window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+      window.webContents.on("will-navigate", (event, target) => { if (new URL(target).origin !== origin) event.preventDefault(); });
+      window.on("closed", () => { if (dshMemePanel === window) dshMemePanel = undefined; });
+      try { await window.loadURL(url); window.show(); } catch (error) { window.destroy(); throw error; }
+    },
+  });
+  dshMeme.restore();
+}
+
 function initializeDshPet(): void {
   if (!piAgentDirectoryPath) throw new Error("Pi data directory is unavailable");
   dshPet = new DshPetManager({
@@ -1157,6 +1221,12 @@ function resolveExistingRendererPath(value: unknown): string | null {
 }
 
 function registerFileShellHandlers(): void {
+  registerVaultHandlers({
+    owner: event => isTrustedMainWindowSender(event) ? mainWindow : null,
+    fill: async id => { if (!desktopBrowserManager) throw new Error("Browser unavailable"); await desktopBrowserManager.fillCredential(id); },
+    release: async () => { await desktopBrowserManager?.releaseCredentials(); },
+    changed: () => desktopBrowserManager?.refreshCredentialState(),
+  });
   registerQuickAccessHandlers({
     owner: event => isTrustedMainWindowSender(event) ? mainWindow
       : isTrustedCompanionSurfaceSender(event) && event.sender === companionPanelWindow?.webContents ? companionPanelWindow : null,
@@ -1333,6 +1403,7 @@ function currentAgentDataDirectoryInfo(): AgentDataDirectoryInfo {
 }
 
 async function suspendAgentRuntimeForDataMigration(): Promise<void> {
+  await dshMeme?.dispose();
   await dshPet?.dispose();
   await requestHarmonyEmergencyStop("agent_data_directory_migration");
   const activeServer = server;
@@ -1353,6 +1424,7 @@ async function restoreAgentRuntimeAfterDataMigrationFailure(
     serverUrl = restoredUrl;
     activateStandaloneProfile("normal", restoredRuntime.dataDirectory, restoredUrl);
     initializeDshPet();
+    initializeDshMeme();
     if (mainWindow && !mainWindow.isDestroyed()) {
       let rendererOrigin: string | undefined;
       try {
@@ -1670,21 +1742,31 @@ function emitCompanionMotionState(direction: CompanionMotionDirection | null): v
 }
 
 function positionCompanionBubble(petBounds?: Electron.Rectangle): void {
-  if (!companionWindow || companionWindow.isDestroyed() || !companionBubbleWindow || companionBubbleWindow.isDestroyed()) return;
-  const pet = petBounds ?? companionWindow.getBounds();
-  const display = screen.getDisplayNearestPoint({ x: pet.x + Math.round(pet.width / 2), y: pet.y });
-  const area = display.workArea;
-  const x = Math.min(
-    Math.max(Math.round(pet.x + pet.width / 2 - COMPANION_BUBBLE_WIDTH / 2), area.x),
-    area.x + Math.max(0, area.width - COMPANION_BUBBLE_WIDTH),
-  );
-  const y = Math.max(area.y, pet.y - COMPANION_BUBBLE_HEIGHT + 16);
-  // Keep the speech surface on the exact same planned coordinates as the pet.
-  // Reading getBounds() immediately after setPosition() can return the previous
-  // native-window position on Windows and makes the bubble visibly trail.
-  // setPosition reuses native dimensions, which round upwards on fractional
-  // Windows DPI. Repeated moves then grow the bottom-aligned bubble down/right.
-  companionBubbleWindow.setBounds({ x, y, width: COMPANION_BUBBLE_WIDTH, height: COMPANION_BUBBLE_HEIGHT }, false);
+  try {
+    if (!companionWindow || companionWindow.isDestroyed() || !companionBubbleWindow || companionBubbleWindow.isDestroyed()) return;
+    const pet = petBounds ?? companionWindow.getBounds();
+    if (!validCompanionRectangle(pet)) throw new RangeError("Invalid companion bubble anchor");
+    const center = nativeCompanionPoint({ x: pet.x + pet.width / 2, y: pet.y });
+    if (!center) throw new RangeError("Invalid companion bubble display point");
+    const display = screen.getDisplayNearestPoint(center);
+    const area = display.workArea;
+    if (!validCompanionRectangle(area)) throw new RangeError("Invalid companion bubble work area");
+    const x = Math.min(
+      Math.max(Math.round(pet.x + pet.width / 2 - COMPANION_BUBBLE_WIDTH / 2), area.x),
+      area.x + Math.max(0, area.width - COMPANION_BUBBLE_WIDTH),
+    );
+    const y = Math.max(area.y, pet.y - COMPANION_BUBBLE_HEIGHT + 16);
+    const position = nativeCompanionPoint({ x, y });
+    if (!position) throw new RangeError("Invalid companion bubble position");
+    // Keep the speech surface on the exact same planned coordinates as the pet.
+    // Reading getBounds() immediately after setPosition() can return the previous
+    // native-window position on Windows and makes the bubble visibly trail.
+    // setPosition reuses native dimensions, which round upwards on fractional
+    // Windows DPI. Repeated moves then grow the bottom-aligned bubble down/right.
+    companionBubbleWindow.setBounds({ ...position, width: COMPANION_BUBBLE_WIDTH, height: COMPANION_BUBBLE_HEIGHT }, false);
+  } catch (error) {
+    logger?.warn("Skipped companion bubble positioning", error);
+  }
 }
 
 function stopCompanionWindowMotion(): boolean {
@@ -1704,47 +1786,67 @@ function startCompanionWindowMotion(input: {
   curvature?: number;
   clockwise?: boolean;
 }): { ok: boolean; direction?: CompanionMotionDirection; durationMs?: number } {
-  if (!companionWindow || companionWindow.isDestroyed()) return { ok: false };
-  const bounds = companionWindow.getBounds();
-  const display = screen.getDisplayNearestPoint({
-    x: bounds.x + Math.round(bounds.width / 2),
-    y: bounds.y + Math.round(bounds.height / 2),
-  });
-  const plan = planCompanionMotion(
-    bounds,
-    display.workArea,
-    input,
-  );
-  if (!plan) return { ok: false };
+  try {
+    if (!companionWindow || companionWindow.isDestroyed()) return { ok: false };
+    const bounds = companionWindow.getBounds();
+    if (!validCompanionRectangle(bounds)) return { ok: false };
+    const center = nativeCompanionPoint({
+      x: bounds.x + Math.round(bounds.width / 2),
+      y: bounds.y + Math.round(bounds.height / 2),
+    });
+    if (!center) return { ok: false };
+    const display = screen.getDisplayNearestPoint(center);
+    if (!validCompanionRectangle(display.workArea)) return { ok: false };
+    const plan = planCompanionMotion(
+      bounds,
+      display.workArea,
+      input,
+    );
+    if (!plan) return { ok: false };
 
-  stopCompanionWindowMotion();
-  const revision = ++companionMotionRevision;
-  const startedAt = Date.now();
-  let facingDirection = plan.direction;
-  emitCompanionMotionState(facingDirection);
-  companionMotionTimer = setInterval(() => {
-    if (revision !== companionMotionRevision || !companionWindow || companionWindow.isDestroyed()) {
-      if (companionMotionTimer) clearInterval(companionMotionTimer);
-      companionMotionTimer = undefined;
-      return;
-    }
-    const elapsed = Date.now() - startedAt;
-    const point = companionMotionPoint(plan, elapsed);
-    const placed = companionWindowGuard?.place(point);
-    const nextFacingDirection = companionFacingDirection(plan, elapsed, facingDirection);
-    if (nextFacingDirection !== facingDirection) {
-      facingDirection = nextFacingDirection;
-      emitCompanionMotionState(facingDirection);
-    }
-    positionCompanionBubble(placed ?? { ...bounds, x: point.x, y: point.y });
-    if (elapsed < plan.durationMs) return;
-    const finalPoint = companionMotionPoint(plan, plan.durationMs);
-    const finalBounds = companionWindowGuard?.place(finalPoint);
-    positionCompanionBubble(finalBounds ?? { ...bounds, x: finalPoint.x, y: finalPoint.y });
     stopCompanionWindowMotion();
-  }, 16);
-  companionMotionTimer.unref?.();
-  return { ok: true, direction: plan.direction, durationMs: plan.durationMs };
+    const revision = ++companionMotionRevision;
+    const startedAt = Date.now();
+    let facingDirection = plan.direction;
+    emitCompanionMotionState(facingDirection);
+    companionMotionTimer = setInterval(() => {
+      try {
+        if (revision !== companionMotionRevision || !companionWindow || companionWindow.isDestroyed()) {
+          if (companionMotionTimer) clearInterval(companionMotionTimer);
+          companionMotionTimer = undefined;
+          return;
+        }
+        const elapsed = Date.now() - startedAt;
+        const point = companionMotionPoint(plan, elapsed);
+        const placed = companionWindowGuard?.place(point);
+        if (!placed) { stopCompanionWindowMotion(); return; }
+        const nextFacingDirection = companionFacingDirection(plan, elapsed, facingDirection);
+        if (nextFacingDirection !== facingDirection) {
+          facingDirection = nextFacingDirection;
+          emitCompanionMotionState(facingDirection);
+        }
+        positionCompanionBubble(placed);
+        if (elapsed < plan.durationMs) return;
+        const finalPoint = companionMotionPoint(plan, plan.durationMs);
+        const finalBounds = companionWindowGuard?.place(finalPoint);
+        if (finalBounds) positionCompanionBubble(finalBounds);
+        stopCompanionWindowMotion();
+      } catch (error) {
+        // Stop before notifying the renderer: even a destroyed webContents must
+        // not leave an uncaught exception in this timer or a live motion loop.
+        if (companionMotionTimer) clearInterval(companionMotionTimer);
+        companionMotionTimer = undefined;
+        companionMotionRevision += 1;
+        logger?.warn("Stopped companion motion after a window error", error);
+        try { emitCompanionMotionState(null); } catch { /* renderer already gone */ }
+      }
+    }, 16);
+    companionMotionTimer.unref?.();
+    return { ok: true, direction: plan.direction, durationMs: plan.durationMs };
+  } catch (error) {
+    logger?.warn("Unable to start companion motion", error);
+    return { ok: false };
+  }
 }
 
 function startCompanionWindowDrag(): boolean {
@@ -1769,8 +1871,9 @@ function updateCompanionWindowDrag(): boolean {
     display.workArea,
   );
   companionWindowGuard?.setDragging(true);
-  positionCompanionBubble(companionWindowGuard?.place(target) ?? target);
-  return true;
+  const placed = companionWindowGuard?.place(target);
+  if (placed) positionCompanionBubble(placed);
+  return Boolean(placed);
 }
 
 function finishCompanionWindowDrag(): boolean {
@@ -1860,7 +1963,8 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
 
   installRendererDiagnostics(window, "Companion", log);
   protectTransparentCompanion(window);
-  companionWindowGuard = guardCompanionWindow(window, screen, { width: COMPANION_COMPACT_WIDTH, height: COMPANION_COMPACT_HEIGHT });
+  companionWindowGuard = guardCompanionWindow(window, screen, { width: COMPANION_COMPACT_WIDTH, height: COMPANION_COMPACT_HEIGHT }, Date.now,
+    error => logger?.warn("Skipped companion window update", error));
   window.webContents.setZoomFactor(1);
   void window.webContents.setVisualZoomLevelLimits(1, 1);
 
@@ -2020,7 +2124,8 @@ function revealCompanionPanel(window: BrowserWindow): void {
   if (window.isDestroyed() || quitRequested || shutdownComplete) return;
   if (window.isMinimized()) window.restore();
   companionPanelKeepVisibleUntilClose = true;
-  window.setFullScreen(true);
+  if (window.isFullScreen()) window.setFullScreen(false);
+  window.maximize();
   window.show();
   window.focus();
 }
@@ -2183,7 +2288,37 @@ function installNativeContextMenu(window: BrowserWindow): void {
   });
 }
 
+async function requestDesktopRestart(): Promise<void> {
+  if (quitRequested || shutdownPromise || shutdownComplete || restartConfirmationPending) return;
+  restartConfirmationPending = true;
+  updateTrayMenu();
+  try {
+    if (runningTaskCount > 0) {
+      const zh = applicationMenuLocale ? applicationMenuLocale === "zh-CN" : app.getLocale().toLowerCase().startsWith("zh");
+      const options: MessageBoxOptions = {
+        type: "question", title: brandText(zh ? "重启 Piora" : "Restart Piora"),
+        message: zh ? "仍有任务运行中，确定重启？" : "Tasks are still running. Restart?",
+        detail: zh ? "重启将中断当前任务。应用会先保存草稿并关闭本地服务。" : "Restarting interrupts running tasks. The app will save drafts and stop the local service first.",
+        buttons: zh ? ["取消", "重启"] : ["Cancel", "Restart"], defaultId: 0, cancelId: 0,
+      };
+      const answer = await (mainWindow ? dialog.showMessageBox(mainWindow, options) : dialog.showMessageBox(options));
+      if (answer.response !== 1) return;
+    }
+    if (quitRequested || shutdownPromise || shutdownComplete) return;
+    restartRequested = true;
+    quitRequested = true;
+    app.quit();
+  } catch (error) {
+    logger?.error("Unable to request desktop restart", error);
+  } finally {
+    restartConfirmationPending = false;
+    updateTrayMenu();
+  }
+}
+
 function updateTrayMenu(): void {
+  const restartItem = applicationMenu?.getMenuItemById("app-menu-restart");
+  if (restartItem) restartItem.enabled = !quitRequested && !restartConfirmationPending;
   if (!tray) return;
   const isChinese = app.getLocale().toLowerCase().startsWith("zh");
   tray.setToolTip(runningTaskCount > 0 ? `${DESKTOP_DISPLAY_NAME} · ${runningTaskCount}` : DESKTOP_DISPLAY_NAME);
@@ -2199,14 +2334,8 @@ function updateTrayMenu(): void {
     { type: "separator" },
     {
       label: isChinese ? brandText("重启 Piora") : brandText("Restart Piora"),
-      enabled: !quitRequested,
-      click: () => {
-        if (quitRequested || shutdownPromise || shutdownComplete) return;
-        restartRequested = true;
-        quitRequested = true;
-        updateTrayMenu();
-        app.quit();
-      },
+      enabled: !quitRequested && !restartConfirmationPending,
+      click: () => { void requestDesktopRestart(); },
     },
     {
       label: isChinese ? brandText("彻底退出 Piora") : brandText("Quit Piora completely"),
@@ -3010,10 +3139,12 @@ async function startApplication(): Promise<void> {
   logger.info("Application window is ready", { elapsedMs: Date.now() - startupStartedAt });
   recordStartupStage("ready");
   try { initializeDshPet(); } catch (error) { logger.warn("DSH Pet initialization failed", error); }
+  try { initializeDshMeme(); } catch (error) { logger.warn("DSH Meme initialization failed", error); }
 }
 
 async function stopApplication(): Promise<void> {
   await clipboardController?.stop().catch(error => { if (error instanceof ClipboardDraftFlushError) throw error; logger?.warn("Clipboard shutdown failed", error); });
+  await dshMeme?.dispose().catch(error => logger?.warn("DSH Meme shutdown failed", error));
   await dshPet?.dispose().catch(error => logger?.warn("DSH Pet shutdown failed", error));
   if (scheduledUpdateTimer) clearInterval(scheduledUpdateTimer);
   scheduledUpdateTimer = undefined;

@@ -1,4 +1,6 @@
 "use client";
+import { PromptErrorNotices } from "@/lib/prompt-error-notices";
+import { getAssistantErrorMessage } from "@/lib/message-display";
 import { DEFAULT_TOOL_PERMISSION_CHANGED, notifyDefaultToolPermissionChanged, saveDefaultToolPermission } from "./useDefaultToolPermission";
 import { isPermissionMode, type PermissionMode, type ToolPermissionState } from "@/lib/tool-permission-policy";
 import { NestedToolCallsStore } from "@/lib/nested-tool-calls";
@@ -30,7 +32,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useExtensionDialog } from "@/hooks/useExtensionDialog";
 import { useChatCommandOperations } from "@/hooks/useChatCommandOperations";
 import { createChatCommandCatalog, persistentChatInputOptions } from "@/lib/chat-command-input";
-import type { ChatCommandCatalog, ChatInputOptions } from "@/lib/chat-command-types";
+import type { ChatCommandCatalog, ChatCommandView, ChatInputOptions } from "@/lib/chat-command-types";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import { estimateSessionContextUsage, mergeContextUsageWithEstimate } from "@/lib/context-usage";
 import { isPromptMaterialRuntimeMessage, type PromptMaterialReference } from "@/lib/prompt-material-format";
@@ -204,6 +206,7 @@ export type BuiltinSlashCommandResult =
   | { handled: true; message?: string; error?: string; action?: "openSessionStats" };
 
 export interface UseAgentSessionOptions {
+  viewVisible?: boolean;
   session: SessionInfo | null;
   newSessionCwd: string | null;
   newSessionInitialModel?: { provider: string; modelId: string } | null;
@@ -298,6 +301,7 @@ function fillPendingNotices(visible: NoticeItem[], pending: NoticeItem[]): Notic
 function noticeReducer(state: NoticeState, action: NoticeAction): NoticeState {
   switch (action.type) {
     case "add": {
+      if ([...state.visible, ...state.pending].some(notice => notice.id === action.notice.id)) return state;
       if (state.visible.some((notice) => notice.exiting) || state.visible.length >= MAX_NOTICES) {
         return {
           visible: state.visible.some((notice) => notice.exiting)
@@ -312,7 +316,7 @@ function noticeReducer(state: NoticeState, action: NoticeAction): NoticeState {
       return { ...state, visible: markOldestNoticeExiting(state.visible) };
     case "remove": {
       const visible = state.visible.filter((notice) => notice.id !== action.id);
-      return fillPendingNotices(visible, state.pending);
+      return fillPendingNotices(visible, state.pending.filter(notice => notice.id !== action.id));
     }
     default:
       return state;
@@ -440,6 +444,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const translateRef = useRef(t);
   translateRef.current = t;
   const {
+    viewVisible = true,
     session, newSessionCwd, newSessionInitialModel, newSessionInitialSystemPromptSelection, onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   } = opts;
@@ -619,6 +624,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const initialBottomPinCleanupRef = useRef<(() => void) | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const lastScrollUpdateRef = useRef<{ count: number; running: boolean; autoScroll: boolean } | null>(null);
   const ensuringNewSessionRef = useRef<Promise<string | null> | null>(null);
   const createdSessionIdRef = useRef<string | null>(null);
   const newSessionPromotedRef = useRef(false);
@@ -629,12 +635,29 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const systemPromptSavingRef = useRef(false);
   const thinkingLevelOverrideRef = useRef<Exclude<ThinkingLevelOption, "auto"> | null>(null);
   const promptRunIdRef = useRef(0);
+  const promptErrorNoticesRef = useRef(new PromptErrorNotices());
   const cancelledPromptRunIdRef = useRef<number | null>(null);
   const preparingPromptRunIdRef = useRef<number | null>(null);
   const promptSubmissionRef = useRef<{ runId: number; sid: string; idempotencyKey: string; pending: boolean; commandId: string | null } | null>(null);
   const cancelPreparedPromptRef = useRef<(() => void) | null>(null);
   const abortRequestRunIdRef = useRef<number | null>(null);
   const queueAdmissionRevisionRef = useRef(0);
+
+  useEffect(() => {
+    // Reconciliation can restore the failed reply without a message_end event.
+    // Match the durable prompt identity so an older, identical failure cannot
+    // suppress the error for a newly admitted request.
+    const submission = promptSubmissionRef.current;
+    if (!submission || submission.runId !== promptRunIdRef.current || submission.sid !== sessionIdRef.current) return;
+    const start = messages.findIndex(message => message.role === "user" && message.clientPromptId === submission.idempotencyKey);
+    if (start < 0) return;
+    for (const message of messages.slice(start + 1)) {
+      if (message.role === "user") break;
+      if (message.role !== "assistant" || message.stopReason !== "error") continue;
+      const notice = promptErrorNoticesRef.current.record(`${submission.sid}:${submission.runId}`, getAssistantErrorMessage(message)!, "history");
+      dispatchNotice({ type: "remove", id: notice.id });
+    }
+  }, [messages]);
 
   const phaseEventRevisionRef = useRef(0);
   /** Last time the active run produced visible progress (stream, tool output, results). */
@@ -1558,10 +1581,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           void waitForPromptSettlement(sessionIdRef.current, promptRunIdRef.current);
         }
         break;
-      case "prompt_error":
+      case "prompt_error": {
         suppressCompletionNotificationRef.current = true;
-        addNotice({ type: "error", message: (event.errorMessage as string | undefined) ?? "Command failed" });
+        const message = (event.errorMessage as string | undefined) ?? "Command failed";
+        const notice = promptErrorNoticesRef.current.record(`${sessionIdRef.current}:${promptRunIdRef.current}`, message, "notice");
+        if (notice.show) addNotice({ id: notice.id, type: "error", message });
         break;
+      }
       case "extension_error":
         suppressCompletionNotificationRef.current = true;
         addNotice({
@@ -1603,6 +1629,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
         if (completed?.role === "toolResult") nestedCallsStore.finish(completed.toolCallId);
         if (completed?.role === "assistant" && completed.stopReason === "error") {
           suppressCompletionNotificationRef.current = true;
+          const notice = promptErrorNoticesRef.current.record(`${sessionIdRef.current}:${promptRunIdRef.current}`, getAssistantErrorMessage(completed)!, "history");
+          dispatchNotice({ type: "remove", id: notice.id });
         }
         if (completed && completed.role === "user") {
           // Delivered steering/follow-up messages surface here as user
@@ -1614,7 +1642,13 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
           const deliveredKey = userMessageKey(delivered);
           const optimisticKey = optimisticUserMessageKeyRef.current;
           optimisticUserMessageKeyRef.current = null;
+          // Queued attachments have no optimistic bubble. Once consumed, load
+          // their canonical display projection instead of leaking runtime markers.
+          if (materializedDelivery && !optimisticKey && sessionIdRef.current) {
+            void loadSession(sessionIdRef.current, false, true);
+          }
           setMessages((prev) => {
+            if (delivered.role === "user" && delivered.clientPromptId && prev.some(message => message.role === "user" && message.clientPromptId === delivered.clientPromptId)) return prev;
             const optimisticIndex = prev.findIndex(message => message.role === "user"
               && userMessageKey(message) === optimisticKey
               && (!promptSubmissionRef.current?.idempotencyKey || message.clientPromptId === promptSubmissionRef.current.idempotencyKey));
@@ -1765,6 +1799,81 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return captureAnswerStateSubmissionGuard(expectedSessionId)();
   }, [captureAnswerStateSubmissionGuard]);
 
+  const resumeQueuedInput = useCallback(async (record: ChatCommandView, restore: () => Promise<ChatDraft>, send: () => Promise<ChatCommandView>) => {
+    const sid = record.targetSessionId;
+    if (sid !== sessionIdRef.current) throw new Error("Session changed");
+    let startsRun = false;
+    let runId = promptRunIdRef.current;
+    let submission: typeof promptSubmissionRef.current = null;
+    const startRunIfIdle = (): typeof promptSubmissionRef.current => {
+      if (agentRunningRef.current) return submission;
+      startsRun = true;
+      sessionLoadAbortRef.current?.abort();
+      closeEvents();
+      runId = ++promptRunIdRef.current;
+      cancelledPromptRunIdRef.current = null;
+      promptSettlementByRunRef.current.clear();
+      promptSettlementPollByRunRef.current.clear();
+      promptSubmissionRef.current = null;
+      optimisticUserMessageKeyRef.current = null;
+      agentRunningRef.current = true;
+      setAgentRunning(true);
+      setAgentPhase({ kind: "waiting_model" });
+      setReplyHistorySettling(false);
+      setStatusClock(null);
+      activityClockRef.current = Date.now();
+      suppressCompletionNotificationRef.current = false;
+      dispatch({ type: "start" });
+      const nextSubmission = { runId, sid, idempotencyKey: record.idempotencyKey, pending: true, commandId: record.commandId };
+      preparingPromptRunIdRef.current = runId;
+      promptSubmissionRef.current = nextSubmission;
+      return nextSubmission;
+    };
+    const assertCurrentRun = () => {
+      if (sid !== sessionIdRef.current || runId !== promptRunIdRef.current || cancelledPromptRunIdRef.current === runId) throw new Error("Queue resume cancelled");
+    };
+    submission = startRunIfIdle();
+    try {
+      // Establish the cancellable run before any draft storage/network work.
+      // A late restore must not clear Stop's marker or reopen the event stream.
+      const draft = await restore();
+      assertCurrentRun();
+      do {
+        // The previous run may finish naturally while restoring or connecting.
+        // Only renew it after checking that Stop or a newer run did not win.
+        submission = startRunIfIdle();
+        await ensureEventsConnected(sid);
+        assertCurrentRun();
+      } while (!agentRunningRef.current);
+      // A busy session only accepts a queue-mode change here, not consumption.
+      // Keep its message in the pending strip until message_end (or persisted
+      // history) confirms delivery. Idle resume still starts an ordinary prompt.
+      // Reuse the original durable identity; never infer delivery by text.
+      if (startsRun && !record.operation) {
+        const files = draft.files ?? [];
+        const text = [draft.value.trim(), ...files.map(file => file.kind === "paste" && file.text != null ? file.text.trim()
+          : `附件: ${file.name}（${file.size} 字节）${file.path ? `\n${file.path}` : ""}`)].filter(Boolean).join("\n\n");
+        const content = draft.images?.length ? [...(text ? [{ type: "text" as const, text }] : []),
+          ...draft.images.map(image => ({ type: "image" as const, source: { type: "base64" as const, media_type: image.mimeType, data: image.data } }))] : text;
+        setMessages(current => current.some(message => message.role === "user" && message.clientPromptId === record.idempotencyKey) ? current
+          : [...current, { role: "user", clientPromptId: record.idempotencyKey, content, recoveryDraft: draft, timestamp: record.acceptedAt }]);
+      }
+      if (startsRun) preparingPromptRunIdRef.current = null;
+      const updated = await send();
+      if (submission) submission.pending = false;
+      return updated;
+    } catch (error) {
+      if (startsRun && sid === sessionIdRef.current && runId === promptRunIdRef.current) {
+        if (promptSubmissionRef.current === submission) promptSubmissionRef.current = null;
+        void waitForPromptSettlement(sid, runId);
+      }
+      throw error;
+    } finally {
+      if (submission) submission.pending = false;
+      if (startsRun && preparingPromptRunIdRef.current === runId) preparingPromptRunIdRef.current = null;
+    }
+  }, [closeEvents, ensureEventsConnected, waitForPromptSettlement]);
+
   const chatCommands = useChatCommandOperations({
     conversationKey: commandConversationKey,
     sessionId: session?.id ?? null,
@@ -1778,6 +1887,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       return commandCatalogRef.current;
     },
     connectModelEvents: ensureEventsConnected,
+    resumeQueuedInput,
     uploadFiles: uploadPromptMaterialFiles,
     onAccepted: () => { if (isNew) promoteNewSession(); },
     onFinished: record => {
@@ -2119,7 +2229,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } finally { messageMutationRef.current = false; setDeletingMessage(false); }
   }, [activeLeafId, entryIds, isCompacting, loadContext, loadSession, messages, t, answerPreviewStore]);
 
-  const handleFork = useCallback(async (entryId: string) => {
+  const handleFork = useCallback(async (entryId: string, includeEntry = false) => {
     if (bashRunningRef.current) return;
     const sid = sessionIdRef.current;
     if (!sid) return;
@@ -2130,18 +2240,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       const result = await sendAgentCommand<{ cancelled?: boolean; newSessionId?: string }>(sid, {
         type: "fork",
         entryId,
+        includeEntry,
       });
       const { cancelled, newSessionId } = result ?? {};
       if (!cancelled && newSessionId) {
         onSessionForked?.(newSessionId);
       }
     } catch (e) {
-      console.error("Fork failed:", e);
-      setError(e instanceof Error ? e.message : String(e));
+      addNotice({ type: "error", message: e instanceof Error ? e.message : String(e) });
     } finally {
       setForkingEntryId(null);
     }
-  }, [onSessionForked]);
+  }, [onSessionForked, addNotice]);
+
+  const handleBranch = useCallback((entryId: string) => handleFork(entryId, true), [handleFork]);
 
   const handleNavigate = useCallback(async (entryId: string): Promise<boolean> => {
     const sid = sessionIdRef.current;
@@ -2341,6 +2453,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     const nextModelList = d.modelList ?? [];
     setModelList(nextModelList);
     if (isNew && !sessionIdRef.current) {
+      const selected = newSessionModelOverrideRef.current;
+      if (!d.modelError && selected && !nextModelList.some(item => item.provider === selected.provider && item.id === selected.modelId)) {
+        newSessionModelOverrideRef.current = null;
+        setNewSessionModel(null);
+      }
       const match = d.defaultModel
         ? nextModelList.find((m) => m.id === d.defaultModel?.modelId && m.provider === d.defaultModel?.provider)
         : undefined;
@@ -2598,7 +2715,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
     ignoreProgrammaticScrollUntilRef.current = Date.now() + PROGRAMMATIC_SCROLL_IGNORE_MS;
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container || container.clientHeight === 0) return;
     // The live-tail spacer is a scrolling aid, not message content, so jumping
     // to the container bottom would land on a blank viewport. Scroll to the
     // real content bottom instead: the last message sits at the viewport
@@ -2634,7 +2751,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const startInitialBottomPin = useCallback(() => {
     stopInitialBottomPin();
     const container = scrollContainerRef.current;
-    if (!container) return;
+    if (!container || container.clientHeight === 0) return;
 
     const stopFollowing = followChatBottom(container, () => scrollToBottom("instant"));
     const cleanup = () => {
@@ -2659,7 +2776,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     stopInitialBottomPin();
     const container = scrollContainerRef.current;
     const el = lastUserMsgRef.current;
-    if (!container || !el) return false;
+    if (!container || !el || container.clientHeight === 0) return false;
     const elAbsTop = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
     const targetScrollTop = Math.max(0, elAbsTop - 16);
     liveTailPinnedScrollTopRef.current = targetScrollTop;
@@ -2673,7 +2790,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
 
   const clampLiveTailScroll = useCallback((): boolean => {
     const container = scrollContainerRef.current;
-    if (!container) return false;
+    if (!container || container.clientHeight === 0) return false;
     const spacer = container.querySelector<HTMLElement>("[data-chat-tail-spacer]");
     if (!spacer) {
       liveTailPinnedScrollTopRef.current = null;
@@ -2693,6 +2810,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   }, []);
 
   const markUserScrollIntent = useCallback((event: Event) => {
+    if (!viewVisible) return;
     const target = event.target instanceof Element ? event.target : null;
     const isConversationViewport = Boolean(target?.closest("#chat-scroll-container, .chat-column-scroll-rail"));
     if (event instanceof KeyboardEvent) {
@@ -2715,9 +2833,10 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       liveOutputFollowRef.current = false;
       setLiveOutputFollowPaused(true);
     }
-  }, [liveOutputAutoScrollEnabled, stopInitialBottomPin]);
+  }, [viewVisible, liveOutputAutoScrollEnabled, stopInitialBottomPin]);
 
   const handleScrollPositionChange = useCallback(() => {
+    if (!viewVisible) return;
     if (clampLiveTailScroll()) return;
     if (!agentRunningRef.current && !bashRunningRef.current) return;
     if (Date.now() < ignoreProgrammaticScrollUntilRef.current) return;
@@ -2727,7 +2846,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       liveOutputFollowRef.current = false;
       setLiveOutputFollowPaused(true);
     }
-  }, [clampLiveTailScroll, liveOutputAutoScrollEnabled]);
+  }, [viewVisible, clampLiveTailScroll, liveOutputAutoScrollEnabled]);
 
   // Load session on mount
   useEffect(() => {
@@ -2845,7 +2964,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   useEffect(() => stopInitialBottomPin, [stopInitialBottomPin]);
 
   useLayoutEffect(() => {
-    if (!liveOutputAutoScrollEnabled || (!agentRunning && !bashRunning) || loading) return;
+    if (!viewVisible || !liveOutputAutoScrollEnabled || (!agentRunning && !bashRunning) || loading) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
@@ -2874,14 +2993,20 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       container.removeEventListener("load", schedulePin, true);
       if (frame !== 0) cancelAnimationFrame(frame);
     };
-  }, [agentRunning, bashRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
+  }, [viewVisible, agentRunning, bashRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom]);
 
   useLayoutEffect(() => {
     // Loading may publish the message array before the loading shell is
     // replaced by the scroll container. Do not consume the one-shot initial
     // scroll until that container is mounted, otherwise switching sessions
     // can leave the newly selected conversation at the top.
-    if (loading || messages.length === 0) return;
+    if (!viewVisible || loading || messages.length === 0) return;
+    // Revealing an unchanged idle chat is not a completion event. Keep the
+    // reader's position, but reconcile a run that finished while hidden.
+    const previous = lastScrollUpdateRef.current;
+    const changed = !previous || previous.count !== messages.length || previous.running !== agentRunning
+      || previous.autoScroll !== liveOutputAutoScrollEnabled;
+    lastScrollUpdateRef.current = { count: messages.length, running: agentRunning, autoScroll: liveOutputAutoScrollEnabled };
 
     if (pendingScrollToUserRef.current) {
       if (scrollUserMsgToTop()) {
@@ -2891,16 +3016,17 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     } else if (!initialScrollDoneRef.current) {
       initialScrollDoneRef.current = true;
       startInitialBottomPin();
-    } else if (!agentRunningRef.current && !bashRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
+    } else if (changed && !agentRunningRef.current && !bashRunningRef.current && completionScrollAllowedRef.current && liveOutputAutoScrollEnabled) {
       scrollToBottom("smooth");
     }
-  }, [messages.length, agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom, scrollUserMsgToTop, startInitialBottomPin]);
+  }, [viewVisible, messages.length, agentRunning, liveOutputAutoScrollEnabled, loading, scrollToBottom, scrollUserMsgToTop, startInitialBottomPin]);
 
   // Load model list
   useEffect(() => {
     const controller = new AbortController();
     loadModels(controller.signal, (modelsRefreshKey ?? 0) > 0).catch((e) => {
-      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (controller.signal.aborted) return;
+      setModelError(e instanceof Error ? e.message : String(e));
     });
     return () => controller.abort();
   }, [loadModels, modelsRefreshKey]);
@@ -2996,7 +3122,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     sessionIdRef, eventSourceRef, messagesEndRef, scrollContainerRef, activityClockRef, statusClock,
     lastUserMsgRef, pendingScrollToUserRef, initialScrollDoneRef,
     // Actions
-    handleSend, handleAbort, handleFork, handleNavigate, handleRewindRecovery, handleModelChange, handleDeleteMessage, deletingMessage,
+    handleSend, handleAbort, handleFork, handleBranch, handleNavigate, handleRewindRecovery, handleModelChange, handleDeleteMessage, deletingMessage,
     handleScrollToBottom, pauseHistoryFollow,
     switchHistoryBranch, forkHistoryQuestion,
     handleCompact, handleDismissCompactError, handleDismissCompactResult, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,

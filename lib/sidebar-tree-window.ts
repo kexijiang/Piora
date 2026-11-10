@@ -40,6 +40,12 @@ export function indexTaskTree(nodes: SessionTreeNode[], flags: SessionFlags, ord
   return { children, parents };
 }
 
+/** Use the same pin timestamps and manual order before limiting a flat preview. */
+export function getProjectSessionPreview(sessions: SessionInfo[], flags: SessionFlags, order: readonly string[]): SessionTreeNode[] {
+  const index = indexTaskTree(sessions.map(session => ({ session, children: [] })), flags, order);
+  return (index.children.get(null) ?? []).slice(0, 5).map(session => ({ session, children: [] }));
+}
+
 export function flattenTaskWindow(index: ReturnType<typeof indexTaskTree>, expanded: ReadonlySet<string>): FlatTask[] {
   const rows: FlatTask[] = [];
   const stack = (index.children.get(null) ?? []).toReversed().map((session) => ({ session, depth: 0 }));

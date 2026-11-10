@@ -108,7 +108,7 @@ test("nested tool history restores bounded summaries without inventing child out
   assert.match(html, /调用记录不完整/);
   assert.match(html, /未确认完成/);
   assert.match(html, /参数因大小限制已省略/);
-  assert.match(html, /不含子调用的完整输出/);
+  assert.match(html, /历史记录仅保存调用摘要，不含完整输出/);
   assert.match(html, /safe fixture failure/);
   assert.doesNotMatch(html, /is-running/);
 });
@@ -296,8 +296,8 @@ test("renders user images as keyboard-accessible zoom controls", () => {
   assert.match(html, /class="message-image-thumbnail"/);
   assert.match(html, /aria-label="打开第 1 张图片"/);
   assert.match(messageImageSource, /dialog\.showModal\(\)/);
-  assert.match(messageImageSource, /createPortal\(viewer, document\.body\)/);
-  assert.match(messageImageSource, /event\.key !== "Escape"/);
+  assert.match(messageImageSource, /createPortal\([\s\S]*document\.body\)/);
+  assert.match(messageImageSource, /onCancel=\{event => \{ event\.preventDefault\(\); onClose\(\); \}\}/);
 });
 
 test("renders deferred prompt material as a collapsed preview with its full line count", () => {

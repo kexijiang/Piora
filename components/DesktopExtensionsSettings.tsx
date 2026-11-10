@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
+import { MemePicker } from "./MemePicker";
 import type { DshPetAction, DshPetStatus } from "@/desktop/src/dsh-pet-types";
 import styles from "./DesktopExtensionsSettings.module.css";
 import settingsStyles from "./SettingsDialog.module.css";
@@ -43,6 +44,10 @@ export function DesktopExtensionsSettings() {
   return <section className={`${styles.root} settings-embedded-surface`} data-settings-id="desktopExtensions">
     <h2>{t("desktopExtensions.title")}</h2>
     <p className={styles.description}>{t("desktopExtensions.description")}</p>
+    <article className={styles.card}>
+      <div className={styles.header}><h3>DSH Meme · {t("memes.title")}</h3><MemePicker /></div>
+      <p>{t("memes.empty")}</p>
+    </article>
     <article className={styles.card}>
       <div className={styles.header}><div><h3>DSH Pet</h3><p>PC2005-cloud · {status?.version ?? "0.3.8"}</p></div>
         <span role="status">{t(!available ? "desktopExtensions.desktopOnly" : status ? `desktopExtensions.state.${status.phase}` : "common.loading")}</span>

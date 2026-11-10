@@ -12,11 +12,11 @@ const resizerSource = await readFile(new URL("../hooks/useResizablePanel.ts", im
 
 test("memoizes historical chat metadata away from streaming token renders", () => {
   assert.match(historySource, /ChatHistory = memo/);
-  assert.match(historySource, /const metadata = useMemo/);
-  assert.match(historySource, /\}, \[messages\]\);/);
+  assert.match(historySource, /const base = useMemo\(\(\) => prepareChatHistory\(savedMessages, entryIds, expanded, compactProcess, directProcess, operations, modelChanges\),\s*\[savedMessages, entryIds, expanded, compactProcess, directProcess, operations, modelChanges\]\)/);
+  assert.match(historySource, /const metadata = base\.metadata/);
   assert.match(source, /<ChatHistory/);
   assert.doesNotMatch(historySource, /streamState/);
-  assert.match(historySource, /streamingMessage \? \[\.\.\.savedMessages, streamingMessage\] : savedMessages/);
+  assert.match(historySource, /useMemo\(\(\) => projectChatHistoryTail\(base, streamingMessage, busy \|\| streaming\), \[base, streamingMessage, busy, streaming\]\)/);
 });
 
 test("main chat ignores the retired compact process preference", () => {

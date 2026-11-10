@@ -160,7 +160,7 @@ export function evaluationSettings(input = {}) {
 export async function describeEvaluation({ policyVersions, modelSettings, baselinePath }) {
   const paths = ["scripts/intelligent-ui-model-adapter.mjs", "lib/intelligent-ui/decision-policy.ts",
     "lib/answer-output-admission.ts", "lib/intelligent-ui/admission.ts", "lib/intelligent-ui/plan-admission.ts",
-    "lib/intelligent-ui/surface-diagnostic.ts", "scripts/patch-intelligent-ui-admission.mjs", "scripts/pi-tool-admission-1.4.0.json",
+    "lib/intelligent-ui/surface-diagnostic.ts", "scripts/patch-intelligent-ui-admission.mjs", "scripts/pi-tool-admission-1.5.0.json",
     "lib/intelligent-ui/plan.ts", "lib/intelligent-ui/plan-types.ts", "lib/intelligent-ui/plan-schema.ts", "lib/intelligent-ui/plan2-expressions.ts",
     "lib/intelligent-ui/rich-plan.ts", "lib/intelligent-ui/rich-plan-schema.ts",
     "lib/intelligent-ui/rich-protocol.ts", "lib/intelligent-ui/surface-document.ts",

@@ -27,6 +27,8 @@ export interface UiRichSurface {
   nodes: UiRichNode[];
   /** Every node is placed exactly once. Groups and cards never nest. */
   layout: RichBlock[];
+  /** Standard A2UI source; nodes/layout are the host's calculation projection. */
+  a2ui?: import("../a2ui/document").A2uiDocument;
 }
 export type UiRichNode = UiNode | { id: string; type: "dynamicText"; parts: UiExpression[] };
 export type RichProtocolErrorCode = "RICH_SHAPE" | "RICH_VERSION" | "RICH_LIMIT" | "RICH_ID" | "RICH_REFERENCE" | "RICH_TYPE" | "RICH_LAYOUT" | "RICH_FILTER";
@@ -259,7 +261,10 @@ export interface EvaluatedRichSurface { state: UiState; nodes: EvaluatedRichNode
 
 /** No row is discarded. Unknown calculations remain visible rather than matching false. */
 export function evaluateRichSurface(surface: UiRichSurface, input?: UiState): EvaluatedRichSurface {
-  const validated = validateRichSurface(surface), state = validateRichState(validated, input ?? richInitialState(validated));
+  // The standard source is validated by surface-document; this evaluator uses
+  // only its bounded calculation projection.
+  const projection = { version: surface.version, id: surface.id, revision: surface.revision, title: surface.title, nodes: surface.nodes, layout: surface.layout };
+  const validated = validateRichSurface(projection), state = validateRichState(validated, input ?? richInitialState(validated));
   const cell = (expression: UiExpression): RichCell => {
     try { return { value: evaluateExpression(expression, state) }; }
     catch { return { error: "CALCULATION_UNAVAILABLE" }; }

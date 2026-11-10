@@ -1,4 +1,4 @@
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { answerConversionSchema } from "../answer-output-conversion-schema";
 import { MINI_APP_CSS_MEDIA_CONTRACT, MINI_APP_DOCUMENT_CONTRACT, MINI_APP_PROGRAM_SCOPE_CONTRACT, MINI_APP_STATE_MEANING_CONTRACT } from "./authoring-contract";
 

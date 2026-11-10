@@ -20,7 +20,7 @@ export const RoomActivityMessage = memo(function RoomActivityMessage({ activity,
     <RoomAvatar member={member} name={name} small />
     <div className={styles.activityBody}>
       <details className={styles.processDisclosure}>
-        <summary><span className={styles.activityDot} data-working={isStreaming} /><strong>{name}</strong><span>{isStreaming ? activity.phase : t("roomUx.processEnded")}</span><AliIcon name="chevron-right" size={15} /></summary>
+        <summary><span className={styles.activityDot} data-working={isStreaming} /><strong>{name}</strong>{activity.model ? <small>{activity.model}</small> : null}<span>{isStreaming ? activity.phase : t("roomUx.processEnded")}</span><AliIcon name="chevron-right" size={15} /></summary>
         <div className={styles.processContent}>
           {activity.thinking ? <details className={styles.toolDisclosure}><summary>{t("roomUx.thinking")}</summary><MarkdownBody cwd={cwd} className="markdown-thinking">{activity.thinking}</MarkdownBody></details> : null}
           {activity.tools.map((tool) => <details key={tool.id} className={`${styles.toolDisclosure} liveTool`}>

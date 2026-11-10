@@ -1,5 +1,5 @@
 import { APP_DISPLAY_NAME } from "../lib/branding.ts";
-import { Type } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import { defineTool, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getAutomationRuntime } from "../lib/automation-runtime.ts";
 import { getAutomationStore } from "../lib/automation-store.ts";

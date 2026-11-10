@@ -46,6 +46,7 @@ import {
 } from "./browser-agent-logic.js";
 
 export interface BrowserAgentTabState extends OwnedTabCandidate {
+  vaultProtected?: boolean;
   url: string;
   title: string;
   unloaded: boolean;
@@ -352,6 +353,40 @@ export class BrowserAgentControl {
       for (const unsubscribe of unsubs) unsubscribe();
     }
     this.unsubscribers.clear();
+  }
+
+  /** Shared protection rules for manual cleanup and capacity reclamation. */
+  idleTabIds(): string[] {
+    return this.host.listTabs().filter(tab => !tab.closed && !tab.vaultProtected
+      && tab.sessionId !== MANUAL_BROWSER_SESSION_ID && this.meta.get(tab.id)?.agentOpened
+      && !this.host.isShowing(tab.id) && !this.waiting.has(tab.sessionId)
+      && this.sessionActive.get(tab.sessionId) !== true && !(this.requestDepth.get(tab.sessionId) ?? 0))
+      .map(tab => tab.id);
+  }
+
+  closeIdleTabs(): void {
+    this.closeIdleTabIds(this.idleTabIds());
+  }
+
+  /** Free only one slot, preferring unloaded pages, then least recently used. */
+  reclaimIdleTab(): void {
+    const candidates = this.idleTabIds();
+    candidates.sort((a, b) => Number(Boolean(this.tab(b)?.unloaded)) - Number(Boolean(this.tab(a)?.unloaded))
+      || (this.lastUsed.get(a) ?? Infinity) - (this.lastUsed.get(b) ?? Infinity));
+    this.closeIdleTabIds(candidates.slice(0, 1));
+  }
+
+  private closeIdleTabIds(ids: string[]): void {
+    for (const id of ids) {
+      const tab = this.tab(id);
+      if (!tab) continue;
+      this.detachQuiet(id);
+      this.host.closeTab(id);
+      this.agentOpenedDelete(id);
+      this.lastUsed.delete(id);
+      if (this.agentTabs.get(tab.sessionId) === id) this.agentTabs.delete(tab.sessionId);
+      this.publish(tab.sessionId);
+    }
   }
 
   sweepIdle(now = this.host.now()): string[] {

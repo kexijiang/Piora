@@ -3,6 +3,7 @@ import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 import { invalidateModelsCache, loadModelsWithCache, withModelRuntimeError, type ModelsData } from "@/lib/models-cache";
 import { resolveVisibleModels, selectInitialModelScope } from "@/lib/model-scope";
 import { resolveDefaultModelPreference } from "@/lib/model-policy";
+import { readDefaultModel } from "@/lib/default-model-store";
 import {
   createCoreModelServices,
   createTrustedModelServices,
@@ -34,7 +35,7 @@ function createResponsiveModelServices(cwd: string): ReturnType<typeof createTru
 
 async function loadModels(cwd: string): Promise<ModelsData> {
   const nameMap = new Map<string, string>();
-  let modelList: { id: string; name: string; provider: string; contextWindow?: number }[] = [];
+  let modelList: ModelsData["modelList"] = [];
   let defaultModel: { provider: string; modelId: string } | null = null;
   const thinkingLevels: Record<string, string[]> = {};
   const thinkingLevelMaps: Record<string, Record<string, string | null>> = {};
@@ -77,6 +78,7 @@ async function loadModels(cwd: string): Promise<ModelsData> {
   const defaultModelId = settings.getDefaultModel();
   const preferredDefault = resolveDefaultModelPreference({
     models: visible,
+    explicitDefault: readDefaultModel(),
     settingsProvider: defaultProvider,
     settingsModel: defaultModelId,
     environment: process.env,
@@ -87,6 +89,7 @@ async function loadModels(cwd: string): Promise<ModelsData> {
   if (initial.model) {
     defaultModel = { provider: initial.model.provider, modelId: initial.model.id };
   }
+  modelList = modelList.map(model => ({ ...model, isDefault: model.provider === defaultModel?.provider && model.id === defaultModel.modelId }));
 
   return withModelRuntimeError(
     {
@@ -118,7 +121,7 @@ export async function GET(req: Request) {
     cwd = await resolveModelRequestCwd(requestUrl.searchParams.get("cwd"));
   } catch (error) {
     if (error instanceof ModelRequestCwdError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return Response.json({ error: error.message, code: error.code }, { status: error.status });
     }
     throw error;
   }

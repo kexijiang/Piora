@@ -1,148 +1,206 @@
 <p align="center">
-  <img src="desktop/build/icon.png" alt="Piora 应用图标" width="112" height="112">
+  <img src="desktop/build/icon.png" alt="Piora 应用图标" width="96" height="96">
 </p>
 
 <h1 align="center">Piora</h1>
-
-<p align="center">本地优先的开源 AI 桌面工作台</p>
+<p align="center">把 AI 对话、项目文件、终端、浏览器与设备操作放在同一个桌面工作台。</p>
 
 <p align="center">
-  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.8"><img alt="稳定版 0.5.8" src="https://img.shields.io/badge/release-0.5.8-2563eb.svg"></a>
+  <a href="https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.15"><img alt="预发布 0.5.10-beta.15" src="https://img.shields.io/badge/beta-0.5.10--beta.15-2563eb.svg"></a>
   <a href="https://github.com/kexijiang/Piora/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kexijiang/Piora/actions/workflows/ci.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <a href="#下载与安装"><img alt="Windows x64" src="https://img.shields.io/badge/Desktop-Windows%20x64-555.svg"></a>
 </p>
 
-Piora 把 AI 对话、项目文件、代码编辑、Git 审阅、终端、浏览器和设备操作放进同一个窗口。你可以让 Agent 修改项目，也可以随时打开文件检查改动、运行命令、查看结果，继续手动完成工作。
+Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要完成的工作，让 Agent 阅读文件、修改代码、执行命令或操作网页；你可以同时查看过程、审阅差异、接手浏览器，并继续手动编辑。日常问答、写作和资料整理也可以使用无项目聊天。
 
-项目基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型接入与扩展机制。Piora 由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。
+基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型和扩展机制。项目由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。Piora 不提供统一模型订阅或内置 API Key；使用自己的模型服务账号，费用与额度由服务商管理。
 
-最新正式版为 `0.5.8`，当前源码与 beta 版本为 [`0.5.9-beta.4`](https://github.com/kexijiang/Piora/releases/tag/v0.5.9-beta.4)。本次 beta 支持运行日志目录、级别与轮转配置，修复供应商重名编辑和内置浏览器布局竞态，并统一发布 Windows x64 安装包。详细更新见 [CHANGELOG.md](CHANGELOG.md)。
+**当前源码 / 本次 Beta：`0.5.10-beta.15`（2026-11-09）**，重写鸿蒙投屏链路，并包含聊天、模型及工作区改进；测试版需手动下载安装更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.15) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
 
-后续正式版与 beta 均由 GitHub Actions 只构建和校验 Windows x64 安装包；beta 构建全部检查通过后由独立工作流自动发布，下载见[所有发布](https://github.com/kexijiang/Piora/releases)。Windows 原生投屏使用随包 Hypium 采集库，兼容设备无需在电脑安装 DevEco Studio。需要手机端 HAP 的兼容路径仍要求用户明确初始化并准备对应签名工具。华为系统录屏、原生投屏画质与延迟、平板兼容性和浏览器窗口外渲染仍待硬件验收，见[鸿蒙设备验收矩阵](docs/harmony/atlas-acceptance.md)。
+[下载安装](#下载与安装) · [首次使用](#第一次完成任务) · [功能导览](#功能导览) · [更新与内网部署](#更新与内网部署) · [开发贡献](#开发与贡献) · [中文手册](docs/user-manual.zh-CN.md)
 
-[下载与安装](#下载与安装) · [开始使用](#开始使用) · [完整用户手册](docs/user-manual.zh-CN.md) · [主要功能](#主要功能) · [鸿蒙设备工作台](#鸿蒙设备工作台) · [开发与贡献](#开发与贡献) · [文档索引](docs/README.md)
+<!-- SCREENSHOT: 01-workspace -->
+![待补截图 01：Piora 完整工作区](docs/images/readme/01-workspace.svg)
+*图 01 待补：左侧项目与聊天、中间任务对话、右侧文件差异。所有编号图的拍摄步骤和替换路径见[截图清单](docs/readme-screenshots.md)。占位图不是产品界面；现有历史截图均单独注明。*
 
 ## 下载与安装
 
-后续版本只提供 **Windows x64 安装版**。以下链接均对应已发布的 [Piora 0.5.8 正式版](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)：
+目前发布 **Windows 10/11 x64 安装版**。安装包包含应用运行时与 PowerShell 7，普通使用无需另装 Node.js；Git、项目编译器和第三方工具按任务需要安装。
 
-| 平台与形式 | 下载 | 使用方式 |
+| 版本 | 安装包 | 校验与说明 |
 | --- | --- | --- |
-| Windows x64 安装版 | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.8/Piora-0.5.8-win-x64-setup.exe) | 安装后启动，支持选择目录和应用内更新 |
-| 文件校验 | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.8/SHA256SUMS.txt) | 核对下载文件的 SHA-256 |
+| 本次 Beta `0.5.10-beta.15` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.15/Piora-0.5.10-beta.15-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.15/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.15) |
+| 稳定版 `0.5.8` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.8/Piora-0.5.8-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.8/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.8) |
 
-Windows 支持 Windows 10/11 x64。桌面包已包含应用运行时，普通使用不需要另装 Node.js；Windows 包还内置 PowerShell 7；首次开启本地听写时会下载离线语音资源。Git、项目编译器以及第三方工具需要的程序，请按实际任务安装。
+下载后运行安装器，选择安装目录并启动。安装包尚未启用 Windows 代码签名，系统可能显示信誉提示。后续版本不再构建便携 EXE、ZIP 或 Linux AppImage；旧包可在[历史发布](https://github.com/kexijiang/Piora/releases)中查找。
 
-其他版本和 Beta 预览版见 [所有发布](https://github.com/kexijiang/Piora/releases)。旧版便携 EXE、ZIP 与 Linux AppImage 可在历史发布中查找，后续不再构建。Windows 安装包尚未启用代码签名，首次启动可能出现系统信誉提示。
+## 第一次完成任务
 
-## 开始使用
+1. **连接模型**：进入“设置 → 模型配置”，添加服务商，通过 API Key、OAuth 或设备码登录；自定义服务填写 Base URL、API 格式和模型 ID。识别到模型后，主动运行连接测试。
+2. **选择项目**：从侧栏添加本地文件夹；问答或写作可直接新建无项目聊天。
+3. **检查模型与权限**：在输入框选择模型、思考等级和工具权限。新聊天默认使用渠道 / 模型排列中第一个可用项，长按拖动渠道可以调整顺序，已有聊天保留自己的选择。
+4. **发送具体任务**：例如“阅读这个项目，说明用途、启动方法和主要目录，先不要修改文件”。支持 `@` 引用文件以及图片、文本附件。
+5. **核对结果**：打开回复引用的文件，查看工具过程；需要实现时继续说明改动目标和验收方式。右侧工作区加号可以打开文件、终端、浏览器、SSH 和设备面板。
 
-第一次使用或需要完整操作步骤，请阅读[中文用户手册](docs/user-manual.zh-CN.md)，涵盖模型配置、聊天与项目、Git、终端、SSH、定时任务、技能与 MCP、设备操作、备份迁移及常见问题。
+<!-- SCREENSHOT: 02-models -->
+![待补截图 02：配置模型与调整渠道顺序](docs/images/readme/02-models.svg)
+*图 02 待补：保留渠道列表、连接配置、模型列表与测试入口；隐藏 API Key 和企业接口地址。*
 
-1. **配置模型**：打开“设置 → 模型”，填写 API Key，或使用服务支持的 OAuth / 设备码登录。自定义服务可配置地址和模型 ID，测试连接后选择默认模型。
-2. **选择工作位置**：添加本机文件夹作为项目，或新建无项目聊天。项目会话中的文件、终端和 Git 操作围绕所选目录展开。
-3. **描述任务**：写清目标和验收方式，例如“修复登录页布局，运行相关测试，并说明改动”。可用 `@` 引用文件，也可添加图片和文本附件。
-4. **检查过程与结果**：对话中查看工具调用和运行状态；右侧加号可打开文件、审阅、终端、浏览器、SSH、设备等面板。
-5. **继续或调整**：任务运行时可以补充要求或停止。对自己发送的消息使用“重试”可重新发送原文和附件，也可从历史消息分叉继续。
+<details>
+<summary>已有模型配置截图（历史测试界面，仅作入口参考）</summary>
 
-Piora 不提供统一模型订阅或内置 API Key。模型费用、额度及服务端数据处理由你选择的服务决定；可用模型、图片能力和思考等级随服务配置而变化。
+![模型配置历史测试截图，使用示例地址且没有真实密钥](docs/images/settings-wallpaper/models.png)
 
-## 主要功能
+截图中的服务商与地址是测试数据；默认模型以当前渠道排序行为为准。
+</details>
 
-### 对话与模型
+## 功能导览
 
-- 项目会话和无项目聊天，支持图片、Markdown、Mermaid、数学公式、长会话、历史搜索与 HTML 导出。
-- 查看思考、工具调用、执行耗时、重试和上下文压缩状态；刷新页面后恢复运行状态。
-- 发送前保存文本和附件的本地恢复副本，发送失败时恢复原稿，避免覆盖之后输入的新内容。
-- 在设置中调整超时、重试和压缩参数；可选开启模型故障回退，在服务不可用时尝试其他已启用且已认证的兼容模型。回退默认关闭。
+### 对话、任务与工具权限
 
-### 文件编辑与改动审阅
+在对话里查看思考过程、工具调用、命令输出、任务总用时和实时生成速度。支持 Markdown、代码、Mermaid、数学公式、图片缩放、历史搜索与 HTML 导出。用户消息和已完成回复可“从此处新建分支”，复制包含该消息的历史到独立聊天。
 
-右侧文件区支持文件树、多文件标签、编辑、源码、差异和预览视图。切换文件保留未保存草稿及各自的浏览位置，Markdown 与 HTML 可并排编辑和预览。
+发送前保存文本和附件的本地恢复副本，失败时恢复原稿；运行中可补充要求、停止或恢复排队消息，刷新后重新连接运行状态。超时、重试、上下文压缩在“运行策略”中管理；模型故障回退默认关闭，开启后可在服务不可用时尝试其他可用兼容模型。
 
-- **改动定位**：每个文本文件工具栏显示改动计数和“上一处改动 / 下一处改动”按钮。连续修改按区块跳转，首尾循环，覆盖 Git 改动及未保存编辑。
-- **自动展开目标**：跳转时展开目标所在的折叠代码或差异段；从预览跳转会显示编辑区域，长差异也可定位到尚未展示的部分。
-- **代码编辑**：语法高亮、代码折叠、括号匹配、查找替换；TypeScript 和 JavaScript 支持语义级定义跳转与补全；ArkTS 提供基础的符号跳转与补全。
-- **本轮结果**：按任务查看本轮文件净变化，直接打开对应文件或差异。
-- **Git 审阅**：逐文件或逐区块暂存，查看分支和目标后提交、推送；管理远程仓库与 worktree。GitHub、GitLab、Gitee 的浏览器授权需配置[授权服务](services/git-oauth/README.md)。
+| 输入框权限 | 谁处理需要批准的工具操作 |
+| --- | --- |
+| 请求批准 | 由你确认 |
+| 帮我批准 | 使用本轮所选模型独立审核，失败时转人工确认 |
+| 完全访问 | 工具操作不再逐次请求批准；普通提问和用户接管仍保留 |
+
+未保存过偏好时新聊天初始为完全访问；手动选择同时成为后续新聊天的默认值。这是应用级审批机制，详见[工具权限](docs/tool-permissions.md)与[独立审核](docs/tool-review.md)。
+
+<!-- SCREENSHOT: 03-chat-permissions -->
+![待补截图 03：任务状态与工具权限](docs/images/readme/03-chat-permissions.svg)
+*图 03 待补：用演示项目展示一次工具调用、任务耗时与输入框权限菜单。*
+
+**可选输入预测**默认关闭：根据有效会话上下文提供下一轮消息占位提示，按 `Tab` 采纳为草稿，手动输入后隐藏，不会自动发送；支持独立模型和项目覆盖。
+
+### 项目文件、代码编辑与 Git
+
+文件区支持文件树、多文件标签、编辑、源码 / 差异 / 预览切换，保留未保存草稿和浏览位置。Markdown、HTML 可以并排编辑和预览；代码支持高亮、折叠、查找替换，TypeScript / JavaScript 支持语义定义跳转和补全，ArkTS 提供基础符号能力。
+
+“上一处 / 下一处改动”按区块定位 Git 变更和未保存编辑；本轮结果显示任务产生的文件净变化。Git 面板支持逐文件或逐区块暂存、提交和推送；聊天右上角“Git 工具”集中管理更改、分支和 worktree。浏览器方式的 GitHub / GitLab / Gitee 授权需要部署[授权服务](services/git-oauth/README.md)。
+
+<!-- SCREENSHOT: 04-files-git -->
+![待补截图 04：文件差异与 Git 审阅](docs/images/readme/04-files-git.svg)
+*图 04 待补：展示演示仓库的文件树、增删差异、改动导航和暂存入口。详见 [Worktree 指南](docs/worktrees.zh-CN.md)。*
 
 ### 终端、浏览器与 SSH
 
-交互终端保留 Shell 的原生提示符、输入编辑和历史记录。Windows 默认优先使用随包提供的 PowerShell 7；也可选择已安装的 Git Bash、命令提示符、WSL 等，在终端设置中保存默认值。切换默认 Shell 只影响新建标签。
+**本地终端**保留原生 Shell 提示符、历史和交互行为，支持多标签。Windows 优先使用随包 PowerShell 7，也可选择已安装的 Git Bash、命令提示符或 WSL；改变默认 Shell 只影响新标签，拖动面板时内容重新换行。
 
-PowerShell 的 PSReadLine 支持历史建议：在行尾按 `→` 接受建议，`↑` / `↓` 翻阅历史，`Ctrl+R` 搜索，`Tab` 补全，`Ctrl+C` 中断。拖动终端面板时，内容会随宽度重新换行。
+**桌面内置浏览器**默认供 Agent 与用户协作：Agent 操作当前聊天所属的标签页，打开右侧面板就能看到并接手。登录资料保存在 Piora 自己的浏览器环境，不自动继承日常 Chrome / Edge。遇到需要手动处理的页面，对话显示等待卡片，完成后点击继续。登录能保持多久仍由网站策略决定。
 
-内置浏览器面板用于打开网页。Agent 的浏览器工具使用独立的无头浏览器环境，不继承你日常浏览器的登录状态。
+**后台浏览器模式及网页版**使用独立的无头浏览器，与桌面内置浏览器的页面和登录资料分开；可以查看跟随画面，但不具备同样的手动接管体验。
 
-[SSH 工作台](docs/SSH_WORKBENCH.md)支持多主机标签、密码或私钥认证、连接测试、远程终端及 SFTP 文件传输。已连接主机可关联当前 AI 任务，Agent 使用独立的 SSH 工具操作指定主机；本地终端仍执行本地命令。桌面端通过系统安全存储加密凭据，独立网页运行或系统加密不可用时需设置主密码。
+<!-- SCREENSHOT: 05-browser -->
+![待补截图 05：浏览器与用户接管](docs/images/readme/05-browser.svg)
+*图 05 待补：同屏显示等待操作卡片、浏览器标签和“我已完成，继续”入口，使用无个人信息的演示页面。*
 
-### 多 Agent、定时任务与扩展
+**SSH 工作台**支持多主机标签、密码 / 私钥认证、连接测试、远程终端和 SFTP 文件传输。连接后可关联当前 AI 任务，让 Agent 使用独立 SSH 工具；本地终端仍在本机执行。凭据存储方式及步骤见 [SSH 指南](docs/SSH_WORKBENCH.md)。
 
-- **多 Agent 群聊**：为同一项目配置成员、角色和职责，管理协调者、并发、任务分派与共享产物。详见[协作工作台](docs/multi-agent-collaboration.md)。
-- **定时任务**：在当前聊天中周期跟进，或每次为项目创建独立会话；可查看执行记录、暂停、恢复和手动运行。调度需要 Piora 在本机保持运行。
-- **Skills、插件与扩展**：管理 Pi 资源包、技能和扩展，并按项目或会话配置可用能力。技能设置支持从内置市场、精选仓库和自定义 Git / 兼容市场发现、安装及更新技能，详见[技能来源说明](docs/skill-sources.md)。第三方资源所需的依赖由其运行环境决定。
+<details>
+<summary>SSH 多主机、远程终端与文件截图（历史本地测试环境）</summary>
 
-网络代理是应用级设置，在“设置 → 网络代理”统一选择跟随系统、手动 HTTP/HTTPS 代理或直接连接，覆盖模型请求与登录、内置浏览器、插件、更新检查及资源下载。保存后用于后续请求，无需重启；Agent 浏览器在下一次操作时保留登录数据并重新连接，本机服务始终直连。目标跟踪和计划执行可由用户自行安装 Pi 扩展提供。
+![SSH 多主机终端和 SFTP 文件面板的历史测试截图](docs/assets/ssh-multihost-wide.png)
 
-### 听写与随身舱
+图中为回环地址上的测试主机，包含测试环境提示，不代表本次安装包的连接验收。
+</details>
 
-首次在语音设置中开启本地听写时，会下载 **SenseVoiceSmall INT8** 模型和 **sherpa-onnx** 运行时；下载完成后可离线听写，也支持断点续传和手动导入。语音转文字在本机进行；发送文字到模型仍遵循所选模型服务的配置。
+### 多 Agent 协作与定时任务
 
-随身舱提供待办、专注时钟、JSON 工具和 Markdown 中转站。中转站支持文件标签、源码模式、自动保存、草稿恢复、导入导出及图片插入。可选桌宠以独立透明窗口显示任务与专注状态，并支持导入兼容的本地宠物素材。
+**群聊工作台**为同一项目配置成员、角色、职责、协调者与并发，通过 `@` 选择成员，查看实际响应模型、任务分派和共享产物。成员使用独立会话，群聊内可以处理各成员的工具批准和提问；发送状态持久保存，成果可以直接下载。详见[多 Agent 协作](docs/multi-agent-collaboration.md)。
 
-## 鸿蒙设备工作台
+<!-- SCREENSHOT: 06-rooms -->
+![待补截图 06：多 Agent 群聊](docs/images/readme/06-rooms.svg)
+*图 06 待补：用虚构成员展示角色、@ 选择、一次协作回复和成果下载。*
 
-设备面板以完整手机画面为主，投屏画布只用于观看：可以缩放和平移视野，但鼠标点击、拖动、长按和键盘输入都不会发送到手机。应用、测试、语音、日志和记录放在默认收起的“工具”抽屉中；宽面板从侧边展开，窄面板从底部展开，诊断与校准收进设备设置。
+**定时任务**可以在当前聊天周期跟进，或每次为项目创建独立会话；支持执行记录、暂停、恢复和手动运行。调度依赖 Piora 在本机持续运行，电脑关机、休眠或完全退出应用后不会继续执行。
 
-### 连接与操作
+<!-- SCREENSHOT: 07-schedules -->
+![待补截图 07：定时任务与执行记录](docs/images/readme/07-schedules.svg)
+*图 07 待补：展示任务周期、关联项目、下次执行时间及一条历史记录，使用演示内容。*
 
-1. 在支持 HDC 的 OpenHarmony / HarmonyOS 设备上开启开发者选项和 USB 调试，并在手机确认电脑授权。
-2. 打开右侧设备面板，选择 HDC 和目标手机。Windows 包带有备用 HDC，也可使用 DevEco Studio / SDK 中适合设备的版本；多设备连接时明确选择目标。
-3. 兼容设备优先使用随包 Hypium 原生采集库启动投屏，电脑无需安装 DevEco Studio。若设备需要手机端 HAP 兼容路径，按设备诊断提示准备 HarmonyOS API 26 SDK 和已登录的 DevEco CLI，并明确点击“初始化投屏服务”；Piora 为当前设备生成并验签私有副本后安装，缺少工具链或适用 Profile 时会说明原因。
-4. 画面和设备能力就绪后即可持续观看、截图或录屏，无需停止投屏或中断正在运行的 AI 任务。需要操作手机时，从 AI、应用或测试工具发起；后台会按设备状态串行执行动作。
+### Skills、插件、MCP 与桌面扩展
 
-**仅观看投屏不会自动安装服务、唤醒或解锁手机，也不会占用设备动作队列。** 截图和录屏使用独立的只读媒体通道；切换设备、关闭面板或停止任务后，等待中的旧动作不会继续派发。
+- **技能**：从内置市场、精选仓库、自定义 Git 或兼容市场发现和安装，管理来源、启停和更新。见[技能来源](docs/skill-sources.md)。
+- **Pi 插件与扩展**：管理全局 / 项目资源包，按需要启用能力；禁用扩展会从会话加载计划中移除。
+- **MCP**：配置外部工具服务，查看连接及工具状态。能力、依赖和认证取决于所接服务，见[用户手册](docs/user-manual.zh-CN.md#mcp-外部工具)。
+- **桌面扩展**：可选安装 [DSH Pet](docs/dsh-pet.md) 和 [DSH Meme](docs/dsh-meme.md)。前者提供独立桌宠，后者提供图库与 AI 表情工具；图库管理在设置中，聊天输入栏没有表情包发送按钮。
 
-### 测试与开发
+<!-- SCREENSHOT: 08-skills -->
+![待补截图 08：技能与扩展管理](docs/images/readme/08-skills.svg)
+*图 08 待补：展示技能发现、已安装状态和来源管理，使用公开示例技能。*
 
-- 按应用名称或包标识查找已安装应用，选择场景和验证内容后运行；提供六种场景模板、步骤预览、执行记录和检查点恢复。
-- 手机已通过 HDC 连接后，Agent、应用和测试工具可直接派发设备动作，不再要求应用范围授权或单次批准。需要坐标的后台动作按最新画面自动校准与重试；投屏画布仍只读，实际不支持的能力按设备情况提示。
-- 查看设备日志、保存截图和录屏；录屏保存当前投屏的视频流。
-- 工程验证可安装所选 HAP、执行设备场景并收集日志；ArkTS 编辑器仍提供基础定义跳转与补全。
-- 提供本地 WAV 校验、声学输出预览、语音校准和按住说话流程；手机实际识别结果匹配后才记录为通过。
+<details>
+<summary>已有桌面扩展截图（历史 DSH Pet 设置界面）</summary>
 
-设备自动化和声学输入仍需逐机型、逐系统验证。软件回归通过不代表所有手机或真实麦克风链路已验收；不可用、需校准和未完成状态会按实际结果显示。
+![DSH Pet 桌面扩展历史截图](docs/images/dsh-pet/settings.png)
 
-详见[首次连接](docs/harmony/quickstart.md)、[观察与停止](docs/harmony/controls.md)、[语音输入](docs/harmony/voice-input.md)、[能力目录](docs/harmony/capabilities.md)与[实测范围](docs/harmony/compatibility.md)。
+此图拍摄早于 DSH Meme 加入，仅说明入口；首次安装需要下载独立运行资源，上游素材另有许可证要求。
+</details>
 
-## Windows 电脑控制
+### 鸿蒙设备工作台
 
-在电脑控制设置中连接后，可让 Agent 操作本机应用。Windows 桌面包内置 winapp CLI，优先通过 UIA 控件执行点击、输入、读取和滚动；需要截图定位时使用视觉模型与 Windows-MCP。
+通过 HDC 连接兼容的 OpenHarmony / HarmonyOS 设备，选择目标后查看画面、截图和录屏，并通过应用、测试、语音、日志与记录工具处理任务。兼容设备优先使用 Windows 包内的 Hypium 原生采集库；需要手机端 HAP 的兼容路径仍需签名工具和明确初始化。
 
-Windows-MCP 需要本机安装 `uv`，首次连接会下载对应运行环境。设置分别显示两种后端的状态；停止或超时后不会自动重放可能已经生效的操作。此能力不覆盖锁屏、UAC 安全桌面及权限高于 Piora 的应用。
+**投屏画布只用于观看**：缩放和平移不会向手机发送触摸或按键。手机操作从 AI、应用或测试工具发起，按设备状态串行执行；仅观看不会自动安装服务、唤醒或解锁设备。
 
-## 数据与隐私
+<!-- SCREENSHOT: 09-harmony -->
+![待补截图 09：鸿蒙设备与只读投屏](docs/images/readme/09-harmony.svg)
+*图 09 待补：需要真实设备，展示完整画面、设备选择与工具抽屉；隐藏设备序列号、通知和个人内容。*
 
-Piora 没有统一账号服务或内置遥测。会话、设置和工作区状态默认保存在本机；向模型提问、登录服务、安装扩展、检查更新或使用联网工具时，会连接相应服务。
+设备型号、系统录屏、原生画质 / 延迟、平板及长期稳定性以[验收矩阵](docs/harmony/atlas-acceptance.md)为准；CI 通过不等于真实手机全部验收通过。连接步骤见[鸿蒙设备指南](docs/HARMONYOS_DEVICE_AUTOMATION.md)。
 
-| 位置 | 内容 |
+### 随身舱、听写与外观
+
+随身舱集中放置待办、专注时钟、JSON 工具和 Markdown 中转站；中转站支持多文件、源码编辑、自动保存、恢复及导入导出。可选桌宠以独立窗口展示任务状态，也支持兼容素材导入。
+
+本地听写首次开启时下载 SenseVoiceSmall INT8 与 sherpa-onnx 资源，也支持手动导入；资源就绪后语音转文字在本机完成。发送转写文字到模型仍使用所选服务。外观设置提供主题、背景、字体与字号，快捷键可以自定义。
+
+<!-- SCREENSHOT: 10-companion -->
+![待补截图 10：随身舱与日常工具](docs/images/readme/10-companion.svg)
+*图 10 待补：展示虚构待办、专注计时和示例 Markdown，保持窗口控制栏可见。*
+
+### 数据、凭据与诊断
+
+会话和应用资料保存在本机；模型请求把任务所需内容发送给你配置的服务。项目源码需独立使用 Git 或文件备份。应用提供备份 / 迁移和数据目录管理，覆盖范围见[备份说明](docs/user-manual.zh-CN.md#数据备份与迁移)。
+
+桌面[本地凭据库](docs/credential-vault.md)在系统加密支持下保存网站账户，提供主密码验证及加密备份。自动填写默认关闭，仅对匹配的可信 HTTPS 表单填写，不自动提交；填写时暂停并隔离浏览器 Agent 的页面读取。普通会话 / 设置备份不包含凭据库的独立数据文件。
+
+<!-- SCREENSHOT: 11-vault -->
+![待补截图 11：本地凭据库](docs/images/readme/11-vault.svg)
+*图 11 待补：只使用虚构账户或空列表，保持敏感字段遮盖，不展示真实凭据。*
+
+运行日志支持调整目录、级别、单文件大小及备份份数。遇到启动或黑屏问题，参考[排查指南](docs/open-source/BLACK_SCREEN_TROUBLESHOOTING.md)；反馈时附版本、系统、复现步骤和脱敏日志。
+
+## 更新与内网部署
+
+**更新来源**和**版本更新资格**相互独立；只有正式安装版启用自动更新。在设置中搜索“更新来源”，选择 GitHub 或内源，再检查更新。切换会清除旧来源的可安装状态；网络失败注明来源，允许手动切换重试。不会自动降级，也不会静默换源。
+
+| 设置 | 当前 GitHub 发行版行为 |
 | --- | --- |
-| `~/.pi/agent/sessions/` | Pi JSONL 会话与分支上下文 |
-| `~/.pi/agent/settings.json`、`models.json`、`auth.json` | Pi 设置、模型与认证资料 |
-| `~/.pi/agent/piora/` | Piora 扩展偏好、协作、定时任务等本地数据 |
-| Windows `%APPDATA%\Piora\runtime\normal\` | 桌面设备配置、执行记录与恢复信息 |
-| Windows `%APPDATA%\Piora` | 桌面配置、浏览器资料、草稿及运行日志 |
+| GitHub 来源 | 默认值，从本仓库 Release 获取安装包和更新说明 |
+| 内源 | 已有选择与持久化能力；地址为源码占位，未配置时提示“内源更新地址未配置” |
+| 稳定渠道 | 只选择稳定版 |
+| Beta 测试版 | 仅手动下载安装，不检查、下载或静默安装更新 |
+| 旧 Alpha / 开发版 | 不提供自动更新；Alpha 流水线已下线，请手动迁移到正式版或 Beta |
 
-Windows 中的 `~` 通常指 `%USERPROFILE%`。便携版的数据也保存在用户目录，替换程序不会把会话清空，也不代表所有数据都跟随 EXE 移动。
+<!-- SCREENSHOT: 12-updates -->
+![待补截图 12：更新来源与版本](docs/images/readme/12-updates.svg)
+*图 12 待补：在安装版展示当前版本 `0.5.10-beta.15`、更新来源和检查入口；内网截图在配置真实地址后补拍。*
 
-“设置 → 数据与诊断 → 运行日志”可查看、复制实际日志路径或打开所在文件夹。反馈问题前请删除日志中的凭据、私人路径、提示词和会话内容。
+内网维护者可将默认来源设为内网，并配置内部 HTTPS 发布镜像。配置点、Atom 列表、安装包目录和元数据格式见[桌面更新来源说明](docs/desktop-update-sources.md)。公网仓库不包含公司内网地址或凭据。
+
+内外分发使用同一套版本与标签格式，例如 **`0.5.10-beta.15` / `v0.5.10-beta.15`**；同一批更新应在两端同步版本号。相同版本号不会触发升级，切换来源不会重装同版本包；以后分发新代码时，应在两端同步递增版本号，并提供对应更新说明。版本号对齐不代表两个独立维护分支的代码和安装包自动相同。
+
+安装包由 GitHub Actions 构建和校验，Beta 候选全部自动检查通过后，由独立发布工作流上传同一批产物。Release 正文与 `beta.yml` / `latest.yml` 的更新说明统一来自 CHANGELOG。关闭主窗口通常收起到托盘，完全退出或重启使用托盘菜单。
 
 ## 开发与贡献
 
-### 本地运行
-
-需要 **Node.js 22.19.0 或更高版本、npm 和 Git**；建议采用 [.nvmrc](.nvmrc) 指定的版本。Windows 上运行 Agent 的 Bash 工具时还需 Git for Windows 等兼容环境。
+使用 [.nvmrc](.nvmrc) 指定的 **Node.js 22.19.0**、npm 和 Git。Windows 上执行 Agent Bash 工具还需要 Git for Windows 等兼容环境。
 
 ```powershell
 git clone https://github.com/kexijiang/Piora.git
@@ -151,73 +209,38 @@ npm ci
 npm run dev
 ```
 
-浏览器访问 `http://127.0.0.1:30141`。需要 Electron 桌面联调时，停止浏览器开发服务，改为：
+浏览器访问 `http://127.0.0.1:30141`。桌面联调先停止上述服务，改用 `npm run dev:desktop`；该入口启动带认证的本地服务和 Electron，监听前端与桌面代码变化。两个入口默认共用端口；桌面端可用 `PIORA_DESKTOP_DEV_PORT` 修改。
+
+**开发目录不要运行 `next build` / `npm run build`，也不要在本地构建发布包。** 测试所需的桌面 / worker 夹具编译可以运行；发布安装包只由 GitHub Actions 构建。Linux 源码开发的 GLib 工具要求见[桌面开发说明](desktop/README.md)。
+
+| 目录 | 职责 |
+| --- | --- |
+| `app/`、`components/`、`hooks/` | 页面 / API、聊天与工作区、实时交互状态 |
+| `lib/`、`extensions/` | Pi 会话运行时、模型、存储、第一方扩展 |
+| `desktop/` | Electron 主进程、预加载、浏览器和更新器 |
+| `scripts/`、`tests/`、`.github/` | 验证脚本、测试夹具与 CI / 发布 |
+| `docs/`、`public/` | 使用及架构文档、静态资源 |
+
+提交前阅读 [AGENTS.md](AGENTS.md) 和[贡献指南](CONTRIBUTING.md)。按改动选择相关快速检查，完整验证交给 GitHub Actions；如实记录未运行、跳过或失败的项目。常用入口：
 
 ```powershell
-npm run dev:desktop
-```
-
-桌面开发入口自动启动带认证的服务、监听桌面代码并打开窗口。React/CSS 修改热更新，桌面主进程或预加载脚本编译后重启 Electron；按 `Ctrl+C` 停止。桌面开发资料位于 `.piora-data/desktop-dev`，Pi 会话仍沿用当前用户目录。
-
-两种开发入口默认共用 30141 端口，应择一启动；桌面改端口可设置 `PIORA_DESKTOP_DEV_PORT`。桌面服务应通过自动打开的 Electron 窗口访问，普通浏览器没有桌面认证令牌。
-
-**开发期间不要运行 `next build`、`npm run build` 或本地发布打包命令**，以免污染 `.next/`、破坏开发服务。安装包统一由 GitHub Actions 构建。
-
-### 目录与架构
-
-桌面层使用 Electron，本地 Next.js 服务提供页面和 API，Pi `AgentSession` 在服务进程中执行任务；浏览历史直接读取会话文件，不会为每次查看启动 Agent。
-
-```text
-Piora/
-├─ app/           页面与 API：会话、Agent、文件、Git、设备、SSH、定时任务
-├─ components/    聊天、设置、文件编辑、群聊、随身舱及工作区面板
-├─ hooks/         会话流、任务状态、设备画面与交互状态
-├─ lib/           会话运行时、数据存储、模型、设备与各子系统
-├─ extensions/    第一方 Pi 扩展
-├─ desktop/       Electron 主进程、预加载脚本与打包配置
-├─ public/        静态资源、主题和桌宠素材
-├─ scripts/       验证、资源生成、许可证与发布脚本
-├─ tests/         测试辅助工程与设备验收材料
-├─ docs/          使用、架构、兼容性与发布文档
-└─ .github/       CI、发布工作流和贡献模板
-```
-
-主要入口为 `components/AppShell.tsx`、`components/ChatWindow.tsx`、`hooks/useAgentSession.ts`、`lib/rpc-manager.ts` 和 `desktop/src/main.ts`。改动会话生命周期、分叉、SSE、文件权限或设备控制前，请先阅读 [AGENTS.md](AGENTS.md)。
-
-### 检查与发布
-
-Linux 源码安装前需安装 `binutils`（Ubuntu：`sudo apt-get install binutils`），并将 [patchelf 0.19.2 或更新版本](https://github.com/NixOS/patchelf/releases/tag/0.19.2)放入 `PATH`。Ubuntu 24.04 软件源中的 0.18 存在 ELF 初始化地址重写缺陷，不能使用。安装脚本会隔离 sharp/libvips 的 GLib 动态符号，避免与 Electron 的系统 GLib 冲突；工具只用于开发和构建，发布包运行时不需要安装。Windows 不执行此补丁。
-
-```powershell
+npm run typecheck
+npm run lint
+npm test
 npm run licenses:check
 npm run verify:hygiene
-npm run harmony:docs:check
-npm run lint
-npm run typecheck
-npm test
-npm run perf:check
-npm run verify:backgrounds
 ```
 
-`npm test` 会先编译 Harmony worker 和桌面 TypeScript，再运行完整测试，不创建发布安装包。CI 在 Windows 上以六分片执行测试，Ubuntu 负责通用质量与官网检查，Windows 高资源 Shell 测试单独运行。发布构建校验源码、更新说明、包完整性及隔离运行；真实手机、外部模型和窗口渲染等效果需另行验收，不能由软件测试替代。
+`npm test` 先编译桌面与 Harmony worker，再执行测试，不创建安装包。真实桌面交互测试另见[自动化测试说明](docs/desktop-automated-testing.md)。CI 在 Windows 上以六分片执行测试，另有质量、官网及发布包校验；真实设备和外部服务效果需要相应环境验收。
 
-TypeScript 按[微软官方并行安装方案](https://devblogs.microsoft.com/typescript/announcing-typescript-7-0/)配置：`@typescript/native` 是 TypeScript 7 的 npm 别名，提供 `tsc`，用于类型检查、桌面及 Harmony worker 编译；`typescript` 是最新版 `@typescript/typescript6` 兼容包的别名，为代码补全、ESLint 和测试脚本提供编译器 API。需要调用编译器时使用 `npm run typecheck` 或 `node_modules/.bin/tsc`。
+每次提交、推送前更新远端状态；发布同步根 / 桌面版本、锁文件、许可证清单、README 和带日期的 CHANGELOG。使用未占用的新标签，不移动已发布标签。完整步骤见[发布流程](docs/release.md)。
 
-发布前同步根包与桌面包版本、锁文件、README、许可证清单和带日期的 CHANGELOG。每次提交及推送前先更新远端状态，处理分支变化并重新验证。推送未占用的 `vX.Y.Z-beta.N` 标签后，GitHub Actions 只构建并上传候选；验收同批 Piora 安装包后，再由独立工作流发布这些原始字节；鸿蒙手机实机验收按需进行，不作为发布门禁。`vX.Y.Z` 正式版标签触发 Windows 与 Linux 构建，全部测试、验包及更新说明校验通过后自动发布为最新正式版。不要移动已发布标签或本地制作发布包。
+## 文档与反馈
 
-**CHANGELOG 是唯一更新说明来源**，Release 正文和 `beta.yml` / `latest.yml` 的更新说明由同一版本记录生成，并在发布前校验。具体步骤见[发布流程](docs/release.md)。
-
-提交问题或代码前请阅读 [贡献指南](CONTRIBUTING.md)与[行为准则](CODE_OF_CONDUCT.md)。问题报告应说明版本、系统、复现步骤及实际结果；安全问题按 [SECURITY.md](SECURITY.md) 私下报告。
-
-## 使用边界与帮助
-
-- Linux AppImage 不包含 Windows 专用电脑控制和随包离线听写运行时；鸿蒙设备的兼容性以设备诊断和实测记录为准。
-- 定时任务和后台 Agent 依赖应用进程；电脑关机、休眠或应用完全退出后不会继续执行。
-- 关闭主窗口通常收起到托盘，完全退出请使用托盘菜单。便携版升级需要手动替换程序。
-- 特殊显卡、多显示器、缩放比例及远程桌面环境仍可能存在兼容差异；无法启动或黑屏时见[排查指南](docs/open-source/BLACK_SCREEN_TROUBLESHOOTING.md)。
-
-更多说明见[文档索引](docs/README.md)、[扩展兼容说明](docs/open-source/EXTENSION_COMPATIBILITY.md)、[Worktree 指南](docs/worktrees.zh-CN.md)和 [GitHub Issues](https://github.com/kexijiang/Piora/issues)。
+- [完整中文手册](docs/user-manual.zh-CN.md) · [文档索引](docs/README.md) · [版本更新](CHANGELOG.md)
+- [README 截图清单与替换方法](docs/readme-screenshots.md)
+- [GitHub Issues](https://github.com/kexijiang/Piora/issues) · [行为准则](CODE_OF_CONDUCT.md) · [安全问题报告](SECURITY.md)
 
 ## 许可证与致谢
 
-Piora 使用 [MIT License](LICENSE)。感谢 Pi、pi-web 及各上游项目；第三方组件和素材保留各自许可证，详见 [NOTICE](NOTICE)、[第三方许可证清单](THIRD_PARTY_LICENSES.md)与[第三方声明](THIRD_PARTY_NOTICES.md)。
+Piora 使用 [MIT License](LICENSE)。感谢 Pi、pi-web 及各上游项目。第三方组件、模型与素材保留各自许可证，详见 [NOTICE](NOTICE)、[第三方许可证清单](THIRD_PARTY_LICENSES.md)及[第三方声明](THIRD_PARTY_NOTICES.md)。

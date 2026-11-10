@@ -7,18 +7,22 @@ import ts from "typescript";
 import { randomUUID } from "node:crypto";
 import { createJiti } from "jiti";
 
+const { AnswerOutputPreviewStore } = await createJiti(import.meta.url).import("../lib/answer-output-preview-client.ts");
 const { NestedToolCallsStore } = await createJiti(import.meta.url).import("../lib/nested-tool-calls.ts");
 const { buildLocalFilePrompt } = await createJiti(import.meta.url).import("../lib/file-attachments.ts");
 const { normalizeToolCalls } = await createJiti(import.meta.url).import("../lib/normalize.ts");
 const { replaceFailedPromptMessage } = await createJiti(import.meta.url).import("../lib/prompt-recovery.ts");
 const { persistentChatInputOptions } = await createJiti(import.meta.url).import("../lib/chat-command-input.ts");
+const { PromptErrorNotices } = await createJiti(import.meta.url).import("../lib/prompt-error-notices.ts");
+const { getAssistantErrorMessage } = await createJiti(import.meta.url).import("../lib/message-display.ts");
 
 const source = (await readFile(new URL("./useAgentSession.ts", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
+const commandSource = (await readFile(new URL("./useChatCommandOperations.ts", import.meta.url), "utf8")).replace(/\r\n/g, "\n");
 
 function historyHarness(overrides = {}) {
   const callbacks = source.slice(source.indexOf("  const switchHistoryBranch = useCallback"), source.indexOf("  const handleModelChange = useCallback"));
   const events = [];
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     flushPendingAnswerState: async () => {},
     answerOutputScope: 0, setAnswerOutputScope: update => { env.answerOutputScope = update(env.answerOutputScope); },
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 },
@@ -60,7 +64,7 @@ test("history fork seeds the original question and attachments without sending; 
 test("command catalog requests cannot overwrite a switched session or a newer catalog", async () => {
   const callbacks = source.slice(source.indexOf("  const loadSlashCommands = useCallback"), source.indexOf("  const closeEvents = useCallback"));
   const pending = [];
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [],
     useCallback: callback => callback, ensureNewSession: async () => "old", sessionIdRef: { current: "old" },
     commandCatalogLoadRef: { current: 0 }, commandCatalogRef: { current: null }, commandCatalogErrorRef: { current: null },
@@ -92,7 +96,7 @@ test("command catalog requests cannot overwrite a switched session or a newer ca
 
 function sendHarness(overrides = {}) {
   const send = source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"));
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     flushPendingAnswerState: async () => {},
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 }, buildLocalFilePrompt, useCallback: (callback) => callback, isNew: false, newSessionCwd: null, session: { id: "session" }, crypto: { randomUUID },
     t: (key) => key, userMessageKey: JSON.stringify, dispatch() {}, promoteNewSession() {}, addNotice() {}, closeEvents() {},
@@ -217,7 +221,7 @@ test("resumed SDK slash guidance stays literal rather than becoming a fresh comm
 function abortHarness(overrides = {}) {
   const handler = source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
   const calls = [];
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 },
     editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [],
     useCallback: callback => callback, t: key => key, addNotice: notice => calls.push(notice), crypto: { randomUUID },
@@ -325,7 +329,7 @@ function promptSettlementHarness() {
   const callbacks = `${settlement}\n${reconciliation}`;
   const calls = [], delays = [];
   let now = 0;
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     answerPreviewStore: { stop() {} }, refreshAnswerState: async () => {},
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 },
     editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [],
@@ -482,6 +486,7 @@ function promptSubmissionHarness(overrides = {}) {
   }
   const reviewCallback = source.slice(source.indexOf("  const acceptToolReviews = useCallback"), source.indexOf("  useEffect(() => {", source.indexOf("  const acceptToolReviews = useCallback")));
   const callbacks = reviewCallback + source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
+    + source.slice(source.indexOf("  const resumeQueuedInput = useCallback"), source.indexOf("  const chatCommands = useChatCommandOperations"))
     + source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"))
     + source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
   for (const name of new Set(callbacks.match(/\b\w+Ref\b/g))) if (!(name in h.env)) h.env[name] = { current: null };
@@ -494,14 +499,239 @@ function promptSubmissionHarness(overrides = {}) {
     reviews: [], setToolReviews: update => { h.env.reviews = typeof update === "function" ? update(h.env.reviews) : update; },
     reduceAgentPhase: (_phase, event) => ({ kind: event.type }), isRunProgressEvent: () => true,
     handleExtensionUiRequest() {}, refreshContextUsage() {},
+    userMessageHasPromptMaterialMarker: () => false,
     normalizeToolCalls,
+    promptErrorNoticesRef: { current: new PromptErrorNotices() }, getAssistantErrorMessage,
+    dispatchNotice() {},
     sendAgentCommand: async () => ({ accepted: true, sessionId: "session-a", commandId: "cmd-current", status: "queued" }),
     response: { running: true, state: { runtime: "idle", isStreaming: false, isPromptRunning: false, isCompacting: false }, promptCommand: { commandId: "cmd-current", status: "queued" } },
     ...overrides,
   });
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent }; }`)(h.env) };
+  return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent, resumeQueuedInput }; }`)(h.env) };
 }
+
+test("the actual event handler shows one terminal error and retires it when the failed reply arrives", () => {
+  for (const historyFirst of [true, false]) {
+    const notices = new Map();
+    const h = promptSubmissionHarness({
+      addNotice: notice => notices.set(notice.id, notice),
+      dispatchNotice: action => { if (action.type === "remove") notices.delete(action.id); },
+    });
+    h.env.agentRunningRef.current = true;
+    const failure = { type: "prompt_error", errorMessage: "timeout", runId: "server-run", commandId: "cmd-current" };
+    const message = { type: "message_end", message: { role: "assistant", content: [], stopReason: "error", errorMessage: "Error: timeout" } };
+    if (historyFirst) h.handleAgentEvent(message);
+    h.handleAgentEvent(failure); h.handleAgentEvent(failure);
+    assert.equal(notices.size, historyFirst ? 0 : 1);
+    if (!historyFirst) h.handleAgentEvent(message);
+    assert.equal(notices.size, 0);
+    assert.equal(h.env.messages.filter(item => item.role === "assistant").length, 1);
+    h.handleAgentEvent({ ...failure, errorMessage: "separate command failure" });
+    assert.equal(notices.size, 1);
+    h.env.promptRunIdRef.current++;
+    h.handleAgentEvent(failure);
+    assert.equal(notices.size, 2, "an identical error in a new request is still surfaced");
+  }
+});
+
+test("notice removal also removes a pending duplicate rather than resurfacing it later", () => {
+  const reducerSource = source.slice(source.indexOf("function markOldestNoticeExiting"), source.indexOf("function extractMessageText"));
+  const js = ts.transpileModule(reducerSource, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const reduce = new Function("MAX_NOTICES", `${js};return noticeReducer`)(5);
+  const notice = { id: "error", message: "timeout", type: "error" };
+  const state = { visible: [{ id: "old", exiting: true }], pending: [notice] };
+  assert.equal(reduce(state, { type: "add", notice }), state);
+  assert.deepEqual(reduce(state, { type: "remove", id: "error" }).pending, []);
+});
+
+test("reconciled history suppresses only the exact current prompt's error notice", () => {
+  const start = source.indexOf("  useEffect(() => {\n    // Reconciliation can restore the failed reply");
+  const effect = source.slice(start, source.indexOf("\n\n  const phaseEventRevisionRef", start));
+  const js = ts.transpileModule(effect, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
+  const run = new Function("env", `with(env) { ${js} }`);
+  const failure = { role: "assistant", content: [], stopReason: "error", errorMessage: "timeout" };
+  for (const mode of ["current", "old-prompt", "old-run", "other-session"]) {
+    const tracker = new PromptErrorNotices();
+    const removals = [];
+    run({
+      useEffect: callback => callback(), getAssistantErrorMessage,
+      messages: [{ role: "user", clientPromptId: "old" }, failure, { role: "user", clientPromptId: "current" }, ...(mode === "old-prompt" ? [] : [failure])],
+      promptSubmissionRef: { current: { runId: mode === "old-run" ? 0 : 1, sid: mode === "other-session" ? "other" : "session", idempotencyKey: "current" } },
+      promptRunIdRef: { current: 1 }, sessionIdRef: { current: "session" }, promptErrorNoticesRef: { current: tracker },
+      dispatchNotice: action => removals.push(action),
+    });
+    assert.equal(removals.length, mode === "current" ? 1 : 0);
+    assert.equal(tracker.record("session:1", "timeout", "notice").show, mode !== "current");
+  }
+});
+
+// Exercise both hooks together: draft restoration must belong to the same
+// cancellable operation as the later event connection and queue mutation.
+function queueResumeHarness() {
+  const h = promptSubmissionHarness();
+  const requests = [];
+  let releaseDraft;
+  const draftRequested = Promise.withResolvers();
+  const draft = { value: "original queued text", files: [], images: [] };
+  const record = { commandId: "queued-cmd", targetSessionId: "session-a", idempotencyKey: "original-key", acceptedAt: 123, status: "queued", queuePaused: true, revision: 2 };
+  h.env.sendAgentCommand = async (_sid, command) => { requests.push(command); return { ...record, queuePaused: false }; };
+  h.env.ensureEventsConnected = async () => { requests.push({ type: "connect" }); };
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
+    useCallback: callback => callback, latest: { current: { resumeQueuedInput: h.resumeQueuedInput } },
+    sessionRef: h.env.sessionIdRef, generation: { current: 0 }, readPendingPrompts: async () => [],
+    fetch: () => new Promise(resolve => {
+      releaseDraft = () => resolve({ ok: true, json: async () => draft });
+      draftRequested.resolve();
+    }),
+    sendAgentCommand: (...args) => h.env.sendAgentCommand(...args),
+    refresh: async () => {}, t: key => key, AgentCommandError: class extends Error {},
+    setRecords() {}, mergeChatCommandViews: (_current, records) => records,
+  };
+  const callbacks = commandSource.slice(commandSource.indexOf("  const restore = useCallback"), commandSource.indexOf("  const edit = useCallback"));
+  const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const queueAction = new Function("env", `with(env) { ${js}; return queueAction; }`)(env);
+  return { ...h, requests, record, draft, queueAction, generation: env.generation, draftRequested: draftRequested.promise, releaseDraft: () => releaseDraft() };
+}
+
+for (const action of ["resume", "steer"]) {
+  for (const running of [false, true]) {
+    test(`stop during queued draft restoration cancels ${action} (${running ? "active" : "idle"} run)`, async () => {
+      const h = queueResumeHarness();
+      h.env.agentRunningRef.current = running;
+      const resumed = h.queueAction(h.record, action);
+      await h.draftRequested;
+      await h.handleAbort();
+      const stoppedRun = h.env.promptRunIdRef.current;
+      h.releaseDraft();
+      await assert.rejects(resumed, /Queue resume cancelled/);
+      assert.equal(h.env.promptRunIdRef.current, stoppedRun, "late restoration must not create a new run");
+      assert.equal(h.env.agentRunningRef.current, false);
+      assert.equal(h.env.messages.length, 0, "cancelled restoration must not insert a user bubble");
+      assert.deepEqual(h.requests.map(request => request.type), running ? ["abort"] : []);
+    });
+  }
+}
+
+test("queued draft restoration cannot outlive its conversation or overwrite a newer run", async () => {
+  for (const change of [h => { h.generation.current++; }, h => { h.env.sessionIdRef.current = "session-b"; }, h => { h.env.promptRunIdRef.current++; }]) {
+    const h = queueResumeHarness();
+    const resumed = h.queueAction(h.record, "resume");
+    await h.draftRequested;
+    change(h);
+    h.releaseDraft();
+    await assert.rejects(resumed, /Queue resume cancelled/);
+    assert.deepEqual(h.requests, []);
+    assert.equal(h.env.messages.length, 0);
+  }
+});
+
+test("queued restoration renews a naturally completed run and renders its live reply", async () => {
+  for (const finishDuring of ["restore", "connect"]) {
+    const h = queueResumeHarness();
+    h.env.agentRunningRef.current = true;
+    const previousRun = h.env.promptRunIdRef.current;
+    if (finishDuring === "connect") {
+      let first = true;
+      h.env.ensureEventsConnected = async () => {
+        h.requests.push({ type: "connect" });
+        if (first) { first = false; await h.finishPromptWithoutStream("session-a"); }
+      };
+    }
+    const resumed = h.queueAction(h.record, "resume");
+    await h.draftRequested;
+    if (finishDuring === "restore") await h.finishPromptWithoutStream("session-a");
+    h.releaseDraft();
+    await resumed;
+    assert.equal(h.env.promptRunIdRef.current, previousRun + 1);
+    assert.equal(h.env.agentRunningRef.current, true);
+    const mutations = h.requests.filter(request => request.type === "queued_input_action");
+    assert.equal(mutations.length, 1);
+    assert.equal(mutations[0].commandId, h.record.commandId);
+    assert.equal(h.env.messages[0].clientPromptId, h.record.idempotencyKey);
+    h.handleAgentEvent({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "live reply" }] } });
+    assert.equal(h.env.messages.at(-1).content[0].text, "live reply");
+  }
+});
+
+test("stop then resume reconnects before releasing the original queued input and renders live output", async () => {
+  const h = promptSubmissionHarness();
+  h.env.promptRunIdRef.current = 4;
+  h.env.cancelledPromptRunIdRef.current = 4;
+  const order = [];
+  let connect;
+  h.env.ensureEventsConnected = () => new Promise(resolve => { connect = () => { order.push("connected"); resolve(); }; });
+  const record = { commandId: "queued-cmd", targetSessionId: "session-a", idempotencyKey: "original-key", acceptedAt: 123 };
+  const draft = { value: "same text", files: [{ name: "note.txt", text: "kept", size: 4 }], images: [{ mimeType: "image/png", data: "YWJj" }] };
+  const resumed = h.resumeQueuedInput(record, async () => draft, async () => { order.push("resume"); return { ...record, status: "queued" }; });
+  assert.equal(h.env.cancelledPromptRunIdRef.current, null);
+  assert.equal(h.env.promptRunIdRef.current, 5);
+  await h.reconcileAgentState("session-a");
+  assert.deepEqual(order, []);
+  connect(); await resumed;
+  assert.deepEqual(order, ["connected", "resume"]);
+  assert.equal(h.env.messages.at(-1).clientPromptId, "original-key");
+  assert.deepEqual(h.env.messages.at(-1).recoveryDraft, draft);
+  h.handleAgentEvent({ type: "message_end", message: { role: "user", content: "same text", clientPromptId: "original-key", timestamp: 123 } });
+  assert.equal(h.env.messages.filter(message => message.clientPromptId === "original-key").length, 1);
+  h.handleAgentEvent({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text: "live reply" }] } });
+  assert.equal(h.env.messages.at(-1).content[0].text, "live reply");
+  h.env.ensureEventsConnected = async () => {};
+  await h.resumeQueuedInput({ ...record, commandId: "second-cmd", idempotencyKey: "second-key" }, async () => draft, async () => ({ status: "queued" }));
+  assert.equal(h.env.messages.filter(message => message.role === "user").length, 1, "a busy run's queue acceptance must not insert another bubble");
+  h.handleAgentEvent({ type: "message_end", message: { role: "user", content: "same text", clientPromptId: "second-key", timestamp: 124 } });
+  assert.equal(h.env.messages.filter(message => message.role === "user").length, 2, "identical text with distinct submission ids stays distinct");
+});
+
+test("active queue mode changes wait for consumption, including failed steering and repeated switches", async () => {
+  const h = queueResumeHarness();
+  h.env.agentRunningRef.current = true;
+  const steering = h.queueAction(h.record, "steer");
+  await h.draftRequested; h.releaseDraft(); await steering;
+  assert.equal(h.env.messages.length, 0, "steering acceptance is not a delivered chat message");
+  h.env.sendAgentCommand = async () => { throw new Error("steer failed"); };
+  const failed = h.queueAction(h.record, "steer");
+  await new Promise(resolve => setImmediate(resolve)); h.releaseDraft();
+  await assert.rejects(failed, /steer failed/);
+  assert.equal(h.env.messages.length, 0, "failed mode changes must not create ghost bubbles");
+  const delivered = { role: "user", content: h.draft.value, clientPromptId: h.record.idempotencyKey, timestamp: 456 };
+  h.handleAgentEvent({ type: "message_start", message: delivered });
+  assert.equal(h.env.messages.length, 0);
+  h.handleAgentEvent({ type: "message_end", message: delivered });
+  h.handleAgentEvent({ type: "message_end", message: delivered });
+  assert.deepEqual(h.env.messages, [delivered], "consumption adds exactly one message with its original identity");
+});
+
+test("consumed queued attachments load their display history instead of exposing runtime markers", async () => {
+  const loads = [];
+  const h = promptSubmissionHarness({
+    userMessageHasPromptMaterialMarker: () => true,
+    loadSession: async (...args) => { loads.push(args); },
+  });
+  h.env.agentRunningRef.current = true;
+  h.env.ensureEventsConnected = async () => {};
+  await h.resumeQueuedInput({ commandId: "attachment", idempotencyKey: "attachment-key", targetSessionId: "session-a" },
+    async () => ({ value: "read attachment", files: [{ name: "notes.txt", path: "C:/notes.txt", size: 42 }], images: [] }),
+    async () => ({ status: "delivered" }));
+  assert.equal(h.env.messages.length, 0);
+  assert.deepEqual(loads, [], "queue acceptance does not load a premature chat bubble");
+  h.handleAgentEvent({ type: "message_end", message: { role: "user", content: "[[PIORA_PROMPT_MATERIALS_V1:fixture]]" } });
+  assert.deepEqual(loads, [["session-a", false, true]]);
+  assert.equal(h.env.messages.length, 0, "raw runtime attachment markers are never rendered");
+});
+
+test("stop while resume reconnects prevents a late queue mutation", async () => {
+  const h = promptSubmissionHarness();
+  let release;
+  h.env.ensureEventsConnected = () => new Promise(resolve => { release = resolve; });
+  let sent = false;
+  const resumed = h.resumeQueuedInput({ commandId: "queued", targetSessionId: "session-a", idempotencyKey: "key", acceptedAt: 1 }, async () => ({ value: "resume", files: [], images: [] }), async () => { sent = true; return {}; });
+  await new Promise(resolve => setImmediate(resolve));
+  await h.handleAbort();
+  release();
+  await assert.rejects(resumed, /Queue resume cancelled/);
+  assert.equal(sent, false);
+});
 
 test("review events settle after cancellation without reviving streaming and reject old or other-session snapshots", () => {
   const h = promptSubmissionHarness();
@@ -819,7 +1049,7 @@ test("cancels stale session loads when switching tasks", () => {
 
 function sessionLoadHarness(overrides = {}) {
   const load = source.slice(source.indexOf("  const loadSession = useCallback"), source.indexOf("  const loadContext = useCallback"));
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 },
     editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [],
     useCallback: callback => callback, AbortController, URLSearchParams,
@@ -854,7 +1084,7 @@ test("model selection refreshes saved notices after success and keeps the reply 
   const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   for (const compacted of [false, true]) {
     const events = [];
-    const env = { useCallback: fn => fn, runModelChange, isNew: false, sessionIdRef: { current: "session" },
+    const env = { answerPreviewStore: new AnswerOutputPreviewStore(), useCallback: fn => fn, runModelChange, isNew: false, sessionIdRef: { current: "session" },
       ensureEventsConnected: async () => {}, sendAgentCommand: async () => { events.push("saved"); return { compacted }; },
       setCurrentModelOverride: model => events.push(model), loadSession: async (sid, loading) => events.push({ sid, loading }),
       refreshContextUsage: async () => {}, agentRunningRef: { current: false }, bashRunningRef: { current: false }, closeEvents() {},
@@ -880,7 +1110,7 @@ test("successful persisted deletion invalidates answer state but local recovery 
   const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   for (const scenario of ["persisted", "recovery", "failed"]) {
     const message = { role: "user", content: "question", clientPromptId: "prompt-id" };
-    const env = {
+    const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
       useCallback: fn => fn, messageMutationRef: { current: false }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
       sessionIdRef: { current: "session" }, historyRevisionRef: { current: 0 }, sessionLoadAbortRef: { current: null },
       t: key => key, activeLeafId: null, messages: [message], entryIds: ["entry"],
@@ -1031,7 +1261,7 @@ function compactionRecoveryHarness() {
   let cleanup, poll;
   const calls = [];
   const listeners = new Map();
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 },
     isCompacting: true, agentRunning: false,
     sessionIdRef: { current: "session-a" }, phaseEventRevisionRef: { current: 0 },
@@ -1121,7 +1351,7 @@ test("shows steering and follow-up messages in the composer tray immediately", (
 function queueSubmissionHarness(overrides = {}) {
   const helpers = source.slice(source.indexOf("function appendQueuedMessage"), source.indexOf("type ExtensionUiDialogRequest"));
   const callbacks = source.slice(source.indexOf("  const handleSteer = useCallback"), source.indexOf("  const handleAbortCompaction = useCallback"));
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     useCallback: callback => callback, sessionIdRef: { current: "session" }, createdSessionIdRef: { current: null }, promptRunIdRef: { current: 1 }, queueAdmissionRevisionRef: { current: 0 },
     queue: { steering: ["already queued"], followUp: ["already queued"] }, errors: [], requests: [],
     setQueuedMessages: update => { env.queue = update(env.queue); }, setError: error => env.errors.push(error),
@@ -1203,7 +1433,7 @@ test("stop, recall and a newer run cancel queue submissions still waiting for pa
 });
 
 function pendingInputActionHarness(overrides = {}) {
-  const callback = source.slice(source.indexOf("  const captureAnswerStateSubmissionGuard = useCallback"), source.indexOf("  const chatCommands = useChatCommandOperations"))
+  const callback = source.slice(source.indexOf("  const captureAnswerStateSubmissionGuard = useCallback"), source.indexOf("  const resumeQueuedInput = useCallback"))
     + source.slice(source.indexOf("  const handlePendingInputAction = useCallback"), source.indexOf("  const handleRecallQueue = useCallback"));
   const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const pendingInputs = [{ id: "runtime-input", commandId: "existing-command", text: "already queued", kind: "steer" }];
@@ -1332,9 +1562,9 @@ test("waits for the session scroll container before consuming the initial bottom
     source.indexOf("// Load model list"),
   );
 
-  assert.match(scrollEffectSource, /if \(loading \|\| messages\.length === 0\) return/);
+  assert.match(scrollEffectSource, /if \(!viewVisible \|\| loading \|\| messages\.length === 0\) return/);
   assert.match(scrollEffectSource, /startInitialBottomPin\(\)/);
-  assert.match(scrollEffectSource, /\[messages\.length, agentRunning, liveOutputAutoScrollEnabled, loading,/);
+  assert.match(scrollEffectSource, /\[viewVisible, messages\.length, agentRunning, liveOutputAutoScrollEnabled, loading,/);
 });
 
 test("pins a newly selected session to the bottom while async content settles", () => {
@@ -1363,7 +1593,7 @@ test("keeps live session output pinned to the newest content", () => {
     source.indexOf("// Loading may publish the message array"),
   );
 
-  assert.match(livePinSource, /if \(!liveOutputAutoScrollEnabled \|\| \(!agentRunning && !bashRunning\) \|\| loading\) return/);
+  assert.match(livePinSource, /if \(!viewVisible \|\| !liveOutputAutoScrollEnabled \|\| \(!agentRunning && !bashRunning\) \|\| loading\) return/);
   assert.match(livePinSource, /scrollToBottom\("instant"\)/);
   assert.match(livePinSource, /if \(!liveOutputFollowRef\.current\) return/);
   assert.match(livePinSource, /new ResizeObserver\(schedulePin\)/);
@@ -1427,7 +1657,7 @@ test("nested live events stay under their parent and cancellation rejects late c
 test("whole-session stats reject delayed responses across refreshes and run boundaries", async () => {
   const handler = source.slice(source.indexOf("  const refreshContextUsage = useCallback"), source.indexOf("  // Reconcile client streaming state"));
   const requests = [], snapshots = [];
-  const env = { editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: callback => callback, promptRunIdRef: { current: 1 }, sessionIdRef: { current: "session" }, statsRefreshSequence: { current: 0 },
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(), editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: callback => callback, promptRunIdRef: { current: 1 }, sessionIdRef: { current: "session" }, statsRefreshSequence: { current: 0 },
     fetch: () => new Promise(resolve => requests.push(resolve)), setSessionStatsOverride: stats => snapshots.push(stats), setContextUsage() {} };
   const js = ts.transpileModule(handler, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   const refresh = new Function("env", `with(env) { ${js}; return refreshContextUsage; }`)(env);
@@ -1465,7 +1695,7 @@ test("queue submissions reuse only the matching open model event stream", async 
   const callback = source.slice(source.indexOf("  const ensureEventsConnected = useCallback"), source.indexOf("  const respondToExtensionUi = useCallback"));
   const calls = [];
   const original = { readyState: 1, url: 'http://localhost/api/agent/session/events?transport=delta', close() { calls.push('closed-original'); } };
-  const env = { editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: callback => callback, EventSource: { OPEN: 1 }, eventSourceRef: { current: original },
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(), editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: callback => callback, EventSource: { OPEN: 1 }, eventSourceRef: { current: original },
     connectEvents: async sid => { calls.push(sid); return { status: 'connected', source: { readyState: 1 } }; },
     EventStreamConnectionError: Error,
   };
@@ -1485,7 +1715,7 @@ test("queue receipts do not replace the live transcript before its run settles",
   const start = source.indexOf('    onFinished: record => {');
   const body = source.slice(start + '    onFinished: '.length, source.indexOf('\n  });', start)).trim().replace(/,$/, '');
   const calls = [];
-  const env = { sessionIdRef: {current:'session'}, agentRunningRef:{current:true}, promptRunIdRef:{current:1},
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(), sessionIdRef: {current:'session'}, agentRunningRef:{current:true}, promptRunIdRef:{current:1},
     loadSession: (...args)=>calls.push(['load',...args]), waitForPromptSettlement: (...args)=>calls.push(['settle',...args]) };
   const js = ts.transpileModule('const callback = '+body+';', {compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.None}}).outputText;
   const callback = new Function('env','with(env){'+js+';return callback;}')(env);
@@ -1503,7 +1733,7 @@ test("queue receipts do not replace the live transcript before its run settles",
 function editNavigationHarness(overrides = {}) {
   const callback = source.slice(source.indexOf("  const handleNavigate = useCallback"), source.indexOf("  const handleRewindRecovery = useCallback"));
   const events = [];
-  const env = { answerOutputScope: 0, setAnswerOutputScope: update => { env.answerOutputScope = update(env.answerOutputScope); }, flushPendingAnswerState: async () => {}, editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: fn => fn, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(), answerOutputScope: 0, setAnswerOutputScope: update => { env.answerOutputScope = update(env.answerOutputScope); }, flushPendingAnswerState: async () => {}, editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: fn => fn, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
     t: key => key, sendAgentCommand: async () => { events.push("navigate"); return {}; }, loadContext: async () => { events.push("context"); return true; }, setActiveLeafId: id => events.push(id), ...overrides };
   const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   return { navigate: new Function("env", `with(env) { ${js}; return handleNavigate; }`)(env), events, env };
@@ -1523,7 +1753,7 @@ test("edit navigation waits for server success and context, and propagates failu
 function leafChangeHarness(overrides = {}) {
   const callback = source.slice(source.indexOf("  const handleLeafChange = useCallback"), source.indexOf("  const switchHistoryBranch = useCallback"));
   const events = [];
-  const env = {
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(),
     useCallback: fn => fn, sessionIdRef: { current: "session" }, agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
     activeLeafId: "old", editedBranchRef: { current: null }, t: key => key,
     flushPendingAnswerState: async () => {}, sendAgentCommand: async () => { events.push("navigate"); return {}; },
@@ -1568,7 +1798,7 @@ test("historical context excludes unconfirmed recovery copies without deleting t
   const callback = source.slice(source.indexOf("  const loadContext = useCallback"), source.indexOf("  const promoteNewSession = useCallback"));
   const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022 } }).outputText;
   const pending = [{ id: "pending" }];
-  const env = { editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: fn => fn, promptRunIdRef: { current: 1 }, historyRevisionRef: { current: 0 }, sessionIdRef: { current: "session" }, URLSearchParams,
+  const env = { answerPreviewStore: new AnswerOutputPreviewStore(), editedBranchRef: { current: null }, activeLeafId: null, data: null, entryIds: [], useCallback: fn => fn, promptRunIdRef: { current: 1 }, historyRevisionRef: { current: 0 }, sessionIdRef: { current: "session" }, URLSearchParams,
     fetch: async () => ({ ok: true, json: async () => ({ context: { messages: ["ancestor"], entryIds: ["parent"] } }) }),
     readPendingPrompts: async () => pending, mergePendingPrompts: () => ({ messages: ["ancestor", "later failure"], entryIds: ["parent", ""], confirmedIds: [] }),
     setMessages: value => { env.messages = value; }, setEntryIds: value => { env.ids = value; }, setModelChanges: value => { env.modelChanges = value; }, confirmPendingPrompts: async ids => { assert.deepEqual(ids, []); } };
@@ -1620,7 +1850,7 @@ test("edit-from-here rewinds each failed position and archives only its suffix w
   for (const index of [0, 1, 2]) {
     const messages = [0, 1, 2].map(i => ({ role: "user", clientPromptId: `test${i}`, content: `test${i}`, recoveryDraft: { value: `test${i}`, images: [{ data: "image", mimeType: "image/png" }], files: [] } }));
     const archived = [];
-    const env = { useCallback: fn => fn, messages, entryIds: ["", "", ""], agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
+    const env = { answerPreviewStore: new AnswerOutputPreviewStore(), useCallback: fn => fn, messages, entryIds: ["", "", ""], agentRunningRef: { current: false }, bashRunningRef: { current: false }, isCompacting: false,
       t: key => key, sessionIdRef: { current: "session" }, historyRevisionRef: { current: 0 }, sessionLoadAbortRef: { current: null }, handleNavigate: async () => { throw new Error("local failures need no server navigation"); },
       dismissPendingPrompt: async id => archived.push(id), setMessages: value => { env.visible = value; }, setEntryIds: value => { env.ids = value; } };
     const rewind = new Function("env", `with(env) { ${js}; return handleRewindRecovery; }`)(env);

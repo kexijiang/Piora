@@ -82,12 +82,17 @@ export function commandStatus(result: ToolResultMessage | undefined, output = to
 }
 
 const ERROR_LINE = /(?:\berror\b|\bfatal\b|\bexception\b|\bfailed\b|not found|cannot|denied|拒绝|错误|失败|找不到|无法)/i;
+export function isCommandErrorLine(line: string): boolean {
+  const plain = line.replace(/\x1b\[[0-9;]*m/g, "");
+  return ERROR_LINE.test(plain) && !/\b(?:0|no)\s+errors?\b/i.test(plain);
+}
+
 const STATUS_LINE = /^(?:Command exited with code\s+-?\d+|Command timed out after|Command aborted|Operation aborted|\[Showing )/i;
 
 export function commandErrorExcerpt(output: string, maxLines = 2): string {
   const lines = output.replace(/\r\n?/g, "\n").split("\n").map((line) => line.trimEnd()).filter((line) => line.trim());
   if (!lines.length) return "";
-  const firstError = lines.findIndex((line) => ERROR_LINE.test(line) && !STATUS_LINE.test(line.trim()));
+  const firstError = lines.findIndex((line) => isCommandErrorLine(line) && !STATUS_LINE.test(line.trim()));
   const candidates = firstError >= 0
     ? lines.slice(firstError).filter((line) => !STATUS_LINE.test(line.trim())).slice(0, maxLines)
     : lines.filter((line) => !STATUS_LINE.test(line.trim())).slice(-maxLines);

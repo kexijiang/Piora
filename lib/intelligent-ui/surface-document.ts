@@ -1,4 +1,5 @@
 import * as legacy from "./protocol";
+import { validateA2uiSurface } from "../a2ui/ui-compiler";
 import { formatRichSnapshot, richInitialState, validateRichState, validateRichSurface, type UiRichSurface } from "./rich-protocol";
 
 /** Persisted surface versions are independent of the answerOutput envelope.
@@ -9,6 +10,7 @@ export type { UiRichNode as UiNode } from "./rich-protocol";
 export { evaluateExpression, isUiId } from "./protocol";
 
 export function validateSurface(input: unknown): UiSurface {
+  if (input && typeof input === "object" && "a2ui" in input) return validateA2uiSurface(input as Record<string, unknown>);
   return input && typeof input === "object" && "version" in input && input.version === 2
     ? validateRichSurface(input) : legacy.validateSurface(input);
 }

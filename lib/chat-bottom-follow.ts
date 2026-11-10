@@ -16,7 +16,7 @@ export function followChatBottom(container: HTMLElement, pin: () => void): () =>
   followers.get(container)?.stop();
   let frame = 0;
   let stopped = false;
-  const update = () => { if (!stopped) pin(); };
+  const update = () => { if (!stopped && container.clientHeight > 0) pin(); };
   // ResizeObserver runs before paint. Deferring its correction to rAF lets
   // one frame show the old offset after code, images or virtual rows grow.
   const resize = new ResizeObserver(update);

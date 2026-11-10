@@ -12,6 +12,10 @@ interface PersistedReleaseAudience {
 }
 
 const PREVIEW_VERSION_PATTERN = /^(?:v)?\d+\.\d+\.\d+-beta\.\d+$/;
+export function isStableDesktopVersion(version: string): boolean {
+  return /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(version.trim());
+}
+
 export const RELEASE_AUDIENCE_FILE = "release-audience.json";
 
 export function inferDesktopBuildAudience(version: string): DesktopReleaseAudience {
@@ -84,6 +88,9 @@ export function readOrCreateDesktopReleaseAudience(
   if (persisted) return persisted;
 
   const audience = inferDesktopBuildAudience(currentVersion);
-  persistAudience(userDataDirectory, audience, currentVersion, logger);
+  // A manual alpha install must not enroll a fresh profile into stable updates.
+  if (!/^(?:v)?\d+\.\d+\.\d+-alpha\.\d+$/.test(currentVersion.trim())) {
+    persistAudience(userDataDirectory, audience, currentVersion, logger);
+  }
   return audience;
 }

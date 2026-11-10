@@ -98,7 +98,7 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
         break;
       case "press_key": {
         const key = requiredString(body, "key", 16);
-        if (key !== "back" && key !== "home" && key !== "recents" && key !== "enter") {
+        if (key !== "back" && key !== "home" && key !== "recents" && key !== "enter" && key !== "volume_up" && key !== "volume_down" && key !== "power") {
           throw new HarmonyError("INVALID_ARGUMENT", "Unsupported key");
         }
         result = await manager.pressKey({ ...common, key });

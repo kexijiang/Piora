@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { useI18n } from "@/hooks/useI18n";
-import { getVisibleSessionRoots, type SessionProjectGroup as SessionProjectGroupData } from "@/lib/session-project-groups";
+import type { SessionProjectGroup as SessionProjectGroupData } from "@/lib/session-project-groups";
 import type { SessionFlags } from "@/lib/session-flags";
 import type { SessionInfo } from "@/lib/types";
 import { AliIcon } from "../AliIcon";
@@ -23,15 +23,12 @@ export function ProjectSessionGroup({
   homeDir,
   isSelectedProject,
   isCollapsed,
-  sessionsExpanded,
   selectedSessionId,
   runningSessionIds,
   unreadSessionIds,
   moveTargets,
-  attentionSessionIds,
   onSelectProject,
   onToggleProject,
-  onToggleSessions,
   onSelectSession,
   onNewSession,
   onRenamed,
@@ -59,15 +56,12 @@ export function ProjectSessionGroup({
   homeDir: string;
   isSelectedProject: boolean;
   isCollapsed: boolean;
-  sessionsExpanded: boolean;
   selectedSessionId: string | null;
   runningSessionIds: Set<string>;
   unreadSessionIds: Set<string>;
   moveTargets: SessionMoveTarget[];
-  attentionSessionIds: Set<string>;
   onSelectProject: () => void;
   onToggleProject: () => void;
-  onToggleSessions: () => void;
   onSelectSession: (session: SessionInfo) => void;
   onNewSession?: (cwd: string) => void;
   onRenamed: () => void;
@@ -103,8 +97,7 @@ export function ProjectSessionGroup({
     (node) => node.session.id,
     (node) => Boolean(sessionFlags[node.session.id]?.pinned),
   );
-  const visibleRoots = getVisibleSessionRoots(orderedRoots, sessionsExpanded, attentionSessionIds);
-  const hiddenRootCount = orderedRoots.length - visibleRoots.length;
+  const visibleRoots = orderedRoots;
   const runningCount = group.sessions.filter((session) => runningSessionIds.has(session.id)).length;
   const unreadCount = group.sessions.filter((session) => unreadSessionIds.has(session.id)).length;
 
@@ -168,55 +161,32 @@ export function ProjectSessionGroup({
         </div>
       </div>
 
-      {projectOpen && (
-        <div className={styles.sessionList}>
-          {group.tree.length === 0 && (
-            <div style={{ padding: "8px 12px", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
-              {t("sidebar.noSessionsInProject")}
-            </div>
-          )}
-          <TaskList
-            nodes={visibleRoots}
-            selectedSessionId={selectedSessionId}
-            runningSessionIds={runningSessionIds}
-            unreadSessionIds={unreadSessionIds}
-            moveTargets={moveTargets}
-            flags={sessionFlags}
-            onSelectSession={onSelectSession}
-            onRenamed={onRenamed}
-            onSessionDeleted={onSessionDeleted}
-            onFlagChange={onFlagChange}
-            onDuplicate={onDuplicateSession}
-            onMarkUnread={onMarkUnread}
-            onMoveSession={onMoveSession}
-            scope={`project:${group.projectRoot}`}
-            sessionOrder={sessionOrder}
-            onReorderSessions={onReorderSessions}
-          />
-          {(hiddenRootCount > 0 || sessionsExpanded) && group.tree.length > 3 && (
-            <button
-              onClick={onToggleSessions}
-              aria-expanded={sessionsExpanded}
-              style={{
-                width: "calc(100% - 12px)",
-                margin: "2px 6px",
-                padding: "6px 10px",
-                border: "none",
-                borderRadius: "var(--radius-control)",
-                background: "transparent",
-                color: "var(--text-dim)",
-                cursor: "pointer",
-                textAlign: "left",
-                fontSize: "var(--text-xs)",
-              }}
-            >
-              {sessionsExpanded
-                ? t("sidebar.showFewerSessions")
-                : t("sidebar.showMoreSessions", { count: hiddenRootCount })}
-            </button>
-          )}
-        </div>
-      )}
+      {projectOpen ? <div className={styles.sessionList}>
+        {group.tree.length === 0 && (
+          <div style={{ padding: "8px 12px", color: "var(--text-dim)", fontSize: "var(--text-xs)" }}>
+            {t("sidebar.noSessionsInProject")}
+          </div>
+        )}
+        <TaskList
+          nodes={visibleRoots}
+          reorderable={projectOpen}
+          selectedSessionId={selectedSessionId}
+          runningSessionIds={runningSessionIds}
+          unreadSessionIds={unreadSessionIds}
+          moveTargets={moveTargets}
+          flags={sessionFlags}
+          onSelectSession={onSelectSession}
+          onRenamed={onRenamed}
+          onSessionDeleted={onSessionDeleted}
+          onFlagChange={onFlagChange}
+          onDuplicate={onDuplicateSession}
+          onMarkUnread={onMarkUnread}
+          onMoveSession={onMoveSession}
+          scope={`project:${group.projectRoot}`}
+          sessionOrder={sessionOrder}
+          onReorderSessions={onReorderSessions}
+        />
+      </div> : null}
       {menuAnchor && createPortal(
         <ProjectContextMenu
           anchor={menuAnchor}

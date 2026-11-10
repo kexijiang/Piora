@@ -3,7 +3,7 @@ import { lstat, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const MARKER = "/* piora-tool-admission-v1 */";
-const certificate = JSON.parse(await readFile(new URL("./pi-tool-admission-1.4.0.json", import.meta.url), "utf8"));
+const certificate = JSON.parse(await readFile(new URL("./pi-tool-admission-1.5.0.json", import.meta.url), "utf8"));
 const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 export const codingAgentAdmissionTreeCommitment = Object.freeze({ ...certificate.codingAgentPatchedDist });
 function patchCertifiedSource(path, source, transform) {

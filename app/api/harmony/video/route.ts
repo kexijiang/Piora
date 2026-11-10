@@ -1,9 +1,22 @@
 import { getHarmonyDeviceManager } from "@/lib/harmony";
 import { HarmonyError } from "@/lib/harmony/errors";
 import { prepareVideoStream } from "@/lib/harmony/media/stream-start";
-import { harmonyErrorResponse, requireHarmonyAccess, requiredQuery } from "../_shared";
+import { harmonyErrorResponse, noStoreJson, requireHarmonyAccess, requiredQuery } from "../_shared";
 
 export const dynamic = "force-dynamic";
+
+/** Recover a dependent frame chain on the existing capture; never starts a device service. */
+export async function POST(request: Request) {
+  const denied = requireHarmonyAccess(request);
+  if (denied) return denied;
+  try {
+    const serial = requiredQuery(request, "serial");
+    const generation = Number(requiredQuery(request, "generation"));
+    if (!Number.isSafeInteger(generation) || generation < 0) throw new HarmonyError("INVALID_ARGUMENT", "Invalid device generation");
+    getHarmonyDeviceManager().requestVideoKeyframe(serial, generation);
+    return noStoreJson({ requested: true });
+  } catch (error) { return harmonyErrorResponse(error); }
+}
 
 export async function GET(request: Request) {
   const denied = requireHarmonyAccess(request);

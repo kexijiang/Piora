@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type { ClipboardBridge, ClipboardChange, ClipboardMutation, ClipboardOperation, ClipboardQuery } from "./clipboard-types.js";
 import type { QuickAccessBridge } from "./quick-access-types.js";
+import type { VaultBridge } from "./credential-vault-types.js";
 import type { HarmonyWindowBridge, HarmonyWindowState, PioraMessageBridge } from "./harmony-window-types.js";
 declare const document: { documentElement: { inert: boolean } };
 
@@ -48,6 +49,7 @@ const clipboardHistory = Object.freeze({
 } satisfies ClipboardBridge);
 
 const runtime = Object.freeze({
+  vault: Object.freeze({ request: input => ipcRenderer.invoke("pi:credential-vault", input) } satisfies VaultBridge),
   dshPet: Object.freeze({
     status: () => ipcRenderer.invoke("pi:dsh-pet-status"),
     action: (action: import("./dsh-pet-types.js").DshPetAction) => ipcRenderer.invoke("pi:dsh-pet-action", action),
@@ -107,6 +109,7 @@ const runtime = Object.freeze({
     return ipcRenderer.invoke("pi:update-state-get");
   },
   getUpdateSchedule() { return ipcRenderer.invoke("pi:update-schedule-get"); },
+  setUpdateSource(source: "github" | "internal") { return ipcRenderer.invoke("pi:update-source-set", source); },
   setUpdateSchedule(input: { enabled: boolean; time: string }) { return ipcRenderer.invoke("pi:update-schedule-set", input); },
   setUpdateBlocker(key: string, blocked: boolean) { return ipcRenderer.invoke("pi:update-blocker", key, blocked); },
   checkForUpdates() {
