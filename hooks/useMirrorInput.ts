@@ -26,11 +26,12 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
   const abort = useRef(new AbortController());
   type PreparedGeometry = { geometry: { geometryId: string; frameWidth: number; frameHeight: number } };
   const prepared = useRef<{ epoch: number; at: number; pending: boolean; request: Promise<PreparedGeometry> } | null>(null);
+  const geometryReady = useRef<number | null>(null);
   const identity = `${enabled}:${serial}:${frame?.generation}:${frame?.width}:${frame?.height}`;
   useEffect(() => {
     const controller = new AbortController();
     abort.current = controller;
-    const currentEpoch = ++epoch.current; stopped.current = false; gesture.current = null; prepared.current = null; setError(null); setPreparing(false);
+    const currentEpoch = ++epoch.current; stopped.current = false; gesture.current = null; prepared.current = null; geometryReady.current = null; setError(null); setPreparing(false);
     return () => {
       const active = gesture.current; gesture.current = null;
       controller.abort(); epoch.current = currentEpoch + 1; stopped.current = true;
@@ -43,10 +44,10 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
     if (cached?.epoch === epoch.current && (cached.pending || performance.now() - cached.at < 300)) return cached.request;
     const request = harmonyJson<PreparedGeometry>(`/api/harmony/geometry?serial=${encodeURIComponent(serial)}&space=video`, undefined, abort.current.signal);
     const entry = { epoch: epoch.current, at: 0, pending: true, request }; prepared.current = entry;
-    setPreparing(true);
+    if (geometryReady.current !== epoch.current) setPreparing(true);
     void request.then(() => {
-      if (prepared.current === entry) { entry.pending = false; entry.at = performance.now(); setPreparing(false); }
-    }, () => { if (prepared.current === entry) { prepared.current = null; setPreparing(false); } });
+      if (prepared.current === entry) { entry.pending = false; entry.at = performance.now(); geometryReady.current = entry.epoch; setPreparing(false); }
+    }, () => { if (prepared.current === entry) { prepared.current = null; geometryReady.current = null; setPreparing(false); } });
     return request;
   };
 
@@ -120,7 +121,7 @@ export function useMirrorInput({ enabled, frame, chinese }: { enabled: boolean; 
         // Warm-up may establish the read-only control transport. Do not claim a
         // lease or admit a gesture while it is pending: a mouse-up during cold
         // setup must never turn into a later click once the device is ready.
-        if (!prepared.current || prepared.current.epoch !== epoch.current || prepared.current.pending) {
+        if (geometryReady.current !== epoch.current) {
           event.preventDefault();
           const expected = epoch.current;
           void prepareGeometry().catch(cause => { if (epoch.current === expected) setError(cause instanceof Error ? cause.message : String(cause)); });
