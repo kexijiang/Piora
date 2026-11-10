@@ -826,9 +826,9 @@ function AssistantMessageView({
              {copied ? t("i18n.copied") : t("i18n.copy")}
           </button>
         )}
-        {!isStreaming ? <span className="message-hover-actions">{messageActions}</span> : null}
+        {!isStreaming ? <span className="message-hover-actions" style={{ marginLeft: "auto" }}>{messageActions}</span> : null}
         {time && !isStreaming && (
-          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>{time}</span>
         )}
       </div>}
     </div>

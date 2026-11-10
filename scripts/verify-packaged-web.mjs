@@ -1270,7 +1270,8 @@ async function main() {
     const coreExtensionTools = verifyPackagedCoreTools(initialTools);
     for (const name of ["codemode", "tool_search"]) {
       const helper = requireArrayEntry(initialTools, entry => entry.name === name, `native Pi helper ${name}`);
-      if (helper.active) throw new Error(`Native helper ${name} should remain inactive with no MCP config or native defaultTools selection`);
+      const expectedActive = name === "codemode";
+      if (Boolean(helper.active) !== expectedActive) throw new Error(`Native helper ${name} must be ${expectedActive ? "active" : "inactive"} without MCP config in the default coding preset`);
     }
     requireArrayEntry(commands, entry => entry.name === "mcp" && entry.source === "extension", "native MCP command");
 
