@@ -1,4 +1,4 @@
-/** Common workspace tools used by the compact coding preset. */
+/** Common workspace and orchestration tools used by the compact coding preset. */
 export const BUILTIN_AGENT_TOOLS: readonly string[] = [
   "bash",
   "powershell",
@@ -8,6 +8,7 @@ export const BUILTIN_AGENT_TOOLS: readonly string[] = [
   "grep",
   "find",
   "ls",
+  "codemode",
 ];
 
 /** Gateway plus legacy names retained only for policy classification/migration. */
