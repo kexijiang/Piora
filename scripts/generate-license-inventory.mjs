@@ -154,6 +154,10 @@ export function renderLicenseInventory(records, lockfileSha256) {
     "",
     "Bundled HDC uses Apache-2.0, libusb uses LGPL-2.1-or-later, and the capture component uses HongJing's MIT license. See [bundled artifact provenance](third_party/harmony-tools/windows-x64/SOURCE.md). The editable ordinary-permission Piora capture component and retained original copyright notice are in [capture source provenance](third_party/harmony-mirror/SOURCE.md) and [MIT license](third_party/harmony-mirror/LICENSE-HONGJING-MIT.txt). Source preparation does not include signing materials or establish that a release artifact has been replaced.",
     "",
+    "## Harmony log workbench",
+    "",
+    "The offline log workbench is adapted from Alentaoker/dsh-harmoneydev-tools at 8b178a755d33cee9899160a7be283af2b23eb85d under Apache-2.0; live log components use that project's MIT code. Exact provenance, modifications and complete licenses are retained in [source notices](third_party/harmony-log-workbench/SOURCE.md). ZIP uses yauzl (MIT); RAR uses the unmodified 7-Zip 26.04 runtime from 7z-bin, preserving its LGPL/BSD/unRAR notices. No Harmony SDK, dictionary or vendor video binary is included in this adaptation.",
+    "",
   ].join("\n");
 }
 

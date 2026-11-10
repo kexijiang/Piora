@@ -1,0 +1,97 @@
+/* MIT; adapted from dsh-harmoneydev-tools, see SOURCE.md. */
+.iconButton { width: 30px; height: 30px; display: inline-grid; flex: 0 0 30px; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--text-muted); }
+.iconButton:hover:not(:disabled), .iconButton[aria-pressed="true"] { background: var(--bg-hover); color: var(--text); }
+.error { flex: 0 0 auto; min-height: 0; max-height: 25%; overflow: auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; margin: 6px 12px; padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--status-failed, #dc2626) 25%, var(--border)); border-radius: 8px; background: var(--bg); color: var(--status-failed, #dc2626); font-size: calc(var(--text-base) * 12 / 14); overflow-wrap: anywhere; }
+.error > span { flex: 1; min-width: 0; }
+.error > button { flex-shrink: 0; }
+.inlineHint { margin: 0; color: var(--text-dim); font-size: var(--text-xs); line-height: 1.45; }
+.logViewer { min-height: 0; display: flex; flex: 1 1 auto; flex-direction: column; overflow: hidden; border: 1px solid color-mix(in srgb, var(--border) 76%, transparent); border-radius: var(--radius-control); background: #0d0f12; }
+.logToolbar { display: grid; grid-template-columns: minmax(130px, .8fr) 94px minmax(130px, 1fr) repeat(4, 28px); gap: 5px; align-items: center; padding: 7px; border-bottom: 1px solid rgb(255 255 255 / 8%); background: #13161a; }
+.logToolbar select,.logToolbar input { min-width: 0; height: 28px; border: 1px solid rgb(255 255 255 / 10%); border-radius: var(--radius-control); outline: none; background: #0d0f12; color: #d8dbe0; padding: 4px 7px; font-size: var(--text-xs); }
+.logToolbar .iconButton { border-color: rgb(255 255 255 / 10%); color: #aeb3bb; }
+.logSearch { min-width: 0; display: flex; align-items: center; gap: 5px; padding-left: 7px; border: 1px solid rgb(255 255 255 / 10%); border-radius: var(--radius-control); color: #777e88; background: #0d0f12; }
+.logSearch input { width: 100%; padding-left: 0; border: 0; background: transparent; }
+.logMeta { min-height: 27px; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 4px 9px; border-bottom: 1px solid rgb(255 255 255 / 7%); color: #777e88; font-family: var(--font-mono); font-size: var(--text-xs); }
+.logOutput { position: relative; min-height: 0; flex: 1 1 auto; overflow: auto; padding: 0; color: #c7cbd1; font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.48; scrollbar-gutter: stable; }
+.logLine { display: grid; min-width: 850px; grid-template-columns: 148px 18px 90px 200px minmax(240px, 1fr); gap: 8px; padding: 1px 8px; }
+.logLine { box-sizing: border-box; align-items: center; cursor: pointer; }
+.logLine:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.logRowMeasure { position: absolute; height: calc(1.48em + 6px); width: 1px; visibility: hidden; pointer-events: none; }
+.logLine:hover { background: rgb(255 255 255 / 4%); }
+.logTime,.logPid,.logTag { overflow: hidden; color: #9aa8b8; text-overflow: ellipsis; white-space: nowrap; }
+.logLevel { color: #65a9ff; font-weight: 700; }
+.logLine[data-level="warn"] .logLevel { color: #e3b341; }
+.logLine[data-level="error"] .logLevel,.logLine[data-level="fatal"] .logLevel { color: #f47067; }
+.logLine[data-level="error"] .logMessage,.logLine[data-level="fatal"] .logMessage { color: #ff8b85; }
+.logLine[data-level="warn"] .logMessage { color: #f1cc83; }
+.logColumns { flex: 0 0 auto; overflow: hidden; background: #1b2027; border-block: 1px solid #313947; color: #c0cad7; font: var(--text-xs) var(--font-mono); }
+.logColumns .logLine { cursor: default; padding-block: 5px; }
+.logFind { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 6px; background: #202a38; }
+.logFind input { flex: 1 1 140px; min-width: 80px; padding: 5px; border: 1px solid #4c6280; border-radius: 5px; background: #10151c; color: #e3e9f2; }
+.logFind button { border: 1px solid #4c6280; background: #151f2c; color: #e3e9f2; padding: 3px 6px; border-radius: 4px; }
+.logFind small { flex-basis: 100%; color: #b3c4d9; }
+.logViewer mark { background: #ffd971; color: #151515; border-radius: 2px; }
+.logViewer button[aria-pressed="true"] { background: #334e70; color: #fff; border-color: #82a9da; }
+.logFilters label { display: flex; align-items: center; gap: 5px; color: #b4bfcd; font-size: var(--text-xs); }
+.logFilters label input { width: auto; }
+.logMessage { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.logFilters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; padding: 6px; }
+.logFilters input { min-width: 0; width: 100%; border: 1px solid var(--border); background: var(--bg); color: var(--text); padding: 5px; border-radius: var(--radius-control); font-size: var(--text-xs); }
+.logFilters small { grid-column: 1 / -1; color: var(--text-muted); }
+.logActions { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px 6px; }
+.logActions button,.logDetails button { border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text-muted); padding: 4px 6px; font-size: var(--text-xs); }
+.logDetails { position: relative; display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; overflow: hidden; border-top: 1px solid var(--border); padding: 0; }
+.logDetails > div { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.logDetails pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--text-xs); }
+.logDetailResize { height: 8px; flex: 0 0 8px; cursor: row-resize; touch-action: none; background: #37425044; }
+.logDetailResize:hover,.logDetailResize:focus-visible { background: #82a9da88; }
+.logDetails > .logDetailTools { flex: 0 0 auto; padding: 4px 8px; gap: 5px; }
+.logDetails > .logDetailContent { display: block; min-height: 0; flex: 1; overflow: auto; padding: 0 8px; }
+.logDetails[data-wrap="false"] pre { white-space: pre; overflow-wrap: normal; }
+.logAppPicker { position: relative; min-width: 0; flex: 1; }
+.logAppPicker > button { width: 100%; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; height: 30px; border: 1px solid #374250; border-radius: 5px; background: #11151b; color: #d9e1eb; padding: 4px 8px; }
+.logAppPopup { position: absolute; top: 34px; left: 0; width: min(530px,100%); min-width: 220px; z-index: 10; border: 1px solid #718ad8; border-radius: 7px; box-shadow: 0 8px 28px #0008; background: #181e27; padding: 7px; }
+.logAppSearch { display: flex; gap: 4px; }
+.logAppSearch input { flex: 1; min-width: 0; background: #11151b; border: 1px solid #718ad8; color: #d9e1eb; border-radius: 5px; padding: 7px; }
+.logAppSearch button,.logAppAll { border: 1px solid #374250; background: #202a38; color: #d9e1eb; border-radius: 4px; padding: 6px; }
+.logAppCount { padding: 5px 2px; color: #9baec4; font-size: 11px; }
+.logAppCandidates { height: 280px; overflow: auto; }
+.logAppOption { position: absolute; left: 0; width: 100%; height: 56px; display: grid; grid-template-columns: minmax(0,1fr) auto; grid-template-rows: 22px 20px; text-align: left; padding: 6px 8px; background: transparent; color: #d9e1eb; border: 0; border-bottom: 1px solid #374250; }
+.logAppOption strong,.logAppOption small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.logAppOption small { grid-row: 2; color: #9baec4; }
+.logAppOption span { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 11px; }
+.logAppOption[data-active="true"],.logAppOption:hover { background: #334e70; }
+.logAppAll { width: 100%; margin-top: 5px; text-align: left; }
+.logMeta { flex-wrap: wrap; }
+.logEmpty { display: grid; min-height: 160px; place-items: center; color: #676d76; }
+
+.logViewer .error { position: static; box-shadow: none; }
+.logApplication { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 5px 7px; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 12px; }
+.logApplication label { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; white-space: nowrap; }
+.logApplication select { flex: 1; min-width: 0; max-width: 100%; height: 28px; background: #11151b; color: #d9e1eb; border: 1px solid #374250; border-radius: 5px; }
+.logApplication span { overflow-wrap: anywhere; }
+.logViewer > .logToolbar,.logViewer > .logActions,.logViewer > .logAdvanced,.logViewer > .logApplication,.logViewer > .logFind,.logViewer > .logMeta,.logViewer > .logColumns { flex: 0 0 auto; }
+.logAdvanced { padding: 3px 7px; border-bottom: 1px solid #28323d; color: #b1bfce; font-size: 12px; }
+.logAdvanced summary { cursor: pointer; padding: 3px 0; }
+.logMore { position: relative; }
+.logMore summary { padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: var(--text-xs); }
+.logMore[open] > div { display: flex; flex-wrap: wrap; max-width: 100%; }
+.logMeta { line-height: 1.6; min-height: 28px; font-size: 11px; color: #9baaba; gap: 3px 8px; }
+.logMeta span { min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+.logOutput { min-height: 60px; }
+.logViewer > .error,.logViewer > .inlineHint { flex-shrink: 0; max-height: 64px; overflow: auto; }
+.logHistory{display:flex;flex-direction:column;gap:4px;margin:4px 6px;padding:6px;border:1px solid var(--border-soft,#475468);border-radius:8px;background:var(--surface-raised,#1d242e);max-height:240px;overflow:auto;flex:0 0 auto}
+.logHistoryHead{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-secondary,#a4a9b4)}
+.logHistoryHead strong{color:var(--text-primary,#e8edf4);font-size:12px}
+.logHistoryHead span{flex:1 1 auto}
+.logHistory ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.logHistory li{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:5px;cursor:pointer;font-size:12px}
+.logHistory li:hover{background:var(--surface-hover,#2b3441)}
+.logHistory li[aria-selected="true"]{background:#334e70;color:#fff}
+.logHistoryQuery{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logHistory li small{color:var(--text-secondary,#8b94a3);font-size:11px;white-space:nowrap}
+.logHistoryEmpty{margin:2px 0;font-size:12px;color:var(--text-secondary,#8b94a3)}
+.logSearchAnchor{position:relative;display:flex;align-items:center;gap:4px;min-width:0;flex:2 1 180px}
+.logSearchAnchor>.logSearch{flex:1 1 auto;min-width:0}
+.logSearchAnchor>input{flex:1 1 auto;min-width:0;width:0}
+.logSearchAnchor>.logHistory{position:absolute;z-index:80;left:0;right:0;top:calc(100% + 4px);margin:0;max-height:min(260px,40vh);box-shadow:0 10px 30px #0008}

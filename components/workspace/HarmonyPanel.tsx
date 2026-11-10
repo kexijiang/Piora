@@ -21,6 +21,7 @@ import { AliIcon } from "../AliIcon";
 import { HarmonyLogViewer } from "./HarmonyLogViewer";
 const MirrorWindow = dynamic(() => import("./harmony/MirrorWindow").then(module => module.MirrorWindow), { ssr: false });
 const WorkbenchTools = dynamic(() => import("./harmony/WorkbenchTools").then(module => module.WorkbenchTools), { ssr: false });
+const HarmonyLogWorkbench = dynamic(() => import("./harmony/HarmonyLogWorkbench").then(module => module.HarmonyLogWorkbench), { ssr: false });
 import { MediaHistory } from "./harmony/MediaHistory";
 import { TcpDeviceConnection } from "./harmony/TcpDeviceConnection";
 import styles from "./HarmonyPanel.module.css";
@@ -183,6 +184,7 @@ type HarmonyPanelProps = {
   onMaximizedChange?: (maximized: boolean) => void;
   sessionRunning?: boolean;
   cwd?: string | null;
+  sessionId?: string | null;
   onOpenLocalTerminal?: () => void;
   onGuideAgent?: ((prompt?: string) => void) | undefined;
   onSnapshot?: (fingerprint: number) => void;
@@ -190,7 +192,7 @@ type HarmonyPanelProps = {
 
 
 
-export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd, onOpenLocalTerminal, onSnapshot }: HarmonyPanelProps) {
+export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd, sessionId, onGuideAgent, onOpenLocalTerminal, onSnapshot }: HarmonyPanelProps) {
   const { locale } = useI18n();
   const chinese = locale === "zh-CN";
   const copy = useCallback((zh: string, en: string) => chinese ? zh : en, [chinese]);
@@ -223,6 +225,8 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
   const [databaseSelection, setDatabaseSelection] = useState("");
 
   const [toolsVisited, setToolsVisited] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logsOpened, setLogsOpened] = useState(false);
   const drawerId = useId();
 
   const drawerBodyRef = useRef<HTMLDivElement>(null);
@@ -607,6 +611,14 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       </div>
     </header>
 
+    <nav className={styles.devicePageTabs} aria-label={copy("鸿蒙设备页面", "Harmony device pages")}>
+      <button type="button" aria-pressed={!showLogs} onClick={() => setShowLogs(false)}>{copy("设备", "Device")}</button>
+      <button type="button" aria-pressed={showLogs} onClick={() => { setLogsOpened(true); setShowLogs(true); }}>{copy("日志工作台", "Log workbench")}</button>
+    </nav>
+    {logsOpened ? <div className={styles.logWorkbenchPage} hidden={!showLogs}>
+      <HarmonyLogWorkbench active={active && showLogs} serial={selectedSerial} online={Boolean(selectedOnline)} sessionId={sessionId} onDraft={onGuideAgent} copy={copy} />
+    </div> : null}
+
     {settingsOpen ? <HarmonySettingsSurface onClose={() => setSettingsOpen(false)} title={copy("设备设置", "Device settings")}><section className={styles.settingsPanel} aria-label={copy("设备设置", "Device settings")}>
       <div className={styles.settingsHeading}>
         <span><strong>{copy("设备设置", "Device settings")}</strong><small>{copy("通常只需设置一次", "Usually a one-time setup")}</small></span>
@@ -699,7 +711,7 @@ export function HarmonyPanel({ active, maximized = false, onMaximizedChange, cwd
       <button type="button" className={styles.tasksButton} onClick={() => changeToolTab("history")}>{copy("任务", "Tasks")}{tasksCount ? ` ${tasksCount}` : ""}</button>
       {lease || holder ? <button type="button" className={styles.stopButton} onClick={stopDevice} aria-label={copy("停止设备任务", "Stop device task")}>{copy("停止", "Stop")}</button> : null}
     </nav>
-    {mirror?.open && (mirror.presentation === "sidebar" || mirror.pendingPresentation === "sidebar") ? <section className={styles.embeddedMirror} style={{ flex: "1 1 0", maxHeight: "none", height: "auto", ...(mirror.presentation !== "sidebar" ? { position: "absolute", visibility: "hidden", pointerEvents: "none" } as const : {}) }} aria-hidden={mirror.presentation !== "sidebar"} aria-label={copy("侧栏投屏", "Sidebar mirror")}><MirrorWindow key={mirror.serial} embedded serial={mirror.serial} active={active} /></section> : null}
+    {mirror?.open && (mirror.presentation === "sidebar" || mirror.pendingPresentation === "sidebar") ? <section className={styles.embeddedMirror} style={{ flex: "1 1 0", maxHeight: "none", height: "auto", ...(showLogs ? { display: "none" } : {}), ...(mirror.presentation !== "sidebar" ? { position: "absolute", visibility: "hidden", pointerEvents: "none" } as const : {}) }} aria-hidden={showLogs || mirror.presentation !== "sidebar"} aria-label={copy("侧栏投屏", "Sidebar mirror")}><MirrorWindow key={mirror.serial} embedded serial={mirror.serial} active={active} /></section> : null}
     <main hidden className={styles.workbenchContent} data-tab={toolTab}>
       <div ref={drawerBodyRef} id={drawerId} role="tabpanel" aria-labelledby={`${drawerId}-${toolTab}`} className={styles.workbenchBody} aria-label={copy("工具内容", "Tool content")}>
         {toolTab === "overview" ? <section className={styles.overview}>

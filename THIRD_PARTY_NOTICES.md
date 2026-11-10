@@ -1,5 +1,15 @@
 # Third-party notices
 
+## Harmony log workbench
+
+The session log library and offline interface are adapted from
+[dsh-harmoneydev-tools](https://github.com/Alentaoker/dsh-harmoneydev-tools),
+commit `8b178a755d33cee9899160a7be283af2b23eb85d`, under Apache-2.0.
+The live log interface and helpers use that project's MIT-licensed Harmony code.
+See [provenance and modifications](third_party/harmony-log-workbench/SOURCE.md)
+and the retained Apache-2.0 and MIT licenses in the same directory.
+No vendor video binary, Harmony SDK or HiLog dictionary is included in this adaptation.
+
 ## Character theme artwork
 
 The 20 bundled character wallpapers have separate asset rights and are not covered

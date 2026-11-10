@@ -60,6 +60,12 @@ const nextConfig: NextConfig = {
     "/*": [
       "./.harmony-worker/**/*",
       "./lib/harmony/runtime/deveco-password.mjs",
+      "./lib/harmony/log-library/vendor/*.mjs",
+      "./node_modules/yauzl/**/*",
+      "./node_modules/pend/**/*",
+      "./node_modules/7z-bin/dist/**/*",
+      "./node_modules/7z-bin/bin/win/x64/**/*",
+      "./node_modules/7z-bin/package.json",
     ],
   },
   // Browser profiles contain user-owned cookies, storage and cache files. They

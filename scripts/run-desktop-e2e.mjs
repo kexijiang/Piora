@@ -8,6 +8,7 @@ import { browserLogin } from './desktop-e2e/scenarios/browser-login.mjs';
 import { desktopExtensions } from './desktop-e2e/scenarios/desktop-extensions.mjs';
 import { harmonyMirror } from './desktop-e2e/scenarios/harmony-mirror.mjs';
 import { companionPanel } from './desktop-e2e/scenarios/companion-panel.mjs';
+import { harmonyLogs } from './desktop-e2e/scenarios/harmony-logs.mjs';
 
 export function parseOptions(args) {
   const options = { scenario: 'settings-theme' };
@@ -25,21 +26,21 @@ export function parseOptions(args) {
     } else options[key] = value;
   }
   if (options.port && options.port === options.debugPort) throw new Error('Application and CDP ports must differ');
-  if (![settingsTheme.id, stopShell.id, stopBash.id, desktopExtensions.id, browserPersistence.id, browserLogin.id, harmonyMirror.id, companionPanel.id].includes(options.scenario)) throw new Error(`Unknown scenario: ${options.scenario}`);
+  if (![settingsTheme.id, stopShell.id, stopBash.id, desktopExtensions.id, browserPersistence.id, browserLogin.id, harmonyMirror.id, companionPanel.id, harmonyLogs.id].includes(options.scenario)) throw new Error(`Unknown scenario: ${options.scenario}`);
   return options;
 }
 
 async function main() {
   const options = parseOptions(process.argv.slice(2));
   if (options.help || options.list) {
-    console.log('Usage: npm run test:desktop:e2e -- [--scenario settings-theme|desktop-extensions|stop-shell|stop-bash|browser-persistence|browser-login|harmony-mirror|companion-panel] [--timeout-ms 600000] [--step-timeout-ms 30000] [--port N] [--debug-port N] [--fail-at STEP]\nScenarios: settings-theme (no model), desktop-extensions (no model or download), stop-shell (local model fixture, real PowerShell), stop-bash (local model fixture, real Git Bash), browser-persistence (local website fixture), browser-login (local model and login fixture), harmony-mirror (authorized HDC device, no model), companion-panel (Turbopack clipboard, no model)');
+    console.log('Usage: npm run test:desktop:e2e -- [--scenario settings-theme|desktop-extensions|stop-shell|stop-bash|browser-persistence|browser-login|harmony-mirror|companion-panel|harmony-logs] [--timeout-ms 600000] [--step-timeout-ms 30000] [--port N] [--debug-port N] [--fail-at STEP]\nScenarios: settings-theme (no model), desktop-extensions (no model or download), stop-shell (local model fixture, real PowerShell), stop-bash (local model fixture, real Git Bash), browser-persistence (local website fixture), browser-login (local model and login fixture), harmony-mirror (authorized HDC device, no model), companion-panel (Turbopack clipboard, no model), harmony-logs (local log fixtures and device stream fixture, no model)');
     return;
   }
   const controller = new AbortController();
   const stop = () => controller.abort(new Error('Desktop test interrupted'));
   for (const name of ['SIGINT', 'SIGTERM', 'SIGHUP']) process.once(name, stop);
   try {
-    const scenario = [settingsTheme, stopShell, stopBash, desktopExtensions, browserPersistence, browserLogin, harmonyMirror, companionPanel].find(candidate => candidate.id === options.scenario);
+    const scenario = [settingsTheme, stopShell, stopBash, desktopExtensions, browserPersistence, browserLogin, harmonyMirror, companionPanel, harmonyLogs].find(candidate => candidate.id === options.scenario);
     const result = await runDesktopScenario({ ...options, root: resolve(import.meta.dirname, '..'), scenario, signal: controller.signal });
     console.log(JSON.stringify({ status: result.report.status, directory: result.directory, failedStep: result.report.failedStep }));
     process.exitCode = result.report.status === 'passed' ? 0 : result.report.status === 'cancelled' ? 130 : 1;

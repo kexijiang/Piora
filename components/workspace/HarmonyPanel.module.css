@@ -1,4 +1,10 @@
 /* One screen, one optional drawer. Container queries follow the workspace panel width. */
+.devicePageTabs { display: flex; gap: 4px; padding: 6px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.devicePageTabs button { border: 1px solid transparent; border-radius: 6px; padding: 6px 12px; background: transparent; color: var(--text-muted); cursor: pointer; }
+.devicePageTabs button[aria-pressed="true"] { background: var(--bg-selected); color: var(--text); border-color: var(--border); }
+.devicePageTabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.logWorkbenchPage { display: flex; flex: 1; min-height: 0; min-width: 0; overflow: hidden; }
+.logWorkbenchPage[hidden] { display: none; }
 .workbenchTabs { display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-bottom: 1px solid var(--border); flex: 0 0 auto; flex-wrap: wrap; }
 .workbenchTabs button, .overviewActions button, .toolbarActions > button:not(.iconButton):not(.focusButton) { min-height: 32px; border: 1px solid transparent; border-radius: 6px; padding: 5px 9px; background: transparent; color: var(--text-muted); cursor: pointer; }
 .workbenchTabs button:hover, .overviewActions button:hover { background: var(--bg-hover); }

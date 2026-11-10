@@ -13,6 +13,7 @@ import { generateLicenseInventory } from "./generate-license-inventory.mjs";
 import { generatePackageLicenseBundle } from "./package-license-bundle.mjs";
 import { verifyPackagedClipboard } from "./verify-packaged-clipboard.mjs";
 import { verifyPackagedShell } from "./verify-packaged-shell.mjs";
+import { verifyPackagedHarmonyLogAssets } from "./verify-packaged-harmony-logs.mjs";
 import { verifyBrandStartupAssets } from "./verify-brand-startup-assets.mjs";
 import { verifyPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
 import { piNativeRuntimeProbe } from "./pi-native-runtime-probe.mjs";
@@ -1023,6 +1024,7 @@ async function main() {
   }
   const nativePiRuntime = await timings.measure("native-pi-runtime", () => verifyPackagedNativePiRuntime(runtimeWebRoot));
   const harmonyHapPreview = await timings.measure("harmony-hap-preview", () => verifyPackagedHarmonyHapPreview(runtimeWebRoot));
+  const harmonyLogs = await timings.measure("harmony-log-runtime", () => verifyPackagedHarmonyLogAssets(runtimeWebRoot, `${packagedRuntimeArchive}.unpacked`));
   const looseNodeModules = await stat(join(packagedWebRoot, "node_modules")).catch(() => undefined);
   if (looseNodeModules) {
     throw new Error("Packaged web dependencies must be archived; loose node_modules would regress portable startup");
@@ -1374,6 +1376,7 @@ async function main() {
       packagedPiAiModules,
       nativePiRuntime,
       harmonyHapPreview,
+      harmonyLogs,
       patchedBundledDependencies: patchedBundledDependencies.map(({ name, version }) => `${name}@${version}`),
       forbiddenDependencyChecks: forbiddenPackagedDependencies.length,
       packagedBackgrounds: packagedBackgrounds.backgroundCount,

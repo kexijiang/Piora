@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 鸿蒙设备新增完整日志工作台，整合实时日志和按会话保存的离线日志；支持拖入文本、ZIP/GZ/RAR、编码识别、分页筛选、跨文件查找并跳回原始行、实时日志保存和加入可编辑对话草稿。导入、索引和查找在本机执行，后台任务与缓存设有独立容量预算。
+
 ## [0.5.10-beta.18] - 2026-11-10
 
 ### 修复

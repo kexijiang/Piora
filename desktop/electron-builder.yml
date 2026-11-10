@@ -81,6 +81,11 @@ extraResources:
       - "LICENSE"
       - "SOURCE.md"
       - "manifest.json"
+  - from: ../third_party/harmony-log-workbench
+    to: licenses/harmony-log-workbench
+    filter:
+      - "LICENSE*"
+      - "SOURCE.md"
   - from: ../third_party/openai-codex
     to: licenses/openai-codex
     filter:
