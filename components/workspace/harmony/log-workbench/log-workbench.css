@@ -247,3 +247,10 @@
 .piora-log-workbench .muted { color: var(--text-muted); }
 .piora-log-workbench button:hover { background-color: var(--bg-hover); }
 .piora-log-workbench .primary, .piora-log-workbench .library-file.selected { color: var(--text); background: var(--bg-selected); border-color: var(--accent); }
+
+/* Reading surfaces keep their console background in every application theme. */
+.piora-log-workbench .log-table-scroll,
+.piora-log-workbench .log-table,
+.piora-log-workbench pre { color: #dce3ec; }
+.piora-log-workbench .log-virtual .log-detail-button { color: #9fc2ff; background-color: #202b39; }
+.piora-log-workbench .log-find { background: var(--bg-panel); }
