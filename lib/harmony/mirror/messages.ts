@@ -16,6 +16,6 @@ export type MirrorWorkerCommand =
   | { type: "reconnect" };
 
 export type MirrorWorkerEvent =
-  | { type: "state"; state: "connecting" | "live" | "recovering" | "error"; error?: string; requestError?: unknown }
+  | { type: "state"; state: "connecting" | "live" | "recovering" | "error"; error?: string; requestError?: unknown; fatal?: boolean }
   | { type: "frame"; width: number; height: number; revision: number }
   | { type: "statistics"; statistics: MirrorStatistics };

@@ -2,7 +2,7 @@ import { VideoPacketReader, VIDEO_CONFIG, VIDEO_FRAME, parseVideoConfiguration, 
 import type { MirrorStatistics, MirrorWorkerEvent } from "./messages";
 import { HarmonyRequestError } from "../request-error";
 
-type Attempt = { id: number; abort: AbortController; reader?: ReadableStreamDefaultReader<Uint8Array>; watchdog?: ReturnType<typeof setTimeout>; failure?: Error; submitted: number; decoded: number };
+type Attempt = { id: number; abort: AbortController; reader?: ReadableStreamDefaultReader<Uint8Array>; watchdog?: ReturnType<typeof setTimeout>; failure?: Error; received: number; submitted: number; decoded: number };
 class VideoRequestError extends HarmonyRequestError {
   constructor(readonly value: unknown, status: number) { super(value, status); }
 }
@@ -41,6 +41,7 @@ export class MirrorVideoEngine {
   private latencies: number[] = [];
   private state = "";
   private running = false;
+  private reconnectRequested = false;
   private sampleTimer?: ReturnType<typeof setInterval>;
   private readonly context: OffscreenCanvasRenderingContext2D;
 
@@ -56,14 +57,22 @@ export class MirrorVideoEngine {
     if (this.running || this.lifetime.signal.aborted) return;
     this.running = true;
     this.sampleTimer = setInterval(() => this.statistics(), 1000);
-    void this.connect().catch(error => { if (!this.lifetime.signal.aborted) this.status("error", String(error)); });
+    void this.connect().catch(error => { if (!this.lifetime.signal.aborted) this.status("error", String(error)); }).finally(() => {
+      this.running = false; clearInterval(this.sampleTimer);
+      if (this.reconnectRequested && !this.lifetime.signal.aborted) this.start();
+    });
   }
 
   stop(): void {
     this.lifetime.abort(); clearInterval(this.sampleTimer); this.abortAttempt(); this.releaseDecoder(); this.running = false;
   }
 
-  reconnect(): void { this.abortAttempt(new Error("Reconnecting video")); }
+  reconnect(): void {
+    if (this.lifetime.signal.aborted) return;
+    this.reconnectRequested = true;
+    if (!this.running) this.start();
+    else this.abortAttempt(new Error("Reconnecting video"));
+  }
 
   private status(state: "connecting" | "live" | "recovering" | "error", error?: string, requestError?: unknown): void {
     const key = `${state}:${error ?? ""}`;
@@ -79,19 +88,30 @@ export class MirrorVideoEngine {
     void attempt.reader?.cancel(error).catch(() => undefined);
   }
 
-  private watch(attempt: Attempt, ms = 8000): void {
+  private watch(attempt: Attempt, ms = 8000, recovering = false): void {
     clearTimeout(attempt.watchdog);
     attempt.watchdog = setTimeout(() => {
       if (!this.current(attempt)) return;
-      if (attempt.submitted && !attempt.decoded) this.software = true;
-      this.abortAttempt(new Error(`The device stopped producing decoded video (${attempt.submitted} submitted, ${attempt.decoded} decoded)`));
+      if (!recovering && !this.submitted.size) {
+        // A static screen or a missed initial IDR does not prove decode failure.
+        // Request a fresh keyframe on the same stream before replacing it.
+        this.requestKeyframe(attempt);
+        this.watch(attempt, 3000, true);
+        return;
+      }
+      if (this.submitted.size) this.software = true;
+      const reason = !attempt.received ? "No encoded video frames arrived after requesting a keyframe"
+        : !attempt.submitted ? "Waiting for a decodable H.264 keyframe after requesting one"
+        : "Video decoding stopped responding";
+      this.abortAttempt(new Error(`${reason} (${attempt.received} received, ${attempt.submitted} submitted, ${attempt.decoded} decoded)`));
     }, ms);
   }
 
   private async connect(): Promise<void> {
     let failures = 0;
     while (!this.lifetime.signal.aborted) {
-      const attempt: Attempt = { id: ++this.nextAttempt, abort: new AbortController(), submitted: 0, decoded: 0 };
+      this.reconnectRequested = false;
+      const attempt: Attempt = { id: ++this.nextAttempt, abort: new AbortController(), received: 0, submitted: 0, decoded: 0 };
       this.attempt = attempt;
       this.status(this.revision ? "recovering" : "connecting");
       this.watch(attempt, 30000);
@@ -131,9 +151,8 @@ export class MirrorVideoEngine {
         if (!this.lifetime.signal.aborted) throw attempt.failure ?? new Error("Video connection interrupted");
       } catch (error) {
         if (this.lifetime.signal.aborted) break;
-        if (error instanceof VideoRequestError && error.controlStatus === "recovering") {
-          // Reconnecting transport cannot confirm that physical input was released.
-          // Stop the retry loop and let the user follow the recovery instructions.
+        if (error instanceof VideoRequestError && (error.controlStatus === "recovering" || error.nativeVideoUnavailable)) {
+          // A persistent device/ABI failure needs recovery, not transport retries.
           this.status("error", error.message, error.value);
           return;
         }
@@ -145,7 +164,7 @@ export class MirrorVideoEngine {
         this.releaseDecoder(); this.config = undefined;
         if (this.attempt === attempt) this.attempt = undefined;
       }
-      await pause(Math.min(2000, 150 * 2 ** Math.min(failures - 1, 4)), this.lifetime.signal);
+      if (!this.reconnectRequested) await pause(Math.min(2000, 150 * 2 ** Math.min(failures - 1, 4)), this.lifetime.signal);
     }
   }
 
@@ -197,6 +216,7 @@ export class MirrorVideoEngine {
   private frame(payload: Uint8Array, attempt: Attempt): void {
     if (!this.config || payload.length < 10) throw new Error("Truncated video frame");
     const view = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+    attempt.received++;
     const key = Boolean(payload[0] & 1), timestamp = Number(view.getBigUint64(1));
     if (!Number.isSafeInteger(timestamp)) throw new Error("Invalid video timestamp");
     if (!this.received && !this.decoded && !this.presented && !this.revision) this.sampleStarted = performance.now();

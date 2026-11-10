@@ -364,6 +364,24 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         assert.match(await heading.innerText(), /处理结束.*思考 1 段.*执行 3 条命令/s);
         if (process.env.PIORA_COMPACT_SCREENSHOTS) await check.screenshot({ path: path.join(repo, "test-results", "compact-process", "auto-completed.png") });
       }
+      if (scenario === "attention") {
+        assert.match(await heading.innerText(), /需要关注.*思考 1 段/s);
+        for (const size of [14, 16, 18]) {
+          await check.evaluate(size => document.documentElement.style.setProperty("--ui-font-size", size + "px"), size);
+          const geometry = await heading.evaluate(el => {
+            const metrics = selector => {
+              const node = el.querySelector(selector), range = document.createRange(); range.selectNodeContents(node);
+              const rect = range.getBoundingClientRect(), style = getComputedStyle(node);
+              return { y: rect.y, height: rect.height, font: style.fontFamily, size: style.fontSize, line: style.lineHeight };
+            };
+            return { label: metrics(".chat-disclosure-label"), count: metrics(".chat-disclosure-description") };
+          });
+          assert.equal(geometry.label.font, geometry.count.font);
+          assert.equal(geometry.label.size, geometry.count.size);
+          assert.equal(geometry.label.line, geometry.count.line);
+          assert.ok(Math.abs(geometry.label.y - geometry.count.y) <= 1, `${size}px process baseline: ${JSON.stringify(geometry)}`);
+        }
+      }
       await check.evaluate(() => window.next());
       await check.getByText("下一轮输入", {exact:true}).waitFor();
       const keepOpen = ["manual-open", "log-open", "failed", "attention"].includes(scenario);

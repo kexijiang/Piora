@@ -35,7 +35,8 @@ import { useCompanionWorkRhythm } from "@/hooks/useCompanionWorkRhythm";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
-import { resolveWorkspaceFilePath } from "@/lib/file-links";
+import { resolveFileReferenceTarget } from "@/lib/file-references";
+import { showPioraMessage } from "./PioraMessage";
 import { buildAtMentionText, buildFileAtMentionsText, buildFileLineMentionText } from "@/lib/file-fuzzy";
 import { getInitialNavigation } from "@/lib/initial-navigation";
 import { historyLocationUrl, readHistoryLocation, type HistoryChatControls, type HistoryLocation } from "@/lib/history-navigation";
@@ -1474,15 +1475,17 @@ export function AppShell() {
   }, [activeCwd, isMobile]);
 
   const handleOpenLinkedFile = useCallback((filePath: string) => {
-    const resolvedPath = resolveWorkspaceFilePath(
-      filePath,
-      selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? undefined,
-    );
-    if (!resolvedPath) return;
-    handleOpenFile(resolvedPath, getFileName(resolvedPath), {
+    const cwd = selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? undefined;
+    const reference = resolveFileReferenceTarget(filePath, cwd);
+    if (!reference) {
+      void showPioraMessage({ title: translate("fileReference.unavailable"), message: translate("fileReference.invalidPath", { path: filePath }), tone: "error", presentation: "notice", durationMs: 5000, actions: [{ id: "done", label: translate("i18n.close") }] });
+      return;
+    }
+    handleOpenFile(reference.filePath, getFileName(reference.filePath), {
       sourceSessionId: selectedSession?.id ?? null,
+      line: reference.line, column: reference.column,
     });
-  }, [activeCwd, handleOpenFile, newSessionCwd, selectedSession?.cwd, selectedSession?.id]);
+  }, [activeCwd, handleOpenFile, newSessionCwd, selectedSession?.cwd, selectedSession?.id, translate]);
 
   const handleCloseFileTab = useCallback(async (tabId: string) => {
     const closingIndex = fileTabs.findIndex((tab) => tab.id === tabId);

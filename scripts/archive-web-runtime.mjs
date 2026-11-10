@@ -9,5 +9,5 @@ export async function createWebRuntimeArchive(source, destination) {
   // Harmony children, PowerShell audio helpers and HDC-pushed driver resources
   // require real sidecar files, with ordinary Node resolution inside the child.
   // SQLite diagnostics import ESM and read their adjacent WASM binary from an ordinary worker.
-  await createPackageWithOptions(source, destination, { unpackDir: "**/{node-pty,@img,@sqlite.org,shell/runtime,hypium-driver,harmony/audio,harmony/runtime,.harmony-worker}" });
+  await createPackageWithOptions(source, destination, { unpackDir: "**/{node-pty,@img,@sqlite.org,shell/runtime,hypium-driver,harmony/audio,harmony/runtime,harmony-video,.harmony-worker}" });
 }

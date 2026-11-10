@@ -17,11 +17,12 @@ export function BrowserHandoffNotice({ sessionId, busy, onWaitingChange }: { ses
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const refresh = async () => {
+      let loginWaiting = false;
       try {
         const response = await fetch(`/api/agent/${encodeURIComponent(sessionId)}/browser-wait`, { signal: controller.signal, cache: "no-store" });
-        if (response.ok) { const data: Snapshot = await response.json(); if (!controller.signal.aborted) setSnapshot({ id: sessionId, data, receivedAt: Date.now() }); }
+        if (response.ok) { const data: Snapshot = await response.json(); loginWaiting = Boolean(data.wait && browserWaitPurpose(data.wait.reason, data.wait.purpose) === "login"); if (!controller.signal.aborted) setSnapshot({ id: sessionId, data, receivedAt: Date.now() }); }
       } catch { /* Reconcile again without turning a network interruption into a resumed notice. */ }
-      if (busy && !controller.signal.aborted) timer = setTimeout(refresh, 1500);
+      if (busy && !controller.signal.aborted) timer = setTimeout(refresh, loginWaiting ? 250 : 1500);
     };
     void refresh();
     return () => { controller.abort(); clearTimeout(timer); };

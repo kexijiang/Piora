@@ -10,7 +10,7 @@
 }
 
 .launcher {
-  width: min(760px, 100%);
+  width: min(100%, var(--chat-column-width, clamp(820px, 72vw, 1180px)));
   max-width: 100%;
   margin-inline: auto;
   display: flex;

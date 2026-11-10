@@ -1,4 +1,4 @@
-import { BROWSER_LOGIN_STATE_SCRIPT, browserLoginCompleted, readBrowserLoginState, type BrowserLoginState } from "./browser-login.js";
+import { BROWSER_LOGIN_STATE_SCRIPT, browserLoginCompleted, LOGIN_VERIFICATION_DELAY_MS, readBrowserLoginState, type BrowserLoginState } from "./browser-login.js";
 import {
   ACTIVE_ELEMENT_PASSWORD_SCRIPT,
   AGENT_OFFSCREEN_BOUNDS,
@@ -197,7 +197,7 @@ export class BrowserAgentControl {
   private readonly paused = new Set<string>();
   private readonly waiting = new Map<string, string>();
   private readonly waitIds = new Map<string, string>();
-  private readonly loginWaits = new Map<string, { tabId: string; before: BrowserLoginState | null; candidateUrl: string; samples: number }>();
+  private readonly loginWaits = new Map<string, { tabId: string; before: BrowserLoginState | null; candidateUrl: string; candidateSince: number; samples: number }>();
   private readonly meta = new Map<string, TabMeta>();
   private readonly lastUsed = new Map<string, number>();
   private readonly lastRequestAt = new Map<string, number>();
@@ -731,9 +731,9 @@ export class BrowserAgentControl {
       this.host.activateSessionTab?.(request.sessionId, tabId);
       this.noteUsed(tabId);
       if (request.purpose === "login") {
-        const observation = { tabId, before: null as BrowserLoginState | null, candidateUrl: "", samples: 0 };
+        const observation = { tabId, before: null as BrowserLoginState | null, candidateUrl: "", candidateSince: 0, samples: 0 };
         this.loginWaits.set(request.sessionId, observation);
-        try { observation.before = readBrowserLoginState(await this.isolated(tabId, BROWSER_LOGIN_STATE_SCRIPT)); } catch { /* Retry after navigation settles. */ }
+        try { observation.before = await this.observeLogin(tabId); } catch { /* Retry after navigation settles. */ }
       }
     }
     this.publish(request.sessionId);
@@ -758,14 +758,22 @@ export class BrowserAgentControl {
     const observation = this.loginWaits.get(request.sessionId);
     const tab = observation ? this.tab(observation.tabId) : undefined;
     if (!observation || !tab || tab.closed || tab.unloaded) return { completed: false };
-    const after = readBrowserLoginState(await this.isolated(tab.id, BROWSER_LOGIN_STATE_SCRIPT));
+    const after = await this.observeLogin(tab.id);
     this.throwIfAborted(signal);
     if (this.loginWaits.get(request.sessionId) !== observation) return { completed: false };
     const completed = browserLoginCompleted(observation.before, after);
     if (!observation.before && after) observation.before = after;
-    observation.samples = completed ? (observation.candidateUrl === after!.url ? observation.samples + 1 : 1) : 0;
-    observation.candidateUrl = completed ? after!.url : "";
-    return { completed: observation.samples >= 2 };
+    // A route name alone cannot prove that a login form is still present:
+    // some SPAs retain /auth after sign-in. Return for snapshot verification.
+    const candidate = after?.ready && !after.loginVisible;
+    if (!candidate) { observation.samples = 0; observation.candidateUrl = ""; return { completed: false }; }
+    if (!observation.candidateUrl) {
+      observation.candidateUrl = after!.url; observation.candidateSince = this.host.now(); observation.samples = 0;
+    }
+    observation.samples++;
+    // Sites without standard avatar/logout markers return control for a fresh
+    // snapshot after 1.5 stable seconds, leaving room for IPC/UI within 3 seconds.
+    return { completed: observation.samples >= 2 && (completed || this.host.now() - observation.candidateSince >= LOGIN_VERIFICATION_DELAY_MS), verificationRequired: true };
   }
 
   private async screenshot(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
@@ -1174,6 +1182,12 @@ export class BrowserAgentControl {
 
   private isolated(tabId: string, code: string): Promise<unknown> {
     return this.runTabOp(tabId, () => this.host.executeIsolated(tabId, ISOLATED_WORLD_ID, code), this.cdpTimeoutMs, "Browser tab script timed out");
+  }
+
+  private async observeLogin(tabId: string): Promise<BrowserLoginState | null> {
+    return readBrowserLoginState(await this.runTabOp(tabId,
+      () => this.host.executeIsolated(tabId, ISOLATED_WORLD_ID, BROWSER_LOGIN_STATE_SCRIPT),
+      500, "Browser login observation timed out"));
   }
 
   private capture(tabId: string): Promise<{ byteLength: number; base64: string }> {

@@ -1,0 +1,18 @@
+{
+  "upstream": "https://gitcode.com/OpenHarmonyToolkitsPlaza/HOScrcpy",
+  "upstreamLicenseCommit": "cf6603b38586d457801ee93203e1a09a846b943e",
+  "source": "https://raw.githubusercontent.com/ns-zzj/dsh-hos-scrcpy/0b327aeac7a3280d043825addbffb1d594807000/resources/hosScrcpy-1.0.18-beta.jar",
+  "sourceSha256": "2ce60b1893cc2be471a8cd7eab7e4127e41921f1f89a32a134c730ba15c8c0fd",
+  "assets": [
+    {
+      "name": "libscrcpy_server_unix_6.5-20260313.z.so",
+      "sha256": "2c8f1ef94d581281bf8e86d54f5939af9b205d5db5aa2cfb27f2562215c87b0a",
+      "size": 268469
+    },
+    {
+      "name": "libscrcpy_server_unix_6.6-20260629.z.so",
+      "sha256": "b24231188ab0fffa84c2bd71cab6948c8ffad9d661c80301f32eaf580177ce8e",
+      "size": 260278
+    }
+  ]
+}

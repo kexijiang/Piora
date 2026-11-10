@@ -29,6 +29,10 @@ export interface ToolDisclosureSummary extends ToolSummary {
 export function summarizeToolDisclosure(name: string, input: unknown, result: unknown, t: Translate): ToolDisclosureSummary {
   const summary = summarizeToolCall(name, input, result, t);
   const values = isRecord(input) ? input : {};
+  if (name === "write" || name === "edit") {
+    const path = typeof values.path === "string" ? values.path : typeof values.file_path === "string" ? values.file_path : undefined;
+    return { ...summary, title: t(`toolSummary.action.${name}`), subject: path || undefined, subjectIsPath: true };
+  }
   if (name === "read" || name === "ls") {
     return { ...summary, title: t(`toolSummary.action.${name}`),
       subject: typeof values.path === "string" ? values.path : name === "ls" ? "." : undefined, subjectIsPath: true };
@@ -54,7 +58,7 @@ export function summarizeToolCall(
 
   if (isToolCallEventType("read", call)) {
     touchResultGuard(resultEvent, isReadToolResult);
-    return { title: t("toolSummary.read", { path: call.input.path }), detail: rangeDetail(call.input.offset, call.input.limit, t), icon: "file", status };
+    return { title: t("toolSummary.read", { path: call.input.path || t("toolSummary.preparing") }), detail: rangeDetail(call.input.offset, call.input.limit, t), icon: "file", status };
   }
   if (isToolCallEventType("bash", call)) {
     touchResultGuard(resultEvent, isBashToolResult);
@@ -62,20 +66,21 @@ export function summarizeToolCall(
   }
   if (isToolCallEventType("edit", call)) {
     const editResult = resultEvent && isEditToolResult(resultEvent) ? resultEvent : null;
-    return { title: t("toolSummary.edit", { path: call.input.path }), detail: patchStats(editResult?.details?.patch), icon: "edit", status };
+    return { title: t("toolSummary.edit", { path: call.input.path || t("toolSummary.preparing") }), detail: patchStats(editResult?.details?.patch), icon: "edit", status };
   }
   if (isToolCallEventType("write", call)) {
     touchResultGuard(resultEvent, isWriteToolResult);
     const contentLength = typeof call.input.content === "string" ? call.input.content.length : 0;
-    return { title: t("toolSummary.write", { path: call.input.path }), detail: t("toolSummary.characters", { count: contentLength }), icon: "save", status };
+    const path = call.input.path || (typeof recordInput.file_path === "string" ? recordInput.file_path : "");
+    return { title: t("toolSummary.write", { path: path || t("toolSummary.preparing") }), detail: path && typeof call.input.content === "string" ? t("toolSummary.characters", { count: contentLength }) : undefined, icon: "save", status };
   }
   if (isToolCallEventType("grep", call)) {
     touchResultGuard(resultEvent, isGrepToolResult);
-    return { title: t("toolSummary.grep", { pattern: call.input.pattern }), detail: call.input.path, icon: "search", status };
+    return { title: t("toolSummary.grep", { pattern: call.input.pattern || t("toolSummary.preparing") }), detail: call.input.path, icon: "search", status };
   }
   if (isToolCallEventType("find", call)) {
     touchResultGuard(resultEvent, isFindToolResult);
-    return { title: t("toolSummary.find", { pattern: call.input.pattern }), detail: call.input.path, icon: "file-search", status };
+    return { title: t("toolSummary.find", { pattern: call.input.pattern || t("toolSummary.preparing") }), detail: call.input.path, icon: "file-search", status };
   }
   if (isToolCallEventType("ls", call)) {
     touchResultGuard(resultEvent, isLsToolResult);

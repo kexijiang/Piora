@@ -6,6 +6,7 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawn, execFile } from "node:child_process";
 import { createRequire } from "node:module";
 import { promisify } from "node:util";
+import { createHash } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { extractAll, listPackage } from "@electron/asar";
 import { generateLicenseInventory } from "./generate-license-inventory.mjs";
@@ -929,9 +930,27 @@ const { join } = require("node:path");
   }
 }
 
+export async function verifyPackagedNativeVideo(videoRoot, licenseRoot) {
+  const sourceRoot = join(projectRoot, "third_party", "harmony-video");
+  const sourceManifest = await readFile(join(sourceRoot, "manifest.json"));
+  if (!sourceManifest.equals(await readFile(join(videoRoot, "manifest.json")))) throw new Error("Packaged native video manifest is missing or stale");
+  const videoManifest = JSON.parse(sourceManifest.toString("utf8"));
+  for (const asset of videoManifest.assets) {
+    const bytes = await readFile(join(videoRoot, asset.name));
+    if (bytes.length !== asset.size || createHash("sha256").update(bytes).digest("hex") !== asset.sha256) {
+      throw new Error(`Packaged native video library integrity mismatch: ${asset.name}`);
+    }
+  }
+  for (const name of ["LICENSE", "SOURCE.md", "manifest.json"]) {
+    if (!(await readFile(join(sourceRoot, name))).equals(await readFile(join(licenseRoot, name)))) throw new Error(`Packaged native video license/provenance mismatch: ${name}`);
+  }
+  return videoManifest.assets.length;
+}
+
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
+  await verifyPackagedNativeVideo(join(`${packagedRuntimeArchive}.unpacked`, "third_party", "harmony-video"), join(dirname(packagedWebRoot), "licenses", "harmony-video"));
   await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "PioraHapSigner.java"));
   for (const relativePath of [
     "build-profile.json5",

@@ -68,6 +68,19 @@ extraResources:
     to: licenses/NOTICE
   - from: ../THIRD_PARTY_LICENSES.md
     to: licenses/THIRD_PARTY_LICENSES.md
+  - from: ../third_party/harmony-video
+    to: web/third_party/harmony-video
+    filter:
+      - "*.so"
+      - "manifest.json"
+      - "LICENSE"
+      - "SOURCE.md"
+  - from: ../third_party/harmony-video
+    to: licenses/harmony-video
+    filter:
+      - "LICENSE"
+      - "SOURCE.md"
+      - "manifest.json"
   - from: ../third_party/openai-codex
     to: licenses/openai-codex
     filter:

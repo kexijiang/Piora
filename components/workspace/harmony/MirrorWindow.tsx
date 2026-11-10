@@ -68,8 +68,8 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
     void media.action(media.recording?.systemRecorderStateUnknown ? "retrieve_recording" : media.recording ? "stop_recording" : "start_recording");
   }, [media]);
   const details = useCallback(() => { void showPioraMessage({ title: copy("连接详情", "Connection details"), tone: "info",
-    message: `${device ? formatHarmonyDeviceLabel(device) : serial}\n${copy("原生视频 · 独立解码", "Native video · dedicated decoder")}\n${live.frame ? `${live.frame.width} × ${live.frame.height}` : copy("尚无画面", "No frame")}\n${live.statistics ? `${copy("收流 / 解码 / 绘制", "Receive / decode / draw")}: ${live.statistics.receivedFps.toFixed(1)} / ${live.statistics.decodedFps.toFixed(1)} / ${live.statistics.presentedFps.toFixed(1)} FPS\n${copy("主机接收至绘制 P95", "Host receive-to-draw P95")}: ${live.statistics.receiveToDrawP95Ms.toFixed(1)} ms\n${copy("此时间不包含手机采集和传输，不代表端到端延迟。", "This excludes device capture and transport; it is not end-to-end latency.")}\n${copy("恢复次数", "Recoveries")}: ${live.statistics.reconnects}` : ""}\n${live.error ?? ""}`,
-    actions: [{ id: "done", label: copy("确定", "OK"), primary: true }] }); }, [copy, device, serial, live]);
+    message: `${device ? formatHarmonyDeviceLabel(device) : serial}\n${copy("原生视频 · 独立解码", "Native video · dedicated decoder")}\n${live.frame ? `${live.frame.width} × ${live.frame.height}` : copy("尚无画面", "No frame")}\n${live.statistics ? `${copy("收流 / 解码 / 绘制", "Receive / decode / draw")}: ${live.statistics.receivedFps.toFixed(1)} / ${live.statistics.decodedFps.toFixed(1)} / ${live.statistics.presentedFps.toFixed(1)} FPS\n${copy("主机接收至绘制 P95", "Host receive-to-draw P95")}: ${live.statistics.receiveToDrawP95Ms.toFixed(1)} ms\n${copy("此时间不包含手机采集和传输，不代表端到端延迟。", "This excludes device capture and transport; it is not end-to-end latency.")}\n${copy("恢复次数", "Recoveries")}: ${live.statistics.reconnects}` : ""}\n${[input.error, live.error, deviceError].filter(Boolean).join("\n")}`,
+    actions: [{ id: "done", label: copy("确定", "OK"), primary: true }] }); }, [copy, device, serial, live, input.error, deviceError]);
   useEffect(() => window.piDesktop?.harmonyMirror?.onCommand(command => {
     if (command === "screenshot" && canScreenshot) void media.action("capture_screenshot");
     if (command === "record") record();
@@ -109,11 +109,15 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
         <button disabled={Boolean(media.busy)} onClick={() => { void media.action("retry_recording_save", draft.recordingId); }}>{copy("重试保存", "Retry save")}</button>
       </div>)}
     </details> : null}
-    {live.error || input.error ? <div className={styles.compatibility} role="status"><span>{input.error ?? live.error}</span><button onClick={() => { setControlEnabled(true); live.refresh(); }}>{copy("重新连接", "Reconnect")}</button></div> : null}
     <main ref={screenRef} className={styles.screen} data-zoomed={zoom !== "fit"}>
       <div ref={live.surfaceRef} className={styles.surface} tabIndex={controlEnabled ? 0 : -1} aria-label={copy("投屏交互区域", "Mirror interaction area")} data-interactive={controlEnabled}
         style={zoom !== "fit" && width && height ? { width: width * Number(zoom), height: height * Number(zoom), flex: "none" } : undefined} {...input.handlers} />
-      {!live.frame || device?.state !== "online" ? <div className={styles.placeholder} role="status">{deviceError || (device?.state !== "online" ? copy("等待设备连接", "Waiting for device") : live.state === "error" ? copy("连接已暂停，请按上方提示处理后重新连接", "Connection paused. Follow the guidance above, then reconnect") : live.state === "recovering" ? copy("正在重新连接…", "Reconnecting…") : copy("正在连接画面…", "Connecting…"))}</div> : null}
+      {!live.frame ? <div className={styles.placeholder} role="status">{device?.state !== "online" ? copy("等待设备连接", "Waiting for device") : live.state === "error" ? copy("连接已暂停", "Connection paused") : copy("正在连接画面…", "Connecting…")}</div> : null}
+      {live.error || input.error || deviceError || live.frame && device?.state !== "online" ? <div className={styles.connectionNotice} role="status">
+        <span title={input.error ?? live.error ?? deviceError}>{input.error ? input.error : device?.state !== "online" ? copy("设备已断开，保留最后画面", "Disconnected · last frame retained") : live.state === "recovering" ? copy("正在恢复连接", "Reconnecting") : copy("投屏连接已暂停", "Mirror paused")}</span>
+        <button type="button" onClick={details}>{copy("详情", "Details")}</button>
+        <button type="button" onClick={live.refresh}>{copy("重连", "Reconnect")}</button>
+      </div> : null}
     </main>
     {controlEnabled ? <footer className={styles.controls} aria-label={copy("手机控制", "Device controls")}>
       <div className={styles.controlRow}>

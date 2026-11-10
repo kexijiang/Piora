@@ -34,7 +34,7 @@ interface Props {
   onReorderSessions: (sourceId: string, targetId: string, position: "before" | "after") => void;
 }
 
-const PROJECT_DRAG_HOLD_MS = 250;
+const PROJECT_DRAG_HOLD_MS = 500;
 const PROJECT_DRAG_CANCEL_DISTANCE = 7;
 
 interface ProjectDragState {
