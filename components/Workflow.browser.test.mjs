@@ -13,6 +13,7 @@ test("workflow UI preserves revisions, switches sessions, reviews plans and chan
   const directory = await mkdtemp(path.join(tmpdir(), "piora-workflow-ui-"));
   let browser;
   const held = [];
+  const laboratorySaveRecovery = Promise.withResolvers();
   try {
     await writeFile(path.join(directory, "ts.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(directory, "css.cjs"), 'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
@@ -37,6 +38,8 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
     const page = await browser.newPage({ viewport: { width: 390, height: 800 } });
+    const clockStart = new Date("2026-11-11T00:00:00Z");
+    await page.clock.install({ time: clockStart });
     const errors = []; page.on("pageerror", error => errors.push(error.message));
     const run = { id: "plan-one", kind: "plan", status: "awaiting_approval", objective: "Review before editing", title: "Plan proposal", markdown: "# Implementation\n1. Inspect\n2. Verify", criteria: [], progress: "", reason: "", turnBudget: 10, turnsUsed: 1, version: 1, createdAt: 1, updatedAt: 1, noProgressTurns: 0 };
     const states = {
@@ -49,16 +52,21 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     let holdLaboratoryRead = false;
     let failLaboratoryRead = true;
     let failLaboratoryWrite = true;
+    let laboratoryWriteFailed = false;
+    let laboratoryReadCount = 0;
     await page.route("http://127.0.0.1:38201/**", async route => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(directory, "bundle.js")) });
       if (!url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "text/html", body: '<!doctype html><meta charset="utf-8"><div id="root"></div><script src="/bundle.js"></script>' });
       if (url.pathname === "/api/settings/laboratory") {
         if (route.request().method() === "PUT") {
-          if (failLaboratoryWrite) { failLaboratoryWrite = false; return route.fulfill({ status: 500, json: { error: "fixture save failed" } }); }
+          if (failLaboratoryWrite) { failLaboratoryWrite = false; laboratoryWriteFailed = true; return route.fulfill({ status: 500, json: { error: "fixture save failed" } }); }
+          laboratoryWriteFailed = false; laboratorySaveRecovery.resolve();
           laboratory = route.request().postDataJSON(); return route.fulfill({ json: laboratory });
         }
-        if (failLaboratoryRead) { failLaboratoryRead = false; return route.fulfill({ status: 503, json: { error: "fixture read failed" } }); }
+        laboratoryReadCount++;
+        if (failLaboratoryRead) return route.fulfill({ status: 503, json: { error: `fixture read failed ${laboratoryReadCount}` } });
+        if (laboratoryWriteFailed) await laboratorySaveRecovery.promise;
         const captured = { ...laboratory };
         if (holdLaboratoryRead) { holdLaboratoryRead = false; await new Promise(resolve => held.push(resolve)); }
         return route.fulfill({ json: captured }).catch(() => {});
@@ -86,7 +94,20 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.getByTestId("workflow-panel").waitFor();
     await page.waitForFunction(() => Boolean(window.lab.error));
     assert.equal(await page.evaluate(() => window.lab.ready), false, "a failed first read must not confirm disabled settings");
+    // Keep all reads failed until this boundary, including a real background
+    // poll. Pause timers so only the Retry button can issue the successful GET.
+    const failedPoll = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory") && response.status() === 503);
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 6_000));
+    await (await failedPoll).finished();
+    await page.clock.runFor(100);
+    assert.equal(await page.evaluate(() => window.lab.error), `fixture read failed ${laboratoryReadCount}`);
+    const readsBeforeRetry = laboratoryReadCount;
+    failLaboratoryRead = false;
+    const retryResponse = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory") && response.status() === 200);
     await page.getByRole("button", { name: /重新加载|Retry loading/ }).click();
+    await retryResponse;
+    assert.equal(laboratoryReadCount, readsBeforeRetry + 1, "the explicit Retry click starts one new settings GET");
+    await page.clock.resume();
     await page.waitForFunction(() => window.lab.ready);
     assert.equal(await page.getByTestId("workflow-mode-select").count(), 0);
     assert.equal(await page.getByTestId("workflow-plan-approve").isDisabled(), true);
@@ -155,6 +176,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     assert.equal(await page.getByTestId("workflow-panel").getAttribute("data-status"), "planning");
     assert.deepEqual(errors, []);
   } finally {
+    laboratorySaveRecovery.resolve();
     held.splice(0).forEach(resolve => resolve());
     await browser?.close();
     assert.equal(path.dirname(directory), tmpdir());

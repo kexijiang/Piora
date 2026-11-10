@@ -77,6 +77,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await context.route("http://localhost:43191/**", async route => {
         const pathname = new URL(route.request().url()).pathname;
         if (pathname === "/api/tool-permissions") { retiredRequests.push(route.request().method()); return route.fulfill({ status: 404, json: { error: "Removed" } }); }
+        if (pathname === "/api/settings/laboratory") return route.fulfill({ json: { planGoalEnabled: false } });
         if (pathname === "/api/models") return route.fulfill({ json: { models: {}, modelList: [{ provider: "deepseek", id: "deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash Very Long Model Name" }] } });
         if (pathname === "/api/system-prompt") return route.fulfill({ json: { selectorVisible: true, templates: [{ id: "long", name: "Very long system prompt template name", prompt: "Be helpful" }], defaultTemplateId: "long" } });
         if (pathname === "/api/chat-workspace" || pathname === "/api/cwd/validate") return route.fulfill({ json: { cwd: "/workspace/a-very-long-project-name-for-layout-checks", valid: true } });
