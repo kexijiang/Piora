@@ -1,7 +1,7 @@
 # HOScrcpy native video libraries
 
 These unmodified ARM64 ELF libraries are extracted from the public HOScrcpy
-1.0.18-beta distribution. Only the two selected Unix-socket capture libraries
+1.0.18-beta distribution. Only the three selected Unix-socket capture libraries
 are included; Piora does not run or distribute the Java bridge.
 
 - Upstream: https://gitcode.com/OpenHarmonyToolkitsPlaza/HOScrcpy
@@ -17,3 +17,11 @@ are included; Piora does not run or distribute the Java bridge.
 The 6.5 and 6.6 libraries extend the older libraries in hypium-driver. Filename
 selection is a candidate choice, not proof of device ABI compatibility. Piora
 reports a matching startup loader error if the selected library cannot load.
+
+Both 6.6 builds are kept because they depend on different protobuf ABI symbols.
+The 20260418 build is also byte-identical to the library in the locally installed
+DevEco Studio `hosScrcpy-1.0.17-beta.jar`. Its distributable source remains the
+same pinned public 1.0.18-beta archive above. The older build is attempted only
+after a confirmed loader ABI failure, after checking that no owned video
+process or foreign socket is still active. Device diagnostics are separate from
+installed Piora acceptance results.

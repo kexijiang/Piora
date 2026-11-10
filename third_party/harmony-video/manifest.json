@@ -13,6 +13,11 @@
       "name": "libscrcpy_server_unix_6.6-20260629.z.so",
       "sha256": "b24231188ab0fffa84c2bd71cab6948c8ffad9d661c80301f32eaf580177ce8e",
       "size": 260278
+    },
+    {
+      "name": "libscrcpy_server_unix_6.6-20260418.z.so",
+      "sha256": "98bbc964fef1c4d17b446ec717102b855d09224b23fc1872bf70e1f928d010dd",
+      "size": 268471
     }
   ]
 }
