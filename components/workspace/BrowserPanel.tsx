@@ -611,8 +611,6 @@ function DesktopBrowserPanel({ active, bridge, maximized, sessionId, navigationR
         ><AliIcon name="close" size={11} /></span>
       </button>)}
       <button className={styles.browserNewTab} type="button" aria-label={t("browser.newTab")} disabled={state?.tabCount !== undefined && state.tabCount >= (state.tabLimit ?? 20) && !state.idleTabCount} onClick={() => void act({ action: "new_tab" })}><AliIcon name="plus" size={14} /></button>
-      <button type="button" disabled={(state?.tabs.length ?? 0) < 2} onClick={() => { const tabs = state?.tabs.filter(tab => tab.id !== state.activeTabId) ?? []; void (async () => { for (const tab of tabs) await act({ action: "close_tab", tabId: tab.id }); })(); }}>{t("browser.closeOtherTabs")}</button>
-      <button type="button" disabled={!state?.idleTabCount} onClick={() => void act({ action: "close_idle_tabs" })}>{t("browser.closeIdleTabs")}</button>
     </div>
     {state?.tabCount !== undefined && state.tabCount >= (state.tabLimit ?? 20) ? <div className={styles.browserError} role="status">{t("browser.tabLimitReached", { limit: state.tabLimit ?? 20 })}</div> : null}
     <div className={styles.browserToolbar}>
@@ -840,7 +838,6 @@ function ScreenshotBrowserPanel({ active, navigationRequest, onNavigationConsume
         ><AliIcon name="close" size={11} /></span>
       </button>)}
       <button className={styles.browserNewTab} type="button" aria-label={t("browser.newTab")} onClick={() => void act({ action: "new_tab" })}><AliIcon name="plus" size={14} /></button>
-      <button type="button" disabled={busy || (state?.tabs.length ?? 0) < 2} onClick={() => { const tabs = (state?.tabs.filter(tab => tab.index !== state.activeTabIndex) ?? []).sort((a,b) => b.index - a.index); void (async () => { for (const tab of tabs) await act({ action: "close_tab", tabIndex: tab.index }); })(); }}>{t("browser.closeOtherTabs")}</button>
     </div>
     <div className={styles.browserToolbar}>
       <button type="button" aria-label={t("browser.back")} disabled={busy} onClick={() => void act({ action: "back" })}><AliIcon name="arrowleft" size={14} /></button>

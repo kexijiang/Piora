@@ -5816,15 +5816,15 @@ span.linenumber {
   border: 0; background: transparent; color: var(--text-muted);
 }
 .compact-process-toggle .chat-disclosure-label { color: var(--text); font-weight: 600; }
-.compact-process-toggle .chat-disclosure-description { font-size: var(--text-sm); color: var(--text-muted); white-space: normal; }
-.compact-process-toggle.chat-disclosure-trigger { grid-template-columns: 12px 14px auto minmax(0, 1fr) auto; min-height: 36px; align-items: baseline; line-height: 1.5; }
+.compact-process-toggle .chat-disclosure-description { color: var(--text-muted); }
+.compact-process-toggle.chat-disclosure-trigger { grid-template-columns: 12px 14px auto minmax(0, 1fr) auto; min-height: 36px; align-items: center; line-height: 1.5; }
 .compact-process-toggle .chat-disclosure-label,
 .compact-process-toggle .chat-disclosure-description,
 .compact-process-toggle .chat-disclosure-meta { font-family: inherit; font-size: inherit; line-height: inherit; }
 .compact-process-toggle .chat-disclosure-icon,
 .compact-process-toggle .chat-disclosure-chevron { align-self: center; }
-.compact-process-toggle .chat-disclosure-description { display: block; }
-.compact-process-toggle .chat-disclosure-meta { grid-column: 5; }
+.compact-process-toggle .chat-disclosure-description { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compact-process-toggle .chat-disclosure-meta { grid-column: 5; white-space: nowrap; flex-wrap: nowrap; }
 .compact-process-step-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); min-width: 0; flex: 1; }
 .compact-process-group.has-attention .chat-disclosure-label { color: var(--accent); }
 .compact-process-preview { margin: 4px 0 2px; padding-left: 14px; border-left: 1px solid var(--border); }
@@ -5875,9 +5875,6 @@ button.file-tool-path:hover { color: var(--accent); }
 .compact-command-error { margin: 4px 0 8px 24px; font: var(--text-sm)/1.5 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; color: #ef4444; }
 @media (max-width: 600px) {
   .compact-process-preview, .compact-process-detail { padding-left: 9px; }
-  .compact-process-toggle.chat-disclosure-trigger { grid-template-columns: 12px 14px minmax(0, 1fr) auto; }
-  .compact-process-toggle .chat-disclosure-meta { grid-column: 4; }
-  .compact-process-toggle .chat-disclosure-description { white-space: normal; }
 }
 
 /* Stable library URLs keep meme sizing consistent in streamed and restored chats. */

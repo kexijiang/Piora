@@ -89,13 +89,15 @@ test("selected sessions use a neutral Codex-style background without an accent r
   assert.doesNotMatch(selectedStyles, /inset|var\(--accent\)/);
 });
 
-test("project headings stay transparent while selected sessions keep their fill", () => {
+test("project headings share a rounded row hover while selection stays subtle", () => {
   const projectStyles = sidebarStyles.slice(
     sidebarStyles.indexOf(".projectRow"),
     sidebarStyles.indexOf(".projectMain"),
   );
   assert.match(projectStyles, /\.projectRowSelected\s*\{\s*background:\s*transparent/);
-  assert.doesNotMatch(projectStyles, /\.projectRow:hover[\s\S]*?background:/);
+  assert.match(projectStyles, /\.projectRow:hover,\s*\.projectRow:has\(:focus-visible\)\s*\{\s*background:\s*var\(--bg-hover\)/);
+  assert.match(projectStyles, /border-radius:\s*var\(--radius-control\)/);
+  assert.match(sidebarStyles, /\.projectRow \.projectMain:hover,\s*\.projectRow \.projectMain:active\s*\{\s*background:\s*transparent/);
   assert.match(globalStyles, /\.sidebar-project-row\.is-selected\s*\{[^}]*background:\s*transparent/s);
   assert.match(globalStyles, /\.sidebar-project-row:hover\s*\{[^}]*background:\s*transparent/s);
 });
@@ -176,14 +178,15 @@ test("project creation lives in the projects header without a duplicate list", (
   assert.match(sidebarStyles, /\.projectsHeader:hover \.projectsHeaderToggle svg,[\s\S]*?\.projectsHeader:hover \.sectionLabelActions/);
 });
 
-test("toggles all visible project folders from the projects header", () => {
-  assert.match(source, /const allProjectsCollapsed = projectGroups\.length > 0[\s\S]*?projectGroups\.every/);
-  assert.match(source, /sidebar\.expandAllProjects/);
-  assert.match(source, /sidebar\.collapseAllProjects/);
-  assert.match(source, /const next = new Set\(previous\)[\s\S]*?next\.delete\(group\.key\)[\s\S]*?next\.add\(group\.key\)/);
+test("projects header collapses the list independently of each project folder", () => {
+  assert.match(source, /useSectionDisclosure\("projects"\)/);
+  assert.match(source, /sidebar\.expandProjects/);
+  assert.match(source, /sidebar\.collapseProjects/);
+  assert.doesNotMatch(source, /allProjectsCollapsed|shouldExpandAll/);
   assert.match(source, /name="chevron-right"/);
-  assert.match(source, /className=\{allProjectsCollapsed \? undefined : styles\.projectsHeaderChevronOpen\}/);
-  assert.match(source, /aria-expanded=\{!allProjectsCollapsed\}/);
+  assert.match(source, /className=\{collapsed \? undefined : styles\.projectsHeaderChevronOpen\}/);
+  assert.match(source, /hidden=\{collapsed\}/);
+  assert.match(source, /aria-expanded=\{!collapsed\}/);
 });
 
 test("exposes the existing validated project picker to shell-level project actions", () => {
