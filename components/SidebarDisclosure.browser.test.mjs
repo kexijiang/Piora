@@ -33,7 +33,7 @@ window.fetch=async url=>{if(url==='/api/rooms'){window.roomRequests++;return new
 function App(){const state=useSidebarState();const[selected,setSelected]=useState(null);window.setOrder=state.setSessionOrder;const common={selectedSessionId:selected,runningSessionIds:new Set(['older']),unreadSessionIds:new Set(['fifth']),moveTargets:[],sessionFlags:{pinned:{pinned:true}},sessionOrder:state.sessionOrder,onReorderSessions:()=>window.events.reorder++};
 return <I18nProvider><main className='session-sidebar-content' style={{width:320,height:'100vh',overflow:'auto'}}>
 <div id='rooms'><RoomSidebarSection sessions={[]} selectedSessionId={null} selectedRoomId={null} initialRoomId='room' onSelectRoom={(_r,restore)=>{if(restore)window.events.restored++}}/></div>
-<div id='projects'><SidebarProjectArea {...common} loading={false} error={null} projectGroups={groups} selectedProject='C:/fixture' collapsedProjectKeys={state.collapsedProjectKeys} setCollapsedProjectKeys={state.setCollapsedProjectKeys} handleDefaultCwd={()=>{window.events.newProject++;return Promise.resolve()}} handleCustomPathClick={()=>window.events.newProject++} setSelectedCwd={noop} homeDir='' handleSelectSessionFromList={session=>setSelected(session.id)} handleNewSessionInProject={()=>window.events.newSession++} loadSessions={asyncNoop} handleSessionDeletedWithUndo={noop} patchSessionFlag={asyncNoop} duplicateSession={asyncNoop} markSessionUnread={noop} moveSession={asyncNoop} pinnedProjectRoots={empty} projectAliases={{}} mutedProjectRoots={empty} toggleProjectMuted={noop} togglePinnedProject={noop} renameProject={noop} removeProject={noop} onReorderProjects={noop}/></div>
+<div id='projects'><SidebarProjectArea {...common} loading={false} error={null} projectGroups={groups} selectedProject='C:/fixture' collapsedProjectKeys={state.collapsedProjectKeys} setCollapsedProjectKeys={state.setCollapsedProjectKeys} handleDefaultCwd={()=>{window.events.newProject++;return Promise.resolve()}} handleCustomPathClick={()=>window.events.newProject++} setSelectedCwd={noop} homeDir='' handleSelectSessionFromList={session=>setSelected(session.id)} handleNewSessionInProject={()=>window.events.newSession++} loadSessions={asyncNoop} handleSessionDeletedWithUndo={noop} patchSessionFlag={asyncNoop} duplicateSession={asyncNoop} markSessionUnread={noop} moveSession={asyncNoop} pinnedProjectRoots={empty} projectAliases={{}} mutedProjectRoots={empty} toggleProjectMuted={noop} togglePinnedProject={noop} renameProject={noop} removeProject={noop} onReorderProjects={(...args)=>{(window.events.projectReorders??=[]).push(args)}}/></div>
 <div id='chats'><SidebarChatArea {...common} sessions={[{...make('Personal chat',1),projectless:true}]} onNewChat={()=>window.events.newChat++} onSelectSession={session=>setSelected(session.id)} onRenamed={noop} onSessionDeleted={noop} onFlagChange={noop} onDuplicate={noop} onMarkUnread={noop} onMoveSession={asyncNoop}/></div>
 </main></I18nProvider>};createRoot(document.getElementById('root')).render(<App/>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false, entry: path.join(directory, "entry.tsx"), output: { path: directory, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], modules: [path.join(repo, "node_modules")], alias: { "@": repo } }, module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(directory, "loader.cjs") }, { test: /\.css$/, use: path.join(directory, "css.cjs") }] } });
@@ -42,6 +42,7 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
     for (const locale of ["en", "zh-CN"]) {
       const page = await browser.newPage({ viewport: { width: 900, height: 1000 } });
+      await page.clock.install();
       const errors = [];
       page.on("pageerror", error => errors.push(error.message));
       await page.addInitScript(locale => {
@@ -60,6 +61,24 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
       const project = page.locator('[data-project-drag-root="C:/fixture"]');
       const previewIds = () => project.getByRole("treeitem").evaluateAll(rows => rows.map(row => row.dataset.sessionDragId));
       await page.waitForFunction(() => document.querySelector('[data-project-drag-root="C:/fixture"] button[aria-expanded]')?.getAttribute('aria-expanded') === 'false');
+      const projectTitle = project.locator('button[title="C:/fixture"]');
+      await projectTitle.hover();
+      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grab");
+      const projectAction = project.locator('[data-project-drag-ignore] button').last();
+      await projectAction.hover();
+      assert.equal(await projectAction.evaluate(el => getComputedStyle(el).cursor), "pointer", "functional buttons retain the click cursor");
+      const sourceBox = await projectTitle.boundingBox();
+      const destinationBox = await page.locator('[data-project-drag-root="C:/small"] [data-project-drag-handle]').boundingBox();
+      await page.mouse.move(sourceBox.x + 30, sourceBox.y + sourceBox.height / 2);
+      await page.clock.pauseAt(new Date(Date.now() + 1000));
+      await page.mouse.down(); await page.clock.runFor(499);
+      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grab", "499ms is still a normal press");
+      await page.clock.runFor(1);
+      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grabbing", "500ms starts project dragging");
+      await page.mouse.move(destinationBox.x + 40, destinationBox.y + destinationBox.height - 3);
+      await page.mouse.up();
+      assert.deepEqual(await page.evaluate(() => window.events.projectReorders), [["C:/fixture", "C:/small", "after"]]);
+      await page.clock.runFor(501); await page.clock.resume();
       assert.deepEqual(await previewIds(), [], "collapsed project hides all sessions");
       assert.equal(await page.locator('[data-project-drag-root="C:/small"]').getByRole("treeitem").count(), 0);
       assert.equal(await project.locator('[data-project-drag-handle] .sidebar-running-spinner').count(), 1, "hidden running sessions still surface on the project heading");

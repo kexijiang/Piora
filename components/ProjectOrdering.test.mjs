@@ -73,7 +73,7 @@ test("restores manual project order after reload despite newer activity elsewher
 });
 
 test("long-presses project rows to reorder without adding a drag button", () => {
-  assert.match(area, /PROJECT_DRAG_HOLD_MS = 250/);
+  assert.match(area, /PROJECT_DRAG_HOLD_MS = 500/);
   assert.match(area, /window\.addEventListener\("pointermove"/);
   assert.match(area, /onReorderProjects\(activeDrag\.sourceRoot, activeDrag\.targetRoot, activeDrag\.position\)/);
   assert.match(sidebar, /PROJECT_ORDER_STORAGE_KEY|projectOrder/);
