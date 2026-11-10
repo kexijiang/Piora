@@ -143,7 +143,6 @@ const SkillsConfig = dynamic(() => import("./SkillsConfig").then((module) => mod
 const PluginsConfig = dynamic(() => import("./PluginsConfig").then((module) => module.PluginsConfig), { ssr: false, loading: SettingsSectionLoading });
 const DesktopExtensionsSettings = dynamic(() => import("./DesktopExtensionsSettings").then((module) => module.DesktopExtensionsSettings), { ssr: false, loading: SettingsSectionLoading });
 const ExtensionsConfig = dynamic(() => import("./ExtensionsConfig").then((module) => module.ExtensionsConfig), { ssr: false, loading: SettingsSectionLoading });
-const CapabilityBundlesConfig = dynamic(() => import("./CapabilityBundlesConfig").then((module) => module.CapabilityBundlesConfig), { ssr: false, loading: SettingsSectionLoading });
 const ProjectToolsConfig = dynamic(() => import("./ProjectToolsConfig").then((module) => module.ProjectToolsConfig), { ssr: false, loading: SettingsSectionLoading });
 const AppearanceSettings = dynamic(() => import("./AppearanceSettings").then((module) => module.AppearanceSettings), { ssr: false });
 const CompanionSettingsDialog = dynamic(() => import("./CompanionSettingsDialog").then((module) => module.CompanionSettingsDialog), { ssr: false });
@@ -404,7 +403,7 @@ export function AppShell() {
 
   useEffect(() => {
     const stored = window.localStorage.getItem("piora-right-panel-tab");
-    setRightPanelTab(stored === "automation" || stored === "review" || stored === "files" || stored === "commands" || stored === "ssh" || stored === "browser" || stored === "design" || stored === "harmony" ? stored : "home");
+    setRightPanelTab(stored === "automation" || stored === "review" || stored === "files" || stored === "commands" || stored === "ssh" || stored === "browser" || stored === "harmony" ? stored : "home");
     setRightPanelTabRestored(true);
   }, []);
 
@@ -1963,13 +1962,6 @@ export function AppShell() {
         shell: <SmartShellSettings cwd={projectCwd ?? activeCwd ?? undefined} />,
         tools: (currentProjectPath ?? settingsProjectCwd) ? (
           <ProjectToolsConfig cwd={(currentProjectPath ?? settingsProjectCwd)!} onChanged={setSessionCapabilities} mcpFocus={mcpToolsFocus} onClearMcpFocus={() => setMcpToolsFocus(null)} />
-        ) : chooseSettingsProject,
-        capabilityBundles: settingsProjectCwd ? (
-          <CapabilityBundlesConfig
-            cwd={settingsProjectCwd!}
-            sessionId={selectedSession?.id ?? null}
-            onReloaded={() => setSessionKey((key) => key + 1)}
-          />
         ) : chooseSettingsProject,
         automations: (
           <AutomationPanel

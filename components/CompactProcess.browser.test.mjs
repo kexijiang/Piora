@@ -35,7 +35,7 @@ function App(){
     {type:"toolCall",toolCallId:"shell3",toolName:"bash",input:{command:"echo third"}}],timestamp:user.timestamp+13000},
     {role:"toolResult",toolCallId:"shell2",isStreaming:!done,content:[{type:"text",text:"second command output"}],timestamp:user.timestamp+15000},
     {role:"toolResult",toolCallId:"shell3",isStreaming:!done,content:[{type:"text",text:"third command output"}],timestamp:user.timestamp+18000}];
-  if(attention) messages.push({role:"assistant",content:[{type:"toolCall",toolCallId:"wait",toolName:"browser",input:{action:"wait_for_user",reason:"请完成登录"}}]});
+  if(attention) messages.push({role:"assistant",content:[{type:"toolCall",toolCallId:"wait",toolName:"browser",input:{action:"wait_for_user",purpose:"confirmation",reason:"请完成登录"}}]});
   if(done) messages.push({role:"assistant",content:[{type:"text",text:"## 已修复 Shell 实时输出\\n\\n执行日志现在会实时更新。\\n\\n- 运行时显示最新输出\\n- 支持展开查看完整日志"}],timestamp:user.timestamp+19000});
   if(next) messages.push({role:"user",content:"下一轮输入",timestamp:user.timestamp+20000});
   if(mixed) messages.splice(0,messages.length,user,{...assistant,content:[{type:"text",text:"先说明计划"},{type:"toolCall",toolCallId:"shell",toolName:"bash",input:{command:"echo checked"}},{type:"text",text:"中途说明"},{type:"thinking",thinking:"",deferred:true},{type:"text",text:"最后的说明"}]},result,{role:"assistant",content:[{type:"text",text:Array.from({length:80},(_,i)=>"段落 "+i+"：用于验证阅读位置和历史加载。").join("\\n\\n")}],timestamp:user.timestamp+19000});
@@ -52,13 +52,15 @@ function App(){
   window.advance=()=>setOutput("old line\\r\\none\\r\\ntwo\\r\\nthree\\r\\nfour\\r\\nfive");
   window.advanceAgain=()=>setOutput("old line\\none\\ntwo\\nthree\\nfour\\nfive\\nsix");
   window.think=()=>setDraft({role:"assistant",content:[{type:"thinking",thinking:"正在验证新输出"},{type:"text",text:"正在流式生成的正式回复"}],timestamp:Date.now()});
-  window.finish=()=>{setDraft(null);finish(true)}; window.waitForUser=()=>setAttention(true);
+  window.finish=()=>{setDraft(null);finish(true)}; window.waitForUser=()=>{finish(false);setAttention(true)};
+  window.reason=()=>setDraft({role:"assistant",content:[{type:"thinking",thinking:"LIVE_REASONING"}],timestamp:Date.now()});
+  window.answer=()=>setDraft({role:"assistant",content:[{type:"thinking",thinking:"LIVE_REASONING"},{type:"text",text:"LIVE_FINAL_ANSWER"}],timestamp:Date.now()});
   window.fail=()=>{setFailed(true);finish(true)};
   window.setCompact=setEnabled;
   window.revealEntry=(id)=>history.current.revealEntry(id);
   return <I18nProvider><main><header>Piora <button role="switch" aria-label="轻量过程展示" aria-checked={enabled} onClick={()=>setEnabled(!enabled)}>轻量过程展示</button></header>
     <div id="scroll" className="overflow-y-auto" ref={scroll}><div className="chat-column">
-      <ChatHistory messages={messages} entryIds={mixed?["u","mixed","r","answer"]:["u","a","r","a2","r2","r3",...(attention?["wait"]:[]),...(done?["answer"]:[]),...(next?["next"]:[])]} compactProcess={enabled} directProcess={location.search.includes("direct")}
+      <ChatHistory messages={messages} entryIds={mixed?["u","mixed","r","answer"]:["u","a","r","a2","r2","r3",...(attention?["wait"]:[]),...(done?["answer"]:[]),...(next?["next"]:[])]} compactProcess={location.search.includes("auto") || enabled} directProcess={location.search.includes("direct")}
         streamingMessage={draft} busy={!done} streaming={Boolean(draft)} isNew={false} forkingEntryId={null} highlightedEntryId={null} lastUserMsgRef={lastUser}
         pendingScrollToUserRef={pending} scrollContainer={scroll} handleRef={history} sessionId="fixture" cwd="Z:/workspace/CreateMyCard" onOpenFile={path=>window.openedFile=path} onDeleteMessage={async()=>{}} />
     </div></div><footer>发送消息…</footer></main></I18nProvider>;
@@ -105,6 +107,30 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     await direct.getByText("notes.md", { exact: true }).first().waitFor();
     assert.equal(await direct.locator(".compact-process-toggle").count(), 0);
     await direct.close();
+    const automatic = await context.newPage();
+    automatic.on("pageerror", error=>errors.push(error.message));
+    await automatic.goto("http://compact.test/?auto");
+    const automaticHeading=automatic.locator('.compact-process-toggle');
+    await automaticHeading.waitFor();
+    assert.equal(await automaticHeading.getAttribute('aria-expanded'),'true');
+    await automatic.evaluate(()=>window.reason());
+    await automatic.getByText('LIVE_REASONING',{exact:true}).waitFor();
+    assert.equal(await automatic.locator('.thinking-block-trigger').last().getAttribute('aria-expanded'),'true');
+    await automatic.evaluate(()=>window.answer());
+    await automatic.getByText('LIVE_FINAL_ANSWER',{exact:true}).waitFor();
+    await automatic.waitForFunction(()=>document.querySelectorAll('.thinking-block-trigger')[1]?.getAttribute('aria-expanded')==='false');
+    await automatic.evaluate(()=>window.finish());
+    await automatic.locator('.markdown-assistant-message h2').waitFor();
+    assert.equal(await automaticHeading.getAttribute('aria-expanded'),'false');
+    assert.equal(await automatic.locator('.thinking-block,.command-execution-card').count(),0);
+    assert.equal(await automatic.locator('.compact-process-group').count(),1);
+    await automaticHeading.click();
+    await automatic.locator('.command-execution-card').first().waitFor();
+    assert.equal(await automatic.locator('.command-execution-card').count(),3);
+    const automaticOutput=path.join(repo,'.verification/automatic-process');await mkdir(automaticOutput,{recursive:true});
+    await automaticHeading.click();
+    await automatic.screenshot({path:path.join(automaticOutput,'completed-folded.png')});
+    await automatic.close();
     const page = await context.newPage();
     const screenshot = async (name) => {
       if (!process.env.PIORA_COMPACT_SCREENSHOTS) return;
@@ -269,7 +295,10 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       return differs;
     }), true, "final answer keeps its primary text color");
     assert.equal(await page.locator(".message-row-assistant .message-response-meta").count(), 1);
-    assert.equal(await page.locator(".compact-process-toggle").getAttribute("aria-expanded"), "true");
+    assert.equal(await page.locator(".compact-process-toggle").getAttribute("aria-expanded"), "false");
+    assert.equal(await page.locator(".command-execution-card").count(), 0);
+    await page.locator(".compact-process-toggle").click();
+    await page.locator(".command-execution-card").first().waitFor();
     await screenshot("expanded");
     await page.locator(".compact-process-toggle").click();
     assert.equal(await page.locator(".command-execution-card").count(), 0);
@@ -297,7 +326,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     assert.equal(await second.locator(".compact-process-group").count(), 1);
     await second.evaluate(() => window.finish());
     await second.locator(".markdown-assistant-message h2").waitFor();
-    assert.equal(await second.locator(".compact-process-toggle").getAttribute("aria-expanded"), "true");
+    assert.equal(await second.locator(".compact-process-toggle").getAttribute("aria-expanded"), "false");
     await second.evaluate(() => window.next());
     await second.getByText("下一轮输入", {exact:true}).waitFor();
     assert.equal(await second.locator(".compact-process-toggle").getAttribute("aria-expanded"), "false");

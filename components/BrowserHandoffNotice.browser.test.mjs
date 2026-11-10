@@ -21,13 +21,30 @@ test("browser handoff shows waiting, navigation and accurate terminal status", {
   browser=await chromium.launch({channel:process.platform==="win32"?"msedge":"chromium",headless:true});
   const page=await browser.newPage({viewport:{width:1400,height:900}});
   await page.addInitScript(()=>localStorage.setItem("pi-locale","zh-CN"));
-  let status="waiting";
-  await page.route("http://image.test/**",async route=>{const url=route.request().url();if(url.endsWith("browser-wait"))return route.fulfill({json:{wait:status==="waiting"?{sessionId:"fixture",toolCallId:"one",reason:"请登录",backend:"desktop"}:null,outcome:status!=="waiting"?{toolCallId:"one",status,endedAt:Date.now()}:null}});if(url.endsWith("bundle.js"))return route.fulfill({body:await readFile(path.join(directory,"bundle.js")),contentType:"text/javascript"});return route.fulfill({body:`<html><meta charset="utf-8"><style>${css}</style><div id="root"></div><script src="/bundle.js"></script></html>`,contentType:"text/html"});});
+  let status="waiting", purpose="confirmation", toolCallId="one", startedAt=Date.now();const decisions=[];
+  await page.route("http://image.test/**",async route=>{const url=route.request().url();if(url.endsWith("browser-wait")&&route.request().method()==="POST"){decisions.push(route.request().postDataJSON());status="continued";return route.fulfill({json:{ok:true}})}if(url.endsWith("browser-wait"))return route.fulfill({json:{wait:status==="waiting"?{sessionId:"fixture",toolCallId,reason:"请登录",backend:"desktop",purpose,startedAt}:null,outcome:status!=="waiting"?{toolCallId,status,purpose,endedAt:Date.now()}:null}});if(url.endsWith("bundle.js"))return route.fulfill({body:await readFile(path.join(directory,"bundle.js")),contentType:"text/javascript"});return route.fulfill({body:`<html><meta charset="utf-8"><style>${css}</style><div id="root"></div><script src="/bundle.js"></script></html>`,contentType:"text/html"});});
   page.on("pageerror", error => console.error(error));
   await page.goto("http://image.test");await page.getByText("等待用户操作",{exact:true}).waitFor();
   await page.getByRole("button",{name:"打开浏览器接手"}).click();assert.deepEqual(await page.evaluate(()=>window.opened),["fixture"]);
   status="continued";await page.getByText("浏览器操作已确认，助手已获准继续。",{exact:true}).waitFor();
   status="timeout";await page.getByText("等待浏览器操作已超时，未确认完成。",{exact:true}).waitFor();
   assert.equal(await page.getByText("浏览器操作已确认，助手已获准继续。",{exact:true}).count(),0);
+  purpose="login";toolCallId="two";status="waiting";
+  await page.waitForFunction(()=>window.opened.length===2);
+  assert.deepEqual(await page.evaluate(()=>window.opened),["fixture","fixture"]);
+  assert.equal(await page.locator('.browser-handoff-notice').count(),0,"login reveals the browser without a card");
+  await page.waitForTimeout(1700);
+  assert.equal(await page.evaluate(()=>window.opened.length),2,"polling never repeatedly opens the browser");
+  status="continued";
+  await page.waitForTimeout(1700);
+  assert.equal(await page.locator('.browser-handoff-notice').count(),0,"automatic completion stays silent");
+  toolCallId="three";status="waiting";startedAt=Date.now()-5*60_000-1000;
+  await page.getByRole('button',{name:'我已登录，继续',exact:true}).waitFor();
+  assert.equal(await page.locator('.browser-handoff-notice,.browser-user-wait').count(),0,"fallback is an inline hint, not a login card");
+  await page.getByRole('button',{name:'我已登录，继续',exact:true}).click();
+  assert.deepEqual(decisions,[{decision:'continue',toolCallId:'three'}]);
+  await page.waitForFunction(()=>document.querySelector('.browser-login-fallback')===null);
+
+
  } finally {await browser?.close();await rm(directory,{recursive:true,force:true});}
 });

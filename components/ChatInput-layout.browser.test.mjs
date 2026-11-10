@@ -29,24 +29,18 @@ import {ChatInput} from "@/components/ChatInput";
 import {ShortcutSettings} from "@/components/ShortcutSettings";
 import {RoomComposer} from "@/components/RoomComposer";
 import {useSendShortcut} from "@/hooks/useSendShortcut";
-import {useDefaultToolPermission} from "@/hooks/useDefaultToolPermission";
-function DefaultPermissionObserver(){const {state}=useDefaultToolPermission();return <output id="default-permission">{state?.mode}</output>}
 import {NewSessionProjectPicker} from "@/components/NewSessionProjectPicker";
 import {SystemPromptSelector} from "@/components/SystemPromptSelector";
 import {ChatCommandCard,ChatCommandQueue} from "@/components/ChatCommandCard";
-import {ToolReviewStatus} from "@/components/ToolReviewStatus";
 import {createChatCommandCatalog} from "@/lib/chat-command-input";
 const catalog=createChatCommandCatalog([{name:"workflow",source:"extension",description:"Start a workflow and continue until complete"}]);
 const record={commandId:"sample-command",idempotencyKey:"sample",targetSessionId:"sample",acceptedAt:1792483200000,status:"completed",operation:{version:1,rawText:"/name 项目检查",catalogRevision:catalog.revision,command:catalog.commands.find(c=>c.name==="name"),arguments:"项目检查",phase:"settling",steps:[{id:"command",kind:"command",status:"completed",startedAt:1792483200000,completedAt:1792483200200}],result:{title:"chatCommands.renameCompleted",rename:{before:"新会话",after:"项目检查"}}}};
 function App(){
-  const [reviews,setReviews]=useState([]);window.setReviews=setReviews;
   const {shortcut,setShortcut}=useSendShortcut();window.setSendShortcut=setShortcut;
   const [busy,setBusy]=useState(false);window.setBusy=setBusy;
   const [queued,setQueued]=useState([]);window.setQueued=setQueued;
   const [runtimeQueue,setRuntimeQueue]=useState(null);window.setRuntimeQueue=setRuntimeQueue;
-  const [permission,setPermission]=useState({mode:"auto",revision:1});
   return <I18nProvider><main>
-    <section id="reviews"><ToolReviewStatus reviews={reviews}/></section>
     <section id="command-results"><ChatCommandCard record={record} actions={{retry:async()=>{},restore:async()=>{},cancel:async()=>{},copy:async()=>{}}}/></section>
     <section id="launcher"><NewSessionProjectPicker activeCwd="/workspace/a-very-long-project-name-for-layout-checks" onLaunch={request=>{window.launched=true;window.launchRequest=request}}/></section>
     <section id="conversation"><ChatInput ref={value=>{window.composer=value}} onSend={(text,...args)=>{window.sent=true;window.submission={text,args};return true}} onAbort={()=>{window.stopped=true;setBusy(false)}}
@@ -54,12 +48,10 @@ function App(){
       commandCatalog={catalog} onLoadSlashCommands={()=>{}} onQueueInput={async(text,images,files,onDurable,options)=>{(window.queuedInputs??=[]).push({text,delivery:options?.delivery});return true}}
       onSteer={()=>true} onFollowUp={()=>true} isStreaming={busy} onModelChange={async()=>true} onThinkingLevelChange={()=>{}}
       model={{provider:"deepseek",modelId:"deepseek-v4.1-flash"}} modelList={[{provider:"deepseek",id:"deepseek-v4.1-flash",name:"DeepSeek V4.1 Flash Very Long Model Name",isDefault:true}]}
-      toolPermission={permission} onToolPermissionChange={mode=>{setPermission({mode,revision:permission.revision+1});window.permission=mode}}
       thinkingLevel="high" extensionStatuses={[{key:"fixture",text:"Ready"}]}
       contextControl={<SystemPromptSelector selection={{mode:"default"}} onChange={()=>{}}/>}/></section>
     <section id="room" data-send-shortcut={shortcut}><RoomComposer room={{id:"shortcut-room",members:[],coordination:{mode:"manual"}}} actorSessionId="actor" submissions={[]} onSubmit={async input=>{(window.roomInputs??=[]).push(input);return {...input,status:"delivered"}}/></section>
     <section id="shortcut-settings"><ShortcutSettings/></section>
-    <DefaultPermissionObserver/>
   </main></I18nProvider>;
 }
 createRoot(document.getElementById("root")).render(<App/>);`);
@@ -75,18 +67,10 @@ createRoot(document.getElementById("root")).render(<App/>);`);
     for (const locale of ["zh-CN", "en"]) {
       const context = await browser.newContext({ locale, viewport: { width: 1440, height: 1100 } });
       const errors = [];
-      let defaultMode = "auto", failPermissionSave = false;
-      const savedModes = [];
+      const retiredRequests = [];
       await context.route("http://localhost:43191/**", async route => {
         const pathname = new URL(route.request().url()).pathname;
-        if (pathname === "/api/tool-permissions") {
-          if (route.request().method() === "PUT") {
-            if (failPermissionSave) return route.fulfill({ status: 500, json: { error: "save failed" } });
-            defaultMode = route.request().postDataJSON().mode;
-            savedModes.push(defaultMode);
-          }
-          return route.fulfill({ json: { mode: defaultMode } });
-        }
+        if (pathname === "/api/tool-permissions") { retiredRequests.push(route.request().method()); return route.fulfill({ status: 404, json: { error: "Removed" } }); }
         if (pathname === "/api/models") return route.fulfill({ json: { models: {}, modelList: [{ provider: "deepseek", id: "deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash Very Long Model Name" }] } });
         if (pathname === "/api/system-prompt") return route.fulfill({ json: { selectorVisible: true, templates: [{ id: "long", name: "Very long system prompt template name", prompt: "Be helpful" }], defaultTemplateId: "long" } });
         if (pathname === "/api/chat-workspace" || pathname === "/api/cwd/validate") return route.fulfill({ json: { cwd: "/workspace/a-very-long-project-name-for-layout-checks", valid: true } });
@@ -135,17 +119,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await page.locator("#launcher, #conversation").evaluateAll(sections => sections.forEach(section => { section.style.width = "590px"; }));
       const conversation = page.locator("#conversation");
       assert.equal(await conversation.locator(".model-settings-trigger .model-default-badge").textContent(), locale === "zh-CN" ? "默认" : "Default");
-      const permission = conversation.locator("[data-permission-trigger]");
-      for (const mode of ["full", "review", "auto"]) {
-        await permission.click();
-        assert.equal(await page.getByRole("menuitemradio").count(), 3, "only the three supported selection modes");
-        if (process.env.PIORA_COMPOSER_SCREENSHOTS && mode === "full") {
-          await page.getByRole("menu").screenshot({ path: path.join(repo, "test-results/composer-layout", `${locale}-permissions.png`) });
-        }
-        await page.locator(`[role="menuitemradio"][data-mode="${mode}"]`).click();
-        assert.equal(await page.evaluate(() => window.permission), mode);
-        assert.equal(await permission.getAttribute("aria-expanded"), "false");
-      }
+      assert.equal(await page.locator("[data-permission-trigger]").count(), 0, "neither composer exposes a retired approval control");
       await conversation.locator(".model-settings-trigger:not([data-permission-trigger])").click();
       await page.locator(".model-settings-popover").waitFor();
       await page.getByRole("menuitem", { name: locale === "zh-CN" ? /^模型/ : /^Model/ }).click();
@@ -529,63 +503,11 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         await page.locator("#root>main").screenshot({ path: path.join(output, `${locale}-commands-dark.png`) });
       }
       await page.locator("#launcher").evaluate(el => { el.style.display = "block"; });
-      await page.locator("#launcher [data-permission-trigger]").click();
-      await page.locator('[role="menuitemradio"][data-mode="full"]').click();
-      await page.locator("#launcher textarea").fill("Start with full access");
-      await page.locator("#launcher .composer-submit-controls > button:not([data-permission-trigger])").click();
+      await page.locator("#launcher textarea").fill("Start without permission setup");
+      await page.locator("#launcher .composer-submit-controls > button").click();
       await page.waitForFunction(() => window.launchRequest);
-      assert.equal((await page.evaluate(() => window.launchRequest)).prompt.permissionMode, "full");
-      assert.equal(defaultMode, "full");
-      assert.deepEqual(savedModes, ["full"]);
-      await page.waitForFunction(() => document.querySelector('#default-permission').textContent === 'full');
-      // A fresh page (new launcher) reads the persisted choice without writing it.
-      await page.reload();
-      const launcherTrigger = page.locator("#launcher [data-permission-trigger]");
-      await page.waitForFunction(() => document.querySelector('#launcher [data-permission-trigger]')?.textContent.match(/Full access|完全访问/));
-      assert.deepEqual(savedModes, ["full"]);
-      // Previously saved strict preferences remain strict after reload.
-      defaultMode = "ask";
-      await page.reload();
-      await page.waitForFunction(() => document.querySelector('#launcher [data-permission-trigger]').textContent.match(/Ask before actions|操作前询问/));
-      assert.equal(defaultMode, "ask");
-      await launcherTrigger.click();
-      assert.deepEqual(await page.getByRole("menuitemradio").evaluateAll(items => items.map(item => item.dataset.mode)), ["auto", "review", "full"]);
-      assert.equal(await page.locator('[role="menuitemradio"][data-mode="auto"]').evaluate(element => element === document.activeElement), true);
-      await page.keyboard.press("Escape");
-      // Failure keeps the last confirmed mode and is visible to the user.
-      failPermissionSave = true;
-      await launcherTrigger.click();
-      await page.locator('[role="menuitemradio"][data-mode="full"]').click();
-      await page.locator('#launcher [role="alert"]').filter({ hasText: "HTTP 500" }).waitFor();
-      assert.match(await launcherTrigger.innerText(), /Ask before actions|操作前询问/);
-      assert.equal(defaultMode, "ask");
-      failPermissionSave = false;
-      await launcherTrigger.click();
-      await page.locator('[role="menuitemradio"][data-mode="auto"]').click();
-      await page.waitForFunction(() => document.querySelector('#default-permission').textContent === 'auto');
-      assert.equal(defaultMode, "auto");
-
-      await launcherTrigger.click();
-      await page.locator('[role="menuitemradio"][data-mode="review"]').click();
-      await page.waitForFunction(() => document.querySelector('#default-permission').textContent === 'review');
-      assert.equal(defaultMode, "review", "AI review is an explicit saved choice");
-      await page.evaluate(() => window.setReviews([{ id:"review-one",toolName:"bash",status:"reviewing",reason:"Checking the requested tests",model:"provider/model",startedAt:1,updatedAt:1 }]));
-      const reviewPanel = page.locator('#reviews [data-tool-reviews]');
-      await reviewPanel.waitFor();
-      assert.equal(await reviewPanel.getAttribute('open'), null, "automatic reviews do not open a dialog");
-      await reviewPanel.locator('summary').click();
-      await reviewPanel.getByText('Checking the requested tests').waitFor();
-      await page.evaluate(() => window.setReviews([{ id:"review-one",toolName:"bash",status:"denied",reason:"Target is outside the authorized deletion scope",model:"provider/model",durationMs:450,tokens:50,startedAt:1,updatedAt:2 }]));
-      await reviewPanel.locator('[data-review-status="denied"]').waitFor();
-      assert.match(await reviewPanel.innerText(), /run stopped|本轮已停止/);
-      assert.match(await reviewPanel.innerText(), /provider\/model/);
-      if (process.env.PIORA_COMPOSER_SCREENSHOTS) {
-        const output = path.join(repo, "test-results", "composer-layout");
-        await reviewPanel.screenshot({ path: path.join(output, `${locale}-tool-review.png`) });
-        await launcherTrigger.click();
-        await page.locator('[role="menu"]').screenshot({ path: path.join(output, `${locale}-permission-menu.png`) });
-        await page.keyboard.press("Escape");
-      }
+      assert.equal("permissionMode" in (await page.evaluate(() => window.launchRequest)).prompt, false);
+      assert.deepEqual(retiredRequests, [], "new and existing composers never request retired permission APIs");
 
       // Reload restores the saved running-send choice, including keyboard sends.
       assert.equal(await page.evaluate(() => localStorage.getItem('piora-running-send-mode:v1')), 'next_turn');

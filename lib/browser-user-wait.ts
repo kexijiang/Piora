@@ -1,11 +1,13 @@
 /** Server-side waits for a person to finish a browser step. Not an IPC call. */
 
+import type { BrowserWaitPurpose } from "./browser-wait-policy";
+
 export type BrowserUserWaitStatus = "continued" | "cancelled" | "timeout" | "aborted";
 
 export const BROWSER_USER_WAIT_TIMEOUT_MS = 15 * 60 * 1000;
 
 export const BROWSER_USER_WAIT_TEXT: Record<BrowserUserWaitStatus, string> = {
-  continued: "User reported done. Take a new snapshot before continuing.",
+  continued: "Browser step completed. Take a new snapshot before continuing.",
   cancelled: "The user cancelled and did not complete the requested step. Do not assume the user is signed in or that the page is ready.",
   timeout: "The wait timed out and the user did not complete the requested step. Do not assume the user is signed in or that the page is ready.",
   aborted: "The wait was aborted because the session stopped. The user did not complete the requested step. Do not assume the user is signed in.",
@@ -20,6 +22,7 @@ export interface BrowserUserWaitSnapshot {
   reason: string;
   startedAt: number;
   backend: "desktop" | "playwright";
+  purpose?: BrowserWaitPurpose;
 }
 
 interface WaitEntry extends BrowserUserWaitSnapshot {
@@ -27,11 +30,12 @@ interface WaitEntry extends BrowserUserWaitSnapshot {
   timer: ReturnType<typeof setTimeout>;
   signal?: AbortSignal;
   onAbort: () => void;
+  checkTimer?: ReturnType<typeof setTimeout>;
 }
 
 interface WaitState {
   waits: Map<string, WaitEntry>;
-  outcomes?: Map<string, { toolCallId: string; status: BrowserUserWaitStatus; endedAt: number }>;
+  outcomes?: Map<string, { toolCallId: string; status: BrowserUserWaitStatus; endedAt: number; purpose?: BrowserWaitPurpose }>;
 }
 
 const root = globalThis as typeof globalThis & { __pioraBrowserUserWait?: WaitState };
@@ -47,9 +51,10 @@ function settle(entry: WaitEntry, status: BrowserUserWaitStatus): void {
   state().waits.delete(entry.sessionId);
   const outcomes = state().outcomes ??= new Map();
   outcomes.delete(entry.sessionId);
-  outcomes.set(entry.sessionId, { toolCallId: entry.toolCallId, status, endedAt: Date.now() });
+  outcomes.set(entry.sessionId, { toolCallId: entry.toolCallId, status, endedAt: Date.now(), ...(entry.purpose ? { purpose: entry.purpose } : {}) });
   while (outcomes.size > 500) outcomes.delete(outcomes.keys().next().value!);
   clearTimeout(entry.timer);
+  clearTimeout(entry.checkTimer);
   entry.signal?.removeEventListener("abort", entry.onAbort);
   entry.resolve(status);
 }
@@ -67,6 +72,7 @@ export function readBrowserUserWait(sessionId: string): BrowserUserWaitSnapshot 
     reason: entry.reason,
     startedAt: entry.startedAt,
     backend: entry.backend,
+    ...(entry.purpose ? { purpose: entry.purpose } : {}),
   };
 }
 
@@ -89,6 +95,9 @@ export function waitForUser(input: {
   signal?: AbortSignal;
   timeoutMs?: number;
   backend?: "desktop" | "playwright";
+  purpose?: BrowserWaitPurpose;
+  checkCompletion?: () => Promise<boolean>;
+  checkIntervalMs?: number;
 }): Promise<BrowserUserWaitStatus> {
   if (input.signal?.aborted) return Promise.resolve("aborted");
   const previous = state().waits.get(input.sessionId);
@@ -101,6 +110,7 @@ export function waitForUser(input: {
       reason: input.reason,
       startedAt: Date.now(),
       backend: input.backend ?? "playwright",
+      ...(input.purpose ? { purpose: input.purpose } : {}),
       resolve,
       timer: setTimeout(() => settle(entry, "timeout"), timeoutMs),
       onAbort: () => settle(entry, "aborted"),
@@ -111,5 +121,18 @@ export function waitForUser(input: {
     if (!process.env.NODE_TEST_CONTEXT) entry.timer.unref?.();
     state().waits.set(input.sessionId, entry);
     input.signal?.addEventListener("abort", entry.onAbort, { once: true });
+    // Only one read-only check at a time. Late checks cannot settle a replacement wait.
+    if (input.purpose === "login" && input.checkCompletion) {
+      const check = async () => {
+        if (state().waits.get(entry.sessionId) !== entry) return;
+        let completed = false;
+        try { completed = await input.checkCompletion!(); } catch { /* Navigation can temporarily destroy the document. */ }
+        if (state().waits.get(entry.sessionId) !== entry) return;
+        if (completed) { settle(entry, "continued"); return; }
+        entry.checkTimer = setTimeout(() => void check(), input.checkIntervalMs ?? 1000);
+        if (!process.env.NODE_TEST_CONTEXT) entry.checkTimer.unref?.();
+      };
+      void check();
+    }
   });
 }

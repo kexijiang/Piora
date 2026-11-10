@@ -19,9 +19,9 @@ test("memoizes historical chat metadata away from streaming token renders", () =
   assert.match(historySource, /useMemo\(\(\) => projectChatHistoryTail\(base, streamingMessage, busy \|\| streaming\), \[base, streamingMessage, busy, streaming\]\)/);
 });
 
-test("main chat ignores the retired compact process preference", () => {
+test("main chat enables compact process without a retired preference", () => {
   assert.doesNotMatch(source, /useCompactProcessPreference/);
-  assert.match(source, /const compactProcess = false/);
+  assert.match(source, /const compactProcess = true/);
 });
 
 test("long chat rows use browser rendering containment", () => {

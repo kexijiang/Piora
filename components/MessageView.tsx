@@ -746,7 +746,7 @@ function AssistantMessageView({
         {blockGroups.map((group) => {
           const key = `${entryId ?? "stream"}-${group.items[0].originalIndex}`;
           const content = group.items.map(({ block, originalIndex }) => (
-          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
+          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming && (block.type !== "thinking" || originalIndex === blockItems.at(-1)?.originalIndex)} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
           ));
           return group.process ? <ProcessStack key={key} stateKey={key} count={group.items.length}
             timeRanges={[processTimeRange(group.items.map(({ block }) => block), message.timestamp, prevTimestamp, toolResults)]}>{content}</ProcessStack>
@@ -867,7 +867,15 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
   blockIndex: number;
 }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useVirtualRowToggle(`thinking:${blockIndex}`);
+  const [expanded, setExpanded] = useVirtualRowToggle(`thinking:${blockIndex}`, Boolean(isStreaming));
+  const wasThinking = useRef(Boolean(isStreaming));
+  useEffect(() => {
+    const thinking = Boolean(isStreaming);
+    if (wasThinking.current !== thinking) {
+      wasThinking.current = thinking;
+      setExpanded(thinking);
+    }
+  }, [isStreaming, setExpanded]);
   const historyVersion = useContext(HistoryVersionContext);
   const [loadState, setLoadState] = useState<ThinkingLoadState | null>(null);
   const sourceKey = sessionId && entryId ? `${sessionId}:${entryId}:${blockIndex}:${historyVersion ?? "chat"}` : null;
@@ -954,6 +962,7 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
       reason={typeof block.input.reason === "string" ? block.input.reason : ""}
       result={result}
       historical={historyMode}
+      purpose={block.input.purpose === "login" || block.input.purpose === "confirmation" ? block.input.purpose : undefined}
     />;
   }
 

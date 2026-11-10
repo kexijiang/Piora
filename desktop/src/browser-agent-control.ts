@@ -1,3 +1,4 @@
+import { BROWSER_LOGIN_STATE_SCRIPT, browserLoginCompleted, readBrowserLoginState, type BrowserLoginState } from "./browser-login.js";
 import {
   ACTIVE_ELEMENT_PASSWORD_SCRIPT,
   AGENT_OFFSCREEN_BOUNDS,
@@ -59,6 +60,7 @@ export interface BrowserAgentActivity {
   paused: boolean;
   waiting?: boolean;
   reason?: string;
+  purpose?: "login" | "confirmation";
 }
 
 export interface BrowserAgentHost {
@@ -88,7 +90,6 @@ export interface BrowserAgentHost {
   capturePage(tabId: string, options: { stayHidden: boolean; stayAwake: boolean }): Promise<{ byteLength: number; base64: string }>;
   executeIsolated(tabId: string, worldId: number, code: string): Promise<unknown>;
   executeMain?(tabId: string, code: string): Promise<unknown>;
-  hasFullToolAccess?(sessionId: string): boolean;
   /** Tab id, main-frame navigation epoch, and URL. Different for each tab, including same-URL navigations. */
   navigationToken(tabId: string): string;
   activateSessionTab?(sessionId: string, tabId: string): void;
@@ -122,6 +123,8 @@ export interface BrowserAgentRequest {
   tabIndex?: number;
   fullPage?: boolean;
   reason?: string;
+  purpose?: "login" | "confirmation";
+  waitId?: string;
   confirmed?: boolean;
   navigationToken?: string;
 }
@@ -161,7 +164,7 @@ interface TabMeta {
 const ACTIONS = new Set([
   "open", "back", "forward", "reload", "snapshot", "click", "type", "press", "scroll",
   "screenshot", "tabs", "new_tab", "switch_tab", "close_tab", "idle", "session_closed", "evaluate",
-  "evaluate_check", "wait_begin", "wait_end",
+  "evaluate_check", "wait_begin", "wait_check", "wait_end",
 ]);
 
 function safeRef(value: string | undefined): string | undefined {
@@ -193,6 +196,8 @@ export class BrowserAgentControl {
   private readonly sessionActive = new Map<string, boolean>();
   private readonly paused = new Set<string>();
   private readonly waiting = new Map<string, string>();
+  private readonly waitIds = new Map<string, string>();
+  private readonly loginWaits = new Map<string, { tabId: string; before: BrowserLoginState | null; candidateUrl: string; samples: number }>();
   private readonly meta = new Map<string, TabMeta>();
   private readonly lastUsed = new Map<string, number>();
   private readonly lastRequestAt = new Map<string, number>();
@@ -248,7 +253,7 @@ export class BrowserAgentControl {
     return this.agentTabs.get(sessionId) ?? null;
   }
 
-  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string } {
+  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string; purpose?: "login" | "confirmation" } {
     const waiting = this.waiting.has(sessionId);
     return {
       tabId: this.agentTabId(sessionId),
@@ -256,6 +261,7 @@ export class BrowserAgentControl {
       paused: this.paused.has(sessionId),
       waiting,
       ...(waiting ? { reason: this.waiting.get(sessionId) ?? "" } : {}),
+      ...(waiting ? { purpose: this.loginWaits.has(sessionId) ? "login" as const : "confirmation" as const } : {}),
     };
   }
 
@@ -333,6 +339,8 @@ export class BrowserAgentControl {
     for (const sessionId of sessions) {
       if (!sessionId || sessionId === MANUAL_BROWSER_SESSION_ID) continue;
       this.waiting.delete(sessionId);
+      this.waitIds.delete(sessionId);
+      this.loginWaits.delete(sessionId);
       try {
         await this.restoreSession(sessionId);
       } catch (error) {
@@ -489,6 +497,7 @@ export class BrowserAgentControl {
     if (request.action === "session_closed") return this.closeSession(request.sessionId);
     if (request.action === "wait_end") return this.endWait(request);
     if (request.action === "wait_begin") return this.beginWait(request);
+    if (request.action === "wait_check") return this.checkWait(request, signal);
     if (this.waiting.has(request.sessionId)) throw new Error(WAITING_FOR_USER_ERROR);
     if (request.action === "idle") return this.idle(request.sessionId);
     if (this.paused.has(request.sessionId) && isPausedAction(request.action)) throw new Error(PAUSED_BY_USER_ERROR);
@@ -661,7 +670,7 @@ export class BrowserAgentControl {
       const decision = await this.inspectEvaluateTarget(tab.id);
       this.throwIfAborted(signal);
       const navigationToken = this.host.navigationToken(tab.id);
-      const allowed = decision.allowed || this.host.hasFullToolAccess?.(request.sessionId) === true;
+      const allowed = decision.allowed;
       return {
         action: "evaluate_check",
         allowed,
@@ -686,7 +695,7 @@ export class BrowserAgentControl {
       if (navigationTokenTabId(token) !== tab.id || this.host.navigationToken(tab.id) !== token) {
         throw new Error(EVALUATE_PAGE_CHANGED_ERROR);
       }
-      if (!decision.allowed && !this.host.hasFullToolAccess?.(request.sessionId)) throw new Error(decision.reason ?? EVALUATE_SENSITIVE_REFUSAL);
+      if (!decision.allowed) throw new Error(decision.reason ?? EVALUATE_SENSITIVE_REFUSAL);
       const value = await this.runTabOp(
         tab.id,
         () => this.host.executeMain!(tab.id, expression),
@@ -707,7 +716,7 @@ export class BrowserAgentControl {
     });
   }
 
-  private beginWait(request: BrowserAgentRequest): unknown {
+  private async beginWait(request: BrowserAgentRequest): Promise<unknown> {
     this.assertSession(request.sessionId);
     const reason = request.reason?.trim();
     if (!reason) throw new Error("wait_for_user requires reason");
@@ -715,10 +724,17 @@ export class BrowserAgentControl {
     // until the user finishes, even if the previous turn already went idle.
     this.sessionActive.set(request.sessionId, true);
     this.waiting.set(request.sessionId, reason);
+    this.waitIds.set(request.sessionId, request.waitId ?? "");
+    this.loginWaits.delete(request.sessionId);
     const tabId = this.agentTabs.get(request.sessionId) ?? null;
     if (tabId) {
       this.host.activateSessionTab?.(request.sessionId, tabId);
       this.noteUsed(tabId);
+      if (request.purpose === "login") {
+        const observation = { tabId, before: null as BrowserLoginState | null, candidateUrl: "", samples: 0 };
+        this.loginWaits.set(request.sessionId, observation);
+        try { observation.before = readBrowserLoginState(await this.isolated(tabId, BROWSER_LOGIN_STATE_SCRIPT)); } catch { /* Retry after navigation settles. */ }
+      }
     }
     this.publish(request.sessionId);
     return { action: "wait_begin", tabId, waiting: true, reason, text: reason };
@@ -726,11 +742,30 @@ export class BrowserAgentControl {
 
   private endWait(request: BrowserAgentRequest): unknown {
     this.assertSession(request.sessionId);
+    if (request.waitId && this.waitIds.get(request.sessionId) !== request.waitId) return { waiting: this.waiting.has(request.sessionId) };
     const wasWaiting = this.waiting.delete(request.sessionId);
+    this.waitIds.delete(request.sessionId);
+    this.loginWaits.delete(request.sessionId);
     const tabId = this.agentTabs.get(request.sessionId) ?? null;
     if (wasWaiting && tabId) this.metaOf(tabId).refsInvalid = true;
     this.publish(request.sessionId);
     return { action: "wait_end", tabId, waiting: false, text: "Browser wait ended. Take a new snapshot before continuing." };
+  }
+
+  private async checkWait(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
+    this.assertSession(request.sessionId);
+    if (request.waitId && this.waitIds.get(request.sessionId) !== request.waitId) return { completed: false };
+    const observation = this.loginWaits.get(request.sessionId);
+    const tab = observation ? this.tab(observation.tabId) : undefined;
+    if (!observation || !tab || tab.closed || tab.unloaded) return { completed: false };
+    const after = readBrowserLoginState(await this.isolated(tab.id, BROWSER_LOGIN_STATE_SCRIPT));
+    this.throwIfAborted(signal);
+    if (this.loginWaits.get(request.sessionId) !== observation) return { completed: false };
+    const completed = browserLoginCompleted(observation.before, after);
+    if (!observation.before && after) observation.before = after;
+    observation.samples = completed ? (observation.candidateUrl === after!.url ? observation.samples + 1 : 1) : 0;
+    observation.candidateUrl = completed ? after!.url : "";
+    return { completed: observation.samples >= 2 };
   }
 
   private async screenshot(request: BrowserAgentRequest, signal: AbortSignal): Promise<unknown> {
@@ -877,6 +912,8 @@ export class BrowserAgentControl {
     this.sessionActive.delete(sessionId);
     this.paused.delete(sessionId);
     this.waiting.delete(sessionId);
+    this.waitIds.delete(sessionId);
+    this.loginWaits.delete(sessionId);
     this.publish(sessionId);
     return { action: "session_closed", closed: tabs.length, text: `Closed ${tabs.length} browser tabs for this session.` };
   }
@@ -1252,6 +1289,7 @@ export class BrowserAgentControl {
       paused: this.paused.has(sessionId),
       waiting,
       ...(waiting ? { reason: this.waiting.get(sessionId) ?? "" } : {}),
+      ...(waiting ? { purpose: this.loginWaits.has(sessionId) ? "login" as const : "confirmation" as const } : {}),
     });
   }
 
@@ -1366,6 +1404,9 @@ function normalizeRequest(message: unknown): BrowserAgentRequest | null {
   if (candidate.fullPage === true) request.fullPage = true;
   const reason = limited(typeof candidate.reason === "string" ? candidate.reason : undefined, 2000);
   if (reason) request.reason = reason;
+  if (candidate.purpose === "login" || candidate.purpose === "confirmation") request.purpose = candidate.purpose;
+  const waitId = limited(candidate.waitId, 256);
+  if (waitId) request.waitId = waitId;
   if (candidate.confirmed === true) request.confirmed = true;
   const navigationToken = limited(typeof candidate.navigationToken === "string" ? candidate.navigationToken : undefined, 20_000);
   if (navigationToken) request.navigationToken = navigationToken;

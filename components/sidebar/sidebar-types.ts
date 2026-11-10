@@ -152,6 +152,7 @@ export interface DesktopBrowserState {
   agentPaused?: boolean;
   agentWaiting?: boolean;
   agentWaitReason?: string;
+  agentWaitPurpose?: "login" | "confirmation";
 }
 
 export interface DesktopBrowserAgentActivity {
@@ -161,6 +162,7 @@ export interface DesktopBrowserAgentActivity {
   paused: boolean;
   waiting?: boolean;
   reason?: string;
+  purpose?: "login" | "confirmation";
 }
 
 export type DesktopBrowserAgentBackend = "desktop" | "playwright";

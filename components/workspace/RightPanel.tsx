@@ -69,7 +69,8 @@ const TOOLS: Array<{ id: Exclude<RightPanelTab, "home">; icon: AliIconName; shor
   { id: "commands", icon: "code" },
   { id: "ssh", icon: "server" },
   { id: "browser", icon: "earth", shortcut: "Ctrl+T" },
-  { id: "design", icon: "workflow" },
+  // Temporarily hide the Design to Harmony entry; retain its panel and implementation below.
+  // { id: "design", icon: "workflow" },
   { id: "harmony", icon: "mobile" },
   { id: "files", icon: "folder-open", shortcut: "Ctrl+P" },
 ];

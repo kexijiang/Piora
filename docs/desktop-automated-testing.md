@@ -148,3 +148,7 @@ node --test lib/desktop-e2e.test.mjs
 场景先在对话 A 登录并写入站点数据，然后在对话 B 核对 HttpOnly 会话 cookie、localStorage 和 IndexedDB。确认独立 profile 中的加密 cookie 快照已写入后，运行器终止本次拥有的开发进程树，保留隔离 profile 再启动，重新核对三个存储边界。该重启是受控进程终止，不代表正常菜单退出、系统注销或突然断电。
 
 `browser-persistence-evidence.json` 记录各阶段的合成数据核对；`result.json` 记录启动和重启 PID、每一步及清理结果。首个启动失败、重测和通过分别保留；没有运行到的阶段不能算通过。本场景不验证原 issue #275 的特定网站、企业 SSO、远端模型操控或发布包。特定网站复现需要单独记录是否为服务端过期、主动注销或身份策略导致。
+
+## 浏览器登录自动继续
+
+`npm run test:desktop:e2e -- --scenario browser-login` 使用隔离的真实 Electron 开发窗口、本地确定性模型和本地登录页面，验证发送任务后自动展开浏览器、没有登录卡片或完成按钮、通过原生页面 UI 登录后继续工具调用并回复；同时核对批准模式、能力包菜单和新会话快捷卡片已移除。模型与登录凭据均为合成夹具，不代表真实模型、第三方账号、SSO、后台 Playwright 或安装包验收。产物和失败清理由同一生命周期入口管理。

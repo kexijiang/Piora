@@ -29,7 +29,7 @@ test("landing commands keep explicit follow-up and durable identity through the 
   assert.equal(calls[2][1].prompt.commandInput.submissionId, "launch-id");
   assert.equal(calls[2][1].prompt.commandInput.afterPrompt, "随后提问");
   assert.equal(calls[2][1].prompt.id, "launch-id");
-  assert.equal(calls[2][1].prompt.permissionMode, "ask");
+  assert.equal("permissionMode" in calls[2][1].prompt, false);
   assert.equal(await send("普通问题"), false);
 });
 
@@ -67,7 +67,7 @@ test("new tasks start from one production composer with progressive context cont
   assert.match(picker, /contextControl=\{\([\s\S]*?\{projectControl\}[\s\S]*?<SystemPromptSelector/);
   assert.doesNotMatch(picker, /<textarea|<select|stepNumber|会话准备|准备好模型和项目/);
   assert.match(launcher, /t\("newSession\.title"\)/);
-  assert.match(launcher, /<StarterCards/);
+  assert.doesNotMatch(launcher, /StarterCards|newSession\.description|newSession\.projectDescription/);
 
   assert.match(picker, /fetchModelCatalog\(\{/);
   assert.match(picker, /cwd: requestCwd/);

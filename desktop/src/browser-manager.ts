@@ -1,6 +1,5 @@
 import { mkdirSync, readFileSync, readdirSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { hasFullToolAccess } from "./tool-permission.js";
 import {
   app,
   BrowserWindow,
@@ -65,6 +64,7 @@ export interface DesktopBrowserState {
   agentPaused?: boolean;
   agentWaiting?: boolean;
   agentWaitReason?: string;
+  agentWaitPurpose?: "login" | "confirmation";
 }
 
 export interface ImportedChromeBookmark {
@@ -112,7 +112,7 @@ interface BrowserAgentBinding {
   pauseSession(sessionId: string): void;
   resumeSession(sessionId: string): void;
   agentTabId(sessionId: string): string | null;
-  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string };
+  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string; purpose?: "login" | "confirmation" };
   noteUsed(tabId: string): void;
   idleTabIds(): string[];
   closeIdleTabs(): void;
@@ -700,6 +700,7 @@ export class DesktopBrowserManager {
         agentPaused: agent.paused,
         agentWaiting: agent.waiting,
         ...(agent.waiting && agent.reason ? { agentWaitReason: agent.reason } : {}),
+        ...(agent.waiting && agent.purpose ? { agentWaitPurpose: agent.purpose } : {}),
       } : {}),
       vaultProtected: Boolean(active?.vaultProtected),
       vaultMatches: this.credentialVault().candidates(url, false).length,
@@ -1187,7 +1188,6 @@ export class DesktopBrowserManager {
       executeMain: (tabId: string, code: string) => (
         this.credentialGuardedRead(tabId, contents => contents.executeJavaScript(`globalThis.eval(${JSON.stringify(code)})`))
       ),
-      hasFullToolAccess: (sessionId: string) => hasFullToolAccess(this.startup.agentDirectory?.(), sessionId),
       navigationToken: (tabId: string) => {
         const tab = this.findTab(tabId);
         if (!tab) return formatNavigationToken(tabId, 0, "");
@@ -1255,7 +1255,7 @@ export class DesktopBrowserManager {
           try { contents.debugger.off("detach", listener); } catch { /* The tab is already gone. */ }
         };
       },
-      pushActivity: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean; waiting?: boolean; reason?: string }) => {
+      pushActivity: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean; waiting?: boolean; reason?: string; purpose?: "login" | "confirmation" }) => {
         if (this.window.isDestroyed() || this.window.webContents.isDestroyed()) return;
         this.window.webContents.send(BROWSER_AGENT_ACTIVITY_CHANNEL, activity);
         this.sendState();

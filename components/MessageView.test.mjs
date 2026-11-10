@@ -32,8 +32,8 @@ function renderMessage(message, props = {}) {
   );
 }
 
-test("a running browser wait card shows the reason and resolve buttons", () => {
-  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "wait-1", toolName: "browser", input: { action: "wait_for_user", reason: "请完成登录" } }] };
+test("a non-login handoff preserves its reason and explicit confirmation buttons", () => {
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "wait-1", toolName: "browser", input: { action: "wait_for_user", reason: "请完成登录", purpose: "confirmation" } }] };
   const running = renderMessage(message, { sessionId: "550e8400-e29b-41d4-a716-446655440000" });
   assert.match(running, /请完成登录/);
   assert.match(running, /我已完成，继续/);
@@ -446,4 +446,17 @@ test("failed recovery messages offer edit alongside retry, while successful mess
   assert.match(html, /重试/);
   assert.match(html, /unavailable/);
   assert.doesNotMatch(renderMessage({ ...message, sendError: undefined }, props), /从此处编辑/);
+});
+
+
+test("login handoffs render no active or successful confirmation card", () => {
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "login-1", toolName: "browser", input: { action: "wait_for_user", purpose: "login", reason: "Sign in to GitHub" } }] };
+  const running = renderMessage(message, { sessionId: "550e8400-e29b-41d4-a716-446655440000" });
+  assert.doesNotMatch(running, /browser-user-wait|我已完成，继续|Sign in to GitHub/);
+  const result = { role: "toolResult", toolCallId: "login-1", content: [], details: { status: "continued", purpose: "login", backend: "desktop" } };
+  const complete = renderMessage(message, { toolResults: new Map([["login-1", result]]) });
+  assert.doesNotMatch(complete, /browser-user-wait|我已完成，继续/);
+  const unsupported = renderMessage(message, { toolResults: new Map([["login-1", {...result, details:{status:"unsupported",backend:"playwright"}}]]) });
+  assert.doesNotMatch(unsupported, /<section class="browser-user-wait"|我已完成，继续/);
+
 });

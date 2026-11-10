@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { ToolResultMessage } from "@/lib/types";
+import { browserWaitPurpose, type BrowserWaitPurpose } from "@/lib/browser-wait-policy";
 
 const OPEN_AGENT_BROWSER_EVENT = "piora:open-agent-browser";
 
@@ -36,22 +37,25 @@ export function BrowserUserWaitCard({
   reason,
   result,
   historical,
+  purpose,
 }: {
   sessionId?: string;
   toolCallId?: string;
   reason: string;
   result?: ToolResultMessage;
   historical: boolean;
+  purpose?: BrowserWaitPurpose;
 }) {
   const { t } = useI18n();
   const unsupported = resultStatus(result) === "unsupported";
+  const login = browserWaitPurpose(reason, purpose) === "login";
   const running = !unsupported && !historical && (!result || result.isStreaming === true);
   const [backend, setBackend] = useState<"desktop" | "playwright" | null>(null);
   const [busy, setBusy] = useState<"continue" | "cancel" | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!running || !sessionId) return;
+    if (!running || !sessionId || login) return;
     let cancelled = false;
     let timer = 0;
     const load = async () => {
@@ -74,7 +78,7 @@ export function BrowserUserWaitCard({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [running, sessionId]);
+  }, [running, sessionId, login]);
 
   const decide = async (decision: "continue" | "cancel") => {
     if (!sessionId || !toolCallId || busy) return;
@@ -98,6 +102,10 @@ export function BrowserUserWaitCard({
   };
 
   const finishedKey = statusKey(result);
+  if (login) {
+    if (running || resultStatus(result) === "continued" || historical) return null;
+    return finishedKey ? <p role="status" className="browser-user-wait-status">{t(finishedKey)}</p> : null;
+  }
   return <section className="browser-user-wait" aria-live="polite">
     <p className="browser-user-wait-title">{t("browser.waitTitle")}</p>
     {running ? <p className="browser-user-wait-reason">{reason}</p> : <p className="browser-user-wait-status">{finishedKey ? t(finishedKey) : (resultText(result) || reason)}</p>}
