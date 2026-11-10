@@ -13,9 +13,4 @@
 - [聊天命令处理与 UI 重设计](design/chat-command-flow.md)：输入语义、执行状态、接口及验收证据（未发布）
 - [版本更新说明](../CHANGELOG.md)
 
-历史方案保留原始上下文，不代表当前实现或未完成工作：
-
-- [性能审查归档](archive/performance-2026-09-07/README.md)
-- [旧 Harmony 指南](archive/harmony-2026-09-27/previous-device-guide.md)
-- [本次仓库清理决定](audits/repository-cleanup-manifest.json)
-- [Harmony H00–H22 实施与验收记录](audits/harmony-2026-09-27/progress.md)
+仓库保留使用、开发、架构和发布文档；已移除的历史报告、设计预览与验收截图可从 Git 历史查阅。新的自动化测试产物保存在忽略的 `.verification/` 或 `test-results/` 目录。

@@ -9,19 +9,13 @@
 - 思考的流式预览随最近完成的段落首行更新。历史思考保留原始块索引，搜索跳转先展开对应过程再定位消息。
 - 手动折叠以点击控件的位置为阅读锚点，配合虚拟列表测量保持阅读位置。
 
-## 完成后保留步骤
+## 生成组件截图
 
-![当前轮完成后的整轮入口与步骤](chat-process-completed.png)
-
-## 手动收起
-
-![收起过程后仍然显示回答](chat-process-folded.png)
-
-截图使用合成测试会话，可通过以下命令重新生成原始截图：
+截图使用合成测试会话，可通过以下命令生成当前组件的截图：
 
 ```powershell
 $env:PIORA_COMPACT_SCREENSHOTS = '1'
 node --test components/CompactProcess.browser.test.mjs
 ```
 
-原始截图位于 `test-results/compact-process/`；上方示例分别对应 `auto-completed.png` 与 `completed.png`。
+原始截图位于 `test-results/compact-process/`；`auto-completed.png` 对应当前轮完成后的入口与步骤，`completed.png` 对应手动收起过程后仍然显示回答。

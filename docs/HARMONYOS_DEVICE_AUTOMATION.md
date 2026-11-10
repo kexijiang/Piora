@@ -12,5 +12,3 @@
 - [当前架构](harmony/architecture.md)
 - [测试与发布](harmony/testing.md)
 - [迁移兼容](harmony/migration.md)
-
-[旧版指南原文](archive/harmony-2026-09-27/previous-device-guide.md)仅作历史参考。

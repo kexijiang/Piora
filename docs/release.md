@@ -125,4 +125,4 @@ Stable CI first runs the Ubuntu source gate, builds the Windows installer, verif
 - For installed updates, test download, busy/unsaved deferral, installation, restart and data retention.
 - Record the exact commit, run and Release URLs. Historical acceptance/design documents describe their own tested versions, not automatic proof for the new release.
 
-See [README](../README.md), [desktop development](../desktop/README.md), [release checklist](open-source/LAUNCH_CHECKLIST.md) and [black-screen troubleshooting](open-source/BLACK_SCREEN_TROUBLESHOOTING.md).
+See [README](../README.md), [desktop development](../desktop/README.md) and [black-screen troubleshooting](open-source/BLACK_SCREEN_TROUBLESHOOTING.md).
