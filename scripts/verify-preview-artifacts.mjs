@@ -18,6 +18,13 @@ export async function runInParallel(tasks) {
   if (failures.length) throw new AggregateError(failures, `Preview artifact validation failed in ${failures.length} branch(es)`);
 }
 
+export async function runAfterInstallation(install, tasks) {
+  // NSIS closes processes with the application executable's name. It must
+  // finish before any isolated, unpacked or installed Electron probe starts.
+  await install();
+  await runInParallel(tasks);
+}
+
 function run(executable, args, options = {}) {
   return new Promise((resolveRun, reject) => {
     const child = spawn(executable, args, { stdio: "inherit", windowsHide: true, ...options });
@@ -39,19 +46,20 @@ async function main() {
   await Promise.all([access(unpacked), access(installer), access(extractor)]);
   const tempRoot = verificationTempRoot();
   const installDirectory = await mkdtemp(join(tempRoot, "piora-preview-install-"));
+  const installed = join(installDirectory, "Piora.exe");
   const tempRelative = relative(tempRoot, installDirectory);
   if (!tempRelative || tempRelative.startsWith("..") || isAbsolute(tempRelative)) throw new Error("Unsafe preview install directory");
   const node = process.execPath;
   const script = (...args) => run(node, args);
   try {
-    await runInParallel([
+    await runAfterInstallation(async () => {
+      await timings.measure("nsis-install", () => run(installer, ["/S", `/D=${installDirectory}`], { windowsVerbatimArguments: true }), { installDirectory });
+      await access(installed);
+    }, [
       () => timings.measure("packaged-web-total", () => script("scripts/verify-packaged-web.mjs")),
       async () => {
         await timings.measure("payload-regressions", () => run(node, ["--test", "lib/portable-payload.test.mjs"], { env: { ...process.env, PIORA_TEST_7ZA: extractor } }));
         await timings.measure("unpacked-smoke", () => script("scripts/smoke-test-portable.mjs", unpacked, "--expected-version", tag, "--packaged-runtime", "--expected-brand", brand));
-        await timings.measure("nsis-install", () => run(installer, ["/S", `/D=${installDirectory}`], { windowsVerbatimArguments: true }), { installDirectory });
-        const installed = join(installDirectory, "Piora.exe");
-        await access(installed);
         await timings.measure("installed-smoke", () => script("scripts/smoke-test-portable.mjs", installed, "--expected-version", tag, "--packaged-runtime", "--expected-brand", brand));
         await timings.measure("electron-payload-integrity", () => script("scripts/verify-portable-runtime.mjs", join(releaseRoot, "win-unpacked"), tag));
       },
