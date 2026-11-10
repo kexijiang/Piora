@@ -9,6 +9,7 @@ import {
   type RefObject,
 } from "react";
 import { useI18n } from "@/hooks/useI18n";
+import { useLaboratorySettings } from "@/hooks/useLaboratorySettings";
 import type { AttachedFile } from "@/hooks/useAgentSession";
 import { fetchModelCatalog, type ModelCatalogEntry } from "@/lib/model-catalog-client";
 import { buildSessionProjectGroups, getProjectLabel } from "@/lib/session-project-groups";
@@ -28,6 +29,7 @@ import { SystemPromptSelector } from "./SystemPromptSelector";
 import { savePendingPrompt } from "@/lib/prompt-recovery";
 import type { ChatInputOptions } from "@/lib/chat-command-types";
 import { persistentChatInputOptions } from "@/lib/chat-command-input";
+import { DEFAULT_WORKFLOW_TURN_BUDGET } from "@/lib/workflow-types";
 
 interface ProjectChoice {
   root: string;
@@ -58,6 +60,7 @@ export function NewSessionProjectPicker({
   projectPickerRequestKey?: number;
 }) {
   const { t } = useI18n();
+  const laboratory = useLaboratorySettings();
   const localChatInputRef = useRef<ChatInputHandle>(null);
   const effectiveChatInputRef = chatInputRef ?? localChatInputRef;
   const draftKey = useRef(`new-task:${createLaunchId()}`).current;
@@ -396,13 +399,16 @@ export function NewSessionProjectPicker({
       <NewSessionLauncher
         projectLabel={selectedProject ? getProjectLabel(selectedProject.root) : null}
       >
+        {!laboratory.ready && laboratory.error && <div className={styles.statusRow} role="alert">{t("laboratory.error")} <button type="button" onClick={() => { void laboratory.refresh(); }}>{t("workflow.refresh")}</button></div>}
         <ChatInput
           ref={effectiveChatInputRef}
           variant="launcher"
           onSend={handleLandingSend}
           onAbort={() => {}}
           isStreaming={false}
-          sendDisabled={!selectedProject && !projectlessCwd}
+          workflow={laboratory.planGoalEnabled ? { mode: "agent", turnBudget: DEFAULT_WORKFLOW_TURN_BUDGET } : undefined}
+          workflowEnabled={laboratory.ready ? laboratory.planGoalEnabled : undefined}
+          sendDisabled={!laboratory.ready || !selectedProject && !projectlessCwd}
           model={selectedModel}
           isAutoModelSelection={modelSelectionBlocked}
           modelList={models}

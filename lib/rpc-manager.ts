@@ -1,4 +1,7 @@
 import { createConversationFork } from "./session-fork";
+import { findWorkflowRuntime, getWorkflowRuntime, readWorkflowSnapshot, WorkflowError } from "./workflow-runtime";
+import { parseWorkflowAction, parseWorkflowPromptOptions, parseWorkflowRevision } from "./workflow-input";
+import type { WorkflowAction, WorkflowPromptOptions } from "./workflow-types";
 import { recordAgentTerminalEvent } from "./agent-terminal-registry";
 import { StreamingMetricsTracker } from "./streaming-metrics";
 import { PromptInputEnrichment } from "./prompt-input-enrichment";
@@ -65,7 +68,7 @@ import { bindTeamPromptContext, validateTeamExecutionContext } from "./team-prom
 import type { TeamExecutionContext } from "./team-types";
 import type { SessionMessageSourceKind, SessionRoomContext } from "./session-message-types";
 import { captureTeamRuntimeToolResult } from "./team-runtime-evidence";
-import { assertRoomSessionIsolated, getRoom } from "./room-store";
+import { assertRoomSessionIsolated, getRoom, listRooms } from "./room-store";
 import { TeamError } from "./team-errors";
 import {
   DEVICE_CONTROL_AGENT_TOOLS,
@@ -233,6 +236,7 @@ export class AgentSessionWrapper {
   private systemPromptReloadApplied = 0;
   private systemPromptReloading = false;
   private onDestroyCallbacks = new Set<() => void>();
+  private unsubscribeWorkflow?: () => void;
   private activePromptRun: PromptRunIdentity | undefined;
   private readonly promptInputEnrichment = new PromptInputEnrichment();
   private activeCommandId: string | undefined;
@@ -395,6 +399,7 @@ export class AgentSessionWrapper {
     assertRemotePolicyCommand(this.remotePolicy, { type: "prompt", message });
     await this.waitForExtensionsBound();
     if (!this._alive || this.stopping) throw new Error("Command cancelled");
+    this.assertWorkflowExtensionCommand(message);
     const abortGeneration = this.abortGeneration;
     let ownedRun: PromptRunIdentity | undefined;
     let fileChangeCapture: ReturnType<typeof beginPromptFileChanges> | undefined;
@@ -640,6 +645,8 @@ export class AgentSessionWrapper {
 
   /** Start one ordinary prompt with a stable command correlation id. */
   async startTrackedPrompt(input: {
+    workflow?: WorkflowPromptOptions;
+    workflowAction?: WorkflowAction;
     promptSuffix?: string;
     inputMode?: "text";
     commandId: string;
@@ -984,7 +991,29 @@ export class AgentSessionWrapper {
   }
 
   private shouldWaitForExtensions(type: string): boolean {
-    return type === "prompt" || type === "steer" || type === "follow_up" || type === "get_commands";
+    return type === "prompt" || type === "steer" || type === "follow_up" || type === "get_commands" || type === "workflow_configure" || type === "workflow_action";
+  }
+
+  private observeWorkflow() {
+    const workflow = getWorkflowRuntime(this.sessionId);
+    if (!this.unsubscribeWorkflow) this.unsubscribeWorkflow = workflow.subscribe(snapshot => {
+      if (this._alive) this.emit({ type: "workflow_update", sessionId: this.sessionId, snapshot });
+    });
+    return workflow;
+  }
+
+  private assertWorkflowSession(): void {
+    if (this.runtimeProfile !== "normal" || this.remotePolicy === "notes" || listRooms(this.sessionId).some(room => room.members.some(member => member.binding.sessionId === this.sessionId))) {
+      throw new WorkflowError("Plan and Goal are available in ordinary chats only.", "WORKFLOW_UNAVAILABLE", 403);
+    }
+  }
+
+  private assertWorkflowExtensionCommand(message: string, inputMode?: unknown, mode = readWorkflowSnapshot(this.sessionId).mode): void {
+    if (mode === "agent" || inputMode === "text") return;
+    const invocation = message.trimStart().match(/^\/([^\s]+)/)?.[1];
+    if (invocation && this.inner.extensionRunner.getRegisteredCommands().some(command => command.invocationName === invocation)) {
+      throw new WorkflowError("Switch to Agent mode before running an extension command.", "WORKFLOW_EXTENSION_COMMAND", 409);
+    }
   }
 
   private async withFinalRunningNotification<T>(operation: () => Promise<T>): Promise<T> {
@@ -1177,6 +1206,26 @@ export class AgentSessionWrapper {
     }
 
     switch (type) {
+      case "workflow_configure": {
+        this.assertWorkflowSession();
+        this.assertSessionIdle("change workflow mode");
+        const options = parseWorkflowPromptOptions(command.workflow);
+        if (!options) throw new WorkflowError("Workflow selection is required", "INVALID_WORKFLOW", 400);
+        const snapshot = this.observeWorkflow().configure({ ...options, expectedRevision: parseWorkflowRevision(command.expectedRevision) });
+        return { snapshot, promptStarted: false };
+      }
+
+      case "workflow_action": {
+        this.assertWorkflowSession();
+        const action = parseWorkflowAction(command.workflowAction);
+        if (["approve", "resume"].includes(action.action)) throw new WorkflowError("Execution decisions must use the workflow command queue", "INVALID_WORKFLOW", 400);
+        if (!["pause", "cancel", "set_budget"].includes(action.action)) this.assertSessionIdle("change workflow state");
+        const workflow = this.observeWorkflow();
+        workflow.action(action);
+        if (["pause", "cancel"].includes(action.action) && this.isRunning()) await this.send({ type: "abort" });
+        return { snapshot: workflow.getSnapshot(), promptStarted: false };
+      }
+
       case "prompt": {
         if (this.inner.model && readRemovedProviders().includes(this.inner.model.provider)) throw new Error("当前渠道已移除，请选择其他模型或在模型设置中恢复该渠道。");
         // Fire and forget — events come via subscribe
@@ -1213,11 +1262,31 @@ export class AgentSessionWrapper {
         const commandId = typeof command.commandId === "string" && command.commandId.trim()
           ? command.commandId.trim()
           : `cmd_${randomUUID()}`;
-        const originalPromptMessage = String(command.message ?? "");
-        if (!streamingBehavior) this.pendingClientPromptId = typeof command.clientPromptId === "string" ? command.clientPromptId : undefined;
+        let originalPromptMessage = String(command.message ?? "");
+        const workflowSelection = parseWorkflowPromptOptions(command.workflow);
+        this.assertWorkflowExtensionCommand(originalPromptMessage, command.inputMode, workflowSelection?.mode);
+        let preparedWorkflow: ReturnType<typeof getWorkflowRuntime> | undefined;
+        const prepareWorkflow = () => {
+          if (streamingBehavior || !(command.workflow || command.workflowAction || findWorkflowRuntime(this.sessionId))) return;
+          const selection = workflowSelection;
+          const decision = command.workflowAction === undefined ? undefined : parseWorkflowAction(command.workflowAction);
+          const workflow = this.observeWorkflow();
+          const current = workflow.getSnapshot();
+          if ((selection && selection.mode !== "agent") || decision || current.mode !== "agent") {
+            this.assertWorkflowSession();
+            if (command.source && command.source !== "ui") throw new WorkflowError("Workflow execution requires an ordinary chat submission.", "WORKFLOW_UNAVAILABLE", 403);
+          }
+          if (selection && (selection.mode !== current.mode || selection.turnBudget !== undefined && selection.turnBudget !== current.turnBudget)) workflow.configure(selection);
+          if (decision) {
+            const result = workflow.action(decision);
+            if (!result.prompt) throw new WorkflowError("This workflow decision has already been applied.");
+            originalPromptMessage = result.prompt;
+            preparedWorkflow = workflow;
+          }
+          workflow.preparePrompt(originalPromptMessage);
+          preparedWorkflow = workflow;
+        };
         const resolvedPromptMaterials = promptMaterials?.length ? resolvePromptMaterialReferences(promptMaterials) : [];
-        const runtimePromptMessage = originalPromptMessage;
-        if (!streamingBehavior) this.promptAdmissionBusy = true;
         const promptText = compactTaskActivityText(originalPromptMessage);
         this.fallbackTaskTitle = compactTaskActivityText(originalPromptMessage, 80) || this.fallbackTaskTitle;
         const isSlashCommand = !promptImages?.length && !promptMaterials?.length && originalPromptMessage.trimStart().startsWith("/");
@@ -1234,6 +1303,12 @@ export class AgentSessionWrapper {
               ...(roomContext ? { roomContext } : {}),
             })
           : this.activePromptRun!;
+        // beginPromptRun may refuse admission (for example during an update).
+        // Do not latch the busy flag or client receipt before that fence passes.
+        if (!streamingBehavior) {
+          this.pendingClientPromptId = typeof command.clientPromptId === "string" ? command.clientPromptId : undefined;
+          this.promptAdmissionBusy = true;
+        }
         const fileChangeCapture = ownsPromptRun ? beginPromptFileChanges(promptRun, this.cwd) : null;
         if (ownsPromptRun) {
           this.activePromptRun = promptRun;
@@ -1258,6 +1333,10 @@ export class AgentSessionWrapper {
           }
         };
         const promptTask = Promise.resolve().then(async () => {
+          // All fallible synchronous admission checks run before changing workflow
+          // state. From here every error settles the admitted workflow and queue.
+          assertNotAborted();
+          prepareWorkflow();
           if (fileChangeCapture) await fileChangeCapture.initial.catch(() => {});
           if (!streamingBehavior) {
             const pendingModel = readPendingSessionModel(this.sessionId);
@@ -1293,7 +1372,7 @@ export class AgentSessionWrapper {
             return this.promptInputEnrichment.run(text => {
               const enriched = typeof command.promptSuffix === "string" && command.promptSuffix ? `${text}\n\n${command.promptSuffix}` : text;
               return resolvedPromptMaterials.length ? buildPromptWithMaterials(enriched, resolvedPromptMaterials) : enriched;
-            }, () => this.inner.prompt(runtimePromptMessage, {
+            }, () => this.inner.prompt(originalPromptMessage, {
               ...(command.inputMode === "text" ? { expandPromptTemplates: false } : {}),
               ...(promptImages?.length ? { images: promptImages } : {}),
               ...(streamingBehavior ? { streamingBehavior } : {}),
@@ -1335,6 +1414,7 @@ export class AgentSessionWrapper {
           });
         })
           .then(async () => {
+          if (!streamingBehavior && abortGeneration === this.abortGeneration && this._alive) preparedWorkflow?.onPromptSettled();
           this.promptRunning = false;
           if (fileChangeCapture) await finishPromptFileChanges(fileChangeCapture, abortGeneration !== this.abortGeneration ? "aborted" : "complete");
           if (ownsPromptRun) {
@@ -1351,6 +1431,7 @@ export class AgentSessionWrapper {
         }).catch(async (error) => {
           this.promptRunning = false;
           const cancelled = abortGeneration !== this.abortGeneration || !this._alive;
+          if (!streamingBehavior && !cancelled) preparedWorkflow?.onPromptError(error instanceof Error ? error.message : String(error));
           if (fileChangeCapture) await finishPromptFileChanges(fileChangeCapture, cancelled ? "aborted" : "error");
           if (ownsPromptRun) {
             await finishPromptRun(promptRun, "error");
@@ -1381,6 +1462,7 @@ export class AgentSessionWrapper {
       }
 
       case "abort": {
+        findWorkflowRuntime(this.sessionId)?.onAbort();
         const receipt = () => ({
           accepted: true,
           ...(this.abortedQueuedMessages ? { queuedMessages: this.abortedQueuedMessages } : {}),
@@ -1459,6 +1541,7 @@ export class AgentSessionWrapper {
         }) : undefined;
         return {
           sessionId: this.inner.sessionId,
+          ...(this.runtimeProfile === "normal" ? { workflow: readWorkflowSnapshot(this.sessionId) } : {}),
           stats: summarizeSessionStats(this.inner.sessionManager),
           runtimeProfile: this.runtimeProfile,
           remotePolicy: this.remotePolicy,
@@ -1881,6 +1964,13 @@ export class AgentSessionWrapper {
         if (this.promptRunning || this.inner.isStreaming || this.inner.isCompacting || this.inner.isBashRunning) {
           throw new Error("Cannot run a shell command while the session is busy");
         }
+        const selection = parseWorkflowPromptOptions(command.workflow);
+        const workflow = readWorkflowSnapshot(this.sessionId);
+        if ((selection?.mode ?? workflow.mode) !== "agent") throw new WorkflowError("Switch to Agent mode before running a shell command.", "WORKFLOW_SHELL_COMMAND", 409);
+        if (selection && workflow.mode !== "agent") {
+          this.assertWorkflowSession();
+          this.observeWorkflow().configure({ ...selection, expectedRevision: workflow.revision });
+        }
         this.beginRun("command", command.command);
         const execution = this.inner.executeBash(
           command.command as string,
@@ -1930,6 +2020,8 @@ export class AgentSessionWrapper {
   destroy(): void {
     if (!this._alive) return;
     this._alive = false;
+    findWorkflowRuntime(this.sessionId)?.dispose();
+    this.unsubscribeWorkflow?.();
     const writers: Promise<unknown>[] = [this.abortCleanupTask, ...this.promptTasks];
     if (this.promptRunning || this.inner.isStreaming) {
       writers.push(this.inner.abort());
@@ -2724,6 +2816,11 @@ export async function startRpcSession(
   let startupWrapper: AgentSessionWrapper | undefined;
   const finishStartingSession = trackStartingSession(cwd);
   const starting = (async () => {
+    // destroy() removes the live wrapper before its async writers and extension
+    // shutdown settle. Fence a replacement so those callbacks cannot touch its
+    // newly attached workflow or overwrite the session it is about to restore.
+    await drainSessionFileOperations([sessionId]);
+    assertSessionNotMutating(sessionId);
     // Some extensions access the SDK's global theme even outside the terminal UI.
     initTheme();
     const agentDir = getAgentDir();

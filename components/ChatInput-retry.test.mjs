@@ -22,9 +22,10 @@ function composer(onSend) {
     pendingFileCountRef: { current: 0 },
     onBuiltinCommand: undefined, onQueueInput: undefined, contextUsage: null,
     commandInputOptions: {},
+    workflow: undefined, workflowEnabled: true, DEFAULT_WORKFLOW_TURN_BUDGET: 10,
     commandCatalog: createChatCommandCatalog([]), slashCommands: undefined,
     createChatCommandCatalog, parseChatInput,
-    setCommandInputOptions: value => { env.commandInputOptions = value; },
+    setCommandInputOptions: value => { env.commandInputOptions = typeof value === "function" ? value(env.commandInputOptions) : value; },
     shouldMaterializeDirectPrompt: () => false, t: (key) => key,
     sendingRef: { current: false }, draftKeyRef: { current: "session" },
     retryOfPromptIdsRef: { current: [] },
@@ -53,12 +54,63 @@ function composer(onSend) {
   env.replyDraftRef = { current: { value: env.value, spans: [] } };
   env.resetReplyDraft = (draft) => { env.replyDraftRef.current = draft; env.setValue(draft.value); };
   env.clearInput = () => {
+    env.setCommandInputOptions({});
     env.drafts.delete(env.draftKeyRef.current);
     env.retryOfPromptIdsRef.current = [];
     env.setValue(""); env.setAttachedImages([]); env.setAttachedFiles([]);
   };
   return { env, send: new Function("env", `with (env) { ${js}; return handleSend; }`)(env) };
 }
+
+test("a plan revision send releases its selection so approval defaults the next message to Agent", async () => {
+  const submissions = [];
+  const { env, send } = composer(async (...args) => { submissions.push(args); return true; });
+  env.workflow = { mode: "plan", turnBudget: 10 };
+  await send();
+  assert.deepEqual(submissions[0][5].workflow, { mode: "plan", turnBudget: 10 });
+  assert.equal(env.commandInputOptions.workflow, undefined);
+  env.workflow = { mode: "agent", turnBudget: 10 };
+  env.setValue("The next message after approval");
+  await send();
+  assert.equal(submissions[1][5].workflow.mode, "agent");
+});
+
+test("confirmed laboratory disable ignores old workflow options in recovered drafts and retries", async () => {
+  const submissions = [];
+  const { env, send } = composer(async (...args) => { submissions.push(args); return true; });
+  env.workflowEnabled = false;
+  env.commandInputOptions = { workflow: { mode: "goal", turnBudget: 7 } };
+  await send({ workflow: { mode: "plan", turnBudget: 4 } });
+  assert.deepEqual(submissions[0][5].workflow, { mode: "agent" });
+  assert.equal(env.commandInputOptions.workflow?.mode === "goal" || env.commandInputOptions.workflow?.mode === "plan", false);
+});
+
+test("new workflow selections remain visible until confirmed and failed sends retain their mode", async () => {
+  for (const accepted of [true, false]) {
+    const { env, send } = composer(async () => accepted);
+    env.workflow = { mode: "agent", turnBudget: 10 };
+    env.commandInputOptions = { workflow: { mode: "goal", turnBudget: 7 } };
+    await send();
+    assert.deepEqual(env.commandInputOptions.workflow, { mode: "goal", turnBudget: 7 });
+    assert.equal(env.value, accepted ? "" : " original\nmessage ");
+  }
+});
+
+test("choosing a slash command keeps the selected workflow in its submission snapshot", async () => {
+  const submissions = [];
+  const { env, send } = composer(async (...args) => { submissions.push(args); return true; });
+  env.workflow = { mode: "agent", turnBudget: 10 };
+  env.commandInputOptions = { workflow: { mode: "plan", turnBudget: 10 }, afterPrompt: "old arguments" };
+  Object.assign(env, { textareaRef: { current: null }, setSlashMenuOpen() {}, setSlashActiveIndex() {}, requestAnimationFrame() {}, resizeComposerTextarea() {} });
+  const callback = source.slice(source.indexOf("  const applySlashCommand = useCallback"), source.indexOf("  const sendQueued = useCallback"));
+  const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const choose = new Function("env", `with(env) { ${js}; return applySlashCommand; }`)(env);
+  choose({ name: "review", key: "prompt:review", source: "prompt" });
+  assert.equal(env.commandInputOptions.afterPrompt, undefined);
+  assert.equal(env.commandInputOptions.workflow.mode, "plan");
+  await send();
+  assert.equal(submissions[0][5].workflow.mode, "plan");
+});
 
 test("workspace readiness blocks submission without clearing text, attachments or reply ownership", async () => {
   const submissions = [];

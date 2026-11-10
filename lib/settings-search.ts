@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "extensions" | "skills" | "plugins" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
+export type SettingsKey = "laboratory" | "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "extensions" | "skills" | "plugins" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
 
 export interface SettingsPage {
   key: SettingsKey;
@@ -35,6 +35,7 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
   ] },
   { labelKey: "settings.group.appData", pages: [
     { key: "general", labelKey: "settings.page.app", descriptionKey: "settings.page.appDescription", icon: "layout" },
+    { key: "laboratory", labelKey: "laboratory.title", descriptionKey: "laboratory.description", icon: "rocket" },
     { key: "data", labelKey: "settings.page.data", descriptionKey: "settings.page.dataDescription", icon: "database" },
     { key: "usage", labelKey: "usage.title", descriptionKey: "usage.description", icon: "chart-no-axes-column" },
     { key: "archived", labelKey: "archive.title", descriptionKey: "archive.description", icon: "archive" },
@@ -62,6 +63,8 @@ export interface SettingsSearchItem {
 }
 
 export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
+  { id: "laboratory", section: "laboratory", labelKey: "laboratory.title", descriptionKey: "laboratory.description", keywords: ["labs", "experimental", "实验室", "实验"] },
+  { id: "laboratory.planGoal", section: "laboratory", labelKey: "laboratory.planGoal", descriptionKey: "laboratory.planGoalDescription", keywords: ["plan", "goal", "mode", "计划", "目标", "模式", "实验室"] },
   { id: "desktopExtensions", section: "desktopExtensions", labelKey: "desktopExtensions.title", descriptionKey: "desktopExtensions.description", keywords: ["dsh-pet", "desktop", "桌宠", "桌面扩展"] },
   { id: "shell", section: "shell", labelKey: "shell.title", descriptionKey: "shell.description", keywords: ["terminal", "shell", "PowerShell", "终端", "命令"] },
   { id: "shell.history", section: "shell", labelKey: "shell.history", descriptionKey: "shell.nativeHistoryHint", keywords: ["history", "PowerShell", "PSReadLine", "历史", "提示", "补全"] },

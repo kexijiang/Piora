@@ -34,17 +34,22 @@ test("landing commands keep explicit follow-up and durable identity through the 
 });
 
 test("initial command handoff forwards options and restores a failed send without an unhandled rejection", async () => {
-  const callbacks = chatWindow.slice(chatWindow.lastIndexOf("  useEffect(() => {", chatWindow.indexOf("    if (!isNew || !initialPrompt")), chatWindow.indexOf("  const [commandExecutionDialog"));
-  for (const outcome of [true, false, "reject"]) {
+  const callbacks = chatWindow.slice(chatWindow.lastIndexOf("  useEffect(() => {", chatWindow.indexOf("    if (!laboratory.ready || !isNew || !initialPrompt")), chatWindow.indexOf("  const [commandExecutionDialog"));
+  for (const outcome of [true, false, "reject", "not-ready"]) {
     const sends = [], restored = [];
     let submitted = 0;
     const initialPrompt = { id: "launch-id", message: "/name task", commandInput: { submissionId: "launch-id", afterPrompt: "question" }, files: [] };
-    const env = { useEffect: effect => effect(), isNew: true, initialPrompt, sessionBusy: false, isAutoModelSelection: true, locallyClaimedInitialPromptRef: { current: null },
+    const env = { useEffect: effect => effect(), laboratory: { ready: outcome !== "not-ready" }, isNew: true, initialPrompt, sessionBusy: false, isAutoModelSelection: true, locallyClaimedInitialPromptRef: { current: null },
       claimInitialPrompt: () => true, chatInputRef: { current: { restoreCommandDraft: draft => restored.push(draft) } }, persistentChatInputOptions,
       handleSend: async (...args) => { sends.push(args); if (outcome === "reject") throw new Error("failed"); return outcome; }, onPromptSubmitted: () => { submitted++; } };
     const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
     new Function("env", `with(env) { ${js} }`)(env);
     await new Promise(resolve => setImmediate(resolve));
+    if (outcome === "not-ready") {
+      assert.equal(sends.length, 0, "initial Plan/Goal handoff waits for confirmed laboratory settings");
+      assert.equal(env.locallyClaimedInitialPromptRef.current, null);
+      continue;
+    }
     assert.equal(sends.length, 1);
     assert.deepEqual(sends[0][5], initialPrompt.commandInput);
     assert.equal(submitted, outcome === true ? 1 : 0);
@@ -53,6 +58,26 @@ test("initial command handoff forwards options and restores a failed send withou
       assert.equal(restored[0].commandInput.submissionId, undefined);
       assert.deepEqual(restored[0].retryOfPromptIds, ["launch-id"]);
     }
+  }
+});
+
+test("the new-task composer exposes workflows and durably hands off the selected mode and budget", async () => {
+  assert.match(picker, /workflow=\{laboratory.planGoalEnabled \? \{ mode: "agent", turnBudget: DEFAULT_WORKFLOW_TURN_BUDGET \} : undefined\}/);
+  assert.match(picker, /sendDisabled=\{!laboratory.ready/);
+  const callbacks = picker.slice(picker.indexOf("  const handleLandingSend = useCallback"), picker.indexOf("  const modelsUnavailable"));
+  const calls = [];
+  const env = { useCallback: callback => callback, selectedProject: null, projectlessCwd: "F:/workspace", selectedModel: { provider: "fixture", id: "fixture" }, launchReady: true, systemPromptSelection: { mode: "default" },
+    createLaunchId: () => "workflow-launch", persistentChatInputOptions, savePendingPrompt: async record => calls.push(["saved", record]), onLaunch: request => calls.push(["launch", request]) };
+  const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const send = new Function("env", `with(env) { ${js}; return handleLandingSend; }`)(env);
+  for (const mode of ["plan", "goal"]) {
+    calls.length = 0;
+    const workflow = { mode, turnBudget: 7 };
+    assert.equal(await send("Implement and verify", undefined, undefined, id => calls.push(["durable", id]), undefined, { workflow }), true);
+    assert.deepEqual(calls.map(call => call[0]), ["saved", "durable", "launch"]);
+    assert.deepEqual(calls[0][1].draft.commandInput.workflow, workflow);
+    assert.deepEqual(calls[2][1].prompt.commandInput.workflow, workflow);
+    assert.equal(calls[2][1].prompt.commandInput.submissionId, "workflow-launch");
   }
 });
 

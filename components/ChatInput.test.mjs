@@ -14,6 +14,7 @@ const jiti = createJiti(import.meta.url, {
     "./ChatCommandCard.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ReplySuggestionBar.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ChatCommandComposer.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
+    "./Workflow.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
   },
 });
 const {

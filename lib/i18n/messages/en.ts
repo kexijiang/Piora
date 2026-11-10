@@ -1,4 +1,5 @@
 import { memesEn } from "./memes";
+import { workflowsEn } from "./workflows";
 import { characterThemesEn } from "./character-themes";
 import { desktopExtensionsEn } from "./desktop-extensions";
 import { brandText } from "../../branding";
@@ -18,6 +19,7 @@ export const enLocale: LocalePlugin = {
   id: "en",
   label: "English",
   messages: {
+    ...workflowsEn,
     ...characterThemesEn,
     ...desktopExtensionsEn,
     ...memesEn,
