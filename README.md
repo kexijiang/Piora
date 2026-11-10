@@ -16,15 +16,12 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 基于 [Pi](https://github.com/earendil-works/pi)，由 [pi-web](https://github.com/agegr/pi-web) 演进而来，保留 Pi 的会话、模型和扩展机制。项目由社区独立维护，不隶属于 Pi、pi-web、OpenAI 或 Codex。Piora 不提供统一模型订阅或内置 API Key；使用自己的模型服务账号，费用与额度由服务商管理。
 
-**当前源码 / 本次 Beta：`0.5.10-beta.25`（2026-11-11）**，包含整行圆角悬浮、项目列表整体收起、统一“对话与任务”设置和鸿蒙日志工作台，补齐 18 张入门实拍，并修复安装回归发现的窄面板对齐、日志导出、投屏兼容、并发控制准备、日志页投屏切换及普通日志阅读对比度问题；测试版需手动下载安装更新。稳定版仍为 [`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)。新版本是否已可下载，以 [GitHub Release](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.25) 的实际附件为准；完整变化见 [CHANGELOG](CHANGELOG.md)。
+**Beta：[`0.5.10-beta.25`](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.25) · 稳定版：[`0.5.8`](https://github.com/kexijiang/Piora/releases/tag/v0.5.8)** · [更新记录](CHANGELOG.md)
 
-[下载安装](#下载与安装) · [首次使用](#第一次完成任务) · [功能导览](#功能导览) · [更新与内网部署](#更新与内网部署) · [开发贡献](#开发与贡献) · [中文手册](docs/user-manual.zh-CN.md)
-
-下列截图来自 **2026-11-10 至 11 日的 Windows 安装版**，使用独立练习目录。入门流程实拍为 `0.5.10-beta.18`；浏览器和合并设置已在升级后的 `0.5.10-beta.21` 重拍。截图状态与拍摄方法见[实拍清单](docs/readme-screenshots.md)。
+[下载安装](#下载与安装) · [首次使用](#第一次完成任务) · [功能导览](#功能导览) · [版本更新](#版本更新) · [开发贡献](#开发与贡献) · [中文手册](docs/user-manual.zh-CN.md)
 
 <!-- SCREENSHOT: 01-workspace -->
 ![项目工作区：聊天与文件预览](docs/images/readme/01-workspace.png)
-*左侧选择项目和聊天，中间阅读回复，右侧打开 README 原文。*
 
 ## 下载与安装
 
@@ -32,10 +29,10 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 
 | 版本 | 安装包 | 校验与说明 |
 | --- | --- | --- |
-| 本次 Beta `0.5.10-beta.25` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.25/Piora-0.5.10-beta.25-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.25/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.25) |
+| Beta `0.5.10-beta.25` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.25/Piora-0.5.10-beta.25-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.10-beta.25/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.10-beta.25) |
 | 稳定版 `0.5.8` | [下载 setup.exe](https://github.com/kexijiang/Piora/releases/download/v0.5.8/Piora-0.5.8-win-x64-setup.exe) | [SHA256SUMS.txt](https://github.com/kexijiang/Piora/releases/download/v0.5.8/SHA256SUMS.txt) · [发布说明](https://github.com/kexijiang/Piora/releases/tag/v0.5.8) |
 
-下载后运行安装器，选择安装目录并启动。安装包尚未启用 Windows 代码签名，系统可能显示信誉提示。后续版本不再构建便携 EXE、ZIP 或 Linux AppImage；旧包可在[历史发布](https://github.com/kexijiang/Piora/releases)中查找。
+下载后运行安装器，选择安装目录并启动。安装包暂未签名，Windows 可能显示信誉提示。其他版本见[历史发布](https://github.com/kexijiang/Piora/releases)。
 
 ## 第一次完成任务
 
@@ -60,15 +57,13 @@ Piora 是本地优先、开源的 AI 桌面应用。选一个项目，描述要�
 | API Key | 填写服务商控制台生成的调用密钥；此处用来保存连接，别把密钥发进聊天 |
 
 ![自定义供应商表单：Base URL、API 格式、API Key 与保存连接](docs/images/readme/14-custom-provider.png)
-*图中的 `api.example.com` 是表单示例，不能直接用来调用模型。*
 
 3. 填好后点 **保存连接**。点 **一键识别可用模型**，勾选所需模型，再点 **添加所选模型**。服务不提供模型列表时，点 **添加模型**，按服务商给出的准确模型 ID 填写；显示名称可以自定义，ID 不能随意起名。
-4. 在模型行点击 **连接测试图标**。测试会实际请求服务，可能消耗额度；保存成功、识别成功都不代表模型调用已通过。
+4. 点击模型行的 **连接测试** 图标，确认模型可正常调用。
 5. 确认模型处于启用状态；常用模型可点击 **设为默认模型**。新聊天优先使用该默认模型，不可用时再按渠道顺序选择；已有聊天保留自己的模型。渠道可长按拖动排序。
 
 <!-- SCREENSHOT: 02-models -->
 ![模型配置：连接、模型列表和测试入口](docs/images/readme/02-models.png)
-*实拍为已保存的 DeepSeek 连接，密钥保持遮盖；连接测试会实际调用服务。*
 
 ### 2. 创建项目：选择一个本地文件夹
 
@@ -76,10 +71,9 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 1. 初次练习时，先在电脑上新建一个空文件夹，例如 `D:\Projects\Piora-Demo`；已有项目直接使用原文件夹。
 2. 返回主界面，把鼠标移到左侧 **项目** 标题一行，点击右边的 **＋（新建项目）**。
-3. 在弹出的 **选择项目文件夹** 中选中那个文件夹，点击 **选择文件夹**。也可以在底部“文件夹”输入完整路径。
+3. 在弹出的 **选择项目文件夹** 中选中目录，点击 **选择文件夹**；也可以输入完整路径，或点击 **新建文件夹** 创建目录。
 
 ![Windows 选择项目文件夹：输入练习目录并点击选择文件夹](docs/images/readme/15-project-folder.png)
-*截图中的 `Piora-Demo` 是练习文件夹；你可以使用任意有读写权限的目录。对话框中的“新建文件夹”也可以直接创建目录。*
 
 4. 看到项目名出现在侧栏、聊天区显示对应路径，就说明项目已选中。点击项目行右侧的 **新建会话** 按钮，开始这个项目里的新聊天；点击项目名称可以展开或收起聊天列表。
 
@@ -97,7 +91,7 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 先不要修改文件，也不要执行命令。如果缺少资料，请告诉我还需要什么。
 ```
 
-如果选择的是空文件夹，可以先发送“请告诉我这个文件夹现在有哪些文件；如果为空，先给出一个整理方案，不要创建文件”。下面实拍使用了含 `README.md` 和 `tasks.md` 的练习目录。
+如果选择的是空文件夹，可以先发送“请告诉我这个文件夹现在有哪些文件；如果为空，先给出一个整理方案，不要创建文件”。
 
 ![第一条消息：确认项目、模型和只读要求后发送](docs/images/readme/16-first-message.png)
 
@@ -105,7 +99,6 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 4. 回复出现后，先核对它是否回答了问题。点击回复中可点击的 **文件名**，在右侧打开原文；点“处理结束”可展开本轮工具记录。
 
 ![首次任务结果：读取练习文件后给出三点说明](docs/images/readme/17-first-result.png)
-*这次实拍实际读取了两份练习文件并返回说明，没有修改文件或执行命令。不同模型的用时和措辞会不同。*
 
 5. 确认方向正确后，再追加一个小任务，例如“只修改 README 的标题，其他内容保持原样”。完成后在右侧 **审阅** 查看差异，再决定是否暂存、提交或继续修改。
 
@@ -132,15 +125,10 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 工具直接按当前启用的能力执行，无需切换批准模式。浏览器登录自动显示浏览器，检测完成后继续任务。
 
-
 <!-- SCREENSHOT: 03-chat-permissions -->
 ![任务过程：展开读取文件记录](docs/images/readme/03-chat-permissions.png)
-*点击“处理结束”展开本轮过程，核对读取了哪些文件、是否成功以及用时。*
-
-“下一轮输入预测”已隐藏并停止自动请求。需要回复辅助时，可在“对话与任务”配置快捷回复提取或提示词优化。
 
 ![对话与任务：合并后的设置入口和有序分组](docs/images/readme/18-conversation-settings.png)
-*Beta.21 安装版实拍：按“消息输入与阅读、回复辅助、任务运行、系统提示词与优化、自动标题”排序；向下滚动可看到其余分组。*
 
 ### 项目文件、代码编辑与 Git
 
@@ -150,7 +138,6 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 <!-- SCREENSHOT: 04-files-git -->
 ![Git 审阅：练习清单的增删差异](docs/images/readme/04-files-git.png)
-*右侧绿色为新增、红色为删除。这里只展示练习目录的本地差异，未暂存、提交或推送。*
 
 ### 终端、浏览器与 SSH
 
@@ -162,17 +149,8 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 <!-- SCREENSHOT: 05-browser -->
 ![内置浏览器：首次打开与书签导入](docs/images/readme/05-browser.png)
-*Beta.21 安装版实拍：首次打开可选择导入 Chrome 书签或暂不导入；标签栏保留新增与单标签关闭。登录资料由 Piora 独立保存。*
 
 **SSH 工作台**支持多主机标签、密码 / 私钥认证、连接测试、远程终端和 SFTP 文件传输。连接后可关联当前 AI 任务，让 Agent 使用独立 SSH 工具；本地终端仍在本机执行。凭据存储方式及步骤见 [SSH 指南](docs/SSH_WORKBENCH.md)。
-
-<details>
-<summary>SSH 多主机、远程终端与文件截图（历史本地测试环境）</summary>
-
-![SSH 多主机终端和 SFTP 文件面板的历史测试截图](docs/assets/ssh-multihost-wide.png)
-
-图中为回环地址上的测试主机，包含测试环境提示，不代表本次安装包的连接验收。
-</details>
 
 ### 多 Agent 协作与定时任务
 
@@ -180,13 +158,11 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 <!-- SCREENSHOT: 06-rooms -->
 ![新建群聊：项目、成员与职责](docs/images/readme/06-rooms.png)
-*从“群聊”右侧加号进入，先选项目，再配置成员。图中为尚未保存的创建表单。*
 
 **定时任务**可以在当前聊天周期跟进，或每次为项目创建独立会话；支持执行记录、暂停、恢复和手动运行。调度依赖 Piora 在本机持续运行，电脑关机、休眠或完全退出应用后不会继续执行。
 
 <!-- SCREENSHOT: 07-schedules -->
 ![新建定时任务：运行范围、周期与通知](docs/images/readme/07-schedules.png)
-*进入“设置 → 定时任务 → 新建”，填写名称和任务说明，再选择运行范围、周期与通知。图中尚未保存，不会自动运行。*
 
 ### Skills、插件、MCP 与桌面扩展
 
@@ -197,15 +173,6 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 <!-- SCREENSHOT: 08-skills -->
 ![技能市场：发现公开技能](docs/images/readme/08-skills.png)
-*进入“设置 → 技能”浏览来源和技能；点击安装前先了解用途与所需权限。*
-
-<details>
-<summary>已有桌面扩展截图（历史 DSH Pet 设置界面）</summary>
-
-![DSH Pet 桌面扩展历史截图](docs/images/dsh-pet/settings.png)
-
-此图拍摄早于 DSH Meme 加入，仅说明入口；首次安装需要下载独立运行资源，上游素材另有许可证要求。
-</details>
 
 ### 鸿蒙设备工作台
 
@@ -217,19 +184,16 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 <!-- SCREENSHOT: 09-harmony -->
 ![鸿蒙设备设置：连接工具、截图与录屏保存路径](docs/images/readme/09-harmony.png)
-*从右侧工具菜单打开“鸿蒙设备”，点击设备操作菜单中的“设备设置”，即可管理连接工具和保存目录。此图展示设置表单，未启动投屏或录屏。*
-
-设备型号、系统录屏、原生画质 / 延迟、平板及长期稳定性以[验收矩阵](docs/harmony/atlas-acceptance.md)为准；CI 通过不等于真实手机全部验收通过。连接步骤见[鸿蒙设备指南](docs/HARMONYOS_DEVICE_AUTOMATION.md)。
+连接工具和媒体保存目录在 **鸿蒙设备 → 设备设置** 中管理。连接与操作见[鸿蒙设备指南](docs/HARMONYOS_DEVICE_AUTOMATION.md)，设备兼容性见[兼容性矩阵](docs/harmony/atlas-acceptance.md)。
 
 ### 随身舱、听写与外观
 
-随身舱集中放置待办、专注时钟、JSON 工具和 Markdown 中转站；中转站支持多文件、源码编辑、自动保存、恢复及导入导出。可选桌宠以独立窗口展示任务状态，也支持兼容素材导入。
+按 `Ctrl+Space` 打开随身舱，使用待办、专注时钟、JSON 工具和 Markdown 中转站；中转站支持多文件、源码编辑、自动保存、恢复及导入导出。可选桌宠以独立窗口展示任务状态，也支持兼容素材导入。
 
 本地听写首次开启时下载 SenseVoiceSmall INT8 与 sherpa-onnx 资源，也支持手动导入；资源就绪后语音转文字在本机完成。发送转写文字到模型仍使用所选服务。外观设置提供主题、背景、字体与字号，快捷键可以自定义。
 
 <!-- SCREENSHOT: 10-companion -->
 ![随身舱：专注时钟](docs/images/readme/10-companion.png)
-*按 Ctrl+Space 打开随身舱，选择专注时钟。图中为未启动的 25 分钟专注计时。*
 
 ### 数据、凭据与诊断
 
@@ -239,31 +203,16 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 <!-- SCREENSHOT: 11-vault -->
 ![本地凭据库：首次设置入口](docs/images/readme/11-vault.png)
-*从“设置 → 数据与诊断”进入。图中尚未创建凭据库，没有输入或展示任何账户密码。*
 
 运行日志支持调整目录、级别、单文件大小及备份份数。遇到启动或黑屏问题，参考[排查指南](docs/open-source/BLACK_SCREEN_TROUBLESHOOTING.md)；反馈时附版本、系统、复现步骤和脱敏日志。
 
-## 更新与内网部署
+## 版本更新
 
-**更新来源**和**版本更新资格**相互独立；只有正式安装版启用自动更新。在设置中搜索“更新来源”，选择 GitHub 或内源，再检查更新。切换会清除旧来源的可安装状态；网络失败注明来源，允许手动切换重试。不会自动降级，也不会静默换源。
-
-| 设置 | 当前 GitHub 发行版行为 |
-| --- | --- |
-| GitHub 来源 | 默认值，从本仓库 Release 获取安装包和更新说明 |
-| 内源 | 已有选择与持久化能力；地址为源码占位，未配置时提示“内源更新地址未配置” |
-| 稳定渠道 | 只选择稳定版 |
-| Beta 测试版 | 仅手动下载安装，不检查、下载或静默安装更新 |
-| 旧 Alpha / 开发版 | 不提供自动更新；Alpha 流水线已下线，请手动迁移到正式版或 Beta |
+稳定版支持在 **设置 → 应用行为** 中检查并安装更新。Beta 测试版需从 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 下载最新安装包，选择原安装目录升级。
 
 <!-- SCREENSHOT: 12-updates -->
 ![应用行为：当前版本与更新资格](docs/images/readme/12-updates.png)
-*实拍为 0.5.10-beta.18 安装版；Beta 需要手动下载安装，自动更新控件会说明不可用原因。*
-
-内网维护者可将默认来源设为内网，并配置内部 HTTPS 发布镜像。配置点、Atom 列表、安装包目录和元数据格式见[桌面更新来源说明](docs/desktop-update-sources.md)。公网仓库不包含公司内网地址或凭据。
-
-内外分发使用同一套版本与标签格式，例如 **`0.5.10-beta.25` / `v0.5.10-beta.25`**；同一批更新应在两端同步版本号。相同版本号不会触发升级，切换来源不会重装同版本包；以后分发新代码时，应在两端同步递增版本号，并提供对应更新说明。版本号对齐不代表两个独立维护分支的代码和安装包自动相同。
-
-安装包由 GitHub Actions 构建和校验，Beta 候选全部自动检查通过后，由独立发布工作流上传同一批产物。Release 正文与 `beta.yml` / `latest.yml` 的更新说明统一来自 CHANGELOG。关闭主窗口通常收起到托盘，完全退出或重启使用托盘菜单。
+关闭主窗口通常收起到托盘，完全退出或重启请使用托盘菜单。
 
 ## 开发与贡献
 
@@ -305,7 +254,6 @@ npm run verify:hygiene
 ## 文档与反馈
 
 - [完整中文手册](docs/user-manual.zh-CN.md) · [文档索引](docs/README.md) · [版本更新](CHANGELOG.md)
-- [README 实拍截图清单](docs/readme-screenshots.md)
 - [GitHub Issues](https://github.com/kexijiang/Piora/issues) · [行为准则](CODE_OF_CONDUCT.md) · [安全问题报告](SECURITY.md)
 
 ## 许可证与致谢

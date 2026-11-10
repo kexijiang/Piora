@@ -4,6 +4,8 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+- 精简 README，移除截图拍摄版本、验收过程和内部部署说明，保留模型配置、创建项目、首条消息教程及完整功能截图。
+
 - 补充 Beta.25 正式发布、安装、实际界面、真实模型只读调用及正常窗口恢复的验收记录，更新日志工作台已完成的安装版验收状态，明确各类测试边界。
 
 ## [0.5.10-beta.25] - 2026-11-11
