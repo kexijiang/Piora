@@ -1,0 +1,51 @@
+name: Install exact Windows dependencies
+description: Reuse an exact locked host install; regenerate source-owned patches and branding on every cache hit.
+outputs:
+  cache-hit:
+    description: Whether the exact installed dependency tree was restored
+    value: ${{ steps.modules.outputs.cache-hit }}
+runs:
+  using: composite
+  steps:
+    - name: Identify installed dependency inputs
+      id: identity
+      shell: pwsh
+      run: node scripts/ci-dependency-cache.mjs key
+    - name: Restore exact installed dependencies
+      id: modules
+      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: |
+          node_modules
+          desktop/node_modules
+        key: ${{ steps.identity.outputs.key }}
+    - name: Restore npm downloads on an installed-cache miss
+      if: steps.modules.outputs.cache-hit != 'true'
+      uses: ./.github/actions/restore-npm-cache
+    - name: Install locked dependencies on a cache miss
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: npm ci --prefer-offline --no-audit --no-fund
+    - name: Verify restored dependencies and refresh generated resources
+      if: steps.modules.outputs.cache-hit == 'true'
+      shell: pwsh
+      run: |
+        node scripts/ci-dependency-cache.mjs verify
+        if ($LASTEXITCODE -ne 0) { throw 'Installed dependency cache validation failed' }
+        npm run postinstall
+        if ($LASTEXITCODE -ne 0) { throw 'Dependency patch and branding refresh failed' }
+    - name: Record pristine host installation
+      if: steps.modules.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: node scripts/ci-dependency-cache.mjs record
+    # Save before Electron's packager can rebuild any native module for its ABI.
+    # Release builders have read-only repository permissions. Publishing remains
+    # artifact-only and never restores this cache or runs dependency scripts.
+    - name: Save exact installed dependencies
+      if: steps.modules.outputs.cache-hit != 'true'
+      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+      with:
+        path: |
+          node_modules
+          desktop/node_modules
+        key: ${{ steps.identity.outputs.key }}

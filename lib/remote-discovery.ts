@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, unlinkSync } from "node:fs";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "./runtime-home";
 import { dirname, join, relative, resolve } from "node:path";
 import { writePrivateFileAtomicSync } from "./atomic-file";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;

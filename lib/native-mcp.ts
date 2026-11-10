@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "./runtime-home";
 import { join, resolve } from "node:path";
 import {
   createCodemodeExtension, createMcpExtension, createToolSearchExtension,

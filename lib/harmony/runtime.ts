@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../runtime-home";
 import { posix, win32 } from "node:path";
 import { randomUUID } from "node:crypto";
 

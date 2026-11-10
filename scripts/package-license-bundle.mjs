@@ -13,11 +13,14 @@ import {
   rm,
   writeFile,
 } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { extractAll } from "@electron/asar";
+import { assertVerificationDirectory, verificationTempRoot } from "./verification-temp.mjs";
+import { createVerificationTimings } from "./verification-timing.mjs";
+
+const timings = createVerificationTimings("package-licenses");
 
 const scriptPath = fileURLToPath(import.meta.url);
 const projectRoot = resolve(dirname(scriptPath), "..");
@@ -1078,12 +1081,13 @@ export async function generatePackageLicenseBundle({
         `Packaged dependency tree is missing: expected node_modules, runtime.asar, or node_modules.asar in ${resolvedWebRoot}`,
       );
     }
-    extractedRoot = await mkdtemp(join(tmpdir(), "piora-license-asar-"));
+    extractedRoot = await mkdtemp(join(verificationTempRoot(), "piora-license-asar-"));
+    assertVerificationDirectory(extractedRoot);
     inspectionRoot = extractedRoot;
     if (archivePath === runtimeArchivePath) {
-      await extractAll(archivePath, inspectionRoot);
+      await timings.measure("extract-license-asar", () => extractAll(archivePath, inspectionRoot), { inspectionRoot, check });
     } else {
-      await extractAll(archivePath, join(inspectionRoot, "node_modules"));
+      await timings.measure("extract-license-asar", () => extractAll(archivePath, join(inspectionRoot, "node_modules")), { inspectionRoot, check });
       const packagedManifest = join(resolvedWebRoot, "package.json");
       if (await lstat(packagedManifest).then((entry) => entry.isFile()).catch(() => false)) {
         await copyFile(packagedManifest, join(inspectionRoot, "package.json"));
@@ -1093,9 +1097,9 @@ export async function generatePackageLicenseBundle({
 
   let inspected;
   try {
-    inspected = await inspectPackagedNpmDependencies(inspectionRoot, { licenseSourceRoot });
+    inspected = await timings.measure("inspect-license-closure", () => inspectPackagedNpmDependencies(inspectionRoot, { licenseSourceRoot }), { check });
   } finally {
-    if (extractedRoot) await rm(extractedRoot, { recursive: true, force: true });
+    if (extractedRoot) await timings.measure("cleanup-license-asar", () => rm(extractedRoot, { recursive: true, force: true }), { check });
   }
   const artifacts = buildArtifacts(inspected);
   const resolvedOutputRoot = resolve(outputRoot);

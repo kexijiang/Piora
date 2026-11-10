@@ -1,6 +1,6 @@
 import { lstat, readdir, readFile } from "node:fs/promises";
 import { dirname, isAbsolute, join } from "node:path";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../../runtime-home";
 import JSZip from "jszip";
 import { readBoundedRegularFile } from "./bounded-file";
 import { harmonyRuntimeAsset } from "./asset-path";

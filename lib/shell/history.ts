@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../runtime-home";
 import { readdir, access } from "node:fs/promises";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import { getShellStore } from "./store";

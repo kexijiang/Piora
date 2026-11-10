@@ -1,5 +1,5 @@
 import { existsSync, lstatSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "./runtime-home";
 import { join } from "node:path";
 import type {
   McpCapabilitiesInfo,

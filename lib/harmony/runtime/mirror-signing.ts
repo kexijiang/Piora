@@ -1,5 +1,5 @@
 import { createHash, X509Certificate } from "node:crypto";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../../runtime-home";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { chmod, lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import JSON5 from "json5";

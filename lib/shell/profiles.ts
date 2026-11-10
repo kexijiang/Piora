@@ -1,7 +1,7 @@
 import { access, mkdir, writeFile, readdir, stat } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../runtime-home";
 import type { ShellProfile } from "./types";
 import { shellAssetPath, shellDataDirectory } from "./store";
 
