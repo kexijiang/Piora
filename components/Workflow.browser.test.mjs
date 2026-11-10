@@ -54,6 +54,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     let failLaboratoryWrite = true;
     let laboratoryWriteFailed = false;
     let laboratoryReadCount = 0;
+    let laboratoryRetryReadCount = 0;
     await page.route("http://127.0.0.1:38201/**", async route => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(directory, "bundle.js")) });
@@ -65,6 +66,10 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
           laboratory = route.request().postDataJSON(); return route.fulfill({ json: laboratory });
         }
         laboratoryReadCount++;
+        if (route.request().headers()["x-piora-fixture-retry"] === "true") {
+          laboratoryRetryReadCount++;
+          failLaboratoryRead = false;
+        }
         if (failLaboratoryRead) return route.fulfill({ status: 503, json: { error: `fixture read failed ${laboratoryReadCount}` } });
         if (laboratoryWriteFailed) await laboratorySaveRecovery.promise;
         const captured = { ...laboratory };
@@ -95,18 +100,63 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.waitForFunction(() => Boolean(window.lab.error));
     assert.equal(await page.evaluate(() => window.lab.ready), false, "a failed first read must not confirm disabled settings");
     // Keep all reads failed until this boundary, including a real background
-    // poll. Pause timers so only the Retry button can issue the successful GET.
+    // poll. Pausing timers does not suppress focus/online reconciliation.
     const failedPoll = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory") && response.status() === 503);
     await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 6_000));
     await (await failedPoll).finished();
     await page.clock.runFor(100);
     assert.equal(await page.evaluate(() => window.lab.error), `fixture read failed ${laboratoryReadCount}`);
+    const retry = page.getByRole("button", { name: /重新加载|Retry loading/ });
+    await page.bringToFront();
+    await retry.focus();
+    // Annotate only a GET synchronously started by the real, trusted Retry
+    // click. The production handler and fetch still run normally; ambient
+    // focus/visibility/online reads can never unlock this fixture response.
+    await retry.evaluate(button => {
+      const originalFetch = window.fetch;
+      let inRetryClick = false;
+      window.fixtureRetryClicks = 0;
+      const beginClick = event => {
+        if (!event.isTrusted || !button.contains(event.target)) return;
+        inRetryClick = true;
+        window.fixtureRetryClicks++;
+      };
+      const endClick = () => { inRetryClick = false; };
+      document.addEventListener("click", beginClick, true);
+      window.addEventListener("click", endClick);
+      window.fetch = (input, init) => {
+        if (inRetryClick && typeof input === "string" && new URL(input, location.href).pathname === "/api/settings/laboratory"
+          && (init?.method ?? "GET") === "GET") {
+          const headers = new Headers(init?.headers);
+          headers.set("x-piora-fixture-retry", "true");
+          init = { ...init, headers };
+        }
+        return originalFetch.call(window, input, init);
+      };
+      window.cleanupFixtureRetry = () => {
+        window.fetch = originalFetch;
+        document.removeEventListener("click", beginClick, true);
+        window.removeEventListener("click", endClick);
+      };
+    });
+    for (const type of ["focus", "visibilitychange", "online"]) {
+      const failedReconcile = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory") && response.status() === 503);
+      await page.evaluate(type => (type === "visibilitychange" ? document : window).dispatchEvent(new Event(type)), type);
+      await (await failedReconcile).finished();
+      await page.clock.runFor(100);
+      assert.equal(await page.evaluate(() => window.lab.ready), false, `${type} cannot preempt the explicit Retry`);
+      assert.equal(await retry.count(), 1, `the Retry button survives ${type} before its click`);
+      assert.equal(laboratoryRetryReadCount, 0);
+    }
     const readsBeforeRetry = laboratoryReadCount;
-    failLaboratoryRead = false;
-    const retryResponse = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory") && response.status() === 200);
-    await page.getByRole("button", { name: /重新加载|Retry loading/ }).click();
+    const retryResponse = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory")
+      && response.request().headers()["x-piora-fixture-retry"] === "true" && response.status() === 200);
+    await retry.click();
     await retryResponse;
+    assert.equal(await page.evaluate(() => window.fixtureRetryClicks), 1, "one trusted Retry click reached the production handler");
+    assert.equal(laboratoryRetryReadCount, 1, "the successful GET originated synchronously from that click");
     assert.equal(laboratoryReadCount, readsBeforeRetry + 1, "the explicit Retry click starts one new settings GET");
+    await page.evaluate(() => window.cleanupFixtureRetry());
     await page.clock.resume();
     await page.waitForFunction(() => window.lab.ready);
     assert.equal(await page.getByTestId("workflow-mode-select").count(), 0);
