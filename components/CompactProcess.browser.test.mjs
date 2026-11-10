@@ -362,8 +362,13 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       assert.equal(await check.locator(".command-execution-card").count(), shouldExpand ? 3 : 0, scenario);
       if (scenario === "success") {
         assert.match(await heading.innerText(), /处理结束.*思考 1 段.*执行 3 条命令/s);
-        for (const width of [1200, 640, 390]) {
+        // The actual chat pane is a query container, independent of the viewport.
+        await check.locator('#root').evaluate(root => root.style.containerType = 'inline-size');
+        for (const [width, paneWidth] of [[1200, null], [640, null], [390, null], [1200, 420], [1200, 320]]) {
           await check.setViewportSize({ width, height: 900 });
+          await check.locator('#root').evaluate((root, paneWidth) => {
+            if (paneWidth) root.style.width = `${paneWidth}px`; else root.style.removeProperty('width');
+          }, paneWidth);
           for (const size of [14, 16, 18]) {
             await check.evaluate(size => document.documentElement.style.setProperty('--ui-font-size', `${size}px`), size);
             const row = await heading.evaluate(el => {
@@ -375,11 +380,12 @@ createRoot(document.getElementById("root")).render(<App/>);`);
             });
             assert.ok(row.children.every(child => child.width > 0), 'arrow, activity icon, title, counts and elapsed time each keep a column');
             const centers = row.children.map(child => child.center);
-            assert.ok(Math.max(...centers) - Math.min(...centers) <= 1, `${width}px/${size}px process row shares one center line: ${JSON.stringify(row)}`);
+            assert.ok(Math.max(...centers) - Math.min(...centers) <= 1, `${width}px viewport/${paneWidth ?? 'auto'}px pane/${size}px process row shares one center line: ${JSON.stringify(row)}`);
             assert.ok(row.height <= 40, 'long counters truncate within the row instead of pushing elapsed time onto a second line');
           }
         }
         await check.setViewportSize({ width: 1200, height: 900 });
+        await check.locator('#root').evaluate(root => { root.style.removeProperty('container-type'); root.style.removeProperty('width'); });
         await check.evaluate(() => document.documentElement.style.removeProperty('--ui-font-size'));
         if (process.env.PIORA_COMPACT_SCREENSHOTS) await check.screenshot({ path: path.join(repo, "test-results", "compact-process", "auto-completed.png") });
       }

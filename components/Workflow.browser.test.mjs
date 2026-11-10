@@ -9,9 +9,12 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("workflow UI preserves revisions, switches sessions, reviews plans and changes budgets without resuming", { timeout: 180000 }, async () => {
+for (const locale of ["zh-CN", "en-US"]) {
+test(`workflow UI preserves revisions, switches sessions, reviews plans and changes budgets without resuming (${locale})`, { timeout: 180000 }, async (t) => {
   const directory = await mkdtemp(path.join(tmpdir(), "piora-workflow-ui-"));
   let browser;
+  let page;
+  const transport = [], browserMessages = [];
   const held = [];
   const laboratorySaveRecovery = Promise.withResolvers();
   try {
@@ -25,6 +28,7 @@ import{WorkflowPanel}from'@/components/WorkflowPanel';import{WorkflowModePicker}
 import{LaboratorySettings}from'@/components/LaboratorySettings';import{useLaboratorySettings}from'@/hooks/useLaboratorySettings';
 function App(){const[sid,setSid]=React.useState('one'),[choice,setChoice]=React.useState({mode:'agent',turnBudget:10});
 const lab=useLaboratorySettings();window.lab=lab;
+React.useEffect(()=>{(window.laboratoryTrace??=[]).push({ready:lab.ready,error:lab.error,saving:lab.saving})},[lab.ready,lab.error,lab.saving]);
 const execute=React.useCallback(async action=>{const res=await fetch('/api/agent/'+sid+'/workflow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(action)});const data=await res.json();if(!res.ok)throw new Error(data.error);return data.snapshot},[sid]);
 const state=useWorkflow(sid,true,false,execute);window.state=state;
 return <><LaboratorySettings/><output id="lab-state">{String(lab.planGoalEnabled)}</output><button id="switch" onClick={()=>setSid(sid==='one'?'two':'one')}>Switch chat</button><button id="refresh" onClick={()=>state.refresh()}>Refresh</button>
@@ -37,7 +41,16 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
       module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(directory, "ts.cjs") }, { test: /\.css$/, use: path.join(directory, "css.cjs") }] } });
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
-    const page = await browser.newPage({ viewport: { width: 390, height: 800 } });
+    page = await browser.newPage({ locale, viewport: { width: 390, height: 800 } });
+    page.on("console", message => { if (message.type() === "warning" || message.type() === "error") browserMessages.push({ type: message.type(), text: message.text() }); });
+    page.on("request", request => {
+      const pathname = new URL(request.url()).pathname;
+      if (pathname.endsWith(".js") || pathname === "/api/settings/laboratory") transport.push({ event: "request", path: pathname, method: request.method(), retry: request.headers()["x-piora-fixture-retry"] ?? null });
+    });
+    page.on("response", response => {
+      const pathname = new URL(response.url()).pathname;
+      if (pathname.endsWith(".js") || pathname === "/api/settings/laboratory") transport.push({ event: "response", path: pathname, status: response.status(), retry: response.request().headers()["x-piora-fixture-retry"] ?? null });
+    });
     const clockStart = new Date("2026-11-11T00:00:00Z");
     await page.clock.install({ time: clockStart });
     const errors = []; page.on("pageerror", error => errors.push(error.message));
@@ -57,7 +70,9 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     let laboratoryRetryReadCount = 0;
     await page.route("http://127.0.0.1:38201/**", async route => {
       const url = new URL(route.request().url());
-      if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(directory, "bundle.js")) });
+      // Locale imports are separate webpack chunks. Replaying the entry bundle
+      // for them remounts React and resets the shared laboratory state.
+      if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(directory, path.basename(url.pathname))) });
       if (!url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "text/html", body: '<!doctype html><meta charset="utf-8"><div id="root"></div><script src="/bundle.js"></script>' });
       if (url.pathname === "/api/settings/laboratory") {
         if (route.request().method() === "PUT") {
@@ -96,6 +111,10 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
       return route.fulfill({ json: captured }).catch(() => {});
     });
     await page.goto("http://127.0.0.1:38201");
+    const expectedLanguage = locale === "en-US" ? "en" : "zh-CN";
+    await page.waitForFunction(language => document.documentElement.lang === language, expectedLanguage);
+    assert.equal(await page.locator("html").getAttribute("lang"), expectedLanguage);
+    if (locale === "en-US") assert.ok(transport.some(event => event.event === "response" && event.path !== "/bundle.js" && /messages_en.*\.js$/.test(event.path) && event.status === 200), "English must load its real locale chunk rather than silently fall back");
     await page.getByTestId("workflow-panel").waitFor();
     await page.waitForFunction(() => Boolean(window.lab.error));
     assert.equal(await page.evaluate(() => window.lab.ready), false, "a failed first read must not confirm disabled settings");
@@ -104,8 +123,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     const failedPoll = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory") && response.status() === 503);
     await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now()) + 6_000));
     await (await failedPoll).finished();
-    await page.clock.runFor(100);
-    assert.equal(await page.evaluate(() => window.lab.error), `fixture read failed ${laboratoryReadCount}`);
+    await page.waitForFunction(expected => window.lab.error === expected, `fixture read failed ${laboratoryReadCount}`);
     const retry = page.getByRole("button", { name: /重新加载|Retry loading/ });
     await page.bringToFront();
     await retry.focus();
@@ -116,6 +134,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
       const originalFetch = window.fetch;
       let inRetryClick = false;
       window.fixtureRetryClicks = 0;
+      window.fixtureRetryButton = button;
       const beginClick = event => {
         if (!event.isTrusted || !button.contains(event.target)) return;
         inRetryClick = true;
@@ -143,7 +162,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
       const failedReconcile = page.waitForResponse(response => response.url().endsWith("/api/settings/laboratory") && response.status() === 503);
       await page.evaluate(type => (type === "visibilitychange" ? document : window).dispatchEvent(new Event(type)), type);
       await (await failedReconcile).finished();
-      await page.clock.runFor(100);
+      await page.waitForFunction(expected => window.lab.error === expected, `fixture read failed ${laboratoryReadCount}`);
       assert.equal(await page.evaluate(() => window.lab.ready), false, `${type} cannot preempt the explicit Retry`);
       assert.equal(await retry.count(), 1, `the Retry button survives ${type} before its click`);
       assert.equal(laboratoryRetryReadCount, 0);
@@ -225,6 +244,17 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.getByTestId("workflow-mode-select").waitFor();
     assert.equal(await page.getByTestId("workflow-panel").getAttribute("data-status"), "planning");
     assert.deepEqual(errors, []);
+  } catch (error) {
+    const state = await page?.evaluate(() => ({
+      language: navigator.language, ready: window.lab?.ready, error: window.lab?.error,
+      retryClicks: window.fixtureRetryClicks ?? 0,
+      retryCaptureButtonConnected: window.fixtureRetryButton?.isConnected ?? null,
+      laboratoryTrace: window.laboratoryTrace?.slice(-20) ?? [],
+      retryButtons: [...document.querySelectorAll("button")].filter(button => /^(重新加载|Retry loading)$/.test(button.textContent.trim())).length,
+    })).catch(failure => ({ error: String(failure) }));
+    t.diagnostic(JSON.stringify({ locale, retryRequests: transport.filter(event => event.event === "request" && event.retry === "true").length,
+      transport: transport.slice(-60), browserMessages: { first: browserMessages.slice(0, 10), last: browserMessages.slice(-10) }, state }));
+    throw error;
   } finally {
     laboratorySaveRecovery.resolve();
     held.splice(0).forEach(resolve => resolve());
@@ -233,3 +263,4 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await rm(directory, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
 });
+}

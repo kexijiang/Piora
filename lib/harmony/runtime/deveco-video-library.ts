@@ -75,6 +75,23 @@ export async function readDebugVideoLibrarySelection(source: string, deviceVersi
   catch { throw primaryError ?? new Error("No compatible debug video library is available"); }
 }
 
+/** Version numbers select candidates; only the device loader proves ABI support. */
+export async function readDebugVideoLibraryCandidates(source: string, deviceVersion: string): Promise<DebugVideoLibrary[]> {
+  const preferred = await readDebugVideoLibrarySelection(source, deviceVersion);
+  const candidates = [preferred];
+  let remaining = videoBundle.assets.map(asset => `libscrcpy/${asset.name}`);
+  for (let name = selectVideoLibrary(remaining, deviceVersion); name; name = selectVideoLibrary(remaining, deviceVersion)) {
+    remaining = remaining.filter(candidate => candidate !== name);
+    const asset = videoBundle.assets.find(asset => `libscrcpy/${asset.name}` === name)!;
+    // Never cross ABI families or retry identical bytes under a different name.
+    if (version(asset.name) !== version(preferred.name) || candidates.some(candidate => candidate.sha256 === asset.sha256)) continue;
+    const result = selection(await readBoundedRegularFile(join(modernDirectory(), asset.name), 4 * 1024 * 1024), asset.name, "bundled");
+    if (result.bytes.length !== asset.size || result.sha256 !== asset.sha256) throw new Error("The bundled debug video library failed integrity verification; repair Piora");
+    candidates.push(result);
+  }
+  return candidates;
+}
+
 const version = (name: string) => /(?:unix_|server-)(\d+\.\d+(?:\.\d+)?)-/.exec(name)?.[1];
 function compareLibraryNames(a: string, b: string): number {
   return version(a)!.localeCompare(version(b)!, undefined, { numeric: true })

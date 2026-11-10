@@ -5823,7 +5823,7 @@ span.linenumber {
 .compact-process-toggle .chat-disclosure-meta { font-family: inherit; font-size: inherit; line-height: inherit; }
 .compact-process-toggle .chat-disclosure-icon,
 .compact-process-toggle .chat-disclosure-chevron { align-self: center; }
-.compact-process-toggle .chat-disclosure-description { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.compact-process-toggle .chat-disclosure-description { grid-column: 4; grid-row: 1; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .compact-process-toggle .chat-disclosure-meta { grid-column: 5; white-space: nowrap; flex-wrap: nowrap; }
 .compact-process-step-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); min-width: 0; flex: 1; }
 .compact-process-group.has-attention .chat-disclosure-label { color: var(--accent); }
