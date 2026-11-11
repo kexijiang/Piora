@@ -4,6 +4,12 @@ All notable changes to Piora are documented here. The project follows [Semantic 
 
 ## [Unreleased]
 
+## [0.5.11-beta.1] - 2026-11-11
+
+### 改进
+
+- 重新设计鸿蒙日志工作台的实时日志、会话日志、搜索结果与弹层样式，统一使用应用主题配色，适配深浅色主题，并改善筛选工具栏的窄面板布局和日志可读性。
+
 ## [0.5.10] - 2026-11-11
 
 ### 修复
