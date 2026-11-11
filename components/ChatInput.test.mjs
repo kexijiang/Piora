@@ -39,6 +39,16 @@ test("uses an ordinary cursor for the session information hover", () => {
   assert.doesNotMatch(globalCss, /\.session-stats-trigger\s*\{[^}]*cursor:\s*help/s);
 });
 
+test("image-only guidance displays its attachment count while waiting in the runtime queue", () => {
+  const html = renderToStaticMarkup(React.createElement(I18nProvider, null, React.createElement(ChatCommandQueue, {
+    records: [{ commandId: "image-guidance", idempotencyKey: "image-guidance", targetSessionId: "session", acceptedAt: 1, status: "delivered", attachments: 2, preview: "" }],
+    pendingMessages: { steering: [""], followUp: [], pendingInputs: [{ id: "pending-image", commandId: "image-guidance", text: "", kind: "steer" }] },
+    onPendingAction: async () => {}, actions: {},
+  })));
+  assert.match(html, /2 个附件/);
+  assert.match(html, /title="2 个附件"/);
+});
+
 test("renders the upstream model error", () => {
   const html = renderToStaticMarkup(
     React.createElement(ModelErrorBanner, {

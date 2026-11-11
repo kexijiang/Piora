@@ -25,3 +25,28 @@ export async function copyText(text: string): Promise<void> {
     selection?.removeAllRanges(); for (const range of ranges) selection?.addRange(range);
   }
 }
+
+/** Copy full image pixels, independently of the preview's zoom and pan. */
+export async function copyImage(image: HTMLImageElement): Promise<void> {
+  if (!image.complete || !image.naturalWidth || !image.naturalHeight) throw new Error("Image is not loaded");
+  const desktopClipboard = window.piDesktop?.clipboard;
+  if (desktopClipboard?.writeImage && /^data:image\/(png|jpeg|webp|gif);base64,/.test(image.src)) {
+    await desktopClipboard.writeImage(image.src);
+    return;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth;
+  canvas.height = image.naturalHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Image clipboard is unavailable");
+  context.drawImage(image, 0, 0);
+  if (desktopClipboard?.writeImage) {
+    await desktopClipboard.writeImage(canvas.toDataURL("image/png"));
+    return;
+  }
+  if (!navigator.clipboard?.write || typeof ClipboardItem === "undefined") throw new Error("Image clipboard is unavailable");
+  const png = new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Unable to copy image")), "image/png");
+  });
+  await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+}

@@ -61,14 +61,19 @@ test("settles the project loading state when a background refresh supersedes the
   assert.match(globalStyles, /\.sidebar-project-scroll\s*\{[^}]*background:\s*inherit/s);
 });
 
-test("switches sessions immediately while another session is running", () => {
+test("delegates session selection while running and waits for the prepared selection before synchronizing cwd", () => {
   const switchSource = source.slice(
     source.indexOf("const handleSelectSessionFromList"),
     source.indexOf("const handleNewSessionInProject"),
   );
   assert.doesNotMatch(switchSource, /window\.confirm/);
-  assert.match(switchSource, /setSelectedCwd\(s\.projectless \? null : s\.cwd \|\| null\)/);
+  assert.doesNotMatch(switchSource, /setSelectedCwd/);
   assert.match(switchSource, /onSelectSession\(s\)/);
+  assert.match(source, /selectedCwdProp !== undefined && selectedCwdProp !== lastSyncedCwdPropRef\.current/);
+  assert.match(source, /lastSyncedCwdPropRef\.current = selectedCwdProp;\s*setSelectedCwd\(selectedCwdProp\)/);
+  const restoreSource = source.slice(source.indexOf("const target = allSessions.find"), source.indexOf("// Session not found"));
+  assert.match(restoreSource, /onSelectSession\(target, true\)/);
+  assert.doesNotMatch(restoreSource, /setSelectedCwd/);
 });
 
 test("hover actions overlay a fixed-height session row without reflow", () => {

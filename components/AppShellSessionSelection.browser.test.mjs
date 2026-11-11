@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -47,6 +47,8 @@ import React from 'react'; import {createRoot} from 'react-dom/client';
 import {GitToolsPopover} from "@/components/workspace/GitToolsPopover";
 import {SessionSidebar} from '@/components/SessionSidebar'; import {I18nProvider} from '@/hooks/useI18n';
 import {parseWorkspaceContinuity,workspaceContinuityStorageKey} from '@/lib/workspace-continuity';
+import {prepareSessionSwitch} from '@/lib/session-prefetch';
+import {isProjectlessChatCwd} from '@/lib/projectless-chat-path';
 ${["getSelectionHistoryState", "replaceUrlWithoutNextNavigation"].map(name => helpers.get(name)).join("\n")}
 const sessions=${JSON.stringify(sessions)};
 window.states=[]; window.confirmations=[];
@@ -55,6 +57,7 @@ function App(){
   const [selectedRoom,setSelectedRoom]=React.useState(null);
   const [newSessionCwd,setNewSessionCwd]=React.useState(null);
   const [sessionKey,setSessionKey]=React.useState(0);
+  const [,setPendingSessionSwitch]=React.useState(null),[,setSessionSwitchError]=React.useState(null);
   const [activeCwd,setActiveCwd]=React.useState(sessions[0].cwd);
   const [activeProjectRoot,setActiveProjectRoot]=React.useState(sessions[0].projectRoot);
   const activeProjectRootRef=React.useRef(sessions[0].projectRoot);
@@ -103,6 +106,9 @@ createRoot(document.getElementById('root')).render(<App/>);`);
     const url=new URL(route.request().url());
     if(url.pathname==='/api/sessions')return route.fulfill({json:{sessions,runningSessionIds:[]}});
     if(url.pathname==='/api/sessions/flags')return route.fulfill({json:{flags:{}}});
+    const detail=url.pathname.match(/^\/api\/sessions\/([^/]+)$/);
+    if(detail){const info=sessions.find(session=>session.id===detail[1]);return route.fulfill({json:{info,context:{messages:[],entryIds:[]}}});}
+    if(/^\/api\/sessions\/[^/]+\/state$/.test(url.pathname))return route.fulfill({json:{running:false,state:{runtime:'idle'}}});
     if(url.pathname==='/api/home')return route.fulfill({json:{home:'C:\\Users\\user'}});
     if(url.pathname==='/api/worktrees') {
       if (route.request().method() !== "GET") {
@@ -130,6 +136,7 @@ createRoot(document.getElementById('root')).render(<App/>);`);
   for(const id of ['b','p','a2','aw','a']){
     await page.evaluate(()=>{window.states=[]});
     await page.getByRole('treeitem',{name:sessions.find(s=>s.id===id).name,exact:true}).click({timeout:5000}).catch(async cause=>{throw new Error(cause.message+' | '+await page.locator('body').innerText()+' | '+JSON.stringify(await page.evaluate(()=>window.navigation())))});
+    await page.waitForFunction(id=>window.navigation().id===id,id);
     await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     assert.equal(await page.evaluate(()=>window.navigation().id),id,JSON.stringify(await page.evaluate(()=>window.states)));
     const target=sessions.find(s=>s.id===id);
@@ -164,6 +171,7 @@ createRoot(document.getElementById('root')).render(<App/>);`);
   await page.keyboard.press('Escape');
   assert.equal(await page.getByRole('button',{name:'Git tools',exact:true}).evaluate(el=>el===document.activeElement),true);
   await page.getByRole('treeitem',{name:'Alpha existing chat',exact:true}).click();
+  await page.waitForFunction(()=>window.navigation().id==='a');
   await open(); await expand();
   await dialog.getByRole('button',{name:/^feature F:/}).click();
   await page.waitForFunction(()=>window.navigation().newSessionCwd==='F:\\Alpha-worktrees\\feature');
@@ -174,6 +182,7 @@ createRoot(document.getElementById('root')).render(<App/>);`);
   await dialog.getByRole('button',{name:'main Main worktree F:\\Alpha',exact:true}).click();
   await page.waitForFunction(()=>window.navigation().newSessionCwd==='F:\\Alpha');
   await page.getByRole('treeitem',{name:'Beta existing chat',exact:true}).click();
+  await page.waitForFunction(()=>window.navigation().id==='b');
   await open(); await expand();
   await dialog.getByRole('button',{name:'New worktree…',exact:true}).click();
   await dialog.getByRole('textbox',{name:'Branch name',exact:true}).fill('layout-check');
@@ -199,6 +208,7 @@ createRoot(document.getElementById('root')).render(<App/>);`);
   ]);
   await page.keyboard.press('Escape');
   await page.getByRole('treeitem',{name:'Non-Git chat',exact:true}).click();
+  await page.waitForFunction(()=>window.navigation().id==='c');
   assert.equal(await page.getByRole('button',{name:'Git tools',exact:true}).count(),0);
   assert.equal(await page.locator('.project-worktree-section').count(),0);
   assert.deepEqual(errors,[]);

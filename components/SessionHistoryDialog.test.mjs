@@ -13,7 +13,7 @@ test("opens complete session history inside the current application window", () 
   assert.match(appShell, /<SessionHistoryWorkbench/);
   assert.doesNotMatch(appShell, /window\.open\(/);
   assert.match(appShell, /visibility: historyDialogOpen[^\n]+"hidden"/);
-  assert.match(appShell, /inert=\{historyDialogOpen/);
+  assert.match(appShell, /inert=\{Boolean\(pendingSessionSwitch\) \|\| historyDialogOpen && !selectedRoom\}/);
   assert.match(workbench, /data-history-workbench/);
   assert.doesNotMatch(workbench, /<iframe|createPortal\(/);
   assert.match(workbench, /\{hit\.snippet\}/);

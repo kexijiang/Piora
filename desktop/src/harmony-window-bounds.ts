@@ -1,13 +1,26 @@
 import type { MirrorScale } from "./harmony-window-types.js";
 export const MIRROR_TITLE_HEIGHT = 36;
 type Bounds = { x: number; y: number; width: number; height: number };
-/** Updating Win32's aspect constraint can immediately resize the native window. */
+/** Windows applies its native aspect constraint immediately to the outer
+ * window. Maintain video geometry in will-resize there instead, so changing
+ * toolbar height cannot briefly widen the window and wrap the toolbar again. */
 export async function updateMirrorAspectRatio(window: {
   getBounds(): Bounds; setBounds(bounds: Bounds, animate: boolean): void;
   setAspectRatio(ratio: number, extra: { width: number; height: number }): void;
 }, ratio: number, chromeHeight: number, target: Bounds): Promise<Bounds> {
-  window.setAspectRatio(ratio, { width: 2, height: chromeHeight });
+  window.setAspectRatio(process.platform === "win32" ? 0 : ratio, { width: 2, height: chromeHeight });
   return applyMirrorBounds(window, target);
+}
+
+export function mirrorResizeBounds(current: Bounds, requested: Bounds, ratio: number, chromeHeight: number, edge: string): Bounds {
+  if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 20) ratio = 9 / 20;
+  const vertical = edge === "top" || edge === "bottom";
+  const videoHeight = Math.max(1, 120 - chromeHeight, (180 - 2) / ratio,
+    vertical ? requested.height - chromeHeight : (requested.width - 2) / ratio);
+  const width = Math.round(videoHeight * ratio) + 2, height = Math.round(videoHeight) + chromeHeight;
+  return { width, height,
+    x: edge.includes("left") ? current.x + current.width - width : current.x,
+    y: edge.includes("top") ? current.y + current.height - height : current.y };
 }
 /** Win32 can round both physical edges outwards. Correct against the absolute DIP target,
  * never against the size left by the previous drag, and bound the correction work. */

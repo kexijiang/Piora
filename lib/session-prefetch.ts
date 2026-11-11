@@ -141,6 +141,23 @@ export function takePrefetchedSession(
   return entry.promise;
 }
 
+/** Prepare both history and runtime before replacing the visible chat. */
+export async function prepareSessionSwitch(session: Pick<SessionInfo, "id" | "modified">): Promise<unknown | null> {
+  const cached = Boolean(peekPrefetchedSession(session));
+  const state = fetch(`/api/sessions/${encodeURIComponent(session.id)}/state`, { signal: AbortSignal.timeout(10_000), cache: "no-store" })
+    .then(response => response.ok ? response.json() as Promise<{ running: boolean; state?: unknown }> : null).catch(() => null);
+  const [preparedSnapshot, initialAgentState] = await Promise.all([takePrefetchedSession(session), state]);
+  let snapshot = preparedSnapshot;
+  // A background task may have started since a hover snapshot was captured.
+  // Never mount that running conversation using its earlier idle history.
+  if (cached && initialAgentState?.running) {
+    invalidatePrefetchedSession(session.id);
+    snapshot = await takePrefetchedSession(session);
+  }
+  if (snapshot && typeof snapshot === "object" && initialAgentState) Object.assign(snapshot, { initialAgentState });
+  return snapshot;
+}
+
 /**
  * Returns a completed, version-matched switch snapshot without scheduling any
  * asynchronous work. This lets the newly mounted chat render its first frame
