@@ -29,7 +29,7 @@ test("landing commands keep explicit follow-up and durable identity through the 
   assert.equal(calls[2][1].prompt.commandInput.submissionId, "launch-id");
   assert.equal(calls[2][1].prompt.commandInput.afterPrompt, "随后提问");
   assert.equal(calls[2][1].prompt.id, "launch-id");
-  assert.equal("permissionMode" in calls[2][1].prompt, false);
+  assert.equal(calls[2][1].prompt.permissionMode, "ask");
   assert.equal(await send("普通问题"), false);
 });
 
@@ -66,7 +66,7 @@ test("the new-task composer exposes workflows and durably hands off the selected
   assert.match(picker, /sendDisabled=\{!laboratory.ready/);
   const callbacks = picker.slice(picker.indexOf("  const handleLandingSend = useCallback"), picker.indexOf("  const modelsUnavailable"));
   const calls = [];
-  const env = { useCallback: callback => callback, selectedProject: null, projectlessCwd: "F:/workspace", selectedModel: { provider: "fixture", id: "fixture" }, launchReady: true, systemPromptSelection: { mode: "default" },
+  const env = { toolPermission: { mode: "auto" }, permissionSavingRef: { current: false }, useCallback: callback => callback, selectedProject: null, projectlessCwd: "F:/workspace", selectedModel: { provider: "fixture", id: "fixture" }, launchReady: true, systemPromptSelection: { mode: "default" },
     createLaunchId: () => "workflow-launch", persistentChatInputOptions, savePendingPrompt: async record => calls.push(["saved", record]), onLaunch: request => calls.push(["launch", request]) };
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
   const send = new Function("env", `with(env) { ${js}; return handleLandingSend; }`)(env);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { SessionManager, getAgentDir } from "@earendil-works/pi-coding-agent";
+import { readDefaultToolPermission, writeToolPermission } from "@/lib/tool-permission-store";
 import {
   cacheSessionPath,
   invalidateSessionListCache,
@@ -54,6 +55,7 @@ export async function POST(
     );
     invalidateSessionListCache();
     try {
+      writeToolPermission(newSessionId, readDefaultToolPermission(getAgentDir()), getAgentDir());
       await bindSessionAgentRuntimeProfile(newSessionId, runtimeProfile);
     } catch (profileError) {
       quarantineUnboundSessionFile(duplicatedPath);

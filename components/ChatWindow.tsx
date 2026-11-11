@@ -30,6 +30,7 @@ import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
 import { TaskDuration } from "./TaskDuration";
 import { responseTaskTimings } from "@/lib/response-task-timing";
+import { ToolReviewStatus } from "./ToolReviewStatus";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -212,6 +213,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
   const {
     nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
+    toolPermission, permissionSaving, handleToolPermission, toolReviews,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactionStartedAt, compactError, compactResult, displayModel: displayModelValue, sessionStats,
@@ -234,6 +236,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
     workflowReady: laboratory.ready,
     session, newSessionCwd, newSessionInitialModel,
     newSessionInitialSystemPromptSelection: initialPrompt?.systemPromptSelection ?? null,
+    newSessionInitialPermissionMode: initialPrompt?.permissionMode,
     onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   });
@@ -666,6 +669,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
   const chatInputElement = (
     <>
+    <ToolReviewStatus reviews={toolReviews} />
     {chatCommands.connectionError && <div role="status" style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "6px 10px" }}>{chatCommands.connectionError}</div>}
     <WorkflowPanel snapshot={workflow.snapshot} busy={workflow.busy} running={sessionBusy} enabled={laboratory.planGoalEnabled} settingsReady={laboratory.ready}
       error={!laboratory.ready && laboratory.error ? t("laboratory.error") : workflow.error}
@@ -705,6 +709,9 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
       compactResult={compactResult}
       onDismissCompactResult={handleDismissCompactResult}
       thinkingLevel={thinkingLevel}
+      toolPermission={toolPermission}
+      permissionSaving={permissionSaving}
+      onToolPermissionChange={handleToolPermission}
       onThinkingLevelChange={session || isNew ? handleThinkingLevelChange : undefined}
       availableThinkingLevels={availableThinkingLevels}
       thinkingLevelMap={currentThinkingLevelMap}

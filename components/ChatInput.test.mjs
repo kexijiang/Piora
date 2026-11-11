@@ -10,6 +10,7 @@ const jiti = createJiti(import.meta.url, {
   jsx: { runtime: "automatic" },
   tsconfigPaths: true,
   alias: {
+    "./ToolPermissionControl.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./MemePicker.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ChatCommandCard.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
     "./ReplySuggestionBar.module.css": fileURLToPath(new URL("../lib/css-module-test-stub.mjs", import.meta.url)),
@@ -426,13 +427,13 @@ test("renders compact errors above the input as a wrapping alert", () => {
 test("does not send text before an attached image finishes loading", () => {
   assert.match(chatInputSource, /const \[isProcessingImages, setIsProcessingImages\] = useState\(false\)/);
   assert.match(chatInputSource, /setIsProcessingImages\(true\)[\s\S]*?pendingImageCountRef\.current <= 0[\s\S]*?setIsProcessingImages\(false\)/);
-  assert.match(chatInputSource, /if \(sendDisabled \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
-  assert.match(chatInputSource, /const canSend = !sendDisabled && !isProcessingImages/);
+  assert.match(chatInputSource, /if \(sendDisabled \|\| permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
+  assert.match(chatInputSource, /const canSend = !sendDisabled && !permissionSaving && !isProcessingImages/);
 });
 
 test("new conversations wait only until a default or explicit model resolves", () => {
-  assert.match(chatInputSource, /if \(sendDisabled \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
-  assert.match(chatInputSource, /const canSend = !sendDisabled && !isProcessingImages[\s\S]*?&& !isAutoModelSelection/);
+  assert.match(chatInputSource, /if \(sendDisabled \|\| permissionSaving \|\| \(isStreaming && !onQueueInput\) \|\| isProcessingImages \|\| pendingFileCountRef\.current > 0 \|\| \(isAutoModelSelection && !commandSubmission\)\) return/);
+  assert.match(chatInputSource, /const canSend = !sendDisabled && !permissionSaving && !isProcessingImages[\s\S]*?&& !isAutoModelSelection/);
   assert.match(chatInputSource, /const displayModelName = model && !isAutoModelSelection/);
   assert.match(chatInputSource, /const canOptimizePrompt = hasInputText[\s\S]*?&& !isAutoModelSelection/);
   assert.match(chatInputSource, /onThinkingLevelChange && !isAutoModelSelection/);

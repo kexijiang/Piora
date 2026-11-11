@@ -1,0 +1,13 @@
+.control { max-width: 180px; }
+.control svg { flex-shrink: 0; }
+@container chat-composer (max-width: 560px) {
+  .control { padding-inline: 6px; gap: 4px; }
+}
+.control.full, .option.full { color: #e77928; }
+.menu { padding: 5px; overflow-y: auto; }
+.option { gap: 12px; padding: 9px 8px; }
+.option[aria-checked="true"] { background: var(--bg-hover); }
+.copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+.copy small { color: var(--text-dim); font-size: var(--text-xs); line-height: 1.5; }
+.check { flex: 0 0 14px; color: var(--accent); }
+.legacy { padding: 8px; color: var(--text-dim); font-size: var(--text-xs); line-height: 1.5; }

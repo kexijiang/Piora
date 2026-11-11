@@ -502,7 +502,8 @@ function promptSubmissionHarness(overrides = {}) {
   for (const extra of [sendHarness().env, abortHarness().env]) {
     for (const [name, value] of Object.entries(extra)) if (!(name in h.env)) h.env[name] = value;
   }
-  const callbacks = source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
+  const reviewCallback = source.slice(source.indexOf("  const acceptToolReviews = useCallback"), source.indexOf("  useEffect(() => {", source.indexOf("  const acceptToolReviews = useCallback")));
+  const callbacks = reviewCallback + source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
     + source.slice(source.indexOf("  const resumeQueuedInput = useCallback"), source.indexOf("  const chatCommands = useChatCommandOperations"))
     + source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"))
     + source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
@@ -796,7 +797,7 @@ test("stop while resume reconnects prevents a late queue mutation", async () => 
   assert.equal(sent, false);
 });
 
-test("retired review events are ignored after cancellation without reviving streaming", () => {
+test("review status settles after cancellation without reviving streaming", () => {
   const h = promptSubmissionHarness();
   h.env.cancelledPromptRunIdRef.current = h.env.promptRunIdRef.current;
   const review = { id: "review", sessionId: "session-a", status: "reviewing", startedAt: 1, updatedAt: 1 };
@@ -804,7 +805,7 @@ test("retired review events are ignored after cancellation without reviving stre
   h.handleAgentEvent({ type: "tool_review", review: { ...review, status: "cancelled", updatedAt: 2 } });
   h.handleAgentEvent({ type: "tool_review", review });
   h.handleAgentEvent({ type: "tool_review", review: { ...review, sessionId: "other", updatedAt: 3 } });
-  assert.deepEqual(h.env.reviews, []);
+  assert.deepEqual(h.env.reviews, [{ ...review, status: "cancelled", updatedAt: 2 }]);
   assert.equal(h.env.agentRunningRef.current, false);
 });
 
