@@ -160,6 +160,7 @@ export type ExtensionUiRequest =
       type: "extension_ui_request";
       id: string;
       method: "confirm";
+      toolApproval?: boolean;
       title: string;
       message: string;
       timeout?: number;

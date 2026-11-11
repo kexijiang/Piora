@@ -114,6 +114,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "automations.notifications", section: "automations", labelKey: "automations.notifications", descriptionKey: "automations.description", keywords: ["notify", "failed", "通知", "失败"] },
 
   { id: "models", section: "models", labelKey: "common.models", descriptionKey: "settings.modelsDescription", keywords: ["provider", "api key", "oauth", "模型", "登录", "密钥"] },
+  { id: "permission.settings", section: "conversation", labelKey: "permission.settings.title", descriptionKey: "permission.settings.description", keywords: ["permission", "approval", "权限", "审批", "批准"] },
   { id: "models.fallback", section: "conversation", labelKey: "models.fallback.title", descriptionKey: "models.fallback.description", keywords: ["fallback", "回退", "备用模型"] },
   { id: "tools", section: "tools", labelKey: "projectTools.title", descriptionKey: "projectTools.description", keywords: ["tools", "project", "harmony", "工具", "项目", "鸿蒙"], requiresProject: true },
   { id: "extensions", section: "extensions", labelKey: "settings.extensions", descriptionKey: "settings.manageExtensionsDescription", keywords: ["extension", "tools", "扩展", "工具"], requiresProject: true },

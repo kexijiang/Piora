@@ -76,7 +76,8 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       const retiredRequests = [];
       await context.route("http://localhost:43191/**", async route => {
         const pathname = new URL(route.request().url()).pathname;
-        if (pathname === "/api/tool-permissions") { retiredRequests.push(route.request().method()); return route.fulfill({ status: 404, json: { error: "Removed" } }); }
+        if (pathname === "/api/tool-permissions") { retiredRequests.push(route.request().method()); return route.fulfill({ json: { mode: "full" } }); }
+        if (pathname === "/api/settings/tool-approval") return route.fulfill({ json: { enabled: false } });
         if (pathname === "/api/settings/laboratory") return route.fulfill({ json: { planGoalEnabled: false } });
         if (pathname === "/api/models") return route.fulfill({ json: { models: {}, modelList: [{ provider: "deepseek", id: "deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash Very Long Model Name" }] } });
         if (pathname === "/api/system-prompt") return route.fulfill({ json: { selectorVisible: true, templates: [{ id: "long", name: "Very long system prompt template name", prompt: "Be helpful" }], defaultTemplateId: "long" } });
@@ -137,7 +138,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await page.locator("#launcher, #conversation").evaluateAll(sections => sections.forEach(section => { section.style.width = "590px"; }));
       const conversation = page.locator("#conversation");
       assert.equal(await conversation.locator(".model-settings-trigger .model-default-badge").count(), 0, "the default model has no extra composer badge");
-      assert.equal(await page.locator("[data-permission-trigger]").count(), 0, "neither composer exposes a retired approval control");
+      assert.equal(await page.locator("[data-permission-trigger]").count(), 0, "disabled approvals hide the control in both composers");
       await conversation.locator(".model-settings-trigger:not([data-permission-trigger])").click();
       await page.locator(".model-settings-popover").waitFor();
       await page.getByRole("menuitem", { name: locale === "zh-CN" ? /^模型/ : /^Model/ }).click();
@@ -524,8 +525,8 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await page.locator("#launcher textarea").fill("Start without permission setup");
       await page.locator("#launcher .composer-submit-controls > button").click();
       await page.waitForFunction(() => window.launchRequest);
-      assert.equal("permissionMode" in (await page.evaluate(() => window.launchRequest)).prompt, false);
-      assert.deepEqual(retiredRequests, [], "new and existing composers never request retired permission APIs");
+      assert.equal((await page.evaluate(() => window.launchRequest)).prompt.permissionMode, "full");
+      assert.ok(retiredRequests.includes("GET"), "saved permission preferences remain readable while controls are hidden");
 
       // Reload restores the saved running-send choice, including keyboard sends.
       assert.equal(await page.evaluate(() => localStorage.getItem('piora-running-send-mode:v1')), 'next_turn');

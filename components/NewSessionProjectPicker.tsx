@@ -10,6 +10,7 @@ import {
 } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { useLaboratorySettings } from "@/hooks/useLaboratorySettings";
+import { useDefaultToolPermission } from "@/hooks/useDefaultToolPermission";
 import type { AttachedFile } from "@/hooks/useAgentSession";
 import { fetchModelCatalog, type ModelCatalogEntry } from "@/lib/model-catalog-client";
 import { buildSessionProjectGroups, getProjectLabel } from "@/lib/session-project-groups";
@@ -61,6 +62,7 @@ export function NewSessionProjectPicker({
 }) {
   const { t } = useI18n();
   const laboratory = useLaboratorySettings();
+  const { state: toolPermission, saving: permissionSaving, savingRef: permissionSavingRef, error: permissionError, save: handleToolPermission } = useDefaultToolPermission();
   const localChatInputRef = useRef<ChatInputHandle>(null);
   const effectiveChatInputRef = chatInputRef ?? localChatInputRef;
   const draftKey = useRef(`new-task:${createLaunchId()}`).current;
@@ -285,6 +287,7 @@ export function NewSessionProjectPicker({
     retryOfPromptIds?: string[],
     commandInput?: ChatInputOptions,
   ): Promise<boolean> => {
+    if (permissionSavingRef.current) return false;
     const cwd = selectedProject?.cwd ?? projectlessCwd;
     const commandSubmission = commandInput?.inputMode !== "text" && message.trimStart().startsWith("/");
     if (!cwd || !commandSubmission && (!selectedModel || !launchReady)) return false;
@@ -305,12 +308,13 @@ export function NewSessionProjectPicker({
         images,
         files,
         systemPromptSelection,
+        permissionMode: toolPermission?.mode,
         commandInput: { ...persistentChatInputOptions(commandInput), ...(!shell ? { submissionId: id } : {}) },
         retryOfPromptIds,
       },
     });
     return true;
-  }, [launchReady, onLaunch, projectlessCwd, selectedModel, selectedProject, systemPromptSelection]);
+  }, [launchReady, onLaunch, projectlessCwd, selectedModel, selectedProject, systemPromptSelection, toolPermission, permissionSavingRef]);
 
   const modelsUnavailable = !modelsLoading && models.length === 0;
   const modelSelectionBlocked = modelsLoading
@@ -396,6 +400,7 @@ export function NewSessionProjectPicker({
 
   return (
     <>
+      {permissionError && <p role="alert">{permissionError}</p>}
       <NewSessionLauncher
         projectLabel={selectedProject ? getProjectLabel(selectedProject.root) : null}
       >
@@ -409,6 +414,9 @@ export function NewSessionProjectPicker({
           workflow={laboratory.planGoalEnabled ? { mode: "agent", turnBudget: DEFAULT_WORKFLOW_TURN_BUDGET } : undefined}
           workflowEnabled={laboratory.ready ? laboratory.planGoalEnabled : undefined}
           sendDisabled={!laboratory.ready || !selectedProject && !projectlessCwd}
+          toolPermission={toolPermission}
+          permissionSaving={permissionSaving}
+          onToolPermissionChange={handleToolPermission}
           model={selectedModel}
           isAutoModelSelection={modelSelectionBlocked}
           modelList={models}

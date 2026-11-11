@@ -1,4 +1,6 @@
 "use client";
+import { ToolPermissionControl } from "./ToolPermissionControl";
+import type { PermissionMode, ToolPermissionState } from "@/lib/tool-permission-policy";
 
 import React, { useId, useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
@@ -171,6 +173,9 @@ interface Props {
   workflow?: WorkflowPromptOptions;
   workflowEnabled?: boolean;
   workflowBusy?: boolean;
+  toolPermission?: ToolPermissionState | null;
+  permissionSaving?: boolean;
+  onToolPermissionChange?: (mode: PermissionMode) => void;
 }
 
 export interface ChatInputHandle {
@@ -346,6 +351,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   placeholder,
   contextControl, queueContent,
   workflow, workflowBusy = false, workflowEnabled = true,
+  toolPermission, permissionSaving, onToolPermissionChange,
   replySource = null,
 }: Props, ref) {
   const { t, locale } = useI18n();
@@ -891,7 +897,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     // Delivery from a recovered draft must never turn an ordinary send into steering.
     if (!commandSubmission) sentCommandOptions.delivery = overrideOptions?.delivery ?? (isStreaming ? runningSendMode : "next_turn");
     if (!msg && !attachedImages.length && !attachedFiles.length) return;
-    if (sendDisabled || (isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
+    if (sendDisabled || permissionSaving || (isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
     if (attachedFiles.some((file) => !file.path && file.text == null)) {
       setAttachmentError(t("chat.attachmentMissingPath"));
       return;
@@ -990,7 +996,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
-  }, [attachedImages, attachedFiles, sendDisabled, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode, commandCatalog, slashCommands, workflow, workflowEnabled]);
+  }, [attachedImages, attachedFiles, sendDisabled, permissionSaving, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode, commandCatalog, slashCommands, workflow, workflowEnabled]);
 
   useEffect(() => {
     submitRef.current = () => { void handleSend(); };
@@ -1070,7 +1076,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   useEffect(() => {
     if (!canQueueStreamingMessage) sendModeHoverDismissed.current = false;
   }, [canQueueStreamingMessage]);
-  const canSend = !sendDisabled && !isProcessingImages && !isProcessingFiles
+  const canSend = !sendDisabled && !permissionSaving && !isProcessingImages && !isProcessingFiles
     && (!isAutoModelSelection || isCommandInput)
     && (hasInputText || attachedImages.length > 0 || attachedFiles.length > 0);
   const canOptimizePrompt = hasInputText
@@ -2370,6 +2376,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                 <AliIcon name="plus" size={15} />
               </button>
             </div>
+            {onToolPermissionChange && <ToolPermissionControl state={toolPermission ?? null} saving={permissionSaving} onChange={onToolPermissionChange} />}
             {voiceInputSupported && (
               <>
                 <button

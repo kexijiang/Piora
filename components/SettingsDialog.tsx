@@ -17,6 +17,7 @@ import { DesktopUpdateSourceSetting } from "./DesktopUpdateSourceSetting";
 import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
 import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
+import { ToolApprovalSettings } from "./ToolApprovalSettings";
 import { ModelRetrySettings } from "./ModelRetrySettings";
 import { ModelCompactionSettings } from "./ModelCompactionSettings";
 import { ModelFallbackSetting } from "./ModelFallbackSetting";
@@ -641,6 +642,7 @@ export function SettingsDialog({
                   <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
                   <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
                   <ModelFallbackSetting />
+                  <ToolApprovalSettings />
                 </div>
                 <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.promptSection")}</h3>
                 <section className={styles.promptCard} aria-labelledby="system-prompt-heading">

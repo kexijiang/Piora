@@ -147,13 +147,17 @@ test("a slash path submits as literal text with attachments and its original dra
   assert.equal(submissions[0][5].delivery, "next_turn");
 });
 
-test("retired approval-saving state cannot block ordinary submissions", async () => {
+test("permission saving keeps the draft and prevents submission until the selected mode is saved", async () => {
   let submissions = 0;
   const { env, send } = composer(async () => { submissions++; return true; });
   env.permissionSaving = true;
   await send();
+  assert.equal(submissions, 0);
+  assert.equal(env.value, " original\nmessage ");
+  assert.equal(env.attachedImages.length, 1);
+  env.permissionSaving = false;
+  await send();
   assert.equal(submissions, 1);
-  assert.equal(env.value, "");
 });
 
 test("clears text and attachments immediately while model selection and durable storage are pending", async () => {
