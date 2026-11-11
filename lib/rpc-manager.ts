@@ -1438,6 +1438,7 @@ export class AgentSessionWrapper {
               const model = this.inner.modelRuntime.getModel(pendingModel.provider, pendingModel.modelId);
               if (!model) throw new Error(`Model not found: ${pendingModel.provider}/${pendingModel.modelId}`);
               await this.inner.setModel(applyConfiguredImageInput(model));
+              this.applySessionCapabilities();
               this.persistSessionFile();
               clearPendingSessionModel(this.sessionId, pendingModel.revision);
               this.emit({ type: "project_model_changed", provider: model.provider, modelId: model.id });
@@ -1452,6 +1453,7 @@ export class AgentSessionWrapper {
               if (configuredModel !== this.inner.model) {
                 assertNotAborted();
                 await this.inner.setModel(configuredModel);
+                this.applySessionCapabilities();
                 assertNotAborted();
               }
             }
@@ -1499,6 +1501,7 @@ export class AgentSessionWrapper {
             lastAssistant: () => this.lastAssistantResponse,
             images: Boolean(promptImages?.length),
             onSwitch: (from, to) => {
+              this.applySessionCapabilities();
               invalidateModelsCache();
               invalidateSessionListCache();
               this.setTaskActivity("retry", `Switching model: ${from} → ${to}`);
