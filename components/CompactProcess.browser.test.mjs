@@ -92,6 +92,21 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         #scroll{overflow:auto;flex:1;min-height:0;padding:24px}.chat-column{max-width:760px;margin:auto}footer{margin:16px;padding:16px;border:1px solid var(--border);border-radius:12px;color:var(--text-muted)}
         </style><div id="root"></div><script src="/bundle.js"></script></html>` });
     });
+    if (process.env.PIORA_ERROR_SCREENSHOTS) {
+      const preview = await context.newPage();
+      await preview.goto("http://compact.test/?auto");
+      await preview.locator(".compact-process-toggle").waitFor();
+      await preview.evaluate(() => { window.setLog("Error: 测试失败，预期输出与实际结果不一致\n请检查命令输出后重试。"); window.fail(); });
+      await preview.waitForFunction(() => document.querySelector('.compact-process-toggle')?.getAttribute('aria-expanded') === 'false');
+      const folder = path.join(repo, ".verification/error-collapse");
+      await mkdir(folder, {recursive:true});
+      await preview.locator(".markdown-assistant-message h2").waitFor();
+      await preview.screenshot({path:path.join(folder,"collapsed.png")});
+      await preview.locator(".compact-process-toggle").click();
+      await preview.waitForFunction(() => document.querySelector('.command-execution-toggle')?.getAttribute('aria-expanded') === 'true');
+      await preview.screenshot({path:path.join(folder,"expanded.png")});
+      await preview.close();
+    }
     const direct = await context.newPage();
     await direct.goto("http://compact.test/?direct");
     await direct.locator(".command-execution-card").first().waitFor();
@@ -357,9 +372,16 @@ createRoot(document.getElementById("root")).render(<App/>);`);
         if (scenario === "failed") window.fail(); else window.finish();
       }, scenario);
       await check.locator(".markdown-assistant-message h2").waitFor();
-      const shouldExpand = scenario !== "manual-closed";
+      const shouldExpand = scenario !== "manual-closed" && scenario !== "failed";
       assert.equal(await heading.getAttribute("aria-expanded"), String(shouldExpand), scenario);
       assert.equal(await check.locator(".command-execution-card").count(), shouldExpand ? 3 : 0, scenario);
+      if (scenario === "failed") {
+        assert.match(await heading.innerText(), /需要关注/);
+        assert.match(await heading.innerText(), /1 个报错/);
+        await heading.click();
+        assert.equal(await check.locator(".command-execution-toggle").first().getAttribute("aria-expanded"), "true");
+        assert.equal(await check.locator(".command-execution-toggle").nth(1).getAttribute("aria-expanded"), "false");
+      }
       if (scenario === "success") {
         assert.match(await heading.innerText(), /处理结束.*思考 1 段.*执行 3 条命令/s);
         // The actual chat pane is a query container, independent of the viewport.

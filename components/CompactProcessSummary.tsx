@@ -24,7 +24,7 @@ export function CompactProcessSummary({ group, onToggle, onInspectCommand }: { g
   return <section className={`compact-process-group${group.active ? " is-active" : ""}${group.attention ? " has-attention" : ""}`}>
     <ChatDisclosureTrigger className="compact-process-toggle" expanded={group.expanded} disabled={group.attention && group.active} icon="activity"
       label={t(group.attention ? "chat.processAttention" : group.active ? "chat.processWorking" : "chat.processFinished")}
-      description={description} metadata={elapsed !== null ? formatStatusDuration(elapsed) : undefined}
+      description={description} metadata={[group.errorCount > 0 ? t("chat.processErrorCount", { count: group.errorCount }) : null, elapsed !== null ? formatStatusDuration(elapsed) : null].filter(Boolean).join(" · ") || undefined}
       title={t(group.attention ? "chat.processAttention" : group.expanded ? "chat.collapseProcess" : "chat.expandProcess")}
       onClick={(event) => togglePreservingScroll(event.currentTarget, onToggle)} />
     {group.active && !group.expanded ? <div className="compact-process-preview" aria-label={t("chat.processPreview")}>

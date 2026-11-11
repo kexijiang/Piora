@@ -2140,6 +2140,7 @@ export const enLocale: LocalePlugin = {
     "chat.processFinished": "Finished",
     "chat.processCompleted": "Completed",
     "chat.processElapsedDuration": "{seconds}s elapsed",
+    "chat.processErrorCount": "Errors: {count}",
     "chat.processAttention": "Needs attention",
     "chat.processSteps": "{count} steps",
     "chat.processUpdate": "Progress update",

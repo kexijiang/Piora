@@ -2140,6 +2140,7 @@ export const zhCNLocale: LocalePlugin = {
     "chat.processFinished": "处理结束",
     "chat.processCompleted": "已完成",
     "chat.processElapsedDuration": "用时 {seconds} 秒",
+    "chat.processErrorCount": "{count} 个报错",
     "chat.processAttention": "需要关注",
     "chat.processSteps": "{count} 个步骤",
     "chat.processUpdate": "进度更新",
