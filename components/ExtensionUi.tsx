@@ -18,6 +18,15 @@ export function ExtensionDialog({
   const [value, setValue] = useState(prefill);
 
   useEffect(() => {
+    if (request.method !== "confirm" || !request.toolApproval) return;
+    const cancel = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); onRespond(request, { cancelled: true }); }
+    };
+    window.addEventListener("keydown", cancel);
+    return () => window.removeEventListener("keydown", cancel);
+  }, [request, onRespond]);
+
+  useEffect(() => {
     setValue(prefill);
   }, [request.id, prefill]);
 
@@ -57,7 +66,7 @@ export function ExtensionDialog({
         }}
       >
         <div className="extension-prompt-header" style={{ padding: "12px 14px", borderBottom: "1px solid var(--border)" }}>
-          <div style={{ color: "var(--text)", fontSize: "var(--text-base)", fontWeight: 650 }}>{request.title}</div>
+          <div style={{ color: "var(--text)", fontSize: "var(--text-base)", fontWeight: 650 }}>{request.method === "confirm" && request.toolApproval ? `${t("permission.approval")} · ${request.title}` : request.title}</div>
           <div style={{ marginTop: 3, color: "var(--text-dim)", fontSize: "var(--text-xs)", fontFamily: "var(--font-mono)" }}>{t("chat.extensionRequest")}</div>
         </div>
 
@@ -141,6 +150,8 @@ export function ExtensionDialog({
         </div>
 
         <div className="extension-prompt-footer" style={{ display: "flex", justifyContent: "flex-end", gap: 8, padding: "10px 14px", borderTop: "1px solid var(--border)", background: "var(--bg-panel)" }}>
+          {request.method === "confirm" && request.toolApproval && <button className="extension-prompt-button" type="button"
+            onClick={() => onRespond(request, { value: "full" })}>{t("permission.allowChat")}</button>}
           <button
             className="extension-prompt-button"
             onClick={() => onRespond(request, { cancelled: true })}
@@ -153,7 +164,7 @@ export function ExtensionDialog({
               cursor: "pointer",
             }}
           >
-             {t("chat.cancel")}
+             {t(request.method === "confirm" && request.toolApproval ? "permission.deny" : "chat.cancel")}
           </button>
           {request.method === "confirm" ? (
             <button
@@ -168,7 +179,7 @@ export function ExtensionDialog({
                 cursor: "pointer",
               }}
             >
-               {t("chat.confirm")}
+               {t(request.toolApproval ? "permission.allowOnce" : "chat.confirm")}
             </button>
           ) : request.method !== "select" ? (
             <button

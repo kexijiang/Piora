@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { ModelErrorText } from "./ModelErrorText";
+import styles from "./SettingsDialog.module.css";
 
 export function ModelFallbackSetting() {
   const { t } = useI18n();
@@ -34,12 +35,18 @@ export function ModelFallbackSetting() {
     } catch (reason) { setError(String(reason)); }
     finally { setBusy(false); }
   };
-  return <div data-settings-id="models.fallback" style={{ padding: "12px 18px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-    <label style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text)", fontSize: "var(--text-sm)" }}>
-      <input type="checkbox" role="switch" checked={enabled} disabled={busy} onChange={() => void toggle()} />
-      <strong>{t("models.fallback.title")}</strong>
-    </label>
-    <p style={{ margin: "5px 0 0", color: "var(--text-muted)", fontSize: "var(--text-xs)" }}>{t("models.fallback.description")}</p>
-    {error ? <p role="alert" style={{ color: "var(--error, #dc2626)", margin: "5px 0 0" }}>{<ModelErrorText value={error} />}</p> : null}
-  </div>;
+  return <section className={styles.conversationSection} data-settings-id="models.fallback">
+    <div className={styles.conversationRow}>
+      <div className={styles.conversationCopy}>
+        <div className={styles.rowTitle}>{t("models.fallback.title")}</div>
+        <div id="ModelFallbackSetting-description" className={styles.rowDescription}>{t("models.fallback.description")}</div>
+        {error ? <p role="alert" style={{ color: "var(--error, #dc2626)", margin: "5px 0 0" }}><ModelErrorText value={error} /></p> : null}
+      </div>
+      <button type="button" role="switch" className={styles.switch}
+        aria-label={t("models.fallback.title")} aria-describedby="ModelFallbackSetting-description"
+        aria-checked={enabled} disabled={busy} onClick={() => void toggle()}>
+        <span />
+      </button>
+    </div>
+  </section>;
 }
