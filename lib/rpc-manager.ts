@@ -317,6 +317,7 @@ export class AgentSessionWrapper {
   private capabilityPolicy: SessionCapabilityPolicy;
   private capabilityCatalog: ReturnType<typeof buildSessionCapabilityCatalog>;
   private toolNameCeiling: Set<string> | undefined;
+  private capabilitiesInitialized = false;
   private pendingProjectCapabilityPolicy: SessionCapabilityPolicy | null = null;
   private pendingProjectAllowedToolNames: Set<string> | null = null;
   private projectAllowedToolNames: Set<string> | undefined;
@@ -599,6 +600,7 @@ export class AgentSessionWrapper {
   }
 
   private applySessionCapabilities(): void {
+    this.capabilitiesInitialized = true;
     this.refreshCapabilityCatalog();
     if (this.runtimeProfile === "normal" && this.capabilityPolicy.preset === "coding") {
       this.capabilityPolicy = {
@@ -616,6 +618,13 @@ export class AgentSessionWrapper {
     this.setForceEmptySystemPrompt(resolved.toolNames.length === 0);
     this.inner.setActiveToolsByName(resolved.toolNames);
     this.applyForcedEmptySystemPrompt();
+  }
+
+  private reapplySessionCapabilities(): void {
+    // Bare SDK wrappers can retain their original prompt/loadout. Lifecycle
+    // refreshes only reapply a capability policy once the host has installed it.
+    if (this.capabilitiesInitialized) this.applySessionCapabilities();
+    else this.applyForcedEmptySystemPrompt();
   }
 
   getSessionCapabilities(): SessionCapabilitiesState {
@@ -1056,7 +1065,7 @@ export class AgentSessionWrapper {
         this.inner.extensionRunner.setUIContext?.(uiContext, "rpc");
       }
       this.extensionsBound = true;
-      this.applySessionCapabilities();
+      this.reapplySessionCapabilities();
       console.log(`[pi-web] session_start dispatched to extensions for session ${this.inner.sessionId}`);
     })().catch((err) => {
       this.extensionBindingError = err;
@@ -1156,7 +1165,7 @@ export class AgentSessionWrapper {
       if (typeof this.inner.bindExtensions !== "function") {
         this.inner.extensionRunner.setUIContext?.(this.createExtensionUiContext(), "rpc");
       }
-      this.applySessionCapabilities();
+      this.reapplySessionCapabilities();
       this.systemPromptReloadApplied = revision;
       invalidateModelsCache();
       this.emit({
@@ -1438,7 +1447,7 @@ export class AgentSessionWrapper {
               const model = this.inner.modelRuntime.getModel(pendingModel.provider, pendingModel.modelId);
               if (!model) throw new Error(`Model not found: ${pendingModel.provider}/${pendingModel.modelId}`);
               await this.inner.setModel(applyConfiguredImageInput(model));
-              this.applySessionCapabilities();
+              this.reapplySessionCapabilities();
               this.persistSessionFile();
               clearPendingSessionModel(this.sessionId, pendingModel.revision);
               this.emit({ type: "project_model_changed", provider: model.provider, modelId: model.id });
@@ -1453,7 +1462,7 @@ export class AgentSessionWrapper {
               if (configuredModel !== this.inner.model) {
                 assertNotAborted();
                 await this.inner.setModel(configuredModel);
-                this.applySessionCapabilities();
+                this.reapplySessionCapabilities();
                 assertNotAborted();
               }
             }
@@ -1501,7 +1510,7 @@ export class AgentSessionWrapper {
             lastAssistant: () => this.lastAssistantResponse,
             images: Boolean(promptImages?.length),
             onSwitch: (from, to) => {
-              this.applySessionCapabilities();
+              this.reapplySessionCapabilities();
               invalidateModelsCache();
               invalidateSessionListCache();
               this.setTaskActivity("retry", `Switching model: ${from} → ${to}`);
@@ -1752,7 +1761,7 @@ export class AgentSessionWrapper {
           }
         }
         await this.inner.setModel(applyConfiguredImageInput(model));
-        this.applySessionCapabilities();
+        this.reapplySessionCapabilities();
         this.persistSessionFile();
         clearPendingSessionModel(this.sessionId);
         invalidateModelsCache();
