@@ -120,13 +120,14 @@ do not hand-edit it or replace it with the broader source lockfile inventory.
 Stable and beta tags publish only a Windows x64 NSIS installer, its blockmap,
 update channel metadata and checksums. Portable EXE, ZIP and Linux AppImage
 packages are no longer built. The installer allows a custom destination;
-installed builds check the appropriate release channel after startup and defer
+installed builds check GitHub for the newest eligible beta or stable release after startup and defer
 installation while tasks or unsaved edits remain.
 
 Beta tags (`vX.Y.Z-beta.N`) use `harmony-preview.yml` to build and verify the
 Windows installer. Once the entire run succeeds, `publish-preview.yml` publishes
-those exact artifacts automatically without human approval. Installed beta builds require manual updates. Only stable Windows installer builds
-enable update checks, downloads and scheduled installation, regardless of historical audience enrollment.
+those exact artifacts automatically without human approval. Both beta and stable Windows installer builds
+enable update checks, downloads and scheduled installation. They check beta and stable releases together,
+regardless of historical audience enrollment or saved source preferences, and use GitHub as the fixed source.
 Settings > General also provides an opt-in scheduled silent update: installation
 waits for tasks to finish, edits to be saved, and the computer to be idle. This is
 unavailable in portable/development builds. See [release procedure](../docs/release.md)
@@ -192,4 +193,4 @@ Windows 安装版和便携版内置完整 PowerShell 7，终端默认直接启�
 
 ### 测试版发布
 
-Alpha 构建与分发已下线，发布入口仅接受 stable / beta 标签。Beta 为手动安装测试版；旧 Alpha 与开发版也不参与自动更新。Beta 保留安装包、blockmap、更新 YAML 和校验和供产物验证，客户端不会消费测试版更新。
+Alpha 构建与分发已下线，发布入口仅接受 stable / beta 标签。Beta 和正式版 Windows 安装版均从 GitHub 检测这两类版本的更新，按版本号选择较新的可用安装包；旧 Alpha、便携版与开发版不参与自动更新。Beta 保留安装包、blockmap、更新 YAML 和校验和，供自动更新与产物验证使用。

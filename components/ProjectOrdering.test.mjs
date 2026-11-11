@@ -72,8 +72,16 @@ test("restores manual project order after reload despite newer activity elsewher
   assert.deepEqual(reconcileProjectOrder(restored, ["b", "a", "c", "new"]), ["c", "a", "b", "new"]);
 });
 
-test("long-presses project rows to reorder without adding a drag button", () => {
-  assert.match(area, /PROJECT_DRAG_HOLD_MS = 500/);
+test("starts project dragging on pointer down and commits only moved pointer releases", () => {
+  const beginDrag = area.slice(area.indexOf("const beginProjectDrag"), area.indexOf("const suppressProjectClick"));
+  assert.match(beginDrag, /event\.button !== 0/);
+  assert.match(beginDrag, /moved: false/);
+  assert.match(beginDrag, /dragRef\.current = next;\s*setDragState\(next\)/);
+  assert.match(area, /isDragging=\{dragState\?\.sourceRoot === group\.projectRoot\}/);
+  assert.match(styles, /\.projectGroupDragging \.projectMain\s*\{\s*cursor: grabbing/);
+  assert.doesNotMatch(beginDrag, /setTimeout|HOLD_MS/);
+  assert.match(area, /if \(activeDrag && candidate\.moved\)/);
+  assert.match(area, /if \(event\.type === "pointerup" && activeDrag\.targetRoot\)/);
   assert.match(area, /window\.addEventListener\("pointermove"/);
   assert.match(area, /onReorderProjects\(activeDrag\.sourceRoot, activeDrag\.targetRoot, activeDrag\.position\)/);
   assert.match(sidebar, /PROJECT_ORDER_STORAGE_KEY|projectOrder/);

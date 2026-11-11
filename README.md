@@ -208,7 +208,7 @@ Piora 中的“项目”就是你选中的**本地文件夹**。它不会自动�
 
 ## 版本更新
 
-稳定版支持在 **设置 → 应用行为** 中检查并安装更新。Beta 测试版需从 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 下载最新安装包，选择原安装目录升级。
+Windows 安装版支持在 **设置 → 应用行为** 中检查并安装更新，固定从 GitHub 同时检测 Beta 与正式版，按版本号选择较新的版本。旧版若无法检测更新，可从 [GitHub Releases](https://github.com/kexijiang/Piora/releases) 下载最新安装包，选择原安装目录升级；升级后即可使用新的统一更新流程。
 
 <!-- SCREENSHOT: 12-updates -->
 ![应用行为：当前版本与更新资格](docs/images/readme/12-updates.png)

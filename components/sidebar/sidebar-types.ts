@@ -50,7 +50,6 @@ declare global {
       onNotificationSession?: (listener: (sessionId: string) => void) => () => void;
       openMenu?: (menu: "file" | "edit" | "view" | "help", x: number, y: number) => Promise<boolean>;
       setMenuLocale?: (locale: "en" | "zh-CN") => Promise<boolean>;
-      setUpdateSource?: (source: "github" | "internal") => Promise<DesktopUpdateState | null>;
       getUpdateState?: () => Promise<DesktopUpdateState | null>;
       getUpdateSchedule?: () => Promise<{ enabled: boolean; time: string; supported: boolean; unsupportedReason?: DesktopUpdateState["unsupportedReason"] } | null>;
       setUpdateSchedule?: (input: { enabled: boolean; time: string }) => Promise<{ enabled: boolean; time: string; supported: boolean; unsupportedReason?: DesktopUpdateState["unsupportedReason"] } | null>;
@@ -149,7 +148,6 @@ export interface DesktopBrowserState {
   url: string;
   agentTabId?: string | null;
   agentOperating?: boolean;
-  agentPaused?: boolean;
   agentWaiting?: boolean;
   agentWaitReason?: string;
   agentWaitPurpose?: "login" | "confirmation";
@@ -159,7 +157,6 @@ export interface DesktopBrowserAgentActivity {
   sessionId: string;
   tabId: string | null;
   operating: boolean;
-  paused: boolean;
   waiting?: boolean;
   reason?: string;
   purpose?: "login" | "confirmation";
@@ -168,7 +165,7 @@ export interface DesktopBrowserAgentActivity {
 export type DesktopBrowserAgentBackend = "desktop" | "playwright";
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
+  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;

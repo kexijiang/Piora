@@ -10,15 +10,15 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("Markdown split preview follows editor scrolling, remounts and layout changes", { timeout: 120000 }, async () => {
+test("Markdown opens in preview, respects explicit modes and keeps split scrolling in sync", { timeout: 120000 }, async () => {
   const root = await mkdtemp(path.join(tmpdir(), "piora-split-preview-"));
   let browser;
   try {
     await writeFile(path.join(root, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root, "css.cjs"), 'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
     await writeFile(path.join(root, "stubs.tsx"), 'export const useTheme=()=>({isDark:false});export const CodeBlock=()=>null;export const MermaidBlock=()=>null;');
-    await writeFile(path.join(root, "entry.tsx"), `import React from "react";import {createRoot} from "react-dom/client";import {FileViewer} from "@/components/FileViewer";import {I18nProvider} from "@/hooks/useI18n";
-      createRoot(document.getElementById("root")).render(<I18nProvider><FileViewer filePath="/project/notes.md" cwd="/project"/></I18nProvider>);`);
+    await writeFile(path.join(root, "entry.tsx"), `import React,{useState} from "react";import {createRoot} from "react-dom/client";import {FileViewer,type DisplayMode} from "@/components/FileViewer";import {I18nProvider} from "@/hooks/useI18n";
+      const query=new URLSearchParams(location.search);function Fixture(){const [active,setActive]=useState(true);const [file,setFile]=useState(query.get("file")||"notes.md");window.setViewerActive=setActive;window.openViewerFile=setFile;return <section data-active={active} style={{height:"100%"}}><FileViewer filePath={"/project/"+file} cwd="/project" active={active} initialDisplayMode={(query.get("mode")||undefined) as DisplayMode|undefined}/></section>};createRoot(document.getElementById("root")).render(<I18nProvider><Fixture/></I18nProvider>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
       entry: path.join(root, "entry.tsx"), output: { path: root, filename: "bundle.js", publicPath: "/" },
       resolve: { extensions: [".tsx", ".ts", ".js"], modules: [path.join(repo, "node_modules"), "node_modules"], alias: { "@/hooks/useTheme": path.join(root, "stubs.tsx"), "./MermaidBlock": path.join(root, "stubs.tsx"), "@": repo } },
@@ -35,13 +35,23 @@ test("Markdown split preview follows editor scrolling, remounts and layout chang
     await page.route("http://split-preview.test/**", async route => {
       const url = new URL(route.request().url());
       if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(root, path.basename(url.pathname))) });
-      if (url.pathname.startsWith("/api/files/")) return route.fulfill({ json: { content, language: "markdown", size: content.length, version: "v1", mtime: 1 } });
+      if (url.pathname.startsWith("/api/files/")) return route.fulfill({ json: { content, language: url.pathname.endsWith(".txt") ? "text" : "markdown", size: content.length, version: "v1", mtime: 1 } });
+      if (url.pathname === "/api/git/diff" && url.searchParams.get("path")?.endsWith("changes.md")) return route.fulfill({ json: { supported: true, status: "modified", patch: "--- a/changes.md\n+++ b/changes.md\n@@ -1 +1 @@\n-old title\n+## Section 0" } });
       if (url.pathname.startsWith("/api/")) return route.fulfill({ json: { supported: false } });
       if (url.pathname === "/") return route.fulfill({ contentType: "text/html", body: `<!doctype html><meta charset="utf-8"><style>${css}html,body,#root{height:100%;margin:0}</style><div id="root"></div><script src="/bundle.js"></script>` });
       return route.fulfill({ status: 404, body: "" });
     });
     await page.goto("http://split-preview.test/");
+    await page.getByRole("heading", { name: "Section 0", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "预览", exact: true }).getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator(".cm-content").count(), 0, "Markdown initially renders the document without opening an editor");
+    await page.getByRole("button", { name: "直接编辑文件", exact: true }).click();
     await page.locator(".cm-scroller").waitFor();
+    await page.evaluate(() => window.setViewerActive(false));
+    await page.locator('section[data-active="false"]').waitFor();
+    await page.evaluate(() => window.setViewerActive(true));
+    await page.locator('section[data-active="true"]').waitFor();
+    assert.equal(await page.getByRole("button", { name: "直接编辑文件", exact: true }).getAttribute("aria-pressed"), "true", "tab activation does not reset a user's chosen mode");
     const split = () => page.getByRole("button", { name: "并排预览", exact: true }).click();
     const setScroll = progress => page.locator(".cm-scroller").evaluate((element, progress) => { element.scrollTop = progress * (element.scrollHeight - element.clientHeight); }, progress);
     const expectSync = (progress = null) => page.waitForFunction(progress => {
@@ -71,6 +81,22 @@ test("Markdown split preview follows editor scrolling, remounts and layout chang
     await page.locator('.file-viewer-mode-switch[aria-label="并排预览"]').getByRole("button", { name: "预览", exact: true }).click();
     await page.setViewportSize({ width: 1000, height: 760 });
     await expectSync();
+
+    // A reused viewer applies the new file's default instead of inheriting split mode.
+    await page.evaluate(() => window.openViewerFile("README.MDX"));
+    await page.getByRole("heading", { name: "Section 0", exact: true }).waitFor();
+    assert.equal(await page.getByRole("button", { name: "预览", exact: true }).getAttribute("aria-pressed"), "true");
+    assert.equal(await page.locator(".cm-content").count(), 0);
+    await page.evaluate(() => window.openViewerFile("plain.txt"));
+    await page.locator(".cm-scroller").waitFor();
+    assert.equal(await page.getByRole("button", { name: "直接编辑文件", exact: true }).getAttribute("aria-pressed"), "true");
+    assert.equal(await page.getByRole("button", { name: "预览", exact: true }).count(), 0);
+
+    for (const [mode, label] of [["edit", "直接编辑文件"], ["source", "源代码"], ["diff", "Diff"]]) {
+      await page.goto(`http://split-preview.test/?file=changes.md&mode=${mode}`);
+      await page.waitForFunction(label => [...document.querySelectorAll("button")].some(button => button.getAttribute("aria-label") === label && button.getAttribute("aria-pressed") === "true"), label);
+      assert.equal(await page.locator(".markdown-file-preview").count(), 0, `explicit ${mode} overrides the Markdown default`);
+    }
     assert.deepEqual(errors, []);
   } finally {
     await browser?.close();

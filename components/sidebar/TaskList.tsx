@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { SessionFlags } from "@/lib/session-flags";
 import type { SessionInfo } from "@/lib/types";
@@ -8,6 +8,7 @@ import type { SessionTreeNode } from "@/lib/session-project-groups";
 import { flattenTaskWindow, indexTaskTree, taskAncestorIds, type FlatTask } from "@/lib/sidebar-tree-window";
 import { VirtualList, type VirtualListHandle } from "../VirtualList";
 import styles from "../SessionSidebar.module.css";
+import { AliIcon } from "../AliIcon";
 import { TaskRow } from "./TaskRow";
 import type { SessionMoveTarget } from "./TaskContextMenu";
 
@@ -27,8 +28,7 @@ interface CommonProps {
   sessionOrder: readonly string[];
 }
 
-const SESSION_DRAG_HOLD_MS = 250;
-const SESSION_DRAG_CANCEL_DISTANCE = 7;
+const SESSION_DRAG_MOVE_THRESHOLD = 7;
 
 interface SessionDragState {
   sourceId: string;
@@ -37,15 +37,19 @@ interface SessionDragState {
   position: "before" | "after";
 }
 
-export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, onSelectSession: selectSession, ...props }: CommonProps & {
+export function TaskList({ nodes, scope, pageSize, reorderable = true, onReorderSessions, onSelectSession: selectSession, ...props }: CommonProps & {
   nodes: SessionTreeNode[];
   scope: string;
+  pageSize?: number;
   reorderable?: boolean;
   onReorderSessions: (sourceId: string, targetId: string, position: "before" | "after") => void;
 }) {
   const { t } = useI18n();
+  const treeId = useId();
   const storageKey = "piora:expanded-branches:v1:" + scope;
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [visibleCount, setVisibleCount] = useState(pageSize ?? Infinity);
+  useEffect(() => { setVisibleCount(pageSize ?? Infinity); }, [pageSize, scope]);
   const index = useMemo(() => indexTaskTree(nodes, props.flags, props.sessionOrder), [nodes, props.flags, props.sessionOrder]);
   const ancestors = useMemo(() => taskAncestorIds(index.parents, props.selectedSessionId), [index, props.selectedSessionId]);
   const ancestorKey = JSON.stringify(ancestors);
@@ -68,7 +72,16 @@ export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, 
       return next;
     });
   }, [storageKey]);
-  const rows = useMemo(() => flattenTaskWindow(index, expanded), [index, expanded]);
+  const allRows = useMemo(() => flattenTaskWindow(index, expanded), [index, expanded]);
+  useEffect(() => {
+    // Search and restored selections can point beyond the currently shown batch.
+    if (!pageSize || !props.selectedSessionId) return;
+    const selectedIndex = allRows.findIndex(row => row.session.id === props.selectedSessionId);
+    if (selectedIndex < 0) return;
+    const required = Math.ceil((selectedIndex + 1) / pageSize) * pageSize;
+    setVisibleCount(current => Math.max(current, required));
+  }, [allRows, pageSize, props.selectedSessionId]);
+  const rows = useMemo(() => allRows.slice(0, visibleCount), [allRows, visibleCount]);
   const keys = useMemo(() => rows.map((row) => row.session.id), [rows]);
   const lastRevealed = useRef<string | null>(null);
   const onSelectSession = useCallback((session: SessionInfo) => {
@@ -85,20 +98,13 @@ export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, 
       lastRevealed.current = selected;
     } else if (!selected) lastRevealed.current = null;
   }, [keys, props.selectedSessionId]);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const candidateRef = useRef<{ pointerId: number; session: SessionInfo; scope: string; x: number; y: number; scroll: HTMLElement | null; element: HTMLElement } | null>(null);
+  const candidateRef = useRef<{ pointerId: number; session: SessionInfo; scope: string; x: number; y: number; moved: boolean; scroll: HTMLElement | null; element: HTMLElement } | null>(null);
   const dragRef = useRef<SessionDragState | null>(null);
   const suppressClickRef = useRef<{ sessionId: string; until: number } | null>(null);
   const previousBodyStyleRef = useRef<{ cursor: string; userSelect: string } | null>(null);
   const [dragState, setDragState] = useState<SessionDragState | null>(null);
 
-  const clearHoldTimer = useCallback(() => {
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    holdTimerRef.current = null;
-  }, []);
-
   const stopDragging = useCallback(() => {
-    clearHoldTimer();
     const candidate = candidateRef.current;
     if (candidate?.element.hasPointerCapture(candidate.pointerId)) {
       candidate.element.releasePointerCapture(candidate.pointerId);
@@ -111,19 +117,16 @@ export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, 
       document.body.style.userSelect = previousBodyStyleRef.current.userSelect;
       previousBodyStyleRef.current = null;
     }
-  }, [clearHoldTimer]);
+  }, []);
 
   const handlePointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const candidate = candidateRef.current;
     if (!candidate || event.pointerId !== candidate.pointerId) return;
     event.stopPropagation();
     const activeDrag = dragRef.current;
-    if (!activeDrag) {
-      if (Math.hypot(event.clientX - candidate.x, event.clientY - candidate.y) > SESSION_DRAG_CANCEL_DISTANCE) {
-        stopDragging();
-      }
-      return;
-    }
+    if (!activeDrag) return;
+    if (!candidate.moved && Math.hypot(event.clientX - candidate.x, event.clientY - candidate.y) < SESSION_DRAG_MOVE_THRESHOLD) return;
+    candidate.moved = true;
 
     event.preventDefault();
     const scroll = candidate.scroll;
@@ -153,20 +156,20 @@ export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, 
       dragRef.current = next;
       setDragState(next);
     }
-  }, [stopDragging]);
+  }, []);
 
   const finishPointer = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     const candidate = candidateRef.current;
     if (!candidate || event.pointerId !== candidate.pointerId) return;
     event.stopPropagation();
     const activeDrag = dragRef.current;
-    if (activeDrag) {
+    if (activeDrag && candidate.moved) {
       suppressClickRef.current = { sessionId: activeDrag.sourceId, until: Date.now() + 500 };
-      if (activeDrag.targetId) {
+      if (event.type === "pointerup" && activeDrag.targetId) {
         onReorderSessions(activeDrag.sourceId, activeDrag.targetId, activeDrag.position);
       }
     } else if (event.type === "pointerup") {
-      // Pointer capture keeps long-press dragging reliable, but it retargets the
+      // Pointer capture keeps dragging reliable, but it retargets the
       // browser's synthesized click to this outer wrapper. Select explicitly on
       // a short release, then consume only that one retargeted click below.
       suppressClickRef.current = { sessionId: candidate.session.id, until: Date.now() + 500 };
@@ -182,7 +185,7 @@ export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, 
     if (!event.isPrimary || event.button !== 0) return;
     if ((event.target as Element).closest("button, input, textarea, select, a, [role='menu'], [data-session-drag-ignore]")) return;
     event.stopPropagation();
-    clearHoldTimer();
+    suppressClickRef.current = null;
     event.currentTarget.setPointerCapture(event.pointerId);
     candidateRef.current = {
       pointerId: event.pointerId,
@@ -190,21 +193,18 @@ export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, 
       scope: sourceScope,
       x: event.clientX,
       y: event.clientY,
+      moved: false,
       scroll: event.currentTarget.closest<HTMLElement>("[data-session-drag-scroll]"),
       element: event.currentTarget,
     };
-    holdTimerRef.current = setTimeout(() => {
-      const candidate = candidateRef.current;
-      if (!candidate || !candidate.element.isConnected || candidate.pointerId !== event.pointerId || candidate.session.id !== session.id) return;
-      const next: SessionDragState = { sourceId: session.id, sourceScope, targetId: null, position: "after" };
-      dragRef.current = next;
-      setDragState(next);
-      previousBodyStyleRef.current = { cursor: document.body.style.cursor, userSelect: document.body.style.userSelect };
-      document.body.style.cursor = "grabbing";
-      document.body.style.userSelect = "none";
-      window.getSelection()?.removeAllRanges();
-    }, SESSION_DRAG_HOLD_MS);
-  }, [clearHoldTimer, reorderable]);
+    const next: SessionDragState = { sourceId: session.id, sourceScope, targetId: null, position: "after" };
+    dragRef.current = next;
+    setDragState(next);
+    previousBodyStyleRef.current = { cursor: document.body.style.cursor, userSelect: document.body.style.userSelect };
+    document.body.style.cursor = "grabbing";
+    document.body.style.userSelect = "none";
+    window.getSelection()?.removeAllRanges();
+  }, [reorderable]);
 
   const suppressSessionClick = useCallback((sessionId: string, event: ReactMouseEvent<HTMLElement>) => {
     const suppressed = suppressClickRef.current;
@@ -234,13 +234,21 @@ export function TaskList({ nodes, scope, reorderable = true, onReorderSessions, 
       requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-session-drag-id="${CSS.escape(target!)}"]`)?.focus({ preventScroll: true }));
     }
   };
-  return <div role="tree" aria-label={t("sidebar.chats")}><VirtualList keys={keys} estimate={35} handleRef={listRef} pinnedKeys={dragState ? [dragState.sourceId] : []} renderItem={(_key, index) => {
-    const row = rows[index];
-    return <SessionTreeItem row={row} scope={scope + ":" + (row.parentId ?? "root") + ":" + (props.flags[row.session.id]?.pinned ? "pinned" : "regular")}
-      dragState={dragState} onToggleCollapse={toggleExpanded} onKeyDown={(event) => navigateRow(row, event)}
-      onPointerDown={beginSessionDrag} onPointerMove={handlePointerMove} onPointerEnd={finishPointer}
-      onClickCapture={suppressSessionClick} onSelectSession={onSelectSession} {...props} />;
-  }} /></div>;
+  return <div>
+    <div id={treeId} role="tree" aria-label={t("sidebar.chats")}>
+      <VirtualList keys={keys} estimate={35} handleRef={listRef} pinnedKeys={dragState ? [dragState.sourceId] : []} renderItem={(_key, index) => {
+        const row = rows[index];
+        return <SessionTreeItem row={row} scope={scope + ":" + (row.parentId ?? "root") + ":" + (props.flags[row.session.id]?.pinned ? "pinned" : "regular")}
+          dragState={dragState} onToggleCollapse={toggleExpanded} onKeyDown={(event) => navigateRow(row, event)}
+          onPointerDown={beginSessionDrag} onPointerMove={handlePointerMove} onPointerEnd={finishPointer}
+          onClickCapture={suppressSessionClick} onSelectSession={onSelectSession} {...props} />;
+      }} />
+    </div>
+    {pageSize && visibleCount < allRows.length ? <button type="button" className={styles.sessionShowMore} aria-controls={treeId} onClick={() => setVisibleCount(current => current + pageSize)}>
+      <AliIcon name="chevron-right" size={12} className={styles.sessionShowMoreChevron} />
+      {t("sidebar.showMoreSessions", { count: Math.min(pageSize, allRows.length - visibleCount) })}
+    </button> : null}
+  </div>;
 }
 
 export function SessionTreeItem({ row, scope, dragState, onPointerDown, onPointerMove, onPointerEnd, onClickCapture, onToggleCollapse, onKeyDown, ...props }: CommonProps & {

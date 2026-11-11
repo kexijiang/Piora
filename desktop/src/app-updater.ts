@@ -1,7 +1,7 @@
 import { parseUpdateSource, type DesktopUpdateSource } from "./update-source.js";
 import type { AppUpdater } from "electron-updater";
 import type { Logger } from "./logger.js";
-import { isStableDesktopVersion, type DesktopReleaseAudience } from "./release-audience.js";
+import { isStableDesktopVersion, isUpdatableDesktopVersion, type DesktopReleaseAudience } from "./release-audience.js";
 
 export type DesktopUpdateStatus =
   | "unsupported"
@@ -89,16 +89,17 @@ export class DesktopUpdateController {
     private readonly logger: Logger,
     private readonly options: DesktopUpdateControllerOptions = {},
   ) {
-    // Gate every updater entry point by the running build, never a persisted audience.
-    const isStable = isStableDesktopVersion(currentVersion);
-    if (!isStable) {
+    // Installer builds support both beta and stable updates; development and
+    // alpha builds still require a supported installer.
+    const supportedVersion = isUpdatableDesktopVersion(currentVersion);
+    if (!supportedVersion) {
       this.updater = null;
       updater = null;
     }
-    const audience = isStable ? "stable" : options.audience ?? "preview";
+    const audience = options.audience ?? "preview";
     this.state = {
       status: updater ? "idle" : "unsupported",
-      ...(!updater ? { unsupportedReason: !isStable ? "non-stable" as const : "installer-required" as const } : {}),
+      ...(!updater ? { unsupportedReason: !supportedVersion ? "non-stable" as const : "installer-required" as const } : {}),
       currentVersion: normalizedVersion(currentVersion) ?? currentVersion,
       audience,
       source: options.source ?? "github",
@@ -108,7 +109,8 @@ export class DesktopUpdateController {
     updater.autoDownload = false;
     updater.autoInstallOnAppQuit = false;
     updater.autoRunAppAfterInstall = true;
-    updater.allowPrerelease = false;
+    updater.allowPrerelease = audience === "preview";
+    updater.allowDowngrade = false;
     updater.logger = logger;
 
     updater.on("checking-for-update", () => {
@@ -119,7 +121,7 @@ export class DesktopUpdateController {
     });
     updater.on("update-available", (info) => {
       try {
-        if (!isStableDesktopVersion(info.version)) throw new Error("Only stable releases can be installed automatically");
+        if (!isUpdatableDesktopVersion(info.version) || (audience === "stable" && !isStableDesktopVersion(info.version))) throw new Error("The update is not an eligible stable or beta release");
         this.options.validateUpdateInfo?.(info);
       } catch (error) { this.fail(error); return; }
       const availableVersion = normalizedVersion(info.version);
@@ -144,7 +146,7 @@ export class DesktopUpdateController {
     });
     updater.on("update-downloaded", (info) => {
       try {
-        if (!isStableDesktopVersion(info.version)) throw new Error("Only stable releases can be installed automatically");
+        if (!isUpdatableDesktopVersion(info.version) || (audience === "stable" && !isStableDesktopVersion(info.version))) throw new Error("The update is not an eligible stable or beta release");
         this.options.validateUpdateInfo?.(info);
       } catch (error) { this.fail(error); return; }
       const availableVersion = normalizedVersion(info.version);

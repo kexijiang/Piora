@@ -11,7 +11,6 @@ export const MANUAL_BROWSER_SESSION_ID = "__piora_browser_manual__";
 export const CDP_TIMEOUT_MS = 10_000;
 export const REQUEST_TIMEOUT_MS = 40_000;
 
-export const PAUSED_BY_USER_ERROR = "Browser agent is paused by user.";
 export const EVALUATE_DISABLED_ERROR = "evaluate requires a matching inspected document token.";
 export const EVALUATE_SENSITIVE_REFUSAL = "evaluate is refused on pages with password fields, login, payment, or account-security content. Use snapshot/click/type, or call wait_for_user.";
 export const EVALUATE_PAGE_CHANGED_ERROR = "The page changed after inspection. evaluate was not run; take a new snapshot and try again.";
@@ -74,20 +73,6 @@ export function formatNavigationToken(tabId: string, epoch: number, url: string)
 export function navigationTokenTabId(token: string): string {
   const match = /^([^:]+):(\d+):/.exec(token);
   return match?.[1] ?? "";
-}
-
-const USER_INPUT_EVENT_TYPES = new Set([
-  "mouseDown",
-  "rawKeyDown",
-  "keyDown",
-  "char",
-  "mouseWheel",
-  "gestureScrollBegin",
-]);
-
-export function classifyInputEvent(type: string, inFlight: number): "user" | "ignore" {
-  if (!USER_INPUT_EVENT_TYPES.has(type)) return "ignore";
-  return inFlight === 0 ? "user" : "ignore";
 }
 
 export class InFlightCounter {
@@ -520,10 +505,4 @@ export function httpUrl(raw: string): string {
     throw new Error("The built-in browser accepts only http:// and https:// URLs.");
   }
   return parsed.href;
-}
-
-export const INPUT_ACTIONS = new Set(["open", "back", "forward", "reload", "click", "type", "press", "scroll", "new_tab", "switch_tab", "close_tab", "evaluate"]);
-
-export function isPausedAction(action: string): boolean {
-  return INPUT_ACTIONS.has(action);
 }

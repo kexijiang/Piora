@@ -86,7 +86,7 @@ import {
   DesktopUpdateController,
   type DesktopUpdateState,
 } from "./app-updater.js";
-import { configuredUpdateFeed, readUpdateSource, writeUpdateSource } from "./update-source.js";
+import { configuredUpdateFeed } from "./update-source.js";
 import { validateBrandUpdateInfo } from "./update-brand-validation.js";
 import { preparePreviewUpdateFeed } from "./update-release-selector.js";
 import { APP_BRAND, APP_DISPLAY_NAME, brandText } from "./branding.js";
@@ -250,7 +250,7 @@ const updateBlockers = new Set<string>();
 let desktopUpdateState: DesktopUpdateState = {
   status: "unsupported",
   currentVersion: app.getVersion(),
-  audience: "stable",
+  audience: "preview",
 };
 let automaticUpdateCheckTimer: NodeJS.Timeout | undefined;
 
@@ -690,12 +690,6 @@ function publishDesktopUpdateState(state: Readonly<DesktopUpdateState>): void {
 }
 
 function registerDesktopUpdateStateHandler(): void {
-  ipcMain.removeHandler("pi:update-source-set");
-  ipcMain.handle("pi:update-source-set", (event, source: unknown) => {
-    if (!isTrustedMainWindowSender(event) || !desktopUpdateController) return null;
-    desktopUpdateController.selectSource(source, value => writeUpdateSource(app.getPath("userData"), value));
-    return desktopUpdateController.getState();
-  });
   ipcMain.removeHandler("pi:update-schedule-get");
   ipcMain.handle("pi:update-schedule-get", (event) => {
     if (!isTrustedMainWindowSender(event)) return null;
@@ -705,7 +699,7 @@ function registerDesktopUpdateStateHandler(): void {
   ipcMain.handle("pi:update-schedule-set", (event, input: unknown) => {
     if (!isTrustedMainWindowSender(event) || !logger) return null;
     const next = parseUpdateSchedule(input);
-    if (next.enabled && desktopUpdateState.status === "unsupported") throw new Error("Scheduled updates require the stable Windows installer edition");
+    if (next.enabled && desktopUpdateState.status === "unsupported") throw new Error("Scheduled updates require the Windows installer edition");
     // A renderer cannot forge the scheduler's completion marker.
     const saved: UpdateSchedule = { enabled: next.enabled, time: next.time,
       ...(updateSchedule.lastCompletedDay ? { lastCompletedDay: updateSchedule.lastCompletedDay } : {}) };
@@ -849,18 +843,18 @@ function initializeDesktopUpdater(log: Logger): void {
     && !PORTABLE_SMOKE_TEST
     && !process.env.PORTABLE_EXECUTABLE_FILE;
   const currentVersion = app.getVersion();
-  // Current stable installs must ignore legacy preview enrollment.
-  const audience = "stable";
+  // Every supported installer checks beta and stable releases together.
+  const audience = "preview";
   desktopUpdateController = new DesktopUpdateController(
     supported ? autoUpdater : null,
     currentVersion,
     log,
     {
       audience,
-      source: readUpdateSource(app.getPath("userData")),
+      source: "github",
       validateUpdateInfo: info => validateBrandUpdateInfo(info, APP_BRAND),
       prepareCheck: async () => {
-        const source = desktopUpdateController?.getState().source ?? "github";
+        const source = "github";
         try {
           return await preparePreviewUpdateFeed(autoUpdater, currentVersion,
             url => net.fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30_000) }), log,

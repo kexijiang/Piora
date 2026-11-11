@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import { createCompanionId, MAX_COMPANION_TODOS, type CompanionTodo } from "@/lib/companion-store";
 import { AliIcon } from "./AliIcon";
 import styles from "./CompanionTodoList.module.css";
@@ -16,6 +16,10 @@ export function CompanionTodoList({ todos, busy, onChange }: {
   const [editing, setEditing] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [removed, setRemoved] = useState<{ todo: CompanionTodo; index: number } | null>(null);
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: string; position: "before" | "after" } | null>(null);
+  const [orderNotice, setOrderNotice] = useState("");
+  const dragId = useRef<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const active = todos.filter((todo) => !todo.completed).length;
   const visible = todos.filter((todo) => (showCompleted || !todo.completed) && todo.text.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
@@ -33,6 +37,19 @@ export function CompanionTodoList({ todos, busy, onChange }: {
     if (!editing || !editText.trim() || busy) return;
     if (await update(editing, { text: editText.trim() })) setEditing(null);
   };
+  const clearDrag = () => { dragId.current = null; setDragging(null); setDropTarget(null); };
+  const move = async (sourceId: string, targetId: string, position: "before" | "after") => {
+    if (busy || editing || sourceId === targetId) return;
+    if (await onChange((current) => {
+      const source = current.find(todo => todo.id === sourceId);
+      if (!source || !current.some(todo => todo.id === targetId)) return current;
+      const next = current.filter(todo => todo.id !== sourceId);
+      const targetIndex = next.findIndex(todo => todo.id === targetId);
+      next.splice(targetIndex + (position === "after" ? 1 : 0), 0, source);
+      return next;
+    })) setOrderNotice("已调整待办顺序");
+  };
+  const dropPosition = (event: DragEvent<HTMLElement>) => event.clientY < event.currentTarget.getBoundingClientRect().top + event.currentTarget.clientHeight / 2 ? "before" as const : "after" as const;
   return <section className={styles.todos} aria-label="我的待办">
     <header className={styles.heading}><div><h1>待办</h1><p>{active} 项待办 · {todos.length - active} 项已完成</p></div><button type="button" aria-pressed={showCompleted} onClick={() => setShowCompleted(!showCompleted)}>{showCompleted ? "隐藏已完成" : "查看已完成"}</button></header>
     <form className={styles.capture} onSubmit={(event) => { event.preventDefault(); void add(); }}>
@@ -42,7 +59,36 @@ export function CompanionTodoList({ todos, busy, onChange }: {
     </form>
     <p className={styles.hint}>{todos.length >= MAX_COMPANION_TODOS ? "清单已满 100 项，移除不需要的待办后继续添加。" : "开启铃铛，宠物每隔 30–60 分钟轻声提醒一件事。专注与安静时段不打扰。"}</p>
     {todos.length > 5 || query ? <input className={styles.search} aria-label="搜索待办" placeholder="在清单中查找…" value={query} onChange={(event) => setQuery(event.target.value)} /> : null}
-    <div className={styles.list}>{visible.map((todo) => <article className={styles.row} data-done={todo.completed} key={todo.id}>
+    <div className={styles.list}>{visible.map((todo, index) => <article className={styles.row} data-todo-id={todo.id} data-done={todo.completed} data-dragging={dragging === todo.id} data-drop-position={dropTarget?.id === todo.id ? dropTarget.position : undefined} key={todo.id}
+      onDragOver={(event) => {
+        if (busy || editing || !dragId.current || dragId.current === todo.id) return;
+        event.preventDefault(); event.dataTransfer.dropEffect = "move";
+        const position = dropPosition(event);
+        setDropTarget(current => current?.id === todo.id && current.position === position ? current : { id: todo.id, position });
+      }}
+      onDragLeave={event => { if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setDropTarget(current => current?.id === todo.id ? null : current); }}
+      onDrop={(event) => {
+        const sourceId = dragId.current;
+        if (!sourceId) return;
+        event.preventDefault();
+        const position = dropPosition(event);
+        clearDrag(); void move(sourceId, todo.id, position);
+      }}>
+      <button className={styles.dragHandle} type="button" aria-label={`排序：${todo.text}`} title="拖动调整顺序，或按 Alt+↑/↓" disabled={busy || editing !== null} draggable={!busy && editing === null}
+        onDragStart={event => {
+          if (busy || editing) { event.preventDefault(); return; }
+          dragId.current = todo.id; setDragging(todo.id); setDropTarget(null);
+          event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-piora-todo", todo.id);
+          const row = event.currentTarget.closest("article");
+          if (row) event.dataTransfer.setDragImage(row, 12, row.clientHeight / 2);
+        }}
+        onDragEnd={clearDrag}
+        onKeyDown={event => {
+          if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+          event.preventDefault();
+          const target = visible[index + (event.key === "ArrowUp" ? -1 : 1)];
+          if (target) void move(todo.id, target.id, event.key === "ArrowUp" ? "before" : "after");
+        }}><AliIcon name="menu" size={14} /></button>
       <button className={styles.check} type="button" aria-label={`${todo.completed ? "标为未完成" : "完成"}：${todo.text}`} aria-pressed={todo.completed} disabled={busy} onClick={() => void update(todo.id, { completed: !todo.completed, progress: todo.completed ? 0 : 100 })}>{todo.completed ? "✓" : ""}</button>
       {editing === todo.id ? <form className={styles.edit} onSubmit={(event) => { event.preventDefault(); void saveEdit(); }}>
         <input autoFocus aria-label="编辑待办内容" maxLength={240} value={editText} onChange={(event) => setEditText(event.target.value)} onKeyDown={(event) => { if (event.key === "Escape") setEditing(null); if (event.key === "Enter" && event.nativeEvent.isComposing) event.preventDefault(); }} />
@@ -54,6 +100,6 @@ export function CompanionTodoList({ todos, busy, onChange }: {
       </div>
     </article>)}</div>
     {!visible.length ? <div className={styles.empty}><AliIcon name="check-circle" size={32} /><b>{query ? "没有匹配的待办" : active === 0 && todos.length ? "这一页的小事，都完成了" : "给下一件事留个位置"}</b><span>{query ? "换个词试试。" : "记下来，腾出心思做眼前的事。"}</span></div> : null}
-    <footer className={styles.feedback} role="status">{removed ? <><span>已删除“{removed.todo.text}”</span><button type="button" disabled={busy || todos.length >= MAX_COMPANION_TODOS} onClick={async () => { if (await onChange((current) => { if (current.some((todo) => todo.id === removed.todo.id)) return current; const next = [...current]; next.splice(Math.min(removed.index, next.length), 0, removed.todo); return next; })) setRemoved(null); }}>撤销</button></> : <span>输入后按 Enter 添加 · 点击内容编辑</span>}</footer>
+    <footer className={styles.feedback} role="status">{removed ? <><span>已删除“{removed.todo.text}”</span><button type="button" disabled={busy || todos.length >= MAX_COMPANION_TODOS} onClick={async () => { if (await onChange((current) => { if (current.some((todo) => todo.id === removed.todo.id)) return current; const next = [...current]; next.splice(Math.min(removed.index, next.length), 0, removed.todo); return next; })) setRemoved(null); }}>撤销</button></> : <span>{orderNotice || "输入后按 Enter 添加 · 点击内容编辑 · 拖动左侧图标排序"}</span>}</footer>
   </section>;
 }
