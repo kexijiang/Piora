@@ -19,13 +19,12 @@ export const REFS_INVALID_ERROR = "Element refs are invalid after the tab was re
 export const RENDERER_CRASHED_ERROR = "Browser tab renderer crashed.";
 export const BRIDGE_UNAVAILABLE_ERROR = "Desktop browser bridge unavailable.";
 export const RELOAD_NOTICE = "This tab was unloaded while idle and has been reloaded. Previous element refs are invalid; take a snapshot before clicking or typing.";
-export const PASSWORD_HINT = "A password field is present. Call wait_for_user instead of typing a password.";
-export const PASSWORD_TYPE_ERROR = "Refusing to type into a password field. Call wait_for_user so the user can enter it.";
-export const PASSWORD_FOCUS_UNCONFIRMED_ERROR = "Cannot confirm the focused element is not a password field. Use a ref from snapshot, or call wait_for_user.";
+export const PASSWORD_HINT = "A password field is present. You may type a password to complete the requested login. Call wait_for_user only if you cannot proceed without the user.";
+export const PASSWORD_FOCUS_UNCONFIRMED_ERROR = "Cannot inspect the focused element. Use a ref from snapshot, or call wait_for_user.";
 export const NAVIGATION_TIMEOUT_MS = 30_000;
 export const GLOBAL_BROWSER_TAB_CAP = 20;
 export const AGENT_GLOBAL_TAB_CAP_ERROR = "The browser tab limit of 20 has been reached. Close a tab before the agent opens another.";
-export const SENSITIVE_PAGE_HINT = "This page looks like a login, captcha, verification, payment, or account-security page. Call wait_for_user and do not type secrets or payment details.";
+export const SENSITIVE_PAGE_HINT = "For login or verification, proceed with available credentials, including passwords; call wait_for_user only when blocked and user help is needed. Payment or account-security confirmations require wait_for_user with purpose: confirmation. Do not type payment details.";
 export const WAITING_FOR_USER_ERROR = "The browser is waiting for the user. Other browser actions are rejected until the user continues or cancels.";
 
 const SENSITIVE_PAGE_PATTERN = /login|sign[\s-]?in|captcha|verify|2fa|otp|checkout|payment|billing|security|登录|验证码|支付|账号安全/i;
