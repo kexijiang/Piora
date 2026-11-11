@@ -177,7 +177,7 @@ export function buildSessionCapabilityCatalog(
         // Installed extensions opt their own tools in by default. Preserve the
         // SDK's explicit opt-out (notably native MCP discovery helpers).
         ...(tool.defaultEnabled !== undefined ? { defaultEnabled: tool.defaultEnabled }
-          : !definition && tool.sourceInfo && !["builtin", "sdk", "piora"].includes(tool.sourceInfo.source)
+          : tool.sourceInfo && !["builtin", "sdk", "piora"].includes(tool.sourceInfo.source)
           ? { defaultEnabled: tool.defaultActive !== false } : {}),
         toolNames: [tool.name],
         available: profileAllowed && tool.exposure !== "hidden",

@@ -2810,6 +2810,8 @@ select:focus-visible,
 .chat-disclosure-status { display: inline-flex; align-items: center; gap: 5px; color: var(--text-dim); }
 .chat-disclosure-status svg { flex-shrink: 0; }
 .chat-disclosure-status.is-running { color: var(--status-running); }
+.chat-disclosure-status.is-warning { color: var(--status-attention); }
+.command-result-warning { margin: 6px 12px; color: var(--status-attention); font-size: var(--text-sm); }
 .chat-disclosure-status.is-error,
 .chat-disclosure-status.is-failed,
 .chat-disclosure-status.is-timed_out { color: var(--status-failed); }

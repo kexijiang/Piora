@@ -12,7 +12,7 @@ const repo = path.resolve(import.meta.dirname, "..");
 
 test("running process disclosures keep their reading anchor through virtual row changes", { timeout: 180000 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "piora-process-disclosure-"));
-  let browser;
+  let browser, stopped = false;
   try {
     await writeFile(path.join(directory, "loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(directory, "css.cjs"), `module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))`);
@@ -45,9 +45,9 @@ function App(){
   window.state=state;
   window.reveal=()=>{state.pauseHistoryFollow();history.current.revealEntry("current-user")};
   window.resume=()=>state.handleScrollToBottom();
-  return <main><div id="chat-scroll-container" className="overflow-y-auto" ref={state.scrollContainerRef}><div>{!state.loading&&<ChatHistory
+  return <main><button style={{position:"fixed",top:8,right:8}} onClick={()=>void state.handleAbort()}>停止任务</button><div id="chat-scroll-container" className="overflow-y-auto" ref={state.scrollContainerRef}><div>{!state.loading&&<ChatHistory
     messages={state.messages} entryIds={state.entryIds} compactProcess streamingMessage={state.streamState.streamingMessage}
-    busy={state.agentRunning} streaming={state.streamState.isStreaming} isNew={false} forkingEntryId={null} highlightedEntryId={null} lastUserMsgRef={state.lastUserMsgRef}
+    busy={state.agentRunning} streaming={state.streamState.isStreaming} interruptionId={state.interruptedRunId} isNew={false} forkingEntryId={null} highlightedEntryId={null} lastUserMsgRef={state.lastUserMsgRef}
     pendingScrollToUserRef={state.pendingScrollToUserRef} scrollContainer={state.scrollContainerRef} handleRef={history} sessionId="fixture" />}
     {state.agentRunning&&<div data-chat-tail-spacer style={{height:800}}/>}</div></div></main>;
 }
@@ -66,12 +66,21 @@ createRoot(document.getElementById("root")).render(<I18nProvider><App/></I18nPro
     page.on("pageerror", error => errors.push(error.message));
     await page.route("http://127.0.0.1:38201/**", async route => {
       const pathname = new URL(route.request().url()).pathname;
+      if (pathname === "/api/agent/fixture" && route.request().method() === "POST") {
+        assert.ok(["abort", "cancel_prompt_submission"].includes(route.request().postDataJSON().type));
+        stopped = true;
+        return route.fulfill({ json: { success: true, data: null } });
+      }
       if (pathname === "/api/sessions/fixture") {
         const context = await page.evaluate(() => ({ messages: window.saved, entryIds: window.ids }));
+        if (stopped) {
+          context.messages.push({ role: "assistant", content: [], stopReason: "aborted", errorMessage: "Operation aborted", timestamp: Date.now() });
+          context.entryIds.push("interrupted-assistant");
+        }
         return route.fulfill({ json: { context, leafId: context.entryIds.at(-1), tree: [], info: { id: "fixture", cwd: "C:/fixture" } } });
       }
       if (pathname === "/api/agent/fixture" || pathname === "/api/sessions/fixture/state") return route.fulfill({ json: {
-        running: true, state: { runtime: "running", isStreaming: true, isPromptRunning: true },
+        running: !stopped, state: { runtime: stopped ? "idle" : "running", isStreaming: !stopped, isPromptRunning: !stopped },
       } });
       if (pathname.startsWith("/api/")) return route.fulfill({ json: { items: [], operations: [], commands: [], taskTimings: [], submissions: [], records: [], hasMore: false } });
       if (pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(directory, path.basename(pathname))) });
@@ -152,6 +161,28 @@ createRoot(document.getElementById("root")).render(<I18nProvider><App/></I18nPro
       const scroller = document.querySelector("#chat-scroll-container"), spacer = scroller.querySelector("[data-chat-tail-spacer]");
       return Math.abs(scroller.scrollHeight - spacer.offsetHeight - scroller.clientHeight - scroller.scrollTop) <= 2;
     });
+    await page.evaluate(() => window.reveal());
+    await heading.scrollIntoViewIfNeeded();
+    await page.getByRole("button", { name: "停止任务", exact: true }).click();
+    await page.waitForFunction(() => !window.state.agentRunning && !window.state.streamState.isStreaming);
+    assert.equal(await heading.getAttribute("aria-expanded"), "true", "stopping preserves the expanded process before and after history hydration");
+    await page.waitForTimeout(200);
+    assert.equal(await heading.getAttribute("aria-expanded"), "true");
+    await page.reload();
+    await page.waitForFunction(() => window.state && !window.state.loading);
+    await page.evaluate(() => window.reveal());
+    assert.equal(await heading.getAttribute("aria-expanded"), "true", "saved interrupted history defaults to expanded");
+    stopped = false;
+    await page.reload();
+    await page.waitForFunction(() => window.state?.agentRunning && !window.state.loading);
+    await page.evaluate(() => window.reveal());
+    await heading.click();
+    assert.equal(await heading.getAttribute("aria-expanded"), "false");
+    await page.getByRole("button", { name: "停止任务", exact: true }).click();
+    await page.waitForFunction(() => !window.state.agentRunning && !window.state.streamState.isStreaming);
+    await page.waitForTimeout(200);
+    assert.equal(await heading.getAttribute("aria-expanded"), "false", "stopping also preserves an earlier manual collapse");
+    assert.deepEqual(errors, []);
   } finally {
     await browser?.close();
     assert.equal(path.dirname(directory), path.resolve(tmpdir()));

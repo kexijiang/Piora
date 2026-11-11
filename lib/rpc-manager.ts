@@ -606,6 +606,10 @@ export class AgentSessionWrapper {
         enabledCapabilityIds: [...new Set([...this.capabilityPolicy.enabledCapabilityIds,
           ...this.capabilityCatalog.filter(item => item.available && item.defaultEnabled).map(item => item.id)])].sort(),
       };
+      if (this.projectManaged) {
+        this.projectAllowedToolNames = new Set(this.capabilityPolicy.enabledCapabilityIds
+          .filter(id => id.startsWith("tool:")).map(id => id.slice(5)));
+      }
     }
     const resolved = this.resolveCapabilityTools(this.capabilityPolicy);
     this.capabilityPolicy = resolved.policy;
@@ -1052,7 +1056,7 @@ export class AgentSessionWrapper {
         this.inner.extensionRunner.setUIContext?.(uiContext, "rpc");
       }
       this.extensionsBound = true;
-      this.applyForcedEmptySystemPrompt();
+      this.applySessionCapabilities();
       console.log(`[pi-web] session_start dispatched to extensions for session ${this.inner.sessionId}`);
     })().catch((err) => {
       this.extensionBindingError = err;
@@ -1152,7 +1156,7 @@ export class AgentSessionWrapper {
       if (typeof this.inner.bindExtensions !== "function") {
         this.inner.extensionRunner.setUIContext?.(this.createExtensionUiContext(), "rpc");
       }
-      this.applyForcedEmptySystemPrompt();
+      this.applySessionCapabilities();
       this.systemPromptReloadApplied = revision;
       invalidateModelsCache();
       this.emit({
@@ -1745,6 +1749,7 @@ export class AgentSessionWrapper {
           }
         }
         await this.inner.setModel(applyConfiguredImageInput(model));
+        this.applySessionCapabilities();
         this.persistSessionFile();
         clearPendingSessionModel(this.sessionId);
         invalidateModelsCache();

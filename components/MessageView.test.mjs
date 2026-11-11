@@ -32,6 +32,27 @@ function renderMessage(message, props = {}) {
   );
 }
 
+test("command cards expose exit-code conflicts, warnings and unknown receipts without guessing from output zero", () => {
+  const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "build", toolName: "bash", input: { command: "build; follow-up" } }] };
+  const render = (isError, details, output, expanded = false) => {
+    const props = { message, toolResults: new Map([["build", { role: "toolResult", toolCallId: "build", isError, details, content: [{ type: "text", text: output }] }]]) };
+    const state = createVirtualRowState(); state.set("command:build", expanded);
+    return renderToStaticMarkup(React.createElement(I18nProvider, null,
+      React.createElement(VirtualRowStateContext.Provider, { value: state }, React.createElement(MessageView, props))));
+  };
+  const warning = render(true, { exitCode: 1 }, "BUILD SUCCESSFUL in 3 min\nCommand exited with code 1");
+  assert.match(warning, /is-warning/);
+  assert.match(warning, /退出码[^<]*1|[Ee]xit code[^<]*1/);
+  assert.match(render(true, { exitCode: 1 }, "BUILD SUCCESSFUL in 3 min\nCommand exited with code 1", true), /命令返回退出码|returned exit code/);
+  const unknown = render(true, {}, "BUILD SUCCESSFUL\n0");
+  assert.match(unknown, /is-warning/);
+  assert.match(unknown, /退出码未提供|Exit code unavailable/);
+  assert.doesNotMatch(unknown, /is-success/);
+  const success = render(true, { exitCode: 0 }, "BUILD SUCCESSFUL\n0");
+  assert.match(success, /is-success/);
+  assert.doesNotMatch(success, /is-failed|is-warning/);
+});
+
 test("a non-login handoff preserves its reason and explicit confirmation buttons", () => {
   const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "wait-1", toolName: "browser", input: { action: "wait_for_user", reason: "请完成登录", purpose: "confirmation" } }] };
   const running = renderMessage(message, { sessionId: "550e8400-e29b-41d4-a716-446655440000" });
@@ -167,7 +188,8 @@ test("failed shell rows open by default and respect explicit collapse", () => {
   assert.match(collapsed, /运行命令/);
   assert.equal(collapsed.match(/class="command-summary-preview"[^>]*>([^<]*)<\/span>/)?.[1], command.replace(/\s+/g, " ").trim());
   assert.match(collapsed, /失败/);
-  assert.doesNotMatch(collapsed, /退出码 2|错误摘录|TS2322|command-source-section|诊断信息/);
+  assert.match(collapsed, /退出码 2/);
+  assert.doesNotMatch(collapsed, /错误摘录|TS2322|command-source-section|诊断信息/);
   assert.match(collapsed, /复制完整命令/);
 
   const rowState = createVirtualRowState();

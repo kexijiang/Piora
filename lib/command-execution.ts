@@ -1,6 +1,6 @@
 import type { ToolResultMessage } from "./types";
 
-export type CommandExecutionStatus = "running" | "success" | "failed" | "cancelled" | "timed_out";
+export type CommandExecutionStatus = "running" | "success" | "warning" | "failed" | "cancelled" | "timed_out";
 
 export interface CommandExecutionData {
   id: string;
@@ -54,6 +54,8 @@ export function parseCommandExitCode(output: string): number | undefined {
 }
 
 export function commandExitCode(result: ToolResultMessage | undefined, output = toolResultText(result)): number | undefined {
+  const details = isRecord(result?.details) ? result.details : {};
+  if (typeof details.exitCode === "number" && Number.isSafeInteger(details.exitCode)) return details.exitCode;
   const parsed = parseCommandExitCode(output);
   if (parsed !== undefined) return parsed;
   if (result && !result.isStreaming && !result.isError) return 0;
@@ -73,11 +75,22 @@ export function commandResultMetadata(result: ToolResultMessage | undefined): {
   };
 }
 
+const SUCCESS_OUTPUT_LINE = /^\s*(?:BUILD SUCCESSFUL(?:\s+in\s+[^\r\n]+)?|(?:All\s+)?Tests? passed(?:[.:\s][^\r\n]*)?)\s*$/im;
+
 export function commandStatus(result: ToolResultMessage | undefined, output = toolResultText(result)): CommandExecutionStatus {
   if (!result || result.isStreaming) return "running";
+  const details = isRecord(result.details) ? result.details : {};
+  if (details.timedOut === true || result.isError && /Command timed out after|\btimed out\b/i.test(output)) return "timed_out";
+  if (details.cancelled === true || details.aborted === true || result.isError && /Command aborted|Operation aborted|\bcancelled\b/i.test(output)) return "cancelled";
+  const exitCode = commandExitCode(result, output);
+  if (exitCode === 0) return "success";
+  if (exitCode !== undefined && exitCode !== 0) {
+    // A successful subcommand does not make a nonzero compound command succeed.
+    // Retain its actual exit code and show the conflicting evidence as a warning.
+    return SUCCESS_OUTPUT_LINE.test(output) ? "warning" : "failed";
+  }
   if (!result.isError) return "success";
-  if (/Command timed out after|\btimed out\b/i.test(output)) return "timed_out";
-  if (/Command aborted|Operation aborted|\bcancelled\b/i.test(output)) return "cancelled";
+  if (SUCCESS_OUTPUT_LINE.test(output)) return "warning";
   return "failed";
 }
 
