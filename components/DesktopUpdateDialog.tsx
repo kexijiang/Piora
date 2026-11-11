@@ -59,8 +59,8 @@ export function DesktopUpdateDialog({
       : chinese ? "正在准备下载…" : "Preparing download…";
   const releaseNotes = state.releaseNotes?.trim()
     || (chinese
-      ? "此版本包含稳定性改进和问题修复。完整说明可在 GitHub 发布页面查看。"
-      : "This release includes stability improvements and fixes. See the GitHub release page for full details.");
+      ? "暂时无法读取此版本的更新说明，可在 GitHub 发布页面查看完整内容。"
+      : "Release notes are currently unavailable. See the GitHub release page for full details.");
 
   return (
     <div className={styles.backdrop} role="presentation" onMouseDown={(event) => {

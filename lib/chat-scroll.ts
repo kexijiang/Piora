@@ -1,3 +1,6 @@
+/** A manual disclosure owns the reading position while its layout settles. */
+export const CHAT_DISCLOSURE_TOGGLE_EVENT = "piora:chat-disclosure-toggle";
+
 export interface ScrollToBottomVisibilityInput {
   scrollHeight: number;
   scrollTop: number;

@@ -213,6 +213,7 @@ app.on("child-process-gone", (_event, details) => logger?.error("Desktop child p
 let server: StandaloneServer | undefined;
 let serverUrl: URL | undefined;
 let shutdownPromise: Promise<void> | undefined;
+let desktopUpdateInstallPromise: Promise<boolean> | undefined;
 let shutdownComplete = false;
 let restartRequested = false;
 let restartConfirmationPending = false;
@@ -740,7 +741,18 @@ function registerDesktopUpdateStateHandler(): void {
 }
 
 async function installDownloadedDesktopUpdate(confirmInstallation = true, silent = false): Promise<boolean> {
-  if (!desktopUpdateController || desktopUpdateState.status !== "downloaded") return false;
+  if (desktopUpdateInstallPromise) return desktopUpdateInstallPromise;
+  const pending = Promise.resolve().then(() => performDownloadedDesktopUpdate(confirmInstallation, silent));
+  desktopUpdateInstallPromise = pending;
+  try {
+    return await pending;
+  } finally {
+    if (desktopUpdateInstallPromise === pending) desktopUpdateInstallPromise = undefined;
+  }
+}
+
+async function performDownloadedDesktopUpdate(confirmInstallation: boolean, silent: boolean): Promise<boolean> {
+  if (!desktopUpdateController || desktopUpdateState.status !== "downloaded" || quitRequested || shutdownComplete) return false;
   if (silent && (quitRequested || updateBlockers.size > 0 || powerMonitor.getSystemIdleTime() < 60)) return false;
   // Scheduled installs prepare before acquiring the server's update lease.
   // Manual installs refresh here, while the app and its running tasks stay alive.
@@ -755,6 +767,19 @@ async function installDownloadedDesktopUpdate(confirmInstallation = true, silent
       detail: chinese
         ? "请等待当前任务完成，再选择“安装并重启”。"
         : "Wait for the current task to finish, then choose Install and restart.",
+      buttons: [chinese ? "知道了" : "OK"],
+      defaultId: 0,
+    });
+    return false;
+  }
+
+  if (updateBlockers.size > 0) {
+    if (silent) return false;
+    await showDesktopMessage({
+      type: "warning",
+      title: chinese ? "暂时不能安装更新" : "Update cannot be installed yet",
+      message: chinese ? "有文件尚未保存" : "A file has unsaved changes",
+      detail: chinese ? "请先保存文件，再选择“安装并重启”。" : "Save your files, then choose Install and restart.",
       buttons: [chinese ? "知道了" : "OK"],
       defaultId: 0,
     });
@@ -778,8 +803,13 @@ async function installDownloadedDesktopUpdate(confirmInstallation = true, silent
     if (result.response !== 0) return false;
   }
 
+  // The updater marks shutdown complete before Electron's before-quit handler.
+  // Prepare and destroy mirrors here too, so their close guards cannot keep
+  // the old application alive after its local service has stopped.
+  if (harmonyWindows && !await harmonyWindows.prepareQuit(silent)) return false;
   quitRequested = true;
   try {
+    harmonyWindows?.destroy();
     shutdownPromise ??= stopApplication();
     await shutdownPromise;
     shutdownComplete = true;

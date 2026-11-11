@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, screen, type IpcMainInvokeEvent } fr
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { mirrorBounds, updateMirrorAspectRatio } from "./harmony-window-bounds.js";
+import { mirrorBounds, mirrorResizeBounds, updateMirrorAspectRatio } from "./harmony-window-bounds.js";
 import type { HarmonyWindowState, MirrorScale, PioraMessage } from "./harmony-window-types.js";
 
 type Dependencies = {
@@ -66,8 +66,8 @@ class HarmonyDeviceWindow {
       const ratioChanged = Math.abs(this.ratio - ratio) > .0001;
       if (ratioChanged || chromeHeight !== this.chromeHeight) {
         this.ratio = ratio; this.chromeHeight = chromeHeight;
-        // Toolbar visibility/wrapping follows the user's window size. Resizing
-        // the window in response feeds the new width back into that layout.
+        // Keep video width fixed when chrome changes. Keeping the old outer
+        // height would squeeze the video and introduce letterboxing instead.
         this.place(undefined, !ratioChanged);
       }
       if (this.state.pendingPresentation === presentation && frame.transition === this.state.presentationTransition) {
@@ -137,18 +137,19 @@ class HarmonyDeviceWindow {
     this.prefs.set(this.state.serial, { scale: this.state.scale, x, y, width, height });
     try { const path = this.preferencePath(); writeFileSync(`${path}.tmp`, JSON.stringify([...this.prefs].slice(-100))); renameSync(`${path}.tmp`, path); } catch { /* Window placement remains usable if persistence is unavailable. */ }
   }
-  async place(saved?: SavedWindow, preserveBounds = false) {
+  async place(saved?: SavedWindow, preserveWidth = false) {
     if (!this.mirror || this.mirror.isDestroyed()) return;
-    if (this.placing) { this.pendingPlace = this.pendingPlace === "fit" || !preserveBounds ? "fit" : "preserve"; if (saved) this.pendingPosition = saved; return; }
+    if (this.placing) { this.pendingPlace = this.pendingPlace === "fit" || !preserveWidth ? "fit" : "preserve"; if (saved) this.pendingPosition = saved; return; }
     this.placing = true;
     try {
       const current = this.mirror.getBounds();
-      const position = saved ?? (preserveBounds ? this.appliedBounds : undefined) ?? current;
+      const position = saved ?? (preserveWidth ? this.appliedBounds : undefined) ?? current;
       const display = screen.getDisplayNearestPoint({ x: position.x, y: position.y });
-      const base = preserveBounds ? { x: position.x, y: position.y, width: position.width ?? current.width, height: position.height ?? current.height }
+      const width = position.width ?? current.width;
+      const base = preserveWidth ? { x: position.x, y: position.y, width, height: Math.round((width - 2) / this.ratio) + this.chromeHeight }
         : mirrorBounds(display.workArea, this.ratio, this.state.scale, position, this.chromeHeight);
       const height = saved?.height ?? this.mirror.getBounds().height;
-      if (!preserveBounds && Number.isFinite(height) && height >= 120) {
+      if (!preserveWidth && Number.isFinite(height) && height >= 120) {
         base.height = Math.min(Math.max(height, this.chromeHeight + 100), display.workArea.height);
         base.width = Math.min(Math.round((base.height - this.chromeHeight) * this.ratio) + 2, display.workArea.width);
         if (base.width === display.workArea.width) base.height = Math.round((base.width - 2) / this.ratio) + this.chromeHeight;
@@ -197,7 +198,7 @@ class HarmonyDeviceWindow {
     const saved = this.prefs.get(this.state.serial);
     const area = saved ? screen.getDisplayNearestPoint(saved).workArea : screen.getPrimaryDisplay().workArea;
     const window = this.createSurface("/desktop-harmony", { ...mirrorBounds(area, this.ratio, this.state.scale, saved, this.chromeHeight), title: "Piora · 鸿蒙投屏", frame: false, resizable: true, minWidth: 180, minHeight: 120, maximizable: false, fullscreenable: false, alwaysOnTop: this.state.alwaysOnTop });
-    this.mirror = window; window.setAspectRatio(this.ratio, { width: 2, height: this.chromeHeight }); this.state.open = true; this.state.minimized = false;
+    this.mirror = window; window.setAspectRatio(process.platform === "win32" ? 0 : this.ratio, { width: 2, height: this.chromeHeight }); this.state.open = true; this.state.minimized = false;
     window.on("close", event => { if (this.forceClose) return; event.preventDefault(); void this.requestClose(); });
     window.on("closed", () => {
       this.mirror = null; this.state.minimized = false;
@@ -213,7 +214,12 @@ class HarmonyDeviceWindow {
       this.appliedBounds = undefined;
       this.save();
     });
-    window.on("will-resize", () => { if (!this.placing) this.appliedBounds = undefined; });
+    window.on("will-resize", (event, requested, details) => {
+      this.appliedBounds = undefined;
+      if (process.platform !== "win32") return;
+      event.preventDefault();
+      window.setBounds(mirrorResizeBounds(window.getBounds(), requested, this.ratio, this.chromeHeight, details.edge), false);
+    });
     window.on("resized", () => { if (!this.placing) { this.appliedBounds = undefined; this.save(); } });
     window.on("minimize", () => { this.state.minimized = true; this.emit(); });
     window.on("restore", () => { this.state.minimized = false; this.emit(); });
@@ -222,10 +228,11 @@ class HarmonyDeviceWindow {
     this.emit();
   }
   private focus() { if (this.mirror && !this.mirror.isDestroyed()) { this.mirror.restore(); this.mirror.show(); this.mirror.focus(); } }
-  private async confirmRecording(action: string) {
+  private async confirmRecording(action: string, silent = false) {
     try {
       const { recording } = await this.deps.request<{ recording: Recording | null }>(`/api/harmony/media?serial=${encodeURIComponent(this.state.serial)}`);
       if (!recording) return true;
+      if (silent) return false;
       const ours = recording.ownerId === this.state.ownerId;
       const elapsed = Math.max(0, Math.floor((Date.now() - Date.parse(recording.startedAt)) / 1000));
       const clock = Number.isFinite(elapsed) ? `${String(Math.floor(elapsed / 60)).padStart(2, "0")}:${String(elapsed % 60).padStart(2, "0")}` : "";
@@ -234,6 +241,7 @@ class HarmonyDeviceWindow {
       if (ours) await this.deps.request("/api/harmony/media", { action: "stop_recording", serial: this.state.serial, ownerId: this.state.ownerId, recordingId: recording.recordingId });
       return true;
     } catch (error) {
+      if (silent) return false;
       await this.showMessage({ title: "暂时无法继续", message: error instanceof Error ? error.message : String(error), tone: "error", actions: [{ id: "done", label: "返回", primary: true }] }, this.mirror ?? this.deps.main());
       return false;
     }
@@ -250,7 +258,7 @@ class HarmonyDeviceWindow {
     void pending.finally(() => { if (this.closing === pending) this.closing = undefined; }).catch(() => undefined);
     return pending;
   }
-  async prepareQuit() { return this.serialized(() => this.state.serial ? this.confirmRecording("退出 Piora") : Promise.resolve(true)); }
+  async prepareQuit(silent = false) { return this.serialized(() => this.state.serial ? this.confirmRecording("退出 Piora", silent) : Promise.resolve(true)); }
   destroy() { this.cancelPresentation(); this.forceClose = true; this.finishMessage?.(null); this.mirror?.destroy(); }
   private menu() {
     if (!this.mirror) return;
@@ -378,6 +386,6 @@ export class HarmonyWindows {
     const entry = [...this.devices.values()].find(item => item.window.trustedMirror(event));
     return entry ? entry.window.trustedMediaFile(event, path) : false;
   }
-  async prepareQuit() { for (const entry of this.devices.values()) if (!await entry.window.prepareQuit()) return false; return true; }
+  async prepareQuit(silent = false) { for (const entry of this.devices.values()) if (!await entry.window.prepareQuit(silent)) return false; return true; }
   destroy() { for (const entry of this.devices.values()) entry.window.destroy(); }
 }

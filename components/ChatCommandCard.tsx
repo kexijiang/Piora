@@ -114,7 +114,8 @@ function QueuedCommandRow({ record, actions }: { record: ChatCommandView; action
   const preparing = record.local === true || record.status === "dispatching";
   const draftKey = "queue-edit:" + record.commandId;
   const operation = record.operation;
-  const preview = operation ? operation.steps[0]?.status === "completed" && operation.afterPrompt ? operation.afterPrompt : operation.rawText : record.preview ?? "";
+  const text = operation ? operation.steps[0]?.status === "completed" && operation.afterPrompt ? operation.afterPrompt : operation.rawText : record.preview ?? "";
+  const preview = [text, record.attachments ? t("chatCommands.attachmentSummary", { count: record.attachments }) : ""].filter(Boolean).join(" · ");
   const run = async (action: () => Promise<void>) => {
     if (pending) return;
     setPending(true); setError(null);
@@ -201,7 +202,11 @@ export function ChatCommandQueue({ records, actions, pendingMessages, onRecall, 
   if (!visibleWaiting.length && !delivered.length) return null;
   return <section className={styles.queue} data-tooltip-scope aria-label={t("chatCommands.next")}>
     <div className={styles.queueList}>
-      {pendingMessages?.pendingInputs && onPendingAction ? pendingMessages.pendingInputs.map(item => <PendingInputRow key={item.id} item={item} onAction={onPendingAction} />) : delivered.map(({ text, label }, index) => <div key={`delivered-${index}`} className={styles.queueItem} role="status">
+      {pendingMessages?.pendingInputs && onPendingAction ? pendingMessages.pendingInputs.map(item => {
+        const attachments = records.find(record => record.commandId === item.commandId)?.attachments;
+        const text = [item.text, attachments ? t("chatCommands.attachmentSummary", { count: attachments }) : ""].filter(Boolean).join(" · ");
+        return <PendingInputRow key={item.id} item={{ ...item, text }} onAction={onPendingAction} />;
+      }) : delivered.map(({ text, label }, index) => <div key={`delivered-${index}`} className={styles.queueItem} role="status">
         <div className={styles.queueRow}>
           <span className={styles.queueIcon} aria-hidden="true"><AliIcon name="arrowright" size={13} /></span>
           <span className={styles.queuePreview} title={text}>{text}</span>
