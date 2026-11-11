@@ -246,11 +246,8 @@ export function readHarmonyConfig(path = defaultHarmonyConfigPath()): HarmonyCon
     if (typeof record.hdcPath === "string" && record.hdcPath.trim()) config.hdcPath = normalizeCandidate(record.hdcPath);
     if (record.video && typeof record.video === "object" && !Array.isArray(record.video)) {
       const video = record.video as Record<string, unknown>;
-      if (video.provider === "deveco" || video.provider === "bundled" || video.provider === "hos-scrcpy") config.video = {
-        provider: video.provider,
-        ...(typeof video.packageDirectory === "string" && video.packageDirectory.trim() ? { packageDirectory: video.packageDirectory.trim() } : {}),
-        ...(typeof video.javaPath === "string" && video.javaPath.trim() ? { javaPath: video.javaPath.trim() } : {}),
-      };
+      // Older selections migrate to the sole shipped capture runtime; discard external paths.
+      if (typeof video.provider === "string" && ["deveco", "bundled", "hos-scrcpy"].includes(video.provider)) config.video = { provider: "bundled" };
     }
     if (record.storage && typeof record.storage === "object" && !Array.isArray(record.storage)) {
       const storage = record.storage as Record<string, unknown>;
@@ -303,16 +300,10 @@ export function writeHarmonyConfig(config: HarmonyConfig, path = defaultHarmonyC
     normalized.hdcPath = absolute;
   }
   if (config.video) {
-    if (config.video.provider !== "deveco" && config.video.provider !== "bundled" && config.video.provider !== "hos-scrcpy") throw new HarmonyError("INVALID_ARGUMENT", "Unknown video provider");
-    const packageDirectory = config.video.packageDirectory?.trim();
-    const javaPath = config.video.javaPath?.trim();
-    if (config.video.provider === "hos-scrcpy" && (!packageDirectory || !pathApi(inferredPlatform(packageDirectory)).isAbsolute(packageDirectory))) {
-      throw new HarmonyError("INVALID_ARGUMENT", "HOScrcpy package directory must be absolute");
+    if (config.video.provider !== "bundled" || Object.keys(config.video).some(key => key !== "provider")) {
+      throw new HarmonyError("INVALID_ARGUMENT", "Video uses only the bundled native runtime");
     }
-    if (javaPath && !pathApi(inferredPlatform(javaPath)).isAbsolute(javaPath)) throw new HarmonyError("INVALID_ARGUMENT", "Java executable path must be absolute");
-    normalized.video = { provider: config.video.provider,
-      ...(packageDirectory ? { packageDirectory: normalizeCandidate(packageDirectory, inferredPlatform(packageDirectory)) } : {}),
-      ...(javaPath ? { javaPath: normalizeCandidate(javaPath, inferredPlatform(javaPath)) } : {}) };
+    normalized.video = { provider: "bundled" };
   }
   if (config.storage) {
     const normalizeStoragePath = (value: string | undefined, label: string): string | undefined => {

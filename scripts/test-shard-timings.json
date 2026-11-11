@@ -32,7 +32,7 @@
     "lib/dsh-pet.test.mjs": 7116,
     "lib/git-remotes.test.mjs": 5741,
     "lib/harmony-application-picker-browser.test.mjs": 8145,
-    "lib/harmony-deveco-video.test.mjs": 5545,
+    "lib/harmony-bundled-video.test.mjs": 5545,
     "lib/harmony-device-console-browser.test.mjs": 3884,
     "lib/harmony-device-database-jump-browser.test.mjs": 4970,
     "lib/harmony-device-file-drafts-browser.test.mjs": 13839,

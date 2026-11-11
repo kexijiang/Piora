@@ -12,7 +12,6 @@ const directory = resolve(args["--output"] ?? ".verification/mirror-probe");
 await mkdir(directory, { recursive: true });
 const jiti = createJiti(import.meta.url);
 const { MirrorCaptureSession } = await jiti.import("../lib/harmony/mirror/capture-session.ts");
-const { findDebugVideoSource } = await jiti.import("../lib/harmony/runtime/deveco-video-library.ts");
 const execute = promisify(execFile);
 const commands = [];
 const run = async (argv, operation, signal, timeout = 8000) => {
@@ -21,13 +20,12 @@ const run = async (argv, operation, signal, timeout = 8000) => {
   commands.push({ operation, durationMs: performance.now() - started });
   return { ...result, exitCode: 0, durationMs: performance.now() - started };
 };
-const source = await findDebugVideoSource(args["--hdc"]);
 let session, reader, timer;
 const timestamps = [], sizes = [], configs = [], sample = [];
 let sampleBytes = 0, stopped = false;
 const startedAt = performance.now();
 try {
-  session = await MirrorCaptureSession.start(args["--serial"], source, run, () => {});
+  session = await MirrorCaptureSession.start(args["--serial"], run, () => {});
   const connection = session.subscribe(); reader = connection.stream.getReader();
   timer = setTimeout(() => { stopped = true; void reader.cancel(); }, duration * 1000);
   while (!stopped) {

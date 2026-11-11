@@ -38,7 +38,6 @@ const root = resolve(args["--output"] ?? `.verification/mirror-rewrite/performan
 await mkdir(root, { recursive: true });
 const jiti = createJiti(import.meta.url);
 const { MirrorCaptureSession } = await jiti.import("../lib/harmony/mirror/capture-session.ts");
-const { findDebugVideoSource, readDevEcoVideoLibrary } = await jiti.import("../lib/harmony/runtime/deveco-video-library.ts");
 const { startOwnedRecording } = await jiti.import("../lib/harmony/media/owned-recording.ts");
 const { HybridHarmonyBackend } = await jiti.import("../lib/harmony/hybrid-backend.ts");
 const { HypiumWorkerClient } = await jiti.import("../lib/harmony/runtime/worker-client.ts");
@@ -148,13 +147,12 @@ try {
     for (let count = 0; !phoneConnected && count < 100; count++) await new Promise(resolveDelay => setTimeout(resolveDelay, 100));
     if (!phoneConnected) throw new Error("Phone benchmark page did not connect; no performance verdict");
   }
-  const videoSource = args["--video-source"] || await findDebugVideoSource(args["--hdc"]);
-  if (args["--video-source"]) await readDevEcoVideoLibrary(videoSource, await hdc(["shell", "uitest --version"]));
+  if (args["--video-source"]) throw new Error("Video uses only the bundled runtime; --video-source is no longer supported");
   if (args["--encoder-probe"]) {
     encoderProbePath = `/data/local/tmp/piora_encoder_probe_${randomUUID().replaceAll("-", "")}.so`;
     await hdc(["file", "send", resolve(args["--encoder-probe"]), encoderProbePath]);
   }
-  capture = await MirrorCaptureSession.start(args["--serial"], videoSource, run, () => {}, undefined, undefined, Number(args["--scale"] ?? 1));
+  capture = await MirrorCaptureSession.start(args["--serial"], run, () => {}, undefined, undefined, Number(args["--scale"] ?? 1));
   if (args["--manager"] === "true" && control) {
     control.openVideoStream = async (_serial,signal) => capture.subscribe(signal);
     manager = new HarmonyDeviceManager({backend:control,configPath:join(root,"manager.json"),arbitrationDirectory:join(root,"arbitration")});
@@ -296,7 +294,7 @@ try {
   }
   const latencies = trials.filter(trial => Number.isFinite(trial.latencyMs)).map(trial => trial.latencyMs).sort((a, b) => a - b);
   const average = key => samples.reduce((total, sample) => total + sample[key], 0) / Math.max(1, samples.length);
-  evidence = { duration, runtime, phoneConnected, phoneFps, samples, trials, markers, frameShapes, phoneEvents, errors, probeIssues, recording, videoSource,
+  evidence = { duration, runtime, phoneConnected, phoneFps, samples, trials, markers, frameShapes, phoneEvents, errors, probeIssues, recording, videoSource: "bundled",
     summary: { receiveFps: average("receivedFps"), decodeFps: average("decodedFps"), drawFps: average("presentedFps"), minDrawFps: Math.min(...samples.map(sample => sample.presentedFps)),
       triggerToDrawAckP95Ms: latencies[Math.floor(latencies.length * .95)] ?? null, triggerToDrawAckMaxMs: latencies.at(-1) ?? null,
       timedOutTrials: trials.filter(trial => trial.timeout).length,

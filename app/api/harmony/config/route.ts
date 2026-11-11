@@ -31,10 +31,8 @@ export async function PUT(request: Request) {
     if (body.video !== undefined && body.video !== null) {
       if (!body.video || typeof body.video !== "object" || Array.isArray(body.video)) throw new HarmonyError("INVALID_ARGUMENT", "video must be an object or null");
       const video = body.video as Record<string, unknown>;
-      if ((video.provider !== "deveco" && video.provider !== "bundled" && video.provider !== "hos-scrcpy")
-        || (video.packageDirectory !== undefined && typeof video.packageDirectory !== "string")
-        || (video.javaPath !== undefined && typeof video.javaPath !== "string")) {
-        throw new HarmonyError("INVALID_ARGUMENT", "video requires a known provider and optional paths");
+      if (video.provider !== "bundled" || Object.keys(video).some(key => key !== "provider")) {
+        throw new HarmonyError("INVALID_ARGUMENT", "Video uses only the bundled native runtime");
       }
     }
     if (body.vision !== undefined && body.vision !== null) {

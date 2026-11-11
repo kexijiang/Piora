@@ -181,7 +181,7 @@ test('generated SOURCE note binds the same run and rejects stale legacy text', a
   await assert.rejects(readAndVerifySourceNote(fixture.directory, fixture.manifest, fixture.receipt), /SOURCE\.md is stale/);
 });
 
-test('tag workflows package the bundled mirror HAP on hosted runners without a per-tag device chain', async () => {
+test('tag workflows package the native mirror runtime and exclude legacy HAP signing assets', async () => {
   const preview = await readFile(new URL('../.github/workflows/harmony-preview.yml', import.meta.url), 'utf8');
   const release = await readFile(new URL('../.github/workflows/release.yml', import.meta.url), 'utf8');
   const publish = await readFile(new URL('../.github/workflows/publish-preview.yml', import.meta.url), 'utf8');
@@ -197,8 +197,8 @@ test('tag workflows package the bundled mirror HAP on hosted runners without a p
   const deviceGate = await readFile(new URL('./verify-harmony-mirror-device.mjs', import.meta.url), 'utf8');
   const releaseModule = await readFile(new URL('./harmony-mirror-release.mjs', import.meta.url), 'utf8');
   const builder = await readFile(new URL('../desktop/electron-builder.yml', import.meta.url), 'utf8');
-  assert.match(beforeBuild, /PIORA_REQUIRE_HARMONY_RELEASE_RESOURCE === "1"/);
-  assert.match(beforeBuild, /verifyStagedHarmonyMirrorRelease/);
+  assert.doesNotMatch(beforeBuild, /PIORA_REQUIRE_HARMONY_RELEASE_RESOURCE/);
+  assert.doesNotMatch(beforeBuild, /verifyStagedHarmonyMirrorRelease/);
   assert.match(verifier, /verifyStagedHarmonyMirrorRelease/);
   assert.match(deviceGate, /pre-install package absence check/);
   assert.match(deviceGate, /'bm', 'get', '--udid'/);
@@ -212,8 +212,8 @@ test('tag workflows package the bundled mirror HAP on hosted runners without a p
   assert.match(releaseModule, /copyFile\(frozenUnsignedHap, publicHapPath, 1\)/);
   assert.match(releaseModule, /acceptanceArtifact: \{ \.\.\.frozenAcceptance, sourceSha256: frozenUnsigned\.sha256 \}/);
   assert.match(releaseModule, /if \(!retainPrivateAcceptance\) await rm\(privateDirectory, \{ recursive: true, force: true \}\)/);
-  assert.match(builder, /- "harmony-mirror-signature-verification\.json"/);
-  assert.match(builder, /from: \.\.\/lib\/harmony\/runtime\/PioraHapSigner\.java/);
+  assert.doesNotMatch(builder, /harmony-mirror-signature-verification\.json|OHScrcpyServer\.hap/);
+  assert.doesNotMatch(builder, /PioraHapSigner\.java|signing-project/);
   assert.doesNotMatch(builder, /OHScrcpyServer\.acceptance\.hap|\.private-acceptance/);
   assert.doesNotMatch(preview, /gh release create/);
   assert.doesNotMatch(preview, /needs: harmony-mirror/);

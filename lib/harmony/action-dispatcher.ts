@@ -56,9 +56,6 @@ export async function dispatchHarmonyAction(manager: HarmonyDeviceManager, body:
       case "touch_hold":
         result = await manager.touchHold({ ...common, x: coordinate(body, "x"), y: coordinate(body, "y"), durationMs: Number(body.durationMs), generation: generation(body) });
         break;
-      case "initialize_mirror":
-        result = await manager.initializeMirror(common);
-        break;
       case "tap":
         result = await manager.tap({ ...common, x: coordinate(body, "x"), y: coordinate(body, "y"), generation: generation(body) });
         break;

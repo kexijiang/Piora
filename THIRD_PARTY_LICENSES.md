@@ -1312,7 +1312,7 @@ SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sh
 
 ## Harmony device tools and capture source
 
-Bundled HDC uses Apache-2.0, libusb uses LGPL-2.1-or-later, and the capture component uses HongJing's MIT license. See [bundled artifact provenance](third_party/harmony-tools/windows-x64/SOURCE.md). The editable ordinary-permission Piora capture component and retained original copyright notice are in [capture source provenance](third_party/harmony-mirror/SOURCE.md) and [MIT license](third_party/harmony-mirror/LICENSE-HONGJING-MIT.txt). Source preparation does not include signing materials or establish that a release artifact has been replaced.
+Bundled HDC uses Apache-2.0 and libusb uses LGPL-2.1-or-later; see [tool provenance](third_party/harmony-tools/windows-x64/SOURCE.md). Live video uses only the shipped HOScrcpy native libraries; their pinned hashes, source and MIT license are in [video provenance](third_party/harmony-video/SOURCE.md). Historical HAP source and signing tools remain development-only and are not packaged.
 
 ## Harmony log workbench
 

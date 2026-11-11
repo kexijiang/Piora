@@ -11,7 +11,7 @@ Piora publishes desktop packages from [`kexijiang/Piora`](https://github.com/kex
 
 Beta tag CI builds and uploads a candidate without creating a GitHub Release. Once all build and verification jobs succeed, the publication workflow automatically publishes those same bytes as a GitHub prerelease. Stable publication is marked latest. The stable workflow ignores prerelease tags even though its tag trigger matches `v*`. A push to `main` runs CI; it does not itself publish a package.
 
-Windows installers support application updates; beta installers consume beta update metadata. Future beta and stable releases build only the Windows x64 installer; portable EXE, ZIP, Linux AppImage and other platform packages are no longer generated. The optional scheduled silent-update setting is disabled by default and defers installation while tasks or unsaved edits remain. Desktop installers and executables are not Authenticode signed; the bundled Harmony HAP has its own mandatory OpenHarmony signing and verification gate.
+Windows installers support application updates; beta installers consume beta update metadata. Future beta and stable releases build only the Windows x64 installer; portable EXE, ZIP, Linux AppImage and other platform packages are no longer generated. The optional scheduled silent-update setting is disabled by default and defers installation while tasks or unsaved edits remain. Desktop installers and executables are not Authenticode signed; Harmony video uses only the bundled native libraries, whose architecture and pinned hashes are verified.
 
 ## Prepare the source
 
@@ -101,7 +101,7 @@ gh run list --repo kexijiang/Piora --workflow harmony-preview.yml --limit 5
 
 For stable releases, wait for main-branch CI before creating `vX.Y.Z`, omit `--prerelease` from metadata verification, and follow `release.yml`. Always pass `--repo kexijiang/Piora` to `gh`: a fork checkout with an `upstream` remote may otherwise select the upstream project.
 
-Beta CI runs the reusable six-shard Windows test suite alongside the Windows package job. The package job checks source hygiene, licenses, lint, types, backgrounds and performance budgets, builds Windows packages using the repository-provided Harmony capture HAP, and checks updater metadata, package isolation, licenses, the Electron runtime and installed application before uploading the candidate. Publication requires an overall successful original run. Phone hardware acceptance is optional and its result must be reported accurately.
+Beta CI runs the reusable six-shard Windows test suite alongside the Windows package job. The package job checks source hygiene, licenses, lint, types, backgrounds and performance budgets, builds Windows packages with the bundled Harmony native capture libraries, and checks updater metadata, package isolation, licenses, the Electron runtime and installed application before uploading the candidate. Publication requires an overall successful original run. Phone hardware acceptance is optional and its result must be reported accurately.
 
 When `harmony-preview.yml` completes successfully, `publish-preview.yml` automatically publishes its verified artifacts through `workflow_run`. No environment approval or manual acceptance is required. Keep this publication workflow on the default branch so GitHub can trigger it. Failed or cancelled builds do not publish. The former `preview-publish` environment no longer has required reviewers and is not referenced by the publication job.
 

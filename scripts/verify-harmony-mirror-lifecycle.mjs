@@ -17,7 +17,6 @@ const directory = resolve(args['--output'] ?? `.verification/mirror-rewrite/life
 await mkdir(directory, { recursive: true });
 const jiti = createJiti(import.meta.url);
 const { MirrorCaptureSession } = await jiti.import('../lib/harmony/mirror/capture-session.ts');
-const { findDebugVideoSource } = await jiti.import('../lib/harmony/runtime/deveco-video-library.ts');
 const { disableHypiumTelemetry } = await jiti.import('../lib/harmony/hypium-backend.ts');
 disableHypiumTelemetry();
 const pathKey = Object.keys(process.env).find(key => key.toLowerCase() === 'path') ?? 'PATH';
@@ -51,8 +50,7 @@ const server = createServer(async (request, response) => {
     response.setHeader('Content-Type', 'text/html'); response.end('<style>body{margin:0;background:#111}canvas{width:100vw;height:100vh;object-fit:contain}</style><canvas></canvas><script src="/bundle.js"></script>');
   } catch (error) { evidence.errors.push(String(error)); if (!response.headersSent) response.statusCode = 500; response.end(); }
 });
-const source = await findDebugVideoSource(args['--hdc']);
-const startCapture = () => MirrorCaptureSession.start(args['--serial'], source, run, () => {});
+const startCapture = () => MirrorCaptureSession.start(args['--serial'], run, () => {});
 const frame = async landscape => {
   await page.waitForFunction(wide => { const c = document.querySelector('canvas'); return c.width > 100 && c.height > 100 && (c.width > c.height) === wide; }, landscape, { timeout: 30000 });
   return page.evaluate(() => { const c = document.querySelector('canvas'); return { width: c.width, height: c.height }; });
