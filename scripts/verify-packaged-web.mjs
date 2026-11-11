@@ -953,24 +953,19 @@ export async function verifyPackagedNativeVideo(videoRoot, licenseRoot) {
   return videoManifest.assets.length;
 }
 
+export async function verifyNoLegacyMirrorAssets(resourcesRoot) {
+  for (const removed of ["OHScrcpyServer.hap", "harmony-mirror-manifest.json", "harmony-mirror-signature-verification.json", "PioraHapSigner.java", "signing-project"]) {
+    if (await lstat(join(resourcesRoot, "harmony-tools", removed)).catch(error => { if (error.code === "ENOENT") return undefined; throw error; })) {
+      throw new Error(`The packaged runtime contains a removed capture component: ${removed}`);
+    }
+  }
+}
+
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
   await verifyPackagedNativeVideo(join(`${packagedRuntimeArchive}.unpacked`, "third_party", "harmony-video"), join(dirname(packagedWebRoot), "licenses", "harmony-video"));
-  await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "PioraHapSigner.java"));
-  for (const relativePath of [
-    "build-profile.json5",
-    "oh-package.json5",
-    "hvigorfile.ts",
-    "hvigor/hvigor-config.json5",
-    "AppScope/app.json5",
-    "entry/build-profile.json5",
-    "entry/oh-package.json5",
-    "entry/hvigorfile.ts",
-    "entry/src/main/module.json5",
-  ]) {
-    await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "signing-project", relativePath));
-  }
+  await verifyNoLegacyMirrorAssets(dirname(packagedWebRoot));
   const packagedWebEntries = (await readdir(packagedWebRoot)).sort();
   if (JSON.stringify(packagedWebEntries) !== JSON.stringify(["runtime.asar", "runtime.asar.unpacked", "server.js"])) {
     throw new Error(`Packaged web container must contain the launcher, runtime archive and native sidecar: ${packagedWebEntries.join(", ")}`);

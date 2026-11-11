@@ -33,8 +33,8 @@ export class HarmonyRequestError extends Error {
       : "The native video library is incompatible with the device; a dynamic symbol is missing")
       + (this.missingVideoSymbol ? `: ${this.missingVideoSymbol}` : ".")
       + (this.videoLibrary ? ` (${this.videoLibrary})` : "")
-      + (chinese ? "。请更新 Piora 或含兼容投屏库的 DevEco Studio 后重新连接设备；仅更换 HDC 路径不会更新投屏库。"
-        : ". Update Piora or DevEco Studio with a compatible video library, then reconnect the device; changing the HDC path alone does not update the library.");
+      + (chinese ? "。请更新 Piora 后重新连接设备；投屏只使用应用内置库。"
+        : ". Update Piora and reconnect the device; video uses only the bundled library.");
     if (this.reason === "debug-video-library-unavailable") return chinese
       ? "没有找到匹配且完整的原生投屏库。请修复或更新 Piora；UiTest 7.0 需要内置 6.6 或更新版本库。"
       : "No matching, verified native video library is available. Repair or update Piora; UiTest 7.0 requires the bundled 6.6 or newer library.";

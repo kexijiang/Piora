@@ -8,7 +8,7 @@ import { ScrcpyServiceService } from "hypium-driver/build/lib/generated/scrcpy/s
 import type { CommandResult } from "../command-runner";
 import { HarmonyError } from "../errors";
 import { HosVideoPacketizer } from "../media/hos-packets";
-import { readDebugVideoLibraryCandidates, type DebugVideoLibrary } from "../runtime/deveco-video-library";
+import { readBundledVideoLibraryCandidates, type BundledVideoLibrary } from "../runtime/bundled-video-library";
 import { videoStartupDiagnostics } from "../runtime/video-startup-diagnostics";
 import { VideoOwnership } from "../runtime/video-ownership";
 import type { HarmonyVideoConnection } from "../types";
@@ -35,7 +35,7 @@ export class MirrorCaptureSession {
   private pid?: number;
   private forwarded = false;
   private forwardPending = false;
-  private shared = false;
+  private libraryDispatched = false;
   private failed?: Error;
   private lastKeyframeRequest = -Infinity;
   private keyframePending = false;
@@ -52,13 +52,13 @@ export class MirrorCaptureSession {
 
   get whenClosing(): Promise<void> | undefined { return this.closing; }
 
-  static async start(serial: string, source: string | undefined, run: Run, onClose: () => void, ownershipDirectory?: string, knownVersion?: string, scale = MIRROR_PROFILE.scale): Promise<MirrorCaptureSession> {
+  static async start(serial: string, run: Run, onClose: () => void, ownershipDirectory?: string, knownVersion?: string, scale = MIRROR_PROFILE.scale): Promise<MirrorCaptureSession> {
     captureArguments(scale);
     const session = new MirrorCaptureSession(serial, run, await allocatePioraPort(), `piora_video_${randomUUID().replaceAll("-", "")}.so`, onClose);
     try {
       session.ownership = new VideoOwnership(serial, session.name, session.port, run, ownershipDirectory);
       await session.ownership.prepare(); session.journaled = true;
-      await session.initialize(source, knownVersion, scale); return session;
+      await session.initialize(knownVersion, scale); return session;
     }
     catch (error) { await session.close(); throw error; }
   }
@@ -81,25 +81,18 @@ export class MirrorCaptureSession {
     return true;
   }
 
-  private async initialize(source: string | undefined, knownVersion?: string, scale = MIRROR_PROFILE.scale) {
+  private async initialize(knownVersion?: string, scale = MIRROR_PROFILE.scale) {
     const sockets = await this.shell("cat /proc/net/unix", "debug_video_socket_check");
     if (sockets.includes("@scrcpy_grpc_socket")) {
-      // Subscribe to the existing service without taking ownership of its daemon.
-      // Persist this distinction before creating a forward so crash recovery can
-      // remove only our own forward while the other viewer remains connected.
-      this.ownership!.markShared();
-      this.shared = true;
-      await this.openForward();
-      return;
+      throw new HarmonyError("DEVICE_BUSY", "Another tool owns the native video channel", { details: { reason: "debug-video-busy" } });
     }
-    if (!source) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The native video runtime is missing. Repair or update Piora and reconnect.", { details: { reason: "debug-video-sdk-missing" }, retryable: true });
     const version = knownVersion || await this.shell("uitest --version", "debug_video_version");
-    const candidates = await readDebugVideoLibraryCandidates(source, version).catch(() => {
+    const candidates = await readBundledVideoLibraryCandidates(version).catch(() => {
       throw new HarmonyError("CAPABILITY_UNAVAILABLE", "No compatible, verified native video library is available for this device. Repair or update Piora.", {
         details: { reason: "debug-video-library-unavailable", deviceVersion: version.slice(0, 64) }, retryable: false,
       });
     });
-    const key = JSON.stringify([this.serial, version, source]);
+    const key = JSON.stringify([this.serial, version]);
     const working = workingLibraries.get(key);
     candidates.sort((a, b) => Number(b.sha256 === working) - Number(a.sha256 === working));
     const attempts: Record<string, unknown>[] = [];
@@ -127,13 +120,14 @@ export class MirrorCaptureSession {
     }
   }
 
-  private async initializeOwnedLibrary(library: DebugVideoLibrary, version: string, scale: typeof MIRROR_PROFILE.scale) {
+  private async initializeOwnedLibrary(library: BundledVideoLibrary, version: string, scale: typeof MIRROR_PROFILE.scale) {
     const directory = await mkdtemp(join(tmpdir(), "piora-video-"));
     try {
       const path = join(directory, this.name); await writeFile(path, library.bytes, { flag: "wx", mode: 0o600 });
+      this.libraryDispatched = true;
       await this.run(["-t", this.serial, "file", "send", path, `/data/local/tmp/${this.name}`], "debug_video_upload", undefined, 8000);
     } finally { await rm(directory, { recursive: true, force: true }); }
-    // Both the bundled Hypium library and the optional SDK expose this capture service.
+    // The shipped native library exposes the UiTest capture service.
     const pid = await this.shell(`uitest start-daemon singleness --extension-name ${this.name} ${captureArguments(scale)} > /data/local/tmp/${this.name}.log 2>&1 & echo $!`, "debug_video_start");
     const match = /^\s*(\d+)\s*$/.exec(pid);
     if (!match) throw await this.startupFailure(library, version);
@@ -147,7 +141,7 @@ export class MirrorCaptureSession {
     await this.openForward();
   }
 
-  private async startupFailure(library: DebugVideoLibrary, version: string): Promise<HarmonyError> {
+  private async startupFailure(library: BundledVideoLibrary, version: string): Promise<HarmonyError> {
     const read = async (command: string, operation: string) => {
       try {
         const result = await this.run(["-t", this.serial, "shell", command], operation, undefined, 2000);
@@ -269,7 +263,7 @@ export class MirrorCaptureSession {
         await this.shell(`rm -f /data/local/tmp/${this.name} /data/local/tmp/${this.name}.log`, "debug_video_file_cleanup");
       };
       const cleanup = await Promise.allSettled([
-        this.shared ? Promise.resolve() : stopped().catch(() => stopped()),
+        this.libraryDispatched ? stopped().catch(() => stopped()) : Promise.resolve(),
         this.forwarded ? this.run(["-t", this.serial, "fport", "rm", `tcp:${this.port}`, SOCKET], "debug_video_forward_cleanup", undefined, 8000) : Promise.resolve(),
       ]);
       try {

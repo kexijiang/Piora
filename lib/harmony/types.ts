@@ -141,7 +141,7 @@ export interface HarmonyManagerState {
 
 export interface HarmonyConfig {
   hdcPath?: string;
-  video?: { provider: "deveco" | "bundled" | "hos-scrcpy"; packageDirectory?: string; javaPath?: string };
+  video?: { provider: "bundled" };
   storage?: {
     screenshotDirectory?: string;
     recordingDirectory?: string;
@@ -499,9 +499,7 @@ export interface HarmonyAutomationBackend {
   /** Forgets an unconfirmed system recording on the PC side; removes only the relay copy, never toggles or deletes gallery media. */
   abandonRecording?(serial: string, remoteName: string): Promise<void>;
   openVideoStream?(serial: string, signal?: AbortSignal): Promise<HarmonyVideoConnection>;
-  mirrorPackagePath?(): string;
   displayGeometry?(serial: string, signal?: AbortSignal): Promise<import("./observation/geometry").NativeDisplayGeometry>;
-  initializeMirror?(serial: string, hapPath: string, signal?: AbortSignal): Promise<void>;
   tap(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   pointerPhase?(serial: string, phase: "down" | "move" | "up", gestureId: string, x: number, y: number, signal?: AbortSignal): Promise<void>;
   doubleTap?(serial: string, x: number, y: number, signal?: AbortSignal): Promise<void>;

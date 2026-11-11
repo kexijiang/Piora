@@ -64,7 +64,6 @@ export const actionCatalog = {
   copy_path: { description: "Copy one regular device file or bounded directory to a new path, verifying contents before publishing", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096), newPath: string(4096) } },
   move_path: { description: "Move one regular device file or bounded directory, verifying the destination before removing its source", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096), newPath: string(4096) } },
   chmod_path: { description: "Set three-digit octal permissions on one regular device file or directory", risk: "control", direct: { kind: values(["shared", "sandbox"]), bundleName: optional(string(256)), path: string(4096), mode: Type.String({ pattern: "^[0-7]{3}$" }) } },
-  initialize_mirror: { description: "Initialize the capture component on request; never unlock", risk: "control", direct: {} },
   wait_for: { description: "Wait for a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },
   assert: { description: "Assert a valid semantic observation", risk: "read", scenario: { condition: conditionSchema } },
   wait_idle: { description: "Report driver idle or explicitly bounded delay", risk: "read", scenario: { idleMs: optional(number(50, 10_000)), timeoutMs: optional(number(50, 60_000)) } },

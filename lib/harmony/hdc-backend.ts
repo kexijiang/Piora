@@ -1,8 +1,5 @@
-import { allocatePioraPort } from "./runtime/local-port";
 import type { HarmonyRecordingContext } from "./types";
-import { existsSync } from "node:fs";
 import { link, lstat, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
-import { createConnection, type Socket } from "node:net";
 import { tmpdir } from "node:os";
 import { extname, isAbsolute, join, resolve, dirname, posix } from "node:path";
 import { createHash, randomUUID } from "node:crypto";
@@ -17,12 +14,10 @@ import { parseDisplayGeometry, type NativeDisplayGeometry } from "./observation/
 import { ForwardOwnershipStore } from "./runtime/forward-store";
 import { startOwnedRecording } from "./media/owned-recording";
 import {
-  SYSTEM_RECORDER_BUNDLE, SYSTEM_RECORDING_STAGING_DIRECTORY, assertSystemRecordingName, generateSystemRecordingName, isStagedSystemRecording,
-  parseMediatoolQuery, parseMediatoolRecv, parseSystemRecorderState, systemRecorderInstalled, systemRecorderStartAccepted, systemRecorderToggleArgs,
+  SYSTEM_RECORDER_BUNDLE, SYSTEM_RECORDING_STAGING_DIRECTORY, assertSystemRecordingName, isStagedSystemRecording,
+  parseMediatoolQuery, parseMediatoolRecv, parseSystemRecorderState, systemRecorderToggleArgs,
   type SystemRecorderState,
 } from "./media/system-recorder";
-import { previewHapArtifact } from "./runtime/hap-preview";
-import { prepareLocalMirrorHap } from "./runtime/mirror-signing";
 import { streamHdcLines } from "./log-stream";
 import { capabilitiesFromHelp } from "./capabilities/probes";
 import { physicalKeyCode, type PhysicalKey } from "./input/key-catalog";
@@ -35,9 +30,7 @@ import { MAX_DEVICE_TRANSFER_BYTES, deviceTransferTimeoutMs } from "./device-tra
 import { assertUnredirectedPath } from "./runtime/path-safety";
 import { withHdcLocalPath } from "./runtime/hdc-local-path";
 import { validateTcpDeviceAddress } from "./tcp-device";
-import { openHosScrcpyVideo } from "./hos-scrcpy";
-import { DevEcoVideoSession } from "./deveco-video";
-import { findDebugVideoSource } from "./runtime/deveco-video-library";
+import { MirrorCaptureSession } from "./mirror/capture-session";
 import type {
   BackendDevice,
   BackendSnapshot,
@@ -59,30 +52,6 @@ const SERIAL_PATTERN = /^[A-Za-z0-9._:\[\]-]{1,256}$/;
 const APP_IDENTIFIER_PATTERN = /^[A-Za-z][A-Za-z0-9_.]{0,255}$/;
 const MAX_LOG_QUERY_LENGTH = 256;
 const MAX_LOG_LINES = 2_000;
-const MIRROR_BUNDLE = "com.ohos.scrcpy.server";
-const MIRROR_DEVICE_PORT = 53_535;
-const MIRROR_MAX_SHORT_EDGE = 1_080;
-const MIRROR_BITRATE = 6_000_000;
-const MIRROR_FRAME_RATE = 30;
-
-function installedMirrorMatches(
-  preview: Awaited<ReturnType<typeof previewHapArtifact>>,
-  installed: HarmonyApplication | undefined,
-): boolean {
-  return preview.versionCode !== undefined
-    && preview.versionName !== undefined
-    && installed?.bundleName === preview.bundleName
-    && installed.versionCode === preview.versionCode
-    && installed.versionName === preview.versionName
-    && installed.abilities?.includes("EntryAbility") === true;
-}
-
-function mayMeanBundleIsAbsent(output: string): boolean {
-  const normalized = output.replace(/\0/g, "").trim();
-  return normalized === ""
-    || /^error:\s*failed to get information and the parameters may be wrong\.?$/i.test(normalized);
-}
-
 /** The sandbox shell reparses its command and drops script quotes on some HDC versions.
  * ASCII transport preserves the original script without changing the app sandbox or writing a script file.
  */
@@ -139,9 +108,6 @@ export interface HdcBackendOptions {
   execute?: CommandExecutor;
   commandTimeoutMs?: number;
   forwardJournalDirectory?: string;
-  /** SDK discovery boundary; injected executors can supply an isolated fixture. */
-  findDebugVideoSource?: (hdcPath: string) => Promise<string | undefined>;
-  prepareMirrorHap?: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
   /** Poll timing for the Huawei system recorder (tests shorten these). */
   systemRecorder?: { pollIntervalMs?: number; retrieveTimeoutMs?: number; confirmTimeoutMs?: number; transferTimeoutMs?: number };
   /** Receives one `[harmony-system-recorder] {json}` line per raw system-recorder command (defaults to stdout, which the desktop writes to piora.log). */
@@ -313,72 +279,11 @@ function parsePng(data: Buffer): HarmonyScreenshot {
   };
 }
 
-function encodeMirrorPacket(type: number, payload: Buffer): Buffer {
-  const packet = Buffer.allocUnsafe(8 + payload.length);
-  packet.writeUInt32BE(type, 0);
-  packet.writeUInt32BE(payload.length, 4);
-  payload.copy(packet, 8);
-  return packet;
-}
-
-function encodeMirrorHeartbeat(): Buffer {
-  const payload = Buffer.allocUnsafe(8);
-  payload.writeBigUInt64BE(BigInt(Date.now()), 0);
-  return encodeMirrorPacket(0x01, payload);
-}
-
-function encodeMirrorVideoParameters(): Buffer {
-  const payload = Buffer.allocUnsafe(13);
-  payload[0] = 0x42;
-  payload.writeInt32BE(MIRROR_MAX_SHORT_EDGE, 1);
-  payload.writeInt32BE(MIRROR_BITRATE, 5);
-  payload.writeInt32BE(MIRROR_FRAME_RATE, 9);
-  return encodeMirrorPacket(0x10, payload);
-}
-
-export function parseHarmonyForwardedPort(output: string): number | undefined {
-  const match = output.match(/tcp:(\d+)\s+tcp:\d+/i) ?? output.match(/localhost:(\d+)/i);
-  const port = match ? Number(match[1]) : Number.NaN;
-  return Number.isSafeInteger(port) && port > 0 && port <= 65_535 ? port : undefined;
-}
-
-const reserveLoopbackPort = allocatePioraPort;
-
-async function connectLoopback(port: number, signal?: AbortSignal): Promise<Socket> {
-  return await new Promise<Socket>((resolveSocket, rejectSocket) => {
-    const socket = createConnection({ host: "127.0.0.1", port });
-    socket.setNoDelay(true);
-    socket.setKeepAlive(true, 5_000);
-    const timeout = setTimeout(() => fail(new Error("Harmony video service connection timed out")), 5_000);
-    const cleanup = () => {
-      clearTimeout(timeout);
-      signal?.removeEventListener("abort", abort);
-      socket.removeListener("connect", connected);
-      socket.removeListener("error", fail);
-    };
-    const connected = () => {
-      cleanup();
-      resolveSocket(socket);
-    };
-    const fail = (error: Error) => {
-      cleanup();
-      socket.destroy();
-      rejectSocket(error);
-    };
-    const abort = () => fail(new Error("Harmony video connection was cancelled"));
-    socket.once("connect", connected);
-    socket.once("error", fail);
-    signal?.addEventListener("abort", abort, { once: true });
-    if (signal?.aborted) abort();
-  });
-}
-
 export class HdcBackend implements HarmonyAutomationBackend {
   readonly kind = "hdc-uitest";
   readonly hdcPath: string;
   private readonly execute: CommandExecutor;
   private readonly commandTimeoutMs: number;
-  private readonly prepareMirrorHap: (serial: string, sourceHapPath: string, signal?: AbortSignal) => Promise<string>;
   private readonly capabilitiesBySerial = new Map<string, HarmonyCapabilities>();
   private readonly deviceInfoBySerial = new Map<string, { device: Omit<BackendDevice, "state">; expiresAt: number }>();
   private readonly deviceIdentityBySerial = new Map<string, HarmonyDeviceLabelSource>();
@@ -390,20 +295,14 @@ export class HdcBackend implements HarmonyAutomationBackend {
   private readonly screenshotTails = new Map<string, Promise<void>>();
 
   private readonly forwardStore?: ForwardOwnershipStore;
-  private readonly forwards = new Map<number, ReturnType<ForwardOwnershipStore["create"]>>();
   private readonly videoClosers = new Set<() => Promise<void>>();
-  private readonly videoPreference: import("./types").HarmonyConfig["video"];
-  private hosRetryAt = 0;
-  private readonly findDebugVideoSource: (hdcPath: string) => Promise<string | undefined>;
-  private readonly debugVideos = new Map<string, Promise<DevEcoVideoSession>>();
+  private readonly debugVideos = new Map<string, Promise<MirrorCaptureSession>>();
 
   interruptedForwards(serial: string) { return this.forwardStore?.interrupted(serial) ?? []; }
 
   constructor(options: HdcBackendOptions = {}) {
-    this.findDebugVideoSource = options.findDebugVideoSource ?? findDebugVideoSource;
     if (!options.execute || options.forwardJournalDirectory) this.forwardStore = new ForwardOwnershipStore(options.forwardJournalDirectory ?? join(dirname(defaultHarmonyConfigPath()), "harmony-forwards"));
     const config = readHarmonyConfig();
-    this.videoPreference = options.resolve?.config?.video ?? config.video;
     const resolution = resolveHdcPath({
       ...options.resolve,
       explicitPath: options.hdcPath ?? options.resolve?.explicitPath,
@@ -414,23 +313,6 @@ export class HdcBackend implements HarmonyAutomationBackend {
     this.commandTimeoutMs = options.commandTimeoutMs ?? 15_000;
     this.systemRecorderLog = options.systemRecorderLog ?? (() => { /* Raw device replies are disabled by default. */ });
     this.systemRecorderTiming = { pollIntervalMs: 3_000, retrieveTimeoutMs: 30_000, confirmTimeoutMs: 4_000, transferTimeoutMs: 120_000, ...options.systemRecorder };
-    this.prepareMirrorHap = options.prepareMirrorHap ?? (async (serial, sourceHapPath, signal) => {
-      const result = await this.shell(serial, ["bm", "get", "--udid"], "mirror_device_identity", signal, 8_000);
-      const udids = [...new Set(Buffer.concat([result.stdout, result.stderr]).toString("utf8")
-        .match(/(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])/gi) ?? [])];
-      if (udids.length !== 1) {
-        throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The connected phone identity could not be verified for local DevEco signing", {
-          details: { reason: "mirror-device-identity-unavailable", dispatchState: "not-sent" },
-        });
-      }
-      return await prepareLocalMirrorHap({
-        sourceHapPath,
-        hdcPath: this.hdcPath,
-        deviceUdid: udids[0],
-        cacheDirectory: join(dirname(defaultHarmonyConfigPath()), "harmony-mirror-private"),
-        signal,
-      });
-    });
   }
 
   private async run(args: readonly string[], operation: string, signal?: AbortSignal, timeoutMs?: number) {
@@ -965,13 +847,13 @@ export class HdcBackend implements HarmonyAutomationBackend {
       try { const result = local ? await this.run(args, "doctor_host_version", signal, 8000) : await this.shell(serial, args, "doctor_read_only", signal, 8000); return Buffer.concat([result.stdout, result.stderr]).toString("utf8").slice(0, 64 * 1024); }
       catch (error) { if (signal?.aborted) throw error; return ""; }
     };
-    const [version, mirror, lock, install, uinput] = await Promise.all([
-      probe(["-v"], true), probe(["bm", "dump", "-n", MIRROR_BUNDLE]),
+    const [version, capture, lock, install, uinput] = await Promise.all([
+      probe(["-v"], true), probe(["uitest", "--version"]),
       probe(["hidumper", "-s", "ScreenlockService", "-a", "-all"]), probe(["bm", "help"]), probe(["uinput", "--help"]),
     ]);
     const check = (name: string, known: boolean, reason: string) => ({ name, status: known ? "passed" as const : "unknown" as const, reason });
     return { hdcVersion: version.trim().split(/\r?\n/)[0]?.slice(0, 160), checks: [
-      check("video-component", mirror.includes(MIRROR_BUNDLE) && !/not found|not exist|failed/i.test(mirror), "Package presence only; video connection and initialization are separate"),
+      check("native-video-runtime", /\d+\.\d+/.test(capture), "UiTest version only; bundled library compatibility and live frames require a video connection"),
       check("screen-unlocked", parseHarmonyScreenLockState(lock) === "unlocked", "Read-only lock inspection; unlock manually if required"),
       check("package-install-command", /\binstall\b/.test(install), "Help availability only; installation may still be denied by the device"),
       check("bounded-uinput-protocol", ["--down", "--up", "--interval"].every(token => uinput.includes(token)), "Help evidence only; physical key/touch behavior requires calibration"),
@@ -1176,25 +1058,13 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
-  /**
-   * Prefer the bundled/installed runtime's owned H.264 stream without changing the recorder UI.
-   * If all native resources are missing, retain the legacy system-recorder and HAP paths.
-   */
+  /** Recording subscribes to the same bundled native stream as visible viewers. */
   async startRecording(serial: string, remoteName: string, signal?: AbortSignal, onFailure?: (error: HarmonyError) => void, context?: HarmonyRecordingContext): Promise<HarmonyRecordingStartResult> {
     validateSerial(serial);
     if (!/^piora-recording-[0-9A-Za-z-]{8,96}\.mp4$/.test(remoteName)) throw new HarmonyError("INVALID_ARGUMENT", "Invalid Harmony recording name");
     if (this.ownedRecordings.has(serial) || this.recordingStarts.has(serial)) throw new HarmonyError("DEVICE_BUSY", "This runtime already owns a recording on the device");
     this.recordingStarts.add(serial);
     try {
-      if (await this.findDebugVideoSource(this.hdcPath)) {
-        await this.startStreamRecording(serial, remoteName, signal, onFailure, context);
-        return { method: "stream" };
-      }
-      const fileName = await this.startSystemRecording(serial, remoteName, signal);
-      if (fileName) {
-        this.ownedRecordings.set(serial, { kind: "system", name: remoteName, fileName });
-        return { method: "system-recorder", systemFileName: fileName };
-      }
       await this.startStreamRecording(serial, remoteName, signal, onFailure, context);
       return { method: "stream" };
     } finally { this.recordingStarts.delete(serial); }
@@ -1236,20 +1106,6 @@ export class HdcBackend implements HarmonyAutomationBackend {
     catch { /* Logging never changes recording behavior. */ }
   }
 
-  private async systemRecorderAvailable(serial: string, signal?: AbortSignal): Promise<boolean> {
-    try {
-      const result = await this.systemRecorderShell(serial, ["bm", "dump", "-n", SYSTEM_RECORDER_BUNDLE], "system_recorder_check", signal, 8_000);
-      return result.exitCode === 0 && systemRecorderInstalled(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
-    } catch (error) {
-      if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
-      return false;
-    }
-  }
-
-  /**
-   * NEEDS REAL-DEVICE VALIDATION: whether `aa dump -a` reliably shows an active system recording.
-   * Kept isolated so the probe can be replaced once verified on a phone. "unknown" never toggles.
-   */
   private async probeSystemRecorderState(serial: string, signal?: AbortSignal): Promise<SystemRecorderState> {
     try {
       const result = await this.systemRecorderShell(serial, ["aa", "dump", "-a"], "system_recorder_state", signal, 8_000);
@@ -1272,33 +1128,6 @@ export class HdcBackend implements HarmonyAutomationBackend {
   }
 
   /** Returns the gallery file name when the system recorder is confirmed recording; undefined means "use the stream path". */
-  private async startSystemRecording(serial: string, remoteName: string, signal?: AbortSignal): Promise<string | undefined> {
-    if (!await this.systemRecorderAvailable(serial, signal)) return undefined;
-    // The documented constraint: a locked phone cannot start or stop the recorder cleanly.
-    await this.requireUnlockedScreen(serial, signal);
-    // Start and stop are one toggle. Only an observed idle recorder may receive "start";
-    // a manual recording or an unreadable state falls back without touching the recorder.
-    if (await this.probeSystemRecorderState(serial, signal) !== "idle") return undefined;
-    const fileName = generateSystemRecordingName();
-    let accepted = false;
-    try {
-      const result = await this.systemRecorderShell(serial, systemRecorderToggleArgs(fileName), "system_recorder_start", signal, 10_000);
-      accepted = result.exitCode === 0 && systemRecorderStartAccepted(Buffer.concat([result.stdout, result.stderr]).toString("utf8"));
-    } catch (error) {
-      if (signal?.aborted || isHarmonyError(error) && error.code === "COMMAND_ABORTED") throw error;
-    }
-    const state = await this.waitForSystemRecorderState(serial, "recording");
-    if (state === "recording") return fileName;
-    // An explicitly rejected start that left the recorder observably idle is safe to replace.
-    if (!accepted && state === "idle") return undefined;
-    // The phone may be recording. Keep ownership of the generated name so the user can stop it on
-    // the phone and retrieve the file; no further toggle is ever sent for this recording.
-    this.ownedRecordings.set(serial, { kind: "system", name: remoteName, fileName, stateUnknown: true });
-    throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The system recorder start was sent but could not be confirmed; stop the recording on the phone, then retrieve it", {
-      details: { reason: "system-recording-start-unconfirmed", dispatchState: "sent", recordingStopped: false, systemRecorderStateUnknown: true, pendingRetrieval: true, systemFileName: fileName },
-    });
-  }
-
   private async stopSystemRecording(serial: string, fileName: string, destinationPath: string): Promise<number> {
     assertSystemRecordingName(fileName);
     const before = await this.probeSystemRecorderState(serial);
@@ -1439,19 +1268,6 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
-  private bundledMirrorServerPath(): string {
-    const toolsDirectory = process.env.PIORA_HARMONY_TOOLS_DIR?.trim();
-    const serverPath = toolsDirectory
-      ? join(toolsDirectory, "OHScrcpyServer.hap")
-      : join(process.cwd(), "third_party", "harmony-tools", `${process.platform === "win32" ? "windows" : process.platform}-${process.arch}`, "OHScrcpyServer.hap");
-    if (!serverPath || !existsSync(serverPath)) {
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The bundled Harmony video service is missing from this Piora installation");
-    }
-    return serverPath;
-  }
-
-  mirrorPackagePath(): string { return this.bundledMirrorServerPath(); }
-
   async displayGeometry(serial: string, signal?: AbortSignal): Promise<NativeDisplayGeometry> {
     const result = await this.shell(serial, ["hidumper", "-s", "DisplayManagerService", "-a", "-a"], "display_geometry", signal, 8_000);
     const geometry = parseDisplayGeometry(result.stdout.toString("utf8"));
@@ -1470,279 +1286,32 @@ export class HdcBackend implements HarmonyAutomationBackend {
     }
   }
 
-  private async observeMirrorInstallation(
-    serial: string,
-    signal?: AbortSignal,
-    reason = "mirror-installation-state-unavailable",
-    dispatchState: "not-sent" | "sent" = "not-sent",
-  ): Promise<HarmonyApplication | undefined> {
-    const unavailable = (cause: unknown) => new HarmonyError(
-      "OBSERVATION_UNAVAILABLE",
-      reason === "mirror-uninstallation-unverified"
-        ? "The previous capture component removal could not be verified"
-        : "The capture component installation state could not be verified",
-      { cause, details: { reason, dispatchState } },
-    );
-    let exactOutput: string;
-    try {
-      const result = await this.shell(serial, ["bm", "dump", "-n", MIRROR_BUNDLE], "mirror_installation_state", signal, 8_000);
-      exactOutput = Buffer.concat([result.stdout, result.stderr]).toString("utf8");
-    } catch (cause) {
-      if (signal?.aborted || isHarmonyError(cause) && cause.code === "COMMAND_ABORTED") throw cause;
-      throw unavailable(cause);
-    }
-    try {
-      return parseApplicationDetails(exactOutput, MIRROR_BUNDLE);
-    } catch (cause) {
-      if (!mayMeanBundleIsAbsent(exactOutput)) throw unavailable(cause);
-    }
-
-    try {
-      const result = await this.shell(serial, ["bm", "dump", "-a"], "mirror_installation_absence", signal, 8_000);
-      const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "");
-      if (/(?:^|\r?\n)\s*(?:error\b|fail(?:ed|ure)?\b|permission denied)/i.test(output)) {
-        throw new Error("bundle list contains a failure response");
-      }
-      const applications = parseBundleList(output);
-      if (applications.some(application => application.bundleName === MIRROR_BUNDLE)) {
-        throw new Error("exact bundle lookup disagrees with the installed bundle list");
-      }
-      return undefined;
-    } catch (cause) {
-      if (signal?.aborted || isHarmonyError(cause) && cause.code === "COMMAND_ABORTED") throw cause;
-      throw unavailable(cause);
-    }
-  }
-
-  private async previewMirrorHap(path: string, signal?: AbortSignal) {
-    try {
-      return await previewHapArtifact(path, signal);
-    } catch (cause) {
-      if (signal?.aborted || cause instanceof DOMException && cause.name === "AbortError") {
-        throw new HarmonyError("COMMAND_ABORTED", "Harmony video component initialization was cancelled", {
-          cause,
-          retryable: true,
-          details: { reason: "mirror-initialization-cancelled", dispatchState: "not-sent" },
-        });
-      }
-      throw cause;
-    }
-  }
-
-  private async ensureMirrorServer(serial: string, signal?: AbortSignal): Promise<void> {
-    const result = await this.shell(serial, ["bm", "dump", "-n", MIRROR_BUNDLE], "mirror_server_check", signal, 8_000);
-    const output = Buffer.concat([result.stdout, result.stderr]).toString("utf8").replace(/\0/g, "");
-    if (!output.includes(MIRROR_BUNDLE) || /(?:not\s+exist|not\s+found|failed)/i.test(output)) {
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Initialize the phone video component in the Harmony workbench; passive viewing never installs it", { details: { reason: "mirror-component-missing" } });
-    }
-    await this.requireUnlockedScreen(serial, signal);
-  }
-
-  async initializeMirror(serial: string, hapPath: string, signal?: AbortSignal): Promise<void> {
-    validateSerial(serial);
-    await this.requireUnlockedScreen(serial, signal);
-    const sourcePreview = await this.previewMirrorHap(hapPath, signal);
-    if (sourcePreview.bundleName !== MIRROR_BUNDLE || !sourcePreview.abilities.includes("EntryAbility")
-      || sourcePreview.versionCode === undefined || sourcePreview.versionName === undefined) {
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The capture package has no supported foreground entry", { details: { reason: "mirror-package-invalid", dispatchState: "not-sent" } });
-    }
-    let installed = await this.observeMirrorInstallation(serial, signal);
-
-    if (installedMirrorMatches(sourcePreview, installed)) {
-      await this.launchApp(serial, MIRROR_BUNDLE, "EntryAbility", signal);
-      return;
-    }
-
-    const privateHapPath = await this.prepareMirrorHap(serial, hapPath, signal);
-    const preview = await this.previewMirrorHap(privateHapPath, signal);
-    if (preview.bundleName !== sourcePreview.bundleName || preview.versionCode !== sourcePreview.versionCode
-      || preview.versionName !== sourcePreview.versionName || preview.moduleName !== sourcePreview.moduleName
-      || !preview.abilities.includes("EntryAbility")) {
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The private capture package differs from the bundled component", {
-        details: { reason: "mirror-private-package-invalid", dispatchState: "not-sent" },
-      });
-    }
-
-    if (!installedMirrorMatches(preview, installed)) {
-      if (installed) {
-        await this.uninstallPackage(serial, MIRROR_BUNDLE, signal);
-        const remaining = await this.observeMirrorInstallation(
-          serial,
-          signal,
-          "mirror-uninstallation-unverified",
-          "sent",
-        );
-        if (remaining) {
-          throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The previous capture component is still installed", {
-            details: { reason: "mirror-uninstallation-unverified", dispatchState: "sent" },
-          });
-        }
-      }
-      await this.installPackage(serial, privateHapPath, false, signal);
-      installed = await this.observeMirrorInstallation(serial, signal, "mirror-installation-unverified", "sent");
-    }
-    if (!installedMirrorMatches(preview, installed)) {
-      throw new HarmonyError("OBSERVATION_UNAVAILABLE", "The installed capture component could not be verified", { details: { reason: "mirror-installation-unverified", dispatchState: "sent" } });
-    }
-    await this.launchApp(serial, MIRROR_BUNDLE, "EntryAbility", signal);
-  }
-
-  private async createMirrorForward(serial: string, signal?: AbortSignal): Promise<number> {
-    const port = await reserveLoopbackPort();
-    const record = this.forwardStore?.create(serial, port, MIRROR_DEVICE_PORT);
-    if (record) this.forwards.set(port, record);
-    // Record the exact intended port before dispatch. An ambiguous failure is never retried.
-    await this.run(["-t", serial, "fport", `tcp:${port}`, `tcp:${MIRROR_DEVICE_PORT}`], "mirror_forward", signal, 8_000);
-    if (record) { record.state = "established"; this.forwardStore!.save(record); }
-    return port;
-  }
-
-  private async removeMirrorForward(serial: string, port: number) {
-    try {
-      await this.run(["-t", serial, "fport", "rm", `tcp:${port}`, `tcp:${MIRROR_DEVICE_PORT}`], "mirror_forward_cleanup", undefined, 1500);
-      const record = this.forwards.get(port);
-      if (record) { this.forwardStore!.clear(record); this.forwards.delete(port); }
-    } catch (cause) { throw new HarmonyError("DEVICE_BUSY", "Owned video forward cleanup is uncertain; inspect the exact forward in device diagnostics", { cause, details: { cleanup: "uncertain", localPort: port, remotePort: MIRROR_DEVICE_PORT } }); }
-  }
-
   async openVideoStream(serial: string, signal?: AbortSignal, recording = false): Promise<HarmonyVideoConnection> {
     validateSerial(serial);
     signal?.throwIfAborted();
-    if (!recording && this.videoPreference?.provider === "hos-scrcpy" && this.videoPreference.packageDirectory && Date.now() >= this.hosRetryAt) {
-      try {
-        await this.requireUnlockedScreen(serial, signal);
-        const connection = await openHosScrcpyVideo({ serial, hdcPath: this.hdcPath,
-          packageDirectory: this.videoPreference.packageDirectory, javaPath: this.videoPreference.javaPath, signal,
-          onFailure: () => { this.hosRetryAt = Date.now() + 60_000; } });
-        this.videoClosers.add(connection.close);
-        return { stream: connection.stream, close: async () => { try { await connection.close(); } finally { this.videoClosers.delete(connection.close); } } };
-      } catch (error) {
-        if (signal?.aborted) throw error;
-        this.hosRetryAt = Date.now() + 60_000;
-      }
-    }
-    // An installed SDK is optional; use the bundled native runtime on a clean PC.
-    const source = await this.findDebugVideoSource(this.hdcPath);
-    signal?.throwIfAborted();
-    if (source || !this.videoPreference || this.videoPreference.provider === "deveco") {
-      // Debug capture works independently of the phone's app/lock state.
-      // Reuse an existing DevEco service even if its local SDK cannot be found.
-      // Only the legacy HAP and system recorder paths require an unlocked phone.
-      let opening = this.debugVideos.get(serial);
-      if (!opening) {
-        const cached = this.deviceInfoBySerial.get(serial);
-        const knownVersion = cached && cached.expiresAt > Date.now() ? cached.device.uitestVersion : undefined;
-        opening = DevEcoVideoSession.start(serial, source, (args, operation, abort, timeout) => this.run(args, operation, abort, timeout), () => {
-          if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
-        }, undefined, knownVersion);
-        this.debugVideos.set(serial, opening);
-      }
-      try {
-        const session = await opening;
-        if (session.whenClosing) {
-          await session.whenClosing;
-          return this.openVideoStream(serial, signal, recording);
-        }
-        const connection = session.subscribe(signal, recording);
-        this.videoClosers.add(connection.close);
-        return { stream: connection.stream, requestKeyframe: connection.requestKeyframe,
-          close: async () => { try { await connection.close(); } finally { this.videoClosers.delete(connection.close); } } };
-      } catch (error) {
+    let opening = this.debugVideos.get(serial);
+    if (!opening) {
+      const cached = this.deviceInfoBySerial.get(serial);
+      const knownVersion = cached && cached.expiresAt > Date.now() ? cached.device.uitestVersion : undefined;
+      opening = MirrorCaptureSession.start(serial, (args, operation, abort, timeout) => this.run(args, operation, abort, timeout), () => {
         if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
-        throw error;
-      }
+      }, undefined, knownVersion);
+      this.debugVideos.set(serial, opening);
     }
-    return this.openBundledVideoStream(serial, signal, recording);
-  }
-
-  private async openBundledVideoStream(serial: string, signal?: AbortSignal, recording = false): Promise<HarmonyVideoConnection> {
-    validateSerial(serial);
-    await this.ensureMirrorServer(serial, signal);
-    const localPort = await this.createMirrorForward(serial, signal);
-    let socket: Socket | undefined;
     try {
-      let lastError: unknown;
-      for (let attempt = 0; attempt < 12; attempt += 1) {
-        try {
-          socket = await connectLoopback(localPort, signal);
-          break;
-        } catch (error) {
-          lastError = error;
-          if (signal?.aborted) throw error;
-          await new Promise((resolveDelay) => setTimeout(resolveDelay, 150));
-        }
+      const session = await opening;
+      if (session.whenClosing) {
+        await session.whenClosing;
+        return this.openVideoStream(serial, signal, recording);
       }
-      if (!socket) throw lastError ?? new Error("Harmony video service is unavailable");
-      if (signal?.aborted) {
-        socket.destroy();
-        throw new Error("Harmony video connection was cancelled");
-      }
+      const connection = session.subscribe(signal, recording);
+      this.videoClosers.add(connection.close);
+      return { stream: connection.stream, requestKeyframe: connection.requestKeyframe,
+        close: async () => { try { await connection.close(); } finally { this.videoClosers.delete(connection.close); } } };
     } catch (error) {
-      await this.removeMirrorForward(serial, localPort);
-      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Unable to connect to the Harmony video service", {
-        cause: error,
-        retryable: true,
-      });
+      if (this.debugVideos.get(serial) === opening) this.debugVideos.delete(serial);
+      throw error;
     }
-
-    const videoSocket = socket;
-    if (recording) videoSocket.write(encodeMirrorPacket(0x10, Buffer.from([0x44])));
-    videoSocket.write(encodeMirrorVideoParameters());
-    // A new subscriber needs an IDR from the already-consented encoder.
-    videoSocket.write(encodeMirrorPacket(0x10, Buffer.from([0x43])));
-    const heartbeat = setInterval(() => {
-      if (!videoSocket.destroyed && videoSocket.writable) videoSocket.write(encodeMirrorHeartbeat());
-    }, 2_000);
-    heartbeat.unref?.();
-
-    let closed = false;
-    let controller: ReadableStreamDefaultController<Uint8Array> | undefined;
-    let closing: Promise<void> | undefined;
-    const close = (): Promise<void> => closing ??= (async () => {
-      closed = true;
-      clearInterval(heartbeat);
-      signal?.removeEventListener("abort", abort);
-      videoSocket.removeAllListeners();
-      videoSocket.destroy();
-      try { await this.removeMirrorForward(serial, localPort); }
-      finally { this.videoClosers.delete(close); }
-    })();
-    this.videoClosers.add(close);
-    const abort = () => {
-      try { controller?.close(); } catch { /* The response stream may already be closed. */ }
-      void close().catch(() => undefined);
-    };
-    signal?.addEventListener("abort", abort, { once: true });
-
-    const stream = new ReadableStream<Uint8Array>({
-      start(streamController) {
-        controller = streamController;
-        videoSocket.on("data", (chunk: Buffer) => {
-          if (closed) return;
-          streamController.enqueue(Uint8Array.from(chunk));
-          if ((streamController.desiredSize ?? 1) <= 0) videoSocket.pause();
-        });
-        videoSocket.once("end", () => {
-          if (!closed) streamController.close();
-          void close().catch(() => undefined);
-        });
-        videoSocket.once("error", (error) => {
-          if (!closed) streamController.error(error);
-          void close().catch(() => undefined);
-        });
-        videoSocket.once("close", () => {
-          if (!closed) streamController.close();
-          void close().catch(() => undefined);
-        });
-      },
-      pull() {
-        if (!closed) videoSocket.resume();
-      },
-      async cancel() {
-        await close();
-      },
-    });
-    return { stream, close };
   }
 
   async dispose(): Promise<void> {

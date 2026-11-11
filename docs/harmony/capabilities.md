@@ -35,7 +35,6 @@
 | `copy_path` | direct | control | Copy one regular device file or bounded directory to a new path, verifying contents before publishing |
 | `move_path` | direct | control | Move one regular device file or bounded directory, verifying the destination before removing its source |
 | `chmod_path` | direct | control | Set three-digit octal permissions on one regular device file or directory |
-| `initialize_mirror` | direct | control | Initialize the capture component on request; never unlock |
 | `wait_for` | scenario | read | Wait for a valid semantic observation |
 | `assert` | scenario | read | Assert a valid semantic observation |
 | `wait_idle` | scenario | read | Report driver idle or explicitly bounded delay |

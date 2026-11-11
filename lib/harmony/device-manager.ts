@@ -2244,19 +2244,6 @@ export class HarmonyDeviceManager {
     };
   }
 
-  async initializeMirror(options: { serial: string; leaseToken: string; signal?: AbortSignal }): Promise<HarmonyOperationResult> {
-    return await this.operationTasks.track({ serial: options.serial, kind: "installation", title: "OHScrcpyServer.hap", target: "com.ohos.scrcpy.server" },
-      async started => await this.action("initialize_mirror", options.serial, options.leaseToken, undefined, options.signal, async (_backend, signal) => {
-      const backend = this.requireBackend();
-      if (!backend.mirrorPackagePath || !backend.initializeMirror) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "Video initialization is unavailable");
-      const artifactPath = backend.mirrorPackagePath();
-      this.requireLease(options.serial, options.leaseToken);
-      if (signal.aborted) throw new HarmonyError("COMMAND_ABORTED", "Video initialization was cancelled");
-      started();
-      await backend.initializeMirror(options.serial, artifactPath, signal);
-    }), () => ({ verification: "device-confirmed" }));
-  }
-
   async updateConfig(
     patch: { hdcPath?: string | null; video?: HarmonyConfig["video"] | null; storage?: HarmonyConfig["storage"] | null; vision?: HarmonyConfig["vision"] | null },
     signal?: AbortSignal,

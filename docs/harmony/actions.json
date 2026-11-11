@@ -7995,44 +7995,6 @@
     },
     {
       "protocolVersion": 1,
-      "action": "initialize_mirror",
-      "description": "Initialize the capture component on request; never unlock",
-      "risk": "control",
-      "capability": "initialize_mirror",
-      "retry": "only-before-dispatch",
-      "cleanup": "owned-resources",
-      "result": "dispatch-receipt-with-separate-verification",
-      "modes": [
-        "direct"
-      ],
-      "schemas": {
-        "direct": {
-          "type": "object",
-          "required": [
-            "action"
-          ],
-          "properties": {
-            "action": {
-              "type": "string",
-              "const": "initialize_mirror"
-            },
-            "serial": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            },
-            "leaseToken": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 256
-            }
-          },
-          "additionalProperties": false
-        }
-      }
-    },
-    {
-      "protocolVersion": 1,
       "action": "wait_for",
       "description": "Wait for a valid semantic observation",
       "risk": "read",

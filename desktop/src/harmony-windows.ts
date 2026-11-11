@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, Menu, screen, type IpcMainInvokeEvent } fr
 import { randomUUID } from "node:crypto";
 import { readFileSync, writeFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { mirrorBounds, applyMirrorBounds } from "./harmony-window-bounds.js";
+import { mirrorBounds, updateMirrorAspectRatio } from "./harmony-window-bounds.js";
 import type { HarmonyWindowState, MirrorScale, PioraMessage } from "./harmony-window-types.js";
 
 type Dependencies = {
@@ -24,7 +24,7 @@ class HarmonyDeviceWindow {
   private ratio = 9 / 20;
   private chromeHeight = 85;
   private placing = false;
-  private pendingPlace = false;
+  private pendingPlace: "fit" | "preserve" | undefined;
   private pendingPosition: SavedWindow | undefined;
   private notified = new Set<string>();
   private appliedBounds: { x: number; y: number; width: number; height: number } | undefined;
@@ -63,7 +63,13 @@ class HarmonyDeviceWindow {
       if (frame.serial !== this.state.serial || typeof frame.width !== "number" || typeof frame.height !== "number" || !Number.isInteger(frame.width) || !Number.isInteger(frame.height) || frame.width < 1 || frame.height < 1 || frame.width > 8192 || frame.height > 8192) return;
       const ratio = frame.width / frame.height;
       const chromeHeight = presentation === "floating" && typeof frame.chromeHeight === "number" && Number.isInteger(frame.chromeHeight) && frame.chromeHeight >= 38 && frame.chromeHeight <= 400 ? frame.chromeHeight : this.chromeHeight;
-      if (Math.abs(this.ratio - ratio) > .0001 || chromeHeight !== this.chromeHeight) { this.ratio = ratio; this.chromeHeight = chromeHeight; this.mirror?.setAspectRatio(ratio, { width: 2, height: this.chromeHeight }); this.place(); }
+      const ratioChanged = Math.abs(this.ratio - ratio) > .0001;
+      if (ratioChanged || chromeHeight !== this.chromeHeight) {
+        this.ratio = ratio; this.chromeHeight = chromeHeight;
+        // Toolbar visibility/wrapping follows the user's window size. Resizing
+        // the window in response feeds the new width back into that layout.
+        this.place(undefined, !ratioChanged);
+      }
       if (this.state.pendingPresentation === presentation && frame.transition === this.state.presentationTransition) {
         this.cancelPresentation(); this.state.presentation = presentation;
         if (presentation === "sidebar") this.mirror?.hide(); else this.focus();
@@ -131,25 +137,30 @@ class HarmonyDeviceWindow {
     this.prefs.set(this.state.serial, { scale: this.state.scale, x, y, width, height });
     try { const path = this.preferencePath(); writeFileSync(`${path}.tmp`, JSON.stringify([...this.prefs].slice(-100))); renameSync(`${path}.tmp`, path); } catch { /* Window placement remains usable if persistence is unavailable. */ }
   }
-  async place(saved?: SavedWindow) {
+  async place(saved?: SavedWindow, preserveBounds = false) {
     if (!this.mirror || this.mirror.isDestroyed()) return;
-    if (this.placing) { this.pendingPlace = true; if (saved) this.pendingPosition = saved; return; }
+    if (this.placing) { this.pendingPlace = this.pendingPlace === "fit" || !preserveBounds ? "fit" : "preserve"; if (saved) this.pendingPosition = saved; return; }
     this.placing = true;
     try {
-      const position = saved ?? this.mirror.getBounds();
+      const current = this.mirror.getBounds();
+      const position = saved ?? (preserveBounds ? this.appliedBounds : undefined) ?? current;
       const display = screen.getDisplayNearestPoint({ x: position.x, y: position.y });
-      const base = mirrorBounds(display.workArea, this.ratio, this.state.scale, position, this.chromeHeight);
+      const base = preserveBounds ? { x: position.x, y: position.y, width: position.width ?? current.width, height: position.height ?? current.height }
+        : mirrorBounds(display.workArea, this.ratio, this.state.scale, position, this.chromeHeight);
       const height = saved?.height ?? this.mirror.getBounds().height;
-      if (Number.isFinite(height) && height >= 120) {
+      if (!preserveBounds && Number.isFinite(height) && height >= 120) {
         base.height = Math.min(Math.max(height, this.chromeHeight + 100), display.workArea.height);
         base.width = Math.min(Math.round((base.height - this.chromeHeight) * this.ratio) + 2, display.workArea.width);
         if (base.width === display.workArea.width) base.height = Math.round((base.width - 2) / this.ratio) + this.chromeHeight;
         base.x = Math.max(display.workArea.x, Math.min(base.x, display.workArea.x + display.workArea.width - base.width));
         base.y = Math.max(display.workArea.y, Math.min(base.y, display.workArea.y + display.workArea.height - base.height));
       }
-      this.appliedBounds = await applyMirrorBounds(this.mirror, base);
+      await updateMirrorAspectRatio(this.mirror, this.ratio, this.chromeHeight, base);
+      // Keep the absolute DIP target across chrome updates, rather than feeding
+      // Win32's rounded result into the next update at fractional DPI scales.
+      this.appliedBounds = base;
     } catch { /* The window can close while Win32 settles its final bounds. */ }
-    finally { this.placing = false; if (this.pendingPlace) { this.pendingPlace = false; const position = this.pendingPosition; this.pendingPosition = undefined; void this.place(position); } else this.save(); }
+    finally { this.placing = false; if (this.pendingPlace) { const preserve = this.pendingPlace === "preserve"; this.pendingPlace = undefined; const position = this.pendingPosition; this.pendingPosition = undefined; void this.place(position, preserve); } else this.save(); }
   }
   private async select(value: unknown) {
     if (typeof value !== "string" || !value || value.length > 256 || /[\x00-\x1f]/.test(value)) throw new Error("Invalid Harmony device");
@@ -198,9 +209,11 @@ class HarmonyDeviceWindow {
     window.on("moved", () => {
       if (this.placing) return;
       const bounds = window.getBounds();
-      if (this.appliedBounds && (["x", "y", "width", "height"] as const).every(key => bounds[key] === this.appliedBounds![key])) return;
+      if (this.appliedBounds && (["x", "y", "width", "height"] as const).every(key => Math.abs(bounds[key] - this.appliedBounds![key]) <= 1)) return;
+      this.appliedBounds = undefined;
       this.save();
     });
+    window.on("will-resize", () => { if (!this.placing) this.appliedBounds = undefined; });
     window.on("resized", () => { if (!this.placing) { this.appliedBounds = undefined; this.save(); } });
     window.on("minimize", () => { this.state.minimized = true; this.emit(); });
     window.on("restore", () => { this.state.minimized = false; this.emit(); });

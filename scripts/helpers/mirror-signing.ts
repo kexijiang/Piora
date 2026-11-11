@@ -1,12 +1,12 @@
 import { createHash, X509Certificate } from "node:crypto";
-import { getRuntimeUserHomeDirectory as homedir } from "../../runtime-home";
+import { getRuntimeUserHomeDirectory as homedir } from "../../lib/runtime-home";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { chmod, lstat, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } from "node:fs/promises";
 import JSON5 from "json5";
 
-import { HarmonyError, isHarmonyError } from "../errors";
-import { runCommand, type CommandExecutor } from "../command-runner";
-import { previewHapArtifact } from "./hap-preview";
+import { HarmonyError, isHarmonyError } from "../../lib/harmony/errors";
+import { runCommand, type CommandExecutor } from "../../lib/harmony/command-runner";
+import { previewHapArtifact } from "../../lib/harmony/runtime/hap-preview";
 import {
   decryptDevEcoProtectedPassword,
   isDevEcoProtectedPassword,
@@ -186,7 +186,7 @@ export async function resolveSigningTools(hdcPath: string, environment: NodeJS.P
     environment.PIORA_HARMONY_TOOLS_DIR?.trim()
       ? join(environment.PIORA_HARMONY_TOOLS_DIR.trim(), SIGNER_SOURCE)
       : undefined,
-    join(process.cwd(), "lib", "harmony", "runtime", SIGNER_SOURCE),
+    join(process.cwd(), "scripts", "helpers", SIGNER_SOURCE),
   ], 64 * 1024);
   return { java, signTool, signerSource };
 }

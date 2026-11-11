@@ -122,8 +122,6 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
     return await this.hdc.openVideoStream(serial, signal);
   }
 
-  mirrorPackagePath(): string { return this.hdc.mirrorPackagePath(); }
-
   async displayGeometry(serial: string, signal?: AbortSignal): Promise<NativeDisplayGeometry> {
     try {
       const result = await this.hypium.execute(serial, "display_geometry", [], signal);
@@ -133,10 +131,6 @@ export class HybridHarmonyBackend implements HarmonyAutomationBackend {
       if (signal?.aborted || error instanceof HarmonyError && error.code === "STALE_SNAPSHOT") throw error;
     }
     return await this.hdc.displayGeometry(serial, signal);
-  }
-
-  async initializeMirror(serial: string, hapPath: string, signal?: AbortSignal): Promise<void> {
-    await this.hdc.initializeMirror(serial, hapPath, signal);
   }
 
   private async preferHypium(

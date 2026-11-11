@@ -3,7 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 
-import { decryptDevEcoProtectedPassword, signHapWithJava } from '../lib/harmony/runtime/deveco-password.mjs';
+import { decryptDevEcoProtectedPassword, signHapWithJava } from './helpers/deveco-password.mjs';
 
 import {
   ARTIFACT_FILE,
@@ -451,7 +451,7 @@ export async function buildHarmonyMirrorRelease({ projectRoot, workspace, output
       await signHapWithJava({
         javaPath: tools.java,
         signToolPath: tools.signTool,
-        signerSourcePath: join(projectRoot, 'lib', 'harmony', 'runtime', 'PioraHapSigner.java'),
+        signerSourcePath: join(projectRoot, 'scripts', 'helpers', 'PioraHapSigner.java'),
         keyAlias: material.keyAlias,
         keyPassword,
         certificatePath: material.certpath,

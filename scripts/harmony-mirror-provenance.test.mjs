@@ -245,18 +245,19 @@ test('GitHub identity requires complete current checkout information and rejects
   assert.throws(() => readGitHubBuildOrigin(root, { ...environment, GITHUB_SHA: 'b'.repeat(40) }), /checkout commit differs/);
 });
 
-test('the actual beforeBuild hook rejects the shipped old resource before release-note or packaging work', async t => {
-  const projectRoot = fileURLToPath(new URL('../', import.meta.url));
-  const f = await fixture(t);
-  const commit = initializeTemporaryGit(f.root);
-  const resourceDirectory = join(f.root, 'third_party/harmony-tools/windows-x64');
-  await mkdir(resourceDirectory, { recursive: true });
-  await cp(fileURLToPath(new URL('../third_party/harmony-tools/windows-x64/OHScrcpyServer.hap', import.meta.url)), join(resourceDirectory, 'OHScrcpyServer.hap'));
-  const environment = { ...process.env, PIORA_REQUIRE_HARMONY_RELEASE_RESOURCE: '1', GITHUB_ACTIONS: 'true', GITHUB_REPOSITORY: origin.repository, GITHUB_SHA: commit,
-    GITHUB_RUN_ID: origin.runId, GITHUB_RUN_ATTEMPT: origin.runAttempt, GITHUB_WORKFLOW_REF: origin.workflowRef };
-  const code = `import hook from './scripts/electron-before-build.cjs';
-    try { await hook({appDir:${JSON.stringify(join(f.root, 'desktop'))},electronPlatformName:'win32'}); process.exitCode=2; }
-    catch(error) { if(!/required JSON harmony-mirror-manifest.json.*ENOENT/.test(error.message)) throw error; console.log('Old resource blocked before packaging'); }`;
-  const output = execFileSync(process.execPath, ['--input-type=module', '-e', code], { cwd: projectRoot, env: environment, encoding: 'utf8', windowsHide: true });
-  assert.match(output, /Old resource blocked before packaging/);
+test('the actual package verifier rejects every legacy capture HAP and signing sidecar', async t => {
+  const { verifyNoLegacyMirrorAssets } = await import('./verify-packaged-web.mjs');
+  const f = await fixture(t), resources = join(f.root, 'resources'), tools = join(resources, 'harmony-tools');
+  await mkdir(tools, { recursive: true });
+  await writeFile(join(tools, 'hdc.exe'), 'fixture HDC transport');
+  await verifyNoLegacyMirrorAssets(resources);
+  for (const name of ['OHScrcpyServer.hap', 'harmony-mirror-manifest.json', 'harmony-mirror-signature-verification.json', 'PioraHapSigner.java', 'signing-project']) {
+    const path = join(tools, name);
+    if (name === 'signing-project') await mkdir(path);
+    else if (name === 'OHScrcpyServer.hap') await cp(fileURLToPath(new URL('../third_party/harmony-tools/windows-x64/OHScrcpyServer.hap', import.meta.url)), path);
+    else await writeFile(path, 'removed capture fixture');
+    await assert.rejects(verifyNoLegacyMirrorAssets(resources), error => error.message.includes('removed capture component') && error.message.includes(name));
+    await rm(path, { recursive: true });
+    await verifyNoLegacyMirrorAssets(resources);
+  }
 });
