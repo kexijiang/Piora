@@ -1,6 +1,6 @@
 /* MIT; adapted from dsh-harmoneydev-tools, see SOURCE.md. */
 .logViewer {
-  --log-muted: color-mix(in srgb, var(--text-muted) 80%, var(--text));
+  --log-muted: color-mix(in srgb, var(--text-muted) 64%, var(--text));
   --log-warning: color-mix(in srgb, var(--status-attention) 65%, var(--text));
   --log-error: color-mix(in srgb, var(--status-failed) 80%, var(--text));
   --log-info: color-mix(in srgb, var(--accent) 80%, var(--text));
