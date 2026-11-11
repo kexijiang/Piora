@@ -642,8 +642,9 @@ export function SettingsDialog({
                   <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
                   <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
                   <ModelFallbackSetting />
-                  <ToolApprovalSettings />
                 </div>
+                <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.permissionSection")}</h3>
+                <ToolApprovalSettings />
                 <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.promptSection")}</h3>
                 <section className={styles.promptCard} aria-labelledby="system-prompt-heading">
                   <header className={styles.promptCardHeader}>

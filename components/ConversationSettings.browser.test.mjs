@@ -42,7 +42,7 @@ test('one chat settings page preserves controls, legacy entries and searchable t
     assert.equal(await page.getByRole('button', { name: '对话与任务', exact: true }).count(), 1);
     assert.equal(await page.getByRole('button', { name: /^(运行策略|提示词与标题|鸿蒙开发)$/ }).count(), 0);
     assert.equal(await page.getByText('下一轮输入预测', { exact: true }).count(), 0);
-    const toggle = page.getByRole('switch', { name: '工具执行审批', exact: true });
+    const toggle = page.getByRole('switch', { name: '权限控制', exact: true });
     await toggle.waitFor();
     assert.equal(await toggle.isChecked(), true);
     await page.locator('[data-permission-trigger]').waitFor();
@@ -56,8 +56,9 @@ test('one chat settings page preserves controls, legacy entries and searchable t
     await page.locator('[data-permission-trigger]').waitFor();
     assert.equal(approvalsEnabled, true);
     const groups = await page.locator('[class*="settingsSectionHeading"]').allTextContents();
-    assert.deepEqual(groups, ['1. 消息输入与阅读', '2. 回复辅助', '3. 任务运行', '4. 系统提示词与优化', '5. 自动标题']);
-    for (const id of ['conversation.autoScroll', 'conversation.notifications', 'conversation.runningSendMode', 'general.runningStatusLabel', 'general.modelRetry', 'models.compaction', 'conversation.systemPrompt', 'conversation.promptOptimizer', 'conversation.titleModel']) {
+    assert.deepEqual(groups, ['1. 消息输入与阅读', '2. 回复辅助', '3. 任务运行', '4. 权限控制', '5. 系统提示词与优化', '6. 自动标题']);
+    assert.equal(await toggle.locator('xpath=ancestor::*[contains(@class, "runtimeCards")]').count(), 0, 'permissions have their own section outside task execution');
+    for (const id of ['permission.settings', 'conversation.autoScroll', 'conversation.notifications', 'conversation.runningSendMode', 'general.runningStatusLabel', 'general.modelRetry', 'models.compaction', 'conversation.systemPrompt', 'conversation.promptOptimizer', 'conversation.titleModel']) {
       assert.equal(await page.locator(`[data-settings-id="${id}"]`).count(), 1, `${id} remains available exactly once`);
     }
     const autoScroll = page.getByRole('switch', { name: '自动跟随最新输出', exact: true });
