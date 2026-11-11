@@ -138,7 +138,7 @@ function CommandOutputPanel({ data, initialSearch = "", inDialog = false }: { da
 export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandExecutionData; onOpen?: (data: CommandExecutionData) => void; actions?: ReactNode }) {
   const { t } = useI18n();
   const compact = useCompactProcess();
-  const [expanded, setExpanded] = useVirtualRowToggle(`command:${data.id}`);
+  const [expanded, setExpanded] = useVirtualRowToggle(`command:${data.id}`, (data.status === "failed" || data.status === "timed_out"));
   const inspectCommand = useContext(RevealProcessCommandContext);
   useEffect(() => {
     if (inspectCommand === data.id) setExpanded(true);

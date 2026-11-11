@@ -925,7 +925,7 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 function ToolCallBlock({ block, preparing, result, duration, cwd, sessionId, onOpenFile, onOpenAutomation, onOpenCommandExecution }: { block: ToolCallContent; preparing?: boolean; result?: ToolResultMessage; duration?: number; cwd?: string; sessionId?: string; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
   const { t } = useI18n();
   const historyMode = useContext(HistoryModeContext);
-  const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`);
+  const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`, Boolean(result?.isError && !result.isStreaming));
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`diagnostics:${block.toolCallId}`);
   const runActive = useContext(ToolRunActiveContext);
   const pending = runActive && (!result || result.isStreaming === true);
