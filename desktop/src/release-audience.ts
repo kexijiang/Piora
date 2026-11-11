@@ -16,6 +16,11 @@ export function isStableDesktopVersion(version: string): boolean {
   return /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(version.trim());
 }
 
+export function isUpdatableDesktopVersion(version: string): boolean {
+  return isStableDesktopVersion(version)
+    || /^(?:v)?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-beta\.(0|[1-9]\d*)$/.test(version.trim());
+}
+
 export const RELEASE_AUDIENCE_FILE = "release-audience.json";
 
 export function inferDesktopBuildAudience(version: string): DesktopReleaseAudience {

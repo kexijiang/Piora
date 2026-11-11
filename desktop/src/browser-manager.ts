@@ -61,7 +61,6 @@ export interface DesktopBrowserState {
   url: string;
   agentTabId?: string | null;
   agentOperating?: boolean;
-  agentPaused?: boolean;
   agentWaiting?: boolean;
   agentWaitReason?: string;
   agentWaitPurpose?: "login" | "confirmation";
@@ -95,7 +94,7 @@ export interface ChromeBookmarkImportResult {
 }
 
 export interface DesktopBrowserAction {
-  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "pause_agent" | "resume_agent" | "show_agent_tab";
+  action: "back" | "close_tab" | "close_idle_tabs" | "forward" | "navigate" | "new_tab" | "reload" | "set_session" | "switch_tab" | "configure_login" | "show_agent_tab";
   sessionId?: string;
   tabId?: string;
   url?: string;
@@ -109,10 +108,8 @@ interface BrowserAgentBinding {
   destroy(): void;
   cancel(requestId: string): void;
   handleRequest(message: unknown): Promise<unknown>;
-  pauseSession(sessionId: string): void;
-  resumeSession(sessionId: string): void;
   agentTabId(sessionId: string): string | null;
-  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string; purpose?: "login" | "confirmation" };
+  status(sessionId: string): { tabId: string | null; operating: boolean; waiting: boolean; reason?: string; purpose?: "login" | "confirmation" };
   noteUsed(tabId: string): void;
   idleTabIds(): string[];
   closeIdleTabs(): void;
@@ -697,7 +694,6 @@ export class DesktopBrowserManager {
       ...(agent ? {
         agentTabId: agent.tabId,
         agentOperating: agent.operating,
-        agentPaused: agent.paused,
         agentWaiting: agent.waiting,
         ...(agent.waiting && agent.reason ? { agentWaitReason: agent.reason } : {}),
         ...(agent.waiting && agent.purpose ? { agentWaitPurpose: agent.purpose } : {}),
@@ -784,18 +780,6 @@ export class DesktopBrowserManager {
     if (input.action === "set_session") {
       this.displayedSessionId = normalizeBrowserSessionId(input.sessionId);
       if (this.tabs.length < MAX_TABS) this.ensureSession(this.displayedSessionId);
-      this.updateVisibility();
-      this.sendState();
-      return;
-    }
-    if (input.action === "pause_agent") {
-      this.agentControl?.pauseSession(this.displayedSessionId);
-      this.sendState();
-      return;
-    }
-    if (input.action === "resume_agent") {
-      if (this.tabs.some(tab => tab.sessionId === this.displayedSessionId && tab.vaultProtected)) return;
-      this.agentControl?.resumeSession(this.displayedSessionId);
       this.updateVisibility();
       this.sendState();
       return;
@@ -1018,7 +1002,6 @@ export class DesktopBrowserManager {
     // Block both new operations and results from operations already in flight.
     // Remain protected across redirects and SPA navigation: pages may copy field values.
     tab.vaultProtected = true;
-    this.agentControl?.pauseSession(tab.sessionId);
     if (contents.debugger.isAttached()) contents.debugger.detach();
     this.sendState();
     try {
@@ -1039,7 +1022,6 @@ export class DesktopBrowserManager {
   async releaseCredentials(): Promise<void> {
     const sessionId = this.displayedSessionId;
     for (const tab of [...this.tabs]) if (tab.sessionId === sessionId && tab.vaultProtected) this.closeTab(tab.id, sessionId, true);
-    this.agentControl?.resumeSession(sessionId);
     this.updateVisibility();
     this.sendState();
   }
@@ -1216,7 +1198,7 @@ export class DesktopBrowserManager {
       debuggerSend: (tabId: string, method: string, params?: Record<string, unknown>) => (
         this.credentialGuardedRead(tabId, contents => contents.debugger.sendCommand(method, params))
       ),
-      onTabEvent: (tabId: string, event: "render-process-gone" | "debugger-detach" | "input-event" | "destroyed", handler: (payload?: unknown) => void) => {
+      onTabEvent: (tabId: string, event: "render-process-gone" | "debugger-detach" | "destroyed", handler: (payload?: unknown) => void) => {
         const tab = this.findTab(tabId);
         if (!tab || tab.unloaded) return () => undefined;
         const contents = tab.view.webContents;
@@ -1229,11 +1211,6 @@ export class DesktopBrowserManager {
           const listener = () => handler();
           contents.on("destroyed", listener);
           return () => { if (!contents.isDestroyed()) contents.off("destroyed", listener); };
-        }
-        if (event === "input-event") {
-          const listener = (_ipcEvent: Event, input: Electron.InputEvent) => handler({ type: input.type });
-          contents.on("input-event", listener);
-          return () => { if (!contents.isDestroyed()) contents.off("input-event", listener); };
         }
         const listener = (_ipcEvent: Event, reason: string) => {
           const closed = tab.unloaded || contents.isDestroyed() || /closed/i.test(reason);
@@ -1255,7 +1232,7 @@ export class DesktopBrowserManager {
           try { contents.debugger.off("detach", listener); } catch { /* The tab is already gone. */ }
         };
       },
-      pushActivity: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean; waiting?: boolean; reason?: string; purpose?: "login" | "confirmation" }) => {
+      pushActivity: (activity: { sessionId: string; tabId: string | null; operating: boolean; waiting?: boolean; reason?: string; purpose?: "login" | "confirmation" }) => {
         if (this.window.isDestroyed() || this.window.webContents.isDestroyed()) return;
         this.window.webContents.send(BROWSER_AGENT_ACTIVITY_CHANNEL, activity);
         this.sendState();

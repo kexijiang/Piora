@@ -14,7 +14,7 @@ import {
 } from "@/lib/file-paths";
 import type { GitFileStatus, GitFileStatusKind } from "@/lib/git-types";
 import type { FileIndexEntry } from "@/lib/file-fuzzy";
-import { getFileViewerKind } from "@/lib/file-types";
+import { getFileViewerKind, isMarkdownPath } from "@/lib/file-types";
 import { getNextTreeRenderCount, getTreeRenderWindow, TREE_INITIAL_RENDER_COUNT } from "@/lib/tree-progressive";
 import { copyText } from "@/lib/clipboard";
 import { useI18n } from "@/hooks/useI18n";
@@ -526,7 +526,7 @@ function TreeNode({
   const folderChanges = node.isDir ? directoryChanges.get(normalizedPath) : undefined;
   const folderChangeKinds = DIRECTORY_CHANGE_ORDER.filter((kind) => folderChanges?.has(kind));
   const folderColor = folderChangeKinds.length === 1 ? GIT_STATUS_COLORS[folderChangeKinds[0]] : folderChangeKinds.length ? GIT_STATUS_COLORS.modified : undefined;
-  const openHint = !node.isDir && getFileViewerKind(node.fullPath) === "text"
+  const openHint = !node.isDir && getFileViewerKind(node.fullPath) === "text" && !isMarkdownPath(node.fullPath)
     ? t("files.openInEditor")
     : t("files.openPreview");
   const [children, setChildren] = useState<FileNode[]>(node.children ?? []);

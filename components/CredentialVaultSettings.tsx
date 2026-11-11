@@ -35,7 +35,7 @@ export function CredentialVaultSettings() {
   return <section className={styles.card} aria-label={copy("本地凭据库", "Local credential vault")}>
     <h3>{copy("本地凭据库", "Local credential vault")}</h3>
     <p>{copy("凭据使用系统加密保存。主密码至少 12 位，解锁持续 10 分钟。填写仅支持桌面浏览器的 HTTPS 登录表单，并严格匹配站点与路径。", "Credentials are encrypted by the operating system. Use a master password of at least 12 characters; unlock lasts 10 minutes. Filling supports HTTPS login forms in the desktop browser with exact site and path matching.")}</p>
-    <p>{copy("填写后暂停浏览器智能体。请手动确认登录，完成后关闭受保护页面再恢复；不会自动提交、处理验证码、支付或安全设置。", "Filling pauses the browser agent. Confirm login yourself, then close the protected page to resume. Submission, verification codes, payments and security settings remain manual.")}</p>
+    <p>{copy("填写后的页面仅供你操作。请手动确认登录，完成后关闭受保护页面；不会自动提交、处理验证码、支付或安全设置。", "Filled pages are private to you. Confirm login yourself, then close the protected page. Submission, verification codes, payments and security settings remain manual.")}</p>
     {!state.available ? <p role="status">{copy("系统加密不可用，凭据库已禁用。", "System encryption is unavailable; the vault is disabled.")}</p> : <fieldset disabled={busy}>
       <label>{copy("主密码（导入时填写备份密码）", "Master password (backup password for import)")}<input type="password" autoComplete="off" value={password} onChange={event => setPassword(event.target.value)} /></label>
       {!state.unlocked ? <button type="button" disabled={password.length < 12} onClick={() => { void request({ action: state.initialized ? "unlock" : "initialize", password }); }}>{state.initialized ? copy("解锁", "Unlock") : copy("创建凭据库", "Create vault")}</button> : <>

@@ -16,7 +16,6 @@ import {
   NAVIGATION_TIMEOUT_MS,
   PASSWORD_FOCUS_UNCONFIRMED_ERROR,
   PASSWORD_TYPE_ERROR,
-  PAUSED_BY_USER_ERROR,
   REFS_INVALID_ERROR,
   RELOAD_NOTICE,
   RENDERER_CRASHED_ERROR,
@@ -24,7 +23,6 @@ import {
   abortReason,
   assertAgentTabCapacity,
   buildKeyDispatchEvents,
-  classifyInputEvent,
   createPendingRequestTable,
   elementCenterInvocation,
   evaluateAllowance,
@@ -32,7 +30,6 @@ import {
   formatSnapshot,
   httpUrl,
   isNonFatalNavigationError,
-  isPausedAction,
   navigationFailure,
   navigationTokenTabId,
   referencedTypeTargetIsFrame,
@@ -57,7 +54,6 @@ export interface BrowserAgentActivity {
   sessionId: string;
   tabId: string | null;
   operating: boolean;
-  paused: boolean;
   waiting?: boolean;
   reason?: string;
   purpose?: "login" | "confirmation";
@@ -99,7 +95,7 @@ export interface BrowserAgentHost {
   debuggerSend(tabId: string, method: string, params?: Record<string, unknown>): Promise<unknown>;
   onTabEvent(
     tabId: string,
-    event: "render-process-gone" | "debugger-detach" | "input-event" | "destroyed",
+    event: "render-process-gone" | "debugger-detach" | "destroyed",
     handler: (payload?: unknown) => void,
   ): () => void;
   pushActivity(activity: BrowserAgentActivity): void;
@@ -194,7 +190,6 @@ export class BrowserAgentControl {
   private readonly inflight = new InFlightCounter();
   private readonly agentTabs = new Map<string, string>();
   private readonly sessionActive = new Map<string, boolean>();
-  private readonly paused = new Set<string>();
   private readonly waiting = new Map<string, string>();
   private readonly waitIds = new Map<string, string>();
   private readonly loginWaits = new Map<string, { tabId: string; before: BrowserLoginState | null; candidateUrl: string; candidateSince: number; samples: number }>();
@@ -245,20 +240,15 @@ export class BrowserAgentControl {
     return this.inflight.count(tabId);
   }
 
-  isPaused(sessionId: string): boolean {
-    return this.paused.has(sessionId);
-  }
-
   agentTabId(sessionId: string): string | null {
     return this.agentTabs.get(sessionId) ?? null;
   }
 
-  status(sessionId: string): { tabId: string | null; operating: boolean; paused: boolean; waiting: boolean; reason?: string; purpose?: "login" | "confirmation" } {
+  status(sessionId: string): { tabId: string | null; operating: boolean; waiting: boolean; reason?: string; purpose?: "login" | "confirmation" } {
     const waiting = this.waiting.has(sessionId);
     return {
       tabId: this.agentTabId(sessionId),
       operating: this.sessionActive.get(sessionId) === true,
-      paused: this.paused.has(sessionId),
       waiting,
       ...(waiting ? { reason: this.waiting.get(sessionId) ?? "" } : {}),
       ...(waiting ? { purpose: this.loginWaits.has(sessionId) ? "login" as const : "confirmation" as const } : {}),
@@ -275,7 +265,7 @@ export class BrowserAgentControl {
     const consider = (tabId: string) => {
       if (seen.has(tabId) || this.host.isShowing(tabId)) return;
       const tab = this.tab(tabId);
-      if (!tab || tab.closed || tab.unloaded) return;
+      if (!tab || tab.closed || tab.unloaded || tab.vaultProtected) return;
       seen.add(tabId);
       held.push({ id: tabId, bounds: { ...AGENT_OFFSCREEN_BOUNDS } });
     };
@@ -284,7 +274,7 @@ export class BrowserAgentControl {
         consider(tabId);
         continue;
       }
-      if (this.sessionActive.get(sessionId) !== true || this.paused.has(sessionId)) continue;
+      if (this.sessionActive.get(sessionId) !== true) continue;
       consider(tabId);
     }
     // A one-off action may briefly override a non-current tab. Keep it attached
@@ -296,23 +286,6 @@ export class BrowserAgentControl {
 
   afterVisibilityChange(): void {
     void this.syncHolds().catch((error) => this.host.log.warn("Browser agent visibility sync failed", error));
-  }
-
-  pauseSession(sessionId: string): void {
-    if (!sessionId || sessionId === MANUAL_BROWSER_SESSION_ID) return;
-    this.paused.add(sessionId);
-    this.publish(sessionId);
-    const tabId = this.agentTabs.get(sessionId);
-    if (tabId) void this.releaseHold(tabId).catch(() => undefined);
-  }
-
-  resumeSession(sessionId: string): void {
-    this.paused.delete(sessionId);
-    this.publish(sessionId);
-    if (this.sessionActive.get(sessionId) === true) {
-      const tabId = this.agentTabs.get(sessionId);
-      if (tabId) void this.prepareSurface(tabId).catch(() => undefined);
-    }
   }
 
   cancel(requestId: string): void {
@@ -412,7 +385,7 @@ export class BrowserAgentControl {
       if (this.host.isShowing(tab.id)) continue;
       const sessionId = tab.sessionId;
       if (this.waiting.has(sessionId) && this.agentTabs.get(sessionId) === tab.id) continue;
-      if (this.sessionActive.get(sessionId) === true && this.agentTabs.get(sessionId) === tab.id && !this.paused.has(sessionId)) continue;
+      if (this.sessionActive.get(sessionId) === true && this.agentTabs.get(sessionId) === tab.id) continue;
       this.detachQuiet(tab.id);
       this.host.discardTab(tab.id);
       const meta = this.metaOf(tab.id);
@@ -500,7 +473,6 @@ export class BrowserAgentControl {
     if (request.action === "wait_check") return this.checkWait(request, signal);
     if (this.waiting.has(request.sessionId)) throw new Error(WAITING_FOR_USER_ERROR);
     if (request.action === "idle") return this.idle(request.sessionId);
-    if (this.paused.has(request.sessionId) && isPausedAction(request.action)) throw new Error(PAUSED_BY_USER_ERROR);
     this.sweepIdle();
     switch (request.action) {
       case "open":
@@ -918,7 +890,6 @@ export class BrowserAgentControl {
     }
     this.agentTabs.delete(sessionId);
     this.sessionActive.delete(sessionId);
-    this.paused.delete(sessionId);
     this.waiting.delete(sessionId);
     this.waitIds.delete(sessionId);
     this.loginWaits.delete(sessionId);
@@ -1088,9 +1059,9 @@ export class BrowserAgentControl {
 
   private async syncHolds(): Promise<void> {
     for (const [sessionId, tabId] of this.agentTabs) {
-      if (!this.waiting.has(sessionId) && (this.sessionActive.get(sessionId) !== true || this.paused.has(sessionId))) continue;
+      if (!this.waiting.has(sessionId) && this.sessionActive.get(sessionId) !== true) continue;
       const tab = this.tab(tabId);
-      if (!tab || tab.closed || tab.unloaded) continue;
+      if (!tab || tab.closed || tab.unloaded || tab.vaultProtected) continue;
       await this.prepareSurface(tabId);
     }
   }
@@ -1249,7 +1220,6 @@ export class BrowserAgentControl {
       this.host.onTabEvent(tabId, "render-process-gone", () => this.onRendererGone(tabId)),
       this.host.onTabEvent(tabId, "debugger-detach", () => this.onDebuggerDetach(tabId)),
       this.host.onTabEvent(tabId, "destroyed", () => this.onDebuggerDetach(tabId)),
-      this.host.onTabEvent(tabId, "input-event", (payload) => this.onInput(tabId, payload)),
     ];
     this.unsubscribers.set(tabId, unsubs);
   }
@@ -1266,18 +1236,6 @@ export class BrowserAgentControl {
     this.rejectTabCommands(tabId, new Error("Browser tab is closed."));
     this.metrics.delete(tabId);
     this.presented.delete(tabId);
-  }
-
-  private onInput(tabId: string, payload: unknown): void {
-    const type = payload && typeof payload === "object" && typeof (payload as { type?: unknown }).type === "string"
-      ? (payload as { type: string }).type
-      : "";
-    if (classifyInputEvent(type, this.inflight.count(tabId)) !== "user") return;
-    const sessionId = this.tab(tabId)?.sessionId ?? this.sessionForTab(tabId);
-    if (!sessionId || sessionId === MANUAL_BROWSER_SESSION_ID) return;
-    if (this.waiting.has(sessionId)) return;
-    if (this.sessionActive.get(sessionId) !== true) return;
-    this.pauseSession(sessionId);
   }
 
   private rejectTabCommands(tabId: string, error: Error): void {
@@ -1300,7 +1258,6 @@ export class BrowserAgentControl {
       sessionId,
       tabId: this.agentTabs.get(sessionId) ?? null,
       operating: this.sessionActive.get(sessionId) === true,
-      paused: this.paused.has(sessionId),
       waiting,
       ...(waiting ? { reason: this.waiting.get(sessionId) ?? "" } : {}),
       ...(waiting ? { purpose: this.loginWaits.has(sessionId) ? "login" as const : "confirmation" as const } : {}),
@@ -1313,10 +1270,6 @@ export class BrowserAgentControl {
 
   private tab(tabId: string): BrowserAgentTabState | undefined {
     return this.host.listTabs().find((tab) => tab.id === tabId);
-  }
-
-  private sessionForTab(tabId: string): string | undefined {
-    return this.tab(tabId)?.sessionId;
   }
 
   private metaOf(tabId: string): TabMeta {

@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("sidebar disclosures persist and project collapse hides every session", { timeout: 180000 }, async () => {
+test("sidebar projects page sessions in fives, drag immediately and preserve disclosure state", { timeout: 180000 }, async () => {
   const directory = await mkdtemp(path.join(tmpdir(), "piora-sidebar-disclosure-"));
   let browser;
   try {
@@ -27,11 +27,11 @@ import{buildSessionProjectGroups}from'@/lib/session-project-groups';
 import{GitToolsPopover}from'@/components/workspace/GitToolsPopover';
 const noop=()=>{}, asyncNoop=async()=>{}, empty=new Set();
 const make=(id,day,cwd='C:/fixture',parentSessionId)=>({id,name:id,firstMessage:id,path:id+'.jsonl',cwd,projectRoot:cwd,modified:'2026-01-'+String(day).padStart(2,'0')+'T00:00:00Z',created:'2026-01-01T00:00:00Z',messageCount:1,parentSessionId});
-const sessions=[make('pinned',1),make('fork',9,'C:/fixture','older'),make('newest',8),make('third',7),make('fourth',6),make('fifth',5),make('older',2),make('small-a',2,'C:/small'),make('small-b',1,'C:/small')];
+const sessions=[make('pinned',1),make('fork',9,'C:/fixture','older'),make('newest',8),make('third',7),make('fourth',6),make('fifth',5),make('older',2),...Array.from({length:8},(_,i)=>make('older-'+i,1)),make('archived',10),make('small-a',2,'C:/small'),make('small-b',1,'C:/small'),...Array.from({length:5},(_,i)=>make('small-'+i,1,'C:/small'))];
 const groups=buildSessionProjectGroups(sessions,null,[{cwd:'C:/empty'}]);
 window.events={newChat:0,newProject:0,newSession:0,reorder:0,restored:0};window.roomRequests=0;window.roomName='Group';
 window.fetch=async url=>{if(url==='/api/rooms'){window.roomRequests++;return new Response(JSON.stringify({rooms:[{id:'room',name:window.roomName,updatedAt:1,members:[],summary:{lastMessage:{seq:1,author:'Member',content:'Hello'}}}]}))}return new Response(JSON.stringify({sessions:[],runningSessionIds:[],tasks:[],models:[],modelList:[]}))};
-function App(){const state=useSidebarState();const[selected,setSelected]=useState(null);window.setOrder=state.setSessionOrder;const common={selectedSessionId:selected,runningSessionIds:new Set(['older']),unreadSessionIds:new Set(['fifth']),moveTargets:[],sessionFlags:{pinned:{pinned:true}},sessionOrder:state.sessionOrder,onReorderSessions:()=>window.events.reorder++};
+function App(){const state=useSidebarState();const[selected,setSelected]=useState(null);window.setOrder=state.setSessionOrder;window.selectFixtureSession=setSelected;const common={selectedSessionId:selected,runningSessionIds:new Set(['older']),unreadSessionIds:new Set(['fifth']),moveTargets:[],sessionFlags:{pinned:{pinned:true},archived:{archived:true}},sessionOrder:state.sessionOrder,onReorderSessions:(...args)=>{window.events.reorder++;(window.events.sessionReorders??=[]).push(args)}};
 return <I18nProvider><main className='session-sidebar-content' style={{width:320,height:'100vh',overflow:'auto'}}>
 <div className='conversation-toolbar-actions' id='git-toolbar'><GitToolsPopover cwd='C:/fixture' status={{isGitRepository:true,branch:'main',files:[]}} onOpenChanges={noop} onOpenCommit={noop} onSelectWorktree={noop}/></div>
 <div id='rooms'><RoomSidebarSection sessions={[]} selectedSessionId={null} selectedRoomId={null} initialRoomId='room' onSelectRoom={(_r,restore)=>{if(restore)window.events.restored++}}/></div>
@@ -115,11 +115,9 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
       const sourceBox = await projectTitle.boundingBox();
       const destinationBox = await page.locator('[data-project-drag-root="C:/small"] [data-project-drag-handle]').boundingBox();
       await page.mouse.move(sourceBox.x + 30, sourceBox.y + sourceBox.height / 2);
-      await page.clock.pauseAt(new Date(Date.now() + 1000));
-      await page.mouse.down(); await page.clock.runFor(499);
-      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grab", "499ms is still a normal press");
-      await page.clock.runFor(1);
-      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grabbing", "500ms starts project dragging");
+      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
+      await page.mouse.down();
+      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grabbing", "pointer down starts project dragging without advancing the clock");
       await page.mouse.move(destinationBox.x + 40, destinationBox.y + destinationBox.height - 3);
       await page.mouse.up();
       assert.deepEqual(await page.evaluate(() => window.events.projectReorders), [["C:/fixture", "C:/small", "after"]]);
@@ -129,10 +127,60 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
       assert.equal(await project.locator('[data-project-drag-handle] .sidebar-running-spinner').count(), 1, "hidden running sessions still surface on the project heading");
       const toggleProject = project.locator('[data-project-drag-handle] button[aria-expanded]').first();
       await toggleProject.click();
+      assert.equal(await project.getByRole("treeitem").count(), 5, "projects initially show only five unarchived session rows");
+      assert.equal(await project.getByRole("treeitem", { name: "archived", exact: true }).count(), 0);
+      const moreName = count => locale === "en" ? `Show ${count} more` : `显示更多（${count} 个会话）`;
+      const more = count => project.getByRole("button", { name: moreName(count), exact: true });
+      await more(5).waitFor();
+      await mkdir(path.join(repo, ".verification/sidebar-disclosure"), { recursive: true });
+      await page.screenshot({ path: path.join(repo, `.verification/sidebar-disclosure/${locale}-five-sessions.png`) });
+
+      const fourth = project.getByRole("treeitem", { name: "fourth", exact: true });
+      const fourthBox = await fourth.boundingBox();
+      await page.mouse.move(fourthBox.x + 80, fourthBox.y + fourthBox.height / 2);
+      await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now() + 1000)));
+      await page.mouse.down();
+      assert.equal(await page.evaluate(() => document.body.style.cursor), "grabbing", "session dragging also begins immediately");
+      await page.mouse.up();
+      assert.equal(await fourth.getAttribute("aria-selected"), "true", "press and release without movement still selects the session");
+      assert.equal(await page.evaluate(() => window.events.reorder), 0);
+      assert.equal(await page.evaluate(() => document.body.style.cursor), "");
+
+      const thirdBox = await project.getByRole("treeitem", { name: "third", exact: true }).boundingBox();
+      await page.mouse.down();
+      assert.equal(await page.evaluate(() => document.body.style.cursor), "grabbing");
+      await page.mouse.move(thirdBox.x + 80, thirdBox.y + 3);
+      await page.mouse.up();
+      assert.deepEqual(await page.evaluate(() => window.events.sessionReorders), [["fourth", "third", "before"]]);
+      assert.equal(await fourth.getAttribute("aria-selected"), "true", "reordering does not open another conversation");
+      await page.clock.runFor(501); await page.clock.resume();
+
+      const small = page.locator('[data-project-drag-root="C:/small"]');
+      const smallToggle = small.locator('[data-project-drag-handle] button[aria-expanded]').first();
+      await smallToggle.click();
+      assert.equal(await small.getByRole("treeitem").count(), 5);
+      await more(5).focus(); await page.keyboard.press("Enter");
+      assert.equal(await project.getByRole("treeitem").count(), 10, "show more adds exactly five rows");
+      assert.equal(await small.getByRole("treeitem").count(), 5, "each project's page is independent");
+      await small.getByRole("button", { name: moreName(2), exact: true }).click();
+      assert.equal(await small.getByRole("treeitem").count(), 7);
+      assert.equal(await small.getByRole("button", { name: /Show \d+ more|显示更多/ }).count(), 0);
+      assert.equal(await project.getByRole("treeitem").count(), 10);
+      await smallToggle.click();
       const parent = project.getByRole("treeitem", { name: "older", exact: true });
       if (await parent.getAttribute("aria-expanded") === "false") await parent.press("ArrowRight");
       await page.waitForFunction(() => document.querySelector('[data-session-drag-id="fork"]')?.getAttribute('aria-level') === '2');
-      assert.equal(await project.getByRole("treeitem").count(), 7, "expanding restores all sessions and their hierarchy");
+      assert.equal(await project.getByRole("treeitem").count(), 10, "expanded fork rows also count toward the page limit");
+      await more(5).click();
+      assert.equal(await project.getByRole("treeitem").count(), 15, "a second click adds the next five rows");
+      assert.equal(await project.getByRole("button", { name: /Show \d+ more|显示更多/ }).count(), 0, "the button disappears after the final page");
+      await toggleProject.click();
+      await page.evaluate(() => window.selectFixtureSession(null));
+      await toggleProject.click();
+      assert.equal(await project.getByRole("treeitem").count(), 5, "reopening a project restores its compact default");
+      await page.evaluate(() => window.selectFixtureSession("older-7"));
+      await project.getByRole("treeitem", { name: "older-7", exact: true }).waitFor();
+      assert.equal(await project.getByRole("treeitem", { name: "older-7", exact: true }).getAttribute("aria-selected"), "true", "external selections reveal their batch instead of disappearing behind show more");
       await project.getByRole("treeitem", { name: "fork", exact: true }).click();
       assert.equal(await project.getByRole("treeitem", { name: "fork", exact: true }).getAttribute("aria-selected"), "true");
       await toggleProject.click();

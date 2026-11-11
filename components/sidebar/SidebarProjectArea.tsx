@@ -35,8 +35,7 @@ interface Props {
   onReorderSessions: (sourceId: string, targetId: string, position: "before" | "after") => void;
 }
 
-const PROJECT_DRAG_HOLD_MS = 500;
-const PROJECT_DRAG_CANCEL_DISTANCE = 7;
+const PROJECT_DRAG_MOVE_THRESHOLD = 7;
 
 interface ProjectDragState {
   sourceRoot: string;
@@ -49,36 +48,25 @@ export function SidebarProjectArea(props: Props) {
   const { loading, error, handleDefaultCwd, handleCustomPathClick, projectGroups, selectedProject, collapsedProjectKeys, setCollapsedProjectKeys, selectedSessionId, runningSessionIds, unreadSessionIds, moveTargets, setSelectedCwd, homeDir, handleSelectSessionFromList, handleNewSessionInProject, loadSessions, handleSessionDeletedWithUndo, sessionFlags, patchSessionFlag, duplicateSession, markSessionUnread, moveSession, pinnedProjectRoots, projectAliases, mutedProjectRoots, toggleProjectMuted, togglePinnedProject, renameProject, removeProject, onReorderProjects, sessionOrder, onReorderSessions } = props;
   const { collapsed, toggle } = useSectionDisclosure("projects");
   const projectScrollRef = useRef<HTMLDivElement>(null);
-  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const candidateRef = useRef<{ pointerId: number; root: string; x: number; y: number } | null>(null);
+  const candidateRef = useRef<{ pointerId: number; root: string; x: number; y: number; moved: boolean } | null>(null);
   const dragRef = useRef<ProjectDragState | null>(null);
   const suppressClickRef = useRef<{ root: string; until: number } | null>(null);
   const [dragState, setDragState] = useState<ProjectDragState | null>(null);
 
-  const clearHoldTimer = useCallback(() => {
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    holdTimerRef.current = null;
-  }, []);
-
   const stopDragging = useCallback(() => {
-    clearHoldTimer();
     candidateRef.current = null;
     dragRef.current = null;
     setDragState(null);
-  }, [clearHoldTimer]);
+  }, []);
 
   useEffect(() => {
     const handlePointerMove = (event: PointerEvent) => {
       const candidate = candidateRef.current;
       if (!candidate || event.pointerId !== candidate.pointerId) return;
       const activeDrag = dragRef.current;
-      if (!activeDrag) {
-        if (Math.hypot(event.clientX - candidate.x, event.clientY - candidate.y) > PROJECT_DRAG_CANCEL_DISTANCE) {
-          clearHoldTimer();
-          candidateRef.current = null;
-        }
-        return;
-      }
+      if (!activeDrag) return;
+      if (!candidate.moved && Math.hypot(event.clientX - candidate.x, event.clientY - candidate.y) < PROJECT_DRAG_MOVE_THRESHOLD) return;
+      candidate.moved = true;
 
       event.preventDefault();
       const scroll = projectScrollRef.current;
@@ -112,9 +100,9 @@ export function SidebarProjectArea(props: Props) {
       const candidate = candidateRef.current;
       if (!candidate || event.pointerId !== candidate.pointerId) return;
       const activeDrag = dragRef.current;
-      if (activeDrag) {
+      if (activeDrag && candidate.moved) {
         suppressClickRef.current = { root: activeDrag.sourceRoot, until: Date.now() + 500 };
-        if (activeDrag.targetRoot) {
+        if (event.type === "pointerup" && activeDrag.targetRoot) {
           onReorderProjects(activeDrag.sourceRoot, activeDrag.targetRoot, activeDrag.position);
         }
       }
@@ -128,24 +116,20 @@ export function SidebarProjectArea(props: Props) {
       window.removeEventListener("pointerup", finishPointer);
       window.removeEventListener("pointercancel", finishPointer);
     };
-  }, [clearHoldTimer, onReorderProjects, stopDragging]);
+  }, [onReorderProjects, stopDragging]);
 
   useEffect(() => stopDragging, [stopDragging]);
 
   const beginProjectDrag = useCallback((root: string, event: ReactPointerEvent<HTMLDivElement>) => {
     if (!event.isPrimary || event.button !== 0) return;
     if ((event.target as Element).closest("[data-project-drag-ignore]")) return;
-    clearHoldTimer();
-    candidateRef.current = { pointerId: event.pointerId, root, x: event.clientX, y: event.clientY };
-    holdTimerRef.current = setTimeout(() => {
-      const candidate = candidateRef.current;
-      if (!candidate || candidate.pointerId !== event.pointerId || candidate.root !== root) return;
-      const next: ProjectDragState = { sourceRoot: root, targetRoot: null, position: "after" };
-      dragRef.current = next;
-      setDragState(next);
-      window.getSelection()?.removeAllRanges();
-    }, PROJECT_DRAG_HOLD_MS);
-  }, [clearHoldTimer]);
+    suppressClickRef.current = null;
+    candidateRef.current = { pointerId: event.pointerId, root, x: event.clientX, y: event.clientY, moved: false };
+    const next: ProjectDragState = { sourceRoot: root, targetRoot: null, position: "after" };
+    dragRef.current = next;
+    setDragState(next);
+    window.getSelection()?.removeAllRanges();
+  }, []);
 
   const suppressProjectClick = useCallback((root: string, event: ReactMouseEvent<HTMLElement>) => {
     const suppressed = suppressClickRef.current;

@@ -65,6 +65,11 @@ export function isImagePath(filePath: string): boolean {
   return getImageMime(filePath) !== null;
 }
 
+export function isMarkdownPath(filePath: string): boolean {
+  const ext = getFileExt(filePath);
+  return ext === "md" || ext === "mdx";
+}
+
 export function isAudioPath(filePath: string): boolean {
   return getAudioMime(filePath) !== null;
 }

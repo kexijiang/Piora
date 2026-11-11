@@ -415,6 +415,30 @@
   padding: 1px 0 2px 23px;
 }
 
+.sessionShowMore {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.sessionShowMore:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.sessionShowMoreChevron {
+  transform: rotate(90deg);
+}
+
 .sessionDragItem {
   position: relative;
   transition: opacity 120ms ease, transform 120ms ease;
@@ -424,6 +448,10 @@
   z-index: 2;
   opacity: 0.55;
   transform: scale(0.985);
+}
+
+.sessionDragging, .sessionDragging * {
+  cursor: grabbing !important;
 }
 
 .sessionDropBefore::before,

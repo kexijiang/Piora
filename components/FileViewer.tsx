@@ -20,6 +20,7 @@ import {
   DOCX_PREVIEW_MAX_BYTES,
   getFileViewerKind,
   getFileExt,
+  isMarkdownPath,
 } from "@/lib/file-types";
 import { encodeFilePathForApi, getFileDirectory, getFileName, getRelativeFilePath } from "@/lib/file-paths";
 import { resolveLocalFileHref } from "@/lib/file-links";
@@ -727,7 +728,7 @@ function TextFileViewer({
   const [gitDiffLoading, setGitDiffLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [displayMode, setDisplayMode] = useState<DisplayMode>("edit");
+  const [displayMode, setDisplayMode] = useState<DisplayMode>(() => isMarkdownPath(filePath) ? "preview" : "edit");
   const [viewerWidth, setViewerWidth] = useState(0);
   const [compactSplitSide, setCompactSplitSide] = useState<"edit" | "preview">("edit");
   const [debouncedHtml, setDebouncedHtml] = useState("");
@@ -887,7 +888,7 @@ function TextFileViewer({
     setError(null);
     setData(null);
     setGitDiff(null);
-    setDisplayMode("edit");
+    setDisplayMode(isMarkdownPath(filePath) ? "preview" : "edit");
     setWrapLines(false);
     setWatching(false);
     setDraftContent("");
@@ -1067,10 +1068,10 @@ function TextFileViewer({
     setWatching(false);
   }, [isDeletedDiff]);
 
-  // File-tree and linked text files start in edit mode. Explicit callers (the
-  // Changes list uses `diff`) may still request another initial view once that
-  // view is available. Apply the hint only once so a user's later view choice
-  // is not overwritten.
+  // Markdown starts in preview; other text files start in edit mode. Explicit
+  // callers (the Changes list uses `diff`) may request another initial view
+  // once it is available. Apply the hint only once so a user's later view
+  // choice is not overwritten.
   const initialDisplayModeAppliedRef = useRef(false);
   useEffect(() => {
     initialDisplayModeAppliedRef.current = false;

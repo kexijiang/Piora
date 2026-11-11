@@ -169,6 +169,7 @@ export function ProjectSessionGroup({
         )}
         <TaskList
           nodes={visibleRoots}
+          pageSize={5}
           reorderable={projectOpen}
           selectedSessionId={selectedSessionId}
           runningSessionIds={runningSessionIds}

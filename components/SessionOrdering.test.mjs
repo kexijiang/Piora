@@ -37,8 +37,14 @@ test("keeps pinned sessions ahead while applying manual order within each sectio
   );
 });
 
-test("long-presses every session row with the left pointer and persists the order", () => {
-  assert.match(list, /SESSION_DRAG_HOLD_MS = 250/);
+test("starts session dragging on left pointer down and persists moved pointer releases", () => {
+  const beginDrag = list.slice(list.indexOf("const beginSessionDrag"), list.indexOf("const suppressSessionClick"));
+  assert.match(beginDrag, /moved: false/);
+  assert.match(beginDrag, /dragRef\.current = next;\s*setDragState\(next\)/);
+  assert.match(beginDrag, /document\.body\.style\.cursor = "grabbing"/);
+  assert.doesNotMatch(beginDrag, /setTimeout|HOLD_MS/);
+  assert.match(list, /if \(activeDrag && candidate\.moved\)/);
+  assert.match(list, /if \(event\.type === "pointerup" && activeDrag\.targetId\)/);
   assert.match(list, /event\.button !== 0/);
   assert.match(list, /setPointerCapture\(event\.pointerId\)/);
   assert.doesNotMatch(list, /window\.addEventListener\("pointermove"/);

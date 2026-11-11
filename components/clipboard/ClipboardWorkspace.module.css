@@ -1,5 +1,6 @@
 .workspace{--clipboard-list-width:380px;display:flex;flex-direction:column;width:100%;height:min(820px,calc(100dvh - 100px));min-height:360px;min-width:0;position:relative;overflow:hidden;background:var(--bg);color:var(--text);font:calc(var(--ui-font-size) * 14 / 14)/1.5 var(--ui-font-family,Inter,'Microsoft YaHei UI',sans-serif);border:1px solid var(--border);border-radius:16px}
-.workspace[data-surface="quick"],.workspace[data-surface="shelf"]{height:100dvh;min-height:0;border:0;border-radius:0}
+/* Standalone windows must paint above the shared body wallpaper layers. */
+.workspace[data-surface="quick"],.workspace[data-surface="shelf"]{height:100dvh;min-height:0;border:0;border-radius:0;z-index:1}
 .workspace *{box-sizing:border-box}
 .workspace button,.workspace input,.workspace select,.workspace textarea{font:inherit;color:inherit}
 .workspace button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:32px;padding:5px 10px;border:1px solid transparent;border-radius:8px;background:transparent;cursor:pointer;white-space:nowrap;line-height:1.4}
