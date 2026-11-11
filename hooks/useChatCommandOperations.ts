@@ -160,7 +160,7 @@ export function useChatCommandOperations(options: Options) {
     const operation = parsed.kind === "command" ? createChatCommandOperation(message, catalog, parsed, inputOptions) : undefined;
     const draft = { value: message, files: files.map(file => ({ ...file })), images: images.map(({ data, mimeType }) => ({ data, mimeType })), ...(retryOfPromptIds?.length ? { retryOfPromptIds } : {}), commandInput: persistentChatInputOptions(inputOptions) };
     let recovery: PendingPrompt = { id, scope: initial.scope, draft, message: { role: "user", content: message, timestamp, clientPromptId: id, commandSubmission: true, recoveryDraft: draft } };
-    const local: ChatCommandView = { commandId: `pending-${id}`, idempotencyKey: id, targetSessionId: initial.sessionId ?? "", acceptedAt: timestamp, status: "accepted", operation, preview: message, local: true };
+    const local: ChatCommandView = { commandId: `pending-${id}`, idempotencyKey: id, targetSessionId: initial.sessionId ?? "", acceptedAt: timestamp, status: "accepted", operation, preview: message, attachments: images.length + files.length, local: true };
     submitting.current.add(id);
     setRecords(current => mergeChatCommandViews(current, [local]));
     try {

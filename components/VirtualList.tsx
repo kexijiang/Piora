@@ -5,6 +5,7 @@ import { flushSync } from "react-dom";
 import { buildVirtualOffsets, virtualIndexAt, virtualRange } from "@/lib/virtual-window";
 import { createVirtualRowState } from "@/lib/virtual-row-state";
 import { CHAT_BOTTOM_FOLLOW_EVENT, isChatBottomFollowing, pinChatBottom } from "@/lib/chat-bottom-follow";
+import { CHAT_DISCLOSURE_TOGGLE_EVENT } from "@/lib/chat-scroll";
 import { VirtualRowStateContext } from "./VirtualRowState";
 
 export interface VirtualListHandle { scrollToKey(key: string): void; cancelNavigation(): void }
@@ -69,6 +70,23 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   // Shared by viewport resizes and manual wheel navigation to the bottom.
   const resizeBottomAnchor = useRef(false);
   const resizeSettleFrame = useRef<number | null>(null);
+  const disclosureAnchor = useRef<{ control: HTMLElement; top: number } | null>(null);
+  const disclosureFrame = useRef<number | null>(null);
+  const [disclosureKeys, setDisclosureKeys] = useState<string[]>([]);
+
+  const releaseDisclosure = useCallback(() => {
+    disclosureAnchor.current = null;
+    if (disclosureFrame.current !== null) cancelAnimationFrame(disclosureFrame.current);
+    disclosureFrame.current = null;
+    setDisclosureKeys(previous => previous.length ? [] : previous);
+  }, []);
+  const restoreDisclosure = useCallback(() => {
+    const saved = disclosureAnchor.current, scroller = parent.current;
+    if (!saved || !scroller) return false;
+    if (!saved.control.isConnected) { releaseDisclosure(); return false; }
+    scroller.scrollTop += saved.control.getBoundingClientRect().top - scroller.getBoundingClientRect().top - saved.top;
+    return true;
+  }, [releaseDisclosure]);
 
   const rememberViewport = useCallback(() => {
     const scroller = parent.current;
@@ -122,14 +140,15 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
   const scrollToKey = useCallback((key: string) => {
     const index = current.current.keys.indexOf(key);
     if (index < 0 || !parent.current) return;
+    releaseDisclosure();
     navigation.current = { key };
     resizeBottomAnchor.current = false;
     setNavigationKey(key);
     anchor.current = null;
     parent.current.scrollTop = Math.max(0, listTop() + current.current.offsets[index] - parent.current.clientHeight * 0.3);
     syncRange();
-  }, [listTop, syncRange]);
-  const cancelNavigation = useCallback(() => { navigation.current = null; anchor.current = null; resizeBottomAnchor.current = false; setNavigationKey(null); }, []);
+  }, [listTop, syncRange, releaseDisclosure]);
+  const cancelNavigation = useCallback(() => { navigation.current = null; anchor.current = null; resizeBottomAnchor.current = false; setNavigationKey(null); releaseDisclosure(); }, [releaseDisclosure]);
   useImperativeHandle(handleRef, () => ({ scrollToKey, cancelNavigation }), [scrollToKey, cancelNavigation]);
 
   const measure = useCallback((key: string, height: number) => {
@@ -139,13 +158,13 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     // Shrinking content can clamp native scrolling before ResizeObserver is
     // delivered. Preserve an already-visible bottom instead of interpreting
     // that clamp as navigation into older messages using the previous offsets.
-    if (scroller && viewportSnapshot.current.atBottom && !navigation.current && !isChatBottomFollowing(scroller)
+    if (scroller && viewportSnapshot.current.atBottom && !disclosureAnchor.current && !navigation.current && !isChatBottomFollowing(scroller)
       && !scroller.querySelector("[data-chat-tail-spacer]")) {
       resizeBottomAnchor.current = true;
       anchor.current = null;
       settleBottomResize();
     }
-    if (!anchor.current && !resizeBottomAnchor.current && parent.current && !navigation.current && !isChatBottomFollowing(parent.current)) {
+    if (!anchor.current && !resizeBottomAnchor.current && !disclosureAnchor.current && parent.current && !navigation.current && !isChatBottomFollowing(parent.current)) {
       const top = parent.current.scrollTop - listTop();
       const index = virtualIndexAt(current.current.offsets, top);
       if (current.current.keys[index]) anchor.current = { key: current.current.keys[index], inset: top - current.current.offsets[index] };
@@ -204,7 +223,36 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
       cancelNavigation();
       if (event.type === "wheel" || event.type === "touchstart") viewportSnapshot.current.atBottom = false;
     };
+    const onDisclosureToggle = (event: Event) => {
+      // Focus and pending measurements can have captured the previous tail
+      // between pointerdown and click. The disclosure now owns the anchor.
+      cancelNavigation();
+      viewportSnapshot.current.atBottom = false;
+      const control = (event as CustomEvent<HTMLElement>).detail;
+      if (!control || !root.current?.contains(control)) return;
+      const viewport = element.getBoundingClientRect();
+      disclosureAnchor.current = { control, top: control.getBoundingClientRect().top - viewport.top };
+      // Keep the already visible messages mounted while inserted/removed row
+      // offsets settle. Reusing the old range's indices can otherwise replace
+      // the viewport with distant rows for a frame.
+      setDisclosureKeys(Array.from(root.current.querySelectorAll<HTMLElement>(":scope > [data-virtual-key]"))
+        .filter(row => { const rect = row.getBoundingClientRect(); return rect.bottom > viewport.top && rect.top < viewport.bottom; })
+        .map(row => row.dataset.virtualKey!));
+      let previous = "", stableFrames = 0;
+      const settle = () => {
+        disclosureFrame.current = null;
+        if (!restoreDisclosure()) return;
+        syncRange();
+        const geometry = `${root.current?.getBoundingClientRect().height}:${element.scrollTop}`;
+        stableFrames = geometry === previous && frame.current === null ? stableFrames + 1 : 0;
+        previous = geometry;
+        if (stableFrames >= 3) { releaseDisclosure(); rememberViewport(); }
+        else disclosureFrame.current = requestAnimationFrame(settle);
+      };
+      disclosureFrame.current = requestAnimationFrame(settle);
+    };
     element.addEventListener("scroll", onScroll, { passive: true });
+    element.addEventListener(CHAT_DISCLOSURE_TOGGLE_EVENT, onDisclosureToggle);
     element.addEventListener(CHAT_BOTTOM_FOLLOW_EVENT, syncRange);
     element.addEventListener("wheel", onInput, { passive: true });
     element.addEventListener("touchstart", onInput, { passive: true });
@@ -244,13 +292,14 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     return () => {
       observer.disconnect();
       element.removeEventListener("scroll", onScroll);
+      element.removeEventListener(CHAT_DISCLOSURE_TOGGLE_EVENT, onDisclosureToggle);
       element.removeEventListener(CHAT_BOTTOM_FOLLOW_EVENT, syncRange);
       element.removeEventListener("wheel", onInput);
       element.removeEventListener("touchstart", onInput);
       document.removeEventListener("pointerdown", onInput, true);
       document.removeEventListener("keydown", onInput);
     };
-  }, [scrollContainer, syncRange, cancelNavigation, listTop, rememberViewport, settleBottomResize, measureChangedLayout]);
+  }, [scrollContainer, syncRange, cancelNavigation, listTop, rememberViewport, settleBottomResize, measureChangedLayout, releaseDisclosure, restoreDisclosure]);
 
   useLayoutEffect(() => {
     const scroller = parent.current;
@@ -259,7 +308,10 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
       initialized.current = true;
       if (initialTail) scroller.scrollTop = listTop() + offsets[offsets.length - 1];
     }
-    if (navigation.current) {
+    if (restoreDisclosure()) {
+      // The clicked control takes precedence over estimates captured before
+      // this disclosure changed the row structure.
+    } else if (navigation.current) {
       const index = keys.indexOf(navigation.current.key);
       // Mount first, then align against actual layout. Estimated offsets alone
       // are stale during the first commit and while images/markdown settle.
@@ -280,13 +332,14 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     anchor.current = null;
     rememberViewport();
     syncRange();
-  }, [keys, offsets, navigationKey, listTop, syncRange, initialTail, rememberViewport]);
+  }, [keys, offsets, navigationKey, listTop, syncRange, initialTail, rememberViewport, restoreDisclosure]);
 
   // Range-only commits also replace spacers with measured content. Keep the
   // requested bottom aligned in the same commit, before the browser paints.
   useLayoutEffect(() => {
     const scroller = parent.current;
     if (!scroller || scroller.clientHeight === 0) return;
+    if (restoreDisclosure()) return;
     if (resizeBottomAnchor.current && !isChatBottomFollowing(scroller)) {
       scroller.scrollTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
     } else pinChatBottom(scroller);
@@ -304,14 +357,16 @@ export function VirtualList({ keys, renderItem, estimate, scrollContainer, handl
     return () => {
       if (frame.current !== null) cancelAnimationFrame(frame.current);
       if (resizeSettleFrame.current !== null) cancelAnimationFrame(resizeSettleFrame.current);
+      if (disclosureFrame.current !== null) cancelAnimationFrame(disclosureFrame.current);
       frame.current = null;
       resizeSettleFrame.current = null;
+      disclosureFrame.current = null;
     };
   }, []);
   const start = Math.min(range.start, keys.length);
   const end = Math.min(Math.max(start, range.end), keys.length);
   const mounted = new Set(Array.from({ length: end - start }, (_, index) => start + index));
-  for (const key of [...pinnedKeys, ...(focusedKey ? [focusedKey] : []), ...(navigationKey ? [navigationKey] : [])]) {
+  for (const key of [...pinnedKeys, ...disclosureKeys, ...(focusedKey ? [focusedKey] : []), ...(navigationKey ? [navigationKey] : [])]) {
     const index = keys.indexOf(key); if (index >= 0) mounted.add(index);
   }
   const indices = [...mounted].sort((a, b) => a - b);

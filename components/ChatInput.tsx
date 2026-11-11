@@ -86,6 +86,7 @@ import { useRunningSendMode } from "@/hooks/useRunningSendMode";
 import { useSendShortcut } from "@/hooks/useSendShortcut";
 import { formatShortcutBinding, isMacPlatform, shortcutMatchesEvent, shouldPreserveApplicationShortcut } from "@/lib/keyboard-shortcuts";
 import { AliIcon } from "./AliIcon";
+import { MessageImage, MessageImageViewer } from "./MessageImage";
 import { ModelProviderIcon } from "./ModelProviderIcon";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import type { ExtensionStatusItem } from "@/lib/types";
@@ -443,12 +444,14 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(() => (
     draftKey ? draftImagesToAttachedImages(getDraft(draftKey)?.images) : []
   ));
+  const [previewImage, setPreviewImage] = useState<{ src: string; index: number } | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>(() => (
     draftKey ? draftFilesToAttachedFiles(getDraft(draftKey)?.files) : []
   ));
   const [attachmentError, setAttachmentError] = useState<string | null>(null);
   const [isProcessingImages, setIsProcessingImages] = useState(false);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const canAttachFiles = !isStreaming || Boolean(onQueueInput);
   const trimmedValue = value.trimStart();
   const bashMode = attachedImages.length === 0 && attachedFiles.length === 0 && trimmedValue.startsWith("!");
   const bashExcluded = bashMode && trimmedValue.startsWith("!!");
@@ -518,7 +521,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   }, []);
 
   const processImageFiles = useCallback(async (files: File[]) => {
-    if (isStreaming) return;
+    if (!canAttachFiles) return;
     setAttachmentError(null);
     const remaining = Math.max(
       0,
@@ -570,9 +573,10 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       pendingImageBytesRef.current -= imageFiles.reduce((total, file) => total + file.size, 0);
       if (pendingImageCountRef.current <= 0) setIsProcessingImages(false);
     }
-  }, [isStreaming, t]);
+  }, [canAttachFiles, t]);
 
   const removeImage = useCallback((index: number) => {
+    setPreviewImage(null);
     setAttachedImages((prev) => {
       const next = [...prev];
       const [removed] = next.splice(index, 1);
@@ -582,7 +586,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   }, []);
 
   const processFileSelection = useCallback(async (files: File[]) => {
-    if (isStreaming) return;
+    if (!canAttachFiles) return;
     setAttachmentError(null);
     const imageFiles = files.filter((file) => file.type.startsWith("image/"));
     if (imageFiles.length) processImageFiles(imageFiles);
@@ -637,7 +641,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       pendingFileCountRef.current -= selected.length;
       if (!pendingFileCountRef.current) setIsProcessingFiles(false);
     }
-  }, [isStreaming, processImageFiles, t]);
+  }, [canAttachFiles, processImageFiles, t]);
 
   useImperativeHandle(ref, () => ({
     focus() {
@@ -761,6 +765,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   }, [setValue]);
 
   const clearImages = useCallback(() => {
+    setPreviewImage(null);
     setAttachedImages((prev) => {
       prev.forEach(revokeImagePreview);
       return [];
@@ -823,6 +828,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     promptOptimizerAbortRef.current = null;
     setPromptOptimization(null);
     setAttachmentMenuOpen(false);
+    setPreviewImage(null);
     resetReplyDraft({ value: draft?.value ?? "", spans: draft?.replySpans ?? [] });
     valueRef.current = draft?.value ?? "";
     setAtQuery(null);
@@ -1072,13 +1078,13 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     ? t(slashQuery ? "chat.match" : "chat.command")
     : t(slashQuery ? "chat.matches" : "chat.commands", { count: filteredSlashCommands.length });
   const hasInputText = Boolean(value.trim());
-  const canQueueStreamingMessage = onQueueInput ? hasInputText || attachedImages.length > 0 || attachedFiles.length > 0 : hasInputText && attachedImages.length === 0 && attachedFiles.length === 0;
-  useEffect(() => {
-    if (!canQueueStreamingMessage) sendModeHoverDismissed.current = false;
-  }, [canQueueStreamingMessage]);
   const canSend = !sendDisabled && !permissionSaving && !isProcessingImages && !isProcessingFiles
     && (!isAutoModelSelection || isCommandInput)
     && (hasInputText || attachedImages.length > 0 || attachedFiles.length > 0);
+  const canQueueStreamingMessage = canSend && (Boolean(onQueueInput) || hasInputText && attachedImages.length === 0 && attachedFiles.length === 0);
+  useEffect(() => {
+    if (!canQueueStreamingMessage) sendModeHoverDismissed.current = false;
+  }, [canQueueStreamingMessage]);
   const canOptimizePrompt = hasInputText
     && !isStreaming
     && !isAutoModelSelection
@@ -1352,7 +1358,11 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   }, [setValue, commandCatalog?.revision, t]);
 
   const sendQueued = useCallback(async (mode: "steer" | "followup") => {
-    if (onQueueInput) { await handleSend({ delivery: mode === "steer" ? "steer" : "next_turn" }); return; }
+    if (onQueueInput) {
+      try { await handleSend({ delivery: mode === "steer" ? "steer" : "next_turn" }); }
+      catch (error) { setAttachmentError(error instanceof Error ? error.message : String(error)); }
+      return;
+    }
     if (sendingRef.current) return;
     const streamingBehavior = mode === "steer" ? "steer" : "followUp";
     const sentDraftKey = draftKeyRef.current;
@@ -1782,7 +1792,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
         ref={fileInputRef}
         type="file"
         multiple
-        disabled={isStreaming}
+        disabled={!canAttachFiles}
         style={{ display: "none" }}
         onChange={(e) => {
           const files = Array.from(e.target.files ?? []);
@@ -1794,7 +1804,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
         ref={folderInputRef}
         type="file"
         multiple
-        disabled={isStreaming}
+        disabled={!canAttachFiles}
         style={{ display: "none" }}
         onChange={(e) => {
           const selectedFiles = Array.from(e.target.files ?? []);
@@ -1903,14 +1913,12 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
           <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
             {attachedImages.map((img, i) => (
               <div key={i} style={{ position: "relative", flexShrink: 0 }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={img.previewUrl}
-                  alt=""
-                  style={{ width: 56, height: 56, objectFit: "cover", borderRadius: "var(--radius-control)", border: "1px solid var(--border)", display: "block" }}
-                />
+                <MessageImage src={img.previewUrl} index={i} className="composer-image-thumbnail"
+                  onOpen={() => setPreviewImage({ src: `data:${img.mimeType};base64,${img.data}`, index: i })} />
                 <button
+                  type="button"
                   onClick={() => removeImage(i)}
+                  title={t("chat.removeAttachment")} aria-label={t("chat.removeAttachment")}
                   style={{
                     position: "absolute", top: -4, right: -4,
                     width: 16, height: 16, borderRadius: "50%",
@@ -1923,11 +1931,9 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                 </button>
               </div>
             ))}
-            <div style={{ flexBasis: "100%", color: "var(--text-muted)", fontSize: "var(--text-xs)" }}>
-              {t("input.imageContextHint")}
-            </div>
           </div>
         )}
+        {previewImage && <MessageImageViewer src={previewImage.src} index={previewImage.index} onClose={() => setPreviewImage(null)} />}
 
         {/* Attached non-image files */}
         {attachedFiles.length > 0 && (
@@ -2367,7 +2373,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                 type="button"
                 className={`composer-add-trigger${attachmentMenuOpen ? " is-open" : ""}${attachedImages.length || attachedFiles.length ? " has-attachments" : ""}`}
                 onClick={() => setAttachmentMenuOpen((open) => !open)}
-                disabled={isStreaming}
+                disabled={!canAttachFiles}
                 title={t("chat.add")}
                 aria-label={t("chat.add")}
                 aria-haspopup="menu"

@@ -120,7 +120,7 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
   // value changes, so a manual switcher change is not snapped back.
   const lastSyncedCwdPropRef = useRef<string | null>(null);
   useEffect(() => {
-    if (selectedCwdProp && selectedCwdProp !== lastSyncedCwdPropRef.current) {
+    if (selectedCwdProp !== undefined && selectedCwdProp !== lastSyncedCwdPropRef.current) {
       lastSyncedCwdPropRef.current = selectedCwdProp;
       setSelectedCwd(selectedCwdProp);
     }
@@ -138,12 +138,11 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
     }
 
     if (selectedCwd === null) {
-      // If restoring a session, set cwd to match that session
+      // Restore the chat first; its committed selection synchronizes cwd.
       if (initialSessionId && !restoredRef.current) {
         restoredRef.current = true;
         const target = allSessions.find((s) => s.id === initialSessionId);
         if (target) {
-          setSelectedCwd(target.projectless ? null : target.cwd);
           onSelectSession(target, true);
           return;
         }
@@ -171,9 +170,8 @@ export const SessionSidebar = forwardRef<SessionSidebarHandle, Props>(function S
     focusPrimaryNavigation() { primaryActionRef.current?.focus({ preventScroll: true }); },
   }), [handleCustomPathClick]);
   const handleSelectSessionFromList = useCallback((s: SessionInfo) => {
-    // Agent sessions are process-owned and keep running independently of the
-    // visible chat. Switching is therefore safe and must remain immediate.
-    setSelectedCwd(s.projectless ? null : s.cwd || null);
+    // The selected-session prop synchronizes cwd after the prepared switch.
+    // Advancing cwd first would clear the old chat while its replacement loads.
     onSelectSession(s);
   }, [onSelectSession]);
 

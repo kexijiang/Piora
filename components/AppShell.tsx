@@ -61,6 +61,7 @@ import type { GitStatusResponse } from "@/lib/git-types";
 import { GitToolsPopover } from "./workspace/GitToolsPopover";
 import { readSessionTitleModel, readSessionTitlePrompt } from "@/lib/session-title-settings";
 import { isProjectlessChatCwd } from "@/lib/projectless-chat-path";
+import { prepareSessionSwitch } from "@/lib/session-prefetch";
 import type { SessionCapabilitiesState } from "@/lib/session-capabilities";
 
 function getSelectionHistoryState(): Record<string, unknown> {
@@ -274,6 +275,8 @@ export function AppShell() {
   const [initialCwdError, setInitialCwdError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [sessionKey, setSessionKey] = useState(0);
+  const [pendingSessionSwitch, setPendingSessionSwitch] = useState<{ id: string; version: number } | null>(null);
+  const [sessionSwitchError, setSessionSwitchError] = useState<string | null>(null);
   const [explorerRefreshKey, setExplorerRefreshKey] = useState(0);
   const [modelsRefreshKey, setModelsRefreshKey] = useState(0);
   const [onboardingRestartKey, setOnboardingRestartKey] = useState(0);
@@ -312,6 +315,7 @@ export function AppShell() {
   const [openDesktopMenuId, setOpenDesktopMenuId] = useState<DesktopMenuId | null>(null);
   const [desktopUpdateState, setDesktopUpdateState] = useState<DesktopUpdateState | null>(null);
   const [desktopUpdateDialogOpen, setDesktopUpdateDialogOpen] = useState(false);
+  const desktopUpdateInstallPendingRef = useRef(false);
   const sidebarWidthRef = useRef(SIDEBAR_DEFAULT_WIDTH);
   const rightPanelWidthRef = useRef(RIGHT_PANEL_FALLBACK_WIDTH);
   const getResponsiveRightPanelWidth = useCallback(
@@ -535,6 +539,9 @@ export function AppShell() {
   useEffect(() => () => cancelProjectHoverClose(), [cancelProjectHoverClose]);
 
   const openSettings = useCallback((key: SettingsKey = "general", itemId?: string) => {
+    workspaceNavigationVersionRef.current++;
+    setPendingSessionSwitch(null);
+    setSessionSwitchError(null);
     setSettingsItemId(itemId);
     setActiveTopPanel(null);
     if (isMobile) setSidebarOpen(false);
@@ -808,7 +815,18 @@ export function AppShell() {
   }, [initialNavigation]);
 
   const handleCwdChange = useCallback(async (cwd: string | null, projectRoot?: string | null) => {
-    const navigationVersion = ++workspaceNavigationVersionRef.current;
+    const proposedProject = projectRoot ?? cwd;
+    const cwdBelongsToSelectedSession = selectedSession?.cwd === cwd || cwd === null && Boolean(selectedSession && (selectedSession.projectless || isProjectlessChatCwd(selectedSession.cwd)));
+    const cwdBelongsToSelectedRoom = Boolean(selectedRoom?.projectRoot && proposedProject
+      && selectedRoom.projectRoot.toLocaleLowerCase() === proposedProject.toLocaleLowerCase());
+    // A delayed sidebar synchronization is part of the previous committed
+    // selection, not a new navigation that may cancel the user's next pick.
+    const navigationVersion = cwdBelongsToSelectedSession || cwdBelongsToSelectedRoom
+      ? workspaceNavigationVersionRef.current : ++workspaceNavigationVersionRef.current;
+    if (!cwdBelongsToSelectedSession && !cwdBelongsToSelectedRoom) {
+      setPendingSessionSwitch(null);
+      setSessionSwitchError(null);
+    }
     // Skip if cwd is null (initial mount).
     if (!cwd) { setActiveCwd(null); return; }
     const newProject = projectRoot ?? cwd;
@@ -818,11 +836,6 @@ export function AppShell() {
     // Selecting a session in another project updates the session and sidebar
     // cwd in the same React event. The following cwd notification synchronizes
     // that selected session; it must not turn the transition into an empty chat.
-    const cwdBelongsToSelectedSession = selectedSession?.cwd === cwd;
-    const cwdBelongsToSelectedRoom = Boolean(
-      selectedRoom?.projectRoot
-      && selectedRoom.projectRoot.toLocaleLowerCase() === newProject.toLocaleLowerCase(),
-    );
     const cwdBelongsToCurrentSelection = cwdBelongsToSelectedSession || cwdBelongsToSelectedRoom;
     const dirtyTabs = fileTabs.filter((tab) => tab.isDirty);
     let keepDirtyTabs = false;
@@ -926,21 +939,48 @@ export function AppShell() {
     }
   }, [activeFileTabId, activeProjectRoot, fileTabs]);
 
-  const handleSelectSession = useCallback((session: SessionInfo, isRestore = false) => {
-    workspaceNavigationVersionRef.current++;
+  const handleSelectSession = useCallback(async (session: SessionInfo, isRestore = false, entryId?: string) => {
+    const navigationVersion = ++workspaceNavigationVersionRef.current;
+    setPendingSessionSwitch(null);
+    setSessionSwitchError(null);
+    if (isRestore || selectedSessionIdRef.current !== session.id) {
+      // Keep the current conversation and its composer mounted until the new
+      // projection is ready. Switching through the empty loading shell flashes
+      // the entire column, even when the local request only takes one frame.
+      setPendingSessionSwitch({ id: session.id, version: navigationVersion });
+      try {
+        const snapshot = await prepareSessionSwitch(session) as { context?: { messages?: unknown }; info?: { id?: string; modified?: string } } | null;
+        if (navigationVersion !== workspaceNavigationVersionRef.current) return false;
+        if (!snapshot || !Array.isArray(snapshot.context?.messages) || snapshot.info?.id && snapshot.info.id !== session.id) {
+          setSessionSwitchError(translate("chat.sessionSwitchFailed"));
+          return false;
+        }
+        // A running session can advance beyond the sidebar's modified stamp.
+        // Match the fetched version so the remounted hook can seed it on its
+        // first render instead of discarding it as an older prefetch.
+        if (typeof snapshot.info?.modified === "string") session = { ...session, modified: snapshot.info.modified };
+      } catch {
+        if (navigationVersion === workspaceNavigationVersionRef.current) setSessionSwitchError(translate("chat.sessionSwitchFailed"));
+        return false;
+      } finally {
+        setPendingSessionSwitch(current => current?.version === navigationVersion ? null : current);
+      }
+    }
+    if (navigationVersion !== workspaceNavigationVersionRef.current) return false;
     setSettingsDialogOpen(false);
     if (!isRestore) { setHistoryDialogOpen(false); setHistoryLocation({ open: false, leafId: null, entryId: null }); }
     setSelectedRoom(null);
     if (!isRestore && selectedSessionIdRef.current === session.id) {
       setActiveTopPanel(null);
-      replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}`);
-      return;
+      if (entryId) setFocusedEntryId(entryId);
+      replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}${entryId ? `&entry=${encodeURIComponent(entryId)}` : ""}`);
+      return true;
     }
     setNewSessionCwd(null);
     setNewSessionInitialModel(null);
     setNewSessionInitialPrompt(null);
     setSelectedSession(session);
-    if (!isRestore) setFocusedEntryId(null);
+    if (!isRestore) setFocusedEntryId(entryId ?? null);
     setSessionKey((k) => k + 1);
     setSystemPrompt(null);
     setInitialSessionRestored(true);
@@ -953,7 +993,7 @@ export function AppShell() {
     }
     // History restoration already has the requested URL; do not rewrite it.
     if (!isRestore) {
-      replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}`);
+      replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}${entryId ? `&entry=${encodeURIComponent(entryId)}` : ""}`);
       // Session changes remount ChatWindow. Restore focus after that mount so
       // dismissing a native dialog or leaving a streaming session can never
       // strand keyboard input on the old, detached composer.
@@ -961,18 +1001,20 @@ export function AppShell() {
         window.requestAnimationFrame(() => chatInputRef.current?.focus());
       });
     }
-  }, [isMobile]);
+    return true;
+  }, [isMobile, translate]);
 
   const handleSelectSearchResult = useCallback((session: SessionInfo, entryId: string) => {
-    handleSelectSession(session);
-    setFocusedEntryId(entryId);
-    replaceUrlWithoutNextNavigation(`?session=${encodeURIComponent(session.id)}&entry=${encodeURIComponent(entryId)}`);
+    void handleSelectSession(session, false, entryId);
   }, [handleSelectSession]);
 
   useEffect(() => {
     let controller: AbortController | null = null;
     const restore = () => {
       controller?.abort(); controller = null;
+      const navigationVersion = ++workspaceNavigationVersionRef.current;
+      setPendingSessionSwitch(null);
+      setSessionSwitchError(null);
       const requestedUrl = window.location.search;
       const params = new URLSearchParams(window.location.search);
       const location = readHistoryLocation(params);
@@ -983,7 +1025,7 @@ export function AppShell() {
       const active = controller;
       void fetch(`/api/sessions/${encodeURIComponent(id)}?deferThinking=1&deferMedia=1`, { signal: active.signal })
         .then(async response => response.ok ? response.json() : null)
-        .then(body => { if (!active.signal.aborted && window.location.search === requestedUrl && body?.info) handleSelectSession(body.info, true); })
+        .then(body => { if (!active.signal.aborted && navigationVersion === workspaceNavigationVersionRef.current && window.location.search === requestedUrl && body?.info) void handleSelectSession(body.info, true); })
         .catch(() => {});
     };
     window.addEventListener("popstate", restore);
@@ -1027,6 +1069,8 @@ export function AppShell() {
     initialPrompt?: NewSessionInitialPrompt | null,
   ) => {
     workspaceNavigationVersionRef.current++;
+    setPendingSessionSwitch(null);
+    setSessionSwitchError(null);
     setSettingsDialogOpen(false);
     setSelectedRoom(null);
     setSelectedSession(null);
@@ -1042,6 +1086,8 @@ export function AppShell() {
 
   const handleRequestNewSession = useCallback(() => {
     workspaceNavigationVersionRef.current++;
+    setPendingSessionSwitch(null);
+    setSessionSwitchError(null);
     setSettingsDialogOpen(false);
     setSelectedRoom(null);
     setSelectedSession(null);
@@ -1082,6 +1128,8 @@ export function AppShell() {
 
   const handleSelectRoom = useCallback((room: CollaborationRoom, isRestore = false) => {
     workspaceNavigationVersionRef.current++;
+    setPendingSessionSwitch(null);
+    setSessionSwitchError(null);
     setSettingsDialogOpen(false);
     setSelectedSession(null);
     setNewSessionCwd(null);
@@ -1113,6 +1161,7 @@ export function AppShell() {
   }, [roomBrowser, selectedRoom]);
 
   const handleOpenDesktopUpdate = useCallback(() => {
+    if (desktopUpdateInstallPendingRef.current) return;
     setDesktopUpdateDialogOpen(true);
     if (desktopUpdateState?.status !== "available") return;
     void window.piDesktop?.downloadUpdate?.().then((state) => {
@@ -1126,8 +1175,23 @@ export function AppShell() {
     });
   }, []);
 
-  const handleInstallDesktopUpdate = useCallback(() => {
-    void window.piDesktop?.installUpdate?.();
+  const handleInstallDesktopUpdate = useCallback(async () => {
+    if (!window.piDesktop?.installUpdate || desktopUpdateInstallPendingRef.current) return;
+    desktopUpdateInstallPendingRef.current = true;
+    setDesktopUpdateDialogOpen(false);
+    try {
+      const started = await window.piDesktop.installUpdate();
+      if (!started) setDesktopUpdateDialogOpen(true);
+    } catch (error) {
+      setDesktopUpdateState((current) => current ? {
+        ...current,
+        status: "error",
+        error: error instanceof Error ? error.message : String(error),
+      } : current);
+      setDesktopUpdateDialogOpen(true);
+    } finally {
+      desktopUpdateInstallPendingRef.current = false;
+    }
   }, []);
 
   // Native Electron menus stay deliberately thin: the renderer owns all
@@ -1395,6 +1459,8 @@ export function AppShell() {
 
   const handleSessionForked = useCallback((newSessionId: string) => {
     workspaceNavigationVersionRef.current++;
+    setPendingSessionSwitch(null);
+    setSessionSwitchError(null);
     setHistoryDialogOpen(false);
     setHistoryLocation({ open: false, leafId: null, entryId: null });
     setRefreshKey((k) => k + 1);
@@ -1418,6 +1484,8 @@ export function AppShell() {
     setRefreshKey((k) => k + 1);
     if (selectedSession && sessionIds.includes(selectedSession.id)) {
       workspaceNavigationVersionRef.current++;
+      setPendingSessionSwitch(null);
+      setSessionSwitchError(null);
       const cwd = selectedSession.cwd;
       setSelectedSession(null);
       setNewSessionCwd(cwd ?? null);
@@ -1583,7 +1651,7 @@ export function AppShell() {
     const response = await fetch(`/api/sessions/${encodeURIComponent(id)}?deferThinking=1&deferMedia=1`);
     const body = await response.json();
     if (!response.ok || !body.info) throw new Error(body.error || `HTTP ${response.status}`);
-    handleSelectSession(body.info, true);
+    if (!await handleSelectSession(body.info, true)) return;
     setHistoryLocation({ open: true, leafId: null, entryId: null }); setHistoryDialogOpen(true);
     pushUrlWithoutNextNavigation(historyLocationUrl(id));
   }, [handleSelectSession]);
@@ -2797,7 +2865,8 @@ export function AppShell() {
           <div className="workspace-layout">
             {/* Chat content */}
             <div className="workspace-chat">
-            <div style={{ height: "100%", display: settingsDialogOpen ? "none" : "block", visibility: historyDialogOpen && !selectedRoom ? "hidden" : undefined }} aria-hidden={settingsDialogOpen || historyDialogOpen && !selectedRoom} inert={historyDialogOpen && !selectedRoom}>
+            {pendingSessionSwitch ? <div className="session-switch-status is-pending" role="status">{translate("chat.loadingSession")}</div> : sessionSwitchError ? <div className="session-switch-status" role="alert">{sessionSwitchError}</div> : null}
+            <div style={{ height: "100%", display: settingsDialogOpen ? "none" : "block", visibility: historyDialogOpen && !selectedRoom ? "hidden" : undefined }} aria-hidden={settingsDialogOpen || historyDialogOpen && !selectedRoom} aria-busy={Boolean(pendingSessionSwitch)} inert={Boolean(pendingSessionSwitch) || historyDialogOpen && !selectedRoom}>
             {selectedRoom ? (
               <RoomWorkspace
                 key={`${sessionKey}:${selectedRoom.id}`}

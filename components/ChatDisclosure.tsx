@@ -2,6 +2,7 @@
 
 import { useId, type ButtonHTMLAttributes, type HTMLAttributes, type ReactNode } from "react";
 import { flushSync } from "react-dom";
+import { CHAT_DISCLOSURE_TOGGLE_EVENT } from "@/lib/chat-scroll";
 import { AliIcon, type AliIconName } from "./AliIcon";
 
 export function DisclosureChevron() {
@@ -13,6 +14,10 @@ export function togglePreservingScroll(control: HTMLElement, toggle: () => void)
   const scroller = control.closest(".overflow-y-auto") as HTMLElement | null;
   if (!scroller) { toggle(); return; }
   const top = control.getBoundingClientRect().top;
+  // Stop live following before the toggle or a queued ResizeObserver pin can
+  // override this reading anchor on the next frame. This also covers keyboard
+  // activation, which has no pointer scroll-intent event.
+  scroller.dispatchEvent(new CustomEvent(CHAT_DISCLOSURE_TOGGLE_EVENT, { detail: control }));
   // Restore the clicked content anchor synchronously, before virtual row
   // measurements. Replaying an old scrollTop would fight their corrections.
   flushSync(toggle);

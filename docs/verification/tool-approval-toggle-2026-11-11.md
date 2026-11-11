@@ -8,3 +8,8 @@
 - 浏览器组件夹具：`ConversationSettings.browser.test.mjs` 与 `ChatInput-layout.browser.test.mjs` 均通过。通过 UI 切换开关，验证隐藏、刷新持久化与恢复；网络使用夹具，不代表真实模型或安装包验收。
 - 初轮验证因生成品牌文件缺失、菜单 effect 返回值错误、恢复后的旧测试夹具与断言不匹配而失败；分别准备品牌文件、修复 effect、更新夹具后复测通过。设置浏览器测试的同步 checkbox 断言改为点击后等待实际 UI 状态，仍核对保存值及刷新结果。
 - 未运行完整 CI、真实桌面 E2E、真实模型审核、安装包或跨平台验收；未构建发布包或运行 next build。远端 CI 结果以 PR 检查为准。
+
+## 同步 upstream/main 的冲突处理
+
+- 合并 ad9361bd，保留上游图片排队、附件预览及会话初始运行状态修复，同时保留权限保存发送保护、权限与审核状态同步。
+- 冲突涉及 ChatInput.tsx 和 useAgentSession.ts；126 项相关 Node 测试、两项浏览器交互测试、TypeScript、冲突文件 ESLint、更新说明及 diff 检查通过。未新增安装包或硬件验收，合并提交 CI 待远端运行。

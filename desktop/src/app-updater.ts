@@ -261,13 +261,16 @@ export class DesktopUpdateController {
   }
 
   private publish(next: Omit<DesktopUpdateState, "currentVersion" | "audience">): void {
-    const keepsAvailableVersion = next.status === "available"
+    // A freshness check can run while an already-downloaded update is shown.
+    // Retain its identity and notes until the check resolves a different target.
+    const keepsAvailableVersion = next.status === "checking"
+      || next.status === "available"
       || next.status === "downloading"
       || next.status === "downloaded";
     const availableVersion = next.availableVersion
       ?? (keepsAvailableVersion ? this.state.availableVersion : undefined);
     const releaseNotes = next.releaseNotes
-      ?? (keepsAvailableVersion ? this.state.releaseNotes : undefined);
+      ?? (keepsAvailableVersion && availableVersion === this.state.availableVersion ? this.state.releaseNotes : undefined);
     this.state = {
       status: next.status,
       currentVersion: this.state.currentVersion,

@@ -900,6 +900,9 @@ select:focus-visible,
   min-height: 0;
   overflow: hidden;
 }
+.session-switch-status { position: absolute; z-index: 40; top: 12px; right: 16px; max-width: calc(100% - 32px); padding: 6px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); color: var(--text-muted); font-size: var(--text-sm); pointer-events: none; }
+.session-switch-status.is-pending { animation: session-switch-pending 150ms steps(1, end) both; }
+@keyframes session-switch-pending { from { opacity: 0; } to { opacity: 1; } }
 
 @container workspace-body (max-width: 760px) {
   .workspace-layout {
@@ -4844,6 +4847,8 @@ pre, code {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+.message-image-thumbnail.composer-image-thumbnail { width: 56px; height: 56px; overflow: hidden; }
+.composer-image-thumbnail img { width: 100%; height: 100%; object-fit: cover; }
  .message-image-dialog {
   width: min(640px, 90vw); height: min(480px, 85dvh); max-width: 90vw; max-height: 85dvh;
   min-width: min(320px, 90vw); min-height: 180px; margin: auto; padding: 0;
@@ -4857,7 +4862,9 @@ pre, code {
 .message-image-dialog-toolbar button { display: inline-flex; align-items: center; justify-content: center; padding: 4px 7px; border: 1px solid var(--border); border-radius: var(--radius-control); cursor: pointer; }
 .message-image-dialog-toolbar button:hover { background: var(--bg-hover); }
 .message-image-dialog-toolbar button:focus-visible { outline: 2px solid var(--focus-ring); }
-.message-image-dialog-viewport { display: flex; align-items: center; justify-content: center; overflow: hidden; min-width: 0; min-height: 0; touch-action: none; cursor: grab; }
+.message-image-dialog-viewport { position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; min-width: 0; min-height: 0; touch-action: none; cursor: grab; }
+.message-image-copy-status:not(:empty) { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 6px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg-panel); color: var(--text); font-size: var(--text-sm); cursor: default; }
+.message-image-copy-status.is-error { color: var(--status-failed); }
 .message-image-dialog-viewport:active { cursor: grabbing; }
 .message-image-dialog-viewport img { display: block; flex: none; max-width: none; max-height: none; object-fit: contain; user-select: none; pointer-events: none; }
 

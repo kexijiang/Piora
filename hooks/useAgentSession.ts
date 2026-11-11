@@ -45,7 +45,7 @@ import {
 } from "@/lib/session-capabilities";
 import { runModelChange } from "@/lib/model-change-coordinator";
 import { useLiveOutputAutoScrollPreference } from "@/hooks/useLiveOutputAutoScrollPreference";
-import { getContentScrollMetrics, getLiveTailScrollLimit, scrollLiveTailWheel } from "@/lib/chat-scroll";
+import { CHAT_DISCLOSURE_TOGGLE_EVENT, getContentScrollMetrics, getLiveTailScrollLimit, scrollLiveTailWheel } from "@/lib/chat-scroll";
 import { followChatBottom } from "@/lib/chat-bottom-follow";
 import type {
   SessionSystemPromptBinding,
@@ -55,6 +55,8 @@ import type {
 export type { AgentPhase } from "@/lib/agent-phase";
 
 export interface SessionData {
+  /** Client-only state fetched together with a prepared conversation switch. */
+  initialAgentState?: { running: boolean; state?: AgentStateResponse };
   stats?: SessionStatsInfo;
   persistedPromptIds?: string[];
   sessionId: string;
@@ -461,6 +463,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [initialSessionData] = useState<SessionData | null>(() => (
     session ? peekPrefetchedSession(session) as SessionData | null : null
   ));
+  const initialRuntime = initialSessionData?.initialAgentState?.state;
+  const initiallyRunning = Boolean(initialRuntime && (initialRuntime.isStreaming || initialRuntime.isPromptRunning || initialRuntime.runtime === "running" || initialRuntime.runtime === "stopping"));
 
   const [data, setData] = useState<SessionData | null>(initialSessionData);
   const [loading, setLoading] = useState(!isNew && initialSessionData === null);
@@ -473,11 +477,11 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const editedBranchRef = useRef<{ sid: string; target: string; previousLeaf: string | null } | null>(null);
   const [entryIds, setEntryIds] = useState<string[]>(initialSessionData?.context.entryIds ?? []);
   const [modelChanges, setModelChanges] = useState<ModelChangeNotice[]>(initialSessionData?.context.modelChanges ?? []);
-  const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: false, streamingMessage: null });
-  const [agentRunning, setAgentRunning] = useState(false);
+  const [streamState, dispatch] = useReducer(streamReducer, { isStreaming: initiallyRunning, streamingMessage: null });
+  const [agentRunning, setAgentRunning] = useState(initiallyRunning);
   const [replyHistorySettling, setReplyHistorySettling] = useState(false);
   const [liveOutputFollowPaused, setLiveOutputFollowPaused] = useState(false);
-  const [bashRunning, setBashRunning] = useState(false);
+  const [bashRunning, setBashRunning] = useState(Boolean(initialRuntime?.isBashRunning));
   const [pendingBash, setPendingBash] = useState<{ command: string; excludeFromContext: boolean; output?: string } | null>(null);
   const [modelNames, setModelNames] = useState<Record<string, string>>({});
   const [modelList, setModelList] = useState<ModelEntry[]>([]);
@@ -498,8 +502,8 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
   const [forkingEntryId, setForkingEntryId] = useState<string | null>(null);
   const [currentModelOverride, setCurrentModelOverride] = useState<{ provider: string; modelId: string } | null>(null);
   const [pendingModel, setPendingModel] = useState<{ provider: string; modelId: string } | null>(null);
-  const [isCompacting, setIsCompacting] = useState(false);
-  const [compactionStartedAt, setCompactionStartedAt] = useState<number | null>(null);
+  const [isCompacting, setIsCompacting] = useState(Boolean(initialRuntime?.isCompacting));
+  const [compactionStartedAt, setCompactionStartedAt] = useState<number | null>(initialRuntime?.compactionStartedAt ?? null);
   const manualCompactionPendingRef = useRef(false);
   const [compactError, setCompactError] = useState<string | null>(null);
   const [compactResult, setCompactResult] = useState<CompactResultInfo | null>(null);
@@ -597,7 +601,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     return () => { disposed = true; window.removeEventListener("focus", refresh); window.removeEventListener(DEFAULT_TOOL_PERMISSION_CHANGED, refresh); };
   }, [session?.id, newSessionCwd, acceptToolPermission]);
 
-  const agentRunningRef = useRef(false);
+  const agentRunningRef = useRef(initiallyRunning);
   const reconciliationRef = useRef<{ sid: string; runId: number; controller: AbortController } | null>(null);
   useEffect(() => {
     const receive = (event: Event) => {
@@ -607,7 +611,7 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
     window.addEventListener("piora:project-model-changed", receive);
     return () => window.removeEventListener("piora:project-model-changed", receive);
   }, []);
-  const bashRunningRef = useRef(false);
+  const bashRunningRef = useRef(Boolean(initialRuntime?.isBashRunning));
   const bashRecoveryIdRef = useRef(0);
   const handleAgentEventRef = useRef<((event: AgentEvent) => void) | null>(null);
   const initialScrollDoneRef = useRef(false);
@@ -779,11 +783,14 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       if (!includeState) return null;
 
       try {
-        const stateRes = await wait(fetch(`/api/sessions/${encodeURIComponent(sid)}/state`, {
-          signal: controller.signal,
-        }));
-        if (!stateRes.ok) throw new Error(`HTTP ${stateRes.status}`);
-        const agentState = await wait(stateRes.json()) as { running: boolean; state?: AgentStateResponse };
+        let agentState = d.initialAgentState;
+        if (!agentState) {
+          const stateRes = await wait(fetch(`/api/sessions/${encodeURIComponent(sid)}/state`, {
+            signal: controller.signal,
+          }));
+          if (!stateRes.ok) throw new Error(`HTTP ${stateRes.status}`);
+          agentState = await wait(stateRes.json()) as { running: boolean; state?: AgentStateResponse };
+        }
         if (controller.signal.aborted || sessionIdRef.current !== sid || promptRunIdRef.current !== runId) return null;
 
         const liveState = agentState.state;
@@ -2929,15 +2936,24 @@ export function useAgentSession(opts: UseAgentSessionOptions) {
       markUserScrollIntent(event);
       scrollLiveTailWheel(container, event, liveTailPinnedScrollTopRef.current);
     };
+    const onDisclosureToggle = () => {
+      pauseHistoryFollow();
+      // The live spacer still supports this reading position when the final
+      // process collapses below one viewport. Do not clamp it to the shorter
+      // content bottom while the clicked heading is being restored.
+      liveTailPinnedScrollTopRef.current = container.scrollTop;
+    };
+    container.addEventListener(CHAT_DISCLOSURE_TOGGLE_EVENT, onDisclosureToggle);
     container.addEventListener("wheel", onWheel, { passive: false });
     container.addEventListener("touchstart", markUserScrollIntent, { passive: true });
     container.addEventListener("scroll", handleScrollPositionChange, { passive: true });
     return () => {
+      container.removeEventListener(CHAT_DISCLOSURE_TOGGLE_EVENT, onDisclosureToggle);
       container.removeEventListener("wheel", onWheel);
       container.removeEventListener("touchstart", markUserScrollIntent);
       container.removeEventListener("scroll", handleScrollPositionChange);
     };
-  }, [messages.length, loading, handleScrollPositionChange, markUserScrollIntent]);
+  }, [messages.length, loading, handleScrollPositionChange, markUserScrollIntent, pauseHistoryFollow]);
 
   useEffect(() => stopInitialBottomPin, [stopInitialBottomPin]);
 

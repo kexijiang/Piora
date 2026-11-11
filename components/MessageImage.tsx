@@ -4,14 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useI18n } from "@/hooks/useI18n";
+import { copyImage } from "@/lib/clipboard";
 import { AliIcon } from "./AliIcon";
 
-export function MessageImage({ src, index, onOpen }: { src: string; index: number; onOpen: () => void }) {
+export function MessageImage({ src, index, onOpen, className = "" }: { src: string; index: number; onOpen: () => void; className?: string }) {
   const { t } = useI18n();
   const label = t("chat.openImage", { count: String(index + 1) });
 
   return (
-    <button type="button" className="message-image-thumbnail" onClick={onOpen} title={label} aria-label={label}>
+    <button type="button" className={`message-image-thumbnail ${className}`.trim()} onClick={onOpen} title={label} aria-label={label}>
       {/* Session images can be base64 data URLs or provider URLs. */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={src} alt="" />
@@ -23,6 +24,9 @@ export function MessageImageViewer({ src, index, onClose }: { src: string; index
   const { t, locale } = useI18n();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
+  const image = useRef<HTMLImageElement>(null);
+  const copying = useRef(false);
+  const [copyState, setCopyState] = useState<"idle" | "pending" | "copied" | "error">("idle");
   const [natural, setNatural] = useState({ width: 0, height: 0 });
   const [zoom, setZoom] = useState<number | null>(null);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -32,6 +36,14 @@ export function MessageImageViewer({ src, index, onClose }: { src: string; index
   const scale = zoom ?? fit;
   const zh = locale === "zh-CN";
   const reset = (value: number | null) => { setZoom(value); setOffset({ x: 0, y: 0 }); };
+  const copy = async () => {
+    if (!image.current || copying.current) return;
+    copying.current = true;
+    setCopyState("pending");
+    try { await copyImage(image.current); setCopyState("copied"); }
+    catch { setCopyState("error"); }
+    finally { copying.current = false; }
+  };
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog) return;
@@ -57,6 +69,11 @@ export function MessageImageViewer({ src, index, onClose }: { src: string; index
   }, [scale]);
   return typeof document === "undefined" ? null : createPortal(
     <dialog ref={dialogRef} className="message-image-dialog" aria-label={t("chat.imageViewer")}
+      onKeyDown={event => {
+        if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "c") {
+          event.preventDefault(); event.stopPropagation(); void copy();
+        }
+      }}
       onCancel={event => { event.preventDefault(); onClose(); }}
       onClick={event => {
         if (event.target !== event.currentTarget) return;
@@ -70,6 +87,10 @@ export function MessageImageViewer({ src, index, onClose }: { src: string; index
           <button type="button" onClick={() => reset(1)}>1:1</button>
           <button type="button" onClick={() => reset(null)}>{zh ? "还原" : "Reset"}</button>
           <output>{Math.round(scale * 100)}%</output>
+          <button type="button" onClick={() => void copy()} disabled={copyState === "pending" || !natural.width}
+            title={`${t("chat.copyImage")} · ${/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘C" : "Ctrl+C"}`}>
+            <AliIcon name="copy" size={14} />{t("chat.copyImage")}
+          </button>
           <button type="button" onClick={onClose} aria-label={t("i18n.close")}><AliIcon name="close" size={15} /></button>
         </div>
         <div ref={viewport} className="message-image-dialog-viewport" tabIndex={0}
@@ -78,13 +99,20 @@ export function MessageImageViewer({ src, index, onClose }: { src: string; index
           onPointerMove={event => { const start = drag.current; if (start) setOffset({ x: start.left + event.clientX - start.x, y: start.top + event.clientY - start.y }); }}
           onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }} onLostPointerCapture={() => { drag.current = null; }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt="" draggable={false} style={{ width: natural.width * scale || undefined, height: natural.height * scale || undefined, transform: `translate(${offset.x}px, ${offset.y}px)` }}
+          <img ref={image} src={src} alt="" draggable={false} style={{ width: natural.width * scale || undefined, height: natural.height * scale || undefined, transform: `translate(${offset.x}px, ${offset.y}px)` }}
             onLoad={event => {
               const { naturalWidth: width, naturalHeight: height } = event.currentTarget;
               setNatural({ width, height }); reset(null);
               const dialog = dialogRef.current;
-              if (dialog) { dialog.style.width = `${Math.max(320, Math.min(innerWidth * 0.9, width + 24))}px`; dialog.style.height = `${Math.max(180, Math.min(innerHeight * 0.85, height + 70))}px`; }
+              if (dialog) {
+                dialog.style.width = `${Math.max(320, Math.min(innerWidth * 0.9, width + 24))}px`;
+                const toolbarHeight = dialog.querySelector(".message-image-dialog-toolbar")?.getBoundingClientRect().height ?? 42;
+                dialog.style.height = `${Math.max(180, Math.min(innerHeight * 0.85, height + toolbarHeight + 24))}px`;
+              }
             }} />
+          <div className={`message-image-copy-status${copyState === "error" ? " is-error" : ""}`} role="status" aria-live="polite">
+            {copyState === "copied" ? t("i18n.copied") : copyState === "error" ? t("chat.copyImageFailed") : ""}
+          </div>
         </div>
       </div>
     </dialog>, document.body);
