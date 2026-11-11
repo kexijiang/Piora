@@ -213,6 +213,6 @@
     "@typescript/native": "npm:typescript@7.0.2"
   },
   "optionalDependencies": {
-    "@microsoft/winappcli": "0.7.1"
+    "@microsoft/winappcli": "0.8.0"
   }
 }
