@@ -326,7 +326,7 @@ export function RealtimeLogs({ active, visible = true, serial, online, copy, onS
       {bundle ? <span title={copy("通过当前 PID 与日志明确的进程字段筛选；不搜索消息正文", "Current PID map and explicit log process field; not message text")}>PID {applicationPids.size ? [...applicationPids].join(", ") : copy("暂无运行进程", "not running")}</span> : null}
     </div>
     <div className={styles.logToolbar}>
-      <input list={processListId} value={pid} onChange={(event) => setPid(event.target.value)} placeholder={copy("进程名称 / PID", "Process name / PID")} aria-label={copy("搜索进程", "Search processes")} style={{ width: 150, minWidth: 80, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 5, padding: 5 }} />
+      <input className={styles.logProcess} list={processListId} value={pid} onChange={(event) => setPid(event.target.value)} placeholder={copy("进程名称 / PID", "Process name / PID")} aria-label={copy("搜索进程", "Search processes")} />
       <datalist id={processListId}>{processes.map((process) => <option key={process.pid} value={process.pid}>{process.name} ({process.pid})</option>)}</datalist>
       <select value={level} onChange={(event) => setLevel(event.target.value)} aria-label={copy("最低日志级别", "Minimum log level")}>
         <option value="">{copy("所有级别", "All levels")}</option>
