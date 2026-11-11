@@ -15,7 +15,6 @@ import {
   MANUAL_BROWSER_SESSION_ID,
   NAVIGATION_TIMEOUT_MS,
   PASSWORD_FOCUS_UNCONFIRMED_ERROR,
-  PASSWORD_TYPE_ERROR,
   REFS_INVALID_ERROR,
   RELOAD_NOTICE,
   RENDERER_CRASHED_ERROR,
@@ -792,7 +791,6 @@ export class BrowserAgentControl {
         const result = focused as { ok?: boolean; error?: string; password?: boolean; type?: string; tag?: string };
         if (result && result.ok === false) throw new Error(result.error || "Element ref was not found. Take a new snapshot.");
         if (referencedTypeTargetIsFrame(result)) throw new Error(PASSWORD_FOCUS_UNCONFIRMED_ERROR);
-        if (result && (result.password === true || result.type === "password")) throw new Error(PASSWORD_TYPE_ERROR);
       } else {
         let active: unknown;
         try {
@@ -801,8 +799,7 @@ export class BrowserAgentControl {
           throw new Error(PASSWORD_FOCUS_UNCONFIRMED_ERROR);
         }
         const focus = unreferencedTypeFocus(active);
-        if (focus === "password") throw new Error(PASSWORD_TYPE_ERROR);
-        if (focus !== "ok") throw new Error(PASSWORD_FOCUS_UNCONFIRMED_ERROR);
+        if (focus !== "ok" && focus !== "password") throw new Error(PASSWORD_FOCUS_UNCONFIRMED_ERROR);
       }
       await this.inputCommand(tab.id, "Input.insertText", { text: request.text });
       if (request.submit) {
