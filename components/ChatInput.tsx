@@ -1,11 +1,8 @@
 "use client";
-import { ToolPermissionControl } from "./ToolPermissionControl";
-import type { PermissionMode, ToolPermissionState } from "@/lib/tool-permission-policy";
 
 import React, { useId, useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { useReplyDraft } from "@/hooks/useReplyDraft";
-import { useInputPrediction } from "@/hooks/useInputPrediction";
 import { useReplySuggestions } from "@/hooks/useReplySuggestions";
 import { ReplySuggestionBar } from "./ReplySuggestionBar";
 import { CompactionProgress, CompactionResult } from "./CompactionProgress";
@@ -91,6 +88,8 @@ import { ModelProviderIcon } from "./ModelProviderIcon";
 import type { ContextUsage, SessionStatsInfo } from "@/lib/pi-types";
 import type { ExtensionStatusItem } from "@/lib/types";
 import { ExtensionStatusBar } from "./ExtensionStatusBar";
+import { WorkflowModePicker } from "./WorkflowModePicker";
+import { DEFAULT_WORKFLOW_TURN_BUDGET, type WorkflowPromptOptions } from "@/lib/workflow-types";
 import {
   buildSlashCommandRegistry,
   filterSlashCommandRegistry,
@@ -169,9 +168,9 @@ interface Props {
   contextControl?: React.ReactNode;
   /** Pending submissions aligned with the input surface below its context controls. */
   queueContent?: React.ReactNode;
-  toolPermission?: ToolPermissionState | null;
-  permissionSaving?: boolean;
-  onToolPermissionChange?: (mode: PermissionMode) => void;
+  workflow?: WorkflowPromptOptions;
+  workflowEnabled?: boolean;
+  workflowBusy?: boolean;
 }
 
 export interface ChatInputHandle {
@@ -346,7 +345,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   variant = "conversation",
   placeholder,
   contextControl, queueContent,
-  toolPermission, permissionSaving, onToolPermissionChange,
+  workflow, workflowBusy = false, workflowEnabled = true,
   replySource = null,
 }: Props, ref) {
   const { t, locale } = useI18n();
@@ -403,9 +402,29 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   const [commandInputOptions, setCommandInputOptions] = useState<ChatInputOptions>(() => draftKey ? getDraft(draftKey)?.commandInput ?? {} : {});
   const commandInputOptionsRef = useRef(commandInputOptions);
   commandInputOptionsRef.current = commandInputOptions;
+  const authoritativeWorkflowMode = workflow?.mode;
+  const authoritativeWorkflowBudget = workflow?.turnBudget;
+  useEffect(() => {
+    if (workflowEnabled) return;
+    setCommandInputOptions(current => {
+      if (!current.workflow) return current;
+      const next = { ...current }; delete next.workflow; return next;
+    });
+  }, [workflowEnabled, commandInputOptions.workflow]);
+  useEffect(() => {
+    // Keep a just-sent selection visible until the authoritative snapshot catches
+    // up. Then release the draft override so Plan exit/approval can change mode.
+    if (!authoritativeWorkflowMode) return;
+    setCommandInputOptions(current => {
+      if (current.workflow?.mode !== authoritativeWorkflowMode
+        || (current.workflow.turnBudget ?? DEFAULT_WORKFLOW_TURN_BUDGET) !== (authoritativeWorkflowBudget ?? DEFAULT_WORKFLOW_TURN_BUDGET)) return current;
+      const next = { ...current };
+      delete next.workflow;
+      return next;
+    });
+  }, [authoritativeWorkflowMode, authoritativeWorkflowBudget]);
   const parsedCommandInput = parseChatInput(value, commandCatalog ?? createChatCommandCatalog(slashCommands ?? []), commandInputOptions);
   const isCommandInput = parsedCommandInput.kind !== "message";
-  const prediction = useInputPrediction(isStreaming || isCompacting ? null : replySource, cwd, locale, value.length > 0);
   const suggestions = useReplySuggestions(isStreaming || isCompacting ? null : replySource, locale);
   const [hydratedDraftKey, setHydratedDraftKey] = useState<string | undefined>(undefined);
   const [draftStorageError, setDraftStorageError] = useState(false);
@@ -864,14 +883,15 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     }
     const value = valueRef.current;
     const msg = value.trim();
-    const sentCommandOptions = { ...commandInputOptions, ...overrideOptions };
+    const sentWorkflow = workflowEnabled ? overrideOptions?.workflow ?? commandInputOptions.workflow ?? workflow : { mode: "agent" as const };
+    const sentCommandOptions = { ...commandInputOptions, ...overrideOptions, ...(sentWorkflow ? { workflow: { ...sentWorkflow } } : {}) };
     const parsed = parseChatInput(value, commandCatalog ?? createChatCommandCatalog(slashCommands ?? []), sentCommandOptions);
     const commandSubmission = parsed.kind !== "message";
     if (!commandSubmission && msg.startsWith("/")) sentCommandOptions.inputMode = "text";
     // Delivery from a recovered draft must never turn an ordinary send into steering.
     if (!commandSubmission) sentCommandOptions.delivery = overrideOptions?.delivery ?? (isStreaming ? runningSendMode : "next_turn");
     if (!msg && !attachedImages.length && !attachedFiles.length) return;
-    if (sendDisabled || permissionSaving || (isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
+    if (sendDisabled || (isStreaming && !onQueueInput) || isProcessingImages || pendingFileCountRef.current > 0 || (isAutoModelSelection && !commandSubmission)) return;
     if (attachedFiles.some((file) => !file.path && file.text == null)) {
       setAttachmentError(t("chat.attachmentMissingPath"));
       return;
@@ -916,6 +936,10 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       if (cleared || draftKeyRef.current !== sentDraftKey || valueRef.current !== sentValue || attachedImagesRef.current !== sentImages || attachedFilesRef.current !== sentFiles) return;
       cleared = true;
       clearInput();
+      if (sentCommandOptions.workflow && (sentCommandOptions.workflow.mode !== workflow?.mode
+        || (sentCommandOptions.workflow.turnBudget ?? DEFAULT_WORKFLOW_TURN_BUDGET) !== (workflow?.turnBudget ?? DEFAULT_WORKFLOW_TURN_BUDGET))) {
+        setCommandInputOptions({ workflow: { ...sentCommandOptions.workflow } });
+      }
       valueRef.current = "";
       attachedImagesRef.current = [];
       attachedFilesRef.current = [];
@@ -966,7 +990,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
     } catch (error) {
       setAttachmentError(error instanceof Error ? error.message : String(error));
     } finally { sendingRef.current = false; }
-  }, [attachedImages, attachedFiles, sendDisabled, permissionSaving, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode, commandCatalog, slashCommands]);
+  }, [attachedImages, attachedFiles, sendDisabled, isStreaming, isProcessingImages, isAutoModelSelection, onBuiltinCommand, onSend, onQueueInput, clearInput, contextUsage, t, replyDraftRef, resetReplyDraft, commandInputOptions, runningSendMode, commandCatalog, slashCommands, workflow, workflowEnabled]);
 
   useEffect(() => {
     submitRef.current = () => { void handleSend(); };
@@ -1046,7 +1070,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   useEffect(() => {
     if (!canQueueStreamingMessage) sendModeHoverDismissed.current = false;
   }, [canQueueStreamingMessage]);
-  const canSend = !sendDisabled && !permissionSaving && !isProcessingImages && !isProcessingFiles
+  const canSend = !sendDisabled && !isProcessingImages && !isProcessingFiles
     && (!isAutoModelSelection || isCommandInput)
     && (hasInputText || attachedImages.length > 0 || attachedFiles.length > 0);
   const canOptimizePrompt = hasInputText
@@ -1302,7 +1326,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
 
   const applySlashCommand = useCallback((command: SlashCommandPaletteItem) => {
     if (command.supported === false) { setAttachmentError(t("chatCommands.unsupported")); return; }
-    setCommandInputOptions({ commandKey: command.key, catalogRevision: commandCatalog?.revision });
+    setCommandInputOptions(current => ({ workflow: current.workflow, commandKey: command.key, catalogRevision: commandCatalog?.revision }));
     const nextValue = `/${command.name} `;
     const originDraftKey = draftKeyRef.current;
     textareaRef.current?.focus();
@@ -1434,10 +1458,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       if (isComposing || recentlyComposed) {
         if (e.key === "Enter" && recentlyComposed) e.preventDefault();
         return;
-      }
-
-      if (e.key === "Tab" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey && !value && prediction) {
-        e.preventDefault(); setValue(prediction); return;
       }
 
       // Hover opens the popover without moving focus out of the composer.
@@ -1586,7 +1606,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
       // Only the configured newline binding inserts a line break.
       if (e.key === "Enter") e.preventDefault();
     },
-    [prediction, isStreaming, isCommandInput, onQueueInput, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, submitStreamingMessage, undoReplyDraft, sendShortcut, newlineShortcut, setValue, updateAtQuery, closeSendModeMenu]
+    [isStreaming, isCommandInput, onQueueInput, onSteer, onFollowUp, onAbort, slashMenuOpen, slashQuery, filteredSlashCommands, slashActiveIndex, applySlashCommand, handleSend, getNextSlashIndex, atMenuOpen, atQuery, atMatches, atActiveIndex, applyAtCompletion, historyMenuOpen, inputHistory, historyActiveIndex, applyHistoryInput, value, stopVoiceInput, localVoiceRecording, attachmentMenuOpen, submitStreamingMessage, undoReplyDraft, sendShortcut, newlineShortcut, setValue, updateAtQuery, closeSendModeMenu]
   );
 
   const handleInput = useCallback(() => {
@@ -2131,7 +2151,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                           onMouseEnter={() => setAtActiveIndex(index)}
                         >
                           <span className="file-mention-icon">
-                            {entry.isDir ? <FolderIcon size={14} /> : getFileIcon(name, 14)}
+                            {entry.isDir ? <FolderIcon size={14} name={name} /> : getFileIcon(name, 14)}
                           </span>
                           <span className="file-mention-copy">
                             <span className="file-mention-name">{name}{entry.isDir ? "/" : ""}</span>
@@ -2182,6 +2202,8 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
             </div>
           )}
           {contextControl && <div className="chat-composer-context">{contextControl}</div>}
+          {workflowEnabled && workflow && <WorkflowModePicker value={commandInputOptions.workflow ?? workflow} disabled={isStreaming || workflowBusy}
+            onChange={next => setCommandInputOptions(current => ({ ...current, workflow: next }))} />}
           {queueContent}
           <div
             className="chat-composer-surface"
@@ -2218,7 +2240,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
               setCommandInputOptions(current => ({ ...current, afterPrompt: "" }));
               requestAnimationFrame(() => followUpTextareaRef.current?.focus());
             }}>{t("chatCommands.addQuery")}</button>}
-                <button type="button" onClick={() => { setValue([value, parsedCommandInput.afterPrompt].filter(Boolean).join("\n\n")); setCommandInputOptions({ inputMode: "text" }); textareaRef.current?.focus(); }}>{t("chatCommands.asText")}</button>
+                <button type="button" onClick={() => { setValue([value, parsedCommandInput.afterPrompt].filter(Boolean).join("\n\n")); setCommandInputOptions(current => ({ workflow: current.workflow, inputMode: "text" })); textareaRef.current?.focus(); }}>{t("chatCommands.asText")}</button>
               </div>
             </details>
           </div>}
@@ -2242,7 +2264,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
               if (previousName !== nextName) setCommandInputOptions(current => ({ ...current, commandKey: undefined, catalogRevision: undefined }));
               if (!nextValue.trimStart().startsWith("/") && commandInputOptions.afterPrompt?.trim()) {
                 nextValue = [nextValue, commandInputOptions.afterPrompt].filter(Boolean).join("\n\n");
-                setCommandInputOptions({});
+                setCommandInputOptions(current => ({ workflow: current.workflow }));
               }
               setValue(nextValue);
               setHistoryMenuOpen(false);
@@ -2265,10 +2287,10 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
             onInput={handleInput}
             onPaste={handlePaste}
             placeholder={
-              prediction || (placeholder ?? (isStreaming && (onSteer || onFollowUp)
+              placeholder ?? (isStreaming && (onSteer || onFollowUp)
                 ? t("chat.steerPlaceholder")
                 : isStreaming ? t("chat.agentPlaceholder")
-                : t("chat.messagePlaceholder")))
+                : t("chat.messagePlaceholder"))
             }
             rows={1}
             style={{
@@ -2296,7 +2318,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
             <textarea ref={followUpTextareaRef} aria-label={t("chatCommands.query")} value={commandInputOptions.afterPrompt} placeholder={t("chatCommands.queryPlaceholder")} onChange={event => setCommandInputOptions(current => ({ ...current, afterPrompt: event.target.value }))} />
           </label>}
           {isCommandInput && parsedCommandInput.kind === "invalid" && !slashMenuOpen && value.trim() !== "/" && <div className={commandStyles.validation} role="status">
-            <p>{t(`chatCommands.error.${parsedCommandInput.code}`, { name: parsedCommandInput.name })}</p><button type="button" onClick={() => { setValue([value, commandInputOptions.afterPrompt].filter(Boolean).join("\n\n")); setCommandInputOptions({ inputMode: "text" }); }}>{t("chatCommands.asText")}</button>
+            <p>{t(`chatCommands.error.${parsedCommandInput.code}`, { name: parsedCommandInput.name })}</p><button type="button" onClick={() => { setValue([value, commandInputOptions.afterPrompt].filter(Boolean).join("\n\n")); setCommandInputOptions(current => ({ workflow: current.workflow, inputMode: "text" })); }}>{t("chatCommands.asText")}</button>
           </div>}
           <div className="chat-composer-footer">
             <div ref={attachmentMenuRef} className="composer-add-control">
@@ -2348,7 +2370,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                 <AliIcon name="plus" size={15} />
               </button>
             </div>
-            {onToolPermissionChange && <ToolPermissionControl state={toolPermission ?? null} saving={permissionSaving} onChange={onToolPermissionChange} />}
             {voiceInputSupported && (
               <>
                 <button
@@ -2502,7 +2523,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                   <span className="model-settings-trigger-label">
                     {currentName ?? (modelOptions.length > 0 ? t("chat.selectModel") : t("chat.noModels"))}
                   </span>
-                  {!isAutoModelSelection && modelOptions.some(option => option.isDefault && option.provider === model?.provider && option.modelId === model?.modelId) && <span className="model-default-badge">{t("models.defaultBadge")}</span>}
                   {onThinkingLevelChange && !isAutoModelSelection ? <span className="model-settings-trigger-reasoning">{thinkingLevelLabel}</span> : null}
                 </button>
                 {modelDropdownOpen && modelDropdownRect && (() => {
@@ -2572,7 +2592,6 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
                                 >
                                   <ModelProviderIcon className="model-settings-choice-icon" provider={option.provider} modelId={option.modelId} modelName={option.name} size={15} />
                                   <span className="model-settings-choice-label">{option.name}</span>
-                                  {option.isDefault && <span className="model-default-badge">{t("models.defaultBadge")}</span>}
                                   {isActive ? <AliIcon name="check" size={11} /> : null}
                                 </button>
                               );

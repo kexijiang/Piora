@@ -1,5 +1,8 @@
 /** Preserve the server's control state so the workbench can explain a rejected request. */
 export class HarmonyRequestError extends Error {
+  readonly nativeVideoUnavailable: boolean;
+  private readonly videoLibrary?: string;
+  private readonly missingVideoSymbol?: string;
   readonly code?: string;
   readonly controlStatus?: "stopping" | "recovering";
   readonly signatureRejected: boolean;
@@ -8,10 +11,13 @@ export class HarmonyRequestError extends Error {
   private readonly reason?: string;
 
   constructor(value: unknown, status: number) {
-    const error = value && typeof value === "object" ? value as { code?: unknown; message?: unknown; details?: { state?: unknown; reason?: unknown; deviceErrorCode?: unknown; ownerPid?: unknown } } : undefined;
+    const error = value && typeof value === "object" ? value as { code?: unknown; message?: unknown; details?: { state?: unknown; reason?: unknown; deviceErrorCode?: unknown; ownerPid?: unknown; library?: unknown; missingSymbol?: unknown } } : undefined;
     super(typeof value === "string" ? value : typeof error?.message === "string" ? error.message : `Request failed (${status})`);
     this.code = typeof error?.code === "string" ? error.code : undefined;
     this.reason = typeof error?.details?.reason === "string" ? error.details.reason : undefined;
+    this.nativeVideoUnavailable = this.code === "CAPABILITY_UNAVAILABLE" && ["debug-video-library-unavailable", "debug-video-abi-incompatible", "debug-video-start-failed"].includes(this.reason ?? "");
+    this.videoLibrary = typeof error?.details?.library === "string" ? error.details.library.slice(0, 120) : undefined;
+    this.missingVideoSymbol = typeof error?.details?.missingSymbol === "string" && /^[_A-Za-z][_A-Za-z0-9.$]{1,255}$/.test(error.details.missingSymbol) ? error.details.missingSymbol : undefined;
     this.ownedByAnotherInstance = error?.code === "DEVICE_BUSY" && Number.isSafeInteger(error.details?.ownerPid) && (error.details?.ownerPid as number) > 0;
     this.signatureRejected = error?.code === "COMMAND_FAILED" && error.details?.reason === "signature-rejected";
     this.deviceErrorCode = typeof error?.details?.deviceErrorCode === "string" && /^\d{1,12}$/.test(error.details.deviceErrorCode)
@@ -22,6 +28,20 @@ export class HarmonyRequestError extends Error {
   }
 
   messageFor(chinese: boolean): string {
+    if (this.reason === "debug-video-abi-incompatible") return (chinese
+      ? "原生投屏库与设备系统不兼容，缺少动态链接符号"
+      : "The native video library is incompatible with the device; a dynamic symbol is missing")
+      + (this.missingVideoSymbol ? `: ${this.missingVideoSymbol}` : ".")
+      + (this.videoLibrary ? ` (${this.videoLibrary})` : "")
+      + (chinese ? "。请更新 Piora 或含兼容投屏库的 DevEco Studio 后重新连接设备；仅更换 HDC 路径不会更新投屏库。"
+        : ". Update Piora or DevEco Studio with a compatible video library, then reconnect the device; changing the HDC path alone does not update the library.");
+    if (this.reason === "debug-video-library-unavailable") return chinese
+      ? "没有找到匹配且完整的原生投屏库。请修复或更新 Piora；UiTest 7.0 需要内置 6.6 或更新版本库。"
+      : "No matching, verified native video library is available. Repair or update Piora; UiTest 7.0 requires the bundled 6.6 or newer library.";
+    if (this.reason === "debug-video-start-failed") return (chinese
+      ? "原生投屏服务未能启动。请核对设备版本与投屏库，具体加载错误可在诊断中查看。"
+      : "The native video service could not start. Check the device and library versions; loader evidence is included in diagnostics.")
+      + (this.videoLibrary ? ` (${this.videoLibrary})` : "");
     if (this.reason === "debug-video-sdk-missing") return chinese
       ? "未找到原生投屏运行时。请修复或更新 Piora 后重新连接；正常安装无需额外安装 DevEco Studio。"
       : "The native video runtime is missing. Repair or update Piora and reconnect; a normal installation does not require DevEco Studio.";
@@ -29,8 +49,8 @@ export class HarmonyRequestError extends Error {
       ? "其他开发工具正在使用这台手机的视频通道。请关闭其投屏后重新连接，Piora 不会强行停止其他工具。"
       : "Another development tool is using this phone's video channel. Close its mirror and reconnect.";
     if (this.reason === "debug-video-unavailable") return chinese
-      ? "HDC 实时视频通道连接失败。请重新连接设备并更新 Piora；若设备系统较新，也可使用兼容版本的 DevEco Studio 扩展支持。此通道无需在手机上打开 Piora 共享屏幕。"
-      : "The HDC video channel failed. Reconnect the device and update Piora. A compatible DevEco Studio can extend support for newer device systems. This channel does not need the phone's Piora sharing app.";
+      ? "HDC 实时视频通道连接失败。请查看连接诊断并核对投屏库与设备版本；此通道无需在手机上打开 Piora 共享屏幕。"
+      : "The HDC video channel failed. Check Diagnostics and the native library/device versions; this channel does not need the phone's Piora sharing app.";
     if (this.code === "CAPABILITY_UNAVAILABLE" && ["mirror-awaiting-video", "mirror-stream-closed", "mirror-component-missing"].includes(this.reason ?? "")) return chinese
       ? "实时视频尚未建立。请点击“启用实时投屏”，在手机上确认屏幕共享后重新连接。"
       : "Live video has not started. Enable live video, confirm screen sharing on the phone, then reconnect.";

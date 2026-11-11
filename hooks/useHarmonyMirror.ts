@@ -10,6 +10,7 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
   const { locale } = useI18n();
   const surfaceRef = useRef<HTMLDivElement>(null);
   const workerRef = useRef<Worker | null>(null);
+  const displayed = useRef<{ canvas: HTMLCanvasElement; frame: MirrorFrame } | null>(null);
   const [state, setState] = useState<"idle" | "connecting" | "live" | "recovering" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
   const [controlStatus, setControlStatus] = useState<HarmonyRequestError["controlStatus"]>();
@@ -23,13 +24,15 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
 
   useEffect(() => {
     const surface = surfaceRef.current;
-    setFrame(null); setStatistics(null); setError(null); setControlStatus(undefined);
+    const retained = displayed.current?.frame.serial === serial && displayed.current.frame.generation === generation ? displayed.current : null;
+    if (!retained) { displayed.current?.canvas.remove(); displayed.current = null; }
+    setFrame(retained?.frame ?? null); setStatistics(null); setError(null); setControlStatus(undefined);
     if (!active || !surface || !serial || generation === undefined) { setState("idle"); return; }
     // A fresh DOM canvas per ownership epoch is required: transferControlToOffscreen
     // is irreversible. This also makes React StrictMode's effect replay safe.
     const canvas = document.createElement("canvas");
     canvas.setAttribute("role", "img"); canvas.setAttribute("aria-label", label);
-    canvas.style.cssText = "display:block;width:100%;height:100%;object-fit:contain;";
+    canvas.style.cssText = `display:block;width:100%;height:100%;object-fit:contain;position:absolute;inset:0;opacity:${retained ? 0 : 1};`;
     surface.appendChild(canvas);
     let worker: Worker | undefined, disposed = false;
     setState("connecting");
@@ -44,9 +47,13 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
           setState(data.state); setControlStatus(requestError?.controlStatus);
           setError(requestError ? requestError.messageFor(locale === "zh-CN") : data.error ?? null);
           // Fatal initialization failures need a new canvas and worker on retry.
-          if (data.state === "error") { worker?.terminate(); workerRef.current = null; }
+          if (data.fatal) { worker?.terminate(); workerRef.current = null; }
         }
-        else if (data.type === "frame") setFrame({ serial, generation, width: data.width, height: data.height, revision: data.revision });
+        else if (data.type === "frame") {
+          const nextFrame = { serial, generation, width: data.width, height: data.height, revision: data.revision };
+          if (displayed.current?.canvas !== canvas) displayed.current?.canvas.remove();
+          canvas.style.opacity = "1"; displayed.current = { canvas, frame: nextFrame }; setFrame(nextFrame);
+        }
         else if (data.type === "statistics") setStatistics(data.statistics);
       };
       worker.onerror = event => {
@@ -66,7 +73,9 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
       // Allow abort/cancel to close the HTTP subscriber, then release the worker.
       if (worker) { const owned = worker; setTimeout(() => owned.terminate(), 100); }
       if (workerRef.current === worker) workerRef.current = null;
-      canvas.remove();
+      // Keep the last painted frame through disconnection and worker replacement.
+      // The next identity or first replacement frame removes it.
+      if (displayed.current?.canvas !== canvas) canvas.remove();
     };
   }, [active, serial, generation, label, retry, locale]);
 

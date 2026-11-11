@@ -137,6 +137,11 @@ export function renderLicenseInventory(records, lockfileSha256) {
     `Archive SHA-256: \`${bundledPowerShell.sha256}\`.`,
     "",
     renderTable("Build and development dependency closure", development),
+    "## File and folder icons",
+    "",
+    "Selected Material Icon Theme SVGs, MIT, Copyright (c) 2025 Material Extensions. The pinned commit, source hashes, transformations and complete license are bundled in [public/file-icons](public/file-icons/SOURCE.md). The app uses only the selected local sprite, not the VS Code extension.",
+    "Selected unmodified HOScrcpy 1.0.18-beta native Unix video libraries use the upstream MIT license. The upstream unfilled copyright template is retained verbatim. Fixed distribution, source and binary hashes are in [video provenance](third_party/harmony-video/SOURCE.md); the complete license and manifest ship in resources/licenses/harmony-video.",
+    "",
     "## Optional offline speech",
     "",
     "SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sherpa-onnx 1.13.6. Model weights use the FunASR Model Open Source License Agreement; the toolkit uses MIT and sherpa-onnx uses Apache-2.0. Exact model hashes, upstream attribution, and separate license texts are recorded in [speech provenance](third_party/sensevoice/SOURCE.md) and copied into resources/licenses/sensevoice.",
@@ -148,6 +153,10 @@ export function renderLicenseInventory(records, lockfileSha256) {
     "## Harmony device tools and capture source",
     "",
     "Bundled HDC uses Apache-2.0, libusb uses LGPL-2.1-or-later, and the capture component uses HongJing's MIT license. See [bundled artifact provenance](third_party/harmony-tools/windows-x64/SOURCE.md). The editable ordinary-permission Piora capture component and retained original copyright notice are in [capture source provenance](third_party/harmony-mirror/SOURCE.md) and [MIT license](third_party/harmony-mirror/LICENSE-HONGJING-MIT.txt). Source preparation does not include signing materials or establish that a release artifact has been replaced.",
+    "",
+    "## Harmony log workbench",
+    "",
+    "The offline log workbench is adapted from Alentaoker/dsh-harmoneydev-tools at 8b178a755d33cee9899160a7be283af2b23eb85d under Apache-2.0; live log components use that project's MIT code. Exact provenance, modifications and complete licenses are retained in [source notices](third_party/harmony-log-workbench/SOURCE.md). ZIP uses yauzl (MIT); RAR uses the unmodified 7-Zip 26.04 runtime from 7z-bin, preserving its LGPL/BSD/unRAR notices. No Harmony SDK, dictionary or vendor video binary is included in this adaptation.",
     "",
   ].join("\n");
 }

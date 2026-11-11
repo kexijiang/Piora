@@ -39,7 +39,8 @@ test("moves files and review into a Codex-style launcher and tool-tab workspace"
   assert.match(rightPanel, /id: "review"/);
   assert.match(rightPanel, /id: "commands"/);
   assert.match(rightPanel, /id: "browser"/);
-  assert.match(rightPanel, /id: "design"/);
+  assert.doesNotMatch(rightPanel, /^\s*\{ id: "design"/m);
+  assert.doesNotMatch(shell, /stored === "design"/);
   assert.match(rightPanel, /id: "harmony"/);
   assert.match(rightPanel, /id: "files"/);
   assert.doesNotMatch(rightPanel, /workspace-search/);

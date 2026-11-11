@@ -22,7 +22,7 @@ export function CompactProcessSummary({ group, onToggle, onInspectCommand }: { g
   const elapsed = group.startedAt !== undefined && end !== undefined ? Math.max(0, end - group.startedAt) : null;
   const description = Object.entries(group.activities).map(([kind, count]) => t(`chat.processActivity.${kind}` as "chat.processActivity.read", { count: count! })).join(" · ");
   return <section className={`compact-process-group${group.active ? " is-active" : ""}${group.attention ? " has-attention" : ""}`}>
-    <ChatDisclosureTrigger className="compact-process-toggle" expanded={group.expanded} disabled={group.attention} icon="activity"
+    <ChatDisclosureTrigger className="compact-process-toggle" expanded={group.expanded} disabled={group.attention && group.active} icon="activity"
       label={t(group.attention ? "chat.processAttention" : group.active ? "chat.processWorking" : "chat.processFinished")}
       description={description} metadata={elapsed !== null ? formatStatusDuration(elapsed) : undefined}
       title={t(group.attention ? "chat.processAttention" : group.expanded ? "chat.collapseProcess" : "chat.expandProcess")}

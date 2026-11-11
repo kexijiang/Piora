@@ -12,7 +12,7 @@ scope.onmessage = ({ data }) => {
     try {
       engine = new MirrorVideoEngine(data.canvas, data.serial, data.generation, event => scope.postMessage(event));
       engine.start();
-    } catch (error) { scope.postMessage({ type: "state", state: "error", error: error instanceof Error ? error.message : String(error) }); }
+    } catch (error) { scope.postMessage({ type: "state", state: "error", fatal: true, error: error instanceof Error ? error.message : String(error) }); }
   } else if (data.type === "stop") { engine?.stop(); engine = undefined; }
   else if (data.type === "reconnect") engine?.reconnect();
 };

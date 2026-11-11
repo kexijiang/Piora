@@ -9,6 +9,8 @@ import { getSessionMessageRouter, SessionMessageRouterError } from "@/lib/sessio
 import type { SessionCommandStatus } from "@/lib/session-message-types";
 import { randomUUID } from "node:crypto";
 import { dispatchChatInput, ChatInputDispatchError } from "@/lib/chat-input-dispatch";
+import { parseWorkflowPromptOptions, WorkflowInputError } from "@/lib/workflow-input";
+import { isWorkflowError } from "@/lib/workflow-runtime";
 
 function messageIdempotency(id: string, body: Record<string, unknown>): string {
   return typeof body.idempotencyKey === "string" && body.idempotencyKey.trim()
@@ -104,6 +106,7 @@ export async function POST(
         content: typeof body.message === "string" ? body.message : "",
         source: "ui" as const,
         idempotencyKey: messageIdempotency(id, body),
+        ...(body.workflow !== undefined ? { workflow: parseWorkflowPromptOptions(body.workflow) } : {}),
         ...(Array.isArray(body.images) ? { images: body.images } : {}),
         ...(Array.isArray(body.materials) ? { materials: body.materials as Array<{ id: string }> } : {}),
       };
@@ -133,6 +136,8 @@ export async function POST(
 
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
+    if (error instanceof WorkflowInputError) return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+    if (isWorkflowError(error)) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
     if (error instanceof ChatInputDispatchError) return NextResponse.json({ error: error.message, code: error.code, commandName: error.commandName }, { status: error.status });
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error), ...(error instanceof SessionMessageRouterError ? { code: error.code } : {}) }, { status: errorStatus(error) });
   }

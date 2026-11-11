@@ -3,7 +3,7 @@ import { openGestureConnection, type GestureConnection } from "./input/gesture-c
 import { LiveTouch } from "./input/live-touch";
 import { allocatePioraPort, configureHypiumPorts } from "./runtime/local-port";
 import { mkdirSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../runtime-home";
 import { join } from "node:path";
 import { lockSync } from "proper-lockfile";
 

@@ -10,7 +10,7 @@
 }
 
 .launcher {
-  width: min(760px, 100%);
+  width: min(100%, var(--chat-column-width, clamp(820px, 72vw, 1180px)));
   max-width: 100%;
   margin-inline: auto;
   display: flex;
@@ -41,14 +41,6 @@
   font-weight: 680;
   line-height: 1.14;
   letter-spacing: -.035em;
-}
-
-.header p {
-  margin: 0;
-  max-width: 620px;
-  color: var(--text-muted);
-  font-size: var(--text-base);
-  line-height: 1.6;
 }
 
 .projectPath {

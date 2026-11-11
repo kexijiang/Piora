@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 /** Load after hydration so the server and first client render agree. */
-export function useSectionDisclosure(section: "chats" | "rooms") {
+export function useSectionDisclosure(section: "chats" | "rooms" | "projects") {
   const key = `piora:sidebar-section-collapsed:${section}:v1`;
   const [collapsed, setCollapsed] = useState(false);
   const [hydrated, setHydrated] = useState(false);

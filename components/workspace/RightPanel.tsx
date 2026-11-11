@@ -69,7 +69,8 @@ const TOOLS: Array<{ id: Exclude<RightPanelTab, "home">; icon: AliIconName; shor
   { id: "commands", icon: "code" },
   { id: "ssh", icon: "server" },
   { id: "browser", icon: "earth", shortcut: "Ctrl+T" },
-  { id: "design", icon: "workflow" },
+  // Temporarily hide the Design to Harmony entry; retain its panel and implementation below.
+  // { id: "design", icon: "workflow" },
   { id: "harmony", icon: "mobile" },
   { id: "files", icon: "folder-open", shortcut: "Ctrl+P" },
 ];
@@ -414,7 +415,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
       }} /></RenderErrorBoundary></div></div> : null}
     </section>
     <section id="workspace-harmony" role="tabpanel" aria-labelledby="workspace-harmony-tab" hidden={activeTab !== "harmony"} className={styles.panel}>
-      {activeTab === "harmony" ? <div className={styles.capabilityPanel}>{capabilityAccess("device")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`harmony:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><SafeHarmonyPanel active={active && activeTab === "harmony"} maximized={props.maximized} onMaximizedChange={props.onMaximizedChange} cwd={cwd} sessionRunning={props.sessionRunning} onGuideAgent={props.onGuideAgent} onOpenLocalTerminal={() => onActiveTabChange("commands")} /></RenderErrorBoundary></div></div> : null}
+      {activeTab === "harmony" ? <div className={styles.capabilityPanel}>{capabilityAccess("device")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`harmony:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><SafeHarmonyPanel active={active && activeTab === "harmony"} maximized={props.maximized} onMaximizedChange={props.onMaximizedChange} cwd={cwd} sessionId={props.sessionId} sessionRunning={props.sessionRunning} onGuideAgent={props.onGuideAgent} onOpenLocalTerminal={() => onActiveTabChange("commands")} /></RenderErrorBoundary></div></div> : null}
     </section>
     <section id="workspace-design" role="tabpanel" aria-labelledby="workspace-design-tab" hidden={activeTab !== "design"} className={styles.panel}>
       {activeTab === "design" ? <RenderErrorBoundary resetKey={`design:${cwd ?? "no-project"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><DesignToHarmonyPanel

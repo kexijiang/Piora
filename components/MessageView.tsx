@@ -141,6 +141,7 @@ interface Props {
   messageActions?: ReactNode;
   message: AgentMessage;
   isStreaming?: boolean;
+  toolRunActive?: boolean;
   intermediate?: boolean;
   toolResults?: Map<string, ToolResultMessage>;
   modelNames?: Record<string, string>;
@@ -209,12 +210,13 @@ export function getAutomationToolCardDetails(
 
 const HistoryModeContext = createContext(false);
 const HistoryVersionContext = createContext<string | undefined>(undefined);
+const ToolRunActiveContext = createContext(false);
 export const MessageView = memo(function MessageView(props: Props) {
   const history = props.mode === "history";
-  return <HistoryModeContext.Provider value={history}><HistoryVersionContext.Provider value={props.historyVersion}><MessageContent {...props}
+  return <HistoryModeContext.Provider value={history}><ToolRunActiveContext.Provider value={!history && (props.toolRunActive ?? props.isStreaming ?? false)}><HistoryVersionContext.Provider value={props.historyVersion}><MessageContent {...props}
     onFork={history ? undefined : props.onFork} onNavigate={history ? undefined : props.onNavigate}
     onEditFailed={history ? undefined : props.onEditFailed} onRetry={history ? undefined : props.onRetry} onEditContent={history ? undefined : props.onEditContent}
-    onOpenAutomation={history ? undefined : props.onOpenAutomation} /></HistoryVersionContext.Provider></HistoryModeContext.Provider>;
+    onOpenAutomation={history ? undefined : props.onOpenAutomation} /></HistoryVersionContext.Provider></ToolRunActiveContext.Provider></HistoryModeContext.Provider>;
 });
 
 const MessageContent = memo(function MessageContent({ mode, messageActions, message, isStreaming, intermediate, toolResults, modelNames, cwd, onOpenFile, entryId, onFork, forking, onNavigate, prevAssistantEntryId, onEditContent, onEditFailed, onRetry, retryPrompt, retryDisabled, showTimestamp, prevTimestamp, taskTiming, sessionId, onOpenAutomation, onOpenCommandExecution }: Props) {
@@ -746,7 +748,7 @@ function AssistantMessageView({
         {blockGroups.map((group) => {
           const key = `${entryId ?? "stream"}-${group.items[0].originalIndex}`;
           const content = group.items.map(({ block, originalIndex }) => (
-          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
+          <BlockView key={`${entryId ?? "stream"}-${originalIndex}`} block={block} toolResults={toolResults} isStreaming={isStreaming && (block.type !== "thinking" || originalIndex === blockItems.at(-1)?.originalIndex)} streamingDuration={streamingDurations.get(originalIndex) ?? (block.type === "thinking" ? thinkingDurationFromFile : undefined)} toolCallDurations={toolCallDurations} cwd={cwd} onOpenFile={onOpenFile} sessionId={sessionId} entryId={entryId} blockIndex={originalIndex} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />
           ));
           return group.process ? <ProcessStack key={key} stateKey={key} count={group.items.length}
             timeRanges={[processTimeRange(group.items.map(({ block }) => block), message.timestamp, prevTimestamp, toolResults)]}>{content}</ProcessStack>
@@ -826,9 +828,9 @@ function AssistantMessageView({
              {copied ? t("i18n.copied") : t("i18n.copy")}
           </button>
         )}
-        {!isStreaming ? <span className="message-hover-actions">{messageActions}</span> : null}
+        {!isStreaming ? <span className="message-hover-actions" style={{ marginLeft: "auto" }}>{messageActions}</span> : null}
         {time && !isStreaming && (
-          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)", marginLeft: "auto" }}>{time}</span>
+          <span style={{ fontSize: "var(--text-xs)", color: "var(--text-dim)" }}>{time}</span>
         )}
       </div>}
     </div>
@@ -847,7 +849,7 @@ function BlockView({ block, toolResults, isStreaming, streamingDuration, toolCal
     const tc = block as ToolCallContent;
     const result = toolResults?.get(tc.toolCallId);
     const duration = toolCallDurations?.get(tc.toolCallId);
-    return <ToolCallBlock block={tc} result={result} duration={duration} cwd={cwd} sessionId={sessionId} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
+    return <ToolCallBlock block={tc} preparing={isStreaming} result={result} duration={duration} cwd={cwd} sessionId={sessionId} onOpenFile={onOpenFile} onOpenAutomation={onOpenAutomation} onOpenCommandExecution={onOpenCommandExecution} />;
   }
   return null;
 }
@@ -867,7 +869,15 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
   blockIndex: number;
 }) {
   const { t } = useI18n();
-  const [expanded, setExpanded] = useVirtualRowToggle(`thinking:${blockIndex}`);
+  const [expanded, setExpanded] = useVirtualRowToggle(`thinking:${blockIndex}`, Boolean(isStreaming));
+  const wasThinking = useRef(Boolean(isStreaming));
+  useEffect(() => {
+    const thinking = Boolean(isStreaming);
+    if (wasThinking.current !== thinking) {
+      wasThinking.current = thinking;
+      setExpanded(thinking);
+    }
+  }, [isStreaming, setExpanded]);
   const historyVersion = useContext(HistoryVersionContext);
   const [loadState, setLoadState] = useState<ThinkingLoadState | null>(null);
   const sourceKey = sessionId && entryId ? `${sessionId}:${entryId}:${blockIndex}:${historyVersion ?? "chat"}` : null;
@@ -912,12 +922,23 @@ function ThinkingBlock({ block, duration, isStreaming, cwd, onOpenFile, sessionI
 }
 
 
-function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, onOpenAutomation, onOpenCommandExecution }: { block: ToolCallContent; result?: ToolResultMessage; duration?: number; cwd?: string; sessionId?: string; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
+function ToolCallBlock({ block, preparing, result, duration, cwd, sessionId, onOpenFile, onOpenAutomation, onOpenCommandExecution }: { block: ToolCallContent; preparing?: boolean; result?: ToolResultMessage; duration?: number; cwd?: string; sessionId?: string; onOpenFile?: (filePath: string) => void; onOpenAutomation?: (automationId: string) => void; onOpenCommandExecution?: (data: CommandExecutionData) => void }) {
   const { t } = useI18n();
   const historyMode = useContext(HistoryModeContext);
   const [expanded, setExpanded] = useVirtualRowToggle(`tool:${block.toolCallId}`);
   const [diagnosticsOpen, setDiagnosticsOpen] = useVirtualRowToggle(`diagnostics:${block.toolCallId}`);
-  const diagnostics = safeJson({ input: block.input, result: result ?? null });
+  const runActive = useContext(ToolRunActiveContext);
+  const pending = runActive && (!result || result.isStreaming === true);
+  const [waitSeconds, setWaitSeconds] = useState(0);
+  useEffect(() => {
+    if (!pending) return;
+    const started = Date.now();
+    const timer = setInterval(() => setWaitSeconds(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, [pending, block.toolCallId]);
+  const phase = result && !result.isStreaming ? result.isError ? "error" : "ok" : !runActive ? "unfinished" : preparing && !result ? "preparing" : "running";
+  const longWait = t(phase === "preparing" ? "toolSummary.preparingLong" : "toolSummary.waitingLong");
+  const diagnostics = safeJson({ toolName: block.toolName, state: phase, streamingParameters: phase === "preparing", waitingSeconds: pending ? waitSeconds : undefined, input: block.input, result: result ?? null });
   const fileChange = getFileChangeInfo(block, result);
   const resultDiff = result && !result.isError ? getResultDiff(result) : null;
   const summary = summarizeToolDisclosure(block.toolName, block.input, result?.isStreaming ? undefined : result, t);
@@ -934,8 +955,8 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
       command: typeof block.input.command === "string" ? block.input.command : "",
       output,
       status: commandStatus(result, output),
-      isStreaming: !historyMode && (!result || result.isStreaming === true),
-      historical: historyMode,
+      isStreaming: pending,
+      historical: historyMode || !runActive && (!result || result.isStreaming === true),
       duration,
       cwd,
       exitCode: commandExitCode(result, output),
@@ -954,6 +975,7 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
       reason={typeof block.input.reason === "string" ? block.input.reason : ""}
       result={result}
       historical={historyMode}
+      purpose={block.input.purpose === "login" || block.input.purpose === "confirmation" ? block.input.purpose : undefined}
     />;
   }
 
@@ -978,7 +1000,7 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
   const resultIsEmpty = resultText === null ? false : (resultText.trim() === "(no output)" || resultText.trim() === "");
   const isError = result?.isError ?? false;
 
-  if (fileChange) {
+  if (fileChange && result && !result.isStreaming) {
     return (
       <FileChangeBlock
         change={fileChange}
@@ -1003,14 +1025,16 @@ function ToolCallBlock({ block, result, duration, cwd, sessionId, onOpenFile, on
       </> : summary.detail ? <span title={summary.detail}>{summary.detail}</span> : undefined}
       metadata={<>
         {nestedCalls ? <span>{t("nestedCalls.progress", { done: nestedCalls.calls.filter(call => call.status === "ok" || call.status === "error").length, total: nestedCalls.calls.length })}</span> : null}
-        <span className={`chat-disclosure-status is-${historyMode && !result ? "unknown" : summary.status}`}>{t(historyMode && !result ? "history.noSavedResult" : summary.status === "running" ? "command.status.running" : summary.status === "error" ? "command.status.failed" : "command.status.success")}</span>
+        <span className={`chat-disclosure-status is-${phase === "unfinished" ? "unknown" : phase === "preparing" ? "running" : phase}`}>{t(phase === "unfinished" ? "toolSummary.unfinished" : phase === "preparing" ? "toolSummary.preparing" : phase === "running" ? "command.status.running" : phase === "error" ? "command.status.failed" : "command.status.success")}</span>
+        {pending && waitSeconds > 0 ? <span title={waitSeconds >= 60 ? longWait : undefined}>{waitSeconds}s{waitSeconds >= 60 ? ` · ${t("toolSummary.takingLong")}` : ""}</span> : null}
         {duration !== undefined ? <span>{duration}s</span> : null}
       </>}>
       {result ? resultDiff
         ? <PairedDiffResult diff={resultDiff} />
         : fileResult ? <FileToolResultView model={fileResult} toolCallId={block.toolCallId} onOpenFile={onOpenFile} />
         : <PairedResult text={resultText ?? ""} isEmpty={resultIsEmpty} isError={isError} />
-        : <div className="chat-disclosure-notice">{t(historyMode ? "history.noSavedResult" : "command.waitingForOutput")}</div>}
+        : <div className="chat-disclosure-notice">{t(phase === "unfinished" ? "toolSummary.unfinishedResult" : phase === "preparing" ? "toolSummary.preparing" : "command.waitingForOutput")}</div>}
+      {pending && waitSeconds >= 60 ? <div className="chat-disclosure-notice">{longWait}</div> : null}
       {nestedCalls ? <NestedToolCalls snapshot={nestedCalls} /> : null}
       <ChatDisclosure variant="inline" expanded={diagnosticsOpen} onExpandedChange={setDiagnosticsOpen}
         label={t("toolSummary.diagnostics")}>

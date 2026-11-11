@@ -2,9 +2,9 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `896a64a874a058b834f53dabf44da4fcd8bbe2f7e730a62b20aef5e474476ff3`
+Lockfile SHA-256: `636f02f2724d5e29216751f794c17397fe81299e5bd5245b5673af07870543e5`
 
-Unique locked packages: **1268**. Runtime packages: **768**. Build/development-only packages: **500**.
+Unique locked packages: **1271**. Runtime packages: **771**. Build/development-only packages: **500**.
 
 This source inventory records lockfile package-declared license labels plus exact version-scoped reviewed declarations before reviewed postinstall replacements. The packaged application additionally contains a build-derived SBOM, the final package-copy inventory, every published LICENSE/LICENCE/COPYING/NOTICE file, and version-scoped reviewed upstream fallbacks when a compiled npm package omits its required license text. A runtime package marked `UNDECLARED` fails generation.
 
@@ -14,6 +14,7 @@ Every locked package declares a license.
 
 | Package | Version | Declared license | Optional |
 | --- | --- | --- | --- |
+| `7z-bin` | `26.4.0` | MIT | No |
 | `@antfu/install-pkg` | `1.1.0` | MIT | No |
 | `@anthropic-ai/sdk` | `0.129.0` | MIT | No |
 | `@aws-sdk/client-bedrock-runtime` | `3.1127.0` | Apache-2.0 | No |
@@ -626,6 +627,7 @@ Every locked package declares a license.
 | `path-scurry` | `1.11.1` | BlueOak-1.0.0 | No |
 | `path-to-regexp` | `8.4.2` | MIT | No |
 | `pathe` | `2.0.3` | MIT | No |
+| `pend` | `1.2.0` | MIT | No |
 | `picocolors` | `1.1.1` | ISC | No |
 | `pkce-challenge` | `5.0.1` | MIT | No |
 | `pkg-types` | `1.3.1` | MIT | No |
@@ -778,6 +780,7 @@ Every locked package declares a license.
 | `yaml` | `2.9.0` | ISC | No |
 | `yargs` | `17.7.3` | MIT | No |
 | `yargs-parser` | `21.1.1` | ISC | No |
+| `yauzl` | `3.4.0` | MIT | No |
 | `zip-stream` | `6.0.1` | MIT | No |
 | `zod` | `4.6.7` | MIT | No |
 | `zod-to-json-schema` | `3.25.2` | ISC | No |
@@ -1294,6 +1297,11 @@ Archive SHA-256: `02fe458be20493fbdf43f61ea20610b811ee6c738ab1676c61b9cfcd1a33c8
 | `yocto-queue` | `0.1.0` | MIT | No |
 | `zod-validation-error` | `4.0.2` | MIT | No |
 
+## File and folder icons
+
+Selected Material Icon Theme SVGs, MIT, Copyright (c) 2025 Material Extensions. The pinned commit, source hashes, transformations and complete license are bundled in [public/file-icons](public/file-icons/SOURCE.md). The app uses only the selected local sprite, not the VS Code extension.
+Selected unmodified HOScrcpy 1.0.18-beta native Unix video libraries use the upstream MIT license. The upstream unfilled copyright template is retained verbatim. Fixed distribution, source and binary hashes are in [video provenance](third_party/harmony-video/SOURCE.md); the complete license and manifest ship in resources/licenses/harmony-video.
+
 ## Optional offline speech
 
 SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sherpa-onnx 1.13.6. Model weights use the FunASR Model Open Source License Agreement; the toolkit uses MIT and sherpa-onnx uses Apache-2.0. Exact model hashes, upstream attribution, and separate license texts are recorded in [speech provenance](third_party/sensevoice/SOURCE.md) and copied into resources/licenses/sensevoice.
@@ -1305,3 +1313,7 @@ SenseVoiceSmall INT8 by Alibaba/FunAudioLLM, converted by Fangjun Kuang, with sh
 ## Harmony device tools and capture source
 
 Bundled HDC uses Apache-2.0, libusb uses LGPL-2.1-or-later, and the capture component uses HongJing's MIT license. See [bundled artifact provenance](third_party/harmony-tools/windows-x64/SOURCE.md). The editable ordinary-permission Piora capture component and retained original copyright notice are in [capture source provenance](third_party/harmony-mirror/SOURCE.md) and [MIT license](third_party/harmony-mirror/LICENSE-HONGJING-MIT.txt). Source preparation does not include signing materials or establish that a release artifact has been replaced.
+
+## Harmony log workbench
+
+The offline log workbench is adapted from Alentaoker/dsh-harmoneydev-tools at 8b178a755d33cee9899160a7be283af2b23eb85d under Apache-2.0; live log components use that project's MIT code. Exact provenance, modifications and complete licenses are retained in [source notices](third_party/harmony-log-workbench/SOURCE.md). ZIP uses yauzl (MIT); RAR uses the unmodified 7-Zip 26.04 runtime from 7z-bin, preserving its LGPL/BSD/unRAR notices. No Harmony SDK, dictionary or vendor video binary is included in this adaptation.

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isPermissionMode } from "@/lib/tool-permission-policy";
 import { getAgentRuntimeProfile } from "@/lib/agent-runtime-profile";
 import { createSession, parseSessionThinkingLevel } from "@/lib/session-creation";
 import type { SessionCapabilityPreset, SessionCapabilitySelection } from "@/lib/session-capabilities";
@@ -55,12 +54,6 @@ export async function POST(req: Request) {
     const runtimeProfile = getAgentRuntimeProfile();
     const body = await req.json() as { cwd?: string; [key: string]: unknown };
     const { cwd, ...command } = body;
-    const permissionMode = command.permissionMode;
-    delete command.permissionMode;
-    if (permissionMode !== undefined && !isPermissionMode(permissionMode)) {
-      return NextResponse.json({ error: "Invalid permission mode" }, { status: 400 });
-    }
-
     if (!cwd || typeof cwd !== "string") {
       return NextResponse.json({ error: "cwd is required" }, { status: 400 });
     }
@@ -115,10 +108,6 @@ export async function POST(req: Request) {
       runtimeProfile,
     });
     const { session, sessionId: realSessionId } = created;
-    const toolPermission = await session.send(permissionMode
-      ? { type: "set_tool_permission", mode: permissionMode }
-      : { type: "get_tool_permission" });
-
     if (promptCommand.type === "ensure_session") {
       return NextResponse.json({
         success: true,
@@ -127,7 +116,6 @@ export async function POST(req: Request) {
         model: created.model,
         thinkingLevel: created.thinkingLevel,
         capabilities: created.capabilities,
-        toolPermission,
         runtimeProfile,
       });
     }

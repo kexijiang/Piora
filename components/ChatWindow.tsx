@@ -15,6 +15,10 @@ import { ChatHistory, type ChatHistoryHandle } from "./ChatHistory";
 import { MessageView } from "./MessageView";
 import { RenderErrorBoundary } from "./RenderErrorBoundary";
 import { ChatInput, type ChatInputHandle } from "./ChatInput";
+import { WorkflowPanel } from "./WorkflowPanel";
+import { useWorkflow } from "@/hooks/useWorkflow";
+import { useLaboratorySettings } from "@/hooks/useLaboratorySettings";
+import { DEFAULT_WORKFLOW_TURN_BUDGET } from "@/lib/workflow-types";
 import { ChatCommandCard, ChatCommandQueue, type ChatCommandCardActions } from "./ChatCommandCard";
 import { NewSessionContextChip, NewSessionLauncher } from "./NewSessionLauncher";
 import { SystemPromptSelector } from "./SystemPromptSelector";
@@ -26,7 +30,6 @@ import { useI18n } from "@/hooks/useI18n";
 import { useAgentSession, type AgentPhase, type NoticeItem, type SlashCommandInfo } from "@/hooks/useAgentSession";
 import { TaskDuration } from "./TaskDuration";
 import { responseTaskTimings } from "@/lib/response-task-timing";
-import { ToolReviewStatus } from "./ToolReviewStatus";
 import { useDragDrop } from "@/hooks/useDragDrop";
 import { useIsMobile } from "@/hooks/useIsMobile";
 import { useResizablePanel } from "@/hooks/useResizablePanel";
@@ -165,7 +168,8 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
   // drafts: two new chats in the same project must never restore each other.
   const [newChatDraftKey] = useState(() => `new:${crypto.randomUUID()}`);
   const { t } = useI18n();
-  const compactProcess = false;
+  const laboratory = useLaboratorySettings();
+  const compactProcess = true;
   const isMobile = useIsMobile();
   const chatSurfaceRef = useRef<HTMLDivElement>(null);
   const chatColumnWidthRef = useRef(CHAT_COLUMN_DEFAULT_WIDTH);
@@ -208,7 +212,6 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
   const {
     nestedCallsStore, loading, error, messages, entryIds, modelChanges, streamState, replyHistorySettling, activeLeafId, switchHistoryBranch, forkHistoryQuestion,
-    toolPermission, permissionSaving, handleToolPermission, toolReviews,
     agentRunning, bashRunning, pendingBash, modelNames, modelList, modelError, modelThinkingLevels, modelThinkingLevelMaps, thinkingLevel,
     retryInfo, contextUsage, systemPromptBinding, systemPromptSelection, systemPromptSaving, forkingEntryId,
     isCompacting, compactionStartedAt, compactError, compactResult, displayModel: displayModelValue, sessionStats,
@@ -221,19 +224,21 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
     sessionIdRef, messagesEndRef, scrollContainerRef, activityClockRef, statusClock,
     lastUserMsgRef,
     pendingScrollToUserRef,
-    handleSend, handleAbort, handleFork, handleBranch, handleNavigate, handleRewindRecovery, handleModelChange, handleScrollToBottom, pauseHistoryFollow, handleDeleteMessage, deletingMessage,
+    handleSend, handleAbort, handleWorkflowAction, handleFork, handleBranch, handleNavigate, handleRewindRecovery, handleModelChange, handleScrollToBottom, pauseHistoryFollow, handleDeleteMessage, deletingMessage,
     handleCompact, handleDismissCompactError, handleDismissCompactResult, handleSteer, handleFollowUp, handlePromptWithStreamingBehavior, handleAbortCompaction,
     handlePendingInputAction,
     handleThinkingLevelChange, handleSystemPromptSelection, loadSlashCommands,
   } = useAgentSession({
     viewVisible: visible,
+    workflowEnabled: laboratory.ready ? laboratory.planGoalEnabled : undefined,
+    workflowReady: laboratory.ready,
     session, newSessionCwd, newSessionInitialModel,
     newSessionInitialSystemPromptSelection: initialPrompt?.systemPromptSelection ?? null,
-    newSessionInitialPermissionMode: initialPrompt?.permissionMode,
     onAgentEnd, onSessionCreated, onSessionForked,
     modelsRefreshKey, chatInputRef, onBranchDataChange, onSystemPromptChange, onSessionStatsPanelOpen,
   });
   const sessionBusy = agentRunning || bashRunning;
+  const workflow = useWorkflow(session?.id ?? sessionIdRef.current, visible, sessionBusy, handleWorkflowAction);
   const [browserWaiting, setBrowserWaiting] = useState(false);
   const responseTimings = useMemo(() => responseTaskTimings(messages, chatCommands.taskTimings), [messages, chatCommands.taskTimings]);
   const timingInReply = !sessionBusy && [...responseTimings.values()].some(timing =>
@@ -313,7 +318,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
   }, [sessionBusy, session?.id, handleComposerSend, t]);
 
   useEffect(() => {
-    if (!isNew || !initialPrompt || sessionBusy || isAutoModelSelection && !(initialPrompt.commandInput?.inputMode !== "text" && initialPrompt.message.trimStart().startsWith("/"))) return;
+    if (!laboratory.ready || !isNew || !initialPrompt || sessionBusy || isAutoModelSelection && !(initialPrompt.commandInput?.inputMode !== "text" && initialPrompt.message.trimStart().startsWith("/"))) return;
     if (locallyClaimedInitialPromptRef.current === initialPrompt.id) return;
     if (claimInitialPrompt && !claimInitialPrompt(initialPrompt.id)) return;
     locallyClaimedInitialPromptRef.current = initialPrompt.id;
@@ -327,7 +332,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
       initialPrompt.retryOfPromptIds,
       initialPrompt.commandInput,
     ).then(accepted => { if (accepted === false) restoreInitial(); else onPromptSubmitted?.(); }).catch(() => { restoreInitial(); });
-  }, [claimInitialPrompt, handleSend, initialPrompt, isAutoModelSelection, isNew, onPromptSubmitted, sessionBusy, chatInputRef]);
+  }, [claimInitialPrompt, handleSend, initialPrompt, isAutoModelSelection, isNew, onPromptSubmitted, sessionBusy, chatInputRef, laboratory.ready]);
 
   const [commandExecutionDialog, setCommandExecutionDialog] = useState<CommandExecutionData | null>(null);
   const commandActions = useMemo<ChatCommandCardActions>(() => ({
@@ -662,8 +667,10 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
   const chatInputElement = (
     <>
-    <ToolReviewStatus reviews={toolReviews} />
     {chatCommands.connectionError && <div role="status" style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "6px 10px" }}>{chatCommands.connectionError}</div>}
+    <WorkflowPanel snapshot={workflow.snapshot} busy={workflow.busy} running={sessionBusy} enabled={laboratory.planGoalEnabled} settingsReady={laboratory.ready}
+      error={!laboratory.ready && laboratory.error ? t("laboratory.error") : workflow.error}
+      onAction={workflow.act} onRefresh={laboratory.ready ? workflow.refresh : laboratory.refresh} cwd={session?.cwd ?? newSessionCwd ?? undefined} />
     <ChatInput
       ref={chatInputRef}
       replySource={replySource}
@@ -671,6 +678,10 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
       placeholder={isEmptyNew ? t("newSession.placeholder") : undefined}
       contextControl={composerContextControl}
       queueContent={composerQueueContent}
+      workflow={laboratory.planGoalEnabled ? { mode: workflow.snapshot?.mode ?? "agent", turnBudget: workflow.snapshot?.turnBudget ?? DEFAULT_WORKFLOW_TURN_BUDGET } : undefined}
+      workflowEnabled={laboratory.ready ? laboratory.planGoalEnabled : undefined}
+      workflowBusy={workflow.busy}
+      sendDisabled={!laboratory.ready || workflow.busy || laboratory.planGoalEnabled && Boolean((session?.id ?? sessionIdRef.current) && !workflow.snapshot)}
       onSend={handleComposerSend}
       onQueueInput={chatCommands.submit}
       commandCatalog={commandCatalog}
@@ -695,9 +706,6 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
       compactResult={compactResult}
       onDismissCompactResult={handleDismissCompactResult}
       thinkingLevel={thinkingLevel}
-      toolPermission={toolPermission}
-      permissionSaving={permissionSaving}
-      onToolPermissionChange={handleToolPermission}
       onThinkingLevelChange={session || isNew ? handleThinkingLevelChange : undefined}
       availableThinkingLevels={availableThinkingLevels}
       thinkingLevelMap={currentThinkingLevelMap}
@@ -805,10 +813,8 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
       {isEmptyNew ? (
         <NewSessionLauncher
-          cwd={messageCwd}
           projectLabel={newSessionProjectLabel}
           projectPath={isProjectlessChat ? null : messageCwd}
-          onStarterSelect={handleEditContent}
         >
           <div>
             <NoticeShelf notices={notices} align="right" />
@@ -845,7 +851,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
               operations={chatCommands.records} commandActions={commandActions}
               responseTimings={responseTimings}
               modelChanges={modelChanges}
-              messages={messages} directProcess compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
+              messages={messages} compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}

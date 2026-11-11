@@ -1,133 +1,37 @@
-# README 截图清单
+# README 实拍截图清单
 
-适用版本：`0.5.9-beta.8`。本次没有可供截取的 Piora 应用窗口，因此新增图位使用明确标注“截图待补”的 SVG，不冒充产品截图。README 中另外引用的三张旧图来自仓库已有测试/历史资料。
+拍摄日期：2026-11-10 至 11 日（Asia/Shanghai）。拍摄来源：用户已安装的 Windows x64 Piora 0.5.10-beta.18 与升级后的 0.5.10-beta.21 可执行文件。全部 12 个 SVG 占位已替换为 PNG，补充 5 张首次使用步骤图及 1 张合并设置实拍，共 18 张。
 
-## 拍摄与替换
+01、02、08、11–17 来自当时打开的 Beta.18 安装版；03、04、06、07、09、10 使用同一 Beta.18 可执行文件，在隔离配置中通过 Playwright/CDP 操作真实界面拍摄。05、18 在升级后的 Beta.21 中以相同方式重拍。隔离配置只复制本任务实际生成的练习会话历史，不复制认证或用户配置，不伪造模型回复，也没有再次发送模型请求。部分图片按内容裁剪，未改画产品界面。
 
-1. 用 beta.8 安装版和演示项目，建议窗口 1440 × 900 或 1600 × 1000、缩放 100%，统一主题。完整工作区推荐 16:10；窄菜单可以局部截图。
-2. 保存为下表中的 PNG 路径（均相对仓库根目录）。保持可读，单张尽量小于 1.5 MB；无须把截图强行拉伸成占位图比例。
-3. 在根 README 搜索 `<!-- SCREENSHOT: 编号-名称 -->`，把紧随的图片链接后缀从 `.svg` 改为 `.png`，去掉 alt 和图注里的“待补”，改成实际界面的操作说明。
-4. 更新下表状态、拍摄版本和日期。真实图片就位后可删除同名 SVG；确认没有剩余引用再删除。补图前页面中的 SVG 都能正常显示，不会出现破图。
-5. 用 Markdown 预览核对宽度、文字和链接，并确认图片没有 API Key、访问令牌、内网地址、真实账户、聊天、设备序列号或私人文件路径。
+练习项目名为 Piora-Demo。17 是本任务真实模型调用的结果；03、04 展示相同真实历史。04 的清单勾选由拍摄准备修改，仅说明 Git 差异，不归因于模型操作。06、07 是尚未保存的表单；09 是设备设置表单，不作为投屏或真机控制验收证据；10 未启动计时；11 未创建凭据库；12 如实展示 Beta 手动更新限制。
 
-示例：
+三个设置入口现已合并为“对话与任务”，见第 18 张实拍；Beta.18 画面中仍出现的旧设置导航名称以正文新路径为准。
 
-```markdown
-<!-- SCREENSHOT: 01-workspace -->
-![Piora 项目工作区：聊天与文件差异](docs/images/readme/01-workspace.png)
-*左侧选择项目，中间查看任务，右侧核对文件改动。*
-```
-
-## 待拍清单
-
-| 图位 | PNG 保存路径 | 状态 |
+| 编号 | 实拍图片 | 内容与入口 |
 | --- | --- | --- |
-| 01-workspace · 完整工作区 | `docs/images/readme/01-workspace.png` | 待拍 |
-| 02-models · 模型配置 | `docs/images/readme/02-models.png` | 待拍 |
-| 03-chat-permissions · 任务与权限 | `docs/images/readme/03-chat-permissions.png` | 待拍 |
-| 04-files-git · 文件与 Git | `docs/images/readme/04-files-git.png` | 待拍 |
-| 05-browser · 浏览器接管 | `docs/images/readme/05-browser.png` | 待拍 |
-| 06-rooms · 多 Agent 协作 | `docs/images/readme/06-rooms.png` | 待拍 |
-| 07-schedules · 定时任务 | `docs/images/readme/07-schedules.png` | 待拍 |
-| 08-skills · 技能与扩展 | `docs/images/readme/08-skills.png` | 待拍 |
-| 09-harmony · 鸿蒙设备工作台 | `docs/images/readme/09-harmony.png` | 待拍 |
-| 10-companion · 随身舱 | `docs/images/readme/10-companion.png` | 待拍 |
-| 11-vault · 本地凭据库 | `docs/images/readme/11-vault.png` | 待拍 |
-| 12-updates · 版本与更新来源 | `docs/images/readme/12-updates.png` | 待拍 |
+| 01 | [项目工作区：聊天与文件预览](images/readme/01-workspace.png) | 左侧选择项目和聊天，中间阅读回复，右侧打开 README 原文。 |
+| 02 | [模型配置：连接、模型列表和测试入口](images/readme/02-models.png) | 实拍为已保存的 DeepSeek 连接，密钥保持遮盖；连接测试会实际调用服务。 |
+| 03 | [任务过程：展开读取文件记录](images/readme/03-chat-permissions.png) | 点击“处理结束”展开本轮过程，核对读取了哪些文件、是否成功以及用时。 |
+| 04 | [Git 审阅：练习清单的增删差异](images/readme/04-files-git.png) | 右侧绿色为新增、红色为删除。这里只展示练习目录的本地差异，未暂存、提交或推送。 |
+| 05 | [内置浏览器：首次打开与书签导入](images/readme/05-browser.png) | Beta.21 重拍：欢迎页提供导入书签或暂不导入；标签栏保留新增与单标签关闭。 |
+| 06 | [新建群聊：项目、成员与职责](images/readme/06-rooms.png) | 从“群聊”右侧加号进入，先选项目，再配置成员。图中为尚未保存的创建表单。 |
+| 07 | [新建定时任务：运行范围、周期与通知](images/readme/07-schedules.png) | 进入“设置 → 定时任务 → 新建”，填写名称和任务说明，再选择运行范围、周期与通知。图中尚未保存，不会自动运行。 |
+| 08 | [技能市场：发现公开技能](images/readme/08-skills.png) | 进入“设置 → 技能”浏览来源和技能；点击安装前先了解用途与所需权限。 |
+| 09 | [鸿蒙设备设置](images/readme/09-harmony.png) | 右侧工具菜单 → 鸿蒙设备 → 设备操作菜单 → 设备设置；查看连接工具与截图、录屏保存路径。未启动媒体或操控。 |
+| 10 | [随身舱：专注时钟](images/readme/10-companion.png) | 按 Ctrl+Space 打开随身舱，选择专注时钟。图中为未启动的 25 分钟专注计时。 |
+| 11 | [本地凭据库：首次设置入口](images/readme/11-vault.png) | 从“设置 → 数据与诊断”进入。图中尚未创建凭据库，没有输入或展示任何账户密码。 |
+| 12 | [应用行为：当前版本与更新资格](images/readme/12-updates.png) | 实拍为 0.5.10-beta.18 安装版；Beta 需要手动下载安装，自动更新控件会说明不可用原因。 |
+| 13 | [添加供应商](images/readme/13-add-provider.png) | 在模型配置中点击“添加供应商”，选择服务商或创建自定义供应商。 |
+| 14 | [自定义供应商表单](images/readme/14-custom-provider.png) | 未保存的表单示例；api.example.com 是示例地址，不能直接调用模型。 |
+| 15 | [选择项目文件夹](images/readme/15-project-folder.png) | Windows 原生文件夹选择器，演示项目 Piora-Demo。 |
+| 16 | [发送第一条消息](images/readme/16-first-message.png) | 确认项目与模型，写清只读限制，然后点击发送。 |
+| 17 | [第一条消息的实际回复](images/readme/17-first-result.png) | 真实调用 deepseek-flash，读取 README.md 与 tasks.md 后返回三点说明；未执行命令、未修改文件。 |
+| 18 | [合并后的对话与任务设置](images/readme/18-conversation-settings.png) | Beta.21 实拍：单一设置入口，按消息输入与阅读、回复辅助、任务运行、系统提示词与优化、自动标题排序；继续下滚查看其余分组。 |
 
-### 01-workspace 完整工作区
+后续维护时从对应版本安装包重拍，保留真实状态，不把空表单当作执行成功。检查图中密钥、接口地址、账户、私有文件、设备序列号和通知；保留版本、日期与说明。README 仅展示功能和使用步骤，拍摄版本、表单状态及验证边界统一保存在本清单。
 
-- 打开方法：打开一个无敏感信息的演示项目，完成一次文件整理任务，展开右侧文件面板。
-- 构图重点：左侧项目与会话、中间回复、右侧文件预览三栏同屏。
-- 当前占位：[01-workspace.svg](images/readme/01-workspace.svg)
-- 拍摄版本 / 日期：待填写。
+## 历史补充截图
 
-### 02-models 模型配置
-
-- 打开方法：设置 → 模型配置，选一个演示服务商，展开模型列表；必要时分两张拍摄渠道排序和模型编辑。
-- 构图重点：渠道名称、Base URL、API 格式、识别模型、连接测试入口；密钥遮盖。
-- 当前占位：[02-models.svg](images/readme/02-models.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 03-chat-permissions 任务与权限
-
-- 打开方法：在演示项目完成一次只读任务，展开一个工具调用，再打开输入框权限菜单。
-- 构图重点：请求批准、帮我批准、完全访问三个选项与任务状态。
-- 当前占位：[03-chat-permissions.svg](images/readme/03-chat-permissions.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 04-files-git 文件与 Git
-
-- 打开方法：演示 Git 仓库修改一份 Markdown，打开右侧文件差异和 Git 审阅。
-- 构图重点：增删行、上一处/下一处改动、文件树与暂存入口；不要为了截图提交或推送。
-- 当前占位：[04-files-git.svg](images/readme/04-files-git.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 05-browser 浏览器接管
-
-- 打开方法：在安装版内置浏览器使用演示网站，让 Agent 在需要手动操作时等待。
-- 构图重点：聊天等待卡片和右侧当前页面同时可见；不要使用真实登录表单内容。
-- 当前占位：[05-browser.svg](images/readme/05-browser.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 06-rooms 多 Agent 协作
-
-- 打开方法：创建演示群聊，用虚构成员和角色完成一个简单协作任务。
-- 构图重点：成员、实际响应模型、@ 入口、回复和可下载成果；不要展示业务对话。
-- 当前占位：[06-rooms.svg](images/readme/06-rooms.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 07-schedules 定时任务
-
-- 打开方法：设置 → 定时任务，使用演示任务，展示周期和一次执行记录。
-- 构图重点：任务名称、项目、启停状态与执行历史；拍摄后删除不需要的演示计划。
-- 当前占位：[07-schedules.svg](images/readme/07-schedules.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 08-skills 技能与扩展
-
-- 打开方法：设置 → 技能，搜索公开示例技能，再查看已安装页；可补拍 MCP 配置作为附图。
-- 构图重点：真实可用的来源与技能卡片；不要把测试离线结果当成正常市场截图。
-- 当前占位：[08-skills.svg](images/readme/08-skills.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 09-harmony 鸿蒙设备工作台
-
-- 打开方法：连接真实兼容设备，进入设备面板，保持手机为无隐私的演示页面并展开工具抽屉。
-- 构图重点：完整手机画面、目标设备和工具入口；记录设备型号与系统版本，不显示序列号。
-- 当前占位：[09-harmony.svg](images/readme/09-harmony.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 10-companion 随身舱
-
-- 打开方法：打开随身舱，添加虚构待办，在中转站打开示例 Markdown。
-- 构图重点：窗口控制栏、待办或专注状态、文档编辑；不要展示个人剪贴板历史。
-- 当前占位：[10-companion.svg](images/readme/10-companion.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 11-vault 本地凭据库
-
-- 打开方法：设置 → 数据 → 本地凭据库，使用空列表或专用演示账户。
-- 构图重点：账户管理和备份入口；保持敏感字段遮盖，不为截图启用自动填写。
-- 当前占位：[11-vault.svg](images/readme/11-vault.svg)
-- 拍摄版本 / 日期：待填写。
-
-### 12-updates 版本与更新来源
-
-- 打开方法：在 beta.8 安装版中搜索设置“更新来源”，展示当前版本和来源选择。
-- 构图重点：版本 0.5.9-beta.8、GitHub/内源选择和检查入口；内网截图须来自已配置的内网版。
-- 当前占位：[12-updates.svg](images/readme/12-updates.svg)
-- 拍摄版本 / 日期：待填写。
-
-
-## 已有历史截图
-
-以下图片已经检查内容，只放在 README 的折叠区内作为参考，不能用作 beta.8 新截图或实机验收证据：
-
-| 图片 | 来源与边界 |
-| --- | --- |
-| `docs/images/settings-wallpaper/models.png` | 模型设置测试界面，使用虚构地址和模型；不演示当前渠道排序。 |
-| `docs/assets/ssh-multihost-wide.png` | 回环地址的 SSH 测试环境，终端有测试提示；可后续换成无报错演示环境。 |
-| `docs/images/dsh-pet/settings.png` | 历史桌面扩展设置，拍摄早于 DSH Meme 加入。 |
-
-更新相应章节的截图后，可移除不再需要的历史折叠图，保留文档原始来源文件供其他文档使用。
+- [SSH 多主机终端与 SFTP](assets/ssh-multihost-wide.png)：回环地址上的历史测试环境，不作为本次安装包连接验收结果。
+- [DSH Pet 设置](images/dsh-pet/settings.png)：拍摄早于 DSH Meme 加入，保留作维护参考。

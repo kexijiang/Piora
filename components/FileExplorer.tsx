@@ -469,7 +469,7 @@ function SearchResultRow({
       }}
     >
       <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-        {entry.isDir ? <FolderIcon size={15} /> : getFileIcon(name, 15)}
+        {entry.isDir ? <FolderIcon size={15} name={name} /> : getFileIcon(name, 15)}
       </span>
       <div className={styles.searchResultText}>
         <div className={styles.searchResultName}>{name}</div>
@@ -696,7 +696,7 @@ function TreeNode({
         )}
         {!node.isDir && <span style={{ width: 10, flexShrink: 0 }} />}
         <span style={{ flexShrink: 0, display: "flex", alignItems: "center" }}>
-          {node.isDir ? <FolderIcon size={14} open={open} /> : getFileIcon(node.name, 14)}
+          {node.isDir ? <FolderIcon size={14} open={open} name={node.name} /> : getFileIcon(node.name, 14)}
         </span>
         <span
           style={{

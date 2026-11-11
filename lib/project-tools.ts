@@ -23,6 +23,7 @@ import {
   type ProjectToolSettingsRecord,
 } from "./project-tool-settings";
 import { getLiveProjectNativeMcpCatalog } from "./rpc-manager";
+import { NativeMcpController } from "./native-mcp";
 import { BUILTIN_AGENT_TOOLS } from "./tool-presets";
 import { resolveProject } from "./worktree";
 import { inspectToolRuntime, type ToolRuntimeInfo } from "./tool-runtime";
@@ -100,12 +101,16 @@ export async function loadProjectToolsContext(
   const agentDir = getAgentDir();
   const settingsManager = SettingsManager.create(projectRoot, agentDir, { projectTrusted: true });
   const plan = await resolveExtensionLoadPlan({ cwd: projectRoot, agentDir, settingsManager, profile });
+  // Register the same native helpers as runtime sessions. Loading definitions
+  // alone does not emit session_start or connect any configured MCP server.
+  const nativeMcp = profile === "normal" ? new NativeMcpController(projectRoot, agentDir) : undefined;
   const loader = new DefaultResourceLoader({
     cwd: projectRoot,
     agentDir,
     settingsManager,
     additionalExtensionPaths: plan.enabledPaths,
     noExtensions: true,
+    extensionFactories: nativeMcp?.factories,
     extensionsOverride: (result) => applyExtensionLoadPlan(result, plan),
   });
   await loader.reload();
@@ -121,6 +126,7 @@ export async function loadProjectToolsContext(
         parameters: definition.parameters,
         exposure: definition.exposure,
         defaultActive: definition.defaultActive,
+        ...(nativeMcp?.isNativeTool(definition.name) ? { defaultEnabled: true } : {}),
         sourceInfo: extension.sourceInfo,
         ...(definition.promptGuidelines ? { promptGuidelines: definition.promptGuidelines } : {}),
       });

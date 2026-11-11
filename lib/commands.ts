@@ -82,7 +82,8 @@ export const GUI_COMMANDS: Command[] = [
   command("panel.files", "panel", "commands.openFiles", { needs: "project" }),
   command("panel.commands", "panel", "commands.openCommands", { needs: "session" }),
   command("panel.browser", "panel", "commands.openBrowser"),
-  command("panel.design", "panel", "commands.openDesign", { needs: "project" }),
+  // Temporarily hidden together with the workspace entry; keep the action implementation.
+  // command("panel.design", "panel", "commands.openDesign", { needs: "project" }),
   command("composer.voiceInput", "navigate", "commands.voiceInput", { needs: "project" }),
   command("companion.togglePanel", "panel", "commands.openCompanionPanel"),
   command("panel.toggleSidebar", "panel", "commands.toggleSidebar"),

@@ -24,7 +24,7 @@ npm run test:desktop:e2e -- --scenario settings-theme --timeout-ms 600000 --step
 
 当前支持中英文界面；原生系统对话框、其他语言、真实模型及发布包不在本场景范围内。Windows 实机结果和尚未执行的平台范围应在提交/PR 中如实记录。
 
-首批实现的执行结果、首次下载失败及复测边界见 [2026-10-30 验证记录](verification/desktop-e2e-2026-10-30.md)。
+每轮执行结果、失败及复测边界记录在该轮 `.verification/desktop-e2e-*` 报告中；历史验证记录可从 Git 历史查阅。
 
 ## 隔离与退出
 
@@ -98,7 +98,7 @@ npm run test:desktop:e2e -- --scenario stop-bash
 
 测试等待 PID 标记后才点击 Stop，并在运行器清理之前观察实际进程。Bash 使用 Windows 原生 PID，另取发送前后的 `sleep.exe` 差集；必须恰好出现一个新 sleep 进程，否则失败而不猜测归属。因此运行该场景时不要并行启动其他 sleep 命令。测试不主动结束这些 PID，以免清理掩盖取消失败；命令自身限制为 30 秒。
 
-`stop-evidence.json` 记录取消请求/回执、进程存活、按钮状态与服务端状态。如果发送按钮恢复后进程仍存活超过 3 秒，会额外保存 `false-idle.png` 和同期服务端快照。3 秒内未退出是失败，即使 30 秒后自然退出也不能算通过。Windows Bash 修复前后的结果见 [停止验证记录](verification/desktop-stop-243-2026-10-30.md)。
+`stop-evidence.json` 记录取消请求/回执、进程存活、按钮状态与服务端状态。如果发送按钮恢复后进程仍存活超过 3 秒，会额外保存 `false-idle.png` 和同期服务端快照。3 秒内未退出是失败，即使 30 秒后自然退出也不能算通过。
 
 场景文件位于 `scripts/desktop-e2e/scenarios/`，通过 `scripts/run-desktop-e2e.mjs` 显式登记；不从外部路径加载任意脚本。参考 `settings-theme.mjs`：
 
@@ -148,3 +148,21 @@ node --test lib/desktop-e2e.test.mjs
 场景先在对话 A 登录并写入站点数据，然后在对话 B 核对 HttpOnly 会话 cookie、localStorage 和 IndexedDB。确认独立 profile 中的加密 cookie 快照已写入后，运行器终止本次拥有的开发进程树，保留隔离 profile 再启动，重新核对三个存储边界。该重启是受控进程终止，不代表正常菜单退出、系统注销或突然断电。
 
 `browser-persistence-evidence.json` 记录各阶段的合成数据核对；`result.json` 记录启动和重启 PID、每一步及清理结果。首个启动失败、重测和通过分别保留；没有运行到的阶段不能算通过。本场景不验证原 issue #275 的特定网站、企业 SSO、远端模型操控或发布包。特定网站复现需要单独记录是否为服务端过期、主动注销或身份策略导致。
+
+## 浏览器登录自动继续
+
+`npm run test:desktop:e2e -- --scenario browser-login` 使用隔离的真实 Electron 开发窗口、本地确定性模型和本地登录页面，验证发送任务后自动展开浏览器、没有登录卡片或完成按钮、通过原生页面 UI 登录后继续工具调用并回复；同时核对批准模式、能力包菜单和新会话快捷卡片已移除。模型与登录凭据均为合成夹具，不代表真实模型、第三方账号、SSO、后台 Playwright 或安装包验收。产物和失败清理由同一生命周期入口管理。
+
+## Plan / Goal 工作流
+
+```powershell
+node scripts/run-desktop-e2e.mjs --scenario plan-goal --timeout-ms 1200000 --step-timeout-ms 180000
+```
+
+`plan-goal` 使用仅监听 loopback 的 OpenAI-compatible 确定性响应服务和独立 Pi agent 配置。场景先确认实验室功能默认关闭、新任务没有模式选择器，再通过“设置 → 实验室”开关启用。聊天发送、模式选择、计划修改和确认、预算调整、暂停、恢复及取消都通过真实 Electron UI 完成；读取配置/工作流 API 和合成文件仅用于核对结果，不直接写配置。模型会故意尝试一次规划阶段写入，测试要求文件不存在；确认计划后则通过真实 SDK 写入另一个合成文件。
+
+Goal 场景验证两轮预算停止、只增加预算不会自动恢复、用户恢复后证据记录、暂停后的刷新恢复、取消及进程重启。暂停和重启期间本地模型挂起实际请求，测试核对请求连接被取消；没有使用接口直接伪造工作流状态。重启沿用同一隔离 profile，恢复前要求目标已暂停且没有新模型请求。原始计划版本与后续历史也在结果中核对。
+
+实验室关闭场景在执行中通过设置开关关闭功能，确认历史保留、暂停与取消仍可用、继续与预算操作不可用，新任务也不再显示选择器；重新开启不能自动恢复。另一挂起请求由夹具明确返回普通响应，以核对 Goal 在当前轮结束后停为 `paused` / `laboratory_disabled`，没有下一轮模型请求，只有重新开启并点击继续才会恢复。
+
+`workflow-evidence.json` 保存合成模型请求、工具调用、UI 触发的请求和只读状态观察。模型语义及“证据”是刻意构造的夹具，因此本场景只证明工作流契约与实际 UI/SDK 链路，不代表真实模型完成任意用户目标、任意 MCP 工具安全性、其他平台或发布安装包验收。各轮实际结果见对应 `.verification/desktop-e2e-*`，新增场景本身不代表已经通过。

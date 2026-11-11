@@ -3,10 +3,14 @@
 import { execFile, spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { performance } from "node:perf_hooks";
 import { randomUUID } from "node:crypto";
+import { createVerificationTimings } from "./verification-timing.mjs";
+import { assertVerificationDirectory, verificationTempRoot } from "./verification-temp.mjs";
+
+const timings = createVerificationTimings("application-smoke");
 import {
   createIsolatedProcessEnvironment,
   prepareIsolatedEnvironment,
@@ -122,16 +126,7 @@ export async function findPortableExecutable(releaseRoot) {
 }
 
 function assertSafeTemporaryDirectory(directory) {
-  const temporaryRoot = resolve(tmpdir());
-  const relativePath = relative(temporaryRoot, directory);
-  if (
-    !relativePath
-    || relativePath === ".."
-    || relativePath.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`)
-    || isAbsolute(relativePath)
-  ) {
-    throw new Error(`Refusing to use an unsafe smoke-test directory: ${directory}`);
-  }
+  assertVerificationDirectory(directory, [verificationTempRoot(), resolve(tmpdir())]);
 }
 
 async function waitForMarker(markerPath, timeoutMs, signal, markerName = "healthy-service") {
@@ -220,8 +215,8 @@ async function preparePortableRuntimeCache({
     validatePortableSmokeMarker(markerText, expectedVersion);
   } finally {
     markerAbort.abort();
-    if (child) await terminateChild(child);
-    await terminateExtractedPortableProcesses(temporaryDirectory);
+    if (child) await timings.measure("stop-primary-process", () => terminateChild(child));
+    await timings.measure("stop-process-tree", () => terminateExtractedPortableProcesses(temporaryDirectory));
   }
 }
 
@@ -244,7 +239,7 @@ export async function smokeTestPortableExecutable(
     throw new Error(`Portable EXE does not exist: ${executable}`);
   }
 
-  const temporaryDirectory = profileRoot ? resolve(profileRoot) : await mkdtemp(join(resolve(tmpdir()), "piora-portable-smoke-"));
+  const temporaryDirectory = profileRoot ? resolve(profileRoot) : await mkdtemp(join(verificationTempRoot(), "piora-portable-smoke-"));
   assertSafeTemporaryDirectory(temporaryDirectory);
   if (profileRoot && preparePortableCache) throw new Error("Shared profiles are only supported for installed runtime verification");
   const paths = await prepareIsolatedEnvironment(temporaryDirectory);
@@ -317,7 +312,7 @@ export async function smokeTestPortableExecutable(
     // it is written only after the bundled service, preload bridge, renderer,
     // and app shell are all ready. Once validated, the test owns cleanup of
     // both the wrapper and every extracted process under its isolated root.
-    const markerText = await waitForMarker(markerPath, timeoutMs, markerAbort.signal);
+    const markerText = await timings.measure("wait-for-healthy-app", () => waitForMarker(markerPath, timeoutMs, markerAbort.signal), { executable });
     const marker = validatePortableSmokeMarker(markerText, expectedVersion);
     validateBrandSmokeMarker(marker, expectedBrand, paths, join(temporaryDirectory, "agent"));
     if (expectedSession && (marker.preservedSession?.sessionId !== expectedSession.id
@@ -382,8 +377,8 @@ export async function smokeTestPortableExecutable(
     );
   } finally {
     markerAbort.abort();
-    if (child) await terminateChild(child);
-    await terminateExtractedPortableProcesses(temporaryDirectory);
+    if (child) await timings.measure("stop-primary-process", () => terminateChild(child));
+    await timings.measure("stop-process-tree", () => terminateExtractedPortableProcesses(temporaryDirectory));
     if (profileRoot) {
       await rm(markerPath, { force: true });
       await rm(startupMarkerPath, { force: true });

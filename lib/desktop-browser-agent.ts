@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 export const DESKTOP_AGENT_BRIDGE_UNAVAILABLE = "Desktop browser bridge unavailable.";
-export const DESKTOP_EVALUATE_DISABLED = "evaluate is disabled on the desktop browser and needs user confirmation.";
 export const EVALUATE_SENSITIVE_REFUSAL = "evaluate is refused on pages with password fields, login, payment, or account-security content. Use snapshot/click/type, or call wait_for_user.";
-export const EVALUATE_PAGE_CHANGED_ERROR = "The page changed while waiting for confirmation. evaluate was not run; take a new snapshot and try again.";
+export const EVALUATE_PAGE_CHANGED_ERROR = "The page changed after inspection. evaluate was not run; take a new snapshot and try again.";
 export const EVALUATE_UNKNOWN_PAGE = "unknown page";
-export const EVALUATE_SCRIPT_PREVIEW_CHARS = 500;
 const SERVER_TIMEOUT_MS = 45_000;
 
 export function pageUrlFromTabList(value: unknown, tabId?: string): string {
@@ -25,14 +23,6 @@ export function pageUrlFromTabList(value: unknown, tabId?: string): string {
     ? rows.find((row) => row.tabId === tabId)
     : rows.find((row) => row.active) ?? rows[0];
   return match?.url || EVALUATE_UNKNOWN_PAGE;
-}
-
-export function evaluateConfirmText(script: string, pageUrl: string | null | undefined): string {
-  const page = pageUrl && pageUrl.trim() ? pageUrl.trim() : EVALUATE_UNKNOWN_PAGE;
-  const source = script.length > EVALUATE_SCRIPT_PREVIEW_CHARS
-    ? `${script.slice(0, EVALUATE_SCRIPT_PREVIEW_CHARS)}…`
-    : script;
-  return `The agent wants to run JavaScript on ${page}. Allow this once?\n\n${source}`;
 }
 
 /** Same notice the accessibility snapshot uses when its text exceeds the cap. */
@@ -113,16 +103,13 @@ export interface DesktopAgentCall {
   tabIndex?: number;
   fullPage?: boolean;
   reason?: string;
+  purpose?: "login" | "confirmation";
+  waitId?: string;
   confirmed?: boolean;
   navigationToken?: string;
 }
 
-/** The server sets confirmed only after the user accepts this call. */
-export function desktopEvaluateRequest(input: { hasUI: boolean; userConfirmed: boolean }): { confirmed: true } | { error: string } {
-  if (input.hasUI === true && input.userConfirmed === true) return { confirmed: true };
-  return { error: DESKTOP_EVALUATE_DISABLED };
-}
-
+/** The server binds page-script execution to its inspected document token. */
 export interface DesktopEvaluateCheck {
   allowed?: boolean;
   url?: string;
@@ -130,27 +117,15 @@ export interface DesktopEvaluateCheck {
 }
 
 /**
- * Sensitive pages refuse before confirm runs. A matching navigation token is
- * required so a page change during the dialog cannot be confirmed.
+ * Sensitive pages refuse. The internal authorization token binds execution to
+ * the inspected tab and document; no user approval dialog is involved.
  */
 export async function gateDesktopEvaluate(input: {
   check: DesktopEvaluateCheck;
-  /** Explicit chat policy is enforced by the runtime tool-call gate. */
-  authorized?: boolean;
-  hasUI: boolean;
-  confirm: () => boolean | Promise<boolean>;
 }): Promise<{ confirmed: true; navigationToken: string; url: string } | { error: string }> {
   if (input.check.allowed !== true) return { error: EVALUATE_SENSITIVE_REFUSAL };
   const navigationToken = input.check.navigationToken?.trim() ?? "";
   if (!navigationToken) return { error: EVALUATE_PAGE_CHANGED_ERROR };
-  if (input.authorized) return { confirmed: true, navigationToken, url: input.check.url || EVALUATE_UNKNOWN_PAGE };
-  if (input.hasUI !== true) return { error: DESKTOP_EVALUATE_DISABLED };
-  const userConfirmed = await input.confirm();
-  const gate = desktopEvaluateRequest({
-    hasUI: true,
-    userConfirmed: userConfirmed === true,
-  });
-  if ("error" in gate) return gate;
   const url = input.check.url?.trim() ? input.check.url.trim() : EVALUATE_UNKNOWN_PAGE;
   return { confirmed: true, navigationToken, url };
 }
@@ -184,7 +159,7 @@ export function callDesktopAgentBrowser(input: DesktopAgentCall): Promise<unknow
     sessionId: input.sessionId,
     action: input.action,
   };
-  for (const key of ["tabId", "url", "selector", "ref", "text", "key", "submit", "deltaX", "deltaY", "x", "y", "tabIndex", "fullPage", "reason", "confirmed", "navigationToken"] as const) {
+  for (const key of ["tabId", "url", "selector", "ref", "text", "key", "submit", "deltaX", "deltaY", "x", "y", "tabIndex", "fullPage", "reason", "purpose", "waitId", "confirmed", "navigationToken"] as const) {
     const value = input[key];
     if (value !== undefined) payload[key] = value;
   }

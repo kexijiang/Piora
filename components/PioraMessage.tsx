@@ -18,6 +18,13 @@ export function PioraMessageContent({ message, finish, standalone = false }: { m
   const finishRef = useRef(finish); finishRef.current = finish;
   useFocusTrap(ref, !notice, { onEscape: () => finish(null) });
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => finishRef.current(null), message.durationMs ?? 3000); return () => clearTimeout(timer); }, [notice, message]);
+  if (notice) return <div ref={ref} data-dark={isDark} data-tone={message.tone} className={`${styles.notice} ${standalone ? styles.standalone : ""}`} role="status" aria-live="polite">
+    <svg className={styles.noticeIcon} width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.4" /><path d={message.tone === "error" ? "m7 7 6 6M13 7l-6 6" : "m6.5 10 2.3 2.3 4.7-4.7"} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    <div className={styles.noticeCopy}><strong title={message.title}>{message.title}</strong><p title={message.message}>{message.message}</p></div>
+    <div className={styles.noticeActions}>{message.actions.map(action => <button key={action.id} type="button" aria-label={action.label} title={action.label} className={action.id === "done" ? styles.noticeClose : undefined} onClick={() => finish(action.id)}>
+      {action.id === "done" ? <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" /></svg> : action.label}
+    </button>)}</div>
+  </div>;
   return <div ref={ref} data-dark={isDark} className={`${styles.dialog} ${standalone ? styles.standalone : ""} ${notice ? styles.notice : ""}`} role={notice ? "status" : "dialog"} aria-modal={notice ? undefined : true} aria-labelledby="piora-message-title" aria-describedby="piora-message-body">
     <div className={styles.body}><h2 id="piora-message-title">{message.title}</h2>
       {message.preview ? <img className={styles.preview} src={message.preview} alt="截图预览" /> : null /* eslint-disable-line @next/next/no-img-element */}

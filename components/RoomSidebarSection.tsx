@@ -10,6 +10,7 @@ import { AliIcon } from "./AliIcon";
 import { DirectoryPicker } from "./DirectoryPicker";
 import { RoomAvatar } from "./RoomUi";
 import styles from "./RoomSidebarSection.module.css";
+import sidebarStyles from "./SessionSidebar.module.css";
 import { useSectionDisclosure } from "./sidebar/useSectionDisclosure";
 
 type RoomWithSummary = CollaborationRoom & { summary?: { lastMessage?: { content: string; author: string; seq: number }; phase?: string; pending?: boolean } };
@@ -184,7 +185,7 @@ export function RoomSidebarSection({ sessions, selectedSessionId, selectedRoomId
   };
 
   return <section className={styles.section} aria-label={t("roomUx.groups")}>
-    <div className={styles.heading}>
+    <div className={`${sidebarStyles.sectionLabel} ${styles.heading}`}>
       <button type="button" className={styles.headingToggle} onClick={toggle} aria-expanded={!collapsed}>
         <span>{t("roomUx.groups")}</span><AliIcon name="chevron-right" size={11} style={{ transform: collapsed ? undefined : "rotate(90deg)" }} />
       </button>

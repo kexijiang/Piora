@@ -27,6 +27,9 @@ export interface SessionMessageImage {
   mimeType: string;
 }
 export interface SessionMessageInput {
+  /** A user workflow decision is applied only when its durable command is admitted. */
+  workflowAction?: import("./workflow-types").WorkflowAction;
+  workflow?: import("./workflow-types").WorkflowPromptOptions;
   localFiles?: Array<{ name: string; size: number; path: string }>;
   promptSuffix?: string;
   inputMode?: "text";
@@ -44,6 +47,8 @@ export interface SessionMessageInput {
 }
 
 export interface SessionCommandRecord {
+  workflowAction?: import("./workflow-types").WorkflowAction;
+  workflow?: import("./workflow-types").WorkflowPromptOptions;
   taskTiming?: import("./task-timing").TaskTiming | null;
   revision?: number;
   queuePaused?: boolean;

@@ -31,3 +31,7 @@ NOTICE text eol=lf
 *.jpg binary
 *.png binary
 *.webp binary
+
+# Material sprite hashes are verified on Windows and Linux.
+public/file-icons/material.svg text eol=lf
+scripts/sync-material-icons.py text eol=lf

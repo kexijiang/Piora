@@ -75,7 +75,7 @@ function DeleteMessageAction({ message, entryId, onDelete, disabled }: { message
 }
 
 /** One turn projection for saved history and the live tail in both display modes. */
-function ChatHistoryContent({ visible: _visible, messages: savedMessages, modelChanges = NO_MODEL_CHANGES, compactProcess = false, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onBranch, onDeleteMessage, deleteDisabled = false, operations = NO_OPERATIONS, commandActions, responseTimings, ...messageProps }: Props) {
+function ChatHistoryContent({ visible: _visible, messages: savedMessages, modelChanges = NO_MODEL_CHANGES, compactProcess = true, directProcess = false, streamingMessage, entryIds, busy, streaming, isNew, forkingEntryId, highlightedEntryId, lastUserMsgRef, pendingScrollToUserRef, scrollContainer, handleRef, onBranch, onDeleteMessage, deleteDisabled = false, operations = NO_OPERATIONS, commandActions, responseTimings, ...messageProps }: Props) {
   const { t } = useI18n();
   const [expanded, setExpanded] = useState<Map<string, boolean>>(() => new Map());
   const [inspectCommand, setInspectCommand] = useState<string | null>(null);
@@ -83,6 +83,18 @@ function ChatHistoryContent({ visible: _visible, messages: savedMessages, modelC
   const base = useMemo(() => prepareChatHistory(savedMessages, entryIds, expanded, compactProcess, directProcess, operations, modelChanges),
     [savedMessages, entryIds, expanded, compactProcess, directProcess, operations, modelChanges]);
   const { messages, rows, entryRows, entryGroups, toolResults, stableKeys } = useMemo(() => projectChatHistoryTail(base, streamingMessage, busy || streaming), [base, streamingMessage, busy, streaming]);
+  const activeGroups = useRef<Set<string>>(new Set());
+  useLayoutEffect(() => {
+    const next = new Set(rows.filter(row => row.compactProcess?.active).map(row => row.key));
+    const changes = rows.filter(row => row.compactProcess && row.compactProcess.active !== activeGroups.current.has(row.key));
+    activeGroups.current = next;
+    if (!compactProcess || directProcess || !changes.length) return;
+    setExpanded(previous => {
+      const updated = new Map(previous);
+      for (const row of changes) updated.set(row.key, row.compactProcess!.active);
+      return updated;
+    });
+  }, [rows, compactProcess, directProcess]);
   const metadata = base.metadata;
   const visibleRows = rows;
   // Text-only deltas retain the key array too: VirtualList need not rebuild
@@ -139,7 +151,7 @@ function ChatHistoryContent({ visible: _visible, messages: savedMessages, modelC
       }}
       ref={index === metadata.lastUser ? (element) => { lastUserMsgRef.current = element; if (element && pendingScrollToUserRef.current) list.current?.cancelNavigation(); } : undefined}>
       <RenderErrorBoundary resetKey={messageFingerprint(message, entryIds[index])} fallbackLabel={t("chat.messageRenderFailed")} errorTitle={t("chat.messageRenderError")}>
-        <HistoryMessage {...messageProps} message={message} intermediate={row.intermediate} isStreaming={row.isStreaming} toolResults={toolResults} entryId={entryIds[index]}
+        <HistoryMessage {...messageProps} message={message} intermediate={row.intermediate} isStreaming={row.isStreaming} toolRunActive={(busy || streaming) && index >= metadata.lastUser} toolResults={toolResults} entryId={entryIds[index]}
           retryPrompt={metadata.retryPrompts.get(index)} retryDisabled={messageProps.retryDisabled || busy || streaming}
           originalMessage={messages[index]} allowActions={row.attachRef !== false} onBranch={onBranch} onDeleteMessage={onDeleteMessage}
           actionsDisabled={busy || streaming || isNew || Boolean(forkingEntryId)} deleteDisabled={deleteDisabled || busy || streaming}

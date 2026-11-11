@@ -1,22 +1,26 @@
 #!/usr/bin/env node
 
-import { createHash } from "node:crypto";
 import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { spawn, execFile } from "node:child_process";
 import { createRequire } from "node:module";
 import { promisify } from "node:util";
+import { createHash } from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { extractAll, listPackage } from "@electron/asar";
 import { generateLicenseInventory } from "./generate-license-inventory.mjs";
 import { generatePackageLicenseBundle } from "./package-license-bundle.mjs";
 import { verifyPackagedClipboard } from "./verify-packaged-clipboard.mjs";
 import { verifyPackagedShell } from "./verify-packaged-shell.mjs";
+import { verifyPackagedHarmonyLogAssets } from "./verify-packaged-harmony-logs.mjs";
 import { verifyBrandStartupAssets } from "./verify-brand-startup-assets.mjs";
 import { verifyPiEmbeddedDependencies } from "./verify-pi-embedded-dependencies.mjs";
 import { piNativeRuntimeProbe } from "./pi-native-runtime-probe.mjs";
+import { createVerificationTimings } from "./verification-timing.mjs";
+import { assertVerificationDirectory, verificationTempRoot } from "./verification-temp.mjs";
+
+const timings = createVerificationTimings("packaged-web");
 import {
   createIsolatedProcessEnvironment,
   prepareIsolatedEnvironment,
@@ -120,6 +124,11 @@ const requiredPaths = [
   "lib/computer-control.ts",
   "extensions/piora-vision-agent.ts",
   "extensions/piora-automations.ts",
+  "extensions/piora-workflows.ts",
+  "lib/workflow-runtime.ts",
+  "lib/workflow-store.ts",
+  "lib/workflow-types.ts",
+  "lib/laboratory-settings.ts",
   "extensions/piora-user-input.ts",
   "extensions/piora-room.ts",
   "extensions/piora-meme.ts",
@@ -598,7 +607,7 @@ export async function findForbiddenPackagedDependencies(
   return matches;
 }
 
-async function inspectElectronShell(webRoot, required) {
+async function inspectElectronShell(webRoot, required, runtimeWebRoot) {
   // Supplying a web root explicitly verifies the standalone payload only.
   // Pass --require-electron-shell (or use the default path) to also require
   // app.asar, the platform executable, and bundled license notices.
@@ -694,7 +703,9 @@ async function inspectElectronShell(webRoot, required) {
   }
 
   const packageLicenses = await generatePackageLicenseBundle({
-    webRoot,
+    // The full physical ASAR was already extracted for the checks above. Reuse
+    // those exact bytes instead of extracting the same archive a second time.
+    webRoot: runtimeWebRoot,
     outputRoot: join(resourcesRoot, "licenses"),
     check: true,
   });
@@ -925,9 +936,27 @@ const { join } = require("node:path");
   }
 }
 
+export async function verifyPackagedNativeVideo(videoRoot, licenseRoot) {
+  const sourceRoot = join(projectRoot, "third_party", "harmony-video");
+  const sourceManifest = await readFile(join(sourceRoot, "manifest.json"));
+  if (!sourceManifest.equals(await readFile(join(videoRoot, "manifest.json")))) throw new Error("Packaged native video manifest is missing or stale");
+  const videoManifest = JSON.parse(sourceManifest.toString("utf8"));
+  for (const asset of videoManifest.assets) {
+    const bytes = await readFile(join(videoRoot, asset.name));
+    if (bytes.length !== asset.size || createHash("sha256").update(bytes).digest("hex") !== asset.sha256) {
+      throw new Error(`Packaged native video library integrity mismatch: ${asset.name}`);
+    }
+  }
+  for (const name of ["LICENSE", "SOURCE.md", "manifest.json"]) {
+    if (!(await readFile(join(sourceRoot, name))).equals(await readFile(join(licenseRoot, name)))) throw new Error(`Packaged native video license/provenance mismatch: ${name}`);
+  }
+  return videoManifest.assets.length;
+}
+
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
+  await verifyPackagedNativeVideo(join(`${packagedRuntimeArchive}.unpacked`, "third_party", "harmony-video"), join(dirname(packagedWebRoot), "licenses", "harmony-video"));
   await assertFile(join(dirname(packagedWebRoot), "harmony-tools", "PioraHapSigner.java"));
   for (const relativePath of [
     "build-profile.json5",
@@ -962,9 +991,10 @@ async function main() {
   ) {
     throw new Error("Packaged web launcher does not point Next and Piora capabilities at runtime.asar");
   }
-  const inspectionDirectory = await mkdtemp(join(tmpdir(), "piora-runtime-inspection-"));
+  const inspectionDirectory = await mkdtemp(join(verificationTempRoot(), "piora-runtime-inspection-"));
+  assertVerificationDirectory(inspectionDirectory);
   const runtimeWebRoot = join(inspectionDirectory, "web");
-  await extractAll(packagedRuntimeArchive, runtimeWebRoot);
+  await timings.measure("extract-runtime-asar", () => extractAll(packagedRuntimeArchive, runtimeWebRoot), { runtimeWebRoot });
   try {
   for (const requiredPath of requiredPaths) {
     await assertFile(join(runtimeWebRoot, requiredPath));
@@ -988,17 +1018,18 @@ async function main() {
   for (const relative of [".harmony-worker/harmony/runtime/worker-entry.js", "lib/harmony/audio/acoustic-provider.ps1", "node_modules/hypium-driver/build/lib/resource/uitest_agent_v1.2.2.so"]) {
     await assertFile(join(`${packagedRuntimeArchive}.unpacked`, relative));
   }
-  const packagedPiAiRuntime = await verifyPackagedPiAiRuntime(runtimeWebRoot);
-  const packagedPiAiModules = await verifyPackagedPiAiModuleSurface(runtimeWebRoot);
-  const patchedBundledDependencies = await verifyPackagedBundledDependencies(runtimeWebRoot);
+  const packagedPiAiRuntime = await timings.measure("pi-source-integrity", () => verifyPackagedPiAiRuntime(runtimeWebRoot));
+  const packagedPiAiModules = await timings.measure("pi-module-surface", () => verifyPackagedPiAiModuleSurface(runtimeWebRoot));
+  const patchedBundledDependencies = await timings.measure("bundled-dependency-integrity", () => verifyPackagedBundledDependencies(runtimeWebRoot));
   for (const name of ["@deveco", "vscode-jsonrpc", "node-forge"]) {
     if (await lstat(join(runtimeWebRoot, "node_modules", name)).catch(error => {
       if (error?.code === "ENOENT") return null;
       throw error;
     })) throw new Error(`The packaged runtime must not contain the removed DevEco CLI or its exclusive dependencies: ${name}`);
   }
-  const nativePiRuntime = await verifyPackagedNativePiRuntime(runtimeWebRoot);
-  const harmonyHapPreview = await verifyPackagedHarmonyHapPreview(runtimeWebRoot);
+  const nativePiRuntime = await timings.measure("native-pi-runtime", () => verifyPackagedNativePiRuntime(runtimeWebRoot));
+  const harmonyHapPreview = await timings.measure("harmony-hap-preview", () => verifyPackagedHarmonyHapPreview(runtimeWebRoot));
+  const harmonyLogs = await timings.measure("harmony-log-runtime", () => verifyPackagedHarmonyLogAssets(runtimeWebRoot, `${packagedRuntimeArchive}.unpacked`));
   const looseNodeModules = await stat(join(packagedWebRoot, "node_modules")).catch(() => undefined);
   if (looseNodeModules) {
     throw new Error("Packaged web dependencies must be archived; loose node_modules would regress portable startup");
@@ -1009,7 +1040,7 @@ async function main() {
   const packagedBackgrounds = await verifyPackagedBackgroundAssets(runtimeWebRoot);
   const packagedCompanion = await verifyPackagedCompanionAssets(runtimeWebRoot);
 
-  const electronShell = await inspectElectronShell(packagedWebRoot, requireElectronShell);
+  const electronShell = await timings.measure("electron-shell-and-licenses", () => inspectElectronShell(packagedWebRoot, requireElectronShell, runtimeWebRoot));
   const forbiddenDependencyCopies = await findForbiddenPackagedDependencies(runtimeWebRoot);
   if (forbiddenDependencyCopies.length > 0) {
     throw new Error(
@@ -1019,7 +1050,7 @@ async function main() {
     );
   }
 
-  const temporaryRoot = resolve(tmpdir());
+  const temporaryRoot = verificationTempRoot();
   const temporaryDirectory = await mkdtemp(join(temporaryRoot, "piora-package-"));
   const temporaryRelativePath = relative(temporaryRoot, temporaryDirectory);
   if (
@@ -1036,21 +1067,21 @@ async function main() {
   let stderr = "";
   try {
     await prepareIsolatedEnvironment(temporaryDirectory);
-    await cp(packagedWebRoot, isolatedWebRoot, {
+    await timings.measure("copy-isolated-web", () => cp(packagedWebRoot, isolatedWebRoot, {
       recursive: true,
       dereference: true,
       force: true,
-    });
+    }), { isolatedWebRoot });
     if (process.platform === "win32") {
       const { verifyStagedPortableExtractor } = await import("./stage-portable-extractor.mjs");
       await verifyStagedPortableExtractor(join(dirname(packagedWebRoot), "portable-extractor"));
       const { verifyPayload } = createRequire(import.meta.url)("./portable-payload.cjs");
       const expectedVersion = JSON.parse(await readFile(join(projectRoot, "desktop/package.json"), "utf8")).version;
-      await verifyPayload(dirname(dirname(packagedWebRoot)), join(projectRoot, "desktop/build/portable-payload-x64.json"), expectedVersion);
+      await timings.measure("verify-physical-payload", () => verifyPayload(dirname(dirname(packagedWebRoot)), join(projectRoot, "desktop/build/portable-payload-x64.json"), expectedVersion));
       const { verifyStagedPowerShell } = await import("./stage-powershell.mjs");
       const shellRoot = join(temporaryDirectory, "powershell");
-      await cp(join(dirname(packagedWebRoot), "powershell"), shellRoot, { recursive: true });
-      await verifyStagedPowerShell(shellRoot);
+      await timings.measure("copy-isolated-powershell", () => cp(join(dirname(packagedWebRoot), "powershell"), shellRoot, { recursive: true }));
+      await timings.measure("verify-powershell", () => verifyStagedPowerShell(shellRoot));
       if (await lstat(join(dirname(packagedWebRoot), "speech")).catch(error => {
         if (error?.code === "ENOENT") return null;
         throw error;
@@ -1197,7 +1228,7 @@ async function main() {
     await assertFile(extensionMarker);
     let smartShell;
     try {
-      smartShell = await verifyPackagedShell({ origin, cwd: isolatedProjectDir, token, bundledPowerShell: process.platform === "win32" ? join(temporaryDirectory, "powershell", "pwsh.exe") : undefined });
+      smartShell = await timings.measure("interactive-shell-acceptance", () => verifyPackagedShell({ origin, cwd: isolatedProjectDir, token, bundledPowerShell: process.platform === "win32" ? join(temporaryDirectory, "powershell", "pwsh.exe") : undefined }));
     } catch (error) {
       throw new Error(
         `${error instanceof Error ? error.stack ?? error.message : String(error)}` +
@@ -1270,7 +1301,8 @@ async function main() {
     const coreExtensionTools = verifyPackagedCoreTools(initialTools);
     for (const name of ["codemode", "tool_search"]) {
       const helper = requireArrayEntry(initialTools, entry => entry.name === name, `native Pi helper ${name}`);
-      if (helper.active) throw new Error(`Native helper ${name} should remain inactive with no MCP config or native defaultTools selection`);
+      const expectedActive = name === "codemode";
+      if (Boolean(helper.active) !== expectedActive) throw new Error(`Native helper ${name} must be ${expectedActive ? "active" : "inactive"} without MCP config in the default coding preset`);
     }
     requireArrayEntry(commands, entry => entry.name === "mcp" && entry.source === "extension", "native MCP command");
 
@@ -1349,6 +1381,7 @@ async function main() {
       packagedPiAiModules,
       nativePiRuntime,
       harmonyHapPreview,
+      harmonyLogs,
       patchedBundledDependencies: patchedBundledDependencies.map(({ name, version }) => `${name}@${version}`),
       forbiddenDependencyChecks: forbiddenPackagedDependencies.length,
       packagedBackgrounds: packagedBackgrounds.backgroundCount,
@@ -1377,10 +1410,10 @@ async function main() {
     }));
   } finally {
     if (child) await stopChild(child);
-    await rm(temporaryDirectory, { recursive: true, force: true });
+    await timings.measure("cleanup-isolated-web", () => rm(temporaryDirectory, { recursive: true, force: true }));
   }
   } finally {
-    await rm(inspectionDirectory, { recursive: true, force: true });
+    await timings.measure("cleanup-extracted-runtime", () => rm(inspectionDirectory, { recursive: true, force: true }));
   }
 }
 

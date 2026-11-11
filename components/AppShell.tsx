@@ -35,7 +35,8 @@ import { useCompanionWorkRhythm } from "@/hooks/useCompanionWorkRhythm";
 import { useFocusTrap } from "@/hooks/useFocusTrap";
 import { copyText } from "@/lib/clipboard";
 import { getFileName } from "@/lib/file-paths";
-import { resolveWorkspaceFilePath } from "@/lib/file-links";
+import { resolveFileReferenceTarget } from "@/lib/file-references";
+import { showPioraMessage } from "./PioraMessage";
 import { buildAtMentionText, buildFileAtMentionsText, buildFileLineMentionText } from "@/lib/file-fuzzy";
 import { getInitialNavigation } from "@/lib/initial-navigation";
 import { historyLocationUrl, readHistoryLocation, type HistoryChatControls, type HistoryLocation } from "@/lib/history-navigation";
@@ -143,12 +144,10 @@ const SkillsConfig = dynamic(() => import("./SkillsConfig").then((module) => mod
 const PluginsConfig = dynamic(() => import("./PluginsConfig").then((module) => module.PluginsConfig), { ssr: false, loading: SettingsSectionLoading });
 const DesktopExtensionsSettings = dynamic(() => import("./DesktopExtensionsSettings").then((module) => module.DesktopExtensionsSettings), { ssr: false, loading: SettingsSectionLoading });
 const ExtensionsConfig = dynamic(() => import("./ExtensionsConfig").then((module) => module.ExtensionsConfig), { ssr: false, loading: SettingsSectionLoading });
-const CapabilityBundlesConfig = dynamic(() => import("./CapabilityBundlesConfig").then((module) => module.CapabilityBundlesConfig), { ssr: false, loading: SettingsSectionLoading });
 const ProjectToolsConfig = dynamic(() => import("./ProjectToolsConfig").then((module) => module.ProjectToolsConfig), { ssr: false, loading: SettingsSectionLoading });
 const AppearanceSettings = dynamic(() => import("./AppearanceSettings").then((module) => module.AppearanceSettings), { ssr: false });
 const CompanionSettingsDialog = dynamic(() => import("./CompanionSettingsDialog").then((module) => module.CompanionSettingsDialog), { ssr: false });
 const RemoteControlSettings = dynamic(() => import("./RemoteControlSettings").then((module) => module.RemoteControlSettings), { ssr: false });
-const HarmonyStorageSettings = dynamic(() => import("./HarmonyStorageSettings").then((module) => module.HarmonyStorageSettings), { ssr: false });
 const SpeechSettings = dynamic(() => import("./SpeechSettings").then((module) => module.SpeechSettings), { ssr: false });
 const UsageStatsPanel = dynamic(() => import("./UsageStatsPanel").then((module) => module.UsageStatsPanel), { ssr: false });
 const TrashSettings = dynamic(() => import("./TrashSettings").then((module) => module.TrashSettings), { ssr: false });
@@ -404,7 +403,7 @@ export function AppShell() {
 
   useEffect(() => {
     const stored = window.localStorage.getItem("piora-right-panel-tab");
-    setRightPanelTab(stored === "automation" || stored === "review" || stored === "files" || stored === "commands" || stored === "ssh" || stored === "browser" || stored === "design" || stored === "harmony" ? stored : "home");
+    setRightPanelTab(stored === "automation" || stored === "review" || stored === "files" || stored === "commands" || stored === "ssh" || stored === "browser" || stored === "harmony" ? stored : "home");
     setRightPanelTabRestored(true);
   }, []);
 
@@ -1475,15 +1474,17 @@ export function AppShell() {
   }, [activeCwd, isMobile]);
 
   const handleOpenLinkedFile = useCallback((filePath: string) => {
-    const resolvedPath = resolveWorkspaceFilePath(
-      filePath,
-      selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? undefined,
-    );
-    if (!resolvedPath) return;
-    handleOpenFile(resolvedPath, getFileName(resolvedPath), {
+    const cwd = selectedSession?.cwd ?? newSessionCwd ?? activeCwd ?? undefined;
+    const reference = resolveFileReferenceTarget(filePath, cwd);
+    if (!reference) {
+      void showPioraMessage({ title: translate("fileReference.unavailable"), message: translate("fileReference.invalidPath", { path: filePath }), tone: "error", presentation: "notice", durationMs: 5000, actions: [{ id: "done", label: translate("i18n.close") }] });
+      return;
+    }
+    handleOpenFile(reference.filePath, getFileName(reference.filePath), {
       sourceSessionId: selectedSession?.id ?? null,
+      line: reference.line, column: reference.column,
     });
-  }, [activeCwd, handleOpenFile, newSessionCwd, selectedSession?.cwd, selectedSession?.id]);
+  }, [activeCwd, handleOpenFile, newSessionCwd, selectedSession?.cwd, selectedSession?.id, translate]);
 
   const handleCloseFileTab = useCallback(async (tabId: string) => {
     const closingIndex = fileTabs.findIndex((tab) => tab.id === tabId);
@@ -1964,13 +1965,6 @@ export function AppShell() {
         tools: (currentProjectPath ?? settingsProjectCwd) ? (
           <ProjectToolsConfig cwd={(currentProjectPath ?? settingsProjectCwd)!} onChanged={setSessionCapabilities} mcpFocus={mcpToolsFocus} onClearMcpFocus={() => setMcpToolsFocus(null)} />
         ) : chooseSettingsProject,
-        capabilityBundles: settingsProjectCwd ? (
-          <CapabilityBundlesConfig
-            cwd={settingsProjectCwd!}
-            sessionId={selectedSession?.id ?? null}
-            onReloaded={() => setSessionKey((key) => key + 1)}
-          />
-        ) : chooseSettingsProject,
         automations: (
           <AutomationPanel
             embedded
@@ -2012,9 +2006,6 @@ export function AppShell() {
         appearance: <AppearanceSettings />,
         remote: (
           <RemoteControlSettings sessionId={selectedSession?.id ?? null} />
-        ),
-        harmony: (
-          <HarmonyStorageSettings />
         ),
         speech: (
           <SpeechSettings />

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { extractFile } from '@electron/asar';
 import { createIsolatedProcessEnvironment, prepareIsolatedEnvironment } from './isolated-process-env.mjs';
+import { verificationTempRoot } from './verification-temp.mjs';
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -19,7 +19,7 @@ export async function verifyPackagedClipboard(applicationRoot) {
   for (const file of ['node_modules/koffi/index.cjs', 'node_modules/@koromix/koffi-win32-x64/win32_x64/koffi.node']) {
     assert.ok((await readFile(join(archive + '.unpacked', file))).length > 0, 'required native dependency is unpacked: ' + file);
   }
-  const temporary = await mkdtemp(join(tmpdir(), 'piora-packaged-clipboard-'));
+  const temporary = await mkdtemp(join(verificationTempRoot(), 'piora-packaged-clipboard-'));
   let child;
   try {
     await prepareIsolatedEnvironment(temporary);
@@ -65,14 +65,14 @@ const request = createRequire(${JSON.stringify(join(app, 'package.json'))});
     await new Promise((resolveExit, reject) => {
       const timer = setTimeout(() => { child.kill(); reject(new Error('Packaged clipboard probe timed out\n' + output)); }, 60000);
       child.once('error', error => { clearTimeout(timer); reject(error); });
-      child.once('exit', code => { clearTimeout(timer); code === 0 ? resolveExit() : reject(new Error('Packaged clipboard probe failed\n' + output)); });
+      child.once('exit', code => { clearTimeout(timer); if (code === 0) resolveExit(); else reject(new Error('Packaged clipboard probe failed\n' + output)); });
     });
     return { ...JSON.parse(await readFile(reportFile, 'utf8')), sourceModulesVerified: modules.length };
   } finally {
     if (child && child.exitCode === null && child.signalCode === null) {
       const exited = new Promise(resolveExit => child.once('exit', resolveExit)); child.kill(); await exited;
     }
-    assert.equal(dirname(temporary), resolve(tmpdir()));
+    assert.equal(dirname(temporary), verificationTempRoot());
     await rm(temporary, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
   }
 }

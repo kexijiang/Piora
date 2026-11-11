@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "./runtime-home";
 import { join } from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";

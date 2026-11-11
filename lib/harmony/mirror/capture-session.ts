@@ -8,7 +8,8 @@ import { ScrcpyServiceService } from "hypium-driver/build/lib/generated/scrcpy/s
 import type { CommandResult } from "../command-runner";
 import { HarmonyError } from "../errors";
 import { HosVideoPacketizer } from "../media/hos-packets";
-import { readDebugVideoLibrary } from "../runtime/deveco-video-library";
+import { readDebugVideoLibraryCandidates, type DebugVideoLibrary } from "../runtime/deveco-video-library";
+import { videoStartupDiagnostics } from "../runtime/video-startup-diagnostics";
 import { VideoOwnership } from "../runtime/video-ownership";
 import type { HarmonyVideoConnection } from "../types";
 import { MirrorSubscriber } from "./subscriber";
@@ -20,6 +21,7 @@ type Run = (args: readonly string[], operation: string, signal?: AbortSignal, ti
 type Reply = { getPayloadMap(): { get(key: string): { getValBytes_asU8(): Uint8Array } | undefined } };
 const decode = ScrcpyServiceService.onStart.responseDeserialize as unknown as (bytes: Buffer) => Reply;
 const fail = (message: string) => new HarmonyError("CAPABILITY_UNAVAILABLE", message, { details: { reason: "debug-video-unavailable" }, retryable: true });
+const workingLibraries = new Map<string, string>();
 
 /** One owned HDC encoder per device. Recording and visible viewers have independent lifetimes. */
 export class MirrorCaptureSession {
@@ -38,9 +40,13 @@ export class MirrorCaptureSession {
   private lastKeyframeRequest = -Infinity;
   private keyframePending = false;
   private firstFrameTimer?: ReturnType<typeof setTimeout>;
+  private idleFrameTimer?: ReturnType<typeof setInterval>;
+  private lastFrameAt = 0;
   private idleTimer?: ReturnType<typeof setTimeout>;
   private ownership?: VideoOwnership;
   private journaled = false;
+  private libraryToRemember?: { key: string; sha256: string };
+  private readonly startupHilogSeen = new Set<string>();
   private constructor(private readonly serial: string, private readonly run: Run, private readonly port: number,
     private readonly name: string, private readonly onClose: () => void) {}
 
@@ -88,26 +94,81 @@ export class MirrorCaptureSession {
     }
     if (!source) throw new HarmonyError("CAPABILITY_UNAVAILABLE", "The native video runtime is missing. Repair or update Piora and reconnect.", { details: { reason: "debug-video-sdk-missing" }, retryable: true });
     const version = knownVersion || await this.shell("uitest --version", "debug_video_version");
-    const library = await readDebugVideoLibrary(source, version).catch(() => {
-      throw fail("No compatible native video library is available for this device. Update Piora or use a compatible installed DevEco SDK and reconnect.");
+    const candidates = await readDebugVideoLibraryCandidates(source, version).catch(() => {
+      throw new HarmonyError("CAPABILITY_UNAVAILABLE", "No compatible, verified native video library is available for this device. Repair or update Piora.", {
+        details: { reason: "debug-video-library-unavailable", deviceVersion: version.slice(0, 64) }, retryable: false,
+      });
     });
+    const key = JSON.stringify([this.serial, version, source]);
+    const working = workingLibraries.get(key);
+    candidates.sort((a, b) => Number(b.sha256 === working) - Number(a.sha256 === working));
+    const attempts: Record<string, unknown>[] = [];
+    for (let index = 0; index < candidates.length; index++) {
+      const library = candidates[index];
+      try {
+        await this.initializeOwnedLibrary(library, version, scale);
+        this.libraryToRemember = { key, sha256: library.sha256 };
+        return;
+      } catch (error) {
+        if (!(error instanceof HarmonyError) || error.details?.reason !== "debug-video-abi-incompatible") throw error;
+        attempts.push({ library: library.name, librarySha256: library.sha256,
+          missingSymbol: error.details.missingSymbol, diagnostic: error.details.diagnostic });
+        if (index === candidates.length - 1) throw new HarmonyError(error.code, error.message, {
+          cause: error, details: { ...error.details, libraryAttempts: attempts }, retryable: false,
+        });
+        // Loader failures normally leave no daemon. Never replace a live own
+        // library, steal a foreign socket, or retry unrelated startup errors.
+        if (await this.ownsProcess()) throw error;
+        if ((await this.shell("cat /proc/net/unix", "debug_video_fallback_socket")).includes("@scrcpy_grpc_socket")) {
+          throw new HarmonyError("DEVICE_BUSY", "Another tool owns the debug video channel", { details: { reason: "debug-video-busy" } });
+        }
+        await this.shell(`rm -f /data/local/tmp/${this.name} /data/local/tmp/${this.name}.log`, "debug_video_fallback_cleanup");
+      }
+    }
+  }
+
+  private async initializeOwnedLibrary(library: DebugVideoLibrary, version: string, scale: typeof MIRROR_PROFILE.scale) {
     const directory = await mkdtemp(join(tmpdir(), "piora-video-"));
     try {
-      const path = join(directory, this.name); await writeFile(path, library, { flag: "wx", mode: 0o600 });
+      const path = join(directory, this.name); await writeFile(path, library.bytes, { flag: "wx", mode: 0o600 });
       await this.run(["-t", this.serial, "file", "send", path, `/data/local/tmp/${this.name}`], "debug_video_upload", undefined, 8000);
     } finally { await rm(directory, { recursive: true, force: true }); }
     // Both the bundled Hypium library and the optional SDK expose this capture service.
     const pid = await this.shell(`uitest start-daemon singleness --extension-name ${this.name} ${captureArguments(scale)} > /data/local/tmp/${this.name}.log 2>&1 & echo $!`, "debug_video_start");
     const match = /^\s*(\d+)\s*$/.exec(pid);
-    if (!match) throw fail("The phone did not identify the debug video service");
+    if (!match) throw await this.startupFailure(library, version);
     // uitest daemonizes: $! identifies the launcher, not the long-lived child.
     let ready = false;
     for (let attempt = 0; attempt < 20; attempt++) {
       if ((await this.shell("cat /proc/net/unix", "debug_video_ready")).includes("@scrcpy_grpc_socket")) { ready = true; break; }
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    if (!ready || !await this.ownsProcess()) throw fail("The native debug video service could not start on this system. Update Piora and reconnect.");
+    if (!ready || !await this.ownsProcess()) throw await this.startupFailure(library, version);
     await this.openForward();
+  }
+
+  private async startupFailure(library: DebugVideoLibrary, version: string): Promise<HarmonyError> {
+    const read = async (command: string, operation: string) => {
+      try {
+        const result = await this.run(["-t", this.serial, "shell", command], operation, undefined, 2000);
+        return result.stdout.toString("utf8").slice(-8192);
+      } catch { return ""; }
+    };
+    const [ownLog, hilog] = await Promise.all([
+      read(`tail -c 8192 /data/local/tmp/${this.name}.log 2>/dev/null`, "debug_video_startup_log"),
+      read(`hilog -x | grep -F '${this.name}' | tail -c 8192`, "debug_video_startup_hilog"),
+    ]);
+    const hilogLines = hilog.split(/\r?\n/);
+    const currentHilog = hilogLines.filter(line => !this.startupHilogSeen.has(line));
+    for (const line of hilogLines) this.startupHilogSeen.add(line);
+    const evidence = videoStartupDiagnostics(this.name, ownLog, currentHilog.join("\n"));
+    return new HarmonyError("CAPABILITY_UNAVAILABLE", evidence.missingSymbol
+      ? `The native video library could not load: ${evidence.missingSymbol}: symbol not found`
+      : "The native video service could not start on this device.", {
+      details: { reason: evidence.missingSymbol ? "debug-video-abi-incompatible" : "debug-video-start-failed",
+        library: library.name, librarySha256: library.sha256, librarySource: library.source,
+        deviceVersion: version.slice(0, 64), ...evidence }, retryable: false,
+    });
   }
 
   private async openForward() {
@@ -123,6 +184,11 @@ export class MirrorCaptureSession {
   private startReading() {
     if (this.source || !this.rpc) return;
     this.source = this.rpc.makeServerStreamRequest("/ScrcpyService/onStart", () => Buffer.alloc(0), decode, Buffer.alloc(0));
+    this.lastFrameAt = performance.now();
+    this.idleFrameTimer = setInterval(() => {
+      if (this.viewers.size && performance.now() - this.lastFrameAt >= MIRROR_PROFILE.idleKeyframeIntervalMs) this.requestKeyframe();
+    }, MIRROR_PROFILE.idleKeyframeIntervalMs);
+    this.idleFrameTimer.unref?.();
     this.firstFrameTimer = setTimeout(() => this.end(fail("The native debug video channel produced no frames. Reconnect the device and update Piora.")), 8000);
     this.source.on("data", (reply: Reply) => {
       if (this.closing) return;
@@ -132,7 +198,17 @@ export class MirrorCaptureSession {
         for (const packet of this.packetizer.push(Buffer.from(bytes))) {
           const config = packet.readUInt32BE(0) === 2;
           if (config) this.configuration = packet;
-          else { clearTimeout(this.firstFrameTimer); }
+          else {
+            clearTimeout(this.firstFrameTimer); this.lastFrameAt = performance.now();
+            // A loaded daemon alone is insufficient: remember its ABI only
+            // after receiving a complete video packet from this device.
+            if (this.libraryToRemember) {
+              const { key, sha256 } = this.libraryToRemember;
+              workingLibraries.delete(key); workingLibraries.set(key, sha256);
+              while (workingLibraries.size > 32) workingLibraries.delete(workingLibraries.keys().next().value!);
+              this.libraryToRemember = undefined;
+            }
+          }
           for (const viewer of this.viewers) viewer.push(packet);
         }
       } catch { this.end(fail("The debug video service returned invalid video data")); }
@@ -184,6 +260,7 @@ export class MirrorCaptureSession {
     return this.closing ??= (async () => {
       clearTimeout(this.idleTimer); this.idleTimer = undefined;
       clearTimeout(this.firstFrameTimer);
+      clearInterval(this.idleFrameTimer);
       for (const viewer of [...this.viewers]) viewer.close();
       this.source?.cancel(); this.rpc?.close();
       // Never terminate another IDE's global uitest service or remove its forwarding rules.

@@ -1,7 +1,7 @@
 # GitHub issue 核对与修复（2026-11-10）
 
 核对仓库：`kexijiang/Piora`。基线：`origin/main` 的 `b316d3d70413788aeb38b455a1f9de652b9753d4`。
-本次在独立 worktree `F:/Piora-worktrees/github-issues-20261110`、分支 `codex/github-issues-20261110` 完成修改，未改动主开发目录原有修改。
+本次在独立 worktree `github-issues-20261110`、分支 `codex/github-issues-20261110` 完成修改，未改动主开发目录原有修改。
 
 ## 未关闭 issue 的处理结果
 

@@ -46,3 +46,8 @@ export function getRuntimeAgentDataDirectory(
   }
   return path.resolve(configuredDirectory);
 }
+
+/** Resolve the OS user's home lazily, preserving shell/MCP tilde semantics. */
+export function getRuntimeUserHomeDirectory(environment: RuntimeHomeEnvironment = process.env): string {
+  return getRuntimeHomeDirectory({ USERPROFILE: environment.USERPROFILE, HOME: environment.HOME });
+}

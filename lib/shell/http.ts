@@ -1,5 +1,5 @@
 import path from "node:path";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../runtime-home";
 import { stat } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { isApiRequestAllowed, hasJsonContentType } from "../request-security";

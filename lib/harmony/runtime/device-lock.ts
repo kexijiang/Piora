@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, renameSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "../../runtime-home";
 import { join } from "node:path";
 import { HarmonyError } from "../errors";
 

@@ -2,12 +2,6 @@
 
 状态：2026-10-17 群聊功能、视觉、真实模型任务、Electron 渲染与进程重启验收通过。未执行本地发布打包；以下区分夹具检查与真实运行证据。
 
-## 视觉基准
-
-![主界面](group-chat/main.png)
-![建群](group-chat/create.png)
-![执行、问题、恢复、交付](group-chat/states.png)
-
 ## 竞品依据与设计取舍
 
 以下为官方公开材料核对，未将未登录体验或推测写成实测结论。
@@ -92,16 +86,6 @@
 - 真实 1440 桌面、任务详情、390 窄屏与深色截图均已查看；长目标可展开，执行列表及成果保留可见空间。开发服务导航/退出时有 `ERR_ABORTED` 资源取消日志，未发生群聊页面脚本异常。
 - 证据：`.verification/group-chat-live/model-e2e-report.json`、`restart-report.json`、`electron-report.json` 及同目录截图；夹具交互结果在 `.verification/group-chat-ux/report.json`。
 - 验收服务及 Electron 测试进程已结束，临时目录中的四份提供商凭据副本已移除；保留报告、转录及成果，用户原有凭据和默认模型未改动。最终根项目/桌面类型检查、涉及文件 ESLint 与 `git diff --check` 均通过。
-
-![真实 Electron 群聊交付](group-chat/implemented-live-desktop.png)
-![真实任务详情](group-chat/implemented-live-tasks.png)
-![真实窄屏深色交付](group-chat/implemented-live-mobile-dark.png)
-
-![实现后的主界面](group-chat/implemented-main.png)
-![实现后的建群弹窗](group-chat/implemented-create.png)
-![实现后的窄屏](group-chat/implemented-mobile.png)
-![实现后的深色主题](group-chat/implemented-dark.png)
-![等待停止确认与重试](group-chat/implemented-stopping.png)
 
 ## 工程约束
 

@@ -1,6 +1,6 @@
 {
   "name": "piora",
-  "version": "0.5.10-beta.15",
+  "version": "0.5.10-beta.25",
   "private": true,
   "description": "Open-source Pi coding agent desktop application",
   "author": {
@@ -148,6 +148,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/xterm": "^6.0.0",
+    "7z-bin": "26.4.0",
     "brace-expansion": "5.0.12",
     "codemirror": "^6.0.2",
     "diff": "^9.0.0",
@@ -188,7 +189,8 @@
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.4",
     "unified": "^11.0.5",
-    "ws": "^8.22.0"
+    "ws": "^8.22.0",
+    "yauzl": "3.4.0"
   },
   "devDependencies": {
     "@electron/asar": "4.3.1",

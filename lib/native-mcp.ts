@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { homedir } from "node:os";
+import { getRuntimeUserHomeDirectory as homedir } from "./runtime-home";
 import { join, resolve } from "node:path";
 import {
   createCodemodeExtension, createMcpExtension, createToolSearchExtension,
@@ -308,6 +308,9 @@ export class NativeMcpController {
         });
       },
       registerTool: definition => {
+        // Code Mode is a general-purpose default tool in Piora, even without
+        // MCP servers. Session capability selections still control admission.
+        if (kind === "codemode" && definition.name === "codemode") definition = { ...definition, defaultActive: true };
         const exposure = definition.exposure ?? "direct";
         const server = definition.namespace?.name.startsWith("mcp__")
           ? [...this.states.keys()].find(name => `mcp__${name.replace(/[^\w]/g, "_")}` === definition.namespace?.name) : undefined;

@@ -276,10 +276,10 @@ const runtime = Object.freeze({
       ipcRenderer.on("pi:browser-agent-backend", handler);
       return () => ipcRenderer.removeListener("pi:browser-agent-backend", handler);
     },
-    onAgentActivity(listener: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean; waiting?: boolean; reason?: string }) => void) {
+    onAgentActivity(listener: (activity: { sessionId: string; tabId: string | null; operating: boolean; paused: boolean; waiting?: boolean; reason?: string; purpose?: "login" | "confirmation" }) => void) {
       const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
         if (!payload || typeof payload !== "object") return;
-        const candidate = payload as { sessionId?: unknown; tabId?: unknown; operating?: unknown; paused?: unknown; waiting?: unknown; reason?: unknown };
+        const candidate = payload as { sessionId?: unknown; tabId?: unknown; operating?: unknown; paused?: unknown; waiting?: unknown; reason?: unknown; purpose?: unknown };
         if (typeof candidate.sessionId !== "string") return;
         if (candidate.tabId !== null && typeof candidate.tabId !== "string") return;
         if (typeof candidate.operating !== "boolean" || typeof candidate.paused !== "boolean") return;
@@ -292,6 +292,7 @@ const runtime = Object.freeze({
           paused: candidate.paused,
           waiting,
           ...(waiting && reason !== undefined ? { reason } : {}),
+          ...(waiting && (candidate.purpose === "login" || candidate.purpose === "confirmation") ? { purpose: candidate.purpose } : {}),
         });
       };
       ipcRenderer.on("pi:browser-agent-activity", handler);

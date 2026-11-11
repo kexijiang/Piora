@@ -22,18 +22,19 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     const compiler = webpack({ mode: "development", target: "web", devtool: false,
       entry: path.join(root, "entry.tsx"), output: { path: root, filename: "bundle.js" },
       resolve: { extensions: [".tsx", ".ts", ".js"], modules: [path.join(repo, "node_modules")], alias: { ...aliases, "@": repo } },
-      module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(root, "loader.cjs") }, { test: /\.css$/, use: path.join(root, "css.cjs") }] },
+      module: { rules: [{ test: /\.[jt]sx?$/, exclude: /node_modules/, use: path.join(root, "loader.cjs") }, { test: /\.css$/, use: path.join(root, "css.cjs") }] },
     });
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
     const page = await browser.newPage({ viewport: { width: 1100, height: 850 } });
     const errors = [], requests = [], nativeDialogs = [];
-    page.on("pageerror", error => errors.push(error.message));
+    page.on("pageerror", error => { errors.push(error.message); console.error("Harmony fixture page error", error); });
     page.on("dialog", async dialog => { nativeDialogs.push(dialog.type()); await dialog.dismiss(); });
     await page.addInitScript(() => {
       window.copies = []; window.messages = []; window.mirrorCalls = [];
       let state = { serial: "", scale: 75, open: false, minimized: false, alwaysOnTop: false, ownerId: "desktop-media-fixture" }, listeners = [];
       const update = serial => { state = { ...state, serial }; listeners.forEach(fn => fn(state)); return state; };
+      window.setFixtureMirrorState = next => { state = { ...state, ...next }; return update(state.serial); };
       window.piDesktop = { messages: { show: async message => { window.messages.push(message); return "done"; } }, harmonyMirror: {
         getState: async () => state, onCommand: () => () => {}, setScale: async scale => { state={...state,scale}; return update(state.serial); }, close: async () => { state={...state,open:false}; update(state.serial); return true; }, onStateChange: fn => { listeners.push(fn); return () => { listeners = listeners.filter(item => item !== fn); }; },
         setPresentation: async presentation => { state = { ...state, presentation, open: true }; return update(state.serial); },
@@ -43,7 +44,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
         copyHarmonyMedia: async media => { if (window.failMedia) throw Error("clipboard busy"); window.copies.push(media); },
         writeText: async text => { if (window.failPath) throw Error("clipboard busy"); window.copiedPath = text; },
       } };
-      window.EventSource = class { close() {} };
+      window.EventSource = class extends EventTarget { close() {} };
     });
     let recording = null, holder = null, delayTemplate = null, rejectRecording = false, textPreviewReads = 0;
     const recordingPairs = [];
@@ -145,6 +146,7 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
       if (url.pathname.endsWith("/scenario")) data = input ? { result: { status: "passed", steps: [{ action: "launch_app", status: "passed" }] } }
         : { executions: [{ id: "scenario-1", status: "failed", startedAt: "2026-09-29T09:39:00Z", steps: [] }] };
       if (url.pathname.endsWith("/audio")) data = { outputs: [] };
+      if (url.pathname === "/api/harmony/logs") data = { processes: [] };
       if (url.pathname.endsWith("/transfers")) data = { jobs: [] };
       if (url.pathname.endsWith("/manual")) {
         if (["acquire", "takeover"].includes(input?.action)) {
@@ -167,6 +169,8 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
       return route.fulfill({ json: data });
     });
     await page.goto("https://harmony-panel.test/");
+    await page.locator(".workbenchTabs").waitFor({ state: "attached" });
+    await page.locator(".workbenchContent").waitFor({ state: "attached" });
     assert.equal(await page.locator(".workbenchTabs").isHidden(), true);
     assert.equal(await page.locator(".workbenchContent").isHidden(), true);
     // Exercise retained workbench components in isolation, outside the normal UI.
@@ -239,6 +243,31 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     await page.getByRole("button", {name:"独立悬浮窗", exact:true}).click();
     await page.waitForFunction(()=>!document.querySelector('.embeddedMirror canvas'));
     assert.equal(await page.evaluate(() => window.maximized), false, "switching between sidebar and floating mirror does not expand the workspace");
+    const logsPage = page.getByRole("button", { name: "日志工作台", exact: true });
+    const devicePage = page.getByRole("button", { name: "设备", exact: true });
+    await logsPage.click();
+    assert.equal(await logsPage.getAttribute("aria-pressed"), "true");
+    // The floating renderer requests a handoff through the native bridge. The
+    // destination must be laid out before its first-frame acknowledgement.
+    await page.evaluate(() => window.setFixtureMirrorState({ pendingPresentation: "sidebar" }));
+    await page.waitForFunction(() => document.querySelector('.devicePageTabs button')?.getAttribute('aria-pressed') === 'true');
+    assert.equal(await devicePage.getAttribute("aria-pressed"), "true", "docking from logs opens the device page before acknowledgement");
+    await page.locator(".embeddedMirror canvas").waitFor({ state: "attached" });
+    assert.notEqual(await page.locator(".embeddedMirror").evaluate(element => getComputedStyle(element).display), "none");
+    assert.equal(await page.locator(".embeddedMirror").getAttribute("aria-hidden"), "true", "the pending destination stays visually hidden until the native handoff commits");
+    await page.evaluate(() => window.setFixtureMirrorState({ presentation: "sidebar", pendingPresentation: undefined }));
+    await page.getByRole("region", { name: "侧栏投屏" }).locator("canvas").waitFor();
+    const dockedBounds = await page.getByRole("region", { name: "侧栏投屏" }).locator("canvas").boundingBox();
+    assert.ok(dockedBounds.width > 0 && dockedBounds.height > 0, "the committed destination has a visible surface");
+    await logsPage.click();
+    await page.evaluate(() => window.setFixtureMirrorState({ scale: 80 }));
+    assert.equal(await logsPage.getAttribute("aria-pressed"), "true", "ordinary mirror state updates do not pull the user away from logs");
+    await page.evaluate(() => window.piDesktop.harmonyMirror.setPresentation("floating"));
+    assert.equal(await logsPage.getAttribute("aria-pressed"), "true");
+    await page.evaluate(() => window.piDesktop.harmonyMirror.setPresentation("sidebar"));
+    await page.getByRole("region", { name: "侧栏投屏" }).locator("canvas").waitFor();
+    assert.equal(await devicePage.getAttribute("aria-pressed"), "true", "a direct sidebar handoff also opens the destination");
+    await page.getByRole("button", {name:"独立悬浮窗", exact:true}).click();
     await page.getByText("响应 17 ms", { exact: true }).waitFor();
     assert.match(await page.getByText("响应 17 ms", { exact: true }).getAttribute("title"), /不代表视频延迟/);
     phoneState = "offline";

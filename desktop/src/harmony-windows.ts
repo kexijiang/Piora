@@ -271,7 +271,7 @@ class HarmonyDeviceWindow {
       const area = host ? screen.getDisplayMatching(host.getBounds()).workArea : screen.getPrimaryDisplay().workArea;
       const bounds = host?.getBounds() ?? area;
       const notice = message.presentation === "notice";
-      const width = Math.min(notice ? 340 : 430, area.width - 32), height = Math.min(notice ? 112 : message.preview ? 500 : 320, area.height - 32);
+      const width = Math.min(notice ? 300 : 430, area.width - 32), height = Math.min(notice ? 76 : message.preview ? 500 : 320, area.height - 32);
       this.message = message;
       const window = this.createSurface("/desktop-message", { width, height,
         x: Math.max(area.x, Math.min(area.x + area.width - width, Math.round(bounds.x + (bounds.width - width) / 2))),

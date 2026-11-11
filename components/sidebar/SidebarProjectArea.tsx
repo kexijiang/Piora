@@ -10,6 +10,7 @@ import styles from "../SessionSidebar.module.css";
 import { ProjectSessionGroup } from "./ProjectList";
 import type { SessionMoveTarget } from "./TaskContextMenu";
 import { isProjectNotificationMuted } from "@/lib/project-notification-preferences";
+import { useSectionDisclosure } from "./useSectionDisclosure";
 
 interface Props {
   loading: boolean; error: string | null;
@@ -34,7 +35,7 @@ interface Props {
   onReorderSessions: (sourceId: string, targetId: string, position: "before" | "after") => void;
 }
 
-const PROJECT_DRAG_HOLD_MS = 250;
+const PROJECT_DRAG_HOLD_MS = 500;
 const PROJECT_DRAG_CANCEL_DISTANCE = 7;
 
 interface ProjectDragState {
@@ -46,8 +47,7 @@ interface ProjectDragState {
 export function SidebarProjectArea(props: Props) {
   const { t } = useI18n();
   const { loading, error, handleDefaultCwd, handleCustomPathClick, projectGroups, selectedProject, collapsedProjectKeys, setCollapsedProjectKeys, selectedSessionId, runningSessionIds, unreadSessionIds, moveTargets, setSelectedCwd, homeDir, handleSelectSessionFromList, handleNewSessionInProject, loadSessions, handleSessionDeletedWithUndo, sessionFlags, patchSessionFlag, duplicateSession, markSessionUnread, moveSession, pinnedProjectRoots, projectAliases, mutedProjectRoots, toggleProjectMuted, togglePinnedProject, renameProject, removeProject, onReorderProjects, sessionOrder, onReorderSessions } = props;
-  const allProjectsCollapsed = projectGroups.length > 0
-    && projectGroups.every((group) => collapsedProjectKeys.has(group.key));
+  const { collapsed, toggle } = useSectionDisclosure("projects");
   const projectScrollRef = useRef<HTMLDivElement>(null);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const candidateRef = useRef<{ pointerId: number; root: string; x: number; y: number } | null>(null);
@@ -156,7 +156,7 @@ export function SidebarProjectArea(props: Props) {
   }, []);
 
   return (
-    <section className={styles.projectArea}>
+    <section className={`${styles.projectArea}${collapsed ? ` ${styles.projectAreaCollapsed}` : ""}`}>
       {/* Keep the Projects bar outside the session scroller so rows cannot cover it. */}
       {!loading && !error && (
         <div
@@ -165,28 +165,17 @@ export function SidebarProjectArea(props: Props) {
           <button
             type="button"
             className={styles.projectsHeaderToggle}
-            onClick={() => {
-              setCollapsedProjectKeys((previous) => {
-                const shouldExpandAll = projectGroups.every((group) => previous.has(group.key));
-                const next = new Set(previous);
-                for (const group of projectGroups) {
-                  if (shouldExpandAll) next.delete(group.key);
-                  else next.add(group.key);
-                }
-                return next;
-              });
-            }}
-            disabled={projectGroups.length === 0}
-            title={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
-            aria-label={t(allProjectsCollapsed ? "sidebar.expandAllProjects" : "sidebar.collapseAllProjects")}
-            aria-expanded={!allProjectsCollapsed}
+            onClick={toggle}
+            title={t(collapsed ? "sidebar.expandProjects" : "sidebar.collapseProjects")}
+            aria-label={t(collapsed ? "sidebar.expandProjects" : "sidebar.collapseProjects")}
+            aria-expanded={!collapsed}
           >
             <span>{t("sidebar.projects")}</span>
             <AliIcon
               name="chevron-right"
               size={11}
               strokeWidth={1.8}
-              className={allProjectsCollapsed ? undefined : styles.projectsHeaderChevronOpen}
+              className={collapsed ? undefined : styles.projectsHeaderChevronOpen}
             />
           </button>
           <div className={styles.sectionLabelActions}>
@@ -214,6 +203,7 @@ export function SidebarProjectArea(props: Props) {
       {/* Codex-style project folders with their conversations nested below. */}
       <div
         ref={projectScrollRef}
+        hidden={collapsed}
         data-session-drag-scroll
         className={`sidebar-project-scroll ${styles.projectScroll}`}
       >

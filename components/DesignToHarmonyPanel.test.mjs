@@ -6,11 +6,11 @@ const panel = fs.readFileSync(new URL("./workspace/design-to-harmony/DesignToHar
 const rightPanel = fs.readFileSync(new URL("./workspace/RightPanel.tsx", import.meta.url), "utf8");
 const shell = fs.readFileSync(new URL("./AppShell.tsx", import.meta.url), "utf8");
 
-test("exposes Design to Harmony as a primary right-panel tool and command target", () => {
-  assert.match(rightPanel, /id: "design", icon: "workflow"/);
+test("hides Design to Harmony entry while retaining its panel and command action", () => {
+  assert.doesNotMatch(rightPanel, /^\s*\{ id: "design", icon: "workflow"/m);
   assert.match(rightPanel, /workspace-design/);
   assert.match(rightPanel, /<DesignToHarmonyPanel/);
-  assert.match(shell, /stored === "design"/);
+  assert.doesNotMatch(shell, /stored === "design"/);
   assert.match(shell, /"panel\.design"/);
 });
 

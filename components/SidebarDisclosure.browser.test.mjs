@@ -24,6 +24,7 @@ import{SidebarChatArea}from'@/components/sidebar/SidebarChatArea';
 import{RoomSidebarSection}from'@/components/RoomSidebarSection';
 import{useSidebarState}from'@/components/sidebar/useSidebarState';
 import{buildSessionProjectGroups}from'@/lib/session-project-groups';
+import{GitToolsPopover}from'@/components/workspace/GitToolsPopover';
 const noop=()=>{}, asyncNoop=async()=>{}, empty=new Set();
 const make=(id,day,cwd='C:/fixture',parentSessionId)=>({id,name:id,firstMessage:id,path:id+'.jsonl',cwd,projectRoot:cwd,modified:'2026-01-'+String(day).padStart(2,'0')+'T00:00:00Z',created:'2026-01-01T00:00:00Z',messageCount:1,parentSessionId});
 const sessions=[make('pinned',1),make('fork',9,'C:/fixture','older'),make('newest',8),make('third',7),make('fourth',6),make('fifth',5),make('older',2),make('small-a',2,'C:/small'),make('small-b',1,'C:/small')];
@@ -32,8 +33,9 @@ window.events={newChat:0,newProject:0,newSession:0,reorder:0,restored:0};window.
 window.fetch=async url=>{if(url==='/api/rooms'){window.roomRequests++;return new Response(JSON.stringify({rooms:[{id:'room',name:window.roomName,updatedAt:1,members:[],summary:{lastMessage:{seq:1,author:'Member',content:'Hello'}}}]}))}return new Response(JSON.stringify({sessions:[],runningSessionIds:[],tasks:[],models:[],modelList:[]}))};
 function App(){const state=useSidebarState();const[selected,setSelected]=useState(null);window.setOrder=state.setSessionOrder;const common={selectedSessionId:selected,runningSessionIds:new Set(['older']),unreadSessionIds:new Set(['fifth']),moveTargets:[],sessionFlags:{pinned:{pinned:true}},sessionOrder:state.sessionOrder,onReorderSessions:()=>window.events.reorder++};
 return <I18nProvider><main className='session-sidebar-content' style={{width:320,height:'100vh',overflow:'auto'}}>
+<div className='conversation-toolbar-actions' id='git-toolbar'><GitToolsPopover cwd='C:/fixture' status={{isGitRepository:true,branch:'main',files:[]}} onOpenChanges={noop} onOpenCommit={noop} onSelectWorktree={noop}/></div>
 <div id='rooms'><RoomSidebarSection sessions={[]} selectedSessionId={null} selectedRoomId={null} initialRoomId='room' onSelectRoom={(_r,restore)=>{if(restore)window.events.restored++}}/></div>
-<div id='projects'><SidebarProjectArea {...common} loading={false} error={null} projectGroups={groups} selectedProject='C:/fixture' collapsedProjectKeys={state.collapsedProjectKeys} setCollapsedProjectKeys={state.setCollapsedProjectKeys} handleDefaultCwd={()=>{window.events.newProject++;return Promise.resolve()}} handleCustomPathClick={()=>window.events.newProject++} setSelectedCwd={noop} homeDir='' handleSelectSessionFromList={session=>setSelected(session.id)} handleNewSessionInProject={()=>window.events.newSession++} loadSessions={asyncNoop} handleSessionDeletedWithUndo={noop} patchSessionFlag={asyncNoop} duplicateSession={asyncNoop} markSessionUnread={noop} moveSession={asyncNoop} pinnedProjectRoots={empty} projectAliases={{}} mutedProjectRoots={empty} toggleProjectMuted={noop} togglePinnedProject={noop} renameProject={noop} removeProject={noop} onReorderProjects={noop}/></div>
+<div id='projects'><SidebarProjectArea {...common} loading={false} error={null} projectGroups={groups} selectedProject='C:/fixture' collapsedProjectKeys={state.collapsedProjectKeys} setCollapsedProjectKeys={state.setCollapsedProjectKeys} handleDefaultCwd={()=>{window.events.newProject++;return Promise.resolve()}} handleCustomPathClick={()=>window.events.newProject++} setSelectedCwd={noop} homeDir='' handleSelectSessionFromList={session=>setSelected(session.id)} handleNewSessionInProject={()=>window.events.newSession++} loadSessions={asyncNoop} handleSessionDeletedWithUndo={noop} patchSessionFlag={asyncNoop} duplicateSession={asyncNoop} markSessionUnread={noop} moveSession={asyncNoop} pinnedProjectRoots={empty} projectAliases={{}} mutedProjectRoots={empty} toggleProjectMuted={noop} togglePinnedProject={noop} renameProject={noop} removeProject={noop} onReorderProjects={(...args)=>{(window.events.projectReorders??=[]).push(args)}}/></div>
 <div id='chats'><SidebarChatArea {...common} sessions={[{...make('Personal chat',1),projectless:true}]} onNewChat={()=>window.events.newChat++} onSelectSession={session=>setSelected(session.id)} onRenamed={noop} onSessionDeleted={noop} onFlagChange={noop} onDuplicate={noop} onMarkUnread={noop} onMoveSession={asyncNoop}/></div>
 </main></I18nProvider>};createRoot(document.getElementById('root')).render(<App/>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false, entry: path.join(directory, "entry.tsx"), output: { path: directory, filename: "bundle.js" }, resolve: { extensions: [".tsx", ".ts", ".js"], modules: [path.join(repo, "node_modules")], alias: { "@": repo } }, module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(directory, "loader.cjs") }, { test: /\.css$/, use: path.join(directory, "css.cjs") }] } });
@@ -42,6 +44,7 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
     for (const locale of ["en", "zh-CN"]) {
       const page = await browser.newPage({ viewport: { width: 900, height: 1000 } });
+      await page.clock.install();
       const errors = [];
       page.on("pageerror", error => errors.push(error.message));
       await page.addInitScript(locale => {
@@ -60,6 +63,67 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
       const project = page.locator('[data-project-drag-root="C:/fixture"]');
       const previewIds = () => project.getByRole("treeitem").evaluateAll(rows => rows.map(row => row.dataset.sessionDragId));
       await page.waitForFunction(() => document.querySelector('[data-project-drag-root="C:/fixture"] button[aria-expanded]')?.getAttribute('aria-expanded') === 'false');
+      const projectTitle = project.locator('button[title="C:/fixture"]');
+      const projectRow = project.locator('[data-project-drag-handle]');
+      for (const theme of ['light', 'dark', 'anime-sky']) {
+        await page.evaluate(theme => {
+          document.documentElement.classList.toggle('dark', theme === 'dark');
+          document.documentElement.dataset.theme = theme;
+        }, theme);
+        for (const size of [14, 16, 18]) {
+          await page.evaluate(size => document.documentElement.style.setProperty('--ui-font-size', `${size}px`), size);
+          const headings = await page.locator('#rooms button[aria-expanded], .sidebar-projects-header button[aria-expanded], #chats button[aria-expanded]').evaluateAll(buttons => buttons.map(button => {
+            const style = getComputedStyle(button);
+            return { font: style.fontFamily, size: style.fontSize, weight: style.fontWeight, line: style.lineHeight, color: style.color };
+          }));
+          assert.equal(headings.length, 3);
+          assert.deepEqual(headings[0], headings[1], 'groups and projects share the same heading typography');
+          assert.deepEqual(headings[1], headings[2], 'projects and chats share the same heading typography');
+          assert.equal(await page.locator('#rooms > section').evaluate(el => getComputedStyle(el).borderBottomWidth), '0px', 'groups do not draw a divider above projects');
+          const centers = await page.locator('#git-toolbar > div > button').evaluate(el => [...el.children].map(child => {
+            const box = child.getBoundingClientRect(); return box.y + box.height / 2;
+          }));
+          assert.ok(Math.max(...centers) - Math.min(...centers) <= 1, `${theme}/${size}px: Git icon, label and counts stay centered`);
+        }
+        await page.evaluate(() => document.documentElement.style.removeProperty('--ui-font-size'));
+        for (const target of [projectTitle, projectRow.locator('button').first(), projectRow.locator('[data-project-drag-ignore] button').last()]) {
+          await target.hover();
+          await page.waitForTimeout(150);
+          const fill = await projectRow.evaluate(el => {
+            const style = getComputedStyle(el);
+            return { background: style.backgroundColor, radius: parseFloat(style.borderTopLeftRadius) };
+          });
+          assert.notEqual(fill.background, 'rgba(0, 0, 0, 0)', `${theme}: hovering any part fills the whole project row`);
+          assert.ok(fill.radius >= 8, `${theme}: the shared hover has rounded corners`);
+          assert.deepEqual(await projectTitle.evaluate(el => ({ color: getComputedStyle(el).backgroundColor, image: getComputedStyle(el).backgroundImage })), { color: 'rgba(0, 0, 0, 0)', image: 'none' }, 'the title never paints a separate rectangular patch');
+        }
+        await page.mouse.move(700, 900);
+        await projectTitle.focus();
+        await page.waitForTimeout(150);
+        assert.equal(await projectTitle.evaluate(el => el.matches(':focus-visible')), true);
+        assert.notEqual(await projectRow.evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)', 'keyboard focus highlights the whole row');
+        await projectTitle.evaluate(el => el.blur());
+        await page.waitForTimeout(150);
+        assert.equal(await projectRow.evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)', 'the fill clears after leaving the row');
+      }
+      await page.evaluate(() => { document.documentElement.classList.remove('dark'); delete document.documentElement.dataset.theme; });
+      await projectTitle.hover();
+      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grab");
+      const projectAction = project.locator('[data-project-drag-ignore] button').last();
+      await projectAction.hover();
+      assert.equal(await projectAction.evaluate(el => getComputedStyle(el).cursor), "pointer", "functional buttons retain the click cursor");
+      const sourceBox = await projectTitle.boundingBox();
+      const destinationBox = await page.locator('[data-project-drag-root="C:/small"] [data-project-drag-handle]').boundingBox();
+      await page.mouse.move(sourceBox.x + 30, sourceBox.y + sourceBox.height / 2);
+      await page.clock.pauseAt(new Date(Date.now() + 1000));
+      await page.mouse.down(); await page.clock.runFor(499);
+      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grab", "499ms is still a normal press");
+      await page.clock.runFor(1);
+      assert.equal(await projectTitle.evaluate(el => getComputedStyle(el).cursor), "grabbing", "500ms starts project dragging");
+      await page.mouse.move(destinationBox.x + 40, destinationBox.y + destinationBox.height - 3);
+      await page.mouse.up();
+      assert.deepEqual(await page.evaluate(() => window.events.projectReorders), [["C:/fixture", "C:/small", "after"]]);
+      await page.clock.runFor(501); await page.clock.resume();
       assert.deepEqual(await previewIds(), [], "collapsed project hides all sessions");
       assert.equal(await page.locator('[data-project-drag-root="C:/small"]').getByRole("treeitem").count(), 0);
       assert.equal(await project.locator('[data-project-drag-handle] .sidebar-running-spinner').count(), 1, "hidden running sessions still surface on the project heading");
@@ -110,18 +174,31 @@ return <I18nProvider><main className='session-sidebar-content' style={{width:320
       await page.keyboard.press("Space");
       assert.equal(await roomToggle.getAttribute("aria-expanded"), "false");
 
+      await toggleProject.click();
+      const folderStates = () => page.locator('[data-project-drag-handle] button[aria-expanded]').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-expanded')));
+      const beforeCollapse = await folderStates();
+      assert.ok(beforeCollapse.includes('true') && beforeCollapse.includes('false'), 'start with a mix of expanded and collapsed folders');
       await clickBlank(projectsToggle);
-      assert.equal(await projectsToggle.getAttribute("aria-expanded"), "true");
+      assert.equal(await projectsToggle.getAttribute("aria-expanded"), "false");
+      assert.equal(await page.locator('[data-project-drag-root]:visible').count(), 0, 'the entire project list is hidden');
+      assert.deepEqual(await folderStates(), beforeCollapse, 'collapsing the list never changes individual folders');
+      assert.ok(await page.locator('#projects > section').evaluate(section => section.getBoundingClientRect().height <= section.querySelector('.sidebar-projects-header').getBoundingClientRect().height + 1), 'collapsed section does not reserve blank space');
       await page.locator('.sidebar-projects-header').getByRole("button", { name: locale === "en" ? "New project" : "新建项目", exact: true }).click();
       assert.equal(await page.evaluate(() => window.events.newProject), 1);
-      assert.equal(await projectsToggle.getAttribute("aria-expanded"), "true");
+      assert.equal(await projectsToggle.getAttribute("aria-expanded"), "false");
       await projectsToggle.focus(); await page.keyboard.press("Space");
-      assert.equal(await project.getByRole("treeitem").count(), 0);
+      assert.equal(await projectsToggle.getAttribute("aria-expanded"), "true");
+      assert.deepEqual(await folderStates(), beforeCollapse, 'expanding restores the original folder states');
+      assert.ok(await project.getByRole("treeitem").count() > 0);
+      await projectsToggle.click();
       await page.reload();
       await page.waitForFunction(() => document.querySelector('#chats button[aria-expanded]')?.getAttribute('aria-expanded') === 'false');
       assert.equal(await roomToggle.getAttribute("aria-expanded"), "false");
       assert.equal(await projectsToggle.getAttribute("aria-expanded"), "false");
       assert.deepEqual(await previewIds(), [], "collapsed state persists after reload");
+      assert.equal(await page.locator('[data-project-drag-root]:visible').count(), 0);
+      await projectsToggle.focus(); await page.keyboard.press('Enter');
+      assert.deepEqual(await folderStates(), beforeCollapse, 'individual folder states also survive reload');
       await page.waitForFunction(() => window.events.restored === 1);
       assert.deepEqual(errors, []);
       await mkdir(path.join(repo, ".verification/sidebar-disclosure"), { recursive: true });

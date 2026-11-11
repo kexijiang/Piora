@@ -13,9 +13,9 @@ jobs:
       contents: read
 
   source-gate:
-    name: Source gate (Ubuntu)
+    name: Source gate (Windows)
     if: ${{ !contains(github.ref_name, '-') }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 60
     permissions:
       contents: read
@@ -32,20 +32,18 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.19.0
-          cache: npm
-
-      - name: Restore npm downloads from an earlier lockfile
-        if: steps.node-setup.outputs.cache-hit != 'true'
-        uses: ./.github/actions/restore-npm-cache
+          package-manager-cache: false
 
       - name: Verify release tag and metadata
-        shell: bash
+        shell: pwsh
         run: |
           git fetch --no-tags --force origin +refs/heads/main:refs/remotes/origin/main
-          node scripts/verify-release-metadata.mjs "$GITHUB_REF_NAME" --require-origin-main
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to refresh origin/main' }
+          node scripts/verify-release-metadata.mjs "$env:GITHUB_REF_NAME" --require-origin-main
+          if ($LASTEXITCODE -ne 0) { throw 'Release metadata validation failed' }
 
       - name: Prepare version release notes
-        run: node scripts/create-release-notes.mjs "$GITHUB_REF_NAME" release-notes.md
+        run: node scripts/create-release-notes.mjs "$env:GITHUB_REF_NAME" release-notes.md
 
       - name: Upload version release notes
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -55,12 +53,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Install Linux native image patch tools
-        if: runner.os == 'Linux'
-        uses: ./.github/actions/setup-linux-native-image-tools
-
       - name: Install dependencies
-        run: npm ci
+        uses: ./.github/actions/install-ci-dependencies
 
       - name: Audit production dependencies
         run: npm run audit:runtime
@@ -85,6 +79,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Generate Next.js route types
+        run: npx --no-install next typegen
+
       - name: Typecheck
         run: npm run typecheck
 
@@ -93,7 +90,7 @@ jobs:
 
   windows-build:
     name: Build and verify windows (${{ matrix.brand }})
-    needs: [source-gate]
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: windows-latest
     timeout-minutes: 75
     strategy:
@@ -107,6 +104,8 @@ jobs:
       PIORA_BRAND: ${{ matrix.brand }}
       BRAND_PREFIX: ${{ matrix.prefix }}
       BRAND_CHANNEL: ${{ matrix.channel }}
+      PIORA_VERIFICATION_TIMINGS: .verification/packaging-timings
+      ELECTRON_BUILDER_COMPRESSION_LEVEL: '3'
     permissions:
       contents: read
 
@@ -122,11 +121,7 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22.19.0
-          cache: npm
-
-      - name: Restore npm downloads from an earlier lockfile
-        if: steps.node-setup.outputs.cache-hit != 'true'
-        uses: ./.github/actions/restore-npm-cache
+          package-manager-cache: false
 
       - name: Verify release tag and metadata
         shell: pwsh
@@ -134,12 +129,8 @@ jobs:
           git fetch --no-tags --force origin +refs/heads/main:refs/remotes/origin/main
           node scripts/verify-release-metadata.mjs $env:GITHUB_REF_NAME --require-origin-main
 
-      - name: Install Linux native image patch tools
-        if: runner.os == 'Linux'
-        uses: ./.github/actions/setup-linux-native-image-tools
-
       - name: Install dependencies
-        run: npm ci
+        uses: ./.github/actions/install-ci-dependencies
 
       - name: Build Windows desktop applications
         run: npm run dist:win
@@ -148,38 +139,8 @@ jobs:
         shell: pwsh
         run: node scripts/verify-windows-update-artifacts.mjs desktop/release "$env:GITHUB_REF_NAME"
 
-      - name: Verify packaged standalone service
-        run: npm run verify:package
-
-      - name: Verify portable long-path extraction and integrity failures
-        shell: pwsh
-        run: |
-          $env:PIORA_TEST_7ZA = (Resolve-Path -LiteralPath 'desktop/build/portable-extractor/7za.exe').Path
-          node --test lib/portable-payload.test.mjs
-
-      - name: Verify installer payload with packaged Electron
-        shell: pwsh
-        run: node scripts/verify-portable-runtime.mjs desktop/release/win-unpacked $env:GITHUB_REF_NAME
-
-      - name: Smoke-test unpacked installer runtime
-        shell: pwsh
-        run: node scripts/smoke-test-portable.mjs desktop/release/win-unpacked/Piora.exe --expected-version "$env:GITHUB_REF_NAME" --packaged-runtime --expected-brand $env:PIORA_BRAND
-
-      - name: Install and smoke-test NSIS application
-        shell: pwsh
-        run: |
-          $version = $env:GITHUB_REF_NAME -replace '^v', ''
-          $installer = (Resolve-Path -LiteralPath "desktop/release/$env:BRAND_PREFIX-$version-win-x64-setup.exe").Path
-          $installDirectory = Join-Path $env:RUNNER_TEMP "$env:BRAND_PREFIX-installed-$version"
-          $installation = Start-Process -FilePath $installer -ArgumentList @('/S', "/D=$installDirectory") -WindowStyle Hidden -Wait -PassThru
-          if ($installation.ExitCode -ne 0) {
-            throw "NSIS installation failed with exit code $($installation.ExitCode)"
-          }
-          $installedExecutable = Join-Path $installDirectory 'Piora.exe'
-          if (-not (Test-Path -LiteralPath $installedExecutable -PathType Leaf)) {
-            throw "Installed Piora executable is missing: $installedExecutable"
-          }
-          node scripts/smoke-test-portable.mjs $installedExecutable --expected-version "$env:GITHUB_REF_NAME" --packaged-runtime --expected-brand $env:PIORA_BRAND
+      - name: Install and fully verify stable installer and artifacts
+        run: node scripts/verify-preview-artifacts.mjs
 
       - name: Generate checksums
         shell: pwsh
@@ -220,9 +181,18 @@ jobs:
           retention-days: 14
           compression-level: 0
 
+      - name: Upload packaging phase timings
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: verification-timings-${{ matrix.brand }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .verification/packaging-timings
+          if-no-files-found: warn
+          retention-days: 7
+
   publish-release:
     name: Publish stable release
-    needs: [tests, windows-build]
+    needs: [tests, source-gate, windows-build]
     runs-on: windows-latest
     timeout-minutes: 10
     permissions:

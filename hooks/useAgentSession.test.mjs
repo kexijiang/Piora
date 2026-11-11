@@ -89,7 +89,7 @@ test("command catalog requests cannot overwrite a switched session or a newer ca
 });
 
 function sendHarness(overrides = {}) {
-  const send = source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"));
+  const send = source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const handleWorkflowAction = useCallback"));
   const env = {
     nestedCallsStore: new NestedToolCallsStore(), statsRefreshSequence: { current: 0 }, buildLocalFilePrompt, useCallback: (callback) => callback, isNew: false, newSessionCwd: null, session: { id: "session" }, crypto: { randomUUID },
     t: (key) => key, userMessageKey: JSON.stringify, dispatch() {}, promoteNewSession() {}, addNotice() {}, closeEvents() {},
@@ -97,7 +97,7 @@ function sendHarness(overrides = {}) {
     uploadPromptMaterialFiles: async () => [], AgentCommandError: class extends Error {}, EventStreamConnectionError: class extends Error {},
     savePendingPrompt: async (record) => { env.saved = structuredClone(record); }, sendAgentCommand: async () => {},
     submitChatCommand: async () => { throw new Error("Unexpected command submission in ordinary prompt test"); },
-    persistentChatInputOptions, replaceFailedPromptMessage,
+    persistentChatInputOptions, replaceFailedPromptMessage, workflowEnabled: true, workflowReady: true,
   };
   for (const name of new Set(send.match(/\b\w+Ref\b/g))) env[name] = { current: null };
   for (const name of new Set(send.match(/\bset[A-Z]\w+(?=\()/g))) env[name] = () => {};
@@ -150,6 +150,101 @@ test("resumed queue text uses durable prompt submission without reinterpreting a
   assert.equal(commands[0].idempotencyKey, env.saved.id);
   assert.equal(env.saved.id, "queue-handoff", "a retried handoff uses the same durable submission identity");
   assert.equal(env.saved.draft.value, commands[0].message);
+});
+
+test("direct shell shortcuts reject selected Plan and Goal without losing the draft or starting a command", async () => {
+  for (const mode of ["plan", "goal"]) for (const prefix of ["!", "!!"]) {
+    const notices = [];
+    const { env, run } = sendHarness({
+      fetch: async () => { throw new Error("Explicit mode must not require a read"); },
+      executeBashRef: { current: async () => { throw new Error("Shell must not run"); } },
+      addNotice: notice => notices.push(notice),
+    });
+    let durable = false;
+    assert.equal(await run(`${prefix} echo test`, undefined, undefined, () => { durable = true; }, undefined, { workflow: { mode, turnBudget: 5 } }), false);
+    assert.equal(durable, false);
+    assert.equal(env.saved, undefined);
+    assert.deepEqual(notices, [{ type: "error", message: "workflow.shellRequiresAgent" }]);
+  }
+});
+
+test("laboratory readiness protects restored drafts and confirmed disable sends ordinary Agent", async () => {
+  const blocked = sendHarness({ workflowReady: false, workflowEnabled: false, sendAgentCommand: async () => { throw new Error("Settings are not confirmed"); } });
+  assert.equal(await blocked.run("restored plan", undefined, undefined, undefined, undefined, { workflow: { mode: "plan" } }), false);
+  assert.equal(blocked.env.saved, undefined);
+  const commands = [];
+  const disabled = sendHarness({ workflowEnabled: false, sendAgentCommand: async (_sid, command) => commands.push(command) });
+  assert.equal(await disabled.run("continue this as Agent", undefined, undefined, undefined, undefined, { workflow: { mode: "goal", turnBudget: 5 } }), true);
+  assert.deepEqual(commands[0].workflow, { mode: "agent" });
+  assert.deepEqual(disabled.env.saved.draft.commandInput.workflow, { mode: "agent" });
+  const extension = sendHarness({ workflowEnabled: false, submitChatCommand: async (_text, _images, _files, _durable, options) => { assert.equal(options.workflow.mode, "agent"); return true; } });
+  assert.equal(await extension.run("/third-party", undefined, undefined, undefined, undefined, { workflow: { mode: "plan" } }), true);
+});
+
+test("shell shortcuts without new options honor restored workflow mode and fail closed on read errors", async () => {
+  for (const mode of ["plan", "goal"]) {
+    const { run } = sendHarness({
+      fetch: async url => { assert.equal(url, "/api/agent/session/workflow"); return { ok: true, json: async () => ({ sessionId: "session", mode }) }; },
+      executeBashRef: { current: async () => { throw new Error("Restored workflow must block shell"); } },
+    });
+    assert.equal(await run("!! echo restored"), false);
+  }
+  const failed = sendHarness({ fetch: async () => { throw new Error("offline"); }, executeBashRef: { current: async () => { throw new Error("No mode proof"); } } });
+  assert.equal(await failed.run("! echo offline"), false);
+});
+
+test("Agent shell shortcuts remain available and a delayed workflow read cannot execute in another chat", async () => {
+  const calls = [];
+  const existing = sendHarness({
+    fetch: async () => ({ ok: true, json: async () => ({ sessionId: "session", mode: "agent" }) }),
+    executeBashRef: { current: async (...args) => calls.push(args) },
+  });
+  assert.equal(await existing.run("!! echo current"), true);
+  assert.equal(await existing.run("! echo selected", undefined, undefined, undefined, undefined, { workflow: { mode: "agent" } }), true);
+  assert.deepEqual(calls, [["echo current", true, undefined], ["echo selected", false, { mode: "agent" }]]);
+  let release;
+  const late = sendHarness({
+    fetch: () => new Promise(resolve => { release = () => resolve({ ok: true, json: async () => ({ sessionId: "session", mode: "agent" }) }); }),
+    executeBashRef: { current: async () => { throw new Error("Old chat read must not execute"); } },
+  });
+  const pending = late.run("! echo old");
+  late.env.sessionIdRef.current = "another-session";
+  release();
+  assert.equal(await pending, false);
+  let rejectRead;
+  const staleNotices = [];
+  const staleFailure = sendHarness({
+    fetch: () => new Promise((_resolve, reject) => { rejectRead = reject; }),
+    addNotice: notice => staleNotices.push(notice),
+  });
+  const staleSend = staleFailure.run("! echo stale");
+  staleFailure.env.sessionIdRef.current = "another-session";
+  rejectRead(new Error("old session offline"));
+  assert.equal(await staleSend, false);
+  assert.deepEqual(staleNotices, [], "a failed old-session mode check must not add a notice to the current chat");
+  const fresh = sendHarness({ sessionIdRef: { current: null }, executeBashRef: { current: async (...args) => calls.push(args) } });
+  assert.equal(await fresh.run("! echo new"), true);
+  assert.deepEqual(calls.at(-1), ["echo new", false, undefined]);
+});
+
+test("shell dispatch carries an explicit Agent selection to the server before executing", async () => {
+  const callback = source.slice(source.indexOf("  const executeBash = useCallback"), source.indexOf("  const handleAbort = useCallback"));
+  const commands = [];
+  const env = {
+    useCallback: value => value, agentRunningRef: { current: false }, bashRunningRef: { current: false }, executeBashRef: {},
+    sessionIdRef: { current: "session" }, session: { id: "session" }, activityClockRef: {}, opts: {},
+    setStatusClock() {}, setPendingBash() {}, setBashRunning() {}, ensureNewSession() {},
+    ensureEventsConnected: async () => {}, sendAgentCommand: async (sid, command) => commands.push({ sid, command }),
+    loadSession: async () => {}, promoteNewSession() {}, addNotice() {}, closeEvents() {},
+  };
+  const js = ts.transpileModule(callback, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
+  const run = new Function("env", `with(env) { ${js}; return executeBash; }`)(env);
+  await run("echo selected", true, { mode: "agent" });
+  await run("echo restored", false);
+  assert.deepEqual(commands, [
+    { sid: "session", command: { type: "bash", command: "echo selected", excludeFromContext: true, workflow: { mode: "agent" } } },
+    { sid: "session", command: { type: "bash", command: "echo restored", excludeFromContext: false } },
+  ]);
 });
 
 test("literal slash handoffs keep one identity and retries do not retain that identity", async () => {
@@ -407,8 +502,7 @@ function promptSubmissionHarness(overrides = {}) {
   for (const extra of [sendHarness().env, abortHarness().env]) {
     for (const [name, value] of Object.entries(extra)) if (!(name in h.env)) h.env[name] = value;
   }
-  const reviewCallback = source.slice(source.indexOf("  const acceptToolReviews = useCallback"), source.indexOf("  useEffect(() => {", source.indexOf("  const acceptToolReviews = useCallback")));
-  const callbacks = reviewCallback + source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
+  const callbacks = source.slice(source.indexOf("  const handleAgentEvent = useCallback"), source.indexOf("  handleAgentEventRef.current = handleAgentEvent;"))
     + source.slice(source.indexOf("  const resumeQueuedInput = useCallback"), source.indexOf("  const chatCommands = useChatCommandOperations"))
     + source.slice(source.indexOf("  const handleSend = useCallback"), source.indexOf("  const executeBash = useCallback"))
     + source.slice(source.indexOf("  const handleAbort = useCallback"), source.indexOf("  const handleDeleteMessage = useCallback"));
@@ -431,8 +525,54 @@ function promptSubmissionHarness(overrides = {}) {
     ...overrides,
   });
   const js = ts.transpileModule(callbacks, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None } }).outputText;
-  return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent, resumeQueuedInput }; }`)(h.env) };
+  return { ...h, ...new Function("env", `with(env) { ${js}; return { handleSend, handleAbort, handleAgentEvent, resumeQueuedInput, handleWorkflowAction }; }`)(h.env) };
 }
+
+test("workflow approval clears optimistic running when startup fails or the server reports no prompt", async () => {
+  const action = { action: "approve", runId: "plan", expectedRevision: 2 };
+  for (const outcome of ["connection-failure", "conflict", "not-started"]) {
+    const h = promptSubmissionHarness({
+      ensureEventsConnected: async () => { if (outcome === "connection-failure") throw new Error("offline"); },
+      fetch: async () => ({ ok: outcome !== "conflict", status: outcome === "conflict" ? 409 : 200,
+        json: async () => outcome === "conflict" ? { snapshot: { sessionId: "session-a", mode: "plan" }, promptStarted: false, error: "Workflow execution was interrupted before admission" } : { snapshot: { sessionId: "session-a", mode: "agent" }, promptStarted: false } }),
+    });
+    if (outcome === "not-started") await h.handleWorkflowAction(action);
+    else await assert.rejects(h.handleWorkflowAction(action), outcome === "conflict" ? { message: "Workflow execution was interrupted before admission" } : /offline/);
+    assert.equal(h.env.agentRunningRef.current, false, outcome);
+    assert.equal(h.env.promptSubmissionRef.current.pending, false);
+    assert.equal(h.env.preparingPromptRunIdRef.current, null);
+    assert.equal(h.env.promptSettlementPollByRunRef.current.size, 0, "known failure requires no successful poll to stop");
+    assert.deepEqual(h.calls, [["close"], ["close"], ["load", "session-a"]]);
+  }
+});
+
+test("workflow admission tracks its receipt until terminal and fences cancelled preparation or navigation", async () => {
+  const action = { action: "resume", runId: "goal", expectedRevision: 4 };
+  const h = promptSubmissionHarness();
+  const stateFetch = h.env.fetch;
+  h.env.fetch = async (url, options) => options?.method === "POST"
+    ? { ok: true, status: 200, json: async () => ({ snapshot: { sessionId: "session-a", mode: "goal" }, promptStarted: true, commandId: "cmd-current" }) }
+    : stateFetch(url, options);
+  await h.handleWorkflowAction(action);
+  assert.equal(h.env.promptSubmissionRef.current.idempotencyKey, "workflow:session-a:goal:4:resume");
+  await h.advanceDelay();
+  assert.equal(h.env.agentRunningRef.current, true, "queued receipt cannot settle on an idle wrapper");
+  h.env.response.promptCommand.status = "completed";
+  await h.advanceDelay();
+  assert.equal(h.env.agentRunningRef.current, false);
+  for (const change of ["cancel", "navigate"]) {
+    let connect;
+    const late = promptSubmissionHarness({ ensureEventsConnected: () => new Promise(resolve => { connect = resolve; }), fetch: async () => { throw new Error("Preparation must not submit"); } });
+    const pending = late.handleWorkflowAction(action);
+    if (change === "cancel") await late.handleAbort();
+    else { late.env.sessionIdRef.current = "new-session"; late.env.promptRunIdRef.current++; }
+    const before = [...late.calls];
+    connect();
+    await assert.rejects(pending, /chat.sendCancelled/);
+    assert.deepEqual(late.calls, before, "late preparation cannot close or hydrate the new view");
+    if (change === "cancel") assert.equal(late.env.agentRunningRef.current, false);
+  }
+});
 
 test("the actual event handler shows one terminal error and retires it when the failed reply arrives", () => {
   for (const historyFirst of [true, false]) {
@@ -656,7 +796,7 @@ test("stop while resume reconnects prevents a late queue mutation", async () => 
   assert.equal(sent, false);
 });
 
-test("review events settle after cancellation without reviving streaming and reject old or other-session snapshots", () => {
+test("retired review events are ignored after cancellation without reviving streaming", () => {
   const h = promptSubmissionHarness();
   h.env.cancelledPromptRunIdRef.current = h.env.promptRunIdRef.current;
   const review = { id: "review", sessionId: "session-a", status: "reviewing", startedAt: 1, updatedAt: 1 };
@@ -664,8 +804,7 @@ test("review events settle after cancellation without reviving streaming and rej
   h.handleAgentEvent({ type: "tool_review", review: { ...review, status: "cancelled", updatedAt: 2 } });
   h.handleAgentEvent({ type: "tool_review", review });
   h.handleAgentEvent({ type: "tool_review", review: { ...review, sessionId: "other", updatedAt: 3 } });
-  assert.equal(h.env.reviews.length, 1);
-  assert.equal(h.env.reviews[0].status, "cancelled");
+  assert.deepEqual(h.env.reviews, []);
   assert.equal(h.env.agentRunningRef.current, false);
 });
 

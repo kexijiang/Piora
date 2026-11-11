@@ -113,7 +113,7 @@ gh workflow run publish-preview.yml --repo kexijiang/Piora -f tag=v0.4.41-beta.8
 
 The publication workflow binds the requested run to the tag commit, rechecks release metadata, verifies the grouped package checksums and CHANGELOG-derived notes, and publishes the already verified bytes. It does not rebuild the desktop package. Optional installed-app or phone testing must report the exact tag, run ID, package hash and result accurately; unperformed hardware tests must not be reported as passed.
 
-Stable CI first runs the Ubuntu source gate, builds the Windows installer, verifies the runtime, installed application, updater files and checksums, and publishes only after tests and Windows verification succeed. Do not bypass a failed gate by manually uploading unverified binaries.
+Stable CI runs the Windows source gate and Windows installer build in parallel, verifies the runtime, installed application, updater files and checksums, and publishes only after the source gate, complete tests and Windows verification succeed. All CI and release jobs use Windows runners; only the Windows x64 NSIS installer and its update metadata are published. Do not bypass a failed gate by manually uploading unverified binaries.
 
 ## Verify and report
 
@@ -125,4 +125,4 @@ Stable CI first runs the Ubuntu source gate, builds the Windows installer, verif
 - For installed updates, test download, busy/unsaved deferral, installation, restart and data retention.
 - Record the exact commit, run and Release URLs. Historical acceptance/design documents describe their own tested versions, not automatic proof for the new release.
 
-See [README](../README.md), [desktop development](../desktop/README.md), [release checklist](open-source/LAUNCH_CHECKLIST.md) and [black-screen troubleshooting](open-source/BLACK_SCREEN_TROUBLESHOOTING.md).
+See [README](../README.md), [desktop development](../desktop/README.md) and [black-screen troubleshooting](open-source/BLACK_SCREEN_TROUBLESHOOTING.md).

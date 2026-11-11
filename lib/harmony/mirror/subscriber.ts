@@ -34,12 +34,13 @@ export class MirrorSubscriber {
       this.needsKey = true;
       if (!this.options.recording) this.clear();
       this.enqueue(packet);
+      this.options.requestKeyframe();
       return;
     }
     if (type !== 3) return;
     const key = Boolean(packet[8] & 1);
     if (!this.options.recording && this.overdue(packet.byteLength)) this.resync();
-    if (this.needsKey && !key) return;
+    if (this.needsKey && !key) { this.options.requestKeyframe(); return; }
     if (this.options.recording && this.bytes + packet.byteLength > MIRROR_PROFILE.maxViewerBytes) {
       this.close(new Error("Recording storage could not keep up with the encoded video"));
       return;
