@@ -12,11 +12,11 @@ const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
 test("mirror defaults to direct control, can be disabled, and renders legible messages", { timeout: 120000 }, async () => {
-  const root=await mkdtemp(path.join(tmpdir(),"piora-mirror-ui-"));let browser, recording = null, completion = null, failInput = false, geometryWidth = 360;
+  const root=await mkdtemp(path.join(tmpdir(),"piora-mirror-ui-"));let browser, recording = null, completion = null, failInput = false, geometryWidth = 360, deviceGeneration = 1;
   try {
     await writeFile(path.join(root,"loader.cjs"),`const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root,"css.cjs"),'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
-    await writeFile(path.join(root,"stub.tsx"),`import {useEffect,useRef,useState} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyMirror=o=>{const surfaceRef=useRef(null);const [failure,setFailure]=useState(null);window.setVideoFailure=setFailure;window.frameOptions={active:o.active,serial:o.serial,worker:true};useEffect(()=>{const c=document.createElement("canvas");surfaceRef.current.appendChild(c);c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});return()=>c.remove();},[surfaceRef]);return {surfaceRef,state:failure?"recovering":"live",error:failure,frame:{serial:o.serial,generation:1,width:360,height:720},refresh:()=>{window.reconnected=true;}};};`);
+    await writeFile(path.join(root,"stub.tsx"),`import {useEffect,useRef,useState,useCallback} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyMirror=o=>{const surfaceRef=useRef(null);const[problem,setProblem]=useState(null);window.setMirrorFailure=setProblem;window.setVideoFailure=error=>setProblem(error?{error,state:"recovering"}:null);window.frameOptions={active:o.active,serial:o.serial,generation:o.generation,worker:true};const refresh=useCallback(()=>{window.reconnected=true;window.refreshCount=(window.refreshCount??0)+1;setProblem(null);},[]);useEffect(()=>{const c=document.createElement("canvas");surfaceRef.current.appendChild(c);c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});return()=>c.remove();},[surfaceRef]);return {surfaceRef,state:problem?(problem.state??"error"):"live",error:problem?.error,controlStatus:problem?.controlStatus,frame:{serial:o.serial,generation:o.generation,width:360,height:720},refresh};};`);
     await writeFile(path.join(root,"entry.tsx"),`import React,{useState} from "react";import {createRoot} from "react-dom/client";import {MirrorWindow} from "@/components/workspace/harmony/MirrorWindow";import {PioraMessageHost,showPioraMessage} from "@/components/PioraMessage";import {useTheme} from "@/hooks/useTheme";window.showMessage=showPioraMessage;function Fixture(){const[embedded,setEmbedded]=useState(false);window.setEmbedded=setEmbedded;const {setTheme,themes}=useTheme();window.setMirrorTheme=setTheme;window.mirrorThemes=themes;return <><MirrorWindow embedded={embedded} serial={embedded?"phone":undefined}/><PioraMessageHost/></>;}createRoot(document.getElementById("root")).render(<Fixture/>);`);
     const aliases=Object.fromEntries(["@/hooks/useI18n","@/hooks/useHarmonyMirror"].map(k=>[k,path.join(root,"stub.tsx")]));
     const compiler=webpack({mode:"development",target:"web",devtool:false,entry:path.join(root,"entry.tsx"),output:{path:root,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],modules:[path.join(repo,"node_modules")],alias:{...aliases,"@":repo}},module:{rules:[{test:/\.tsx?$/,exclude:/node_modules/,use:path.join(root,"loader.cjs")},{test:/\.css$/,use:path.join(root,"css.cjs")}]}});
@@ -31,7 +31,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.addInitScript(()=>{let state={serial:"phone",ownerId:"desktop-media",scale:75,open:true,minimized:false,alwaysOnTop:false},listeners=[];window.calls=[];window.transitionId=0;window.updateMirror=patch=>{state={...state,...patch};listeners.forEach(f=>f(state));};window.piDesktop={harmonyMirror:{getState:async()=>state,onStateChange:f=>{listeners.push(f);return()=>listeners=listeners.filter(x=>x!==f);},onCommand:f=>{window.command=f;return()=>{};},reportFrame:async f=>{window.geometry=f;if(f.presentation===state.pendingPresentation&&f.transition===state.presentationTransition)window.updateMirror({presentation:f.presentation,pendingPresentation:undefined,presentationTransition:undefined});},setAlwaysOnTop:async alwaysOnTop=>{window.updateMirror({alwaysOnTop});return state;},setScale:async scale=>{window.calls.push(scale);window.updateMirror({scale});return state;},setPresentation:async pendingPresentation=>{window.updateMirror({pendingPresentation,presentationTransition:String(++window.transitionId)});return state;},showMenu:async()=>window.menu=true,close:async()=>{window.closed=true;return true;}},clipboard:{copyHarmonyMedia:async f=>{window.copy=f;}}};window.EventSource=class{close(){}};});
     const globals=(await readFile(path.join(repo,"app/globals.css"),"utf8")).replace(/^@import.*$/gm,"");
     const css=globals+await readFile(path.join(repo,"app/theme-backgrounds.css"),"utf8")+await readFile(path.join(repo,"components/workspace/harmony/MirrorWindow.module.css"),"utf8")+await readFile(path.join(repo,"components/ConfirmDialog.module.css"),"utf8");
-    await page.route("https://mirror.test/**",async route=>{const r=route.request(),u=new URL(r.url());if(u.pathname==="/themes/codex-dream-skin/skin.css")return route.fulfill({contentType:"text/css",body:await readFile(path.join(repo,"public/themes/codex-dream-skin/skin.css"),"utf8")});if(u.pathname==="/bundle.js")return route.fulfill({contentType:"text/javascript",body:await readFile(path.join(root,"bundle.js"))});if(u.pathname==="/api/harmony/devices")return route.fulfill({json:{devices:[{serial:"phone",name:"BRA-AL00",model:"BRA-AL00",product:"HUAWEI Mate 60 ",state:"online",generation:1,capabilities:{screenshot:true}}]}});if(u.pathname==="/api/harmony/media"){if(r.method()==="POST"){requests.push(r.postDataJSON());return route.fulfill({json:{artifact:{kind:"screenshot",serial:"phone",path:"C:/media/screen.png",filename:"screen.png"}}});}return route.fulfill({json:{recording,completion}});}if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});return route.fulfill({contentType:"text/html",body:`<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#fafafa;--bg-hover:#eee;--border:#ddd;--text:#222;--text-muted:#666;--text-dim:#888;--accent:#3478f6;--btn-primary-bg:#3478f6;--btn-primary-fg:#fff;--radius-surface:12px;--radius-control:6px;--font-ui:system-ui;--text-base:14px;--text-sm:13px}body{margin:0;font:14px system-ui}${css}</style><div id="root"></div><script src="/bundle.js"></script>`});});
+    await page.route("https://mirror.test/**",async route=>{const r=route.request(),u=new URL(r.url());if(u.pathname==="/themes/codex-dream-skin/skin.css")return route.fulfill({contentType:"text/css",body:await readFile(path.join(repo,"public/themes/codex-dream-skin/skin.css"),"utf8")});if(u.pathname==="/bundle.js")return route.fulfill({contentType:"text/javascript",body:await readFile(path.join(root,"bundle.js"))});if(u.pathname==="/api/harmony/devices")return route.fulfill({json:{devices:[{serial:"phone",name:"BRA-AL00",model:"BRA-AL00",product:"HUAWEI Mate 60 ",state:"online",generation:deviceGeneration,capabilities:{screenshot:true}}]}});if(u.pathname==="/api/harmony/media"){if(r.method()==="POST"){requests.push(r.postDataJSON());return route.fulfill({json:{artifact:{kind:"screenshot",serial:"phone",path:"C:/media/screen.png",filename:"screen.png"}}});}return route.fulfill({json:{recording,completion}});}if(u.pathname.startsWith('/api/'))return route.fulfill({json:{}});return route.fulfill({contentType:"text/html",body:`<meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#fafafa;--bg-hover:#eee;--border:#ddd;--text:#222;--text-muted:#666;--text-dim:#888;--accent:#3478f6;--btn-primary-bg:#3478f6;--btn-primary-fg:#fff;--radius-surface:12px;--radius-control:6px;--font-ui:system-ui;--text-base:14px;--text-sm:13px}body{margin:0;font:14px system-ui}${css}</style><div id="root"></div><script src="/bundle.js"></script>`});});
     let geometryRequested=false, geometryDuringAcquire=false, geometryGate, finishGeometry;
     await page.route('https://mirror.test/api/harmony/manual',async route=>{if(route.request().postDataJSON().action==='acquire'){await new Promise(resolve=>setTimeout(resolve,100));geometryDuringAcquire=geometryRequested;}return route.fulfill({json:{lease:{token:'fixture-lease',serial:'phone',expiresAt:new Date(Date.now()+300000).toISOString()}}});});
     await page.route('https://mirror.test/api/harmony/geometry?*',async route=>{geometryRequested=true;if(geometryGate)await geometryGate;return route.fulfill({json:{geometry:{geometryId:'current-video-geometry',frameWidth:geometryWidth,frameHeight:720}}});});
@@ -188,7 +188,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     assert.equal(await page.evaluate(() => document.querySelector("canvas") === window.retainedCanvas), true);
     assert.equal(await page.locator(".placeholder").count(), 0, "the error never covers a previously rendered frame");
     await page.getByRole("button", {name:"重连",exact:true}).click();
-    assert.equal(await page.evaluate(() => window.reconnected), true);
+    await page.waitForFunction(() => window.reconnected === true);
     await page.evaluate(() => window.setVideoFailure(null));
     if (await page.getByRole("button", {name:"操控手机"}).getAttribute("aria-pressed") !== controlWasEnabled) await page.getByRole("button", {name:"操控手机"}).click();
     recording={serial:"phone",ownerId:"desktop-media",recordingId:"recording-limit",startedAt:new Date().toISOString(),phase:"recording"};
@@ -263,6 +263,67 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.getByRole('status').filter({hasText:'截图已保存'}).waitFor();
     await page.waitForTimeout(100);
     assert.equal(await page.getByRole('dialog').count(),0,'a successful save stays successful when the follow-up status read fails');
+    const recoveryRequests=[];let needsPhysicalConfirmation=true, releaseConfirmation, noteConfirmation;
+    const confirmationGate=new Promise(resolve=>{releaseConfirmation=resolve});
+    const confirmationReceived=new Promise(resolve=>{noteConfirmation=resolve});
+    await page.route('https://mirror.test/api/harmony/recovery',async route=>{
+      const body=route.request().postDataJSON();recoveryRequests.push(body);
+      if(body.action==='retry')deviceGeneration++;
+      if(body.action==='confirm'){noteConfirmation();await confirmationGate;}
+      return route.fulfill({json:{cleanup:body.action==='retry'?'uncertain':'manual-confirmed',controlStatus:body.action==='retry'&&needsPhysicalConfirmation?'recovering':null,device:{serial:'phone',state:'online',generation:deviceGeneration,capabilities:{screenshot:true}}}});
+    });
+    const beforeRecovery=mutations().length;
+    await page.evaluate(()=>window.setMirrorFailure({controlStatus:'stopping',error:'设备正在停止操作，请等待清理完成后重试。'}));
+    assert.equal(await page.getByRole('button',{name:'检查并恢复设备',exact:true}).count(),0);
+    await page.getByRole('button',{name:'重连',exact:true}).click();
+    await page.getByText('上次设备操作的清理尚未确认，请在投屏窗口点击“检查并恢复设备”。',{exact:true}).waitFor();
+    for(const width of [280,362]){
+      await page.setViewportSize({width,height:758});
+      const layout=await page.locator('.recovery').evaluate(el=>({width:el.clientWidth,scroll:el.scrollWidth,buttons:[...el.querySelectorAll('button')].map(button=>({left:button.getBoundingClientRect().left,right:button.getBoundingClientRect().right,wrap:getComputedStyle(button).whiteSpace}))}));
+      assert.ok(layout.scroll<=layout.width+1,'recovery guidance fits the narrow mirror');
+      assert.ok(layout.buttons.every(button=>button.left>=0&&button.right<=width&&button.wrap==='nowrap'),'recovery actions remain readable and reachable');
+    }
+    if(out)await page.screenshot({path:path.join(out,'cleanup-recovery.png')});
+    assert.deepEqual(recoveryRequests,[{action:'retry',serial:'phone'}],'reconnect retries cleanup without confirming input release');
+    await page.getByRole('button',{name:'检查并恢复设备',exact:true}).click();
+    await page.getByRole('dialog',{name:'恢复设备连接'}).waitFor();
+    if(out)await page.screenshot({path:path.join(out,'cleanup-confirmation.png')});
+    await page.getByRole('button',{name:'取消',exact:true}).click();
+    assert.equal(recoveryRequests.length,1,'cancelling physical confirmation must not send recovery');
+    await page.getByRole('button',{name:'检查并恢复设备',exact:true}).click();
+    const refreshBeforeConfirmation=await page.evaluate(()=>window.refreshCount??0);
+    await page.getByRole('button',{name:'已检查，恢复连接',exact:true}).click();
+    await confirmationReceived;
+    // The earlier video reconnect and retry already satisfy the old boolean /
+    // generation predicate. Hold this response to prove it is not a receipt.
+    assert.equal(await page.evaluate(()=>window.reconnected&&window.frameOptions.generation===2),true);
+    assert.equal(await page.evaluate(()=>window.refreshCount??0),refreshBeforeConfirmation,'an outstanding confirmation cannot refresh the viewer');
+    assert.equal(await page.getByRole('button',{name:'检查并恢复设备',exact:true}).count(),1,'confirmation stays visible until its response is consumed');
+    releaseConfirmation();
+    await page.waitForFunction(previous=>window.refreshCount===previous+1&&window.frameOptions.generation===2,refreshBeforeConfirmation);
+    await page.getByRole('button',{name:'检查并恢复设备',exact:true}).waitFor({state:'detached'});
+    assert.deepEqual(recoveryRequests[1],{action:'confirm',serial:'phone',released:true,recordingStopped:true});
+    assert.equal(mutations().length,beforeRecovery,'restoring the viewer does not replay failed gestures');
+    assert.equal(await page.getByRole('button',{name:'检查并恢复设备',exact:true}).count(),0);
+    let stalePoll;
+    await page.route('https://mirror.test/api/harmony/devices',route=>{stalePoll=route;});
+    for(let attempt=0;!stalePoll&&attempt<40;attempt++)await page.waitForTimeout(100);
+    assert.ok(stalePoll,'a device poll started before recovery');
+    needsPhysicalConfirmation=false;
+    await page.evaluate(()=>{window.reconnected=false;window.setMirrorFailure({controlStatus:'recovering',error:'旧视频清理失败'});});
+    await page.getByRole('button',{name:'重连',exact:true}).click();
+    await page.waitForFunction(()=>window.reconnected&&window.frameOptions.generation===3);
+    assert.equal(recoveryRequests.length,3,'a video-only warning needs no physical-release confirmation');
+    await stalePoll.fulfill({json:{devices:[{serial:'phone',state:'online',generation:2,capabilities:{screenshot:true}}]}});
+    await page.waitForTimeout(100);
+    assert.equal(await page.evaluate(()=>window.frameOptions.generation),3,'an older poll cannot replace the recovered device epoch');
+    assert.equal(await page.getByRole('button',{name:'检查并恢复设备',exact:true}).count(),0);
+    await page.unroute('https://mirror.test/api/harmony/devices');
+    await page.evaluate(()=>{window.reconnected=false;window.command('reconnect');});
+    await page.waitForFunction(()=>window.reconnected&&window.frameOptions.generation===4);
+    assert.deepEqual(recoveryRequests.at(-1),{action:'retry',serial:'phone'},'the native window menu uses the same cleanup retry path');
+    assert.equal(recoveryRequests.length,4);
+    assert.equal(mutations().length,beforeRecovery,'menu recovery never replays device input');
     assert.deepEqual(errors,[]);
   } finally {await browser?.close();await rm(root,{recursive:true,force:true});}
 });

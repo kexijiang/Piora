@@ -13,6 +13,7 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
   const displayed = useRef<{ canvas: HTMLCanvasElement; frame: MirrorFrame } | null>(null);
   const [state, setState] = useState<"idle" | "connecting" | "live" | "recovering" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  const [controlStatus, setControlStatus] = useState<HarmonyRequestError["controlStatus"]>();
   const [frame, setFrame] = useState<MirrorFrame | null>(null);
   const [statistics, setStatistics] = useState<MirrorStatistics | null>(null);
   const [retry, setRetry] = useState(0);
@@ -25,7 +26,7 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
     const surface = surfaceRef.current;
     const retained = displayed.current?.frame.serial === serial && displayed.current.frame.generation === generation ? displayed.current : null;
     if (!retained) { displayed.current?.canvas.remove(); displayed.current = null; }
-    setFrame(retained?.frame ?? null); setStatistics(null); setError(null);
+    setFrame(retained?.frame ?? null); setStatistics(null); setError(null); setControlStatus(undefined);
     if (!active || !surface || !serial || generation === undefined) { setState("idle"); return; }
     // A fresh DOM canvas per ownership epoch is required: transferControlToOffscreen
     // is irreversible. This also makes React StrictMode's effect replay safe.
@@ -42,7 +43,9 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
       worker.onmessage = ({ data }: MessageEvent<MirrorWorkerEvent>) => {
         if (disposed || workerRef.current !== worker) return;
         if (data.type === "state") {
-          setState(data.state); setError(data.requestError ? new HarmonyRequestError(data.requestError, 503).messageFor(locale === "zh-CN") : data.error ?? null);
+          const requestError = data.requestError ? new HarmonyRequestError(data.requestError, 503) : undefined;
+          setState(data.state); setControlStatus(requestError?.controlStatus);
+          setError(requestError ? requestError.messageFor(locale === "zh-CN") : data.error ?? null);
           // Fatal initialization failures need a new canvas and worker on retry.
           if (data.fatal) { worker?.terminate(); workerRef.current = null; }
         }
@@ -76,5 +79,5 @@ export function useHarmonyMirror({ active, serial, generation, label }: { active
     };
   }, [active, serial, generation, label, retry, locale]);
 
-  return { surfaceRef, state, error, frame, statistics, refresh };
+  return { surfaceRef, state, error, controlStatus, frame, statistics, refresh };
 }

@@ -222,6 +222,7 @@ export class HarmonyDeviceManager {
   private readonly uncertainInput = new Set<string>();
   private readonly cleanupUnsettled = new Set<string>();
   private readonly cleanupWork = new Map<string, Promise<unknown>>();
+  private readonly inputCleanupWork = new Map<string, Promise<void>>();
   private readonly physicalLocks = new Map<string, ReturnType<typeof acquireDeviceLock>>();
   private readonly arbitrationDirectory?: string;
   private readonly cleanupTimeoutMs: number;
@@ -2354,11 +2355,25 @@ export class HarmonyDeviceManager {
 
   async confirmCleanup(serial: string, signal?: AbortSignal) {
     validateSerial(serial);
-    if (this.cleanupUnsettled.has(serial) || this.stopPromises.has(serial) || this.operationLanes.get(`device:${serial}`)?.active || this.operationLanes.get(`device:${serial}`)?.pending || this.operationLanes.get(`media:${serial}`)?.active || this.operationLanes.get(`media:${serial}`)?.pending || this.recordings.has(serial)) throw new HarmonyError("DEVICE_BUSY", "Wait for owned operations and recording cleanup to settle before confirming");
+    const requireSettled = () => {
+      if (this.cleanupUnsettled.has(serial) || this.stopPromises.has(serial) || this.operationLanes.get(`device:${serial}`)?.active || this.operationLanes.get(`device:${serial}`)?.pending || this.operationLanes.get(`media:${serial}`)?.active || this.operationLanes.get(`media:${serial}`)?.pending || this.recordings.has(serial)) throw new HarmonyError("DEVICE_BUSY", "Wait for owned operations and recording cleanup to settle before confirming", {
+        details: { serial, state: "stopping", dispatchState: "not-sent" },
+      });
+    };
+    requireSettled();
     if (!this.stoppingDevices.has(serial)) return { cleanup: "complete" as const };
-    await this.onlineDevice(serial, signal);
+    const cleanupWork = this.cleanupWork.get(serial), generation = this.generations.get(serial);
+    const device = await this.onlineDevice(serial, signal);
     const observation = await this.requireBackend().snapshot(serial, { includeTree: true, includeScreenshot: false, signal });
     requireValidObservation(observation);
+    // Another window can retry cleanup while the observation is pending. An old
+    // confirmation must never release that newer cleanup or a newly acquired owner.
+    if (!this.stoppingDevices.has(serial)) return { cleanup: "complete" as const };
+    requireSettled();
+    if (this.cleanupWork.get(serial) !== cleanupWork || this.generations.get(serial) !== device.generation
+      || generation !== undefined && generation !== device.generation) throw new HarmonyError("DEVICE_BUSY", "Device cleanup changed while confirming; retry recovery", {
+      details: { serial, state: this.stoppingDevices.get(serial), dispatchState: "not-sent" },
+    });
     // Human confirmation is distinct from a driver-verified release.
     this.uncertainInput.delete(serial); this.cleanupWork.delete(serial);
     this.recoveryStore?.clear(serial);
@@ -2430,13 +2445,21 @@ export class HarmonyDeviceManager {
     return this.stopDeviceResources(serial, reason);
   }
 
+  async retryCleanup(serial: string): Promise<{ cleanup: "complete" | "uncertain" }> {
+    validateSerial(serial);
+    if (!this.stoppingDevices.has(serial)) return { cleanup: "complete" };
+    // Retry owned cleanup, never treat a reconnect click as physical-release confirmation.
+    return this.stopDevice(serial, "cleanup_retry");
+  }
+
   private stopDeviceResources(serial: string, reason: string, releasedOwnerId?: string): Promise<{ dispatchBlocked: true; cleanup: "complete" | "uncertain" }> {
     validateSerial(serial);
     const existing = this.stopPromises.get(serial);
     if (existing) return existing;
     const inputOnly = releasedOwnerId !== undefined;
     if (inputOnly) this.inputOnlyStops.add(serial); else this.inputOnlyStops.delete(serial);
-    const hadPhysicalControl = this.leasesBySerial.has(serial) || this.physicalLocks.has(serial) || this.uncertainInput.has(serial);
+    const hadPhysicalControl = this.leasesBySerial.has(serial) || this.physicalLocks.has(serial) || this.uncertainInput.has(serial)
+      || this.inputCleanupWork.has(serial);
     // The fence is synchronous and precedes all asynchronous resource cleanup.
     this.stoppingDevices.set(serial, "stopping");
     const lease = this.leasesBySerial.get(serial);
@@ -2457,35 +2480,42 @@ export class HarmonyDeviceManager {
     }
     const cleanupController = new AbortController();
     let inputCleanupComplete = false;
-    const previousCleanup = this.cleanupWork.get(serial);
+    // Reuse only an in-flight input release. A rejected aggregate can contain an
+    // unrelated video failure and must not poison every subsequent cleanup retry.
+    const inputCleanup = (this.inputCleanupWork.get(serial)
+      ?? Promise.allSettled([this.operationLanes.get(`device:${serial}`)?.tail]).then(async () => {
+        await this.backend?.resetAutomation?.(serial);
+      })).then(() => { inputCleanupComplete = true; });
+    this.inputCleanupWork.set(serial, inputCleanup);
+    void inputCleanup.finally(() => {
+      if (this.inputCleanupWork.get(serial) === inputCleanup) this.inputCleanupWork.delete(serial);
+    }).catch(() => undefined);
+    const recordingCleanup = (async () => {
+      if (inputOnly && this.recordings.get(serial)?.ownerId !== releasedOwnerId
+        && ![...(this.controllersByMedia.get(serial) ?? [])].some(controller => this.controllersByOwner.get(releasedOwnerId!)?.has(controller))) return;
+      await this.operationLanes.get(`media:${serial}`)?.tail;
+      const recording = this.recordings.get(serial);
+      if (!recording || (inputOnly && recording.ownerId !== releasedOwnerId)) return;
+      await this.finishRecording(recording, cleanupController.signal, reason);
+    })();
+    const releaseWork = Promise.allSettled([inputCleanup, recordingCleanup]);
     const cleanupWork = Promise.allSettled([
-      previousCleanup ? previousCleanup.then(() => { inputCleanupComplete = true; })
-        : Promise.allSettled([this.operationLanes.get(`device:${serial}`)?.tail]).then(async () => {
-          // A late driver must settle before input is reset and its lock released.
-          await this.backend?.resetAutomation?.(serial); inputCleanupComplete = true;
-        }),
+      inputCleanup,
       ...(!inputOnly ? [
         this.liveFramePromises.get(serial),
         ...[...(this.videoConnections.get(serial) ?? [])].map(connection => connection.close()),
       ] : []),
-      (async () => {
-        if (inputOnly && this.recordings.get(serial)?.ownerId !== releasedOwnerId
-          && ![...(this.controllersByMedia.get(serial) ?? [])].some(controller => this.controllersByOwner.get(releasedOwnerId!)?.has(controller))) return;
-        // The start operation may still be settling when the stop fence is raised.
-        await this.operationLanes.get(`media:${serial}`)?.tail;
-        const recording = this.recordings.get(serial);
-        if (!recording || (inputOnly && recording.ownerId !== releasedOwnerId)) return;
-        await this.finishRecording(recording, cleanupController.signal, reason);
-      })(),
+      recordingCleanup,
     ]).then(results => { if (results.some(result => result.status === "rejected")) throw new Error("A device resource could not be cleaned up"); });
     this.cleanupUnsettled.add(serial);
-    void cleanupWork.finally(() => {
+    void releaseWork.then(() => {
       if (this.cleanupWork.get(serial) === cleanupWork) this.cleanupUnsettled.delete(serial);
-    }).catch(() => undefined);
+    });
     this.cleanupWork.set(serial, cleanupWork);
     const finishCleanup = () => {
       if (this.cleanupWork.get(serial) !== cleanupWork) return;
       this.cleanupWork.delete(serial);
+      this.cleanupUnsettled.delete(serial);
       if (inputOnly) this.recoveryStore?.clear(serial, "input");
       else { this.recordingRecoveryDevices.delete(serial); this.recoveryStore?.clear(serial); }
       this.physicalLocks.get(serial)?.release();
@@ -2494,23 +2524,24 @@ export class HarmonyDeviceManager {
       if (inputOnly && this.recordingRecoveryDevices.has(serial)) this.stoppingDevices.set(serial, "recovering");
       else this.stoppingDevices.delete(serial);
     };
+    const released = () => (!hadPhysicalControl || inputCleanupComplete) && !this.uncertainInput.has(serial)
+      && (inputOnly ? this.recordings.get(serial)?.ownerId !== releasedOwnerId : !this.recordings.has(serial))
+      && !this.operationLanes.get(`device:${serial}`)?.active && !this.operationLanes.get(`device:${serial}`)?.pending;
     const stopping = boundedCleanup(cleanupWork, this.cleanupTimeoutMs).then(result => {
       const cleanup = this.uncertainInput.has(serial) ? "uncertain" : result;
       if (this.cleanupWork.get(serial) !== cleanupWork) return { dispatchBlocked: true as const, cleanup };
       if (cleanup === "complete") finishCleanup();
-      else if ((!hadPhysicalControl || inputCleanupComplete) && !this.uncertainInput.has(serial)
-        && (inputOnly ? this.recordings.get(serial)?.ownerId !== releasedOwnerId : !this.recordings.has(serial))
-        && !this.operationLanes.get(`device:${serial}`)?.active && !this.operationLanes.get(`device:${serial}`)?.pending) {
+      else if (released()) {
         // Video forwarding or file finalization can fail after input is released.
         // Preserve the backend warning/receipt without persisting a false input latch.
         finishCleanup();
       }
       else {
         cleanupController.abort("cleanup_timeout"); this.stoppingDevices.set(serial, "recovering"); this.recoveryStore?.record(serial, "input", "uncertain");
-        // A deadline is not a failed release. Restore admission automatically if
-        // the exact cleanup later succeeds; unknown physical input stays fenced.
-        void cleanupWork.then(() => {
-          if (this.cleanupWork.get(serial) !== cleanupWork || this.uncertainInput.has(serial)) return;
+        // Input and recording may settle after the deadline even if a read-only
+        // viewer failed or never acknowledged close. Keep actual input uncertainty fenced.
+        void releaseWork.then(() => {
+          if (this.cleanupWork.get(serial) !== cleanupWork || !released()) return;
           finishCleanup();
           this.emit({ type: "state", timestamp: iso(this.now()), state: this.getState() });
         }).catch(() => undefined);

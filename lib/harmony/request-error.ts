@@ -135,8 +135,8 @@ export class HarmonyRequestError extends Error {
       ? "设备正在停止操作，请等待清理完成后重试。"
       : "Device operations are stopping. Wait for cleanup to finish, then try again.";
     if (this.controlStatus === "recovering") return chinese
-      ? "上次设备操作的清理尚未确认，请在连接诊断中检查并恢复设备。"
-      : "Cleanup from the previous operation is unconfirmed. Check and recover the device in Diagnostics.";
+      ? "上次设备操作的清理尚未确认，请在投屏窗口点击“检查并恢复设备”。"
+      : "Cleanup from the previous operation is unconfirmed. Choose Check and recover device in the mirror window.";
     if (this.ownedByAnotherInstance) return chinese
       ? "设备正在被另一个 Piora 实例使用。请先在该实例中结束设备操作，再重试。"
       : "Another Piora instance is using this device. End device operations in that instance, then retry.";
