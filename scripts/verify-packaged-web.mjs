@@ -953,15 +953,19 @@ export async function verifyPackagedNativeVideo(videoRoot, licenseRoot) {
   return videoManifest.assets.length;
 }
 
+export async function verifyNoLegacyMirrorAssets(resourcesRoot) {
+  for (const removed of ["OHScrcpyServer.hap", "harmony-mirror-manifest.json", "harmony-mirror-signature-verification.json", "PioraHapSigner.java", "signing-project"]) {
+    if (await lstat(join(resourcesRoot, "harmony-tools", removed)).catch(error => { if (error.code === "ENOENT") return undefined; throw error; })) {
+      throw new Error(`The packaged runtime contains a removed capture component: ${removed}`);
+    }
+  }
+}
+
 async function main() {
   await assertFile(packagedRuntimeArchive);
   await assertFile(join(packagedWebRoot, "server.js"));
   await verifyPackagedNativeVideo(join(`${packagedRuntimeArchive}.unpacked`, "third_party", "harmony-video"), join(dirname(packagedWebRoot), "licenses", "harmony-video"));
-  for (const removed of ["OHScrcpyServer.hap", "harmony-mirror-manifest.json", "harmony-mirror-signature-verification.json", "PioraHapSigner.java", "signing-project"]) {
-    if (await lstat(join(dirname(packagedWebRoot), "harmony-tools", removed)).catch(error => { if (error.code === "ENOENT") return undefined; throw error; })) {
-      throw new Error(`The packaged runtime contains a removed capture component: ${removed}`);
-    }
-  }
+  await verifyNoLegacyMirrorAssets(dirname(packagedWebRoot));
   const packagedWebEntries = (await readdir(packagedWebRoot)).sort();
   if (JSON.stringify(packagedWebEntries) !== JSON.stringify(["runtime.asar", "runtime.asar.unpacked", "server.js"])) {
     throw new Error(`Packaged web container must contain the launcher, runtime archive and native sidecar: ${packagedWebEntries.join(", ")}`);

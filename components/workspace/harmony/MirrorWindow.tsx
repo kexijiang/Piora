@@ -42,7 +42,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
   useEffect(() => {
     const root = rootRef.current, screen = screenRef.current;
     if (!root || !screen) return;
-    const observer = new ResizeObserver(() => setChromeHeight(Math.ceil(root.getBoundingClientRect().height - screen.getBoundingClientRect().height)));
+    const observer = new ResizeObserver(() => setChromeHeight(Math.round(root.getBoundingClientRect().height - screen.getBoundingClientRect().height)));
     observer.observe(root); observer.observe(screen);
     return () => observer.disconnect();
   }, []);

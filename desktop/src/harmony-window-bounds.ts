@@ -1,6 +1,14 @@
 import type { MirrorScale } from "./harmony-window-types.js";
 export const MIRROR_TITLE_HEIGHT = 36;
 type Bounds = { x: number; y: number; width: number; height: number };
+/** Updating Win32's aspect constraint can immediately resize the native window. */
+export async function updateMirrorAspectRatio(window: {
+  getBounds(): Bounds; setBounds(bounds: Bounds, animate: boolean): void;
+  setAspectRatio(ratio: number, extra: { width: number; height: number }): void;
+}, ratio: number, chromeHeight: number, target: Bounds): Promise<Bounds> {
+  window.setAspectRatio(ratio, { width: 2, height: chromeHeight });
+  return applyMirrorBounds(window, target);
+}
 /** Win32 can round both physical edges outwards. Correct against the absolute DIP target,
  * never against the size left by the previous drag, and bound the correction work. */
 export async function applyMirrorBounds(window: { setBounds(bounds: Bounds, animate: boolean): void; getBounds(): Bounds }, target: Bounds): Promise<Bounds> {
