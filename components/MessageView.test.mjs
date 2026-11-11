@@ -151,13 +151,19 @@ test("assistant messages omit repeated model and usage metadata", () => {
   }
 });
 
-test("shell rows preview commands while keeping full commands and errors behind expansion", () => {
+test("failed shell rows open by default and respect explicit collapse", () => {
   const command = "npm run check -- --project ./packages/a/tsconfig.json\nnode ./scripts/verify.mjs --all";
   const message = { role: "assistant", content: [{ type: "toolCall", toolCallId: "shell", toolName: "powershell", input: { command } }] };
   const result = { role: "toolResult", toolCallId: "shell", toolName: "powershell", isError: true,
     content: [{ type: "text", text: "src/a.ts(4): error TS2322: wrong type\nCommand exited with code 2" }],
     details: { truncation: { truncated: true }, fullOutputPath: "C:\\Temp\\pi-powershell-a.log" } };
-  const collapsed = renderMessage(message, { sessionId: "550e8400-e29b-41d4-a716-446655440000", cwd: "F:\\Piora", toolResults: new Map([["shell", result]]) });
+  const defaultExpanded = renderMessage(message, { toolResults: new Map([["shell", result]]) });
+  assert.match(defaultExpanded, /command-execution-toggle" aria-expanded="true"/);
+  assert.match(defaultExpanded, /TS2322/);
+  const collapsedState = createVirtualRowState();
+  collapsedState.set("command:shell", false);
+  const collapsed = renderToStaticMarkup(React.createElement(I18nProvider, null,
+    React.createElement(VirtualRowStateContext.Provider, { value: collapsedState }, React.createElement(MessageView, { message, toolResults: new Map([["shell", result]]) }))));
   assert.match(collapsed, /运行命令/);
   assert.equal(collapsed.match(/class="command-summary-preview"[^>]*>([^<]*)<\/span>/)?.[1], command.replace(/\s+/g, " ").trim());
   assert.match(collapsed, /失败/);
