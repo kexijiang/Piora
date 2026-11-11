@@ -20,6 +20,7 @@ export interface CompactProcessGroup {
   endedAt?: number;
   attention: boolean;
   errorCount: number;
+  interrupted?: boolean;
   preview: ProcessStep[];
   activities: Partial<Record<"read" | "search" | "command" | "edit" | "thinking" | "other", number>>;
 }
@@ -69,6 +70,7 @@ export function buildCompactChatHistoryRows(
     const activities: CompactProcessGroup["activities"] = {};
     let attention = false;
     let unresolved = false;
+    const interrupted = messages.slice(start, end).some(message => message.role === "assistant" && message.stopReason === "aborted");
     for (let i = start; i < end; i++) {
       const message = messages[i];
       if (message.role === "toolResult") continue;
@@ -116,8 +118,8 @@ export function buildCompactChatHistoryRows(
       }
     }
     // The final answer stays outside the turn's single process disclosure.
-    const open = direct || (attention && active) || (unresolved && !compact)
-      || (choices.get(key) ?? (compact ? active : end === messages.length));
+    const open = direct || (!interrupted && ((attention && active) || (unresolved && !compact)))
+      || (choices.get(key) ?? (interrupted || (compact ? active : end === messages.length)));
     // Secondary rows stay individually virtualized under the process heading.
     // Thinking, prose and custom notices still split the assistant message.
     let headingAdded = false;
@@ -125,6 +127,7 @@ export function buildCompactChatHistoryRows(
     for (const row of turnRows) {
       if (row.secondary && !headingAdded && !direct) {
         rows.push({ key, index: row.index - 0.1, compactProcess: { active, expanded: open, count: steps.length, attention, errorCount: steps.filter(step => step.status === "error").length, activities,
+          ...(interrupted ? { interrupted: true } : {}),
           startedAt: timestamps[0], endedAt: active ? undefined : timestamps.at(-1), preview: steps.slice(-3) } });
         headingAdded = true;
       }

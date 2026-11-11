@@ -114,7 +114,7 @@ export async function loadProjectToolsContext(
     extensionsOverride: (result) => applyExtensionLoadPlan(result, plan),
   });
   await loader.reload();
-  const loaded = loader.getExtensions();
+  const loaded = applyExtensionLoadPlan(loader.getExtensions(), plan);
   const toolsByName = new Map<string, ToolInfo>();
   for (const tool of builtInToolDefinitions(projectRoot, profile)) toolsByName.set(tool.name, tool);
   for (const extension of loaded.extensions) {

@@ -281,6 +281,10 @@ export function applyExtensionLoadPlan(
       origin: metadata.origin,
       ...(metadata.baseDir ? { baseDir: metadata.baseDir } : {}),
     };
+    // The SDK already copied the loader metadata onto each registration.
+    // Keep those references in sync when the host replaces the extension source.
+    for (const tool of extension.tools.values()) tool.sourceInfo = extension.sourceInfo;
+    for (const command of extension.commands.values()) command.sourceInfo = extension.sourceInfo;
   }
   return result;
 }
@@ -291,6 +295,9 @@ export function installExtensionLoadPlanReload(
   plan: ExtensionLoadPlan,
   resolvePlan: () => Promise<ExtensionLoadPlan>,
 ): void {
+  // Pi applies its own source metadata after extensionsOverride. Reconcile
+  // after reload completes so first-party tools keep the host's identity.
+  applyExtensionLoadPlan(loader.getExtensions(), plan);
   const reload = loader.reload.bind(loader);
   loader.reload = async (options) => {
     const next = await resolvePlan();
@@ -300,6 +307,7 @@ export function installExtensionLoadPlanReload(
     plan.candidates = next.candidates;
     plan.metadataByPath = next.metadataByPath;
     await reload(options);
+    applyExtensionLoadPlan(loader.getExtensions(), plan);
   };
 }
 

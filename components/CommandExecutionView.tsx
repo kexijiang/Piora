@@ -19,6 +19,7 @@ const CommandLogViewer = dynamic(
 function statusKey(status: CommandExecutionData["status"]): string {
   if (status === "running") return "command.status.running";
   if (status === "success") return "command.status.success";
+  if (status === "warning") return "command.status.warning";
   if (status === "cancelled") return "command.status.cancelled";
   if (status === "timed_out") return "command.status.timedOut";
   return "command.status.failed";
@@ -148,7 +149,8 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
   const [errorSearch, setErrorSearch] = useState("");
   const errorExcerpt = useMemo(() => data.status === "failed" || data.status === "cancelled" || data.status === "timed_out" ? commandErrorExcerpt(data.output) : "", [data.output, data.status]);
   const statusParts = [t(data.historical && data.status === "running" ? "history.noSavedResult" : statusKey(data.status))];
-  if (expanded && data.exitCode !== undefined) statusParts.push(t("command.exitCode", { code: data.exitCode }));
+  if (data.exitCode !== undefined) statusParts.push(t("command.exitCode", { code: data.exitCode }));
+  else if (data.status !== "running") statusParts.push(t("command.exitCodeUnavailable"));
   if (expanded && data.duration !== undefined) statusParts.push(t("command.duration", { seconds: data.duration }));
 
   useEffect(() => {
@@ -164,16 +166,17 @@ export function CommandExecutionCard({ data, onOpen, actions }: { data: CommandE
       triggerClassName="command-execution-toggle"
       metadata={<span title={statusParts.join(" · ")} aria-label={statusParts.join(" · ")} className={`chat-disclosure-status is-${data.historical && data.status === "running" ? "unknown" : data.status}`}>
         <span className="command-status-badge">
-          <AliIcon name={data.status === "cancelled" ? "stop" : data.status === "timed_out" ? "timer" : data.status === "failed" ? "error" : data.status === "running" ? "timer" : "check"} size={14} aria-hidden="true" />
+          <AliIcon name={data.status === "cancelled" ? "stop" : data.status === "timed_out" ? "timer" : data.status === "warning" ? "alert" : data.status === "failed" ? "error" : data.status === "running" ? "timer" : "check"} size={14} aria-hidden="true" />
           {data.status === "success" && !expanded ? null : statusParts[0]}
         </span>
-        {expanded && statusParts.length > 1 ? <span className="command-status-details">{statusParts.slice(1).join(" · ")}</span> : null}
+        {statusParts.length > 1 ? <span className="command-status-details">{statusParts.slice(1).join(" · ")}</span> : null}
       </span>}
       actions={<>
         <CopyButton text={data.command} />
         {actions ? <span className="command-message-actions">{actions}</span> : null}
         {onOpen ? <IconButton icon="expand" label={t("command.openLargeViewer")} onClick={() => onOpen(data)} /> : null}
       </>}>
+      {data.status === "warning" ? <p className="command-result-warning" role="status">{data.exitCode === undefined ? t("command.successWithUnknownExit") : t("command.successWithNonzeroExit", { code: data.exitCode })}</p> : null}
       {errorExcerpt ? (
         <button type="button" className="command-error-excerpt" onClick={() => { setErrorSearch(errorExcerpt.split("\n")[0] ?? ""); setExpanded(true); }}>
           <span>{t("command.errorExcerpt")}</span><code>{errorExcerpt}</code><small>{t("command.viewErrorContext")}</small>

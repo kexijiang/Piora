@@ -221,7 +221,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
     liveOutputFollowPaused,
     notices, extensionDialog, extensionCustomUi, extensionStatuses, extensionWidgets, respondToExtensionUi, sendExtensionCustomInput,
     isAutoModelSelection,
-    agentPhase,
+    agentPhase, interruptedRunId,
     isNew,
     sessionIdRef, messagesEndRef, scrollContainerRef, activityClockRef, statusClock,
     lastUserMsgRef,
@@ -857,7 +857,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
               operations={chatCommands.records} commandActions={commandActions}
               responseTimings={responseTimings}
               modelChanges={modelChanges}
-              messages={messages} compactProcess={compactProcess} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
+              messages={messages} compactProcess={compactProcess} interruptionId={interruptedRunId} streamingMessage={streamState.isStreaming ? streamState.streamingMessage as AgentMessage : null} entryIds={entryIds} busy={sessionBusy} streaming={streamState.isStreaming}
               isNew={isNew} forkingEntryId={forkingEntryId} highlightedEntryId={highlightedEntryId}
               lastUserMsgRef={lastUserMsgRef} pendingScrollToUserRef={pendingScrollToUserRef} scrollContainer={scrollContainerRef} handleRef={historyRef}
               modelNames={modelNames} cwd={messageCwd} onOpenFile={onOpenFile}
