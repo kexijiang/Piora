@@ -16,7 +16,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
   try {
     await writeFile(path.join(root,"loader.cjs"),`const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(root,"css.cjs"),'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
-    await writeFile(path.join(root,"stub.tsx"),`import {useEffect,useRef,useState,useCallback} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyMirror=o=>{const surfaceRef=useRef(null);const[problem,setProblem]=useState(null);window.setMirrorFailure=setProblem;window.setVideoFailure=error=>setProblem(error?{error,state:"recovering"}:null);window.frameOptions={active:o.active,serial:o.serial,generation:o.generation,worker:true};const refresh=useCallback(()=>{window.reconnected=true;setProblem(null);},[]);useEffect(()=>{const c=document.createElement("canvas");surfaceRef.current.appendChild(c);c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});return()=>c.remove();},[surfaceRef]);return {surfaceRef,state:problem?(problem.state??"error"):"live",error:problem?.error,controlStatus:problem?.controlStatus,frame:{serial:o.serial,generation:o.generation,width:360,height:720},refresh};};`);
+    await writeFile(path.join(root,"stub.tsx"),`import {useEffect,useRef,useState,useCallback} from "react";export const useI18n=()=>({locale:"zh-CN"});export const AliIcon=({name})=><span>{name==="save"?"▣":name==="close"?"×":"●"}</span>;export const useHarmonyMirror=o=>{const surfaceRef=useRef(null);const[problem,setProblem]=useState(null);window.setMirrorFailure=setProblem;window.setVideoFailure=error=>setProblem(error?{error,state:"recovering"}:null);window.frameOptions={active:o.active,serial:o.serial,generation:o.generation,worker:true};const refresh=useCallback(()=>{window.reconnected=true;window.refreshCount=(window.refreshCount??0)+1;setProblem(null);},[]);useEffect(()=>{const c=document.createElement("canvas");surfaceRef.current.appendChild(c);c.width=360;c.height=720;const g=c.getContext("2d");g.fillStyle="#eef3fa";g.fillRect(0,0,360,720);g.fillStyle="#243047";g.font="24px sans-serif";g.fillText("设置 · 示例画面",24,80);g.font="16px sans-serif";["无线网络","蓝牙","显示与亮度","声音和振动","通知","应用管理"].forEach((t,i)=>{g.fillStyle="#fff";g.fillRect(18,120+i*80,324,64);g.fillStyle="#333";g.fillText(t,34,160+i*80);});return()=>c.remove();},[surfaceRef]);return {surfaceRef,state:problem?(problem.state??"error"):"live",error:problem?.error,controlStatus:problem?.controlStatus,frame:{serial:o.serial,generation:o.generation,width:360,height:720},refresh};};`);
     await writeFile(path.join(root,"entry.tsx"),`import React,{useState} from "react";import {createRoot} from "react-dom/client";import {MirrorWindow} from "@/components/workspace/harmony/MirrorWindow";import {PioraMessageHost,showPioraMessage} from "@/components/PioraMessage";import {useTheme} from "@/hooks/useTheme";window.showMessage=showPioraMessage;function Fixture(){const[embedded,setEmbedded]=useState(false);window.setEmbedded=setEmbedded;const {setTheme,themes}=useTheme();window.setMirrorTheme=setTheme;window.mirrorThemes=themes;return <><MirrorWindow embedded={embedded} serial={embedded?"phone":undefined}/><PioraMessageHost/></>;}createRoot(document.getElementById("root")).render(<Fixture/>);`);
     const aliases=Object.fromEntries(["@/hooks/useI18n","@/hooks/useHarmonyMirror"].map(k=>[k,path.join(root,"stub.tsx")]));
     const compiler=webpack({mode:"development",target:"web",devtool:false,entry:path.join(root,"entry.tsx"),output:{path:root,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],modules:[path.join(repo,"node_modules")],alias:{...aliases,"@":repo}},module:{rules:[{test:/\.tsx?$/,exclude:/node_modules/,use:path.join(root,"loader.cjs")},{test:/\.css$/,use:path.join(root,"css.cjs")}]}});
@@ -263,10 +263,13 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.getByRole('status').filter({hasText:'截图已保存'}).waitFor();
     await page.waitForTimeout(100);
     assert.equal(await page.getByRole('dialog').count(),0,'a successful save stays successful when the follow-up status read fails');
-    const recoveryRequests=[];let needsPhysicalConfirmation=true;
+    const recoveryRequests=[];let needsPhysicalConfirmation=true, releaseConfirmation, noteConfirmation;
+    const confirmationGate=new Promise(resolve=>{releaseConfirmation=resolve});
+    const confirmationReceived=new Promise(resolve=>{noteConfirmation=resolve});
     await page.route('https://mirror.test/api/harmony/recovery',async route=>{
       const body=route.request().postDataJSON();recoveryRequests.push(body);
       if(body.action==='retry')deviceGeneration++;
+      if(body.action==='confirm'){noteConfirmation();await confirmationGate;}
       return route.fulfill({json:{cleanup:body.action==='retry'?'uncertain':'manual-confirmed',controlStatus:body.action==='retry'&&needsPhysicalConfirmation?'recovering':null,device:{serial:'phone',state:'online',generation:deviceGeneration,capabilities:{screenshot:true}}}});
     });
     const beforeRecovery=mutations().length;
@@ -288,8 +291,17 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.getByRole('button',{name:'取消',exact:true}).click();
     assert.equal(recoveryRequests.length,1,'cancelling physical confirmation must not send recovery');
     await page.getByRole('button',{name:'检查并恢复设备',exact:true}).click();
+    const refreshBeforeConfirmation=await page.evaluate(()=>window.refreshCount??0);
     await page.getByRole('button',{name:'已检查，恢复连接',exact:true}).click();
-    await page.waitForFunction(()=>window.reconnected&&window.frameOptions.generation===2);
+    await confirmationReceived;
+    // The earlier video reconnect and retry already satisfy the old boolean /
+    // generation predicate. Hold this response to prove it is not a receipt.
+    assert.equal(await page.evaluate(()=>window.reconnected&&window.frameOptions.generation===2),true);
+    assert.equal(await page.evaluate(()=>window.refreshCount??0),refreshBeforeConfirmation,'an outstanding confirmation cannot refresh the viewer');
+    assert.equal(await page.getByRole('button',{name:'检查并恢复设备',exact:true}).count(),1,'confirmation stays visible until its response is consumed');
+    releaseConfirmation();
+    await page.waitForFunction(previous=>window.refreshCount===previous+1&&window.frameOptions.generation===2,refreshBeforeConfirmation);
+    await page.getByRole('button',{name:'检查并恢复设备',exact:true}).waitFor({state:'detached'});
     assert.deepEqual(recoveryRequests[1],{action:'confirm',serial:'phone',released:true,recordingStopped:true});
     assert.equal(mutations().length,beforeRecovery,'restoring the viewer does not replay failed gestures');
     assert.equal(await page.getByRole('button',{name:'检查并恢复设备',exact:true}).count(),0);
