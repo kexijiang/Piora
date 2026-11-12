@@ -185,7 +185,7 @@
     "three": "^0.187.0",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
-    "typebox": "1.4.5",
+    "typebox": "1.4.6",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.4",
     "unified": "^11.0.5",
@@ -213,6 +213,6 @@
     "@typescript/native": "npm:typescript@7.0.2"
   },
   "optionalDependencies": {
-    "@microsoft/winappcli": "0.7.1"
+    "@microsoft/winappcli": "0.8.0"
   }
 }
