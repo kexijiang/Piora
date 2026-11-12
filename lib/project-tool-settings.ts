@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 
 import { writePrivateFileAtomicSync } from "./atomic-file";
+import { isWorkflowTool } from "./workflow-tools";
 import type { SessionCapabilityPreset, SessionCapabilitySelection, SessionCapabilityPolicy } from "./session-capabilities";
 
 const PROJECT_TOOL_SETTINGS_VERSION = 1;
@@ -101,8 +102,9 @@ export function readProjectToolSettings(
 export function projectToolSelection(record: ProjectToolSettingsRecord): SessionCapabilitySelection {
   // Project selections predate the compact gateway and have no known-id list.
   // Replace retired operations so subsequent saves cannot retain stale grants.
-  const enabledCapabilityIds = [...new Set(record.enabledCapabilityIds.map((id) =>
-    id.startsWith("tool:harmony_") ? "tool:harmony_control" : id))];
+  const enabledCapabilityIds = [...new Set(record.enabledCapabilityIds
+    .filter((id) => !id.startsWith("tool:") || !isWorkflowTool(id.slice(5)))
+    .map((id) => id.startsWith("tool:harmony_") ? "tool:harmony_control" : id))];
   return {
     preset: record.preset,
     ...(record.preset === "custom" ? { enabledCapabilityIds } : {}),

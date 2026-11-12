@@ -3,6 +3,8 @@ import { createConversationFork } from "./session-fork";
 import { findWorkflowRuntime, getWorkflowRuntime, readWorkflowSnapshot, WorkflowError } from "./workflow-runtime";
 import { parseWorkflowAction, parseWorkflowPromptOptions, parseWorkflowRevision } from "./workflow-input";
 import type { WorkflowAction, WorkflowPromptOptions } from "./workflow-types";
+import { readLaboratorySettings } from "./laboratory-settings";
+import { isWorkflowTool } from "./workflow-tools";
 import { recordAgentTerminalEvent } from "./agent-terminal-registry";
 import { ToolReviewController } from "./tool-permission-gate";
 import { collectReviewEvidence } from "./tool-review-evidence";
@@ -570,6 +572,7 @@ export class AgentSessionWrapper {
 
   isToolAllowedByCapability(name: string): boolean {
     if (!this._alive || this.remotePolicy === "notes") return false;
+    if (isWorkflowTool(name)) return this.automaticWorkflowToolNames().includes(name);
     this.refreshCapabilityCatalog();
     const permitted = resolveSessionCapabilityToolNames(this.capabilityCatalog, this.capabilityPolicy,
       this.inner.getAllTools().map(tool => tool.name), this.toolNameCeiling);
@@ -592,11 +595,22 @@ export class AgentSessionWrapper {
   private resolveCapabilityTools(
     policy: SessionCapabilityPolicy,
   ): { policy: SessionCapabilityPolicy; toolNames: string[] } {
-    const requestedToolNames = resolveSessionCapabilityToolNames(
+    const requestedToolNames = [...resolveSessionCapabilityToolNames(
       this.capabilityCatalog, policy, this.inner.getAllTools().map(tool => tool.name), this.toolNameCeiling,
-    );
+    ), ...this.automaticWorkflowToolNames()];
     const toolNames = this.nativeMcp?.declarationNames(requestedToolNames, policy.preset === "custom") ?? requestedToolNames;
     return { policy, toolNames };
+  }
+
+  private automaticWorkflowToolNames(): string[] {
+    if (this.runtimeProfile !== "normal" || this.remotePolicy === "notes") return [];
+    // Corrupt Laboratory settings must not break ordinary Agent chats. Workflow
+    // admission still reports the settings error through its existing guard.
+    try { if (!readLaboratorySettings().planGoalEnabled) return []; }
+    catch { return []; }
+    return this.inner.getAllTools().filter(tool => isWorkflowTool(tool.name)
+      && tool.exposure !== "hidden" && (!this.toolNameCeiling || this.toolNameCeiling.has(tool.name)))
+      .map(tool => tool.name);
   }
 
   private applySessionCapabilities(): void {
@@ -1310,6 +1324,7 @@ export class AgentSessionWrapper {
         this.assertSessionIdle("change workflow mode");
         const options = parseWorkflowPromptOptions(command.workflow);
         if (!options) throw new WorkflowError("Workflow selection is required", "INVALID_WORKFLOW", 400);
+        this.reapplySessionCapabilities();
         const snapshot = this.observeWorkflow().configure({ ...options, expectedRevision: parseWorkflowRevision(command.expectedRevision) });
         return { snapshot, promptStarted: false };
       }
@@ -1374,6 +1389,7 @@ export class AgentSessionWrapper {
           if ((selection && selection.mode !== "agent") || decision || current.mode !== "agent") {
             this.assertWorkflowSession();
             if (command.source && command.source !== "ui") throw new WorkflowError("Workflow execution requires an ordinary chat submission.", "WORKFLOW_UNAVAILABLE", 403);
+            this.reapplySessionCapabilities();
           }
           if (selection && (selection.mode !== current.mode || selection.turnBudget !== undefined && selection.turnBudget !== current.turnBudget)) workflow.configure(selection);
           if (decision) {
