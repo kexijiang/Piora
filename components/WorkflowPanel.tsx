@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import { MAX_WORKFLOW_TURN_BUDGET, type WorkflowActionName, type WorkflowRun, type WorkflowSnapshot } from "@/lib/workflow-types";
 import { MarkdownBody } from "./MarkdownBody";
+import { WorkflowModeIcon } from "./WorkflowModeIcon";
 import styles from "./Workflow.module.css";
 
 const knownReasons = new Set(["host_restarted", "mode_changed", "revision_requested", "user_exited", "user_paused", "user_cancelled", "user_stopped", "turn_budget_exhausted", "no_progress", "execution_finished", "planning_needs_input", "laboratory_disabled"]);
@@ -66,21 +67,97 @@ function WorkflowRunCard({ run, busy, running, onAction, historical = false, cwd
   </section>;
 }
 
-export function WorkflowPanel({ snapshot, busy, running, error, onAction, onRefresh, cwd, enabled = true, settingsReady = true }: {
+type WorkflowPanelProps = {
   snapshot: WorkflowSnapshot | null; busy: boolean; running: boolean; error: string | null; cwd?: string;
   enabled?: boolean;
   settingsReady?: boolean;
   onAction: (action: WorkflowActionName, turnBudget?: number) => Promise<boolean>;
   onRefresh: () => Promise<void>;
-}) {
+};
+
+function WorkflowPeek({ snapshot, busy, running, onAction, cwd, enabled = true, settingsReady = true }: WorkflowPanelProps) {
+  const { t } = useI18n();
+  const contentId = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const expanded = !dismissed && (hovered || focused || pinned);
+  useLayoutEffect(() => {
+    const button = trigger.current;
+    if (!expanded || !button) return;
+    const content = document.getElementById(contentId);
+    const surface = button.closest("[data-chat-surface]");
+    const composer = button.closest("[data-chat-composer-area]");
+    const resize = () => {
+      const top = Math.max(0, surface?.getBoundingClientRect().top ?? 0);
+      content?.style.setProperty("--workflow-preview-space", `${Math.max(0, button.getBoundingClientRect().top - top - 12)}px`);
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(surface ?? document.documentElement);
+    if (composer) observer.observe(composer);
+    window.addEventListener("resize", resize);
+    return () => { observer.disconnect(); window.removeEventListener("resize", resize); };
+  }, [expanded, contentId]);
+  const run = snapshot?.current;
+  const title = run?.title || run?.objective || t("workflow.objective");
+  return <section className={styles.dock} data-testid="workflow-peek" data-expanded={expanded} aria-label={t("workflow.current")}
+    onPointerEnter={event => { if (event.pointerType !== "touch") { setHovered(true); setDismissed(false); } }}
+    onPointerLeave={event => {
+      setHovered(false);
+      // Actions can replace the focused button (for example Continue → Pause)
+      // without firing blur. Do not leave that preview latched open.
+      if (!event.currentTarget.contains(document.activeElement)) setFocused(false);
+    }}
+    onFocusCapture={event => {
+      // Mouse clicks on actions should not keep a hover preview open. Keyboard
+      // navigation and text editing must keep it available until focus leaves.
+      const retain = event.target.matches(":focus-visible, input, textarea, select");
+      setFocused(retain);
+      if (retain) setDismissed(false);
+    }}
+    onBlurCapture={event => { if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false); }}
+    onKeyDown={event => {
+      if (event.key !== "Escape" || !expanded) return;
+      event.preventDefault(); event.stopPropagation();
+      trigger.current?.focus();
+      setPinned(false); setFocused(false); setDismissed(true);
+    }}>
+    <div className={styles.peekSurface}>
+      <button ref={trigger} type="button" className={styles.peekTrigger} data-testid="workflow-peek-toggle"
+        aria-expanded={expanded} aria-controls={contentId} title={t(pinned ? "workflow.collapse" : "workflow.peekHelp")}
+        onClick={() => {
+          if (pinned) { setPinned(false); setFocused(false); setDismissed(true); }
+          else { setPinned(true); setDismissed(false); }
+        }}>
+        <WorkflowModeIcon mode={run?.kind ?? "plan"} />
+        <span className={styles.peekMode}>{run ? t(`workflow.short.${run.kind}`) : t("workflow.current")}</span>
+        <span className={styles.peekTitle}>{run ? title : t("workflow.history", { count: snapshot?.history.length ?? 0 })}</span>
+        {run && <span className={styles.peekStatus} role="status" data-status={run.status}>
+          <span className={styles.statusDot} aria-hidden="true" />{t(`workflow.status.${run.status}`)}
+        </span>}
+        {run?.kind === "goal" && <span className={styles.peekBudget}>{run.turnsUsed}/{run.turnBudget}</span>}
+        <svg className={styles.peekChevron} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 15 6-6 6 6" /></svg>
+      </button>
+      <div id={contentId} className={styles.peekContent} data-testid="workflow-peek-content" hidden={!expanded}>
+        {settingsReady && !enabled && run && <p className={styles.help} role="status" data-testid="workflow-laboratory-disabled">{t("workflow.laboratoryDisabled")}</p>}
+        {run && <WorkflowRunCard key={run.id} run={run} busy={busy} running={running} enabled={enabled} onAction={onAction} cwd={cwd} />}
+        {Boolean(snapshot?.history.length) && <details className={styles.history} data-testid="workflow-history">
+          <summary>{t("workflow.history", { count: snapshot!.history.length })}</summary>
+          {[...snapshot!.history].reverse().map((entry, index) => <WorkflowRunCard key={`${entry.id}:${entry.version}:${index}`} run={entry} busy={false} running={false} historical enabled={enabled} onAction={onAction} cwd={cwd} />)}
+        </details>}
+      </div>
+    </div>
+  </section>;
+}
+
+export function WorkflowPanel(props: WorkflowPanelProps) {
+  const { snapshot, error, onRefresh } = props;
   const { t } = useI18n();
   return <>
     {error && <div className={styles.error} role="alert">{error}<button type="button" className={styles.retry} onClick={() => { void onRefresh(); }}>{t("workflow.refresh")}</button></div>}
-    {settingsReady && !enabled && snapshot?.current && <p className={styles.help} role="status" data-testid="workflow-laboratory-disabled">{t("workflow.laboratoryDisabled")}</p>}
-    {snapshot?.current && <WorkflowRunCard key={snapshot.current.id} run={snapshot.current} busy={busy} running={running} enabled={enabled} onAction={onAction} cwd={cwd} />}
-    {Boolean(snapshot?.history.length) && <details className={styles.history} data-testid="workflow-history">
-      <summary>{t("workflow.history", { count: snapshot!.history.length })}</summary>
-      {[...snapshot!.history].reverse().map((run, index) => <WorkflowRunCard key={`${run.id}:${run.version}:${index}`} run={run} busy={false} running={false} historical enabled={enabled} onAction={onAction} cwd={cwd} />)}
-    </details>}
+    {(snapshot?.current || Boolean(snapshot?.history.length)) && <WorkflowPeek key={snapshot?.sessionId} {...props} />}
   </>;
 }

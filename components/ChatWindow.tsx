@@ -671,9 +671,13 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
     <>
     <ToolReviewStatus reviews={toolReviews} />
     {chatCommands.connectionError && <div role="status" style={{ color: "var(--text-muted)", fontSize: "var(--text-xs)", padding: "6px 10px" }}>{chatCommands.connectionError}</div>}
-    <WorkflowPanel snapshot={workflow.snapshot} busy={workflow.busy} running={sessionBusy} enabled={laboratory.planGoalEnabled} settingsReady={laboratory.ready}
-      error={!laboratory.ready && laboratory.error ? t("laboratory.error") : workflow.error}
-      onAction={workflow.act} onRefresh={laboratory.ready ? workflow.refresh : laboratory.refresh} cwd={session?.cwd ?? newSessionCwd ?? undefined} />
+    <div style={isEmptyNew ? undefined : { paddingLeft: isMobile ? CHAT_COLUMN_PADDING : CHAT_COLUMN_LEFT_PADDING, paddingRight: isMobile ? CHAT_COLUMN_PADDING : CHAT_INPUT_RIGHT_PADDING }}>
+      <div className="chat-column">
+        <WorkflowPanel snapshot={workflow.snapshot} busy={workflow.busy} running={sessionBusy} enabled={laboratory.planGoalEnabled} settingsReady={laboratory.ready}
+          error={!laboratory.ready && laboratory.error ? t("laboratory.error") : workflow.error}
+          onAction={workflow.act} onRefresh={laboratory.ready ? workflow.refresh : laboratory.refresh} cwd={session?.cwd ?? newSessionCwd ?? undefined} />
+      </div>
+    </div>
     <ChatInput
       ref={chatInputRef}
       replySource={replySource}
@@ -755,6 +759,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
     <NestedToolCallsContext.Provider value={nestedCallsStore}>
     <div
       ref={chatSurfaceRef}
+      data-chat-surface
       className="relative flex h-full flex-col overflow-hidden"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
@@ -960,7 +965,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
         ) : null}
       </div>
 
-      <div className="relative">
+      <div className="relative" data-chat-composer-area>
         <div
           style={{
             padding: `0 ${CHAT_COLUMN_PADDING}px 0 ${CHAT_COLUMN_LEFT_PADDING}px`,

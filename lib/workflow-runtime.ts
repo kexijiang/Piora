@@ -44,7 +44,7 @@ export class WorkflowRuntime {
     requireLaboratoryEnabled();
     if (!this.isAttached) throw new WorkflowError("Workflow extension is unavailable", "WORKFLOW_UNAVAILABLE", 503);
     const required = mode === "plan" ? "piora_submit_plan" : "piora_update_goal";
-    if (this.activeTools && !this.activeTools().includes(required)) throw new WorkflowError(`Enable ${required} in the session tools before selecting this mode`, "WORKFLOW_UNAVAILABLE", 409);
+    if (this.activeTools && !this.activeTools().includes(required)) throw new WorkflowError(`The required workflow tool ${required} is unavailable in this session. Reopen the chat and try again.`, "WORKFLOW_UNAVAILABLE", 409);
   }
   subscribe(listener: (snapshot: WorkflowSnapshot) => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
   getSnapshot(): WorkflowSnapshot { return this.store.read(this.sessionId).snapshot; }

@@ -1,9 +1,7 @@
-.picker { padding: 4px 2px 8px; color: var(--text-muted); font-size: var(--text-xs); }
-.controls, .actions, .heading { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.controls select, .budget input, .actions button, .retry { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
-.controls select { max-width: 100%; }
-.controls :focus-visible, .actions button:focus-visible, .panel summary:focus-visible, .budget input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.controls :disabled, .actions button:disabled { opacity: .5; cursor: default; }
+.actions, .heading { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.budget input, .actions button, .retry { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; }
+.actions button:focus-visible, .panel summary:focus-visible, .budget input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.actions button:disabled { opacity: .5; cursor: default; }
 .budget { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 6px; }
 .budget input { width: 66px; }
 .help { color: var(--text-muted); font-size: var(--text-xs); margin: 6px 0 0; }
@@ -28,3 +26,40 @@
 .history summary { cursor: pointer; padding: 5px 0; }
 .history .panel { margin: 6px 0; }
 .error { color: var(--text-muted); font-size: var(--text-xs); padding: 6px 2px; display: flex; align-items: center; gap: 8px; }
+
+/* Reserve only the summary row. The preview grows upward over the transcript,
+   so inspecting a plan never resizes the conversation or moves the composer. */
+.dock { position: relative; height: 38px; flex-shrink: 0; min-width: 0; margin-bottom: 8px; z-index: 5; }
+.dock[data-expanded="true"] { z-index: 20; }
+.peekSurface { display: flex; flex-direction: column-reverse; position: absolute; inset-inline: 0; bottom: 0; border: 1px solid var(--border); border-radius: 12px; color: var(--text); background: var(--bg-panel); overflow: hidden; transition: box-shadow 160ms ease, border-color 160ms ease; }
+.dock[data-expanded="true"] .peekSurface { box-shadow: 0 12px 36px rgb(0 0 0 / .16); border-color: var(--text-dim); }
+.peekTrigger { display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; min-width: 0; padding: 0 12px; border: 0; background: transparent; color: var(--text-muted); font: inherit; font-size: var(--text-xs); text-align: start; cursor: pointer; }
+.peekTrigger:hover { background: var(--bg-hover); }
+.peekTrigger:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; border-radius: 10px; }
+.peekTrigger > svg { flex-shrink: 0; }
+.peekMode { flex-shrink: 0; color: var(--text); font-weight: 500; }
+.peekTitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: start; }
+.peekStatus { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; white-space: nowrap; }
+.statusDot { width: 5px; height: 5px; border-radius: 50%; background: var(--text-dim); }
+.peekStatus:is([data-status="running"], [data-status="planning"], [data-status="awaiting_approval"]) .statusDot { background: var(--accent); }
+.peekBudget { flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.peekChevron { transition: transform 160ms ease; }
+.dock[data-expanded="true"] .peekChevron { transform: rotate(180deg); }
+.peekContent { box-sizing: border-box; max-height: min(52vh, 480px, var(--workflow-preview-space, 480px)); overflow: auto; overscroll-behavior: contain; padding: 14px; border-bottom: 1px solid var(--border); animation: peekIn 140ms ease-out; }
+.peekContent[hidden] { display: none; }
+.peekContent > .panel { padding: 0; margin: 0; border: 0; border-radius: 0; }
+.peekContent > .help { margin: 0 0 10px; }
+.peekContent .body { max-height: none; overflow: visible; }
+.peekContent .history { margin: 10px 0 0; }
+.peekContent .history[open] { max-height: none; overflow: visible; }
+@keyframes peekIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 480px) {
+  .peekTrigger { gap: 6px; padding-inline: 9px; }
+  .peekMode { max-width: 90px; overflow: hidden; white-space: nowrap; }
+  .peekStatus { max-width: 105px; overflow: hidden; text-overflow: ellipsis; }
+  .peekContent { padding: 12px; max-height: min(45vh, var(--workflow-preview-space, 480px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .peekSurface, .peekChevron { transition: none; }
+  .peekContent { animation: none; }
+}

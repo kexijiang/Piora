@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -19,7 +19,13 @@ test(`workflow UI preserves revisions, switches sessions, reviews plans and chan
   const laboratorySaveRecovery = Promise.withResolvers();
   try {
     await writeFile(path.join(directory, "ts.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
-    await writeFile(path.join(directory, "css.cjs"), 'module.exports=s=>"export default "+JSON.stringify(Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],m[1]])))');
+    await writeFile(path.join(directory, "css.cjs"), `module.exports=function(s){
+      const prefix=require('node:path').basename(this.resourcePath).replace(/\\W/g,'_')+'_';
+      const names=Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],prefix+m[1]]));
+      const css=s.replace(/\\.([a-zA-Z][\\w-]*)/g,(_,name)=>'.'+names[name]);
+      const inject=this.resourcePath.includes('Workflow')?'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.head.appendChild(style);':'';
+      return inject+'export default '+JSON.stringify(names);
+    }`);
     await writeFile(path.join(directory, "markdown.tsx"), 'import React from "react";export const MarkdownBody=({children})=><div>{children}</div>;');
     await writeFile(path.join(directory, "entry.tsx"), `
 import React from 'react';import{createRoot}from'react-dom/client';
@@ -33,7 +39,7 @@ const execute=React.useCallback(async action=>{const res=await fetch('/api/agent
 const state=useWorkflow(sid,true,false,execute);window.state=state;
 return <><LaboratorySettings/><output id="lab-state">{String(lab.planGoalEnabled)}</output><button id="switch" onClick={()=>setSid(sid==='one'?'two':'one')}>Switch chat</button><button id="refresh" onClick={()=>state.refresh()}>Refresh</button>
 {lab.planGoalEnabled&&<WorkflowModePicker value={choice} onChange={setChoice}/>}<output id="choice">{JSON.stringify(choice)}</output>
-<WorkflowPanel snapshot={state.snapshot} busy={state.busy} running={false} enabled={lab.planGoalEnabled} error={state.error} onAction={state.act} onRefresh={state.refresh}/></>}
+<div id="workflow-area" style={{position:'fixed',bottom:60,left:16,right:16}}><WorkflowPanel snapshot={state.snapshot} busy={state.busy} running={false} enabled={lab.planGoalEnabled} error={state.error} onAction={state.act} onRefresh={state.refresh}/><textarea aria-label="Message" id="composer" style={{width:'100%',height:40,boxSizing:'border-box'}}/></div></>}
 createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nProvider>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false, entry: path.join(directory, "entry.tsx"), output: { path: directory, filename: "bundle.js", publicPath: "/" },
       resolve: { extensions: [".tsx", ".ts", ".js"], modules: [path.join(repo, "node_modules")], alias: { "@": repo } },
@@ -41,7 +47,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
       module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(directory, "ts.cjs") }, { test: /\.css$/, use: path.join(directory, "css.cjs") }] } });
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
-    page = await browser.newPage({ locale, viewport: { width: 390, height: 800 } });
+    page = await browser.newPage({ locale, hasTouch: true, viewport: { width: 390, height: 800 } });
     page.on("console", message => { if (message.type() === "warning" || message.type() === "error") browserMessages.push({ type: message.type(), text: message.text() }); });
     page.on("request", request => {
       const pathname = new URL(request.url()).pathname;
@@ -73,7 +79,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
       // Locale imports are separate webpack chunks. Replaying the entry bundle
       // for them remounts React and resets the shared laboratory state.
       if (url.pathname.endsWith(".js")) return route.fulfill({ contentType: "text/javascript", body: await readFile(path.join(directory, path.basename(url.pathname))) });
-      if (!url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "text/html", body: '<!doctype html><meta charset="utf-8"><div id="root"></div><script src="/bundle.js"></script>' });
+      if (!url.pathname.startsWith("/api/")) return route.fulfill({ contentType: "text/html", body: '<!doctype html><meta charset="utf-8"><style>:root{--bg:#fff;--bg-panel:#fafafa;--bg-hover:#f1f1f1;--bg-selected:#eee;--border:#dedede;--text:#262626;--text-muted:#666;--text-dim:#a3a3a3;--accent:#2563eb;--text-xs:12px;--text-sm:14px}body{font-family:Arial,sans-serif;color:var(--text);line-height:1.5}</style><div id="root"></div><script src="/bundle.js"></script>' });
       if (url.pathname === "/api/settings/laboratory") {
         if (route.request().method() === "PUT") {
           if (failLaboratoryWrite) { failLaboratoryWrite = false; laboratoryWriteFailed = true; return route.fulfill({ status: 500, json: { error: "fixture save failed" } }); }
@@ -115,7 +121,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.waitForFunction(language => document.documentElement.lang === language, expectedLanguage);
     assert.equal(await page.locator("html").getAttribute("lang"), expectedLanguage);
     if (locale === "en-US") assert.ok(transport.some(event => event.event === "response" && event.path !== "/bundle.js" && /messages_en.*\.js$/.test(event.path) && event.status === 200), "English must load its real locale chunk rather than silently fall back");
-    await page.getByTestId("workflow-panel").waitFor();
+    await page.getByTestId("workflow-peek-toggle").waitFor();
     await page.waitForFunction(() => Boolean(window.lab.error));
     assert.equal(await page.evaluate(() => window.lab.ready), false, "a failed first read must not confirm disabled settings");
     // Keep all reads failed until this boundary, including a real background
@@ -178,6 +184,52 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.evaluate(() => window.cleanupFixtureRetry());
     await page.clock.resume();
     await page.waitForFunction(() => window.lab.ready);
+    const preview = page.getByTestId("workflow-peek-content");
+    const toggle = page.getByTestId("workflow-peek-toggle");
+    const reveal = async () => { await toggle.hover(); await preview.waitFor({ state: "visible" }); };
+    const screenshot = async name => {
+      if (!process.env.PIORA_WORKFLOW_SCREENSHOTS) return;
+      await mkdir(process.env.PIORA_WORKFLOW_SCREENSHOTS, { recursive: true });
+      await page.screenshot({ path: path.join(process.env.PIORA_WORKFLOW_SCREENSHOTS, `${locale}-${name}.png`), animations: "disabled" });
+    };
+    assert.equal(await preview.isVisible(), false, "saved plans start as a single summary row");
+    const collapsedComposer = await page.locator("#composer").boundingBox();
+    assert.ok((await page.getByTestId("workflow-peek").boundingBox()).height <= 40);
+    await screenshot("collapsed");
+    await reveal();
+    assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+    assert.deepEqual(await page.locator("#composer").boundingBox(), collapsedComposer, "preview overlays history without moving the composer");
+    const expandedBox = await preview.boundingBox();
+    assert.ok(expandedBox.y >= 0 && expandedBox.x >= 0 && expandedBox.x + expandedBox.width <= 390);
+    await screenshot("expanded");
+    await page.mouse.move(0, 0);
+    await preview.waitFor({ state: "hidden" });
+    // Keyboard focus reveals the preview; Escape closes it and returns focus.
+    await page.locator("#composer").focus();
+    await page.keyboard.press("Shift+Tab");
+    await preview.waitFor({ state: "visible" });
+    await page.keyboard.press("Tab");
+    assert.equal(await preview.evaluate(element => element.contains(document.activeElement)), true, "Tab enters the revealed details");
+    await page.keyboard.press("Escape");
+    await preview.waitFor({ state: "hidden" });
+    assert.equal(await toggle.evaluate(element => element === document.activeElement), true);
+    // Clicking pins a preview for touch users or longer reviews.
+    await toggle.click();
+    await page.mouse.move(0, 0);
+    await preview.waitFor({ state: "visible" });
+    await toggle.click();
+    await preview.waitFor({ state: "hidden" });
+    await page.mouse.move(0, 0);
+    const touchTarget = await toggle.boundingBox();
+    await page.touchscreen.tap(touchTarget.x + touchTarget.width / 2, touchTarget.y + touchTarget.height / 2);
+    await preview.waitFor({ state: "visible" });
+    await page.touchscreen.tap(touchTarget.x + touchTarget.width / 2, touchTarget.y + touchTarget.height / 2);
+    await preview.waitFor({ state: "hidden" });
+    await page.setViewportSize({ width: 1100, height: 800 });
+    await reveal();
+    await screenshot("desktop-expanded");
+    await page.mouse.move(0, 0);
+    await page.setViewportSize({ width: 390, height: 800 });
     assert.equal(await page.getByTestId("workflow-mode-select").count(), 0);
     assert.equal(await page.getByTestId("workflow-plan-approve").isDisabled(), true);
     assert.equal(await page.getByTestId("workflow-plan-revise").isDisabled(), true);
@@ -189,14 +241,28 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.getByTestId("laboratory-plan-goal-toggle").click();
     await page.waitForFunction(() => window.lab.planGoalEnabled);
     assert.equal(await page.locator("#lab-state").textContent(), "true", "separate subscribers update from the same confirmed server setting");
-    await page.getByTestId("workflow-mode-select").selectOption("goal");
+    await page.getByTestId("workflow-mode-goal").click();
+    assert.equal(await page.getByTestId("workflow-mode-goal").getAttribute("aria-pressed"), "true");
+    assert.equal(await page.getByTestId("workflow-mode-agent").getAttribute("aria-pressed"), "false");
+    assert.equal(await page.getByTestId("workflow-mode-select").locator("svg").count(), 3);
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "mode controls fit a narrow viewport");
+    await screenshot("goal-mode");
     await page.getByTestId("workflow-budget-input").fill("7");
     assert.equal(await page.locator("#choice").textContent(), '{"mode":"goal","turnBudget":7}');
-    await page.getByTestId("workflow-mode-select").selectOption("plan");
+    await page.getByTestId("workflow-mode-plan").click();
     assert.equal(await page.getByTestId("workflow-budget-input").count(), 0);
+    await page.setViewportSize({ width: 390, height: 480 });
+    await page.locator("#composer").evaluate(element => { element.style.height = "220px"; });
+    await reveal();
+    assert.ok((await preview.boundingBox()).y >= 10, "preview stays within a short window above a tall composer");
+    assert.ok(await preview.evaluate(element => element.scrollHeight > element.clientHeight), "long details remain scrollable within the available height");
+    await page.mouse.move(0, 0);
+    await page.locator("#composer").evaluate(element => { element.style.height = "40px"; });
+    await page.setViewportSize({ width: 390, height: 800 });
     holdNext = true;
     await page.locator("#refresh").click();
     await page.waitForFunction(() => window.state.snapshot?.revision === 1);
+    await reveal();
     await page.getByTestId("workflow-plan-revise").click();
     await page.waitForFunction(() => window.state.snapshot?.revision === 2);
     held.splice(0).forEach(resolve => resolve());
@@ -205,20 +271,28 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.getByTestId("workflow-history").locator("summary").first().click();
     assert.equal(await page.getByTestId("workflow-history-entry").count(), 1);
     assert.equal(await page.getByTestId("workflow-history-entry").getAttribute("data-status"), "awaiting_approval");
+    await page.mouse.move(0, 0);
+    await preview.waitFor({ state: "hidden" });
     holdNext = true;
     await page.locator("#refresh").click();
     await page.locator("#switch").click();
     await page.waitForFunction(() => window.state.snapshot?.sessionId === "two");
     held.splice(0).forEach(resolve => resolve());
     assert.equal(await page.getByTestId("workflow-panel").getAttribute("data-run-id"), "goal-two");
+    assert.equal(await preview.isVisible(), false, "switching chats resets the preview");
+    await reveal();
     assert.equal(await page.getByTestId("workflow-goal-resume").isDisabled(), true);
     await page.getByTestId("workflow-run-budget-input").fill("4");
     await page.getByTestId("workflow-goal-set-budget").click();
     await page.waitForFunction(() => window.state.snapshot?.current.turnBudget === 4);
     assert.equal(await page.getByTestId("workflow-panel").getAttribute("data-status"), "budget_exhausted");
     assert.equal(actions.some(action => action.action === "resume"), false);
-    await page.getByTestId("workflow-goal-resume").click();
+    await page.getByTestId("workflow-goal-resume").focus();
+    await page.keyboard.press("Enter");
     await page.getByTestId("workflow-goal-pause").waitFor();
+    await page.mouse.move(0, 0);
+    await preview.waitFor({ state: "hidden" });
+    await reveal();
     await page.getByTestId("workflow-goal-pause").click();
     await page.getByTestId("workflow-goal-resume").waitFor();
     holdLaboratoryRead = true;
@@ -232,17 +306,26 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     assert.equal(await page.getByTestId("workflow-goal-set-budget").isDisabled(), true);
     assert.equal(await page.getByTestId("workflow-goal-cancel").isDisabled(), false);
     assert.equal(await page.getByTestId("workflow-laboratory-disabled").count(), 1);
+    await reveal();
     await page.getByTestId("workflow-goal-cancel").click();
     await page.waitForFunction(() => window.state.snapshot?.current.status === "cancelled");
     assert.deepEqual(actions.map(action => action.action), ["revise", "set_budget", "resume", "pause", "cancel"]);
     await page.reload();
-    await page.getByTestId("workflow-panel").waitFor();
+    await page.getByTestId("workflow-peek-toggle").waitFor();
     await page.waitForFunction(() => window.lab.ready);
     assert.equal(await page.getByTestId("workflow-mode-select").count(), 0, "reload reads the disabled server setting");
     laboratory.planGoalEnabled = true;
     await page.evaluate(() => window.dispatchEvent(new StorageEvent("storage", { key: "piora-laboratory-settings-changed", newValue: "external-change" })));
     await page.getByTestId("workflow-mode-select").waitFor();
     assert.equal(await page.getByTestId("workflow-panel").getAttribute("data-status"), "planning");
+    await reveal();
+    states.one.current = { ...states.one.current, id: "next-plan-in-same-chat" };
+    states.one.revision++;
+    await page.evaluate(() => window.state.refresh());
+    await page.waitForFunction(() => window.state.snapshot?.current.id === "next-plan-in-same-chat");
+    assert.equal(await preview.isVisible(), true, "a new run arriving under the stationary pointer preserves the hover preview");
+    await page.mouse.move(0, 0);
+    await preview.waitFor({ state: "hidden" });
     assert.deepEqual(errors, []);
   } catch (error) {
     const state = await page?.evaluate(() => ({
