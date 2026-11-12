@@ -93,20 +93,25 @@ export function moveProjectRoot(
   return next;
 }
 
-/** Apply explicit order while optionally preserving the pinned/unpinned boundary. */
+/** New sessions lead the regular section; existing rows retain their saved order. */
 export function applySessionOrder<T>(
   items: readonly T[],
   order: readonly string[],
   getId: (item: T) => string,
   isPinned?: (item: T) => boolean,
 ): T[] {
-  if (!isPinned) return applyProjectOrder(items, order, getId);
+  const known = new Set(order);
+  const regularOrder = (rows: readonly T[]) => [
+    ...rows.filter((item) => !known.has(getId(item))),
+    ...applyProjectOrder(rows.filter((item) => known.has(getId(item))), order, getId),
+  ];
+  if (!isPinned) return regularOrder(items);
   const pinned: T[] = [];
   const regular: T[] = [];
   for (const item of items) (isPinned(item) ? pinned : regular).push(item);
   return [
     ...applyProjectOrder(pinned, order, getId),
-    ...applyProjectOrder(regular, order, getId),
+    ...regularOrder(regular),
   ];
 }
 

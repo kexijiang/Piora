@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     const timezoneOffsetMinutes = numericQuery(url, "timezoneOffset", 0, -840, 840);
     const activityDays = numericQuery(url, "days", 365, 7, 730);
     const force = url.searchParams.get("refresh") === "1";
-    const key = `${timezoneOffsetMinutes}:${activityDays}`;
+    const key = `periods-v1:${timezoneOffsetMinutes}:${activityDays}`;
     const cached = cache().get(key);
     if (!force && cached && Date.now() - cached.at < CACHE_TTL_MS) {
       return NextResponse.json(cached.value, { headers: { "Cache-Control": "no-store" } });

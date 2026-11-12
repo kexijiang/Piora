@@ -14,12 +14,21 @@ const [sidebar, list, projectArea, projectList, chatArea, styles] = await Promis
   readFile(new URL("./SessionSidebar.module.css", import.meta.url), "utf8"),
 ]);
 
-test("applies persisted session order and appends new sessions", () => {
+test("prepends new sessions while retaining the persisted relative order", () => {
   const sessions = [{ id: "new" }, { id: "b" }, { id: "a" }];
   assert.deepEqual(
     applySessionOrder(sessions, ["a", "b"], (session) => session.id).map((session) => session.id),
-    ["a", "b", "new"],
+    ["new", "a", "b"],
   );
+});
+
+test("new regular sessions start below pins and can subsequently be manually reordered", () => {
+  const sessions = [{ id: "newest" }, { id: "new" }, { id: "b" }, { id: "pin", pinned: true }, { id: "a" }];
+  const ids = order => applySessionOrder(sessions, order, session => session.id, session => Boolean(session.pinned)).map(session => session.id);
+  assert.deepEqual(ids(["a", "pin", "b"]), ["pin", "newest", "new", "a", "b"]);
+  const moved = moveSessionId(ids(["a", "pin", "b"]), "b", "newest", "before");
+  assert.deepEqual(ids(moved), ["pin", "b", "newest", "new", "a"]);
+  assert.deepEqual(ids(JSON.parse(JSON.stringify(moved))), ["pin", "b", "newest", "new", "a"]);
 });
 
 test("moves a session before or after another session", () => {

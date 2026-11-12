@@ -34,7 +34,12 @@ export function indexTaskTree(nodes: SessionTreeNode[], flags: SessionFlags, ord
     const pinned = Number(Boolean(flags[b.id]?.pinned)) - Number(Boolean(flags[a.id]?.pinned));
     if (pinned) return pinned;
     const rankA = ranks.get(a.id), rankB = ranks.get(b.id);
-    if (rankA !== undefined || rankB !== undefined) return (rankA ?? Infinity) - (rankB ?? Infinity);
+    if (rankA !== undefined || rankB !== undefined) {
+      // New regular sessions appear immediately below pinned rows. Preserve
+      // the saved order within both sections, including explicitly ordered pins.
+      const unranked = flags[a.id]?.pinned ? Infinity : -Infinity;
+      return (rankA ?? unranked) - (rankB ?? unranked);
+    }
     return parent === null ? (flags[b.id]?.pinnedAt ?? "").localeCompare(flags[a.id]?.pinnedAt ?? "") : 0;
   });
   return { children, parents };

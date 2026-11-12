@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { flattenTaskWindow, indexTaskTree } from "../../lib/sidebar-tree-window.ts";
 
 const listSource = await readFile(new URL("./TaskList.tsx", import.meta.url), "utf8");
 const rowSource = await readFile(new URL("./TaskRow.tsx", import.meta.url), "utf8");
@@ -15,9 +16,11 @@ const sessionPrefetchSource = await readFile(new URL("../../lib/session-prefetch
 const appShellSource = await readFile(new URL("../AppShell.tsx", import.meta.url), "utf8");
 
 test("pins active tasks and removes archived tasks from the project sidebar", () => {
-  assert.match(listSource, /compareFlags/);
-  assert.match(listSource, /withoutArchivedNodes/);
-  assert.match(listSource, /if \(flags\[node\.session\.id\]\?\.archived\) return children/);
+  const node = (id, children = []) => ({ session: { id }, children });
+  const index = indexTaskTree([node("regular"), node("archived", [node("child")]), node("pinned")], { archived: { archived: true }, pinned: { pinned: true } }, []);
+  assert.deepEqual(flattenTaskWindow(index, new Set()).map(row => row.session.id), ["pinned", "regular", "child"]);
+  assert.equal(index.parents.get("child"), null);
+  assert.match(listSource, /indexTaskTree\(nodes, props\.flags, props\.sessionOrder\)/);
   assert.doesNotMatch(listSource, /sidebar\.archivedTasks|archivedOpen/);
 });
 
@@ -52,7 +55,7 @@ test("keeps AI title optimization inside the Codex-style rename editor", () => {
   assert.match(rowSource, /styles\.renameAiButton/);
   assert.match(rowSource, /optimizingTitle \? "close" : "sparkles"/);
   assert.doesNotMatch(rowSource, /name=\{optimizingTitle \? "reload" : "robot"\}/);
-  assert.match(rowSource, /if \(name === title\) return/);
+  assert.match(rowSource, /if \(name === title\) \{ setRenaming\(false\); return; \}/);
   assert.ok(rowSource.indexOf("className={styles.renameInput}") < rowSource.indexOf("styles.renameAiButton"));
   assert.match(rowStyles, /\.renameEditor:focus-within/);
   assert.match(rowStyles, /var\(--text-muted\) 52%/);

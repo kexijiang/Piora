@@ -439,6 +439,10 @@
   transform: rotate(90deg);
 }
 
+.sessionShowLessChevron {
+  transform: rotate(-90deg);
+}
+
 .sessionDragItem {
   position: relative;
   transition: opacity 120ms ease, transform 120ms ease;

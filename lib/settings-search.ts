@@ -138,7 +138,7 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "companion.model", section: "companion", labelKey: "companion.model.title", descriptionKey: "companion.model.description", keywords: ["interaction", "model", "互动", "模型"] },
 
   { id: "remote", section: "remote", labelKey: "remote.title", descriptionKey: "remote.description", keywords: ["http", "sse", "token", "远程", "令牌"] },
-  { id: "usage", section: "usage", labelKey: "usage.title", descriptionKey: "usage.description", keywords: ["token", "statistics", "usage", "用量", "统计"] },
+  { id: "usage", section: "usage", labelKey: "usage.title", descriptionKey: "usage.description", keywords: ["token", "statistics", "usage", "monthly", "daily", "dashboard", "用量", "统计", "月度", "每日", "看板"] },
   { id: "trash", section: "trash", labelKey: "trash.title", descriptionKey: "trash.description", keywords: ["deleted", "restore", "回收站", "删除", "恢复"] },
   { id: "archived", section: "archived", labelKey: "archive.title", descriptionKey: "archive.description", keywords: ["history", "restore", "archive", "归档", "恢复"] },
 ];

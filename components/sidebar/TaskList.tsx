@@ -49,7 +49,11 @@ export function TaskList({ nodes, scope, pageSize, reorderable = true, onReorder
   const storageKey = "piora:expanded-branches:v1:" + scope;
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [visibleCount, setVisibleCount] = useState(pageSize ?? Infinity);
-  useEffect(() => { setVisibleCount(pageSize ?? Infinity); }, [pageSize, scope]);
+  const collapsedSelectionRef = useRef<{ scope: string; selected: string | null } | null>(null);
+  useEffect(() => {
+    collapsedSelectionRef.current = null;
+    setVisibleCount(pageSize ?? Infinity);
+  }, [pageSize, scope]);
   const index = useMemo(() => indexTaskTree(nodes, props.flags, props.sessionOrder), [nodes, props.flags, props.sessionOrder]);
   const ancestors = useMemo(() => taskAncestorIds(index.parents, props.selectedSessionId), [index, props.selectedSessionId]);
   const ancestorKey = JSON.stringify(ancestors);
@@ -75,12 +79,16 @@ export function TaskList({ nodes, scope, pageSize, reorderable = true, onReorder
   const allRows = useMemo(() => flattenTaskWindow(index, expanded), [index, expanded]);
   useEffect(() => {
     // Search and restored selections can point beyond the currently shown batch.
-    if (!pageSize || !props.selectedSessionId) return;
+    // An explicit "show fewer" must survive catalog refreshes even when the
+    // current chat is outside the five-row preview. A new selection reveals it.
+    const collapsed = collapsedSelectionRef.current;
+    if (collapsed && (collapsed.scope !== scope || collapsed.selected !== props.selectedSessionId)) collapsedSelectionRef.current = null;
+    if (!pageSize || !props.selectedSessionId || collapsedSelectionRef.current) return;
     const selectedIndex = allRows.findIndex(row => row.session.id === props.selectedSessionId);
     if (selectedIndex < 0) return;
     const required = Math.ceil((selectedIndex + 1) / pageSize) * pageSize;
     setVisibleCount(current => Math.max(current, required));
-  }, [allRows, pageSize, props.selectedSessionId]);
+  }, [allRows, pageSize, props.selectedSessionId, scope]);
   const rows = useMemo(() => allRows.slice(0, visibleCount), [allRows, visibleCount]);
   const keys = useMemo(() => rows.map((row) => row.session.id), [rows]);
   const lastRevealed = useRef<string | null>(null);
@@ -244,9 +252,15 @@ export function TaskList({ nodes, scope, pageSize, reorderable = true, onReorder
           onClickCapture={suppressSessionClick} onSelectSession={onSelectSession} {...props} />;
       }} />
     </div>
-    {pageSize && visibleCount < allRows.length ? <button type="button" className={styles.sessionShowMore} aria-controls={treeId} onClick={() => setVisibleCount(current => current + pageSize)}>
-      <AliIcon name="chevron-right" size={12} className={styles.sessionShowMoreChevron} />
-      {t("sidebar.showMoreSessions", { count: Math.min(pageSize, allRows.length - visibleCount) })}
+    {pageSize && allRows.length > pageSize ? <button type="button" className={styles.sessionShowMore} aria-controls={treeId} aria-expanded={visibleCount >= allRows.length} onClick={() => {
+      if (visibleCount < allRows.length) setVisibleCount(current => current + pageSize);
+      else {
+        collapsedSelectionRef.current = { scope, selected: props.selectedSessionId };
+        setVisibleCount(pageSize);
+      }
+    }}>
+      <AliIcon name="chevron-right" size={12} className={visibleCount < allRows.length ? styles.sessionShowMoreChevron : styles.sessionShowLessChevron} />
+      {visibleCount < allRows.length ? t("sidebar.showMoreSessions", { count: Math.min(pageSize, allRows.length - visibleCount) }) : t("sidebar.showFewerSessions")}
     </button> : null}
   </div>;
 }

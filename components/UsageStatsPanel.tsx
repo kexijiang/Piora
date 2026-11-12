@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/hooks/useI18n";
 import type { UsageStatistics } from "@/lib/usage-statistics";
+import { UsagePeriodDashboard } from "./UsagePeriodDashboard";
 import styles from "./UsageStatsPanel.module.css";
 
 type ChartMode = "daily" | "weekly" | "cumulative";
@@ -181,6 +182,8 @@ export function UsageStatsPanel() {
     {!data && loading ? <div className={styles.loading} aria-label={t("usage.loading")}><div /><div /><div /></div> : null}
 
     {data ? <>
+      <UsagePeriodDashboard data={data} />
+      <h3 className={styles.allTimeHeading}>{t("usage.allTime")}</h3>
       <section className={styles.metrics} aria-label={t("usage.summary")}>
         {metrics.map(([value, label]) => <div className={styles.metric} key={label}><strong>{value}</strong><span>{label}</span></div>)}
       </section>

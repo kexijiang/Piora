@@ -21,6 +21,28 @@ export interface SessionUsageRecord {
   samples: UsageSample[];
 }
 
+export interface UsageBreakdown {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cacheWrite: number;
+}
+
+export interface HourlyUsage {
+  hour: number;
+  tokens: number;
+  turns: number;
+}
+
+export interface DailyUsage {
+  date: string;
+  tokens: number;
+  turns: number;
+  breakdown: UsageBreakdown;
+  /** Only hours with recorded usage are serialized. Missing hours are zero. */
+  hourly: HourlyUsage[];
+}
+
 export interface UsageStatistics {
   generatedAt: number;
   timezoneOffsetMinutes: number;
@@ -33,22 +55,23 @@ export interface UsageStatistics {
     activeDays: number;
     sessions: number;
   };
-  breakdown: {
-    input: number;
-    output: number;
-    cacheRead: number;
-    cacheWrite: number;
-  };
+  breakdown: UsageBreakdown;
   activity: {
     from: string;
     to: string;
-    daily: Array<{ date: string; tokens: number; turns: number }>;
+    daily: DailyUsage[];
   };
 }
 
 interface MutableDayUsage {
   tokens: number;
   turns: number;
+  breakdown: UsageBreakdown;
+  hourly: Map<number, HourlyUsage>;
+}
+
+function emptyBreakdown(): UsageBreakdown {
+  return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 }
 
 function nonNegativeNumber(value: unknown): number {
@@ -140,9 +163,22 @@ export function calculateUsageStatistics(
       breakdown.cacheRead += sample.cacheRead;
       breakdown.cacheWrite += sample.cacheWrite;
       const day = localDayIndex(sample.timestamp, timezoneOffsetMinutes);
-      const current = byDay.get(day) ?? { tokens: 0, turns: 0 };
+      const current = byDay.get(day) ?? { tokens: 0, turns: 0, breakdown: emptyBreakdown(), hourly: new Map<number, HourlyUsage>() };
       current.tokens += sample.total;
       current.turns += 1;
+      // Keep detailed buckets only for the browsable range; all-time totals
+      // above continue to include older sessions.
+      if (day >= rangeStart && day <= todayIndex) {
+        current.breakdown.input += sample.input;
+        current.breakdown.output += sample.output;
+        current.breakdown.cacheRead += sample.cacheRead;
+        current.breakdown.cacheWrite += sample.cacheWrite;
+        const hour = new Date(sample.timestamp - timezoneOffsetMinutes * 60_000).getUTCHours();
+        const bucket = current.hourly.get(hour) ?? { hour, tokens: 0, turns: 0 };
+        bucket.tokens += sample.total;
+        bucket.turns += 1;
+        current.hourly.set(hour, bucket);
+      }
       byDay.set(day, current);
     }
   }
@@ -153,7 +189,13 @@ export function calculateUsageStatistics(
   const daily: UsageStatistics["activity"]["daily"] = [];
   for (let day = rangeStart; day <= todayIndex; day += 1) {
     const value = byDay.get(day);
-    daily.push({ date: dayKey(day), tokens: value?.tokens ?? 0, turns: value?.turns ?? 0 });
+    daily.push({
+      date: dayKey(day),
+      tokens: value?.tokens ?? 0,
+      turns: value?.turns ?? 0,
+      breakdown: value?.breakdown ?? emptyBreakdown(),
+      hourly: value ? [...value.hourly.values()].sort((left, right) => left.hour - right.hour) : [],
+    });
   }
 
   return {
