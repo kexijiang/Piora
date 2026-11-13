@@ -39,6 +39,7 @@ try {
           const res = await response;
           assert.equal(res.status(), 200);
           assert.deepEqual(await res.json(), { supported: true, configured: false, enabled: false });
+          await section.scrollIntoViewIfNeeded();
           await screenshot("organization-statistics-disabled.png");
         });
         await step("reload-and-read-status", async () => {
