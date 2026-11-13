@@ -1,5 +1,6 @@
 import { APP_DISPLAY_NAME } from "./branding.ts";
 import { randomUUID } from "node:crypto";
+import { beginAnalyticsRun, finishAnalyticsRun } from "./analytics-telemetry.ts";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { getRuntimeAgentDataDirectory } from "./runtime-home.ts";
@@ -67,6 +68,7 @@ export function beginPromptRun(
     cleanups: new Set(),
   };
   runs.set(sessionId, record);
+  try { beginAnalyticsRun(sessionId, record.runId, record.source); } catch { /* analytics cannot block task admission */ }
   return {
     sessionId,
     runId: record.runId,
@@ -122,6 +124,7 @@ export async function finishPromptRun(
   // Delete before cleanup so no late tool call can renew or acquire a lease
   // while the run is being torn down.
   runs.delete(identity.sessionId);
+  try { finishAnalyticsRun(identity.runId, reason); } catch { /* preserve normal task cleanup */ }
   const failures: unknown[] = [];
   for (const cleanup of record.cleanups) {
     try {

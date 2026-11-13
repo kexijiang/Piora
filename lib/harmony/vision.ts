@@ -1,4 +1,5 @@
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { installAnalyticsModelObserver } from "../analytics-telemetry";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 
 import type { HarmonyConfig } from "./types";
@@ -12,7 +13,7 @@ const VISION_MAX_OBSERVATION_CHARS = 12_000;
 let runtimePromise: Promise<ModelRuntime> | undefined;
 
 function modelRuntime(): Promise<ModelRuntime> {
-  return runtimePromise ??= ModelRuntime.create();
+  return runtimePromise ??= ModelRuntime.create().then(runtime => { installAnalyticsModelObserver(runtime, "vision"); return runtime; });
 }
 
 function assistantText(message: AssistantMessage): string {

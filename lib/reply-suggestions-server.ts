@@ -91,7 +91,7 @@ export async function handleReplyRequest(request: Request, sessionId?: string): 
     const sourceKey = digest([sessionId, snapshot, source]);
     const key = digest([sourceKey, cwd, settings.model, settings.systemPrompt, locale, REPLY_PROTOCOL_VERSION]);
     const result = await sharedExtraction(key, request.signal, async (signal) => {
-      const { modelRuntime, settingsManager } = await createTrustedModelServices(cwd);
+      const { modelRuntime, settingsManager } = await createTrustedModelServices(cwd, "prediction");
       signal.throwIfAborted();
       const { visible } = await resolveVisibleModels(modelRuntime, settingsManager.getEnabledModels());
       const model = visible.find((m) => m.provider === settings.model!.provider && m.id === settings.model!.modelId);

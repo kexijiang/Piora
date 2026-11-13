@@ -44,7 +44,7 @@ export function resolveDesktopLoginItemOptions(
 
   return {
     path: environment.portableExecutablePath?.trim() || environment.executablePath,
-    args: [],
+    args: ["--piora-autostart"],
   };
 }
 
@@ -56,7 +56,11 @@ export function readDesktopAutoLaunchState(
   if (!options) return { supported: false, enabled: false };
 
   try {
-    const current = controller.getLoginItemSettings(options);
+    let current = controller.getLoginItemSettings(options);
+    if (platform === "win32" && !current.openAtLogin && options.args?.includes("--piora-autostart")) {
+      const legacy = controller.getLoginItemSettings({ ...options, args: [] });
+      if (legacy.openAtLogin) current = legacy;
+    }
     if (platform === "darwin" && current.status === "requires-approval") {
       return { supported: true, enabled: false, error: "approval-required" };
     }
