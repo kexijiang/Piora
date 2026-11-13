@@ -7,7 +7,8 @@ import { DatabaseSync } from "node:sqlite";
 export function analyticsLaunchReason(
   args: readonly string[],
   legacyLoginItem: boolean | undefined,
-): "manual" | "autostart" | "unknown" {
+): "manual" | "autostart" | "update" | "unknown" {
+  if (args.includes("--updated")) return "update";
   if (args.includes("--piora-autostart")) return "autostart";
   return legacyLoginItem === false ? "manual" : "unknown";
 }

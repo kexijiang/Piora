@@ -3244,7 +3244,8 @@ if (!hasSingleInstanceLock) {
   }).catch(() => app.exit(1));
 } else {
   app.on("second-instance", (_event, argv) => {
-    focusMainWindow(undefined, argv.includes("--piora-autostart") ? undefined : "manual_launch");
+    const automatic = argv.includes("--piora-autostart") || argv.includes("--updated");
+    focusMainWindow(undefined, automatic ? undefined : "manual_launch");
   });
 
   app.on("activate", () => {
