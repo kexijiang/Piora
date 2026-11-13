@@ -63,6 +63,8 @@ node_modules/.bin/tsc --noEmit -p desktop/tsconfig.json
 
 14 项采集测试及 50 项会话/任务相关回归已通过。首轮完整 CI 发现生产 Webpack 未处理共享 .mts、旧启动/托盘/模型采样测试夹具缺少统计依赖；已增加编译规则、更新夹具且保留原有断言，并补测共享模块的真实 Webpack 编译与 SQLite 重开、统计模块导入/初始化失败、Windows 自启来源识别。本轮 55 项定向复测、根与 desktop 类型检查通过。Webpack 测试仅编译单模块夹具，不执行 next build 或安装包构建。
 
+第二轮 CI 六个 Windows 测试分片与生产构建通过；独立包校验发现扩展的源码加载路径缺少 diff 和共享存储文件。已补齐 standalone 清单，并通过 16 项打包相关定向测试：隔离目录故意省略 diff 时失败、补齐后成功，实际 Electron 从 ASAR 测试夹具加载统计模块也通过。完整安装包不在本地构建，最终验证交给后续 Actions。
+
 另已在真实开发 Electron 中通过设置导航、未配置状态、刷新和重载检查，未发生 renderer error。报告：.verification/desktop-e2e-czepTB/report.md（含完整状态卡截图复测）；首次成功记录为 desktop-e2e-mCYUsq。前两次启动因 worktree 共享依赖超出 Turbopack root 而中断；成功复测临时按当前 Next.js 文档配置 additional root 指向共享依赖，结束后已恢复 next.config.ts。没有修改主工作目录或在其中运行开发服务。
 
 本次不在主开发目录运行 next build、不构建发布包、不启用现有用户统计。上线仍需部署后端、企业安全配置、5 台试点及 GitHub Actions Windows 发布。
