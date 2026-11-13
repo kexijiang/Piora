@@ -148,7 +148,7 @@
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/xterm": "^6.0.0",
-    "7z-bin": "26.4.0",
+    "7z-bin": "26.6.0",
     "brace-expansion": "5.0.12",
     "codemirror": "^6.0.2",
     "diff": "^9.0.0",
@@ -185,7 +185,7 @@
     "three": "^0.187.0",
     "turndown": "^7.2.4",
     "turndown-plugin-gfm": "^1.0.2",
-    "typebox": "1.4.5",
+    "typebox": "1.4.6",
     "typescript": "npm:@typescript/typescript6@6.0.2",
     "undici": "8.12.4",
     "unified": "^11.0.5",
@@ -205,7 +205,7 @@
     "@types/turndown": "^5.0.6",
     "@types/ws": "^8.18.2",
     "eslint": "^10.13.0",
-    "eslint-config-next": "16.4.5",
+    "eslint-config-next": "16.4.6",
     "eslint-plugin-react-hooks": "^7.1.1",
     "jiti": "^2.7.0",
     "postcss": "^8.5.30",
@@ -213,6 +213,6 @@
     "@typescript/native": "npm:typescript@7.0.2"
   },
   "optionalDependencies": {
-    "@microsoft/winappcli": "0.7.1"
+    "@microsoft/winappcli": "0.8.0"
   }
 }
