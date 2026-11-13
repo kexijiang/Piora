@@ -517,13 +517,16 @@ const languages: Record<string, string> = {
 export function measureAnalyticsLines(
   before: string,
   after: string,
-): { added_lines: string; deleted_lines: string } {
+): { added_lines: string; deleted_lines: string } | undefined {
   let added = 0,
     deleted = 0;
-  for (const part of diffLines(
+  const changes = diffLines(
     before.replace(/\r\n/g, "\n"),
     after.replace(/\r\n/g, "\n"),
-  )) {
+    { timeout: 50, maxEditLength: 4000 },
+  );
+  if (!changes) return undefined;
+  for (const part of changes) {
     if (part.added) added += part.count ?? 0;
     if (part.removed) deleted += part.count ?? 0;
   }
@@ -663,10 +666,12 @@ export function installAnalyticsFileObserver(
             )
               status = "concurrent_change";
           }
-          const lines =
+          const measured =
             status === "measured" && before && after
               ? measureAnalyticsLines(before.text, after.text)
-              : { added_lines: null, deleted_lines: null };
+              : undefined;
+          if (status === "measured" && !measured) status = "too_large";
+          const lines = measured ?? { added_lines: null, deleted_lines: null };
           emitAnalytics("file.changed", "file:" + id, {
             operation_id: id,
             run_id: ctx.run_id,
