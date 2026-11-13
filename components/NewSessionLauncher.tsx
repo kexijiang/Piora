@@ -19,7 +19,6 @@ export function NewSessionLauncher({
     <main className={styles.root} aria-label={t("newSession.ariaLabel")}>
       <section className={`${styles.launcher} chat-column`}>
         <header className={styles.header}>
-          <span className={styles.eyebrow}>{t("newSession.eyebrow")}</span>
           <h1>{t("newSession.title")}</h1>
           {projectLabel && projectPath ? (
             <span className={styles.projectPath} title={projectPath}>

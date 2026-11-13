@@ -32,13 +32,14 @@ import React from 'react';import{createRoot}from'react-dom/client';
 import{I18nProvider}from'@/hooks/useI18n';import{useWorkflow}from'@/hooks/useWorkflow';
 import{WorkflowPanel}from'@/components/WorkflowPanel';import{WorkflowModePicker}from'@/components/WorkflowModePicker';
 import{LaboratorySettings}from'@/components/LaboratorySettings';import{useLaboratorySettings}from'@/hooks/useLaboratorySettings';
-function App(){const[sid,setSid]=React.useState('one'),[choice,setChoice]=React.useState({mode:'agent',turnBudget:10});
+function App(){const[sid,setSid]=React.useState('one'),[choice,setChoice]=React.useState({mode:'agent',turnBudget:10}),[modeDisabled,setModeDisabled]=React.useState(false);
 const lab=useLaboratorySettings();window.lab=lab;
 React.useEffect(()=>{(window.laboratoryTrace??=[]).push({ready:lab.ready,error:lab.error,saving:lab.saving})},[lab.ready,lab.error,lab.saving]);
 const execute=React.useCallback(async action=>{const res=await fetch('/api/agent/'+sid+'/workflow',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(action)});const data=await res.json();if(!res.ok)throw new Error(data.error);return data.snapshot},[sid]);
 const state=useWorkflow(sid,true,false,execute);window.state=state;
 return <><LaboratorySettings/><output id="lab-state">{String(lab.planGoalEnabled)}</output><button id="switch" onClick={()=>setSid(sid==='one'?'two':'one')}>Switch chat</button><button id="refresh" onClick={()=>state.refresh()}>Refresh</button>
-{lab.planGoalEnabled&&<WorkflowModePicker value={choice} onChange={setChoice}/>}<output id="choice">{JSON.stringify(choice)}</output>
+{lab.planGoalEnabled&&<WorkflowModePicker value={choice} onChange={setChoice} disabled={modeDisabled}/>}<output id="choice">{JSON.stringify(choice)}</output>
+<label><input id="disable-mode-picker" type="checkbox" checked={modeDisabled} onChange={event=>setModeDisabled(event.target.checked)}/>Disable mode picker</label>
 <div id="workflow-area" style={{position:'fixed',bottom:60,left:16,right:16}}><WorkflowPanel snapshot={state.snapshot} busy={state.busy} running={false} enabled={lab.planGoalEnabled} error={state.error} onAction={state.act} onRefresh={state.refresh}/><textarea aria-label="Message" id="composer" style={{width:'100%',height:40,boxSizing:'border-box'}}/></div></>}
 createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nProvider>);`);
     const compiler = webpack({ mode: "development", target: "web", devtool: false, entry: path.join(directory, "entry.tsx"), output: { path: directory, filename: "bundle.js", publicPath: "/" },
@@ -48,6 +49,7 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
     page = await browser.newPage({ locale, hasTouch: true, viewport: { width: 390, height: 800 } });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
     page.on("console", message => { if (message.type() === "warning" || message.type() === "error") browserMessages.push({ type: message.type(), text: message.text() }); });
     page.on("request", request => {
       const pathname = new URL(request.url()).pathname;
@@ -241,16 +243,108 @@ createRoot(document.getElementById('root')).render(<I18nProvider><App/></I18nPro
     await page.getByTestId("laboratory-plan-goal-toggle").click();
     await page.waitForFunction(() => window.lab.planGoalEnabled);
     assert.equal(await page.locator("#lab-state").textContent(), "true", "separate subscribers update from the same confirmed server setting");
-    await page.getByTestId("workflow-mode-goal").click();
+    const modePicker = page.getByTestId("workflow-mode-select");
+    const modeToggle = page.getByTestId("workflow-mode-toggle");
+    const modeButton = mode => page.getByTestId(`workflow-mode-${mode}`);
+    const assertChoice = async (mode, turnBudget = 10) => assert.deepEqual(JSON.parse(await page.locator("#choice").textContent()), { mode, turnBudget });
+    const assertModeCollapsed = async mode => {
+      assert.equal(await modeToggle.getAttribute("aria-expanded"), "false");
+      assert.equal(await modePicker.getByRole("button").count(), 1, "collapsed options are absent from the accessibility tree");
+      assert.ok((await modeToggle.textContent()).includes(mode), "the compact trigger displays the current mode");
+    };
+    await assertModeCollapsed("Agent");
+    const compactModeBox = await modePicker.boundingBox();
+    await page.clock.pauseAt(new Date(await page.evaluate(() => Date.now())));
+    await modeToggle.click();
+    assert.equal(await modeToggle.getAttribute("aria-expanded"), "true");
+    assert.ok(Math.abs((await modePicker.boundingBox()).x - compactModeBox.x) <= 2, "expansion preserves the control's anchor");
+    for (const mode of ["agent", "plan", "goal"]) {
+      assert.equal(await modeButton(mode).locator("svg").count(), 1, `${mode} retains its identifying icon`);
+      assert.equal(await modeButton(mode).getAttribute("aria-pressed"), String(mode === "agent"));
+    }
+    await modeButton("plan").click();
+    await assertChoice("plan");
+    assert.equal(await modeToggle.getAttribute("aria-expanded"), "true", "selection applies before the control closes");
+    await page.clock.runFor(400);
+    await modeButton("goal").click();
+    await assertChoice("goal");
+    await page.clock.runFor(120);
+    assert.equal(await modeToggle.getAttribute("aria-expanded"), "true", "a second choice cancels the first collapse deadline");
+    await page.clock.runFor(399);
+    assert.equal(await modeToggle.getAttribute("aria-expanded"), "true", "the new choice remains readable for 519ms");
+    await page.clock.runFor(1);
+    await assertModeCollapsed("Goal");
+    assert.equal(await modeToggle.evaluate(element => element === document.activeElement), true, "automatic collapse returns option focus to the current-mode trigger");
     assert.equal(await page.getByTestId("workflow-mode-goal").getAttribute("aria-pressed"), "true");
     assert.equal(await page.getByTestId("workflow-mode-agent").getAttribute("aria-pressed"), "false");
-    assert.equal(await page.getByTestId("workflow-mode-select").locator("svg").count(), 3);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "mode controls fit a narrow viewport");
     await screenshot("goal-mode");
     await page.getByTestId("workflow-budget-input").fill("7");
     assert.equal(await page.locator("#choice").textContent(), '{"mode":"goal","turnBudget":7}');
-    await page.getByTestId("workflow-mode-plan").click();
+
+    // Keyboard navigation previews focus without silently changing the mode.
+    await modeToggle.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await modeButton("goal").evaluate(element => element === document.activeElement), true);
+    await page.keyboard.press("ArrowLeft");
+    assert.equal(await modeButton("plan").evaluate(element => element === document.activeElement), true);
+    await assertChoice("goal", 7);
+    await page.keyboard.press("Escape");
+    await assertModeCollapsed("Goal");
+    await assertChoice("goal", 7);
+    assert.equal(await modeToggle.evaluate(element => element === document.activeElement), true);
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Home");
+    assert.equal(await modeButton("agent").evaluate(element => element === document.activeElement), true);
+    await page.keyboard.press("End");
+    assert.equal(await modeButton("goal").evaluate(element => element === document.activeElement), true);
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("Space");
+    await assertChoice("plan", 7);
     assert.equal(await page.getByTestId("workflow-budget-input").count(), 0);
+    await page.clock.runFor(520);
+    await assertModeCollapsed("Plan");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Enter");
+    await assertChoice("goal", 7);
+    await page.keyboard.press("Tab");
+    await assertModeCollapsed("Goal");
+    assert.equal(await page.getByTestId("workflow-budget-input").evaluate(element => element === document.activeElement), true, "Tab reaches the Goal budget instead of trapping or resetting focus");
+    await page.clock.runFor(520);
+    assert.equal(await page.getByTestId("workflow-budget-input").evaluate(element => element === document.activeElement), true, "a cancelled collapse timer cannot steal focus back");
+
+    await modeToggle.click();
+    await page.locator("#composer").click();
+    await assertModeCollapsed("Goal");
+    await assertChoice("goal", 7);
+    assert.equal(await page.locator("#composer").evaluate(element => element === document.activeElement), true, "outside clicks preserve the destination focus");
+    await page.locator("#disable-mode-picker").check();
+    assert.equal(await modeToggle.isDisabled(), true);
+    assert.equal(await page.getByTestId("workflow-budget-input").isDisabled(), true);
+    for (const mode of ["agent", "plan", "goal"]) assert.equal(await modeButton(mode).isDisabled(), true);
+    await modeToggle.click({ force: true });
+    await assertModeCollapsed("Goal");
+    await assertChoice("goal", 7);
+    await page.locator("#disable-mode-picker").uncheck();
+
+    // Reduced motion removes animation, not the time to read a changed choice.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await modeToggle.click();
+    const motionDurations = await modePicker.evaluate(element => [element, ...element.querySelectorAll("*")].flatMap(node => {
+      const style = getComputedStyle(node);
+      return [style.transitionDuration, style.animationDuration].flatMap(value => value.split(",").map(parseFloat));
+    }));
+    assert.ok(motionDurations.every(duration => duration === 0), "reduced-motion users receive no mode expansion animations");
+    await modeButton("plan").click();
+    await assertChoice("plan", 7);
+    await page.clock.runFor(519);
+    assert.equal(await modeToggle.getAttribute("aria-expanded"), "true");
+    await page.clock.runFor(1);
+    await assertModeCollapsed("Plan");
+    assert.equal(await page.getByTestId("workflow-budget-input").count(), 0);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.clock.resume();
     await page.setViewportSize({ width: 390, height: 480 });
     await page.locator("#composer").evaluate(element => { element.style.height = "220px"; });
     await reveal();

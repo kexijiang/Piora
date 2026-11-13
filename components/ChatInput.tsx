@@ -2213,9 +2213,13 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
               </div>
             </div>
           )}
-          {contextControl && <div className="chat-composer-context">{contextControl}</div>}
-          {workflowEnabled && workflow && <WorkflowModePicker value={commandInputOptions.workflow ?? workflow} disabled={isStreaming || workflowBusy}
-            onChange={next => setCommandInputOptions(current => ({ ...current, workflow: next }))} />}
+          {(contextControl || (workflowEnabled && workflow)) && <div className="chat-composer-topbar" data-has-workflow={workflowEnabled && workflow ? true : undefined}>
+            {workflowEnabled && workflow && <div className="chat-composer-workflow">
+              <WorkflowModePicker value={commandInputOptions.workflow ?? workflow} disabled={isStreaming || workflowBusy}
+                onChange={next => setCommandInputOptions(current => ({ ...current, workflow: next }))} />
+            </div>}
+            {contextControl && <div className="chat-composer-context">{contextControl}</div>}
+          </div>}
           {queueContent}
           <div
             className="chat-composer-surface"
@@ -2432,7 +2436,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
               aria-label={t("chat.optimizePrompt")}
             >
               <AliIcon name="solution" size={15} />
-              {!isMobile && <span>{promptOptimization?.loading ? t("chat.optimizingPrompt") : t("chat.optimizePrompt")}</span>}
+              {(!isMobile || variant === "launcher") && <span>{promptOptimization?.loading ? t("chat.optimizingPrompt") : t("chat.optimizePrompt")}</span>}
             </button>
             <div style={{ flex: 1 }} />
             {variant === "conversation" ? <ExtensionStatusBar statuses={extensionStatuses} /> : null}

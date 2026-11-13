@@ -2,47 +2,110 @@
   display: flex;
   align-items: center;
   flex-wrap: wrap;
+  flex: 0 1 auto;
   gap: 6px 12px;
   min-width: 0;
-  padding: 0 2px 6px;
+  max-width: 100%;
   color: var(--text-muted);
   font-size: var(--text-xs);
 }
 
-.modes {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--radius-control, 8px);
-  background: var(--bg-panel);
+/* Both states share a grid cell. The complete set reserves its intrinsic width,
+   so opening the picker never pushes the project or prompt controls sideways. */
+.modeSlot {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: max-content;
+  max-width: 100%;
+  min-width: 0;
+  align-items: stretch;
 }
 
+.toggle,
+.modes {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+.toggle,
 .mode {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-height: 28px;
-  padding: 4px 8px;
+  gap: .42em;
+  min-height: max(30px, 2.5em);
+  padding: .3em .67em;
   border: 1px solid transparent;
-  border-radius: 6px;
-  background: transparent;
+  border-radius: var(--radius-control, 8px);
   color: var(--text-muted);
   font: inherit;
   white-space: nowrap;
   cursor: pointer;
+}
+
+.toggle {
+  justify-self: start;
+  max-width: 100%;
+  background: var(--bg-selected);
+  border-color: var(--border);
+  color: var(--text);
+  opacity: 1;
+  transition: opacity 120ms ease;
+}
+
+.toggle > svg,
+.mode > svg { flex-shrink: 0; }
+
+.toggle > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.modes {
+  display: inline-flex;
+  align-items: stretch;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-control, 8px);
+  background: var(--bg-panel);
+  opacity: 0;
+  visibility: hidden;
+  clip-path: inset(0 66.667% 0 0 round var(--radius-control, 8px));
+  transition: clip-path 200ms ease, opacity 200ms ease, visibility 0ms linear 200ms;
+}
+
+.modeSlot[data-expanded="true"] .toggle {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.modeSlot[data-expanded="true"] .modes {
+  opacity: 1;
+  visibility: visible;
+  clip-path: inset(0 0 0 0 round var(--radius-control, 8px));
+  transition: clip-path 200ms ease, opacity 200ms ease, visibility 0ms;
+}
+
+.mode {
+  flex: 1 0 auto;
+  min-width: 0;
+  gap: .33em;
+  padding-inline: .33em;
+  background: transparent;
   transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
 }
 
+.toggle:hover:not(:disabled),
 .mode:hover:not(:disabled) { color: var(--text); background: var(--bg-hover); }
 .mode[aria-pressed="true"] { color: var(--text); background: var(--bg-selected); border-color: var(--border); }
-.mode:focus-visible, .budget input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.mode:disabled, .budget input:disabled { opacity: .5; cursor: default; }
+.toggle:focus-visible, .mode:focus-visible, .budget input:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.toggle:disabled, .mode:disabled, .budget input:disabled { opacity: .5; cursor: default; }
 .budget { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .budget input {
-  width: 52px;
-  min-height: 28px;
+  width: max(52px, 4.3em);
+  min-height: max(30px, 2.5em);
   box-sizing: border-box;
   padding: 3px 5px;
   border: 1px solid var(--border);
@@ -52,4 +115,6 @@
   font: inherit;
 }
 
-@media (prefers-reduced-motion: reduce) { .mode { transition: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .toggle, .mode, .modes, .modeSlot[data-expanded="true"] .modes { transition: none; }
+}
