@@ -4,6 +4,7 @@ import {
   AnalyticsStore,
   analyticsDirectory,
   readAnalyticsConfig,
+  analyticsLaunchReason,
 } from "./analytics-store.mjs";
 import { AnalyticsUploader } from "./analytics-uploader.mjs";
 
@@ -27,9 +28,20 @@ export class DesktopAnalytics {
   ) {
     store.set("app_launch_id", randomUUID());
     store.set("app_version", app.getVersion());
-    const reason = app.getLoginItemSettings().wasOpenedAtLogin
-      ? "autostart"
-      : "manual";
+    let legacyLoginItem: boolean | undefined;
+    try {
+      const login = app.getLoginItemSettings({
+        path: process.execPath,
+        args: [],
+      });
+      legacyLoginItem =
+        login.openAtLogin && login.executableWillLaunchAtLogin !== false;
+    } catch {
+      /* Unknown startup origin must not inflate manual opens. */
+    }
+    const reason = analyticsLaunchReason(process.argv, legacyLoginItem);
+    if (reason === "unknown")
+      store.set("health_codes", ["STARTUP_ORIGIN_UNKNOWN"]);
     store.record(
       "desktop.started",
       "launch:" + store.get<string>("app_launch_id"),

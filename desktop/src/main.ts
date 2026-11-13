@@ -2987,15 +2987,24 @@ function handleUnexpectedServerExit(exit: ServerExit): void {
   void notification.finally(() => app.quit());
 }
 
+async function initializeDesktopAnalytics(load = () => import("./analytics-desktop.mjs")): Promise<void> {
+  if (desktopAnalytics) return;
+  try {
+    const { startDesktopAnalytics } = await load();
+    desktopAnalytics = await startDesktopAnalytics(() => mainWindow);
+  } catch {
+    logger?.warn("Organization analytics startup failed; application remains available");
+  }
+}
+
 async function startApplication(): Promise<void> {
   const startupStartedAt = Date.now();
   recordStartupStage("waiting-for-electron");
   await app.whenReady();
-  const { startDesktopAnalytics } = await import("./analytics-desktop.mjs");
-  desktopAnalytics ??= await startDesktopAnalytics(() => mainWindow);
   app.setAppUserModelId(desktopDevelopmentRuntime ? "io.github.kexijiang.piora.dev" : "io.github.kexijiang.piora");
 
   logger ??= new FileLogger(app.getPath("userData"));
+  await initializeDesktopAnalytics();
   logger.debug("Desktop runtime diagnostics", { versions: process.versions, platform: process.platform, arch: process.arch, packaged: app.isPackaged });
   logger.info("Starting Piora", {
     appVersion: app.getVersion(),
@@ -3234,8 +3243,8 @@ if (!hasSingleInstanceLock) {
     app.quit();
   }).catch(() => app.exit(1));
 } else {
-  app.on("second-instance", () => {
-    focusMainWindow(undefined, "manual_launch");
+  app.on("second-instance", (_event, argv) => {
+    focusMainWindow(undefined, argv.includes("--piora-autostart") ? undefined : "manual_launch");
   });
 
   app.on("activate", () => {

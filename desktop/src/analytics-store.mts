@@ -3,6 +3,15 @@ import { mkdirSync, readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
+/** Windows has no wasOpenedAtLogin flag. Unmarked legacy login items are ambiguous. */
+export function analyticsLaunchReason(
+  args: readonly string[],
+  legacyLoginItem: boolean | undefined,
+): "manual" | "autostart" | "unknown" {
+  if (args.includes("--piora-autostart")) return "autostart";
+  return legacyLoginItem === false ? "manual" : "unknown";
+}
+
 export interface AnalyticsConfig {
   backend_url: string;
   enrollment_key?: string;

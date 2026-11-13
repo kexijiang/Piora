@@ -101,6 +101,14 @@ const nextConfig: NextConfig = {
     "ssh2",
   ],
   webpack(config, { isServer, dev }) {
+    // Next's production TypeScript rule excludes .mts. This module is also
+    // compiled as native ESM for Electron, so retain its extension and use
+    // the same source loader as the shared desktop modules in development.
+    config.module.rules.push({
+      test: /[\\/]desktop[\\/]src[\\/]analytics-store\.mts$/,
+      type: "javascript/auto",
+      use: [join(__dirname, "scripts/desktop-dev-loader.cjs")],
+    });
     // Shared desktop TypeScript uses Node16 .js import specifiers.
     config.resolve.extensionAlias = { ...config.resolve.extensionAlias, ".js": [".js", ".ts", ".tsx"] };
     // Release builds are one-shot and never reuse this cache. Disabling the
