@@ -1,5 +1,6 @@
 import { APP_DISPLAY_NAME } from "./branding";
 import { createHash, randomUUID } from "node:crypto";
+import { recordAnalyticsRoomMessage } from "./analytics-telemetry";
 import {
   appendFileSync,
   copyFileSync,
@@ -976,6 +977,7 @@ export function appendRoomMessage(roomId: string, input: {
     writeRoom(room);
     created = true;
   });
+  try { recordAnalyticsRoomMessage(roomId, message); } catch { /* A metrics failure must not affect the durable room message. */ }
   if (!created) return message;
   for (const listener of roomListeners().get(roomId) ?? []) listener(message);
   emitRoomEvent({ type: "message", roomId, message });

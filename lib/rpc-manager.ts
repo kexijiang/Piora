@@ -22,6 +22,7 @@ import { RemoteContentProjection } from "./remote-content";
 import { readPendingSessionModel, clearPendingSessionModel } from "./session-model-selection";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { createAgentSessionFromServices, createAgentSessionServices, getAgentDir, initTheme, SessionManager, SettingsManager, type AgentSessionServices } from "@earendil-works/pi-coding-agent";
+import { installAnalyticsModelObserver, installAnalyticsFileObserver, withAnalyticsSession } from "./analytics-telemetry";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { snapshotQueuedInputs, sameQueuedInputs, prepareQueuedInputRemoval } from "./queued-input-recall";
 import { omitFailedPromptHistory } from "./failed-prompt-context";
@@ -390,6 +391,7 @@ export class AgentSessionWrapper {
     const reload = inner.reload.bind(inner);
     inner.reload = options => reload({ ...options, beforeSessionStart: async () => {
       this.installToolPermissions();
+      installAnalyticsFileObserver(inner, this.cwd, this.sessionId);
       await options?.beforeSessionStart?.();
     } });
     // Fence late starts inside the SDK's agent.prompt try/finally, so its
@@ -421,7 +423,7 @@ export class AgentSessionWrapper {
         options?.preflightResult?.(disposition);
       } })));
       if (options?.source === "extension" && !this.chatCommandActivities.commandId && !this.activePromptRun) return this.executeChatCommand(`cmd_${randomUUID()}`, text, undefined, { execute, source: "extension" });
-      return execute();
+      return withAnalyticsSession(this.sessionId, execute);
     };
     const sendCustomMessage = inner.sendCustomMessage?.bind(inner);
     if (sendCustomMessage) inner.sendCustomMessage = (message, options) => {
@@ -430,7 +432,7 @@ export class AgentSessionWrapper {
         return this.chatCommandActivities.track(sendCustomMessage(message, options));
       };
       if (options?.triggerTurn && !this.chatCommandActivities.commandId && !this.activePromptRun) return this.executeChatCommand(`cmd_${randomUUID()}`, "Extension message", undefined, { execute, source: "extension" });
-      return execute();
+      return withAnalyticsSession(this.sessionId, execute);
     };
     this.remotePolicy = readRemoteSessionPolicy(inner.sessionManager.getEntries());
     this.cachedSessionTitle = inner.sessionManager.getSessionName()?.trim() || null;
@@ -3091,6 +3093,7 @@ export async function startRpcSession(
     // Also cover sessions that were being constructed when global settings changed.
     await services.settingsManager.reload();
     installProviderPayloadValidation(services.modelRuntime);
+    installAnalyticsModelObserver(services.modelRuntime, "chat");
     installModelStallGuard(services.modelRuntime, process.env, services.settingsManager);
     const scope = await resolveVisibleModels(
       services.modelRuntime,
@@ -3124,6 +3127,7 @@ export async function startRpcSession(
       ...(toolsOption !== undefined ? { tools: toolsOption } : {}),
     });
     startupInner = inner;
+    installAnalyticsFileObserver(inner, cwd, inner.sessionId);
     // The SDK stream function reads this from SettingsManager on every request.
     // Leave the Agent override unset so its startup snapshot cannot mask updates.
     inner.agent.maxRetryDelayMs = undefined;

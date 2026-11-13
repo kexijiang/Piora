@@ -3,6 +3,7 @@ import { join, resolve } from "node:path";
 import lockfile from "proper-lockfile";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
 import type { SessionCommandEvent, SessionCommandRecord, SessionCommandStatus } from "./session-message-types";
+import { recordAnalyticsCommand, reconcileAnalyticsJournals } from "./analytics-telemetry";
 
 type CommandJournalEntry =
   | { kind: "command"; command: SessionCommandRecord }
@@ -109,6 +110,7 @@ export class SessionControlStore {
   }
 
   loadCommands(sessionId: string): SessionCommandRecord[] {
+    reconcileAnalyticsJournals(this.root);
     const commands = new Map<string, SessionCommandRecord>();
     for (const entry of parseLines<CommandJournalEntry>(this.commandsPath(sessionId))) {
       if (entry.kind === "command" && entry.command?.commandId) {
@@ -172,10 +174,13 @@ export class SessionControlStore {
 
   async appendCommand(command: SessionCommandRecord): Promise<void> {
     await appendLocked(this.commandsPath(command.targetSessionId), JSON.stringify({ kind: "command", command } satisfies CommandJournalEntry));
+    try { recordAnalyticsCommand(command, command.acceptedAt); } catch { /* usage collection must not fail admission */ }
   }
 
   async appendStatus(command: SessionCommandRecord, status: SessionCommandStatus, patch: Partial<SessionCommandRecord> = {}): Promise<void> {
-    await appendLocked(this.commandsPath(command.targetSessionId), JSON.stringify({ kind: "status", commandId: command.commandId, status, patch, timestamp: Date.now() } satisfies CommandJournalEntry));
+    const timestamp = Date.now();
+    await appendLocked(this.commandsPath(command.targetSessionId), JSON.stringify({ kind: "status", commandId: command.commandId, status, patch, timestamp } satisfies CommandJournalEntry));
+    try { recordAnalyticsCommand({ ...command, ...patch, status }, timestamp); } catch { /* durable journal will reconcile */ }
   }
 
   async appendEvent(event: Omit<SessionCommandEvent, "cursor">): Promise<SessionCommandEvent> {

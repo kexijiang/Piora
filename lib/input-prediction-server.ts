@@ -33,7 +33,7 @@ export async function handlePrediction(request: Request, id: string): Promise<Re
     if (!result) {
       if (results.size >= 200) results.delete(results.keys().next().value!);
       result = (async () => {
-        const { modelRuntime, settingsManager } = await createTrustedModelServices(context.cwd);
+        const { modelRuntime, settingsManager } = await createTrustedModelServices(context.cwd, "prediction");
         const { visible } = await resolveVisibleModels(modelRuntime, settingsManager.getEnabledModels());
         const model = visible.find(item => item.provider === settings.model!.provider && item.id === settings.model!.modelId);
         if (!model) throw new Error("Model unavailable");
