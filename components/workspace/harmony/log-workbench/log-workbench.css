@@ -271,7 +271,7 @@
 .piora-log-workbench .log-table { background: var(--bg); color: var(--text); }
 .piora-log-workbench .log-table th { padding-block: 7px; background: var(--bg-panel); color: var(--log-muted); font-weight: 500; }
 .piora-log-workbench .log-table tbody tr:not(.log-spacer):hover { background: var(--bg-hover); }
-.piora-log-workbench .log-virtual .log-detail-button { color: var(--log-muted); background: var(--bg-panel); border-color: var(--border); border-radius: var(--radius-control); }
+.piora-log-workbench .log-virtual .log-detail-button { color: var(--text); background: var(--bg-panel); border-color: var(--border); border-radius: var(--radius-control); }
 .piora-log-workbench .log-virtual .log-detail-button:is(:hover, :focus-visible, :active) { color: var(--text); background: var(--bg-hover); }
 .piora-log-workbench .log-find { border-color: var(--border); border-radius: var(--radius-control); background: var(--bg-panel); }
 .piora-log-workbench .offline-log-detail { border: 0; border-radius: var(--radius-control); background: var(--bg-panel); }
