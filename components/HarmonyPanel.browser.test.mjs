@@ -241,7 +241,17 @@ test("Harmony workspace keeps device tools, drafts and fenced control in a full 
     try { await page.getByRole("region", {name:"侧栏投屏"}).locator("canvas").waitFor(); } catch (error) { console.error("Sidebar diagnosis", errors, await page.locator("#root").innerText(), await page.locator(".embeddedMirror").count()); throw error; }
     if (process.env.PIORA_HARMONY_SCREENSHOT_DIR) await page.screenshot({path:path.join(process.env.PIORA_HARMONY_SCREENSHOT_DIR,"sidebar-mirror.png")});
     assert.deepEqual(await page.evaluate(()=>window.mirrorCalls), ["phone"], "docking reuses the viewer state without opening another floating window");
-    assert.equal(await page.getByRole("region",{name:"侧栏投屏"}).getByRole("button",{name:"显示选项",exact:true}).count(),1);
+    const sidebarMirror = page.getByRole("region", { name: "侧栏投屏" });
+    const sidebarControl = sidebarMirror.getByRole("button", { name: "操控手机", exact: true });
+    const sidebarDisplayOptions = sidebarMirror.getByRole("button", { name: "显示选项", exact: true });
+    assert.equal(await sidebarControl.getAttribute("aria-pressed"), "false", "docked mirror starts in viewing mode");
+    assert.equal(await sidebarDisplayOptions.count(), 0, "control toolbar stays hidden while viewing");
+    await sidebarControl.click();
+    assert.equal(await sidebarControl.getAttribute("aria-pressed"), "true");
+    assert.equal(await sidebarDisplayOptions.count(), 1);
+    await sidebarControl.click();
+    assert.equal(await sidebarControl.getAttribute("aria-pressed"), "false");
+    assert.equal(await sidebarDisplayOptions.count(), 0, "disabling control restores the viewing layout");
     await page.getByRole("button", {name:"独立悬浮窗", exact:true}).click();
     await page.waitForFunction(()=>!document.querySelector('.embeddedMirror canvas'));
     assert.equal(await page.evaluate(() => window.maximized), false, "switching between sidebar and floating mirror does not expand the workspace");
