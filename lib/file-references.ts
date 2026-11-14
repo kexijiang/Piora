@@ -42,7 +42,9 @@ export function looksLikeFileReference(value: string): boolean {
 }
 
 type Node = { type: string; value?: string; url?: string; title?: string; lang?: string | null; children?: Node[] };
-const token = /[A-Za-z]:[\\/][^\r\n<>\[\]{}()"'`，。！？；：、]+?\.[A-Za-z][\w+-]{0,12}:[1-9]\d*(?::[1-9]\d*)?(?=$|[\s<>\[\]{}()"'`，。！？；：、,.!;])|[^\s<>\[\]{}()"'`，。！？；：、]+?\.[A-Za-z][\w+-]{0,12}(?::[1-9]\d*(?::[1-9]\d*)?|#L[1-9]\d*(?:C[1-9]\d*)?)?(?=$|[\s<>\[\]{}()"'`，。！？；：、,.!;])/g;
+// Windows absolute paths can contain spaces even without a line suffix.
+// A dot followed by another filename segment is not sentence punctuation.
+const token = /[A-Za-z]:[\\/][^\r\n<>\[\]{}()"'`，。！？；：、]+?\.[A-Za-z][\w+-]{0,12}(?::[1-9]\d*(?::[1-9]\d*)?|#L[1-9]\d*(?:C[1-9]\d*)?)?(?!\.[\w+-])(?=$|[\s<>\[\]{}()"'`，。！？；：、,.!;])|[^\s<>\[\]{}()"'`，。！？；：、]+?\.[A-Za-z][\w+-]{0,12}(?::[1-9]\d*(?::[1-9]\d*)?|#L[1-9]\d*(?:C[1-9]\d*)?)?(?!\.[\w+-])(?=$|[\s<>\[\]{}()"'`，。！？；：、,.!;])/g;
 const link = (value: string, child: Node): Node => ({ type: "link", url: FILE_REFERENCE_HREF + encodeURIComponent(value), title: value, children: [child] });
 
 /** Link prose and inline-code references, preserving code examples and existing links. */

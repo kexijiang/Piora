@@ -16,14 +16,16 @@ test('one chat settings page preserves controls, legacy entries and searchable t
   try {
     await writeFile(path.join(directory, 'ts.cjs'), `const ts=require(${JSON.stringify(require.resolve('typescript'))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
     await writeFile(path.join(directory, 'css.cjs'), `module.exports=function(s){const prefix=require('node:path').basename(this.resourcePath).replace(/\\W/g,'_');const names=Object.fromEntries([...s.matchAll(/\\.([a-zA-Z][\\w-]*)/g)].map(m=>[m[1],prefix+'_'+m[1]]));const css=s.replace(/\\.([a-zA-Z][\\w-]*)/g,(_,n)=>'.'+names[n]);return 'const style=document.createElement("style");style.textContent='+JSON.stringify(css)+';document.head.append(style);export default '+JSON.stringify(names)}`);
-    await writeFile(path.join(directory, 'entry.tsx'), `import{useState}from'react';import{createRoot}from'react-dom/client';import{I18nProvider}from'@/hooks/useI18n';import{SettingsDialog}from'@/components/SettingsDialog';import{ToolPermissionControl}from'@/components/ToolPermissionControl';const noop=()=>{};function App(){const[key,setKey]=useState('prompts');window.openPage=setKey;return <I18nProvider><ToolPermissionControl state={{mode:"auto",revision:1}} onChange={noop}/><SettingsDialog open activeKey={key} onActiveKeyChange={setKey} onClose={noop} conversation={{systemPrompt:'Example system prompt',onSystemPromptSaved:noop,notificationEnabled:false,notificationCapability:'unsupported',onNotificationToggle:noop}} desktop={{available:false}}/></I18nProvider>}createRoot(document.getElementById('root')).render(<App/>);`);
+    await writeFile(path.join(directory, 'entry.tsx'), `import{useState}from'react';import{createRoot}from'react-dom/client';import{I18nProvider}from'@/hooks/useI18n';import{SettingsDialog}from'@/components/SettingsDialog';import{ToolPermissionControl}from'@/components/ToolPermissionControl';const noop=()=>{};function App(){const[key,setKey]=useState('prompts');const[hasDesktop,setHasDesktop]=useState(false);window.openPage=setKey;window.setDesktopFixture=setHasDesktop;return <I18nProvider><ToolPermissionControl state={{mode:"auto",revision:1}} onChange={noop}/><SettingsDialog open activeKey={key} onActiveKeyChange={setKey} onClose={noop} conversation={{systemPrompt:'Example system prompt',onSystemPromptSaved:noop,notificationEnabled:false,notificationCapability:'unsupported',onNotificationToggle:noop}} desktop={{available:hasDesktop}}/></I18nProvider>}createRoot(document.getElementById('root')).render(<App/>);`);
     const compiler = webpack({ mode: 'development', target: 'web', devtool: false, entry: path.join(directory, 'entry.tsx'), output: { path: directory, filename: 'bundle.js' }, resolve: { extensions: ['.tsx', '.ts', '.js'], modules: [path.join(repo, 'node_modules')], alias: { '@': repo } }, module: { rules: [{ test: /\.tsx?$/, exclude: /node_modules/, use: path.join(directory, 'ts.cjs') }, { test: /\.css$/, use: path.join(directory, 'css.cjs') }] } });
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     const css = (await readFile(path.join(repo, 'app/globals.css'), 'utf8')).replace(/^@import.*$/gm, '');
     browser = await chromium.launch({ channel: process.platform === 'win32' ? 'msedge' : 'chromium', headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 950 } });
     const errors = [];
+    const requests = [];
     page.on('pageerror', error => errors.push(error.message));
+    page.on('request', request => requests.push(new URL(request.url()).pathname));
     await page.addInitScript(() => localStorage.setItem('pi-locale', 'zh-CN'));
     let approvalsEnabled = true;
     await page.route('https://chat-settings.test/**', async route => {
@@ -75,6 +77,35 @@ test('one chat settings page preserves controls, legacy entries and searchable t
     assert.deepEqual(errors, []);
     await mkdir(path.join(repo, '.verification/chat-settings'), { recursive: true });
     await page.screenshot({ path: path.join(repo, '.verification/chat-settings/consolidated.png') });
+
+    assert.equal(await page.getByRole('button', { name: '数据与诊断', exact: true }).count(), 0, 'browser settings do not expose an empty desktop-only page');
+    await page.evaluate(() => window.openPage('data'));
+    await page.getByRole('heading', { name: '应用行为', exact: true }).waitFor();
+    await page.evaluate(() => {
+      window.piDesktop = {
+        getAgentDataDirectory: async () => ({ currentDirectory: 'F:/fixture/agent', defaultDirectory: 'F:/fixture/agent', configuredBy: 'default', environmentOverride: false }),
+        getRuntimeLog: async () => ({ filePath: 'F:/fixture/logs/runtime.log', defaultDirectory: 'F:/fixture/logs', fileLoggingAvailable: true, settings: { directory: 'F:/fixture/logs', level: 'info', maxSizeMiB: 5, backups: 1 } }),
+      };
+      window.openPage('conversation');
+      window.setDesktopFixture(true);
+    });
+    requests.length = 0;
+    await page.getByRole('button', { name: '数据与诊断', exact: true }).click();
+    await page.getByRole('heading', { name: '数据与诊断', exact: true }).waitFor();
+    await page.getByRole('textbox', { name: '目标数据目录', exact: true }).waitFor();
+    assert.equal(await page.getByRole('textbox', { name: '目标数据目录', exact: true }).inputValue(), 'F:/fixture/agent');
+    await page.locator('[data-settings-id="general.runtimeLog"]').getByText('F:/fixture/logs/runtime.log', { exact: true }).waitFor();
+    for (const text of ['完整备份与迁移', '界面偏好（兼容旧版 JSON）', '本地凭据库', '组织使用统计']) {
+      assert.equal(await page.getByText(text, { exact: true }).count(), 0, `${text} is removed from Data & Diagnostics`);
+    }
+    assert.equal(requests.some(pathname => /analytics|vault|backup/.test(pathname)), false, 'opening the remaining page does not initialize removed cards');
+    await page.getByRole('heading', { name: '数据与诊断', exact: true }).scrollIntoViewIfNeeded();
+    await page.screenshot({ path: path.join(repo, '.verification/chat-settings/data-diagnostics.png') });
+    for (const query of ['完整备份', '界面偏好', '本地凭据库', '组织使用统计']) {
+      await page.getByPlaceholder('搜索设置…').fill(query);
+      await page.getByRole('main').getByText('没有匹配的设置项', { exact: true }).waitFor();
+    }
+    assert.deepEqual(errors, []);
   } finally {
     await browser?.close();
     assert.equal(path.dirname(directory), path.resolve(tmpdir()));

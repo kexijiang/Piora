@@ -354,7 +354,7 @@
   margin-top: 3px;
   overflow-wrap: anywhere;
   color: var(--text-dim);
-  font-family: var(--font-mono);
+  line-height: 1.6;
   font-size: var(--text-xs);
 }
 

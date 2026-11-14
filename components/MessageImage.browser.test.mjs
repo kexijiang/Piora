@@ -10,11 +10,11 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("image preview fits small images, zooms, pans, resizes and closes", { timeout: 120000 }, async () => {
+test("image preview fits small images, zooms, pans, resizes and closes without aborting the running agent", { timeout: 120000 }, async () => {
  const directory=await mkdtemp(path.join(tmpdir(), "piora-image-viewer-")); let browser;
  try {
   await writeFile(path.join(directory,"loader.cjs"), `const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
-  await writeFile(path.join(directory,"entry.tsx"), `import {useState} from "react";import {createRoot} from "react-dom/client";import {I18nProvider} from "@/hooks/useI18n";import {MessageImageViewer} from "@/components/MessageImage";function App(){const [open,setOpen]=useState(false);return <I18nProvider><button onClick={()=>setOpen(true)}>Open</button>{open&&<MessageImageViewer src="/small.svg" index={0} onClose={()=>setOpen(false)}/>}</I18nProvider>}createRoot(document.getElementById("root")).render(<App/>);`);
+  await writeFile(path.join(directory,"entry.tsx"), `import {useEffect,useState} from "react";import {createRoot} from "react-dom/client";import {I18nProvider} from "@/hooks/useI18n";import {registerAbortHandler,useGlobalKeyboardShortcuts} from "@/hooks/useKeyboardShortcuts";import {MessageImageViewer} from "@/components/MessageImage";function App(){const [open,setOpen]=useState(false);const [abortCount,setAbortCount]=useState(0);useGlobalKeyboardShortcuts();useEffect(()=>{registerAbortHandler(()=>setAbortCount(count=>count+1));return()=>registerAbortHandler(null);},[]);return <I18nProvider><button onClick={()=>setOpen(true)}>Open</button><output data-testid="abort-count">{abortCount}</output>{open&&<MessageImageViewer src="/small.svg" index={0} onClose={()=>setOpen(false)}/>}</I18nProvider>}createRoot(document.getElementById("root")).render(<App/>);`);
   const compiler=webpack({mode:"development",target:"web",devtool:false,entry:path.join(directory,"entry.tsx"),output:{path:directory,filename:"bundle.js"},resolve:{extensions:[".tsx",".ts",".js"],modules:[path.join(repo,"node_modules")],alias:{"@":repo}},module:{rules:[{test:/\.tsx?$/,exclude:/node_modules/,use:path.join(directory,"loader.cjs")}]}});
   await new Promise((resolve,reject)=>compiler.run((error,stats)=>compiler.close(()=>error||stats.hasErrors()?reject(error||Error(stats.toString({all:false,errors:true}))):resolve())));
   const css=(await readFile(path.join(repo,"app/globals.css"),"utf8")).replace(/^@import.*$/gm,"");
@@ -60,7 +60,13 @@ test("image preview fits small images, zooms, pans, resizes and closes", { timeo
   await dialog.getByRole("status").filter({hasText:"已复制"}).waitFor();
   await page.getByRole("button",{name:"1:1",exact:true}).click();assert.equal(Math.round((await img.boundingBox()).width),200);
   assert.equal(await dialog.evaluate(el=>getComputedStyle(el).resize),"both");
-  await page.keyboard.press("Escape");assert.equal(await dialog.count(),0);assert.equal(await page.getByText("Open",{exact:true}).evaluate(el=>el===document.activeElement),true);
+  await page.keyboard.press("Escape");assert.equal(await dialog.count(),0,"Escape from the image toolbar closes only the preview");assert.equal(await page.getByText("Open",{exact:true}).evaluate(el=>el===document.activeElement),true);
+  assert.equal(await page.getByTestId("abort-count").textContent(),"0","closing the preview must not stop the running agent");
+  await page.getByText("Open",{exact:true}).click();await dialog.waitFor();await viewport.focus();await page.keyboard.press("Escape");
+  assert.equal(await dialog.count(),0,"Escape also closes the preview when its viewport has focus");
+  assert.equal(await page.getByTestId("abort-count").textContent(),"0");
+  await page.keyboard.press("Escape");
+  assert.equal(await page.getByTestId("abort-count").textContent(),"1","Escape still stops the running agent after the preview closes");
   await page.getByText("Open",{exact:true}).click();await page.mouse.click(10,10);assert.equal(await dialog.count(),0);
  } finally {await browser?.close();assert.equal(path.dirname(directory),path.resolve(tmpdir()));assert.ok(path.basename(directory).startsWith("piora-image-viewer-"));await rm(directory,{recursive:true,force:true});}
 });

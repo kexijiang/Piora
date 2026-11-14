@@ -1,0 +1,17 @@
+{
+  "name": "@earendil-works/pi-coding-agent",
+  "version": "1.5.2",
+  "tarball": "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-1.5.2.tgz",
+  "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA==",
+  "packageJsonSha256": "18b422b7d80f2caa2551d253c0a8409e1caa54b954bfb7d18252e507bb8a0318",
+  "unbundledDist": {
+    "files": 1057,
+    "sha256": "f0ae44826d1db9af122dcefeea30c1bd6ce8e9bed72c7d518b4eacea8334080e"
+  },
+  "originalBundle": {
+    "files": 84,
+    "sha256": "ddf91f30aada62defa241be1ef9561be0e4dc56d43b0ccfa1c8904a9cf94e7bc"
+  },
+  "upstreamLockUndici": "8.12.3",
+  "effectiveUndici": "8.12.4"
+}

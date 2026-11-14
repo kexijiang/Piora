@@ -39,7 +39,6 @@ const GROUPS: SessionCapabilityKind[] = [
   "workspace",
   "browser",
   "automation",
-  "collaboration",
   "device",
   "extension",
   "interaction",
@@ -54,8 +53,17 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   find: "sessionTools.tool.find",
   ls: "sessionTools.tool.ls",
   browser: "sessionTools.tool.browser",
+  ssh: "sessionTools.tool.ssh",
+  piora_request_user_input: "sessionTools.tool.askUser",
   piora_automation: "sessionTools.tool.automation",
-  piora_room: "sessionTools.tool.room",
+  harmony_control: "sessionTools.tool.harmony",
+  computer_control: "sessionTools.tool.computer",
+  tool_search: "sessionTools.tool.toolSearch",
+  codemode: "sessionTools.tool.codeMode",
+  learn_meme: "sessionTools.tool.learnMeme",
+  meme_list: "sessionTools.tool.listMemes",
+  meme_update: "sessionTools.tool.updateMeme",
+  send_meme: "sessionTools.tool.sendMeme",
 };
 
 function iconFor(item: SessionCapabilityItem): AliIconName {
@@ -172,10 +180,17 @@ export function ProjectToolsConfig({ cwd, onChanged, mcpFocus, onClearMcpFocus }
     }
   }, [cwd, t]);
 
+  const visibleItems = useMemo(() => data?.capabilities.items.filter((item) => !item.toolNames.includes("piora_room")) ?? [], [data?.capabilities.items]);
+
+  const toolLabel = (item: SessionCapabilityItem) => {
+    const labelKey = TOOL_LABEL_KEYS[item.toolNames[0]];
+    return item.id.startsWith("mcp-resource:") ? t("nativeMcp.resourceLabel", { server: item.id.slice(13) }) : labelKey ? t(labelKey) : item.label;
+  };
+
   const groups = useMemo(() => GROUPS.map((kind) => ({
     kind,
-    items: data?.capabilities.items.filter((item) => item.kind === kind && (!mcpFocus || item.id === `mcp-resource:${mcpFocus.name}` || item.toolNames.some(name => mcpFocus.toolNames.includes(name)))) ?? [],
-  })).filter((group) => group.items.length > 0), [data?.capabilities.items, mcpFocus]);
+    items: visibleItems.filter((item) => item.kind === kind && (!mcpFocus || item.id === `mcp-resource:${mcpFocus.name}` || item.toolNames.some(name => mcpFocus.toolNames.includes(name)))),
+  })).filter((group) => group.items.length > 0), [visibleItems, mcpFocus]);
 
   const toggle = (item: SessionCapabilityItem) => {
     if (!data || saving || !item.available) return;
@@ -186,7 +201,7 @@ export function ProjectToolsConfig({ cwd, onChanged, mcpFocus, onClearMcpFocus }
   };
 
   const disabledTools = data?.managed && data.capabilities.policy.preset === "custom"
-    ? data.capabilities.items.filter(item => item.available && !item.enabled) : [];
+    ? visibleItems.filter(item => item.available && !item.enabled) : [];
 
   const setHarmonyToolsEnabled = (enabled: boolean) => {
     if (!data || loading || saving) return;
@@ -256,7 +271,7 @@ export function ProjectToolsConfig({ cwd, onChanged, mcpFocus, onClearMcpFocus }
 
     {disabledTools.length > 0 ? <div className={styles.notice} role="status">
       <p>{t("projectTools.customSelectionHint", { count: disabledTools.length })}</p>
-      <p>{disabledTools.map(item => item.toolNames[0] ?? item.label).join(", ")}</p>
+      <p>{disabledTools.map(toolLabel).join(", ")}</p>
       <button type="button" disabled={loading || saving} onClick={() => void save({ preset: "coding" })}>
         {t("sessionTools.useCodingDefaults")}
       </button>
@@ -292,12 +307,15 @@ export function ProjectToolsConfig({ cwd, onChanged, mcpFocus, onClearMcpFocus }
             {items.map((item) => {
               const toolName = item.toolNames[0];
               const labelKey = TOOL_LABEL_KEYS[toolName];
-              const label = item.id.startsWith("mcp-resource:") ? t("nativeMcp.resourceLabel", { server: item.id.slice(13) }) : labelKey ? t(labelKey) : item.label;
+              const label = toolLabel(item);
+              const description = item.id.startsWith("mcp-resource:") ? t("nativeMcp.resourcePermissionHint") : labelKey ? t(`${labelKey}Description`) : item.description;
+              const descriptionId = `project-tool-${item.id}-description`;
               return <label className={styles.row} key={item.id} data-enabled={item.available && item.enabled || undefined} data-unavailable={!item.available ? "true" : undefined} data-saving={saving || loading || undefined}>
                 <span className={styles.icon}><AliIcon name={iconFor(item)} size={14} /></span>
                 <span className={styles.copy}>
                   <strong>{label}</strong>
-                  <small>{item.available ? toolName ?? t("nativeMcp.resourcePermissionHint") : t(item.unavailableReason === "profile_restricted" ? "sessionTools.profileRestricted" : "sessionTools.notAvailable")}</small>
+                  <small id={descriptionId}>{description}</small>
+                  {!item.available ? <small>{t(item.unavailableReason === "profile_restricted" ? "sessionTools.profileRestricted" : "sessionTools.notAvailable")}</small> : null}
                 </span>
                 {item.available ? <span className={styles.stateLabel}>{t(item.enabled ? "projectTools.on" : "projectTools.off")}</span> : null}
                 <span className={styles.toggle}>
@@ -308,6 +326,7 @@ export function ProjectToolsConfig({ cwd, onChanged, mcpFocus, onClearMcpFocus }
                   checked={item.available && item.enabled}
                   disabled={loading || saving || !item.available}
                   aria-label={label}
+                  aria-describedby={descriptionId}
                   onChange={() => toggle(item)}
                 />
                   <span className={styles.track} aria-hidden="true" />

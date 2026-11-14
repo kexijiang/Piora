@@ -266,7 +266,7 @@ export function ConversationSearchDialog({ sessions, flags, hasProject, onClose,
                 onMouseEnter={() => setActiveIndex(rowIndex)}
                 onClick={() => openSession(session)}
               >
-                <span className={styles.rowIcon}><AliIcon name="message" size={15} /></span>
+                <span className={`${styles.rowIcon} ${styles.chatRowIcon}`}><AliIcon name="messages-square" size={15} /></span>
                 <span className={styles.rowCopy}>
                   <span className={styles.rowTitle}>{sessionTitle(session, t("conversationSearch.untitled"))}</span>
                   {trimmedQuery ? <span className={styles.rowDescription}>{session.firstMessage}</span> : null}
@@ -290,7 +290,7 @@ export function ConversationSearchDialog({ sessions, flags, hasProject, onClose,
                 onMouseEnter={() => setActiveIndex(rowIndex)}
                 onClick={() => openMessageResult(result)}
               >
-                <span className={styles.rowIcon}><AliIcon name="message" size={15} /></span>
+                <span className={`${styles.rowIcon} ${styles.chatRowIcon}`}><AliIcon name="messages-square" size={15} /></span>
                 <span className={styles.rowCopy}>
                   <span className={styles.rowTitle}>{result.title}</span>
                   <span className={styles.snippet}><HighlightedSnippet result={result} /></span>

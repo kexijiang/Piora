@@ -1,6 +1,6 @@
 import { filterFileEntries } from "./file-fuzzy.ts";
 
-export type SettingsKey = "laboratory" | "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "extensions" | "skills" | "plugins" | "appearance" | "companion" | "remote" | "usage" | "archived" | "trash";
+export type SettingsKey = "laboratory" | "desktopExtensions" | "general" | "data" | "network" | "conversation" | "prompts" | "shortcuts" | "speech" | "automations" | "models" | "modelRuntime" | "shell" | "tools" | "extensions" | "skills" | "plugins" | "appearance" | "companion" | "usage" | "archived" | "trash";
 
 export interface SettingsPage {
   key: SettingsKey;
@@ -31,7 +31,6 @@ export const SETTINGS_GROUPS: readonly { labelKey: string; pages: readonly Setti
   ] },
   { labelKey: "settings.group.connections", pages: [
     { key: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", icon: "link" },
-    { key: "remote", labelKey: "remote.title", descriptionKey: "remote.description", icon: "external-link" },
   ] },
   { labelKey: "settings.group.appData", pages: [
     { key: "general", labelKey: "settings.page.app", descriptionKey: "settings.page.appDescription", icon: "layout" },
@@ -75,13 +74,12 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "general.updateSource", section: "general", requiresDesktop: true, labelKey: "settings.updateSource", descriptionKey: "settings.updateSourceDescription", keywords: ["update", "source", "github", "internal", "更新", "来源", "内源", "渠道"] },
   { id: "general.updateSchedule", section: "general", requiresDesktop: true, labelKey: "settings.updateSchedule", descriptionKey: "settings.updateScheduleDescription", keywords: ["update", "schedule", "silent", "更新", "静默", "安装", "定时"] },
   { id: "general", section: "general", labelKey: "settings.general", descriptionKey: "settings.generalDescription", keywords: ["preferences", "偏好"] },
-  { id: "data", section: "data", labelKey: "settings.page.data", descriptionKey: "settings.page.dataDescription", keywords: ["backup", "storage", "data", "备份", "存储", "数据"] },
-  { id: "general.portability", section: "data", labelKey: "settings.portability.title", descriptionKey: "settings.portability.description", keywords: ["import", "export", "backup", "导入", "导出", "迁移"] },
+  { id: "data", section: "data", requiresDesktop: true, labelKey: "settings.page.data", descriptionKey: "settings.page.dataDescription", keywords: ["storage", "data", "logs", "存储", "数据", "日志"] },
   { id: "conversation.runningSendMode", section: "conversation", labelKey: "settings.runningSendMode", descriptionKey: "settings.runningSendModeHelp", keywords: ["steer", "queue", "引导", "排队"] },
   { id: "general.onboarding", section: "general", labelKey: "settings.firstRunGuideTitle", descriptionKey: "settings.firstRunGuideDescription", keywords: ["welcome", "guide", "新手", "引导"] },
   { id: "network", section: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", keywords: ["http", "https", "network", "代理", "网络"] },
   { id: "general.proxy", section: "network", labelKey: "networkProxy.title", descriptionKey: "networkProxy.description", keywords: ["http", "https", "network", "代理", "网络"] },
-  { id: "general.runningStatusLabel", section: "conversation", labelKey: "settings.runningStatusLabel", descriptionKey: "settings.runningStatusLabelHint", keywords: ["thinking", "凝思求解中", "文案"] },
+  { id: "general.runningStatusLabel", section: "conversation", labelKey: "settings.runningStatusLabel", descriptionKey: "settings.runningStatusLabelHint", keywords: ["thinking", "status", "random", "generate", "50", "凝思求解中", "文案", "随机", "生成"] },
   { id: "general.modelRetry", section: "conversation", labelKey: "modelRetry.title", descriptionKey: "modelRetry.description", keywords: ["retry", "timeout", "backoff", "retries", "重试", "超时", "退避", "卡住"] },
   { id: "models.compaction", section: "conversation", labelKey: "modelCompaction.title", descriptionKey: "modelCompaction.description", keywords: ["context", "compaction", "compression", "threshold", "reserve tokens", "上下文", "压缩", "阈值", "预留"] },
   { id: "general.autoLaunch", section: "general", requiresDesktop: true, labelKey: "settings.autoLaunch", descriptionKey: "settings.autoLaunchDescription", keywords: ["startup", "boot", "login", "开机", "启动"] },
@@ -137,7 +135,6 @@ export const SETTINGS_SEARCH_ITEMS: readonly SettingsSearchItem[] = [
   { id: "companion.idle", section: "companion", labelKey: "companion.idleTricks", descriptionKey: "companion.idleTricksDescription", keywords: ["hover", "idle", "悬浮", "挂机", "闲聊"] },
   { id: "companion.model", section: "companion", labelKey: "companion.model.title", descriptionKey: "companion.model.description", keywords: ["interaction", "model", "互动", "模型"] },
 
-  { id: "remote", section: "remote", labelKey: "remote.title", descriptionKey: "remote.description", keywords: ["http", "sse", "token", "远程", "令牌"] },
   { id: "usage", section: "usage", labelKey: "usage.title", descriptionKey: "usage.description", keywords: ["token", "statistics", "usage", "monthly", "daily", "dashboard", "用量", "统计", "月度", "每日", "看板"] },
   { id: "trash", section: "trash", labelKey: "trash.title", descriptionKey: "trash.description", keywords: ["deleted", "restore", "回收站", "删除", "恢复"] },
   { id: "archived", section: "archived", labelKey: "archive.title", descriptionKey: "archive.description", keywords: ["history", "restore", "archive", "归档", "恢复"] },

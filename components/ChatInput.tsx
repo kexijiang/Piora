@@ -169,6 +169,8 @@ interface Props {
   placeholder?: string;
   /** Optional project and mode controls rendered above the input surface. */
   contextControl?: React.ReactNode;
+  /** Compact session options inside the input toolbar. */
+  toolbarControl?: React.ReactNode;
   /** Pending submissions aligned with the input surface below its context controls. */
   queueContent?: React.ReactNode;
   workflow?: WorkflowPromptOptions;
@@ -350,7 +352,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
   extensionStatuses = [],
   variant = "conversation",
   placeholder,
-  contextControl, queueContent,
+  contextControl, toolbarControl, queueContent,
   workflow, workflowBusy = false, workflowEnabled = true,
   toolPermission, permissionSaving, onToolPermissionChange,
   replySource = null,
@@ -2383,6 +2385,7 @@ export const ChatInput = React.memo(forwardRef<ChatInputHandle, Props>(function 
               </button>
             </div>
             {onToolPermissionChange && <ToolPermissionControl state={toolPermission ?? null} saving={permissionSaving} onChange={onToolPermissionChange} />}
+            {toolbarControl}
             {voiceInputSupported && (
               <>
                 <button

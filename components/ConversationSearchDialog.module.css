@@ -141,6 +141,10 @@
   color: var(--text-muted);
 }
 
+.chatRowIcon {
+  background: transparent;
+}
+
 .rowCopy {
   display: flex;
   min-width: 0;

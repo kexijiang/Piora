@@ -6,6 +6,7 @@ import { TaskActivityIcon } from "./TaskActivityIcon";
 import { TaskPhaseActivity } from "./TaskPhaseActivity";
 import { formatStatusDuration } from "@/lib/status-duration";
 import { taskElapsedMs, type TaskTiming } from "@/lib/task-timing";
+import { defaultRunningStatusLabels, pickRunningStatusLabel } from "@/lib/running-status-labels";
 
 const layoutCss = `
 .piora-task-line { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 16px; row-gap: 6px; }
@@ -24,20 +25,29 @@ const speedColors = {
   green: { background: "#15803d", color: "#ffffff" },
 } as const;
 
-export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, hideSettled = false, t }: {
+export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, hideSettled = false, locale = "zh-CN", t }: {
   timing: TaskTiming | null;
   busy: boolean;
   startedAt: number | null;
   phase: string;
   tokensPerSecond?: number | null;
   hideSettled?: boolean;
+  locale?: string;
   t: (key: string, params?: Record<string, string | number>) => string;
 }) {
-  const { label: runningLabel } = useRunningStatusLabel();
+  const { labels, ready } = useRunningStatusLabel();
   const [now, setNow] = useState(() => Date.now());
   // A fresh send may be preparing before its durable dispatch receipt arrives.
   const current = busy && timing?.outcome && startedAt !== null && startedAt > timing.startedAt ? null : timing;
   const running = current ? !current.outcome : busy;
+  const runKey = current ? `${current.sessionId}:${current.commandId}` : `preparing:${startedAt}`;
+  const [choice, setChoice] = useState<{ key: string; label: string } | null>(null);
+  if (ready && running && choice?.key !== runKey) {
+    // Do not resample if the library changes during this same logical turn.
+    setChoice({ key: runKey, label: current
+      ? pickRunningStatusLabel(labels.length ? labels : defaultRunningStatusLabels(locale), runKey)
+      : t("chat.taskDuration.preparing") });
+  }
   useEffect(() => {
     if (!running) return;
     setNow(Date.now());
@@ -53,7 +63,7 @@ export function TaskDuration({ timing, busy, startedAt, phase, tokensPerSecond, 
   const outcome = running ? undefined : current?.outcome;
   const speed = running && busy && typeof tokensPerSecond === "number" && Number.isFinite(tokensPerSecond) && tokensPerSecond >= 0
     ? tokensPerSecond : null;
-  const label = outcome ? t(`chat.taskDuration.${outcome}`) : runningLabel.trim() || t("chat.taskDuration.running");
+  const label = outcome ? t(`chat.taskDuration.${outcome}`) : choice?.label || t("chat.taskDuration.running");
   const speedBand = speed !== null && speed > 60 ? "green" : speed !== null && speed >= 30 ? "yellow" : "red";
   const color = running ? "var(--accent)" : outcome === "failed" ? "var(--status-failed)"
     : outcome === "completed" ? "var(--status-ready)" : "var(--text-muted)";

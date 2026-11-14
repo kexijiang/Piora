@@ -23,7 +23,7 @@ test("project tools explain custom exclusions and loader errors before explicit 
     await new Promise((resolve, reject) => compiler.run((error, stats) => compiler.close(() => error || stats.hasErrors() ? reject(error || new Error(stats.toString({ all: false, errors: true }))) : resolve())));
     const bundle = await readFile(path.join(directory, "bundle.js"));
     const css = await readFile(path.join(repo, "app/globals.css"), "utf8") + await readFile(path.join(repo, "components/ProjectToolsConfig.module.css"), "utf8");
-    const tools = ["read", "write", "ssh", "piora_room", "send_meme"].map(name => ({ name, description: name, ...(name === "send_meme" ? { sourceInfo: { source: "user" } } : {}) }));
+    const tools = ["read", "write", "ssh", "piora_room", "harmony_control", "computer_control", "tool_search", "learn_meme", "meme_list", "meme_update", "send_meme"].map(name => ({ name, description: name, ...(name === "send_meme" ? { sourceInfo: { source: "user" } } : {}) }));
     let record = { projectRoot: "C:/fixture/project", revision: 1, preset: "custom", enabledCapabilityIds: ["tool:read"], updatedAt: new Date().toISOString() };
     const writes = [], errors = [];
     browser = await chromium.launch({ channel: process.platform === "win32" ? "msedge" : "chromium", headless: true });
@@ -46,11 +46,19 @@ test("project tools explain custom exclusions and loader errors before explicit 
     await page.goto("http://project-tools.test/");
     const hint = page.getByRole("status").filter({ hasText: "项目自定义选择关闭了" });
     await hint.waitFor();
-    assert.match(await hint.innerText(), /4 项.*现有和新会话/);
-    assert.match(await hint.innerText(), /send_meme/);
+    assert.match(await hint.innerText(), /9 项.*现有和新会话/);
+    assert.match(await hint.innerText(), /回复中使用表情包/);
+    assert.equal(await page.getByText("房间协作", { exact: true }).count(), 0);
+    assert.equal(await page.getByRole("switch", { name: "参与房间协作", exact: true }).count(), 0);
+    assert.doesNotMatch(await page.locator("body").innerText(), /piora_room|harmony_control|computer_control|tool_search|learn_meme|meme_list|meme_update|send_meme/);
+    for (const name of ["AI 操作鸿蒙手机", "AI 操作 Windows 桌面", "AI 查找更多工具", "保存表情包", "查找表情包", "修改表情包信息", "回复中使用表情包"]) {
+      const control = page.getByRole("switch", { name, exact: true });
+      assert.ok(await control.getAttribute("aria-describedby"), `${name} has a description for its effect`);
+      assert.match(await control.locator("xpath=ancestor::label").innerText(), /开启后[\s\S]*关闭后/);
+    }
     await page.getByRole("alert").filter({ hasText: "部分扩展加载失败" }).waitFor();
     assert.equal(writes.length, 0, "reading diagnostics must never grant tools");
-    const meme = page.getByRole("switch", { name: "Send Meme", exact: true });
+    const meme = page.getByRole("switch", { name: "回复中使用表情包", exact: true });
     // The switch reflects the saved server policy, so wait for its PATCH receipt.
     await meme.click();
     await page.getByText("项目工具设置已应用到该项目的会话。", { exact: true }).waitFor();
@@ -58,7 +66,7 @@ test("project tools explain custom exclusions and loader errors before explicit 
     assert.deepEqual(writes[0].enabledCapabilityIds.sort(), ["tool:read", "tool:send_meme"]);
     await page.reload();
     await meme.waitFor(); assert.equal(await meme.isChecked(), true);
-    assert.match(await hint.innerText(), /3 项/);
+    assert.match(await hint.innerText(), /8 项/);
     await hint.getByRole("button").click();
     await hint.waitFor({ state: "hidden" });
     assert.equal(writes.at(-1).preset, "coding");

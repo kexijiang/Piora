@@ -25,7 +25,7 @@ export function registerAbortHandler(handler: (() => void) | null): void {
  *
  * Shortcuts handled here:
  *   Esc          – stop the running agent (via module-level abort handler)
- * Note: Esc inside <textarea> or <input> is deliberately NOT handled here.
+ * Note: Esc inside form controls is deliberately NOT handled here.
  * ChatInput manages its own Esc logic (closing slash / @ file menus, stopping
  * the agent when no menu is open) because it needs intimate knowledge of menu
  * state that is local to that component.
@@ -39,8 +39,8 @@ export function useGlobalKeyboardShortcuts(): void {
         if (!globalAbortHandler) return;
 
         const tag = (e.target as HTMLElement)?.tagName;
-        // Let textarea/input handle Esc internally (ChatInput menus / stop).
-        if (tag === "TEXTAREA" || tag === "INPUT") return;
+        // Let inputs handle their menus/stop logic and selects dismiss their picker.
+        if (tag === "TEXTAREA" || tag === "INPUT" || (e.target instanceof Element && e.target.closest("select"))) return;
 
         e.preventDefault();
         globalAbortHandler();

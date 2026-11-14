@@ -19,30 +19,34 @@ try {
     timeoutMs: 600000,
     stepTimeoutMs: 60000,
     scenario: {
-      id: "organization-analytics",
+      id: "data-diagnostics",
       scope: "Real Electron development UI with an isolated Windows telemetry directory",
-      coverage: ["Data settings navigation", "unconfigured status API", "refresh and reload", "renderer errors"],
+      coverage: ["Data settings navigation", "removed settings cards", "unconfigured status API", "reload", "renderer errors"],
       limits: ["production backend enrollment", "real model usage", "packaged Windows app"],
-      async run({ page, reload, screenshot, step, waitUntil }) {
+      async run({ page, reload, screenshot, step }) {
         async function open() {
           await page.getByRole("button", { name: /^(Settings|设置)$/ }).click();
           const dialog = page.getByRole("dialog", { name: /^(Settings|设置)$/ });
           await dialog.getByRole("button", { name: /^(Data & Diagnostics|数据与诊断)$/ }).click();
-          const section = dialog.locator('[data-settings-id="general.organizationAnalytics"]');
-          await waitUntil(async () => /Not configured|未配置组织统计/.test(await section.innerText()), "unconfigured organization status");
-          return section;
+          await dialog.getByRole("heading", { name: /^(Data & Diagnostics|数据与诊断)$/ }).waitFor();
+          await dialog.locator('[data-settings-id="general.runtimeLog"]').waitFor();
+          assert.equal(await dialog.locator('[data-settings-id="general.organizationAnalytics"], [data-settings-id="general.portability"]').count(), 0);
+          for (const name of [/^(Full backup and migration|完整备份与迁移)$/, /^(Interface preferences \(legacy JSON\)|界面偏好（兼容旧版 JSON）)$/, /^(Local credential vault|本地凭据库)$/, /^(Organization usage analytics|组织使用统计)$/]) {
+            assert.equal(await dialog.getByText(name).count(), 0);
+          }
+          return dialog;
         }
-        await step("read-status-through-settings", async () => {
-          const section = await open();
-          const response = page.waitForResponse(r => r.url().endsWith("/api/analytics/status"));
-          await section.getByRole("button", { name: /^(Refresh status|刷新状态)$/ }).click();
-          const res = await response;
-          assert.equal(res.status(), 200);
-          assert.deepEqual(await res.json(), { supported: true, configured: false, enabled: false });
-          await section.scrollIntoViewIfNeeded();
-          await screenshot("organization-statistics-disabled.png");
+        await step("data-settings-without-removed-cards", async () => {
+          await open();
+          const status = await page.evaluate(async () => {
+            const response = await fetch("/api/analytics/status");
+            return { status: response.status, body: await response.json() };
+          });
+          assert.equal(status.status, 200);
+          assert.deepEqual(status.body, { supported: true, configured: false, enabled: false });
+          await screenshot("data-diagnostics.png");
         });
-        await step("reload-and-read-status", async () => {
+        await step("reload-preserves-simplified-settings", async () => {
           await reload();
           await open();
         });

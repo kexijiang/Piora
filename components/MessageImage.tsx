@@ -70,6 +70,10 @@ export function MessageImageViewer({ src, index, onClose }: { src: string; index
   return typeof document === "undefined" ? null : createPortal(
     <dialog ref={dialogRef} className="message-image-dialog" aria-label={t("chat.imageViewer")}
       onKeyDown={event => {
+        if (event.key === "Escape") {
+          event.preventDefault(); event.stopPropagation(); onClose();
+          return;
+        }
         if ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === "c") {
           event.preventDefault(); event.stopPropagation(); void copy();
         }

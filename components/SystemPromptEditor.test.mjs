@@ -34,6 +34,9 @@ test("new and existing conversations can select an isolated prompt snapshot", ()
   assert.doesNotMatch(selector, /<select/);
   assert.match(projectPicker, /systemPromptSelection/);
   assert.match(chatWindow, /<SystemPromptSelector/);
+  assert.match(chatWindow, /toolbarControl=\{composerToolbarControl\}/);
+  assert.match(selector, /system\.searchTemplates/);
+  assert.match(selector, /system\.previewTemplate/);
   assert.match(sessionRoute, /createSessionSystemPromptBinding/);
   assert.match(manager, /resolveSessionSystemPrompt/);
   assert.match(manager, /appendSessionSystemPromptBinding/);

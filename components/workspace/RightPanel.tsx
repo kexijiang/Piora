@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type ReactNode } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { useI18n } from "@/hooks/useI18n";
@@ -188,13 +188,19 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
     focusFileSearch: () => { setFileNavMode("tree"); setTreeDrawerOpen(true); requestAnimationFrame(() => explorerRef.current?.focusSearch()); },
   }), [activeTab]);
 
+  useEffect(() => { setAddMenuOpen(false); }, [active, activeTab]);
+
   useEffect(() => {
     if (!addMenuOpen) return;
     const dismiss = (event: PointerEvent) => {
       if (!addMenuRef.current?.contains(event.target as Node) && !toolMenuRef.current?.contains(event.target as Node)) setAddMenuOpen(false);
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAddMenuOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setAddMenuOpen(false);
+        addButtonRef.current?.focus();
+      }
     };
     window.addEventListener("pointerdown", dismiss);
     window.addEventListener("keydown", closeOnEscape);
@@ -204,7 +210,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
     };
   }, [addMenuOpen]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!addMenuOpen) return;
     const placeMenu = () => {
       const rect = addButtonRef.current?.getBoundingClientRect();
@@ -328,7 +334,7 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
       <div className={styles.panelChromeActions}>
         <div ref={addMenuRef} className={styles.addToolWrap}>
           <button ref={addButtonRef} className={styles.addToolButton} type="button" aria-label={t("workspace.addTool")} aria-haspopup="menu" aria-expanded={addMenuOpen} onClick={() => setAddMenuOpen((open) => !open)}><AliIcon name="plus" size={15} /></button>
-          {addMenuOpen ? createPortal(<div ref={toolMenuRef} className={styles.toolMenu} role="menu" style={addMenuPosition}>
+          {active && addMenuOpen ? createPortal(<div ref={toolMenuRef} className={styles.toolMenu} role="menu" style={addMenuPosition}>
             {TOOLS.map((tool) => <button key={tool.id} type="button" role="menuitem" data-active={activeTab === tool.id ? "true" : "false"} onClick={() => selectTool(tool.id)}>
               <AliIcon name={tool.icon} size={15} />
               <span>{t(`workspace.${tool.id}`)}</span>
@@ -409,7 +415,9 @@ export const RightPanel = forwardRef<RightPanelHandle, Props>(function RightPane
       {active && activeTab === "ssh" ? <RenderErrorBoundary resetKey={`ssh:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><SSHPanel agentSessionId={props.sessionId} /></RenderErrorBoundary> : null}
     </section>
     <section id="workspace-browser" role="tabpanel" aria-labelledby="workspace-browser-tab" hidden={activeTab !== "browser"} className={styles.panel}>
-      {activeTab === "browser" ? <div className={styles.capabilityPanel}>{capabilityAccess("browser")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`browser:${props.sessionId ?? "manual"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><BrowserPanel active={active && activeTab === "browser"} maximized={props.maximized} sessionId={props.sessionId} navigationRequest={props.answerNavigation ?? browserNavigation} onNavigationConsumed={(id) => {
+      {/* Native WebContentsView sits above DOM portals. Keep the panel mounted,
+          but suspend its native surface until the tool menu closes. */}
+      {activeTab === "browser" ? <div className={styles.capabilityPanel}>{capabilityAccess("browser")}<div className={styles.capabilityPanelBody}><RenderErrorBoundary resetKey={`browser:${props.sessionId ?? "manual"}:${refreshKey}`} fallbackLabel={t("workspace.panelRenderFailed")}><BrowserPanel active={active && !addMenuOpen} maximized={props.maximized} sessionId={props.sessionId} navigationRequest={props.answerNavigation ?? browserNavigation} onNavigationConsumed={(id) => {
         props.onAnswerNavigationConsumed?.(id);
         setBrowserNavigation(current => current?.id === id ? undefined : current);
       }} /></RenderErrorBoundary></div></div> : null}

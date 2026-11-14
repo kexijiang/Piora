@@ -62,6 +62,9 @@ export function useFocusTrap(
     });
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // A themed native picker owns Escape before its surrounding dialog.
+      if (event.key === "Escape" && event.target instanceof Element
+        && event.target.closest("select")?.matches(":open")) return;
       if (event.key === "Escape" && onEscapeRef.current) {
         event.preventDefault();
         event.stopPropagation();

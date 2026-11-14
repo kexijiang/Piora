@@ -27,7 +27,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
   const [device, setDevice] = useState<Device | null>(null);
   const deviceUpdateRevision = useRef(0);
   const [deviceError, setDeviceError] = useState("");
-  const [controlEnabled, setControlEnabled] = useState(true);
+  const [controlEnabled, setControlEnabled] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [recoveryError, setRecoveryError] = useState<string | null>(null);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
@@ -50,7 +50,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
   const { bindings } = useApplicationShortcuts();
   useEffect(() => {
     deviceUpdateRevision.current++;
-    setDevice(null); setDeviceError(""); setControlEnabled(true); setZoom("fit"); if (!serial) return;
+    setDevice(null); setDeviceError(""); setControlEnabled(false); setZoom("fit"); if (!serial) return;
     const controller = new AbortController(); let pending = false;
     const load = async () => {
       if (pending) return; pending = true;
@@ -66,6 +66,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
   const presentation = embedded ? "sidebar" : "floating";
   const presenting = active && state?.serial === serial && Boolean(state?.open && ((state.presentation ?? "floating") === presentation || state.pendingPresentation === presentation));
   const currentDevice = device?.serial === serial ? device : null;
+  useEffect(() => { setControlEnabled(false); }, [presenting, currentDevice?.generation]);
   const live = useHarmonyMirror({ active: presenting && currentDevice?.state === "online", serial,
     generation: currentDevice?.generation, label: copy("手机画面", "Device screen") });
   const refreshMirror = live.refresh;
@@ -102,7 +103,7 @@ export function MirrorWindow({ embedded = false, serial: embeddedSerial, active 
         deviceUpdateRevision.current++;
         setDevice(latest.devices.find(item => item.serial === serial) ?? null);
       }
-      setNeedsConfirmation(false); setRecoveryError(null); setControlEnabled(true); refreshMirror();
+      setNeedsConfirmation(false); setRecoveryError(null); setControlEnabled(false); refreshMirror();
     } catch (error) {
       if (controller.signal.aborted) return;
       setRecoveryError(error instanceof HarmonyRequestError ? error.messageFor(chinese) : error instanceof Error ? error.message : String(error));

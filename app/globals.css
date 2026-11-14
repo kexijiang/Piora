@@ -5893,3 +5893,105 @@ img[src^="/api/memes/"] { max-width: min(200px, 100%); max-height: 200px; object
 .material-icon-dark { display: none; }
 html.dark .material-icon-light { display: none; }
 html.dark .material-icon-dark { display: inline; }
+
+/* Keep every single-choice picker in the app's theme, including the top-layer
+ * option menu. Older browsers retain their native select implementation. */
+@supports (appearance: base-select) {
+  select:not([multiple]):not([size]),
+  select:not([multiple])[size="1"],
+  select:not([multiple]):not([size])::picker(select),
+  select:not([multiple])[size="1"]::picker(select) {
+    appearance: base-select;
+  }
+
+  select:not([multiple]):not([size]),
+  select:not([multiple])[size="1"] {
+    align-items: center;
+    gap: 8px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  select:not([multiple])::picker-icon {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+    color: var(--text-dim);
+    font-size: .85em;
+  }
+
+  select:not([multiple]):focus-visible {
+    outline: 2px solid var(--focus-ring);
+    outline-offset: 2px;
+  }
+
+  select:not([multiple]):disabled {
+    cursor: default;
+    opacity: .55;
+  }
+
+  select:not([multiple])::picker(select) {
+    min-inline-size: anchor-size(width);
+    max-inline-size: min(38rem, calc(100vw - 16px));
+    max-block-size: min(360px, 55dvh);
+    margin-block: 5px;
+    padding: 5px;
+    overflow: auto;
+    overscroll-behavior: contain;
+    border: 1px solid var(--selection-border);
+    border-radius: var(--radius-surface);
+    background: var(--selection-background);
+    color: var(--text);
+    box-shadow: var(--selection-shadow);
+    backdrop-filter: var(--selection-filter);
+    font-family: var(--ui-font-family);
+    font-size: var(--text-sm);
+    scrollbar-width: thin;
+  }
+
+  select:not([multiple]):not([size]) option,
+  select:not([multiple])[size="1"] option {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-block-size: 34px;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--text);
+    line-height: 1.45;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  select:not([multiple]) option:checked {
+    background: var(--bg-selected);
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  select:not([multiple]) option:not(:disabled):is(:hover, :focus-visible) {
+    outline: none;
+    background: var(--bg-hover);
+  }
+
+  select:not([multiple]) option:disabled {
+    color: var(--text-dim);
+    opacity: .55;
+  }
+
+  select:not([multiple]) option::checkmark {
+    order: 1;
+    margin-inline-start: auto;
+    color: var(--accent);
+    content: "✓";
+  }
+
+  select:not([multiple]) optgroup {
+    padding: 5px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+}

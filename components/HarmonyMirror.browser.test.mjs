@@ -11,7 +11,7 @@ const require = createRequire(import.meta.url);
 const { webpack } = require("next/dist/compiled/webpack/webpack.js");
 const repo = path.resolve(import.meta.dirname, "..");
 
-test("mirror defaults to direct control, can be disabled, and renders legible messages", { timeout: 120000 }, async () => {
+test("mirror defaults to viewing, enables control explicitly, and renders legible messages", { timeout: 120000 }, async () => {
   const root=await mkdtemp(path.join(tmpdir(),"piora-mirror-ui-"));let browser, recording = null, completion = null, failInput = false, geometryWidth = 360, deviceGeneration = 1;
   try {
     await writeFile(path.join(root,"loader.cjs"),`const ts=require(${JSON.stringify(require.resolve("typescript"))});module.exports=s=>ts.transpileModule(s,{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText`);
@@ -56,8 +56,21 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
       },dark);
       assert.ok(ratios.every(value=>value>=4.5),`standalone ${dark?'dark':'light'} message contrast: ${ratios}`);
     }
-    assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'true');
+    assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'false');
+    assert.equal(await page.getByRole('contentinfo',{name:'手机控制'}).count(),0,'viewing has no phone control toolbar');
+    await page.getByLabel('投屏交互区域').hover();
+    await page.getByLabel('投屏交互区域').click();
+    await page.getByLabel('投屏交互区域').press('Enter');
+    await page.mouse.wheel(0,120);
+    assert.equal(geometryRequested,false,'default viewing never starts the device control transport on hover or input');
     assert.deepEqual(inputRequests,[],'opening the mirror must not acquire an input lease');
+    await page.getByRole('button',{name:'操控手机'}).click();
+    assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'true');
+    await page.evaluate(()=>window.updateMirror({open:false}));
+    await page.waitForFunction(()=>document.querySelector('[aria-label="操控手机"]').getAttribute('aria-pressed')==='false');
+    await page.evaluate(()=>window.updateMirror({open:true}));
+    assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'false','reopening the same device returns to viewing');
+    await page.getByRole('button',{name:'操控手机'}).click();
     assert.equal(await page.locator('footer input, footer form').count(),0,'no text entry in mirror controls');
     assert.equal(await page.getByLabel('投屏交互区域').evaluate(el=>getComputedStyle(el).cursor),'default');
     for (const width of [280, 362, 520]) {
@@ -317,6 +330,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     assert.equal(await page.getByRole('button',{name:'检查并恢复设备',exact:true}).count(),1,'confirmation stays visible until its response is consumed');
     releaseConfirmation();
     await page.waitForFunction(previous=>window.refreshCount===previous+1&&window.frameOptions.generation===2,refreshBeforeConfirmation);
+    assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'false','confirmed recovery does not enable phone controls');
     await page.getByRole('button',{name:'检查并恢复设备',exact:true}).waitFor({state:'detached'});
     assert.deepEqual(recoveryRequests[1],{action:'confirm',serial:'phone',released:true,recordingStopped:true});
     assert.equal(mutations().length,beforeRecovery,'restoring the viewer does not replay failed gestures');
@@ -329,6 +343,7 @@ test("mirror defaults to direct control, can be disabled, and renders legible me
     await page.evaluate(()=>{window.reconnected=false;window.setMirrorFailure({controlStatus:'recovering',error:'旧视频清理失败'});});
     await page.getByRole('button',{name:'重连',exact:true}).click();
     await page.waitForFunction(()=>window.reconnected&&window.frameOptions.generation===3);
+    assert.equal(await page.getByRole('button',{name:'操控手机'}).getAttribute('aria-pressed'),'false','video-only reconnect returns to viewing');
     assert.equal(recoveryRequests.length,3,'a video-only warning needs no physical-release confirmation');
     await stalePoll.fulfill({json:{devices:[{serial:'phone',state:'online',generation:2,capabilities:{screenshot:true}}]}});
     await page.waitForTimeout(100);

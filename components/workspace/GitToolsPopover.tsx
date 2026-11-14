@@ -8,6 +8,7 @@ import { rememberWorktreeMetadata, useWorktrees, type WorktreeEntry } from "@/ho
 import type { GitStatusResponse } from "@/lib/git-types";
 import { getTrackedGitLineStats } from "@/lib/git-line-stats";
 import { AliIcon } from "../AliIcon";
+import { GitToolsIcon } from "./GitToolsIcon";
 import styles from "./GitToolsPopover.module.css";
 
 interface Props {
@@ -35,7 +36,7 @@ export function GitToolsPopover(props: Props) {
   return <div className={styles.anchor}>
     <button ref={trigger} className={`topbar-control ${styles.trigger}`} type="button" aria-label={t("gitTools.title")} title={t("gitTools.title")}
       aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? dialogId : undefined} onClick={() => setOpen(value => !value)}>
-      <AliIcon name="branches" size={15} /><span className={styles.triggerText}>{t("gitTools.title")}</span>
+      <GitToolsIcon name="branch" className={styles.leadingIcon} /><span className={styles.triggerText}>{t("gitTools.title")}</span>
       <span className={styles.stats}><span className={styles.add}>+{stats.additions}</span><span className={styles.remove}>−{stats.deletions}</span></span>
     </button>
     {open && createPortal(<GitToolsContent {...props} id={dialogId} trigger={trigger} onClose={() => setOpen(false)} />, document.body)}
@@ -110,11 +111,11 @@ function GitToolsContent({ cwd, status, onOpenChanges, onOpenCommit, onSelectWor
       <button type="button" className={styles.iconButton} aria-label={t("gitTools.expand")} onClick={openChanges}><AliIcon name="expand" size={14} /></button>
       <button type="button" className={styles.iconButton} aria-label={t("gitTools.close")} onClick={onClose}><AliIcon name="close" size={14} /></button>
     </div>
-    <button className={styles.row} type="button" onClick={openChanges}><AliIcon name="diff" size={15} /><span className={styles.label}>{t("gitTools.changes")}</span><span className={styles.stats}><span className={styles.add}>+{stats.additions}</span><span className={styles.remove}>−{stats.deletions}</span></span></button>
+    <button className={styles.row} type="button" onClick={openChanges}><GitToolsIcon name="changes" className={styles.leadingIcon} /><span className={styles.label}>{t("gitTools.changes")}</span><span className={styles.stats}><span className={styles.add}>+{stats.additions}</span><span className={styles.remove}>−{stats.deletions}</span></span></button>
     <button className={styles.row} type="button" aria-expanded={expanded} aria-controls={`${id}-worktrees`} onClick={() => setExpanded(value => !value)} title={currentRoot}>
-      <AliIcon name="branches" size={15} /><span className={styles.label}>{status.branch || current?.branch || t("gitTools.detached")}</span><AliIcon name="chevron-right" size={12} style={{ transform: expanded ? "rotate(-90deg)" : "rotate(90deg)" }} />
+      <GitToolsIcon name="branch" className={styles.leadingIcon} /><span className={styles.label}>{status.branch || current?.branch || t("gitTools.detached")}</span><AliIcon name="chevron-right" size={12} style={{ transform: expanded ? "rotate(-90deg)" : "rotate(90deg)" }} />
     </button>
-    <button className={styles.row} type="button" onClick={() => { onClose(); onOpenCommit(); }}><AliIcon name="cloud-upload" size={15} /><span className={styles.label}>{t("review.commitOrPush")}</span></button>
+    <button className={styles.row} type="button" onClick={() => { onClose(); onOpenCommit(); }}><GitToolsIcon name="push" className={styles.leadingIcon} /><span className={styles.label}>{t("review.commitOrPush")}</span></button>
     {expanded && <section id={`${id}-worktrees`} className={styles.section} aria-label={t("gitTools.worktrees")}>
       <div className={styles.caption}>{t("gitTools.worktrees")}{state ? ` · ${state.worktrees.length}` : ""}</div>
       {(state?.worktrees.length ?? 0) >= 8 && <div className={styles.form}><input className={styles.input} aria-label={t("sidebar.filterWorktrees")} placeholder={t("sidebar.filterWorktrees")} value={query} onChange={event => setQuery(event.target.value)} /></div>}
@@ -124,7 +125,7 @@ function GitToolsContent({ cwd, status, onOpenChanges, onOpenCommit, onSelectWor
           const selected = samePath(tree.path, currentRoot);
           return <div key={tree.path} className={styles.checkoutRow}>
             <button className={styles.checkout} type="button" aria-current={selected ? "true" : undefined} disabled={busy} title={tree.path} onClick={() => { if (!selected) onSelectWorktree(tree.path); onClose(); }}>
-              <AliIcon name={selected ? "check" : "branches"} size={13} />
+              {selected ? <AliIcon name="check" size={16} className={styles.leadingIcon} /> : <GitToolsIcon name="branch" className={styles.leadingIcon} />}
               <span className={styles.checkoutText}><span className={styles.branch}><span className={styles.label}>{tree.branch || t("gitTools.detached")}</span>{tree.isMain && <span className={styles.tag}>{t("sidebar.main")}</span>}</span><span className={styles.checkoutPath}>{tree.path}</span></span>
             </button>
             {!tree.isMain && <button className={styles.iconButton} type="button" disabled={busy || selected} aria-label={t("sidebar.removeWorktreeTitle", { path: tree.path })} title={selected ? t("gitTools.leaveBeforeRemove") : t("sidebar.removeWorktreeTitle", { path: tree.path })} onClick={() => { setRemoving({ tree, dirty: false }); setMutationError(null); }}><AliIcon name="delete" size={13} /></button>}

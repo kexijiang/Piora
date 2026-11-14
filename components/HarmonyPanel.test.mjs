@@ -14,11 +14,11 @@ test("workbench preserves fenced tool actions without a hidden viewer", () => {
   assert.doesNotMatch(source, /useHarmonyLiveFrame|<canvas|frameZoom/);
   assert.match(source, /onMaximizedChange\(!maximized\)/);
 });
-test("only the independent mirror consumes frames and control defaults on but input is dispatched explicitly", () => {
+test("only the independent mirror consumes frames and phone control is opt-in", () => {
   assert.match(mirror, /useHarmonyMirror/);
   assert.doesNotMatch(mirror, /!state.minimized/);
   assert.match(mirror, /ref=\{live.surfaceRef\}/);
-  assert.match(mirror, /\[controlEnabled, setControlEnabled\] = useState\(true\)/);
+  assert.match(mirror, /\[controlEnabled, setControlEnabled\] = useState\(false\)/);
   assert.match(mirror, /enabled: controlEnabled && live.state === "live" && presenting/);
   assert.match(source, /<nav hidden className=\{styles.workbenchTabs\}/);
   assert.match(source, /<main hidden className=\{styles.workbenchContent\}/);

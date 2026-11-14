@@ -2,7 +2,7 @@
 
 配套后端为独立私有仓库 [piora-analytics](https://github.com/kexijiang/piora-analytics)。其中包含需求分析、成熟方案比较、51 个 API 的 OpenAPI/字段示例、29 表 PostgreSQL 设计、React 管理看板和 10 张 UI 图。
 
-![组织统计状态页（隔离测试配置）](images/organization-analytics-settings.png)
+“数据与诊断”已移除组织使用统计卡片。企业配置和采集逻辑不依赖此入口；本机状态继续通过桌面认证的只读 `/api/analytics/status` 接口提供。
 
 ## 启用范围
 
@@ -26,7 +26,7 @@
 | lib/prompt-run-registry.ts、lib/rpc-manager.ts | 任务身份/结束、异步上下文、工具重载后重新安装观察器 |
 | instrumentation-node.ts | 每分钟补扫启用后的命令 journal，重启恢复 pending 调用 |
 | lib/analytics-status.ts、app/api/analytics/status/route.ts | 本机只读摘要，继承现有桌面/同源 API 认证 |
-| components/OrganizationAnalyticsSettings.tsx | 组织统计状态与采集范围说明 |
+| components/SettingsDialog.tsx | 数据与诊断仅展示数据位置与运行日志，不再挂载组织统计卡片 |
 
 API/Worker 与客户端事件契约在后端仓库维护。客户端只上传统计元数据：人工 Query、冷启动/明确唤起、非休眠运行时长、前台活跃时长、任务/模型调用和 Token、文件工具落盘行差异。提示词、回复、代码、diff、文件路径和模型密钥不上传。
 
@@ -70,6 +70,6 @@ node_modules/.bin/tsc --noEmit -p desktop/tsconfig.json
 
 第二轮 CI 六个 Windows 测试分片与生产构建通过；独立包校验发现扩展的源码加载路径缺少 diff 和共享存储文件。已补齐 standalone 清单，并通过 16 项打包相关定向测试：隔离目录故意省略 diff 时失败、补齐后成功，实际 Electron 从 ASAR 测试夹具加载统计模块也通过。完整安装包不在本地构建，最终验证交给后续 Actions。
 
-另已在真实开发 Electron 中通过设置导航、未配置状态、刷新和重载检查，未发生 renderer error。报告：.verification/desktop-e2e-czepTB/report.md（含完整状态卡截图复测）；首次成功记录为 desktop-e2e-mCYUsq。前两次启动因 worktree 共享依赖超出 Turbopack root 而中断；成功复测临时按当前 Next.js 文档配置 additional root 指向共享依赖，结束后已恢复 next.config.ts。没有修改主工作目录或在其中运行开发服务。
+历史版本在真实开发 Electron 中通过设置导航、未配置状态、刷新和重载检查，未发生 renderer error。报告：.verification/desktop-e2e-czepTB/report.md（含旧版状态卡截图复测）；首次成功记录为 desktop-e2e-mCYUsq。前两次启动因 worktree 共享依赖超出 Turbopack root 而中断；成功复测临时按当前 Next.js 文档配置 additional root 指向共享依赖，结束后已恢复 next.config.ts。没有修改主工作目录或在其中运行开发服务。移除卡片后，`test-organization-analytics-ui.mjs` 改为检查四个旧设置入口均不存在、数据位置与运行日志仍可访问，并直接读取状态接口；旧报告不代表新版脚本已通过。
 
 本次不在主开发目录运行 next build、不构建发布包、不启用现有用户统计。上线仍需部署后端、企业安全配置、5 台试点及 GitHub Actions Windows 发布。

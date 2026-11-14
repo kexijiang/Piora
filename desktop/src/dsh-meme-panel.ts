@@ -1,7 +1,18 @@
 /** Add controls missing from upstream's standalone page; all mutations use upstream APIs. */
 export function extendMemePanel(source: string): string {
   if (source.split("</body>").length !== 2) throw new Error("Unsupported DSH Meme panel layout");
-  return source.replace("</body>", String.raw`<script>
+  return source.replace("</body>", String.raw`<style>
+@supports (appearance: base-select) {
+  select:not([multiple]), select:not([multiple])::picker(select) { appearance: base-select; }
+  select:not([multiple]) { align-items: center; gap: 8px; min-width: 0; border-radius: 8px; font: inherit; }
+  select:not([multiple])::picker(select) { min-width: anchor-size(width); max-width: calc(100vw - 16px); max-height: min(360px, 55dvh); margin-block: 5px; padding: 5px; overflow: auto; border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 12px; background: var(--bg, Canvas); color: var(--text, CanvasText); box-shadow: 0 10px 28px #0003; font: inherit; }
+  select:not([multiple]) option { display: flex; align-items: center; gap: 16px; min-height: 34px; padding: 8px 10px; border-radius: 7px; white-space: normal; overflow-wrap: anywhere; }
+  select:not([multiple]) option:checked { background: color-mix(in srgb, currentColor 10%, transparent); }
+  select:not([multiple]) option:not(:disabled):is(:hover, :focus-visible) { background: color-mix(in srgb, currentColor 7%, transparent); }
+  select:not([multiple]) option:disabled { opacity: .5; }
+  select:not([multiple]) option::checkmark { order: 1; margin-left: auto; content: "✓"; }
+}
+</style><script>
 (async () => {
   const bar = document.createElement('section'); bar.className = 'row';
   bar.innerHTML = '<label>发图频率 <select id="piora-gear"><option value="off">关闭主动发图</option><option value="auto">看气氛</option><option value="active">活跃</option><option value="always">每轮都发</option></select></label><label>发送方式 <select id="piora-mode"><option value="auto">自动</option><option value="text">纯文字</option><option value="image">图片</option></select></label><label>图库 <select id="piora-pack"></select></label><label><input id="piora-enabled" type="checkbox">模型可用</label><button id="piora-zip">导入 ZIP</button><input id="piora-zip-file" type="file" accept=".zip" hidden><button id="piora-export">导出当前图库</button><button id="piora-recognize">AI 识别并收藏图片</button><input id="piora-image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>';

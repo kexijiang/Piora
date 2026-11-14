@@ -141,7 +141,7 @@ test("matches the Codex project rail with real pin, metadata, edit, and new-chat
   assert.match(source, /sidebar\.openProjectInExplorer/);
   assert.match(source, /disabled=\{!window\.piDesktop\?\.openPath\}/);
   assert.match(source, /void openPath\(group\.projectRoot\)/);
-  assert.match(source, /sidebar\.newSessionTitle[\s\S]{0,180}<AliIcon name="chat-bubble-plus" size=\{16\} strokeWidth=\{1\.5\}/);
+  assert.match(source, /sidebar\.newSessionTitle[\s\S]{0,180}<AliIcon name="square-pen" size=\{16\} strokeWidth=\{1\.5\}/);
   assert.match(sidebarStyles, /button\.menuItem:disabled\s*\{[^}]*cursor:\s*default;[^}]*opacity:\s*0\.45/s);
   assert.match(source, /styles\.pinnedUnpin/);
   assert.match(source, /togglePinnedProject\(group\.projectRoot\)/);

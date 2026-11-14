@@ -1,8 +1,16 @@
 .field { grid-column: 1 / -1; min-width: 0; }
-.field .input { min-height: 44px; font-family: inherit; font-size: var(--text-base); }
+.field .input { width: 100%; min-height: 180px; resize: vertical; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text); font-family: inherit; font-size: var(--text-sm); font-weight: 400; line-height: 1.8; }
 .preview { display: grid; gap: 10px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: var(--radius-surface); background: var(--bg); }
 .caption { color: var(--text-muted); font-size: var(--text-xs); }
 .status { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; font-size: var(--text-sm); }
 .dot { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--accent); }
 .label { color: var(--text); overflow-wrap: anywhere; min-width: 0; }
 .elapsed { color: var(--text-muted); white-space: nowrap; }
+.actions, .actions > div, .previewHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.actions { margin-bottom: 8px; }
+.actions button, .previewHeading button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); color: var(--text-muted); font: inherit; font-size: var(--text-xs); cursor: pointer; }
+.actions button:hover:not(:disabled), .previewHeading button:hover { background: var(--bg-hover); color: var(--text); }
+.actions button:disabled { opacity: .5; cursor: default; }
+.actions .generate { background: var(--accent); border-color: var(--accent); color: var(--accent-foreground, #fff); }
+.actions .generate:hover:not(:disabled) { background: var(--accent-hover); color: var(--accent-foreground, #fff); }
+.error { color: var(--status-failed, #dc2626); font-size: var(--text-xs); }

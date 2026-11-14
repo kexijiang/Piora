@@ -63,8 +63,8 @@ export class MirrorCaptureSession {
     catch (error) { await session.close(); throw error; }
   }
 
-  private async shell(command: string, operation: string) {
-    const result = await this.run(["-t", this.serial, "shell", command], operation, undefined, 8000);
+  private async shell(command: string, operation: string, timeout = 8000) {
+    const result = await this.run(["-t", this.serial, "shell", command], operation, undefined, timeout);
     return result.stdout.toString("utf8").replace(/\0/g, "");
   }
 
@@ -133,9 +133,18 @@ export class MirrorCaptureSession {
     if (!match) throw await this.startupFailure(library, version);
     // uitest daemonizes: $! identifies the launcher, not the long-lived child.
     let ready = false;
-    for (let attempt = 0; attempt < 20; attempt++) {
-      if ((await this.shell("cat /proc/net/unix", "debug_video_ready")).includes("@scrcpy_grpc_socket")) { ready = true; break; }
-      await new Promise(resolve => setTimeout(resolve, 100));
+    const deadline = performance.now() + MIRROR_PROFILE.startupTimeoutMs;
+    for (let attempt = 0; attempt < 20 && performance.now() < deadline; attempt++) {
+      const remaining = Math.max(1, Math.ceil(deadline - performance.now()));
+      if ((await this.shell("cat /proc/net/unix", "debug_video_ready", remaining)).includes("@scrcpy_grpc_socket")) { ready = true; break; }
+      if (attempt === 0) {
+        // A loader which already reported an ABI/permission failure cannot
+        // create the socket. Read its evidence before paying for 20 HDC trips.
+        const failure = await this.startupFailure(library, version);
+        if (failure.details?.reason === "debug-video-abi-incompatible"
+          || /dlopen[^\r\n]*failed[^\r\n]*permission denied/i.test(String(failure.details?.diagnostic ?? ""))) throw failure;
+      }
+      if (performance.now() < deadline) await new Promise(resolve => setTimeout(resolve, Math.min(100, deadline - performance.now())));
     }
     if (!ready || !await this.ownsProcess()) throw await this.startupFailure(library, version);
     await this.openForward();

@@ -148,7 +148,6 @@ const ExtensionsConfig = dynamic(() => import("./ExtensionsConfig").then((module
 const ProjectToolsConfig = dynamic(() => import("./ProjectToolsConfig").then((module) => module.ProjectToolsConfig), { ssr: false, loading: SettingsSectionLoading });
 const AppearanceSettings = dynamic(() => import("./AppearanceSettings").then((module) => module.AppearanceSettings), { ssr: false });
 const CompanionSettingsDialog = dynamic(() => import("./CompanionSettingsDialog").then((module) => module.CompanionSettingsDialog), { ssr: false });
-const RemoteControlSettings = dynamic(() => import("./RemoteControlSettings").then((module) => module.RemoteControlSettings), { ssr: false });
 const SpeechSettings = dynamic(() => import("./SpeechSettings").then((module) => module.SpeechSettings), { ssr: false });
 const UsageStatsPanel = dynamic(() => import("./UsageStatsPanel").then((module) => module.UsageStatsPanel), { ssr: false });
 const TrashSettings = dynamic(() => import("./TrashSettings").then((module) => module.TrashSettings), { ssr: false });
@@ -2072,9 +2071,6 @@ export function AppShell() {
           />
         ) : chooseSettingsProject,
         appearance: <AppearanceSettings />,
-        remote: (
-          <RemoteControlSettings sessionId={selectedSession?.id ?? null} />
-        ),
         speech: (
           <SpeechSettings />
         ),

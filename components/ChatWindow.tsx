@@ -168,7 +168,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
   // A new-chat action remounts this window. Directory names cannot identify
   // drafts: two new chats in the same project must never restore each other.
   const [newChatDraftKey] = useState(() => `new:${crypto.randomUUID()}`);
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const laboratory = useLaboratorySettings();
   const compactProcess = true;
   const isMobile = useIsMobile();
@@ -647,13 +647,13 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
 
   // Keep the composer independent of token/status-clock renders. Its own input,
   // model, queue and recovery state still update immediately.
-  const composerContextControl = useMemo(() => (
-    <>
-      {isEmptyNew ? <NewSessionContextChip label={newSessionProjectLabel} title={isProjectlessChat ? undefined : messageCwd} /> : null}
-      <SystemPromptSelector selection={systemPromptSelection} binding={systemPromptBinding}
-        disabled={sessionBusy || systemPromptSaving} onChange={handleSystemPromptSelection} />
-    </>
-  ), [isEmptyNew, newSessionProjectLabel, isProjectlessChat, messageCwd, systemPromptSelection, systemPromptBinding, sessionBusy, systemPromptSaving, handleSystemPromptSelection]);
+  const composerContextControl = useMemo(() => isEmptyNew
+    ? <NewSessionContextChip label={newSessionProjectLabel} title={isProjectlessChat ? undefined : messageCwd} />
+    : null, [isEmptyNew, newSessionProjectLabel, isProjectlessChat, messageCwd]);
+  const composerToolbarControl = useMemo(() => (
+    <SystemPromptSelector selection={systemPromptSelection} binding={systemPromptBinding}
+      disabled={sessionBusy || systemPromptSaving} onChange={handleSystemPromptSelection} />
+  ), [systemPromptSelection, systemPromptBinding, sessionBusy, systemPromptSaving, handleSystemPromptSelection]);
 
   const { queueAction, edit: editQueuedDraft } = chatCommands;
   const queueActions = useMemo<ChatCommandQueueActions>(() => ({
@@ -684,6 +684,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
       variant={isEmptyNew ? "launcher" : "conversation"}
       placeholder={isEmptyNew ? t("newSession.placeholder") : undefined}
       contextControl={composerContextControl}
+      toolbarControl={composerToolbarControl}
       queueContent={composerQueueContent}
       workflow={laboratory.planGoalEnabled ? { mode: workflow.snapshot?.mode ?? "agent", turnBudget: workflow.snapshot?.turnBudget ?? DEFAULT_WORKFLOW_TURN_BUDGET } : undefined}
       workflowEnabled={laboratory.ready ? laboratory.planGoalEnabled : undefined}
@@ -974,6 +975,7 @@ export function ChatWindow({ visible = true, historyVisible = false, onHistoryCo
         >
           <div className="chat-column">
             <TaskDuration
+              locale={locale}
               key={session?.id ?? sessionIdRef.current ?? "new"}
               timing={chatCommands.taskTiming}
               hideSettled={timingInReply}

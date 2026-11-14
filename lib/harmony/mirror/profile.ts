@@ -7,13 +7,16 @@ export const MIRROR_PROFILE = Object.freeze({
   // A 60 Hz idle refresh leaves scheduling headroom without forcing the
   // encoder to produce an additional duplicate every 8 ms.
   repeatIntervalMs: 16,
-  maxViewerPackets: 6,
+  // HDC may deliver several fresh frames in one callback. Age and bytes bound
+  // latency; this capacity only protects against unusually large bursts.
+  maxViewerPackets: 24,
   maxViewerBytes: 8 * 1024 * 1024,
   maxViewerAgeMs: 80,
   keyframeRequestIntervalMs: 250,
   // Ask for a new frame before a quiet encoder forces a client reconnect.
   idleKeyframeIntervalMs: 2000,
   reconnectGraceMs: 5000,
+  startupTimeoutMs: 8000,
 });
 
 export function captureArguments(scale = MIRROR_PROFILE.scale): string {

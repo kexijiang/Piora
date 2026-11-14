@@ -1,6 +1,4 @@
 "use client";
-import { CredentialVaultSettings } from "./CredentialVaultSettings";
-import { OrganizationAnalyticsSettings } from "./OrganizationAnalyticsSettings";
 import { RunningStatusSettings } from "./RunningStatusSettings";
 import { AnswerLinkSettings } from "./AnswerLinkSettings";
 import { LaboratorySettings } from "./LaboratorySettings";
@@ -16,7 +14,6 @@ import { DesktopAutoLaunchSetting } from "./DesktopAutoLaunchSetting";
 import { RuntimeLogSettings } from "./RuntimeLogSettings";
 import { DesktopUpdateSourceSetting } from "./DesktopUpdateSourceSetting";
 import { DesktopUpdateScheduleSetting } from "./DesktopUpdateScheduleSetting";
-import { SettingsPortabilityCard } from "./SettingsPortabilityCard";
 import { NetworkProxySettings } from "./NetworkProxySettings";
 import { ToolApprovalSettings } from "./ToolApprovalSettings";
 import { ModelRetrySettings } from "./ModelRetrySettings";
@@ -111,7 +108,8 @@ export function SettingsDialog({
   desktop,
 }: Props) {
   const { t } = useI18n();
-  const activeKey = normalizeSettingsKey(requestedKey);
+  const normalizedKey = normalizeSettingsKey(requestedKey);
+  const activeKey = normalizedKey === "data" && !desktop.available ? "general" : normalizedKey;
   const { mode: runningSendMode, setMode: setRunningSendMode } = useRunningSendMode();
   const {
     enabled: liveOutputAutoScrollEnabled,
@@ -187,10 +185,10 @@ export function SettingsDialog({
     icon: <AliIcon name={page.icon as AliIconName} size={16} />,
   }))), []);
 
-  const availableEntries = useMemo(() => detailEntries.filter((entry) => (
-    ["general", "data", "network", "conversation", "laboratory"].includes(entry.key)
+  const availableEntries = useMemo(() => detailEntries.filter((entry) => entry.key === "data" ? desktop.available : (
+    ["general", "network", "conversation", "laboratory"].includes(entry.key)
     || sections[entry.key] !== undefined
-  )), [detailEntries, sections]);
+  )), [desktop.available, detailEntries, sections]);
 
   useEffect(() => {
     if (!open) setSearchQuery("");
@@ -500,9 +498,6 @@ export function SettingsDialog({
               ) : activeKey === "laboratory" ? <LaboratorySettings /> : activeKey === "data" ? (
               <>
                 <div className={styles.contentHeading}><h2>{t("settings.page.data")}</h2><p>{t("settings.page.dataDescription")}</p></div>
-                <div data-settings-id="general.portability"><SettingsPortabilityCard /></div>
-                <CredentialVaultSettings />
-                {desktop.available ? <OrganizationAnalyticsSettings /> : null}
                 {desktop.available && window.piDesktop?.getAgentDataDirectory ? <section className={styles.conversationSection}>
                   <div className={styles.agentDataHeader}>
                     <div className={styles.conversationCopy}>
@@ -640,7 +635,7 @@ export function SettingsDialog({
                 <ReplySuggestionsSettings cwd={modelCwd} />
                 <h3 className={styles.settingsSectionHeading}>{t("settings.conversation.runtimeSection")}</h3>
                 <div className={styles.runtimeCards}>
-                  <div data-settings-id="general.runningStatusLabel"><RunningStatusSettings /></div>
+                  <div data-settings-id="general.runningStatusLabel"><RunningStatusSettings cwd={modelCwd} /></div>
                   <div data-settings-id="general.modelRetry"><ModelRetrySettings /></div>
                   <div data-settings-id="models.compaction"><ModelCompactionSettings /></div>
                   <ModelFallbackSetting />
