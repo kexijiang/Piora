@@ -2,7 +2,7 @@
 
 > Deterministically generated from the committed npm lockfile. Do not edit by hand; run `npm run licenses:generate`.
 
-Lockfile SHA-256: `cd388d96ad13781481549b84d5148ff045e2510df0fb53b25bc7513a2dfee7f2`
+Lockfile SHA-256: `3ed3991d7a353ded67c10cb23035437d8b51aa6d945069f98e57aeaf740c5f27`
 
 Unique locked packages: **1271**. Runtime packages: **771**. Build/development-only packages: **500**.
 
@@ -468,7 +468,7 @@ Every locked package declares a license.
 | `hastscript` | `9.0.1` | MIT | No |
 | `highlight.js` | `10.7.3` | BSD-3-Clause | No |
 | `highlightjs-vue` | `1.0.0` | CC0-1.0 | No |
-| `hono` | `4.13.13` | MIT | No |
+| `hono` | `4.13.18` | MIT | No |
 | `hosted-git-info` | `9.0.3` | ISC | No |
 | `html-url-attributes` | `3.0.1` | MIT | No |
 | `html-void-elements` | `3.0.0` | MIT | No |
