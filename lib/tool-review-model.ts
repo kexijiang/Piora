@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { installAnalyticsModelObserver } from "./analytics-telemetry";
 import { getAgentDir, ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { TOOL_REVIEW_LIMITS, type ToolReviewDecision, type ToolReviewModel } from "./tool-review-types";
 
@@ -29,6 +30,7 @@ export const runToolReviewModel: ToolReviewModel = async ({ context, model: sele
   if (context.length > TOOL_REVIEW_LIMITS.maxInputChars) throw new Error("Review input budget exceeded");
   const root = getAgentDir();
   const runtime = await ModelRuntime.create({ authPath: join(root, "auth.json"), modelsPath: join(root, "models.json") });
+  installAnalyticsModelObserver(runtime, "review");
   if (signal.aborted) throw new Error("Review cancelled");
   const model = runtime.getModel(selected.provider, selected.id);
   if (!model) throw new Error("Review model unavailable");

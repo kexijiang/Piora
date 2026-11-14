@@ -76,6 +76,7 @@ const assets = [
     // relative imports through this tree. Stage the complete Piora library so
     // adding a transitive helper cannot silently break only packaged builds.
     ["Piora runtime support modules", "lib"],
+    ["Piora analytics shared store", "desktop/src/analytics-store.mts"],
     ["Isolated Harmony driver worker", ".harmony-worker"],
   ].map(([name, relativePath]) => ({
     name,
@@ -394,6 +395,9 @@ async function main() {
     // The source-loaded Harmony extension parses signing project metadata.
     // This is a shared Piora runtime dependency, independent of DevEco CLI.
     join(projectRoot, "node_modules", "json5"),
+    // Telemetry is reached transitively from source-loaded first-party
+    // extensions, independently of the Webpack copy of this dependency.
+    join(projectRoot, "node_modules", "diff"),
     // sharp resolves its versioned native bindings and optional platform
     // packages dynamically; the static trace can omit those binaries.
     join(projectRoot, "node_modules", "sharp"),

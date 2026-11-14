@@ -32,7 +32,7 @@ You have an independent Shell conversation. The main chat is available only thro
 
 export async function resolveShellAgentModel(session: ManagedShellSession) {
   const cwd = await resolveModelRequestCwd(session.state.initialCwd);
-  const services = await createTrustedModelServices(cwd);
+  const services = await createTrustedModelServices(cwd, "shell");
   const settings = await readShellSettings();
   const requested = session.state.model || settings.model;
   const scope = await resolveVisibleModels(services.modelRuntime, services.settingsManager.getEnabledModels());

@@ -1,4 +1,6 @@
 import { DshMemeManager } from "./dsh-meme-manager.js";
+import type { DesktopAnalytics } from "./analytics-desktop.mjs" with { "resolution-mode": "import" };
+let desktopAnalytics: DesktopAnalytics | undefined;
 import { memeNetwork } from "./dsh-meme-install.js";
 import { randomBytes } from "node:crypto";
 import { preparePetRoot } from "./dsh-pet-paths.js";
@@ -2000,7 +2002,7 @@ function createCompanionWindow(url: URL, log: Logger): BrowserWindow {
   window.webContents.on("context-menu", () => {
     if (window.isDestroyed()) return;
     Menu.buildFromTemplate([
-      { label: brandText("打开 Piora"), click: () => { focusMainWindow(); } },
+      { label: brandText("打开 Piora"), click: () => { focusMainWindow(undefined, "menu"); } },
       { label: "打开随身舱", click: () => { showCompanionPanel(); } },
       { label: "桌宠设置", click: () => { focusMainWindow("companion-settings"); } },
       { type: "separator" },
@@ -2226,11 +2228,12 @@ function closeCompanionWindow(): void {
   updateTrayMenu();
 }
 
-function focusMainWindow(action?: string): boolean {
+function focusMainWindow(action?: string, analyticsReason?: "manual_launch" | "shortcut" | "tray" | "menu"): boolean {
   if ((!mainWindow || mainWindow.isDestroyed()) && serverUrl && logger) {
     mainWindow = createMainWindow(serverUrl, logger);
   }
   if (!mainWindow || mainWindow.isDestroyed()) return false;
+  if (analyticsReason) desktopAnalytics?.opened(analyticsReason);
   if (mainWindow.isMinimized()) mainWindow.restore();
   mainWindow.show();
   mainWindow.focus();
@@ -2343,8 +2346,8 @@ function updateTrayMenu(): void {
   const isChinese = app.getLocale().toLowerCase().startsWith("zh");
   tray.setToolTip(runningTaskCount > 0 ? `${DESKTOP_DISPLAY_NAME} · ${runningTaskCount}` : DESKTOP_DISPLAY_NAME);
   tray.setContextMenu(Menu.buildFromTemplate([
-    { label: isChinese ? brandText("显示 Piora") : brandText("Show Piora"), click: () => focusMainWindow() },
-    { label: isChinese ? "新任务" : "New task", click: () => focusMainWindow("new-session") },
+    { label: isChinese ? brandText("显示 Piora") : brandText("Show Piora"), click: () => focusMainWindow(undefined, "menu") },
+    { label: isChinese ? "新任务" : "New task", click: () => focusMainWindow("new-session", "menu") },
     { label: isChinese ? "打开随身舱" : "Open companion panel", click: () => showCompanionPanel() },
     {
       label: companionShouldBeVisible ? (isChinese ? "隐藏桌宠" : "Hide companion") : (isChinese ? "显示桌宠" : "Show companion"),
@@ -2394,8 +2397,8 @@ function installTray(): void {
     return;
   }
   tray = new Tray(image.resize({ width: 16, height: 16 }));
-  tray.on("click", () => focusMainWindow());
-  tray.on("double-click", () => focusMainWindow());
+  tray.on("click", () => focusMainWindow(undefined, "tray"));
+  tray.on("double-click", () => focusMainWindow(undefined, "tray"));
   updateTrayMenu();
   trayPollTimer = setInterval(() => { void refreshTrayTaskCount(); }, 2_500);
   trayPollTimer.unref();
@@ -2408,7 +2411,7 @@ function registerGlobalShortcutHandler(): void {
     if (!isTrustedMainWindowSender(event) || typeof enabled !== "boolean") return false;
     if (desktopDevelopmentRuntime) return !enabled;
     globalShortcut.unregister("CommandOrControl+Alt+P");
-    return !enabled || globalShortcut.register("CommandOrControl+Alt+P", () => focusMainWindow("new-session"));
+    return !enabled || globalShortcut.register("CommandOrControl+Alt+P", () => focusMainWindow("new-session", "shortcut"));
   });
 }
 
@@ -2618,7 +2621,7 @@ function registerCompanionWindowHandlers(): void {
   ipcMain.removeHandler(COMPANION_ACTION_CHANNEL);
   ipcMain.handle(COMPANION_ACTION_CHANNEL, (event, action: unknown): boolean => {
     if (!isTrustedCompletionNotificationSender(event) && !isTrustedCompanionSurfaceSender(event) || typeof action !== "string") return false;
-    if (action === "focus-main") return focusMainWindow();
+    if (action === "focus-main") return focusMainWindow(undefined, "menu");
     if (action === "open-settings") return focusMainWindow("companion-settings");
     if (action === "open-panel") return showCompanionPanel();
     if (action === "hide") {
@@ -2984,6 +2987,16 @@ function handleUnexpectedServerExit(exit: ServerExit): void {
   void notification.finally(() => app.quit());
 }
 
+async function initializeDesktopAnalytics(load = () => import("./analytics-desktop.mjs")): Promise<void> {
+  if (desktopAnalytics) return;
+  try {
+    const { startDesktopAnalytics } = await load();
+    desktopAnalytics = await startDesktopAnalytics(() => mainWindow);
+  } catch {
+    logger?.warn("Organization analytics startup failed; application remains available");
+  }
+}
+
 async function startApplication(): Promise<void> {
   const startupStartedAt = Date.now();
   recordStartupStage("waiting-for-electron");
@@ -2991,6 +3004,7 @@ async function startApplication(): Promise<void> {
   app.setAppUserModelId(desktopDevelopmentRuntime ? "io.github.kexijiang.piora.dev" : "io.github.kexijiang.piora");
 
   logger ??= new FileLogger(app.getPath("userData"));
+  await initializeDesktopAnalytics();
   logger.debug("Desktop runtime diagnostics", { versions: process.versions, platform: process.platform, arch: process.arch, packaged: app.isPackaged });
   logger.info("Starting Piora", {
     appVersion: app.getVersion(),
@@ -3182,6 +3196,8 @@ async function stopApplication(): Promise<void> {
     }).catch((error) => logger?.warn("Unable to stop computer control during shutdown", error));
   }
   await server?.stop();
+  desktopAnalytics?.stop();
+  desktopAnalytics = undefined;
   server = undefined;
   serverUrl = undefined;
   applicationToken = undefined;
@@ -3227,8 +3243,9 @@ if (!hasSingleInstanceLock) {
     app.quit();
   }).catch(() => app.exit(1));
 } else {
-  app.on("second-instance", () => {
-    focusMainWindow();
+  app.on("second-instance", (_event, argv) => {
+    const automatic = argv.includes("--piora-autostart") || argv.includes("--updated");
+    focusMainWindow(undefined, automatic ? undefined : "manual_launch");
   });
 
   app.on("activate", () => {

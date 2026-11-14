@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     const cwd = await resolveModelRequestCwd(typeof body.cwd === "string" ? body.cwd : undefined);
-    const { modelRuntime } = await createTrustedModelServices(cwd);
+    const { modelRuntime } = await createTrustedModelServices(cwd, "prompt_optimize");
     const loadError = modelRuntime.getError();
     if (loadError) return NextResponse.json({ error: loadError }, { status: 400 });
 

@@ -97,6 +97,8 @@ export async function POST(req: Request) {
     }
 
     installModelThinkingCompat(modelRuntime);
+    const { installAnalyticsModelObserver } = await import("@/lib/analytics-telemetry");
+    installAnalyticsModelObserver(modelRuntime, "model_test");
     const loadError = modelRuntime.getError();
     if (loadError) return NextResponse.json({ ok: false, error: loadError });
 

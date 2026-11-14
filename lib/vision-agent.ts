@@ -51,6 +51,8 @@ export const DEFAULT_VISION_AGENT_CONFIG: VisionAgentConfig = {
 /** Use Pi's normal cwd-bound service construction for settings/API calls. */
 async function createVisionModelRegistry(cwd: string): Promise<ModelRegistry> {
   const services = await createAgentSessionServices({ cwd, agentDir: getAgentDir() });
+  const { installAnalyticsModelObserver } = await import("./analytics-telemetry");
+  installAnalyticsModelObserver(services.modelRuntime, "vision");
   return new ModelRegistry(services.modelRuntime);
 }
 
