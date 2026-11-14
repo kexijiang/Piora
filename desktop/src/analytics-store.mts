@@ -204,9 +204,11 @@ export function validateAnalyticsPolicy(value: unknown): AnalyticsPolicy {
     !Number.isInteger(p.version) ||
     p.version < 1 ||
     typeof p.enabled !== "boolean" ||
-    p.interval_min_seconds < 1500 ||
-    p.interval_max_seconds < Math.max(2100, p.interval_min_seconds) ||
-    p.interval_max_seconds > 7200 ||
+    p.interval_min_seconds <= 0 ||
+    p.interval_max_seconds < p.interval_min_seconds ||
+    !Number.isSafeInteger(p.interval_min_seconds) ||
+    !Number.isSafeInteger(p.interval_max_seconds) ||
+    !Number.isFinite(new Date(Date.now() + p.interval_max_seconds * 1000).getTime()) ||
     p.initial_delay_min_seconds < 0 ||
     p.initial_delay_max_seconds < p.initial_delay_min_seconds ||
     p.initial_delay_max_seconds > 600 ||

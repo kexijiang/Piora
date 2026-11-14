@@ -144,11 +144,19 @@ export class AnalyticsUploader {
   private schedule(seconds: number): void {
     if (this.timer) clearTimeout(this.timer);
     if (this.stopped) return;
-    this.store.set("next_due_at", Date.now() + seconds * 1000);
-    this.timer = setTimeout(() => {
-      void this.flush();
-    }, seconds * 1000);
-    this.timer.unref();
+    const due = Date.now() + seconds * 1000;
+    this.store.set("next_due_at", due);
+    const arm = () => {
+      if (this.stopped) return;
+      // Node timers overflow above ~24.8 days. Keep the persisted deadline and
+      // wait in bounded chunks instead of turning a long interval into a 1ms loop.
+      this.timer = setTimeout(() => {
+        if (Date.now() < due) arm();
+        else void this.flush();
+      }, Math.min(2_147_483_647, Math.max(0, due - Date.now())));
+      this.timer.unref();
+    };
+    arm();
   }
   private async request(
     path: string,
@@ -161,6 +169,7 @@ export class AnalyticsUploader {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Piora-Capabilities": "configurable-sync-interval",
           Authorization: "Bearer " + credential,
           ...(idempotency ? { "Idempotency-Key": idempotency } : {}),
         },
