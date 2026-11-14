@@ -74,11 +74,13 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       const context = await browser.newContext({ locale, viewport: { width: 1440, height: 1100 } });
       const errors = [];
       const retiredRequests = [];
+      let laboratoryEnabled = false;
+      let approvalEnabled = false;
       await context.route("http://localhost:43191/**", async route => {
         const pathname = new URL(route.request().url()).pathname;
         if (pathname === "/api/tool-permissions") { retiredRequests.push(route.request().method()); return route.fulfill({ json: { mode: "full" } }); }
-        if (pathname === "/api/settings/tool-approval") return route.fulfill({ json: { enabled: false } });
-        if (pathname === "/api/settings/laboratory") return route.fulfill({ json: { planGoalEnabled: false } });
+        if (pathname === "/api/settings/tool-approval") return route.fulfill({ json: { enabled: approvalEnabled } });
+        if (pathname === "/api/settings/laboratory") return route.fulfill({ json: { planGoalEnabled: laboratoryEnabled } });
         if (pathname === "/api/models") return route.fulfill({ json: { models: {}, modelList: [{ provider: "deepseek", id: "deepseek-v4.1-flash", name: "DeepSeek V4.1 Flash Very Long Model Name" }] } });
         if (pathname === "/api/system-prompt") return route.fulfill({ json: { selectorVisible: true, templates: [{ id: "long", name: "Very long system prompt template name", prompt: "Be helpful" }], defaultTemplateId: "long" } });
         if (pathname === "/api/chat-workspace" || pathname === "/api/cwd/validate") return route.fulfill({ json: { cwd: "/workspace/a-very-long-project-name-for-layout-checks", valid: true } });
@@ -94,6 +96,7 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await page.goto("http://localhost:43191/");
       await page.locator("#launcher .model-settings-trigger:not([data-permission-trigger])").waitFor();
       await page.waitForFunction(() => [...document.querySelectorAll('[aria-haspopup="listbox"]')].some(el => el.textContent.includes("Very long system")));
+      assert.equal(await page.getByTestId("workflow-mode-toggle").count(), 0, "disabled laboratory modes do not add a launcher control");
       const column = page.locator("#launcher .chat-column");
       const initialWidth = await column.evaluate(el => el.getBoundingClientRect().width);
       const handle = await page.locator("#new-chat-resizer").boundingBox();
@@ -123,9 +126,12 @@ createRoot(document.getElementById("root")).render(<App/>);`);
           });
           assert.ok(geometry.bounds.every(box => box.left >= geometry.left - 1 && box.right <= geometry.right + 1), `${locale}/${id}/${width}: controls overflow ${JSON.stringify(geometry)}`);
           assert.ok(geometry.sendWidth >= 31, `${locale}/${id}/${width}: action shrank`);
-          if (geometry.width > 420) {
+          if (geometry.width > (id === "launcher" ? 560 : 420)) {
             const centers = geometry.bounds.map(box => box.center);
             assert.ok(Math.max(...centers) - Math.min(...centers) < 2, `${locale}/${id}/${width}: toolbar wrapped`);
+          } else if (id === "launcher") {
+            assert.ok(geometry.bounds.at(-1).center > geometry.bounds[0].center + 15,
+              `${locale}/${width}: narrow launcher keeps labels visible by moving model and send controls onto their own row`);
           }
           if (width === 480) assert.ok(geometry.labelWidth < geometry.labelScroll, "long model name should truncate");
         }
@@ -538,9 +544,172 @@ createRoot(document.getElementById("root")).render(<App/>);`);
       await editor.press('Enter');
       await page.waitForFunction(() => window.queuedInputs?.length === 1);
       assert.deepEqual(await page.evaluate(() => window.queuedInputs[0]), { text: 'Persisted queue preference', delivery: 'next_turn' });
+
+      // Exercise the approved launcher layout with the real production components.
+      // Only API data is synthetic; all mode, project, template and send actions use UI.
+      laboratoryEnabled = true;
+      approvalEnabled = true;
+      await page.reload();
+      const launcher = page.locator("#launcher");
+      const topbar = launcher.locator(".chat-composer-topbar");
+      const modeToggle = launcher.getByTestId("workflow-mode-toggle");
+      const projectTrigger = launcher.locator('[class*="projectTrigger"]');
+      const templateTrigger = launcher.locator('[class*="SystemPromptSelector"][aria-haspopup="listbox"]');
+      await modeToggle.waitFor();
+      await templateTrigger.waitFor();
+      await launcher.locator('[data-permission-trigger]').waitFor();
+      await page.addStyleTag({ content: "#command-results,#conversation,#room,#shortcut-settings{display:none}#launcher{margin-inline:auto;height:680px}#root>main{padding:24px}" });
+      assert.equal(await launcher.locator('[class*="eyebrow"]').count(), 0, "the redundant new-task eyebrow is removed");
+      assert.equal(await modeToggle.getAttribute("aria-expanded"), "false");
+      assert.equal(await topbar.locator(".chat-composer-workflow").count(), 1);
+      assert.equal(await topbar.locator(".chat-composer-context").count(), 1);
+      const capture = process.env.PIORA_COMPOSER_SCREENSHOTS
+        ? path.join(repo, ".verification", "launcher-composer-ux") : null;
+      if (capture) await mkdir(capture, { recursive: true });
+      const settleLayout = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const finishModeAnimation = () => launcher.getByTestId("workflow-mode-select").evaluate(async element => {
+        await Promise.all(element.parentElement.getAnimations({ subtree: true }).map(animation => animation.finished.catch(() => {})));
+      });
+      for (const dark of [false, true]) {
+        await page.evaluate(dark => document.documentElement.classList.toggle("dark", dark), dark);
+        for (const [width, fontSize] of [[900, 14], [590, 14], [420, 14], [320, 14], [420, 20], [320, 20]]) {
+          await launcher.evaluate((section, width) => {
+            section.style.width = width + "px";
+            section.style.setProperty("--chat-column-width", "100%");
+          }, width);
+          await page.evaluate(fontSize => { document.documentElement.style.fontSize = fontSize + "px"; }, fontSize);
+          await settleLayout();
+          assert.equal(await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize)), fontSize, "font-size coverage changes the real root font size");
+          assert.ok(Math.abs(await modeToggle.evaluate(element => parseFloat(getComputedStyle(element).fontSize)) - fontSize * 0.821) < 0.1,
+            "mode controls inherit the scaled text size");
+          const before = await topbar.locator(".chat-composer-context").boundingBox();
+          await modeToggle.click();
+          await finishModeAnimation();
+          const after = await topbar.locator(".chat-composer-context").boundingBox();
+          assert.ok(Math.abs(before.x - after.x) < 1 && Math.abs(before.y - after.y) < 1,
+            `${locale}/${dark}/${width}/${fontSize}: expanding modes must not move the project or template controls`);
+          const geometry = await launcher.evaluate(section => {
+            const rect = element => { const { left, right, top, bottom, width, height } = element.getBoundingClientRect(); return { left, right, top, bottom, width, height }; };
+            const topbar = section.querySelector(".chat-composer-topbar");
+            const surface = section.querySelector(".chat-composer-surface");
+            const mode = section.querySelector('[data-testid="workflow-mode-select"]');
+            return {
+              topbar: rect(topbar), surface: rect(surface),
+              context: rect(topbar.querySelector(".chat-composer-context")),
+              mode: rect(mode), options: [...mode.querySelectorAll("button[aria-pressed]")].map(rect),
+              modeLabels: [...mode.querySelectorAll("button[aria-pressed] > span:not([hidden])")].map(label => ({
+                text: label.textContent, width: label.clientWidth, scrollWidth: label.scrollWidth,
+                overflow: getComputedStyle(label).overflowX,
+              })),
+              contextButtons: [...topbar.querySelectorAll('.chat-composer-context button')].map(rect),
+              footer: rect(surface.querySelector(".chat-composer-footer")),
+              footerButtons: [...surface.querySelectorAll('.chat-composer-footer button')].map(rect),
+              overflow: topbar.scrollWidth - topbar.clientWidth,
+              optimizeVisible: getComputedStyle(surface.querySelector('.prompt-optimize-button > span')).display !== "none",
+            };
+          });
+          assert.ok(geometry.overflow <= 1, `${locale}/${width}/${fontSize}: topbar overflow ${JSON.stringify(geometry)}`);
+          assert.ok([...geometry.options, ...geometry.contextButtons].every(box => box.left >= geometry.topbar.left - 1 && box.right <= geometry.topbar.right + 1),
+            `${locale}/${width}/${fontSize}: topbar buttons must fit ${JSON.stringify(geometry)}`);
+          assert.ok(geometry.options.every(box => box.height >= 28 && box.width >= 40), "mode targets remain usable at all tested font and panel sizes");
+          assert.ok(geometry.modeLabels.every(label => label.width > 0 && label.scrollWidth <= label.width + 1 && !["hidden", "clip"].includes(label.overflow)),
+            `${locale}/${width}/${fontSize}: expanded mode names must stay readable without clipping ${JSON.stringify(geometry.modeLabels)}`);
+          assert.ok(geometry.footerButtons.every(box => box.left >= geometry.footer.left - 1 && box.right <= geometry.footer.right + 1), "launcher footer controls stay inside the composer");
+          assert.equal(geometry.optimizeVisible, true, "launcher optimization remains visible on narrow panels");
+          if (width === 900 && fontSize === 14) {
+            assert.ok(Math.abs((geometry.mode.top + geometry.mode.bottom) / 2 - (geometry.context.top + geometry.context.bottom) / 2) < 2,
+              "wide launcher has a single configuration row");
+          }
+          if (capture && (width === 900 || width === 320)) {
+            await launcher.screenshot({ path: path.join(capture, `${locale}-${dark ? "dark" : "light"}-${width}-${fontSize}-expanded.png`) });
+          }
+          await page.keyboard.press("Escape");
+          assert.equal(await modeToggle.getAttribute("aria-expanded"), "false");
+          await finishModeAnimation();
+        }
+      }
+      await page.evaluate(() => { document.documentElement.classList.remove("dark"); document.documentElement.style.removeProperty("font-size"); });
+      await launcher.evaluate(section => { section.style.width = "900px"; });
+      await settleLayout();
+      await projectTrigger.click();
+      const projectPopup = launcher.locator('[class*="projectPopover"]');
+      await projectPopup.waitFor();
+      const projectBounds = await projectPopup.boundingBox();
+      const projectButtonBounds = await projectTrigger.boundingBox();
+      assert.ok(projectBounds.y + projectBounds.height <= projectButtonBounds.y - 8, "desktop project selection still opens above its original trigger");
+      assert.ok(projectBounds.x >= 0 && projectBounds.x + projectBounds.width <= page.viewportSize().width, "right-aligned project selection remains inside the viewport");
+      const projectSearch = projectPopup.locator("input");
+      assert.equal(await projectSearch.evaluate(element => document.activeElement === element), true, "project selection focuses its existing search");
+      await projectSearch.fill("a-very-long-project-name");
+      await projectPopup.getByRole("option").filter({ hasText: "a-very-long-project-name" }).click();
+      assert.equal(await launcher.locator("textarea").evaluate(element => document.activeElement === element), true, "choosing a project still returns focus to the input");
+      assert.equal(await projectPopup.count(), 0);
+      const selectedContext = await topbar.evaluate(element => {
+        const boxes = [element.querySelector('[data-testid="workflow-mode-select"]'), ...element.querySelectorAll('.chat-composer-context button')]
+          .map(control => { const box = control.getBoundingClientRect(); return { center: box.top + box.height / 2, left: box.left, right: box.right }; });
+        return { boxes, width: element.clientWidth, overflow: element.scrollWidth - element.clientWidth };
+      });
+      const selectedCenters = selectedContext.boxes.map(box => box.center);
+      assert.ok(Math.max(...selectedCenters) - Math.min(...selectedCenters) < 2,
+        `wide launcher keeps long selected project and template on the same configuration row: ${JSON.stringify(selectedContext)}`);
+      assert.ok(selectedContext.overflow <= 1, "long selected context fits the launcher");
+      if (capture) {
+        for (const dark of [false, true]) {
+          await page.evaluate(dark => document.documentElement.classList.toggle("dark", dark), dark);
+          await launcher.screenshot({ path: path.join(capture, `${locale}-${dark ? "dark" : "light"}-900-selected-collapsed.png`) });
+        }
+        await page.evaluate(() => document.documentElement.classList.remove("dark"));
+      }
+      const composerBeforePopup = await launcher.locator(".chat-composer-surface").boundingBox();
+      await templateTrigger.click();
+      const templatePopup = page.locator('[class*="SystemPromptSelector"][class*="_popup"]').filter({ has: page.getByRole("listbox") });
+      await templatePopup.waitFor();
+      await templatePopup.evaluate(async element => { await Promise.all(element.getAnimations().map(animation => animation.finished)); });
+      assert.equal(await templatePopup.evaluate(element => element.parentElement === document.body), true, "system prompt selection keeps its body portal");
+      const templateBounds = await templatePopup.boundingBox();
+      const templateButtonBounds = await templateTrigger.boundingBox();
+      assert.ok(templateBounds.y >= templateButtonBounds.y + templateButtonBounds.height + 5,
+        `system prompt selection keeps its default downward placement when space permits: ${JSON.stringify({ templateBounds, templateButtonBounds, viewport: page.viewportSize() })}`);
+      assert.ok(templateBounds.x >= 8 && templateBounds.x + templateBounds.width <= page.viewportSize().width - 8, "system prompt popup respects viewport edges");
+      assert.deepEqual(await launcher.locator(".chat-composer-surface").boundingBox(), composerBeforePopup, "popups overlay rather than push the composer");
+      await templatePopup.getByRole("option").last().click();
+      assert.equal(await templateTrigger.evaluate(element => document.activeElement === element), true, "choosing a prompt returns focus to its trigger");
+      await page.setViewportSize({ width: 390, height: 800 });
+      await launcher.evaluate(section => { section.style.width = "342px"; });
+      await projectTrigger.click();
+      await projectPopup.waitFor();
+      const mobileProject = await projectPopup.boundingBox();
+      assert.equal(await projectPopup.evaluate(element => getComputedStyle(element).position), "fixed", "mobile project selection retains its bottom sheet");
+      assert.ok(mobileProject.x >= 9 && mobileProject.x + mobileProject.width <= 381 && mobileProject.y + mobileProject.height <= 791,
+        "mobile project sheet stays inside the screen");
+      assert.equal(await launcher.locator('[class*="projectBackdrop"]').isVisible(), true, "mobile project selection keeps its dismissing backdrop");
+      await page.keyboard.press("Escape");
+      await projectPopup.waitFor({ state: "hidden" });
+      await page.setViewportSize({ width: 1440, height: 1100 });
+      await launcher.evaluate(section => { section.style.width = "900px"; });
+      await modeToggle.click();
+      await launcher.getByTestId("workflow-mode-goal").click();
+      await launcher.getByTestId("workflow-budget-input").fill("7");
+      await launcher.locator("textarea").fill("Implement the approved launcher UX");
+      await launcher.locator(".composer-submit-controls > button").click();
+      await page.waitForFunction(() => window.launchRequest?.prompt.message === "Implement the approved launcher UX");
+      const approvedLaunch = await page.evaluate(() => window.launchRequest);
+      assert.deepEqual(approvedLaunch.prompt.commandInput.workflow, { mode: "goal", turnBudget: 7 });
+      assert.equal(approvedLaunch.prompt.permissionMode, "full");
+      assert.equal(approvedLaunch.cwd, "/workspace/a-very-long-project-name-for-layout-checks");
       assert.deepEqual(errors, []);
       await context.close();
     }
+  } catch (error) {
+    if (process.env.PIORA_COMPOSER_SCREENSHOTS) {
+      const lastPage = browser?.contexts().at(-1)?.pages().at(-1);
+      if (lastPage) {
+        const output = path.join(repo, ".verification", "launcher-composer-ux");
+        await mkdir(output, { recursive: true });
+        await lastPage.screenshot({ path: path.join(output, `failure-${Date.now()}.png`), fullPage: true }).catch(() => {});
+      }
+    }
+    throw error;
   } finally {
     await browser?.close();
     assert.ok(path.resolve(directory).startsWith(path.join(path.resolve(tmpdir()), "piora-composer-layout-")));
